@@ -1,6 +1,6 @@
 import type { DatabaseId } from "./database";
 import type { FieldId } from "./field";
-import type { ConcreteTableId, SchemaName } from "./table";
+import type { TableId, SchemaName } from "./table";
 import type { UserId } from "./user";
 
 export type MetadataGenerationRunId = number;
@@ -22,10 +22,10 @@ export type MetadataGenerationRunStatus =
 export type MetadataGenerationScope =
   | { type: "database" }
   | { type: "schemas"; schemas: SchemaName[] }
-  | { type: "tables"; table_ids: ConcreteTableId[] };
+  | { type: "tables"; table_ids: TableId[] };
 
 export type MetadataGenerationTableError = {
-  table_id: ConcreteTableId;
+  table_id: TableId;
   table_name?: string | null;
   schema?: string | null;
   message: string;
@@ -55,7 +55,7 @@ export type MetadataGenerationRun = {
   done_tables: number;
   failed_tables: number;
   table_errors: MetadataGenerationTableError[] | null;
-  done_table_ids: ConcreteTableId[] | null;
+  done_table_ids: TableId[] | null;
   message: string | null;
   usage: MetadataGenerationUsage | null;
   creator_id: UserId | null;
@@ -69,7 +69,7 @@ export type MetadataGenerationRun = {
 export type MetadataGenerationRunRequest = {
   database_id: DatabaseId;
   schemas?: SchemaName[];
-  table_ids?: ConcreteTableId[];
+  table_ids?: TableId[];
   attributes?: MetadataGenerationAttribute[];
 };
 
@@ -103,7 +103,7 @@ export type MetadataGenerationConfidence = "high" | "medium" | "low";
 
 /** The pending AI proposals of one table. */
 export type MetadataGenerationProposalTable = {
-  table_id: ConcreteTableId;
+  table_id: TableId;
   table_name: string | null;
   schema: string | null;
   pending: number;
@@ -114,13 +114,13 @@ export type MetadataGenerationProposalTable = {
 /** Give `database_id` (with `schema` when needed) or `table_id`. */
 export type ListMetadataGenerationProposalsRequest =
   | { database_id: DatabaseId; schema?: SchemaName; table_id?: never }
-  | { table_id: ConcreteTableId; database_id?: never; schema?: never };
+  | { table_id: TableId; database_id?: never; schema?: never };
 
 /** A pending AI proposal. `source` and `current_value` are the value readers see now. */
 export type MetadataGenerationProposal = {
   id: MetadataGenerationProposalId;
   last_run_id: MetadataGenerationRunId | null;
-  table_id: ConcreteTableId;
+  table_id: TableId;
   field_id: FieldId;
   field_name: string;
   field_display_name: string | null;

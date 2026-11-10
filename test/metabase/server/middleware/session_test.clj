@@ -50,10 +50,10 @@
                      :created_at :%now})
         (testing "session authenticates while the user is active"
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
-        (t2/update! :model/User user-id {:is_active false})
+        (t2/update! :model/User :id user-id {:is_active false})
         (testing "after deactivation the session no longer authenticates"
           (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))
-        (t2/update! :model/User user-id {:is_active true})
+        (t2/update! :model/User :id user-id {:is_active true})
         (testing "after reactivation the same session STILL does not authenticate"
           (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))))))
 
@@ -362,10 +362,10 @@
         (testing "authenticates while its synthetic user is active"
           (is (authed?)))
         (testing "deactivating the creator does NOT revoke the key — creator_id is attribution only"
-          (t2/update! :model/User creator-id {:is_active false})
+          (t2/update! :model/User :id creator-id {:is_active false})
           (is (authed?)))
         (testing "deactivating the key's own synthetic user DOES revoke it"
-          (t2/update! :model/User synthetic-id {:is_active false})
+          (t2/update! :model/User :id synthetic-id {:is_active false})
           (is (not (authed?))))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-2

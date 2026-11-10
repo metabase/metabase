@@ -1,12 +1,12 @@
 .descriptionIcon {
   display: flex;
   flex: 0 0 auto;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
   opacity: var(--scalar-description-opacity, 1);
   transition: opacity 0.2s ease-in-out;
 
   &:hover {
-    color: var(--mb-color-text-secondary);
+    color: var(--mb-color-text-primary);
   }
 
   &:focus-visible {

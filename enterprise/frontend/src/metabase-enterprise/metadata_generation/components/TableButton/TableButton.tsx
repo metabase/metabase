@@ -6,11 +6,10 @@ import { getUserIsAdmin } from "metabase/current-user";
 import type { MetadataGenerationTableButtonProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Loader, Tooltip } from "metabase/ui";
-import {
-  type ConcreteTableId,
-  type DatabaseId,
-  type MetadataGenerationRunId,
-  isConcreteTableId,
+import type {
+  DatabaseId,
+  MetadataGenerationRunId,
+  TableId,
 } from "metabase-types/api";
 
 import { useDatabaseRun } from "../../hooks";
@@ -19,7 +18,7 @@ import { GenerateMetadataModal } from "../GenerateMetadataModal";
 export function TableButton({ table }: MetadataGenerationTableButtonProps) {
   const isAdmin = useSelector(getUserIsAdmin);
 
-  if (!isAdmin || !isConcreteTableId(table.id)) {
+  if (!isAdmin) {
     return null;
   }
 
@@ -28,7 +27,7 @@ export function TableButton({ table }: MetadataGenerationTableButtonProps) {
 
 type TableButtonContentProps = {
   databaseId: DatabaseId;
-  tableId: ConcreteTableId;
+  tableId: TableId;
 };
 
 function TableButtonContent({ databaseId, tableId }: TableButtonContentProps) {

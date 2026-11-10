@@ -6,8 +6,12 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
+
+(mu/defn database-engine
+  "The engine of the Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one-fn :engine :model/Database :id database-id))
 
 (defn- table-match-clause
   "Match a Table by name and, when given, schema, both case-insensitively."
@@ -27,8 +31,7 @@
                                 [:table  :string]
                                 [:schema {:optional true} [:maybe :string]]]]]
   (t2/select :model/Table
-             {:from [(warehouse-schema-overlay/table-query)]
-              :where [:and
+             {:where [:and
                       [:= :db_id database-id]
                       [:= :active true]
                       (into [:or] (map table-match-clause) tables)]}))
@@ -51,8 +54,7 @@
                :db_id database-id
                :active true
                :visibility_type nil
-               (cond-> {:from  [(warehouse-schema-overlay/table-query)]
-                        :where clause}
+               (cond-> {:where clause}
                  with (assoc :with with)))))
 
 (mu/defn unarchived-cards
@@ -63,4 +65,4 @@
 (mu/defn field-names-and-tables
   "The id, name, and Table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select [:model/Field :id :name :table_id] :id [:in field-ids]))

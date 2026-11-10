@@ -10,7 +10,7 @@ export const ChartSettingMessage = ({ children }: PropsWithChildren) => {
       py="lg"
       px={0}
       bg="background_page-secondary"
-      c="text-disabled"
+      c="text-secondary"
       fw="bold"
       style={{ borderRadius: theme.radius.sm }}
     >

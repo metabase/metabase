@@ -26,7 +26,7 @@ import {
   useStartMetadataGenerationRunMutation,
 } from "metabase-enterprise/api";
 import type {
-  ConcreteTableId,
+  TableId,
   DatabaseId,
   MetadataGenerationAttribute,
   MetadataGenerationRun,
@@ -54,7 +54,7 @@ type ScopeType = "database" | "schemas" | "tables";
 
 type GenerateMetadataModalProps = {
   databaseId: DatabaseId;
-  initialTableIds?: ConcreteTableId[];
+  initialTableIds?: TableId[];
   /** When true, the run covers exactly `initialTableIds` and the form offers no scope choice. */
   isScopeFixed?: boolean;
   /** A run to show the progress of, instead of the form. The owner keeps it, so it decides what reopening shows. */
@@ -127,7 +127,7 @@ function getTitle(
 
 type GenerateMetadataFormProps = {
   databaseId: DatabaseId;
-  initialTableIds?: ConcreteTableId[];
+  initialTableIds?: TableId[];
   isScopeFixed?: boolean;
   onStarted: (runId: MetadataGenerationRunId) => void;
   onCancel: () => void;

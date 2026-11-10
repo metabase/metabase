@@ -4,6 +4,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(set! *warn-on-reflection* true)
+
 ;;; Configuration Schemas
 
 (mr/def ::client-id

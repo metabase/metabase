@@ -19,7 +19,7 @@ import {
   Text,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { ConcreteTableId, FieldId } from "metabase-types/api";
+import type { TableId, FieldId } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../analytics";
 import { PendingBadge } from "../PendingBadge";
@@ -27,7 +27,7 @@ import { PendingBadge } from "../PendingBadge";
 import S from "./ReviewModal.module.css";
 
 type FieldDetailsPaneProps = {
-  tableId: ConcreteTableId;
+  tableId: TableId;
   fieldId: FieldId;
   /** Width in pixels; the review modal lets the person resize it. */
   width: number;

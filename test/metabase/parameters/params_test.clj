@@ -55,7 +55,7 @@
   (testing "Inactive Entity Name fields should not be hydrated (#65207)"
     (let [name-field-id (mt/id :venues :name)]
       (try
-        (t2/update! :model/Field name-field-id {:active false})
+        (t2/update! :model/Field :id name-field-id {:active false})
         (is (= {:name          "ID"
                 :table_id      (mt/id :venues)
                 :semantic_type :type/PK
@@ -64,7 +64,7 @@
                    (t2/hydrate :name_field)
                    mt/derecordize)))
         (finally
-          (t2/update! :model/Field name-field-id {:active true}))))))
+          (t2/update! :model/Field :id name-field-id {:active true}))))))
 
 ;;; -------------------------------------------------- param_fields --------------------------------------------------
 
@@ -94,7 +94,7 @@
                                                                          :display_name "Name"
                                                                          :id           "aaaaaaaa"
                                                                          :type         :dimension
-                                                                         :dimension    [:field (mt/id :venues :id) nil]}}}}}]
+                                                                         :field-id     (mt/id :venues :id)}}}}}]
       (is (= {"aaaaaaaa" [{:id                 (mt/id :venues :id)
                            :table_id           (mt/id :venues)
                            :display_name       "ID"
@@ -217,7 +217,7 @@
                                                                         :id           "11111111"
                                                                         :type         :dimension
                                                                         :widget-type  :number
-                                                                        :dimension    [:field (mt/id :venues :id) nil]}
+                                                                        :field-id     (mt/id :venues :id)}
                                                                 "name" {:name         "name"
                                                                         :display-name "Name"
                                                                         :id           "aaaaaaaa"
@@ -225,8 +225,7 @@
                                                                         :widget-type  :number
                                                                         :dimension    [:field "name" {:base-type :type/Text}]}}}))}]
     (testing "card->template-tag-param-id->field-ids"
-      (is (= {"11111111" #{(mt/id :venues :id)}
-              "aaaaaaaa" #{}}
+      (is (= {"11111111" #{(mt/id :venues :id)}}
              (#'params/card->template-tag-id->field-ids card))))
     (testing "card->template-tag-field-ids"
       (is (= #{(mt/id :venues :id)}
@@ -243,13 +242,13 @@
                                                              :id           "11111111"
                                                              :type         :dimension
                                                              :widget-type  :number
-                                                             :dimension    [:field (mt/id :orders :id) nil]}
+                                                             :field-id     (mt/id :orders :id)}
                                                      "tag2" {:name         "tag2"
                                                              :display-name "Tag 2"
                                                              :id           "aaaaaaaa"
                                                              :type         :dimension
                                                              :widget-type  :number
-                                                             :dimension    [:field (mt/id :products :id) nil]}}}))}]
+                                                             :field-id     (mt/id :products :id)}}}))}]
         (testing "card->template-tag-param-id->field-ids"
           (is (= {"11111111" #{(mt/id :orders :id)}
                   "aaaaaaaa" #{(mt/id :products :id)}}

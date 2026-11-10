@@ -22,7 +22,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.dashboards.db :as dashboards.db]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -32,7 +31,6 @@
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
-   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -40,6 +38,8 @@
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -76,7 +76,7 @@
   (let [defaults      {:parameters []}
         dashboard-id  (:dashboard_id notification)
         collection-id (if dashboard-id
-                        (:collection_id (dashboards.db/dashboard dashboard-id))
+                        (pulse.db/dashboard-collection-id dashboard-id)
                         (:collection_id notification))
         notification  (->> (for [[k v] notification
                                  :when (some? v)]
@@ -186,7 +186,7 @@
   "Return true if the card has attachments and those can be read. If it has no attachments, return true"
   [card]
   (if (or (:include_csv card) (:include_xls card))
-    (let [level (perms/download-perms-level (or (:dataset_query card) (:dataset_query (queries.db/card (:id card)))) api/*current-user-id*)]
+    (let [level (perms/download-perms-level (or (:dataset_query card) (pulse.db/card-query (:id card))) api/*current-user-id*)]
       (and level (not= level  :no)))
     true))
 
@@ -197,9 +197,11 @@
    (every? #(and
              (mi/can-read? :model/Card (u/the-id %))
              (can-read-attachments? %)) cards)
-   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
-   ;; make sure we have write permissions for that collection
-   (or (nil? collection-id) (mi/can-write? :model/Collection collection-id))
+   ;; nil is root, except for a dashboard subscription, which the before-insert hook files with its dashboard
+   (cond
+     (some? collection-id) (mi/can-write? :model/Collection collection-id)
+     (some? dashboard-id)  true
+     :else                 (mi/can-write? collection/root-collection))
    ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
    (or (nil? dashboard-id) (mi/can-read? :model/Dashboard dashboard-id))))
 
@@ -308,15 +310,10 @@
    :id
    {:default []}))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *allow-hydrate-archived-cards*
-  "By default the :cards hydration method only return active cards,
-  but in cases we need to send email after a card is archived, we need to be able to hydrate archived card as well."
-  false)
-
 (mu/defn- cards* :- [:sequential HybridPulseCard]
+  "The non-archived Cards of the Pulses with `pulse-ids`."
   [pulse-ids :- [:sequential ms/PositiveInt]]
-  (pulse.db/pulse-cards-for-pulses pulse-ids *allow-hydrate-archived-cards*))
+  (pulse.db/pulse-cards-for-pulses pulse-ids))
 
 (methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
   [_model k pulses]
@@ -367,12 +364,11 @@
   {:pre [(even? (count additional-conditions))]}
   (let [id   (u/the-id notification-or-id)
         opts (apply hash-map additional-conditions)]
-    (when-let [pulse (pulse.db/pulse id)]
-      (when (cond
-              (contains? opts :alert_condition) (and (not (:archived pulse)) (nil? (:alert_condition pulse)))
-              (contains? opts :archived)        (not (:archived pulse))
-              :else                             true)
-        (hydrate-notification pulse)))))
+    (some-> (cond
+              (contains? opts :alert_condition) (pulse.db/unarchived-non-alert-pulse id)
+              (contains? opts :archived)        (pulse.db/unarchived-pulse id)
+              :else                             (pulse.db/pulse id))
+            hydrate-notification)))
 
 (mu/defn- notification->alert :- (ms/InstanceOf :model/Pulse)
   "Take a generic `Notification` and put it in the standard `Alert` format the frontend expects. This really just

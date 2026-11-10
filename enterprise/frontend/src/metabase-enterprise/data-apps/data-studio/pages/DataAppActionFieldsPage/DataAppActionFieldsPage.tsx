@@ -1,6 +1,9 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { QueryActionFieldsContent } from "metabase/data-studio/actions/components/ActionFieldsContent";
+import {
+  ImplicitActionFieldsContent,
+  QueryActionFieldsContent,
+} from "metabase/data-studio/actions/components/ActionFieldsContent";
 import { canEditActionQuery } from "metabase/data-studio/actions/utils";
 import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
@@ -24,14 +27,24 @@ export function DataAppActionFieldsPage() {
   return (
     <PageContainer data-testid="data-app-action-fields" gap="lg" px={0} pb={0}>
       <DataAppActionHeader app={app} action={action} px="3.5rem" />
-      <QueryActionFieldsContent
-        action={action}
-        fieldId={fieldId}
-        canChangeFieldType={canEditActionQuery(action, databases)}
-        getFieldsUrl={(fieldId) =>
-          Urls.dataStudioDataAppActionFields(app.name, action.id, fieldId)
-        }
-      />
+      {action.type === "implicit" ? (
+        <ImplicitActionFieldsContent
+          action={action}
+          fieldId={fieldId}
+          getFieldsUrl={(fieldId) =>
+            Urls.dataStudioDataAppActionFields(app.name, action.id, fieldId)
+          }
+        />
+      ) : (
+        <QueryActionFieldsContent
+          action={action}
+          fieldId={fieldId}
+          canChangeFieldType={canEditActionQuery(action, databases)}
+          getFieldsUrl={(fieldId) =>
+            Urls.dataStudioDataAppActionFields(app.name, action.id, fieldId)
+          }
+        />
+      )}
     </PageContainer>
   );
 }

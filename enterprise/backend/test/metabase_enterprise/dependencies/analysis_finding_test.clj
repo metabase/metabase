@@ -196,9 +196,9 @@
                          :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
                                               :to_entity_type :card :to_entity_id p-id}]
             (run-jobs!)
-            (t2/update! :model/Card gp-id {:name "Renamed"})
+            (t2/update! :model/Card :id gp-id {:name "Renamed"})
             (is (empty? (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!))))
-            (t2/update! :model/Card gp-id {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))})
+            (t2/update! :model/Card :id gp-id {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))})
             (is (= #{gp-id p-id}
                    (set (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!)))))))))))
 
@@ -244,7 +244,7 @@
                                                                      :source-tables   []
                                                                      :body            "def transform():\n    pass"}}]
           (lib-be/with-metadata-provider-cache
-            (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Transform transform-id)))
+            (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Transform :id transform-id)))
           (is (=? {:result true}
                   (t2/select-one :model/AnalysisFinding :entity_type :transform :entity_id transform-id)))
           (is (empty? (models.analysis-finding-error/errors-for-entity :transform transform-id))))))))
@@ -361,7 +361,7 @@
                                              :from_entity_id child-card-id
                                              :to_entity_type :card
                                              :to_entity_id parent-card-id}]
-           (t2/update! :model/Card parent-card-id {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))})
+           (t2/update! :model/Card :id parent-card-id {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))})
            (assert-has-analyses
             {:card {parent-card-id nil}})
            (is (nil? (t2/select-one-fn :analysis_version :model/AnalysisFindingStatus
@@ -382,7 +382,7 @@
                                              :to_entity_type :card
                                              :to_entity_id parent-card-id}]
            (analyzed-by-job!)
-           (t2/update! :model/Card parent-card-id {:dataset_query (lib/query mp orders)})
+           (t2/update! :model/Card :id parent-card-id {:dataset_query (lib/query mp orders)})
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{[:card parent-card-id] [:card child-card-id]}
                   (analyzed-among! [:card parent-card-id] [:card child-card-id])))))))))
@@ -396,9 +396,9 @@
                       :model/Dependency _ {:from_entity_type :card :from_entity_id child-id
                                            :to_entity_type :card :to_entity_id parent-id}]
          (analyzed-by-job!)
-         (t2/update! :model/Card parent-id {:dataset_query   (lib/native-query mp "select * from orders")
-                                            :result_metadata (get-in (qp/process-query (lib/native-query mp "select * from orders"))
-                                                                     [:data :results_metadata :columns])})
+         (t2/update! :model/Card :id parent-id {:dataset_query   (lib/native-query mp "select * from orders")
+                                                :result_metadata (get-in (qp/process-query (lib/native-query mp "select * from orders"))
+                                                                         [:data :results_metadata :columns])})
          (deps.test/synchronously-run-dependency-job!)
          (is (= #{[:card parent-id] [:card child-id]}
                 (analyzed-among! [:card parent-id] [:card child-id]))))))))
@@ -420,7 +420,7 @@
                                                                         :type   :table}}
                           :model/Card {other-card-id :id} {:dataset_query (lib/query mp orders)}]
              (analyzed-by-job!)
-             (t2/update! :model/Card parent-card-id {:dataset_query (lib/query mp orders)})
+             (t2/update! :model/Card :id parent-card-id {:dataset_query (lib/query mp orders)})
              (is (= #{[:card parent-card-id] [:transform transform-id]}
                     (analyzed-among! [:card parent-card-id] [:transform transform-id] [:card other-card-id]))))))))))
 
@@ -435,7 +435,7 @@
                                                              :target {:schema "public"
                                                                       :name "sample"
                                                                       :type :table}}]
-           (is (= 1 (t2/update! :model/Transform transform-id
+           (is (= 1 (t2/update! :model/Transform :id transform-id
                                 {:source {:type :query
                                           :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})))))))))
 
@@ -451,8 +451,8 @@
                                                                       :name "sample"
                                                                       :type :table}}]
            (analyzed-by-job!)
-           (t2/update! :model/Transform transform-id {:source {:type :query
-                                                               :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})
+           (t2/update! :model/Transform :id transform-id {:source {:type :query
+                                                                   :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})
            (is (= #{[:transform transform-id]} (analyzed-among! [:transform transform-id])))))))))
 
 (deftest ^:synchronized transform-update-triggers-native-transforms-test
@@ -465,7 +465,7 @@
                                                            :target {:schema "public"
                                                                     :name "sample"
                                                                     :type :table}}]
-         (is (= 1 (t2/update! :model/Transform transform-id
+         (is (= 1 (t2/update! :model/Transform :id transform-id
                               {:source {:type :query
                                         :query (lib/native-query mp "select * from orders")}}))))))))
 
@@ -508,7 +508,7 @@
              price-field-id (mt/id :products :price)]
          (mt/with-temp [:model/Segment {segment-id :id} {:table_id products-id
                                                          :definition {:filter [:> [:field price-field-id nil] 50]}}]
-           (is (= 1 (t2/update! :model/Segment segment-id
+           (is (= 1 (t2/update! :model/Segment :id segment-id
                                 {:definition {:filter [:< [:field price-field-id nil] 50]}})))))))))
 
 (deftest ^:synchronized segment-update-analyzes-segment-and-dependents-test
@@ -524,7 +524,7 @@
                                                                                 (lib.metadata/segment (mt/metadata-provider)
                                                                                                       segment-id))}]
              (analyzed-by-job!)
-             (t2/update! :model/Segment segment-id {:definition {:filter [:< [:field price-field-id nil] 50]}})
+             (t2/update! :model/Segment :id segment-id {:definition {:filter [:< [:field price-field-id nil] 50]}})
              (is (= #{[:segment segment-id] [:card card-id]}
                     (analyzed-among! [:segment segment-id] [:card card-id]))))))))))
 

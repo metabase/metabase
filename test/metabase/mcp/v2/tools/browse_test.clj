@@ -748,7 +748,7 @@
                                                    :database_id tenant-b :table_id b-orders}]
       ;; The table is created on the router and moved: inserting it directly on a destination trips
       ;; the after-insert permission grant, which destinations are forbidden to carry.
-      (t2/update! :model/Table b-orders {:db_id tenant-b})
+      (t2/update! :model/Table :id b-orders {:db_id tenant-b})
       (mt/with-full-data-perms-for-all-users!
         (mt/with-test-user :rasta
           (is (mi/can-read? (t2/select-one :model/Database :id tenant-b))

@@ -38,12 +38,12 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv not-empty select-keys some]]
+   [metabase.util.performance :as perf :refer [mapv not-empty select-keys some]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
    (java.net URI URLDecoder)
-   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Types)
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Statement Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (net.snowflake.client.api.exception SnowflakeSQLException)))
 
@@ -129,10 +129,13 @@
                               :transforms/accurate-rows-affected      false
                               :transforms/python                      true
                               :transforms/table                       true
-                              :transforms/testing                     false}]
+                              :transforms/testing                     false
+                              :stage-ctes                             true
+                              :workspace                              false}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (mu/defn- quote-schema ^String [s :- :string] (sql.u/quote-name :snowflake :schema s))
+(mu/defn- quote-field  ^String [s :- :string] (sql.u/quote-name :snowflake :field s))
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ messages]
@@ -204,55 +207,27 @@
   []
   (inc (driver.common/start-of-week->int)))
 
-(defn- handle-conn-uri [details user account private-key-file private-key-passphrase]
-  (let [existing-conn-uri (or (:connection-uri details)
-                              (when-let [sub (:subname details)]
-                                (format "jdbc:snowflake:%s" sub))
-                              (format "jdbc:snowflake://%s.snowflakecomputing.com" account))
-        opts-str (sql-jdbc.common/additional-opts->string :url
-                                                          (cond-> {:user (codec/url-encode user)
-                                                                   :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))}
-                                                            (:db details)
-                                                            (assoc :db (codec/url-encode (:db details)))
+(def ^:private auth-mode->credential-keys
+  "Credential-carrying detail keys owned by each auth mode."
+  {"password"                 #{:password}
+   "key-pair"                 #{:private-key :private-key-value :private-key-path :private-key-id
+                                :private-key-options :private-key-passphrase
+                                :private-key-source :private-key-creator-id :private-key-created-at}
+   "wif"                      #{:wif-provider :wif-token :wif-token-file-path}
+   "oauth-client-credentials" #{:oauth-client-id :oauth-client-secret :oauth-token-request-url
+                                :oauth-scope}})
 
-                                                            (not (str/blank? private-key-passphrase))
-                                                            (assoc :private_key_pwd (codec/form-encode private-key-passphrase))))
-        new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
-    (-> details
-        (assoc :connection-uri new-conn-uri)
-        ;; The Snowflake driver uses the :account property, but we need to drop the region from it first (#30376 comment)
-        (m/assoc-some :account (some-> account (str/split #"\.") first)))))
+(def ^:private metabase-auth-detail-keys
+  "Every Metabase-side detail key that carries auth information for any supported mode."
+  (into #{:auth-mode :use-password} cat (vals auth-mode->credential-keys)))
 
-(defn- resolve-private-key
-  "Convert the private-key secret properties into a private_key_file property in `details`.
-  Setting the Snowflake driver property privatekey would be easier, but that doesn't work
-  because clojure.java.jdbc (properly) converts the property values into strings while the
-  Snowflake driver expects a java.security.PrivateKey instance."
-  [{:keys [user password account private-key-passphrase]
-    :as   details}]
-  (if password
-    details
-    (if-let [private-key-file (driver-api/secret-value-as-file! :snowflake details "private-key")]
-      (-> details
-          (driver-api/clean-secret-properties-from-details :snowflake)
-          (handle-conn-uri user account private-key-file private-key-passphrase)
-          (assoc :private_key_file private-key-file)
-          ;; We need to put the `:private_key_pwd` property in both the `:connection-uri` and the connection spec.
-          ;; It uses the raw value here in the connection spec, but needs to use `codec/form-encode` for the `:connection-uri`.
-          (cond-> (not (str/blank? private-key-passphrase))
-            (assoc :private_key_pwd private-key-passphrase))
-          (dissoc :private-key-passphrase))
-      (driver-api/clean-secret-properties-from-details details :snowflake))))
+(defn- strip-metabase-auth-keys [details]
+  (apply dissoc details metabase-auth-detail-keys))
 
-(defn- jwt-expiry-ms
-  "Returns the JWT's `exp` claim as ms-since-epoch, or nil if the token can't be parsed or has no
-  `exp`. Decode-only — no signature verification; the token has already been trusted at this point."
-  [^String jwt]
-  (try
-    (let [[_ payload _] (str/split jwt #"\.")
-          json-str      (String. (.decode (java.util.Base64/getUrlDecoder) ^String payload) "UTF-8")]
-      (some-> (json/decode+kw json-str) :exp long (* 1000)))
-    (catch Throwable _ nil)))
+(defn- strip-other-mode-credentials
+  "Return `details` with every credential key not owned by `keep-mode` dissoc'd."
+  [details keep-mode]
+  (transduce cat dissoc details (vals (dissoc auth-mode->credential-keys keep-mode))))
 
 (def ^:private hosted-allowed-wif-providers
   ;; OIDC is the only WIF mode on Metabase Cloud where the identity is admin-supplied (a token or a
@@ -262,9 +237,11 @@
   ;; walks the same ambient paths. Whitelisting here fails closed on both.
   #{"OIDC"})
 
-(defn- resolve-wif-credentials
-  "Return `details` with Snowflake JDBC WIF properties replacing the Metabase-side auth keys."
-  [{:keys [wif-provider wif-token wif-token-file-path] :as details}]
+(defn- wif-jdbc-properties
+  "Return the Snowflake JDBC WIF connection properties for the given WIF details. For OIDC, a
+  `:wif-token-file-path` is slurped and wins over an inline `:wif-token`. When the resulting
+  token carries an `exp` claim, the returned map includes `:password-expiry-timestamp`."
+  [{:keys [wif-provider wif-token wif-token-file-path]}]
   (let [provider  (some-> wif-provider u/upper-case-en)
         _         (when (and (driver-api/is-hosted?)
                              (not (contains? hosted-allowed-wif-providers provider)))
@@ -275,8 +252,6 @@
                                                 "on Metabase Cloud. Use OIDC with an explicit token.")
                                            provider))
                                     {:wif-provider provider})))
-        ;; Pass OIDC tokens inline; the Snowflake JDBC driver only reads `token_file_path` under
-        ;; the special `jdbc:snowflake:auto` URL, which we don't use.
         token     (when (= "OIDC" provider)
                     (cond
                       (not (str/blank? wif-token-file-path))
@@ -285,19 +260,48 @@
 
                       (not (str/blank? wif-token))
                       wif-token))
-        ;; `:password-expiry-timestamp` lets the connection pool self-invalidate on expiry and
-        ;; rebuild against a rotated file or a fresh in-process mint.
-        expiry-ms (some-> token jwt-expiry-ms)
-        wif-spec  (cond-> {:authenticator            "WORKLOAD_IDENTITY"
-                           :workloadIdentityProvider provider}
-                    token     (assoc :token token)
-                    expiry-ms (assoc :password-expiry-timestamp expiry-ms))]
-    (-> details
-        (merge wif-spec)
-        (dissoc :wif-provider :wif-token :wif-token-file-path
-                :password :private-key :private-key-value :private-key-path
-                :private-key-id :private-key-options :private-key-passphrase
-                :private-key-source :private-key-creator-id :private-key-created-at))))
+        expiry-ms (u/ignore-exceptions (some-> token driver.u/jwt-expiry-ms))]
+    (cond-> {:authenticator            "WORKLOAD_IDENTITY"
+             :workloadIdentityProvider provider}
+      token     (assoc :token token)
+      expiry-ms (assoc :password-expiry-timestamp expiry-ms))))
+
+(defn- oauth-client-credentials-jdbc-properties
+  "Return the Snowflake JDBC OAuth client-credentials connection properties for the given OAuth
+  details. A blank `:oauth-scope` is omitted from the result."
+  [{:keys [oauth-client-id oauth-client-secret oauth-token-request-url oauth-scope]}]
+  (cond-> {:authenticator        "oauth_client_credentials"
+           :oauthClientId        oauth-client-id
+           :oauthClientSecret    oauth-client-secret
+           :oauthTokenRequestUrl oauth-token-request-url}
+    (not (str/blank? oauth-scope)) (assoc :oauthScope oauth-scope)))
+
+(defn- password-jdbc-properties [{:keys [password]}]
+  {:password password})
+
+(defn- key-pair-jdbc-properties
+  "Return the Snowflake JDBC key-pair connection properties for the given details. Materializes
+  the private-key secret to a file and emits `:private_key_file`, a `:connection-uri` carrying
+  user, key file, db and (form-encoded) passphrase, a trimmed `:account`, and `:private_key_pwd`
+  when the key is encrypted. Returns nil when no private-key secret is configured."
+  [{:keys [user account private-key-passphrase db subname] :as details}]
+  (when-let [private-key-file (driver-api/secret-value-as-file! :snowflake details "private-key")]
+    (let [existing-conn-uri (or (:connection-uri details)
+                                (when subname (format "jdbc:snowflake:%s" subname))
+                                (format "jdbc:snowflake://%s.snowflakecomputing.com" account))
+          opts-str          (sql-jdbc.common/additional-opts->string
+                             :url
+                             (cond-> {:user             (codec/url-encode user)
+                                      :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))}
+                               db                                        (assoc :db (codec/url-encode db))
+                               (not (str/blank? private-key-passphrase)) (assoc :private_key_pwd
+                                                                                (codec/form-encode private-key-passphrase))))
+          new-conn-uri      (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
+      ;; :private_key_pwd lives in both the connection spec (raw) and the URI (form-encoded above).
+      (cond-> {:private_key_file private-key-file
+               :connection-uri   new-conn-uri}
+        account                                   (assoc :account (first (str/split account #"\.")))
+        (not (str/blank? private-key-passphrase)) (assoc :private_key_pwd private-key-passphrase)))))
 
 (defn- quote-name
   [raw-name]
@@ -346,47 +350,60 @@
 (defmethod driver/db-details-to-test-and-migrate :snowflake
   [_ {:keys [password private-key-id private-key-value private-key-path
              use-password private-key-options
-             auth-mode wif-token wif-token-file-path]
+             auth-mode wif-token wif-token-file-path
+             oauth-client-id oauth-client-secret oauth-token-request-url]
       :as details}]
   ;; Private-key fields are counted independently because Metabase's history has left DBs with more
   ;; than one populated at once (legacy `-value` plus a persisted `-id`, etc.) — the migrate flow
-  ;; tries each. WIF is new, has no such legacy state, and has a deterministic within-mode
-  ;; precedence (file-path wins in resolve-wif-credentials), so it counts as one signal.
-  (let [wif-signal (or wif-token wif-token-file-path)]
-    (when-not (= 1 (count (remove nil? [password private-key-id private-key-value private-key-path wif-signal])))
+  ;; tries each. WIF and oauth-client-credentials are newer, have no such legacy state, and have a
+  ;; deterministic within-mode shape, so each counts as one signal.
+  (let [wif-signal   (or wif-token wif-token-file-path)
+        oauth-signal (or oauth-client-id oauth-client-secret oauth-token-request-url)]
+    (when-not (= 1 (count (remove nil? [password private-key-id private-key-value private-key-path
+                                        wif-signal oauth-signal])))
       (let [wif-details (when wif-signal
                           (-> details
+                              (strip-other-mode-credentials "wif")
+                              (dissoc :use-password)
                               (assoc :auth-mode "wif")
-                              (dissoc :password :private-key-id :private-key-value :private-key-path
-                                      :private-key-options :private-key-passphrase :use-password)
                               (with-meta {:auth :wif})))
+            oauth-details (when oauth-signal
+                            (-> details
+                                (strip-other-mode-credentials "oauth-client-credentials")
+                                (dissoc :use-password)
+                                (assoc :auth-mode "oauth-client-credentials")
+                                (with-meta {:auth :oauth-client-credentials})))
             password-details (when password
                                (-> details
+                                   (strip-other-mode-credentials "password")
                                    ;; Setting private-key-value to nil will delete the secret
                                    (assoc :use-password true :private-key-value nil :auth-mode "password")
-                                   (dissoc :private-key-id :private-key-path :private-key-options
-                                           :private-key-passphrase :wif-token :wif-token-file-path :wif-provider)
                                    ;; Add meta for testing
                                    (with-meta {:auth :password})))
             private-key-path-details (when private-key-path
                                        (-> details
+                                           (strip-other-mode-credentials "key-pair")
+                                           (dissoc :private-key-value)
                                            (assoc :use-password false :private-key-options "local" :auth-mode "key-pair")
-                                           (dissoc :password :private-key-value :wif-token :wif-token-file-path :wif-provider)
                                            (with-meta {:auth :private-key-path})))
             private-key-value-details (when private-key-value
                                         (-> details
+                                            (strip-other-mode-credentials "key-pair")
+                                            (dissoc :private-key-path)
                                             (assoc :use-password false :private-key-options "uploaded" :auth-mode "key-pair")
-                                            (dissoc :password :private-key-path :wif-token :wif-token-file-path :wif-provider)
                                             (with-meta {:auth :private-key-value})))
             private-key-id-details (when private-key-id
                                      (-> details
+                                         (strip-other-mode-credentials "key-pair")
+                                         (dissoc :private-key-value :private-key-path :private-key-options)
                                          (assoc :use-password false :auth-mode "key-pair")
-                                         (dissoc :password :private-key-value :private-key-path :private-key-options
-                                                 :wif-token :wif-token-file-path :wif-provider)
                                          (with-meta {:auth :private-key-id})))]
         (cond-> []
           (and (= "wif" auth-mode) wif-details)
           (conj wif-details)
+
+          (and (= "oauth-client-credentials" auth-mode) oauth-details)
+          (conj oauth-details)
 
           (and use-password password-details)
           (conj password-details)
@@ -406,9 +423,12 @@
           (and (not use-password) password-details)
           (conj password-details)
 
-          ;; WIF as last-resort when auth-mode isn't explicitly "wif" but WIF fields are present
+          ;; WIF / oauth as last-resort when their fields are present but auth-mode names a different mode
           (and (not= "wif" auth-mode) wif-details)
-          (conj wif-details))))))
+          (conj wif-details)
+
+          (and (not= "oauth-client-credentials" auth-mode) oauth-details)
+          (conj oauth-details))))))
 
 (defn- normalize-additional-options [additional-options]
   (when-not (str/blank? additional-options)
@@ -435,17 +455,19 @@
     password                                               "password"))
 
 (defn- resolve-credentials
-  "Set the JDBC credential properties. An explicit `:auth-mode` is preferred, because some can't be
-   inferred from other keys in the details (e.g. WIF), and because the details can have credential
-   keys from previous auth methods. Without an explicit `:auth-mode`, infer password vs key-pair
-   from the current details."
+  "Return `details` with Metabase-side auth fields replaced by the Snowflake JDBC credential
+  properties of the mode selected by `:auth-mode`, falling back to inference when `:auth-mode`
+  is absent."
   [{:keys [auth-mode] :as details}]
-  (case (or (#{"wif" "password" "key-pair"} auth-mode)
-            (infer-auth-mode details)
-            "key-pair")
-    "wif"      (resolve-wif-credentials details)
-    "password" (-> details (dissoc :private-key) resolve-private-key)
-    "key-pair" (-> details (dissoc :password) resolve-private-key)))
+  (let [mode (or (#{"wif" "password" "key-pair" "oauth-client-credentials"} auth-mode)
+                 (infer-auth-mode details)
+                 "key-pair")]
+    (merge (strip-metabase-auth-keys details)
+           (case mode
+             "wif"                      (wif-jdbc-properties details)
+             "oauth-client-credentials" (oauth-client-credentials-jdbc-properties details)
+             "password"                 (password-jdbc-properties details)
+             "key-pair"                 (key-pair-jdbc-properties details)))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname], :as details}]
@@ -642,18 +664,14 @@
   [driver db-id table-name column-definitions & args]
   ;; Snowflake doesn't support adding multiple columns in one statement, so add them one at a time
   (let [add-column! (get-method driver/add-columns! :sql-jdbc)]
-    (doseq [[column definition] column-definitions]
-      (apply add-column! driver db-id table-name {column definition} args))))
+    (perf/run! (fn [[column definition]] (apply add-column! driver db-id table-name {column definition} args))
+               column-definitions)))
 
 (defmethod driver/allowed-promotions :snowflake
   [_driver]
   ;; Snowflake's `ALTER COLUMN` can widen a type (e.g. VARCHAR length, NUMBER precision) but never convert
   ;; to a different one, so no promotions are possible
   {})
-
-(defmethod sql.qp/use-ctes-for-stages? :snowflake
-  [_driver]
-  true)
 
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
@@ -1209,7 +1227,7 @@
          (nil? (:private-key-value details)))
     (assoc :use-password true)
 
-    ;; Skip when nothing implies a mode — an overlay map (:write_data_details)
+    ;; Skip when nothing implies a mode — overlay maps (:write_data_details / :admin_details)
     ;; that only tweak account/warehouse must not gain an :auth-mode, which would override
     ;; :details' :auth-mode during the merge in effective-details.
     (and (not (contains? details :auth-mode))
@@ -1224,7 +1242,8 @@
   [_ database]
   (-> database
       (m/update-existing :details normalize-details)
-      (m/update-existing :write_data_details normalize-details)))
+      (m/update-existing :write_data_details normalize-details)
+      (m/update-existing :admin_details normalize-details)))
 
 ;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in
 ;;; `America/Los_Angeles` for some reason I cannot figure out. Let's just read them out as UTC, which is what they're
@@ -1409,6 +1428,133 @@
 (defmethod sql.qp/->honeysql [:snowflake :ends-with]
   [driver [_ opts field arg]]
   (string-filter driver :endswith field arg opts))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- isolation-role-name
+  "Generate role name for workspace isolation."
+  [workspace]
+  (format "MB_ISOLATION_ROLE_%s" (:id workspace)))
+
+(defmethod driver/workspace-isolation-details :snowflake
+  [driver database workspace]
+  (-> ((get-method driver/workspace-isolation-details :sql-jdbc) driver database workspace)
+      (update :database_details assoc
+              :role         (isolation-role-name workspace)
+              :use-password true)))
+
+(defmethod driver/init-workspace-isolation! :snowflake
+  [driver database workspace]
+  (let [details          (driver.conn/effective-details (driver.u/ensure-lib-database database))
+        schema-name      (:schema workspace)
+        db-name          (:db details)
+        warehouse        (:warehouse details)
+        role-name        (-> workspace :database_details :role)
+        read-user        (select-keys (:database_details workspace) [:user :password])
+        escaped-password (sql.u/escape-sql (:password read-user) :ansi)]
+    (when-not db-name
+      (throw (ex-info (tru "Cannot initialize workspace. Snowflake connection details must include a ''db'' (database name). Set it in the database connection and retry.")
+                      {:database-id (:id database) :step :init})))
+    (when-not warehouse
+      (throw (ex-info (tru "Cannot initialize workspace. Snowflake connection details must include a ''warehouse''. Set it in the database connection and retry.")
+                      {:database-id (:id database) :step :init})))
+    (let [quoted-db        (quote-schema db-name)
+          quoted-warehouse (quote-field warehouse)
+          quoted-schema    (quote-schema schema-name)
+          qualified-schema (str quoted-db "." quoted-schema)
+          quoted-role      (quote-field role-name)
+          quoted-user      (quote-field (:user read-user))]
+      ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
+      (try
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver (driver.u/ensure-lib-database database) {:write? true}
+         (fn [^Connection conn]
+           (with-open [^Statement stmt (.createStatement conn)]
+             (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS %s" qualified-schema)
+                          (format "CREATE ROLE IF NOT EXISTS %s" quoted-role)
+                          (format "GRANT USAGE ON DATABASE %s TO ROLE %s" quoted-db quoted-role)
+                          (format "GRANT USAGE ON WAREHOUSE %s TO ROLE %s" quoted-warehouse quoted-role)
+                          (format "GRANT USAGE ON SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
+                          (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
+                          (format "GRANT ALL ON FUTURE TABLES IN SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
+                          (format "CREATE USER IF NOT EXISTS %s PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = %s"
+                                  quoted-user escaped-password quoted-role)
+                          ;; the user may survive a failed teardown; without this it would keep
+                          ;; its old password while the new one gets persisted
+                          (format "ALTER USER %s SET PASSWORD = '%s'"
+                                  quoted-user escaped-password)
+                          (format "GRANT ROLE %s TO USER %s" quoted-role quoted-user)]]
+               (.addBatch ^Statement stmt ^String sql))
+             (.executeBatch ^Statement stmt))))
+        (catch Throwable t
+          (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password])))))
+    nil))
+
+(defmethod driver/destroy-workspace-isolation! :snowflake
+  [driver database workspace]
+  (let [details     (driver.conn/effective-details (driver.u/ensure-lib-database database))
+        schema-name (:schema workspace)
+        db-name     (:db details)
+        role-name   (-> workspace :database_details :role)
+        username    (-> workspace :database_details :user)]
+    (when-not db-name
+      (throw (ex-info (tru "Cannot destroy workspace. Snowflake connection details must include a ''db'' (database name). Set it in the database connection and retry.")
+                      {:database-id (:id database) :step :destroy})))
+    (let [qualified-schema (str (quote-schema db-name) "." (quote-schema schema-name))
+          quoted-user      (quote-field username)
+          quoted-role      (quote-field role-name)]
+      ;; Drop in reverse order of creation: schema (CASCADE handles tables) -> user -> role
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver (driver.u/ensure-lib-database database) {:write? true}
+       (fn [^Connection conn]
+         (with-open [^Statement stmt (.createStatement conn)]
+           (doseq [sql [(format "DROP SCHEMA IF EXISTS %s CASCADE" qualified-schema)
+                        (format "DROP USER IF EXISTS %s" quoted-user)
+                        (format "DROP ROLE IF EXISTS %s" quoted-role)]]
+             (.addBatch ^Statement stmt ^String sql))
+           (try
+             (.executeBatch ^Statement stmt)
+             (catch Throwable t
+               (throw (driver.u/batch-exception t))))))))))
+
+(defmethod driver/grant-workspace-read-access! :snowflake
+  [driver database workspace schemas]
+  (let [db-name   (:db (driver.conn/effective-details (driver.u/ensure-lib-database database)))
+        role-name (-> workspace :database_details :role)]
+    (when-not role-name
+      (throw (ex-info (tru "Cannot grant workspace read access. Workspace details have no role — initialization may have failed. Re-run workspace initialization and retry.")
+                      {:workspace-id (:id workspace) :step :grant})))
+    (when (str/blank? db-name)
+      (throw (ex-info (tru "Cannot grant workspace read access. Snowflake connection details must include a ''db'' (database name). Set it in the database connection and retry.")
+                      {:database-id (:id database) :step :grant})))
+    ;; Each entry in `schemas` is a Snowflake schema in the bound database. The
+    ;; catalog (`:db`) comes from connection details rather than per-input — a
+    ;; Metabase `Database` row binds to one Snowflake database.
+    (let [quoted-role (quote-field role-name)
+          quoted-db   (quote-schema db-name)]
+      (doseq [schema schemas]
+        (when (str/blank? schema)
+          (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
+                          {:database-id (:id database) :step :grant}))))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver (driver.u/ensure-lib-database database) {:write? true}
+       (fn [^Connection conn]
+         (with-open [^Statement stmt (.createStatement conn)]
+           (doseq [schema schemas
+                   :let [qualified-schema (str quoted-db "." (quote-schema schema))]
+                   sql [(format "GRANT USAGE ON DATABASE %s TO ROLE %s" quoted-db quoted-role)
+                        (format "GRANT USAGE ON SCHEMA %s TO ROLE %s" qualified-schema quoted-role)
+                        (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO ROLE %s"
+                                qualified-schema quoted-role)
+                        (format "GRANT SELECT ON FUTURE TABLES IN SCHEMA %s TO ROLE %s"
+                                qualified-schema quoted-role)]]
+             (.addBatch ^Statement stmt ^String sql))
+           (try
+             (.executeBatch ^Statement stmt)
+             (catch Throwable t
+               (throw (driver.u/batch-exception t))))))))))
 
 (defmethod driver/llm-sql-dialect-resource :snowflake [_]
   "metabot/prompts/dialects/snowflake.md")

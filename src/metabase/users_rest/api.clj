@@ -10,11 +10,10 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
-   [metabase.dashboards.db :as dashboards.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
@@ -22,7 +21,6 @@
    [metabase.tenants.core :as tenants]
    [metabase.users-rest.db :as users-rest.db]
    [metabase.users.core :as users]
-   [metabase.users.db :as users.db]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
@@ -31,6 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
@@ -222,7 +221,7 @@
                           filters)
                    ;; For admins also include the IDs of Users' Personal Collections
                    api/*is-superuser?*
-                   (t2/hydrate :personal_collection_id :tenant_collection_id)
+                   (t2/hydrate :personal_collection_id :tenant_collection_id :has_used_password)
 
                    (or api/*is-superuser?*
                        api/*is-group-manager?*)
@@ -293,15 +292,11 @@
             :can_create_queries        can-create-queries
             :can_create_native_queries can-create-native-queries)))
 
-(defn- maybe-add-advanced-permissions
+(defenterprise maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."
+  metabase-enterprise.advanced-permissions.oss-hooks
   [user]
-  (if-let [with-advanced-permissions
-           (and (premium-features/enable-advanced-permissions?)
-                config/ee-available?
-                (requiring-resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))]
-    (with-advanced-permissions user)
-    user))
+  user)
 
 (defn- maybe-add-sso-source
   "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
@@ -333,7 +328,7 @@
   [user]
   (let [enabled? (appearance/custom-homepage)
         id       (appearance/custom-homepage-dashboard)
-        dash     (when (pos-int? id) (dashboards.db/dashboard id))
+        dash     (users-rest.db/dashboard id)
         valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
@@ -385,6 +380,7 @@
    [:slack_account_status       [:maybe [:enum "active" "inactive"]]]
    [:can_write_any_collection   :boolean]
    [:sso_source                 [:maybe :keyword]]
+   [:has_used_password          :boolean]
    [:locale                     [:maybe :string]]
    [:tenant_id                  [:maybe ms/PositiveInt]]
    [:tenant_collection_id       [:maybe ms/PositiveInt]]
@@ -405,7 +401,8 @@
       ;; `:type` is selected for the current user so attribute resolution can check it, but isn't part of this
       ;; endpoint's response
       (dissoc :type)
-      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id)
+      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id
+                  :has_used_password)
       add-has-question-and-dashboard
       add-first-login
       add-query-permissions
@@ -415,9 +412,7 @@
       add-can-write-any-collection
       (assoc :slack_account_status (sso/slack-account-status api/*current-user-id*))))
 
-(api.macros/defendpoint :delete "/:id/slack" :- [:map {:closed true}
-                                                 [:status [:= 204]]
-                                                 [:body :nil]]
+(api.macros/defendpoint :delete "/:id/slack" :- ::api/generic-204-no-content
   "Remove the current user's Slack Connect link."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -440,6 +435,7 @@
       (perms/check-group-manager)))
   (-> (api/check-404 (users/fetch-user :id id, :type :personal))
       (t2/hydrate :user_group_memberships)
+      (cond-> (or api/*is-superuser?* (= id api/*current-user-id*)) (t2/hydrate :has_used_password))
       add-structured-attributes))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -570,7 +566,7 @@
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
                            "Superusers cannot be tenant users")
             (reset-magic-group-membership! id (:tenant_id changes)))
-          (events/publish-event! :event/user-update {:object (users.db/user id)
+          (events/publish-event! :event/user-update {:object (users-rest.db/user id)
                                                      :previous-object user-before-update
                                                      :user-id api/*current-user-id*}))
         (maybe-update-user-personal-collection-name! user-before-update body)
@@ -643,11 +639,10 @@
    request]
   (users/check-self-or-superuser id)
   (api/let-404 [user (users-rest.db/active-personal-user-login-columns id)]
-    ;; admins can't give a password to a user who signs in through an enabled SSO provider; that would let them log
-    ;; in as that user while bypassing the provider.
+    ;; admins can't give a password to an SSO-only user (see `sso/sso-only-user?`); that would let them log in as that
+    ;; user while bypassing SSO. A user who already logs in with a password gains no new way in.
     (when api/*is-superuser?*
-      (api/check-404 (or (nil? (:sso_source user))
-                         (not (sso/sso-source-enabled? (:sso_source user))))))
+      (api/check-404 (not (sso/sso-only-user? id (:email user) (:sso_source user)))))
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
@@ -665,7 +660,7 @@
                                        users-rest.db/mfa-auth-identity-id-from-hashed-key
                                        :mfa_auth_identity_id)]
       ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
-      (auth-identity/set-password! id password {:ended-by api/*current-user-id*})
+      (auth-identity/set-password! id (u.secret/expose password) {:ended-by api/*current-user-id*})
       (events/publish-event! :event/password-changed {:object user :user-id api/*current-user-id*})
       ;; after a successful password update go ahead and offer the client a new session that they can use
       (when (= id api/*current-user-id*)
@@ -691,8 +686,7 @@
   (let [user (api/check-404 (users-rest.db/user-active-type-and-sso-source id))]
     (api/check-404 (:is_active user))
     (api/check-404 (= :personal (:type user)))
-    (api/check-404 (or (nil? (:sso_source user))
-                       (not (sso/sso-source-enabled? (:sso_source user)))))
+    (api/check-404 (not (sso/sso-only-user? id (:email user) (:sso_source user))))
     (let [reset-token        (auth-identity/create-password-reset! id)
           password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
       (events/publish-event! :event/password-reset-initiated
@@ -703,11 +697,7 @@
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- [:map {:closed true} [:success [:= true]]]
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -716,7 +706,7 @@
   (check-not-internal-user id)
   (api/check-404 (users-rest.db/user-exists? id))
   (users-rest.db/update-personal-user! id {:is_active false})
-  (events/publish-event! :event/user-deactivated {:object (users.db/user id) :user-id api/*current-user-id*})
+  (events/publish-event! :event/user-deactivated {:object (users-rest.db/user id) :user-id api/*current-user-id*})
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -725,11 +715,7 @@
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:id/modal/:modal"
+(api.macros/defendpoint :put "/:id/modal/:modal" :- [:map {:closed true} [:success [:= true]]]
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [{:keys [id modal]} :- [:map {:closed true}
                           [:id ms/PositiveInt]

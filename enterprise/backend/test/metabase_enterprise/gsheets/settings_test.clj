@@ -5,8 +5,9 @@
    [metabase.settings.core :as setting]
    [toucan2.core :as t2]))
 
-(defmacro with-sample-db-as-dwh [& body]
+(defmacro with-sample-db-as-dwh
   "We need an attached dwh for these tests, so let's have the sample db fill in for us:"
+  [& body]
   `(try
      (t2/update! :model/Database :id 1 {:is_attached_dwh true})
      ~@body

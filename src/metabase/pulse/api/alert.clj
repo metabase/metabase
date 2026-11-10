@@ -6,24 +6,19 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.classloader.core :as classloader]
-   [metabase.config.core :as config]
    [metabase.notification.api :as notification.api]
-   [metabase.queries.db :as queries.db]
+   [metabase.pulse.db :as pulse.db]
    [metabase.util.cron :as u.cron]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
-
-(when config/ee-available?
-  (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
 (defn- notification->pulse
   "Convert a notification to the legacy pulse structure for backward compatibility."
   [notification]
   (let [subscription      (-> notification :subscriptions first)
         notification-card (-> notification :payload)
-        card              (->> notification :payload :card_id queries.db/card)]
+        card              (->> notification :payload :card_id pulse.db/card)]
     (merge
      (select-keys notification [:id :creator_id :creator :created_at :updated_at])
      {:name                nil
@@ -112,11 +107,7 @@
       api/read-check
       notification->pulse))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id/subscription"
+(api.macros/defendpoint :delete "/:id/subscription" :- ::api/generic-204-no-content
   "For users to unsubscribe themselves from the given alert."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]

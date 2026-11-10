@@ -5,8 +5,8 @@
    [metabase-enterprise.data-sensitivity.review :as review]
    [metabase.events.core :as events]
    [metabase.test :as mt]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.user-settings :as user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -30,7 +30,7 @@
         (t2/select :model/MetadataGenerationProposal :id [:in ids])))
 
 (defn- effective [field-id]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id field-id))
 
 (defn- settings [field-id]
   (t2/select-one :model/FieldUserSettings :field_id field-id))
@@ -90,8 +90,6 @@
                    (settings a-plain)))
            (is (=? {:semantic_type :type/Email} (effective a-text)))
            (is (=? {:data_sensitivity :PII :description "The customer's email address."} (effective a-plain))))
-         (testing "the deterministic layer does not change"
-           (is (= :type/Category (t2/select-one-fn :semantic_type :model/Field :id a-text))))
          (testing "an accepted proposal is not written again"
            (is (= nothing (apply! {:accept [sem]})))))))))
 
@@ -117,7 +115,7 @@
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-run
      (fn [run-id {:keys [db a b a-text a-plain a-int b-text]}]
-       (field-user-settings/upsert-user-settings (t2/select-one :model/Field a-text) {:semantic_type :type/Name})
+       (field-user-settings/upsert-field-user-settings! (t2/select-one :model/Field :id a-text) {:semantic_type :type/Name})
        (mt/with-temp [:model/Database {other-db :id} {}
                       :model/Table    {other-t :id}  {:db_id other-db :name "O"}
                       :model/Field    {other-f :id}  {:table_id other-t :name "o" :base_type :type/Text}]
@@ -126,7 +124,7 @@
                inactive (suggestion! run-id a a-int :proposed_value "type/Quantity")
                b-sem    (suggestion! run-id b b-text)
                other    (suggestion! run-id other-t other-f)]
-           (t2/update! :model/Field a-int {:active false})
+           (t2/update! :model/Field :id a-int {:active false})
            (is (= (assoc nothing :rejected 3)
                   (apply! {:reject_all true :database_id db})))
            (testing "every pending proposal of active fields of the database is deleted, human-set ones too"
@@ -172,7 +170,7 @@
              same     (suggestion! run-id a a-plain :attribute :data_sensitivity :proposed_value "PII")
              edited   (suggestion! run-id a a-int :proposed_value "type/Score")
              gone     (suggestion! run-id a a-plain)]
-         (t2/delete! :model/MetadataGenerationProposal gone)
+         (t2/delete! :model/MetadataGenerationProposal :id gone)
          (is (= {:written  1
                  :rejected 0
                  :failed   3
@@ -198,8 +196,8 @@
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-run
      (fn [run-id {:keys [a a-text a-plain a-int]}]
-       (field-user-settings/upsert-user-settings (t2/select-one :model/Field a-text) {:semantic_type :type/Name})
-       (field-user-settings/upsert-user-settings (t2/select-one :model/Field a-plain) {:description nil})
+       (field-user-settings/upsert-field-user-settings! (t2/select-one :model/Field :id a-text) {:semantic_type :type/Name})
+       (field-user-settings/upsert-field-user-settings! (t2/select-one :model/Field :id a-plain) {:description nil})
        (t2/insert! :model/FieldUserSettings {:field_id a-int :ai_data_sensitivity :PHI})
        (let [sem  (suggestion! run-id a a-text)
              desc (suggestion! run-id a a-plain :attribute :description
@@ -271,7 +269,7 @@
              misfit    (suggestion! run-id a a-int :proposed_value "type/Email")
              missing   (suggestion! run-id a a-plain :attribute :description
                                     :proposed_value "Gone.")]
-         (t2/update! :model/Field a-plain {:active false})
+         (t2/update! :model/Field :id a-plain {:active false})
          (is (= {:written 0 :rejected 0 :failed 3
                  :failures [{:proposal_id key-field :field_id a-fk :attribute "semantic_type" :reason "key_field"}
                             {:proposal_id misfit :field_id a-int :attribute "semantic_type" :reason "type_mismatch"}
@@ -287,7 +285,7 @@
     (do-with-run
      (fn [run-id {:keys [b b-text]}]
        (let [desc (suggestion! run-id b b-text :attribute :description :proposed_value "Hidden.")]
-         (t2/update! :model/Table b {:active false})
+         (t2/update! :model/Table :id b {:active false})
          (is (= {:written 0 :rejected 0 :failed 1
                  :failures [{:proposal_id desc :field_id b-text :attribute "description" :reason "field_not_found"}]}
                 (apply! {:accept [desc]})))
@@ -303,9 +301,9 @@
              sensitive (suggestion! run-id a a-plain :attribute :description :proposed_value "Sensitive.")
              in-hidden (suggestion! run-id b b-text :attribute :description :proposed_value "In a hidden table.")
              visible   (suggestion! run-id a a-int :attribute :description :proposed_value "Visible.")]
-         (t2/update! :model/Field a-text {:visibility_type :hidden})
-         (t2/update! :model/Field a-plain {:visibility_type :sensitive})
-         (t2/update! :model/Table b {:visibility_type :hidden})
+         (t2/update! :model/Field :id a-text {:visibility_type :hidden})
+         (t2/update! :model/Field :id a-plain {:visibility_type :sensitive})
+         (t2/update! :model/Table :id b {:visibility_type :hidden})
          (is (=? {:written 1 :failed 3} (apply! {:accept [hidden sensitive in-hidden visible]})))
          (testing "a field that is hidden or sensitive, or in a hidden table, gets no AI value"
            (is (nil? (:ai_description (settings a-text))))
@@ -331,13 +329,13 @@
     (do-with-run
      (fn [run-id {:keys [a a-plain]}]
        (let [desc   (suggestion! run-id a a-plain :attribute :description :proposed_value "v1")
-             orig   db/visible-fields-by-id
+             orig   (mt/original-fn #'db/visible-fields-by-id)
              upsert (promise)]
          (mt/with-dynamic-fn-redefs [db/visible-fields-by-id (fn [ids]
                                                                (when-not (realized? upsert)
                                                                  (deliver upsert
                                                                           (future
-                                                                            (t2/update! :model/MetadataGenerationProposal desc
+                                                                            (t2/update! :model/MetadataGenerationProposal :id desc
                                                                                         {:proposed_value "v2"})))
                                                                  (deref @upsert 2000 nil))
                                                                (orig ids))]
@@ -406,7 +404,7 @@
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-run
      (fn [run-id {:keys [a a-text a-plain a-int]}]
-       (field-user-settings/upsert-user-settings (t2/select-one :model/Field a-text) {:semantic_type :type/Name})
+       (field-user-settings/upsert-field-user-settings! (t2/select-one :model/Field :id a-text) {:semantic_type :type/Name})
        (let [sem   (suggestion! run-id a a-int :proposed_value "type/Quantity")
              ds    (suggestion! run-id a a-plain :attribute :data_sensitivity
                                 :proposed_value "PII")
@@ -431,5 +429,5 @@
            (is (=? {:semantic_type :type/Score} (effective a-int)))
            (is (=? {:data_sensitivity :BIZ_CONF :description "The plain text."} (effective a-plain)))
            (is (=? {:semantic_type :type/Title} (effective a-text)))
-           (is (warehouse-schema-overlay/field-user-set? (settings a-plain) :data_sensitivity))
-           (is (warehouse-schema-overlay/field-user-set? (settings a-int) :semantic_type))))))))
+           (is (contains? (user-settings/user-set-field-columns (settings a-plain)) :data_sensitivity))
+           (is (contains? (user-settings/user-set-field-columns (settings a-int)) :semantic_type))))))))

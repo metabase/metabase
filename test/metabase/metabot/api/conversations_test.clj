@@ -91,7 +91,7 @@
               found    (first (filter #(= convo-id (:conversation_id %)) (:data response)))]
           (is (some? found))
           (is (= 2 (:message_count found)))
-          (is (= (t/instant (t2/select-one-fn :created_at :model/MetabotMessage live-id))
+          (is (= (t/instant (t2/select-one-fn :created_at :model/MetabotMessage :id live-id))
                  (t/instant (t/offset-date-time (:last_message_at found))))))))))
 
 (deftest list-conversations-orders-by-latest-conversation-or-message-created-at-test
@@ -703,7 +703,7 @@
                       (mt/user-http-request :crowberto :get 200
                                             (str "metabot/conversations/" convo-id))))))
             (testing "archived cards drop out of saved_entities"
-              (t2/update! :model/Card (:id created) {:archived true})
+              (t2/update! :model/Card :id (:id created) {:archived true})
               (is (= []
                      (:saved_entities
                       (mt/user-http-request :crowberto :get 200

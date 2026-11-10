@@ -5,13 +5,14 @@ import { setupCardCreateEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Collection } from "metabase-types/api";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { useCollectionChartPaste } from "./use-collection-chart-paste";
 
-const datasetQuery = createMockStructuredDatasetQuery();
+const datasetQuery = Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 
 const chartText = serializeChartClipboard(
   {

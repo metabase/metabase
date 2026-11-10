@@ -8,7 +8,6 @@
                                   :display
                                   :archived
                                   :collection_id
-                                  :collection_preview
                                   :collection_position
                                   :query_type
                                   :dataset

@@ -31,8 +31,9 @@
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]))
+   [metabase.util.malli :as mu]))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CLASSIFYING INDIVIDUAL FIELDS                                          |
@@ -67,8 +68,8 @@
     ;; cool, now we should be ok to update the model
     (when values-to-set
       (case (mi/model original-model)
-        :model/Field (sync.db/update-field! (u/the-id original-model) values-to-set)
-        :model/Table (sync.db/update-table! (u/the-id original-model) values-to-set))
+        :model/Field (sync-util/update-field-unless-user-set! (u/the-id original-model) values-to-set)
+        :model/Table (sync-util/update-table-unless-user-set! (u/the-id original-model) values-to-set))
       true)))
 
 (def ^:private ClassifyOpts
@@ -86,7 +87,7 @@
               (or (:fingerprint field)
                   (when (qp.store/initialized?)
                     (:fingerprint (lib.metadata/field (qp.store/metadata-provider) (u/the-id field))))
-                  (:fingerprint (warehouse-schema.db/field (u/the-id field))))))
+                  (sync.db/field-fingerprint (u/the-id field)))))
 
   ([field       :- i/FieldInstance
     {:keys [exists-name layered-semantic-types]} :- ClassifyOpts
@@ -98,7 +99,7 @@
            updated-field (cond-> (if (and would-be-name? exists-name)
                                    (assoc classified :semantic_type (:semantic_type field))
                                    classified)
-                           ;; `field` has sync's own semantic type, but readers see the human or AI one
+                           ;; the classifiers can pick another semantic type, but sync keeps the human or AI one
                            (contains? layered-semantic-types (u/the-id field))
                            (assoc :preview_display
                                   (:preview_display
@@ -118,8 +119,7 @@
   "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]
-  (seq (sync.db/incomplete-analysis-fields-for-table (u/the-id table) i/*latest-fingerprint-version*
-                                                     {:deterministic-ai-columns? true})))
+  (seq (sync.db/incomplete-analysis-fields-for-table (u/the-id table) i/*latest-fingerprint-version*)))
 
 (mu/defn classify-fields!
   "Run various classifiers on the appropriate `fields` in a `table` that have not been previously analyzed. These do

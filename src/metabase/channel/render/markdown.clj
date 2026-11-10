@@ -114,8 +114,7 @@
   LinkRef
   (to-clojure [this]
     {:tag     (node-to-tag this)
-     :attrs   {:reference (-> (.getDocument this)
-                              (.get Parser/REFERENCES)
+     :attrs   {:reference (-> (.get Parser/REFERENCES (.getDocument this))
                               (get (u/lower-case-en (str (.getReference this))))
                               to-clojure)}
      :content (convert-children this)})
@@ -123,8 +122,7 @@
   ImageRef
   (to-clojure [this]
     {:tag     (node-to-tag this)
-     :attrs   {:reference (-> (.getDocument this)
-                              (.get Parser/REFERENCES)
+     :attrs   {:reference (-> (.get Parser/REFERENCES (.getDocument this))
                               (get (u/lower-case-en (str (.getReference this))))
                               to-clojure)}
      :content (convert-children this)})
@@ -421,9 +419,7 @@
   and Markdown rendering on the frontend."
   [^Node node]
   (and (instance? LinkRef node)
-       (-> (.getDocument node)
-           (.get Parser/REFERENCES)
-           empty?)))
+       (empty? (.get Parser/REFERENCES (.getDocument node)))))
 
 (def ^:private renderer
   "An instance of a Flexmark HTML renderer"

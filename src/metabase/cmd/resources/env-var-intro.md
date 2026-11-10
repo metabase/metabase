@@ -1,5 +1,6 @@
 ---
 title: Environment variables
+summary: Every environment variable you can use to configure Metabase. Environment variables take precedence over settings in the admin panel.
 redirect_from:
   - /docs/latest/operations-guide/environment-variables
 ---

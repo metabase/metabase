@@ -4,6 +4,7 @@
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.users.schema]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]
@@ -23,7 +24,7 @@
      #(some? (lib/primary-source-table-id %))]]])
 
 (mr/def ::measure.definition
-  "The `:definition` a Measure create or update accepts: an MBQL query, possibly legacy, never empty."
+  "The `:definition` column of a Measure, decoded."
   ::lib-be.schema/maybe-legacy-query)
 
 (mr/def ::measure.dimension
@@ -35,13 +36,12 @@
   ::lib-metric.schema/dimension-mapping)
 
 (mr/def ::measure
-  "A Measure as selected from the app DB: every column of `:measure`, with an unreadable `:definition` read back as an
-  empty query, plus `:creator` and `:table` some callers hydrate onto it."
+  "A Measure as selected from the app DB: every column of `:measure`, plus `:creator` and `:table` some callers
+  hydrate onto it."
   [:merge
    ::measure.update
    [:map {:closed true}
     [:id                 ms/PositiveInt]
-    [:definition         {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
     [:creator            {:optional true} [:maybe :metabase.users.schema/user]]
     [:table              {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 
@@ -59,3 +59,11 @@
    [:entity_id          {:optional true} [:maybe :string]]
    [:dimensions         {:optional true} [:maybe [:sequential ::measure.dimension]]]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::measure.dimension-mapping]]]])
+
+(mr/def ::external-measure
+  "A Measure as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib-be.schema/external-registry}
+   [:merge
+    [:select-keys ::measure [:name :archived :description :entity_id :creator_id :definition]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

@@ -11,6 +11,7 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.driver.bigquery-cloud-sdk.workspaces :as bigquery.ws]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
@@ -1025,7 +1026,7 @@
           (testing "Dispatcher identifies this as a non-batch-able table"
             (is (false? (#'sync.field-values/can-batch-distinct? (lib.metadata/database (mt/metadata-provider)) table))))
           (testing "Distinct values come back correctly via the fallback per-field path"
-            (t2/update! :model/Field category-field-id {:has_field_values :list})
+            (t2/update! :model/Field :id category-field-id {:has_field_values :list})
             (t2/delete! :model/FieldValues :field_id category-field-id)
             (sync.field-values/sync-fields-grouped-by-table! [category-field])
             (is (= #{"coffee" "tea" "matcha"}
@@ -1046,7 +1047,7 @@
                                     (catch Exception e
                                       (sync/sync-database! (mt/id) {:scan :schema})
                                       (throw e))))]
-          (t2/update! :model/Field category-field-id {:has_field_values :search})
+          (t2/update! :model/Field :id category-field-id {:has_field_values :search})
           (t2/delete! :model/FieldValues :field_id category-field-id)
           (= [["coffee"]]
              (mt/user-http-request :crowberto :get 200 (format "/field/%d/search/%d" category-field-id category-field-id)
@@ -1060,7 +1061,7 @@
         native-dataset
         ;; Fake fk relationship for bigquery because apparently fk on bigquery is not a thing.
         ;; We want this to test whether chain filter add a filter on partitioned fields from joned tables.
-        (t2/update! :model/Field (mt/id :cf_product :category_id) {:fk_target_field_id (mt/id :cf_category :id)})
+        (t2/update! :model/Field :id (mt/id :cf_product :category_id) {:fk_target_field_id (mt/id :cf_category :id)})
         (mt/with-temp
           [:model/Card          card-category {:database_id   (mt/id)
                                                :table_id      (mt/id :cf_category)
@@ -1608,7 +1609,7 @@
             ;; hence, assert it was not called anymore here
             (is (= 0 @call-count) "convert-dataset-id-to-filters! should not have been called any more times"))
           ;; now, so we need to manually update the temp DB again here, to force the "old" structure
-          (let [updated? (pos? (t2/update! :model/Database db-id {:details {:dataset-id "my-dataset"}}))]
+          (let [updated? (pos? (t2/update! :model/Database :id db-id {:details {:dataset-id "my-dataset"}}))]
             (is updated?)
             (let [updated (t2/select-one :model/Database :id db-id)]
               (is (nil? (get-in updated [:details :dataset-id])))
@@ -1807,6 +1808,28 @@
              (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
                                                          :output-table :PRODUCTS_COPY}))))))
 
+(deftest ^:parallel ws-sa-description-roundtrip-test
+  (testing "ws-sa-description and ws-sa-description->created-at are exact inverses"
+    ;; This is a contract test. The SA description is the only place the
+    ;; created-at marker is stored, so the writer in
+    ;; `ws-create-service-account!` and the reader used by CI cleanup
+    ;; (`metabase.test.data.bigquery-cloud-sdk/delete-old-isolation-service-accounts!`)
+    ;; must agree on format. If this test fails, orphan SA cleanup will
+    ;; silently break -- expired SAs will accumulate because their created-at
+    ;; can no longer be parsed.
+    (doseq [instant [(java.time.Instant/parse "2026-01-15T10:30:45.123456789Z")
+                     (java.time.Instant/parse "2026-12-31T23:59:59Z")
+                     (java.time.Instant/parse "2020-06-15T00:00:00Z")
+                     (java.time.Instant/now)]]
+      (is (= instant
+             (bigquery.ws/ws-sa-description->created-at (bigquery.ws/ws-sa-description instant)))
+          (str "round-trip failed for " instant))))
+  (testing "ws-sa-description->created-at returns nil for non-conforming inputs"
+    (is (nil? (bigquery.ws/ws-sa-description->created-at nil)))
+    (is (nil? (bigquery.ws/ws-sa-description->created-at "")))
+    (is (nil? (bigquery.ws/ws-sa-description->created-at "some other description")))
+    (is (nil? (bigquery.ws/ws-sa-description->created-at "created-at:not-an-instant")))))
+
 (deftest ^:parallel bigquery-field-filter-alias-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [mp    (mt/metadata-provider)
@@ -1814,13 +1837,12 @@
                          FROM %s.products p
                          WHERE 1=1 [[ AND {{category}} ]]
                          ORDER BY p.title ASC;" (get-test-data-name))
-          product-category (lib/ref (lib.metadata/field mp (mt/id :products :category)))
           query (-> (lib/native-query mp sql)
                     (lib/with-template-tags {"category" {:name "category"
                                                          :alias "p.category"
                                                          :display-name "Category"
                                                          :type :dimension
-                                                         :dimension product-category
+                                                         :field-id (mt/id :products :category)
                                                          :widget-type :text}})
                     (assoc :parameters [{:type :text
                                          :target [:dimension [:template-tag "category"]]

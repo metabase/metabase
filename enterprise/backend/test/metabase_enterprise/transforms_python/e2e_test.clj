@@ -26,7 +26,7 @@
                                                                "\n"
                                                                "def add_greeting(name):\n"
                                                                "    return f'Hello, {name}!'\n"))
-            (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
               ;; Create and run a transform that uses the library
               (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
                                                                        :schema schema
@@ -43,7 +43,7 @@
                                           "    }\n"
                                           "    return pd.DataFrame(data)")
                       transform-payload {:name   "Library Test Transform"
-                                         :source {:type  "python"
+                                         :source {:type  :python
                                                   :source-database (mt/id)
                                                   :source-tables []
                                                   :body transform-body}
@@ -64,12 +64,12 @@
     (mt/test-drivers #{:postgres}
       (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+          (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
                                                                      :schema schema
                                                                      :name   "target_table"}]
               (let [original           {:name   "Gadget Products"
-                                        :source {:type  "python"
+                                        :source {:type  :python
                                                  :source-database (mt/id)
                                                  :source-tables [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]
                                                  :body  (str "import pandas as pd\n"

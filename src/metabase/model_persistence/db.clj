@@ -68,7 +68,7 @@
                           ;; card_id is set to null when the corresponding card is deleted
                           [:= :p.card_id nil]]}]
     (tracing/with-span :tasks "task.persist.find-deletable" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
-      (t2/select :model/PersistedInfo hsql))))
+      (t2/select :model/PersistedInfo (h2x/assert-map-or-nil! hsql)))))
 
 (mu/defn refreshable-persisted-infos
   "The PersistedInfos of the Database with `database-id` in one of `states` whose Card is an unarchived
@@ -85,17 +85,17 @@
                           [:= :c.type "model"]]}]
     (tracing/with-span :tasks "task.persist.find-refreshable" {:db/id database-id
                                                                :db/statement (tracing/best-effort-sanitize-sql hsql)}
-      (t2/select :model/PersistedInfo hsql))))
+      (t2/select :model/PersistedInfo (h2x/assert-map-or-nil! hsql)))))
 
 (mu/defn persisted-infos-by-ids
   "The PersistedInfos with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/PersistedInfo :id [:in ids]))
 
-(mu/defn persisted-info :- [:maybe ::model-persistence.schema/persisted-info]
-  "The ::model-persistence.schema/persisted-info with `id`, or nil."
+(mu/defn persisted-info
+  "The PersistedInfo with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/PersistedInfo :id [:auto/param id]))
+  (t2/select-one :model/PersistedInfo :id id))
 
 (mu/defn persisted-info-for-card
   "The PersistedInfo of the Card with `card-id`, or nil."
@@ -106,6 +106,11 @@
   "The id of the PersistedInfo of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :id :model/PersistedInfo :card_id card-id))
+
+(mu/defn persisted-info-state
+  "The state of the PersistedInfo with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one-fn :state :model/PersistedInfo :id id))
 
 (mu/defn persisted-database-ids
   "The set of Database ids with PersistedInfos."
@@ -142,7 +147,7 @@
   "Apply `changes` to the PersistedInfo with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- ::model-persistence.schema/persisted-info.update]
-  (t2/update! :model/PersistedInfo id changes))
+  (t2/update! :model/PersistedInfo :id id changes))
 
 (mu/defn begin-persisted-info-refresh!
   "Mark the PersistedInfo with `id` as refreshing `definition` (with `query-hash`), starting now, returning the number
@@ -150,11 +155,11 @@
   [id         :- ms/PositiveInt
    definition :- [:maybe ::model-persistence.schema/persisted-info.definition]
    query-hash :- [:maybe :string]]
-  (t2/update! :model/PersistedInfo id {:definition      definition
-                                       :query_hash      query-hash
-                                       :active          false
-                                       :refresh_end     nil
-                                       :state           "refreshing"}))
+  (t2/update! :model/PersistedInfo :id id {:definition      definition
+                                           :query_hash      query-hash
+                                           :active          false
+                                           :refresh_end     nil
+                                           :state           "refreshing"}))
 
 (mu/defn end-persisted-info-refresh!
   "Record the outcome of the refresh of the PersistedInfo with `id`: `state` (\"persisted\" or \"error\"), whether
@@ -163,9 +168,9 @@
    active? :- :boolean
    state   :- [:enum "persisted" "error"]
    error   :- [:maybe :string]]
-  (t2/update! :model/PersistedInfo id {:active active?
-                                       :state  state
-                                       :error  error}))
+  (t2/update! :model/PersistedInfo :id id {:active active?
+                                           :state  state
+                                           :error  error}))
 
 (mu/defn deactivate-all-persisted-infos!
   "Deactivate every PersistedInfo and move it to `state`, returning the number updated."
@@ -176,7 +181,7 @@
   "Deactivate the PersistedInfo with `id` and move it to `state`, returning the number updated."
   [id    :- ms/PositiveInt
    state :- :string]
-  (t2/update! :model/PersistedInfo id {:active false, :state state, :state_change_at :%now}))
+  (t2/update! :model/PersistedInfo :id id {:active false, :state state, :state_change_at :%now}))
 
 (mu/defn deactivate-persisted-infos-for-database!
   "Deactivate the PersistedInfos of the Database with `database-id` and move them to `state`, returning the
@@ -196,7 +201,7 @@
 (mu/defn reset-persisted-info-to-creating!
   "Deactivate the PersistedInfo with `id` and move it back to creating, returning the number updated."
   [id :- ms/PositiveInt]
-  (t2/update! :model/PersistedInfo id {:active false, :state "creating", :state_change_at :%now}))
+  (t2/update! :model/PersistedInfo :id id {:active false, :state "creating", :state_change_at :%now}))
 
 (mu/defn ready-deletable-persisted-infos!
   "Move the deletable PersistedInfos of the Database with `database-id` to `state`, returning the number updated."
@@ -228,6 +233,21 @@
                               :from [:persisted_info]
                               :where [:= :persisted_info.card_id :report_card.id]}]]]}))
 
+(mu/defn card
+  "The Card with `card-id`, or nil."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one :model/Card :id card-id))
+
+(mu/defn card-archived-and-type
+  "The archived flag and type of the Card with `card-id`, or nil."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one [:model/Card :archived :type] :id card-id))
+
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- [:maybe ::lib.schema.id/database]]
+  (t2/select-one :model/Database :id database-id))
+
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
@@ -242,4 +262,4 @@
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    changes     :- (mut/select-keys ::warehouses.schema/database.update [:settings])]
-  (t2/update! :model/Database database-id changes))
+  (t2/update! :model/Database :id database-id changes))

@@ -44,7 +44,7 @@
                                {:field-name "kept" :base-type :type/Text}]
                               [["ngoc@metabase.com" "a"]]]]
       (try
-        (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+        (sync/sync-table! (t2/select-one :model/Table :id (mt/id :table)))
         (let [table-id   (mt/id :table)
               changed-id (mt/id :table :changed)
               kept-id    (mt/id :table :kept)
@@ -65,12 +65,12 @@
               other      (proposal! kept-id :semantic_type "type/Email")]
           (execute-h2! "ALTER TABLE \"TABLE\" DROP COLUMN \"CHANGED\";"
                        "ALTER TABLE \"TABLE\" ADD COLUMN \"CHANGED\" INTEGER;")
-          (sync/sync-table! (t2/select-one :model/Table table-id))
+          (sync/sync-table! (t2/select-one :model/Table :id table-id))
           (is (= :type/Integer (t2/select-one-fn :base_type :model/Field :id changed-id)))
           (is (= #{described other}
                  (t2/select-pks-set :model/MetadataGenerationProposal :id [:in [semantic described other]]))))
         (finally
-          (t2/delete! :model/Database (mt/id)))))))
+          (t2/delete! :model/Database :id (mt/id)))))))
 
 (deftest sync-key-type-wins-over-accepted-ai-semantic-type-test
   (testing "a field that sync marks as FK reads type/FK over an accepted AI semantic type and loses its pending semantic_type proposal"
@@ -86,7 +86,7 @@
               proposal-id (insert-semantic-type-proposal! (mt/id :users) field-id)]
           (field-user-settings/set-ai-values-for-fields! {field-id {:semantic_type :type/Category}})
           (execute-h2! "ALTER TABLE \"USERS\" ADD FOREIGN KEY (\"ORG_ID\") REFERENCES \"ORGS\" (\"ID\");")
-          (sync/sync-table! (t2/select-one :model/Table (mt/id :users)))
+          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :users)))
           (is (= (mt/id :orgs :id) (t2/select-one-fn :fk_target_field_id :model/Field :id field-id)))
           (is (=? {:semantic_type :type/FK :fk_target_field_id (mt/id :orgs :id)}
                   (warehouse-schema.db/field field-id)))
@@ -94,7 +94,7 @@
                   (lib.metadata/field (lib-be/application-database-metadata-provider (mt/id)) field-id)))
           (is (not (t2/exists? :model/MetadataGenerationProposal :id proposal-id))))
         (finally
-          (t2/delete! :model/Database (mt/id)))))))
+          (t2/delete! :model/Database :id (mt/id)))))))
 
 (deftest sync-pk-type-wins-over-accepted-ai-semantic-type-test
   (testing "a field that sync marks as PK reads type/PK over an accepted AI semantic type and loses its pending semantic_type proposal"
@@ -109,8 +109,8 @@
           (field-user-settings/set-ai-values-for-fields! {field-id {:semantic_type :type/Category}})
           (execute-h2! "ALTER TABLE \"THINGS\" DROP PRIMARY KEY;"
                        "ALTER TABLE \"THINGS\" ADD PRIMARY KEY (\"CODE\");")
-          (sync/sync-table! (t2/select-one :model/Table (mt/id :things)))
+          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :things)))
           (is (=? {:semantic_type :type/PK} (warehouse-schema.db/field field-id)))
           (is (not (t2/exists? :model/MetadataGenerationProposal :id proposal-id))))
         (finally
-          (t2/delete! :model/Database (mt/id)))))))
+          (t2/delete! :model/Database :id (mt/id)))))))

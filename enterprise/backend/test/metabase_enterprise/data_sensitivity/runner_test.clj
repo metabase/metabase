@@ -15,6 +15,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
@@ -178,8 +179,8 @@
                  :model/Field    human {:table_id (:id table) :name "ds_human" :base_type :type/Text}
                  :model/Field    clear {:table_id (:id table) :name "ds_cleared" :base_type :type/Text
                                         :description "comment a person cleared"}]
-    (field-user-settings/upsert-user-settings human {:description "Written by a person"})
-    (field-user-settings/upsert-user-settings clear {:description nil})
+    (field-user-settings/upsert-field-user-settings! human {:description "Written by a person"})
+    (field-user-settings/upsert-field-user-settings! clear {:description nil})
     (let [messages (atom [])
           llm      (fn [& [_model msgs :as args]]
                      (swap! messages conj msgs)
@@ -343,7 +344,7 @@
           (fn []
             (let [run (start! db {})]
               (is (.await started 10 TimeUnit/SECONDS))
-              @(future (t2/update! :model/MetadataGenerationRun (:id run) {:status :canceling}))
+              @(future (t2/update! :model/MetadataGenerationRun :id (:id run) {:status :canceling}))
               (let [timer (u/start-timer)
                     ended (wait-ended (:id run))]
                 (is (< (u/since-ms timer) (* 3 runner/poll-ms))
@@ -472,12 +473,12 @@
           (apply (ds.tu/canned-llm (constantly {:data_sensitivity "PII"})) args)))
       (fn []
         (let [ended (wait-ended (:id (start! db {:attributes [:data_sensitivity]})))]
-          (t2/update! :model/Table (:id (nth tables 2)) {:active false})
+          (t2/update! :model/Table :id (:id (nth tables 2)) {:active false})
           (testing "retry-failed starts a run over the failed tables that are still active"
             (let [retry (runner/retry-failed! db ended (mt/user->id :crowberto))]
               (is (=? {:scope {:type :tables :table_ids [(:id (second tables))]}} retry))
               (wait-ended (:id retry))))
-          (t2/update! :model/Table (:id (second tables)) {:active false})
+          (t2/update! :model/Table :id (:id (second tables)) {:active false})
           (testing "retry-failed is a 400 when no failed table is still active"
             (is (= 400 (:status-code (try (runner/retry-failed! db ended (mt/user->id :crowberto))
                                           (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))))))
@@ -486,8 +487,8 @@
   (do-with-temp-tables
    4
    (fn [db [t0 t1 t2' t3]]
-     (t2/update! :model/Table (:id t1) {:visibility_type :hidden})
-     (t2/insert! :model/TableUserSettings {:table_id (:id t2') :visibility_type :cruft})
+     (t2/update! :model/Table :id (:id t1) {:visibility_type :hidden})
+     (table-user-settings/upsert-table-user-settings! t2' {:visibility_type :cruft})
      (t2/insert! :model/Field {:table_id (:id t3) :name "ds_03_sensitive" :base_type :type/Text
                                :database_type "TEXT" :visibility_type :sensitive})
      (t2/insert! :model/Field {:table_id (:id t3) :name "ds_03_hidden" :base_type :type/Text
@@ -530,7 +531,7 @@
           (fn []
             (let [run (start! db {:attributes [:data_sensitivity]})]
               (is (.await started 10 TimeUnit/SECONDS))
-              (t2/update! :model/Table (:id t1) {:visibility_type :hidden})
+              (t2/update! :model/Table :id (:id t1) {:visibility_type :hidden})
               (deliver release true)
               (is (=? {:status       :succeeded
                        :done_tables  1
@@ -669,7 +670,7 @@
           (fn []
             (let [run (start! db {})]
               (is (.await started 10 TimeUnit/SECONDS))
-              (t2/update! :model/MetadataGenerationRun (:id run) {:last_heartbeat (.minusMinutes (OffsetDateTime/now) 10)})
+              (t2/update! :model/MetadataGenerationRun :id (:id run) {:last_heartbeat (.minusMinutes (OffsetDateTime/now) 10)})
               (runner/heartbeat-tick!)
               (is (empty? (runner/reap-orphaned-runs! runner/heartbeat-stale-minutes)))
               (runner/cancel-run! (:id run))
@@ -826,7 +827,7 @@
            (do-with-busy-workers!
             (fn []
               (reset! run-id (:id (start! db {:attributes [:data_sensitivity]})))
-              (t2/update! :model/MetadataGenerationRun @run-id
+              (t2/update! :model/MetadataGenerationRun :id @run-id
                           {:last_heartbeat (.minusMinutes (OffsetDateTime/now) 10)})
               (is (= [@run-id] (mapv :id (runner/reap-orphaned-runs! runner/heartbeat-stale-minutes))))
               (runner/heartbeat-tick!)

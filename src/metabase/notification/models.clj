@@ -7,7 +7,6 @@
    [malli.core :as mc]
    [malli.util :as mut]
    [medley.core :as m]
-   [metabase.channel.db :as channel.db]
    [metabase.channel.models.channel :as models.channel]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
@@ -317,7 +316,7 @@
   [notification-handler]
   (when-let [template-id (:template_id notification-handler)]
     (let [channel-type  (keyword (:channel_type notification-handler))
-          template-type (:channel_type (channel.db/channel-template template-id))]
+          template-type (notification.db/channel-template-channel-type template-id)]
       (when (not= channel-type template-type)
         (throw (ex-info "Channel type and template type mismatch"
                         {:status-code   400
@@ -329,7 +328,7 @@
   (into [:map {:closed true}]
         (cond->> [;; optional during insertion
                   [:notification_id {:optional true}       ms/PositiveInt]
-                  [:channel_type    {:decode/json keyword} [:fn #(= "channel" (-> % keyword namespace))]]
+                  [:channel_type    {:decode/json keyword} [:fn {:json-schema {:type "string"}} #(= "channel" (-> % keyword namespace))]]
                   [:channel_id      {:optional true}       [:maybe ms/PositiveInt]]
                   [:template_id     {:optional true}       [:maybe ms/PositiveInt]]
                   [:active          {:optional true}       [:maybe :boolean]]
@@ -389,14 +388,14 @@
     [:notification-recipient/user
      [:map
       [:user_id                               ms/PositiveInt]
-      [:permissions_group_id {:optional true} [:fn nil?]]
-      [:details              {:optional true} [:fn empty?]]
+      [:permissions_group_id {:optional true} :nil]
+      [:details              {:optional true} [:fn {:json-schema {:anyOf [{:type "null"} {:type "object" :maxProperties 0}]}} empty?]]
       [:user                 {:optional true} [:maybe ::EchoedUser]]]]
     [:notification-recipient/group
      [:map
       [:permissions_group_id                  ms/PositiveInt]
-      [:user_id              {:optional true} [:fn nil?]]
-      [:details              {:optional true} [:fn empty?]]
+      [:user_id              {:optional true} :nil]
+      [:details              {:optional true} [:fn {:json-schema {:anyOf [{:type "null"} {:type "object" :maxProperties 0}]}} empty?]]
       [:permissions_group    {:optional true} [:maybe [:merge
                                                        ::permissions.schema/permissions-group
                                                        [:map {:closed true}
@@ -406,15 +405,15 @@
       [:details                               [:map {:closed true}
                                                [:value :string]
                                                [:channel_id {:optional true} [:maybe :string]]]]
-      [:user_id              {:optional true} [:fn nil?]]
-      [:permissions_group_id {:optional true} [:fn nil?]]]]
+      [:user_id              {:optional true} :nil]
+      [:permissions_group_id {:optional true} :nil]]]
     [:notification-recipient/template
      [:map
       [:details                               [:map {:closed true}
                                                [:pattern                      :string]
                                                [:is_optional {:optional true} :boolean]]]
-      [:user_id              {:optional true} [:fn nil?]]
-      [:permissions_group_id {:optional true} [:fn nil?]]]]]])
+      [:user_id              {:optional true} :nil]
+      [:permissions_group_id {:optional true} :nil]]]]])
 
 (mr/def ::NotificationRecipient
   "Schema for :model/NotificationRecipient."
@@ -795,7 +794,7 @@
                    [:event_info    {:optional true} [:maybe info-schema]]]])
          [[::mc/default
            [:map {:closed true}
-            [:event_topic   [:fn #(= "event" (-> % keyword namespace))]]
+            [:event_topic   [:fn {:json-schema {:type "string"}} #(= "event" (-> % keyword namespace))]]
             [:disable_links {:optional true} [:maybe :boolean]]
             [:event_info    {:optional true} [:maybe [:map {:closed true}]]]]]])))
 

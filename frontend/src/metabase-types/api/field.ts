@@ -4,8 +4,8 @@ import type {
   MetadataGenerationConfidence,
   MetadataGenerationValueSource,
 } from "./metadata-generation";
-import type { DimensionReference, FieldReference } from "./query";
-import type { ConcreteTableId, Table, TableId } from "./table";
+import type { DimensionReference } from "./query";
+import type { Table, TableId } from "./table";
 
 export type FieldId = number;
 
@@ -102,7 +102,7 @@ export type FieldDimension = {
 };
 
 export interface Field {
-  id: FieldId | FieldReference;
+  id: FieldId;
   table_id: TableId;
   table?: Table;
   field_ref?: DimensionReference;
@@ -124,8 +124,6 @@ export interface Field {
   parent_id?: FieldId | null;
   fk_target_field_id: FieldId | null;
   target?: Field;
-  values?: FieldValue[];
-  remappings?: FieldValue[];
   settings?: FieldFormattingSettings;
 
   dimensions?: FieldDimension[];
@@ -134,7 +132,6 @@ export interface Field {
   max_value?: number;
   min_value?: number;
   has_field_values: FieldValuesType;
-  has_more_values?: boolean;
 
   data_sensitivity?: FieldDataSensitivity | null;
   data_sensitivity_source?: FieldDataSensitivitySource | null;
@@ -171,7 +168,7 @@ export interface GetFieldTableIdsRequest {
 }
 
 export interface GetFieldTableIdsResponse {
-  table_ids: ConcreteTableId[];
+  table_ids: TableId[];
 }
 
 export interface UpdateFieldRequest {
@@ -186,7 +183,6 @@ export interface UpdateFieldRequest {
   visibility_type?: FieldVisibilityType;
   has_field_values?: FieldValuesType;
   settings?: FieldFormattingSettings;
-  nfc_path?: string[] | null;
   json_unfolding?: boolean | null;
   data_sensitivity?: FieldDataSensitivity | null;
 }

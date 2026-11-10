@@ -4,11 +4,9 @@
    [metabase.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
    [metabase.driver.util :as driver.u]
    [metabase.sync.analyze.classify :as classify]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
@@ -295,8 +293,8 @@
       (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name))]
         (is (= :type/Name (:semantic_type updated-field)))))))
 
-(deftest classifiers-write-the-deterministic-layer-test
-  (testing "the classifiers write metabase_field under the AI and human values, which readers still see"
+(deftest classifiers-keep-ai-and-human-semantic-types-test
+  (testing "the classifiers do not overwrite an AI or a human semantic type"
     (mt/with-temp [:model/Database db {}
                    :model/Table table {:name "users" :db_id (u/the-id db)}
                    :model/Field ai-field {:name "lastName" :base_type :type/Text :table_id (u/the-id table)
@@ -309,18 +307,11 @@
                                              :fingerprint_version i/*latest-fingerprint-version*
                                              :last_analyzed       nil}]
       (field-user-settings/set-ai-values! ai-field {:semantic_type :type/Category})
-      (field-user-settings/upsert-user-settings human-field {:semantic_type :type/Category})
+      (field-user-settings/upsert-field-user-settings! human-field {:semantic_type :type/Category})
       (classify/classify-fields! table)
       (classify/classify-fields! other-table)
-      (let [raw  (fn [field] (t2/select-one-fn :semantic_type :model/Field :id (u/the-id field)))
-            read (fn [field] (t2/select-one-fn :semantic_type :model/Field :id (u/the-id field)
-                                               {:from [(warehouse-schema-overlay/field-query)]}))]
-        (testing "a field with an AI value gets the name classifier's value in metabase_field"
-          (is (= :type/Name (raw ai-field)))
-          (is (= :type/Category (read ai-field))))
-        (testing "a field with a human value gets the classifier's value in metabase_field"
-          (is (= :type/Name (raw human-field)))
-          (is (= :type/Category (read human-field))))))))
+      (doseq [field [ai-field human-field]]
+        (is (= :type/Category (t2/select-one-fn :semantic_type :model/Field :id (u/the-id field))))))))
 
 (deftest preview-display-follows-the-semantic-type-readers-see-test
   (testing "a long text field whose human or AI semantic type is type/URL keeps preview_display"
@@ -341,7 +332,7 @@
                                             :fingerprint         fingerprint
                                             :fingerprint_version i/*latest-fingerprint-version*
                                             :last_analyzed       nil}]
-        (field-user-settings/upsert-user-settings human-field {:semantic_type :type/URL})
+        (field-user-settings/upsert-field-user-settings! human-field {:semantic_type :type/URL})
         (field-user-settings/set-ai-values! ai-field {:semantic_type :type/URL})
         (classify/classify-fields! table)
         (doseq [field [human-field ai-field]]
@@ -355,11 +346,8 @@
                                      :has_field_values    nil
                                      :fingerprint_version i/*latest-fingerprint-version*
                                      :last_analyzed       nil}]
-    (field-user-settings/upsert-user-settings field {:semantic_type    :type/Category
-                                                     :has_field_values :list})
-    (testing "the classifiers see metabase_field's semantic type and the user's other settings"
-      (is (=? [{:semantic_type nil :has_field_values :list}]
-              (#'classify/fields-to-classify table))))
-    (testing "the other readers of fields to analyze see the user's semantic type"
+    (field-user-settings/upsert-field-user-settings! field {:semantic_type    :type/Category
+                                                            :has_field_values :list})
+    (testing "the classifiers see the user's settings in metabase_field"
       (is (=? [{:semantic_type :type/Category :has_field_values :list}]
-              (sync.db/incomplete-analysis-fields-for-table (u/the-id table) i/*latest-fingerprint-version*))))))
+              (#'classify/fields-to-classify table))))))

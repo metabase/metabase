@@ -249,7 +249,7 @@
         (doseq [[model id type] [[:model/Card card-id "question"]
                                  [:model/Dashboard dash-id "dashboard"]
                                  [:model/Document doc-id "document"]]]
-          (t2/update! model id {:archived true :archived_directly true})
+          (t2/update! model :id id {:archived true :archived_directly true})
           (testing type
             (is (= (format "%s %d is in the trash — restore it before duplicating." (name model) id)
                    (tool-error (call-tool! :crowberto {:type type :id id}))))))

@@ -3,8 +3,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
-(ns metabase.lib.test-util.places-cam-likes-metadata-provider)
-
 (defn id
   ([]
    1)

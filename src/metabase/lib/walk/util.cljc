@@ -243,10 +243,10 @@
   [query :- ::lib.schema/query]
   (not-empty
    (into {}
-         (comp (filter :dimension)
+         (comp (filter :field-id)
                (filter :id)
                (map (fn [template-tag]
-                      [(:id template-tag) (all-field-ids (:dimension template-tag))])))
+                      [(:id template-tag) #{(:field-id template-tag)}])))
          (all-template-tags query))))
 
 (mu/defn all-template-tag-field-ids :- [:maybe [:set {:min 1} ::lib.schema.id/field]]
@@ -254,8 +254,7 @@
   [query :- ::lib.schema/query]
   (not-empty
    (into #{}
-         (comp (keep :dimension)
-               (mapcat all-field-ids))
+         (keep :field-id)
          (all-template-tags query))))
 
 (mu/defn all-template-tag-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
@@ -430,7 +429,7 @@
   "Return `query` with every Field ID reference remapped by `id->new-id` (a function; a map works). Covers `:field`
   refs everywhere they appear (filters, aggregations, breakouts, expressions, order-by, join conditions and fields,
   nested stages), the `:source-field`/`:fk-field-id` options inside `:field` refs, and native `:template-tags`
-  `:dimension` refs. A field id for which `id->new-id` returns `nil` is left unchanged; name-based refs are untouched."
+  `:field-id`s. A field id for which `id->new-id` returns `nil` is left unchanged; name-based refs are untouched."
   [query      :- ::lib.schema/query
    id->new-id :- ifn?]
   (let [remap #(remap-field-clause-ids id->new-id %)]
@@ -443,7 +442,7 @@
                                   (update :template-tags update-vals
                                           (fn [tag]
                                             (cond-> tag
-                                              (:dimension tag) (update :dimension remap))))))))))
+                                              (:field-id tag) (update :field-id #(or (id->new-id %) %)))))))))))
 
 (mu/defn replace-table-ids :- ::lib.schema/query
   "Return `query` with every source Table ID remapped by `id->new-id` (a function; a map works). Covers

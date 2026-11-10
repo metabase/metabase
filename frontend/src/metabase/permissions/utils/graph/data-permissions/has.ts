@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import _ from "underscore";
 
 import type {
-  ConcreteTableId,
   DataPermission,
   DataPermissionValue,
   DatabaseEntityId,
@@ -11,6 +11,7 @@ import type {
   GroupsPermissions,
   PermissionsDatabase,
   SchemaEntityId,
+  TableId,
 } from "metabase-types/api";
 
 import { isSchemaEntityId } from "../../data-entity-id";
@@ -64,7 +65,7 @@ export function hasPermissionValueInSubgraph(
             databaseId: entityId.databaseId,
             schemaName: schema.name,
             // A permission entity always names a real warehouse table, never a card.
-            tableId: table.id as ConcreteTableId,
+            tableId: table.id as TableId,
           },
           permission,
         )

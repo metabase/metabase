@@ -1,7 +1,9 @@
 (ns metabase.metabot.tools.sql
   "SQL tool wrappers."
   (:require
+   [medley.core :as m]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
@@ -68,23 +70,29 @@
   {:payload [:map {:closed true}]}
   [_]
   {:message  "You do not have permission to write SQL against this database."
-   :recovery [{:uses #{notebook-tool-name}
-               :text (str "Build the question with `construct_notebook_query` instead. Don't write SQL against"
-                          " this database again.")}]})
+   :recovery [sql.common/notebook-instead-step]})
+
+(tools/defrecoverable sql-on-audit-database-with-notebook-fallback!
+  "The SQL targets the audit database, and the notebook builder is offered this turn."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "Metabase does not run SQL on the Internal Metabase Database, for any user."
+   :recovery [sql.common/notebook-instead-step]})
 
 (defn- do-with-notebook-fallback
-  "Call `thunk`, rethrowing its native-query refusal as [[no-native-permission-with-notebook-fallback!]]
-  when the notebook builder is offered this turn.
-  Without the notebook builder the refusal still ends the turn."
+  "Call `thunk`, making SQL refusals recoverable when the notebook builder is offered this turn."
   [ctx thunk]
   ;; A user who may write SQL on any database gets the SQL tools, so the agent can pick a database where they may not.
   ;; The recoverable error lets it try the notebook builder instead of ending the turn.
   (try
     (thunk)
     (catch clojure.lang.ExceptionInfo e
-      (if (and (= ::sql.common/no-native-permission (get-in (ex-data e) [tools.error/error-key :code]))
-               (contains? (:tool-names ctx) notebook-tool-name))
-        (tools.error/throw-recoverable! ::no-native-permission-with-notebook-fallback {} {:cause e})
+      (if-let [recovery-code (when (contains? (:tool-names ctx) notebook-tool-name)
+                               (case (get-in (ex-data e) [tools.error/error-key :code])
+                                 ::sql.common/no-native-permission ::no-native-permission-with-notebook-fallback
+                                 ::sql.common/sql-on-audit-database ::sql-on-audit-database-with-notebook-fallback
+                                 nil))]
+        (tools.error/throw-recoverable! recovery-code {} {:cause e})
         (throw e)))))
 
 (defn- query-viz-part
@@ -93,6 +101,26 @@
                        :query-id query-id
                        :query (links/->frontend-query query)
                        :title title}))
+
+(defn- query-delivery
+  "Returns how a query reaches the user.
+   That is `:hidden` when `hide?`, so the user is not shown it at all.
+   Otherwise it is `:editor`, proposed in the open SQL editor buffer `buffer-id`, or else `:link`, shown as a chart."
+  [buffer-id hide?]
+  (cond
+    ;; A query built only to be read is not proposed over the user's buffer.
+    hide?     :hidden
+    buffer-id :editor
+    :else     :link))
+
+(defn- delivery-parts
+  "Returns the data parts that deliver `action-result` by `delivery`, as [[query-delivery]] returns it, or nil for
+   `:hidden`."
+  [delivery buffer-id {:keys [query-content] :as action-result} title]
+  (case delivery
+    :editor [(code-edit-part buffer-id query-content)]
+    :link   [(query-viz-part action-result title)]
+    :hidden nil))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Create SQL query
@@ -113,25 +141,31 @@
                     "Create a new SQL query. Provide a short, human-friendly `title` shown above the results.")
      :scope scope/agent-sql-create
      :metabot/capabilities #{:permission-write-sql-queries}
-     :args create-sql-schema})
-  (handle [_ {database-id :database_id sql-query :sql_query :keys [title]} ctx]
-    (let [buffer-id (when code-edit?
-                      (or (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
-                          (tools/unrecoverable! ::missing-editor
-                                                {:user-message (tru "No active SQL editor was found. Open a SQL editor and try again.")})))
+     ;; The editor variant proposes the query in the open buffer and never shows a chart.
+     :args (cond-> create-sql-schema
+             (not code-edit?) (conj shared/show-chart-arg))})
+  (handle [_ {database-id :database_id sql-query :sql_query :keys [title show_chart]} ctx]
+    (let [buffer-id     (when code-edit?
+                          (or (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
+                              (tools/unrecoverable!
+                               ::missing-editor
+                               {:user-message
+                                (tru "No active SQL editor was found. Open a SQL editor and try again.")})))
           action-result (sql.common/validated-sql-action!
                          (do-with-notebook-fallback
                           ctx #(create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query})))
-          {:keys [query-id query-content]} action-result
-          structured (assoc action-result :result-type :query)
-          instr (if code-edit?
-                  instructions/query-loaded-in-editor-instructions
-                  (instructions/query-created-instructions-for query-id (tools.run-query/sql-results-readable?)))]
-      {:output (format-query-output structured instr {:preamble? true})
-       :structured-output structured
-       :data-parts [(if code-edit?
-                      (code-edit-part buffer-id query-content)
-                      (query-viz-part action-result title))]})))
+          query-id      (:query-id action-result)
+          structured    (assoc action-result :result-type :query)
+          readable?     (and (not code-edit?) (tools.run-query/sql-results-readable?))
+          ;; Where the model cannot read the results, the chart is the one way the user sees anything.
+          delivery      (query-delivery buffer-id (and (false? show_chart) readable?))
+          instr         (case delivery
+                          :editor instructions/query-loaded-in-editor-instructions
+                          :hidden (instructions/query-hidden-instructions-for query-id)
+                          :link   (instructions/query-created-instructions-for query-id readable?))]
+      (m/assoc-some {:output            (format-query-output structured instr {:preamble? true})
+                     :structured-output structured}
+                    :data-parts (delivery-parts delivery buffer-id action-result title)))))
 
 (def create-sql-query-tool
   "The Chat tool that creates a SQL query and shows its visualization."
@@ -153,19 +187,31 @@
                          [:old_string :string]
                          [:new_string :string]
                          [:replace_all {:optional true} [:maybe :boolean]]]]]
-   [:title :string]])
+   [:title :string]
+   shared/show-chart-arg])
 
-(defn- sql-edit-result
-  [operation-result title instruction-fn ctx]
-  (let [{:keys [query-id query-content] :as action-result} (sql.common/validated-sql-action! operation-result)
-        structured (assoc action-result :result-type :query)
-        buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
-        instr (instruction-fn query-id (some? buffer-id))]
-    {:output (format-query-output structured instr)
-     :structured-output structured
-     :data-parts [(if buffer-id
-                    (code-edit-part buffer-id query-content)
-                    (query-viz-part action-result title))]}))
+(defn- sql-edit-result!
+  "The result of an edit or replace, delivered to the user as [[query-delivery]] decides."
+  [operation-result title show-chart instruction-fn ctx & {:keys [edit?]}]
+  (let [action-result (sql.common/validated-sql-action! operation-result {:edit? edit?})
+        query-id      (:query-id action-result)
+        structured    (assoc action-result :result-type :query)
+        buffer-id     (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
+        hide-asked?   (false? show-chart)
+        ;; The user's own query is always shown: the edit is stored under its ID, which stands for what is on their
+        ;; screen, so a hidden edit would change it unseen.
+        client-query? (contains? (shared/current-client-ids) query-id)
+        ;; Readability reads the app DB, so it is checked only when hiding was asked.
+        readable?     (and hide-asked? (tools.run-query/sql-results-readable?))
+        delivery      (query-delivery buffer-id (and readable? (not client-query?)))
+        instr         (cond-> (instruction-fn query-id delivery)
+                        (and hide-asked? client-query?) (str "\n\n" instructions/client-query-shown-instruction)
+                        (and readable? client-query?)   (str " " instructions/client-query-variant-instruction))]
+    ;; The calls after this one in the same model response read this query before the agent loop stores the results
+    (some-> (:memory-atom ctx) (swap! memory/set-query query-id (:query action-result)))
+    (m/assoc-some {:output            (format-query-output structured instr)
+                   :structured-output structured}
+                  :data-parts (delivery-parts delivery buffer-id action-result title))))
 
 (defrecord EditSqlQueryTool []
   tools/Tool
@@ -175,15 +221,16 @@
                        "human-friendly `title` shown above the results.")
      :scope scope/agent-sql-edit
      :metabot/capabilities #{:permission-write-sql-queries}
+     :metabot/runs-alone? true
      :args edit-sql-schema})
-  (handle [_ {query-id :query_id :keys [edits checklist title]} ctx]
-    (sql-edit-result (do-with-notebook-fallback
-                      ctx #(edit-sql-query-tools/edit-sql-query
-                            {:query-id query-id
-                             :edits edits
-                             :checklist checklist
-                             :queries-state (shared/current-queries-state (:memory-atom ctx))}))
-                     title instructions/edit-sql-query-instructions-for ctx)))
+  (handle [_ {query-id :query_id :keys [edits checklist title show_chart]} ctx]
+    (sql-edit-result! (do-with-notebook-fallback
+                       ctx #(edit-sql-query-tools/edit-sql-query
+                             {:query-id query-id
+                              :edits edits
+                              :checklist checklist
+                              :queries-state (shared/current-queries-state (:memory-atom ctx))}))
+                      title show_chart instructions/edit-sql-query-instructions-for ctx {:edit? true})))
 
 (def edit-sql-query-tool
   "The tool that applies structured edits to a stored SQL query."
@@ -198,7 +245,8 @@
    [:query_id [:or :string :int]]
    [:checklist :string]
    [:new_query :string]
-   [:title :string]])
+   [:title :string]
+   shared/show-chart-arg])
 
 (defrecord ReplaceSqlQueryTool []
   tools/Tool
@@ -208,15 +256,16 @@
                        "human-friendly `title` shown above the results.")
      :scope scope/agent-sql-edit
      :metabot/capabilities #{:permission-write-sql-queries}
+     :metabot/runs-alone? true
      :args replace-sql-schema})
-  (handle [_ {query-id :query_id new-query :new_query :keys [checklist title]} ctx]
-    (sql-edit-result (do-with-notebook-fallback
-                      ctx #(replace-sql-query-tools/replace-sql-query
-                            {:query-id query-id
-                             :sql new-query
-                             :checklist checklist
-                             :queries-state (shared/current-queries-state (:memory-atom ctx))}))
-                     title instructions/replace-sql-query-instructions-for ctx)))
+  (handle [_ {query-id :query_id new-query :new_query :keys [checklist title show_chart]} ctx]
+    (sql-edit-result! (do-with-notebook-fallback
+                       ctx #(replace-sql-query-tools/replace-sql-query
+                             {:query-id query-id
+                              :sql new-query
+                              :checklist checklist
+                              :queries-state (shared/current-queries-state (:memory-atom ctx))}))
+                      title show_chart instructions/replace-sql-query-instructions-for ctx)))
 
 (def replace-sql-query-tool
   "The tool that replaces the SQL in a stored query."

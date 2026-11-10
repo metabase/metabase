@@ -40,7 +40,7 @@
                                                             :scope       {:type :database}
                                                             :attributes  [:data_sensitivity :semantic_type]
                                                             :status      :succeeded}]
-    (field-user-settings/upsert-user-settings {:id a2} {:semantic_type :type/Name})
+    (field-user-settings/upsert-field-user-settings! {:id a2} {:semantic_type :type/Name})
     (f db-id {:a a :b b :c c}
        {:a1-sem   (proposal! run-id a a1)
         :a1-ds    (proposal! run-id a a1 :attribute :data_sensitivity :proposed_value "PII")
@@ -61,7 +61,7 @@
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-proposals!
      (fn [db-id {:keys [a b c]} {:keys [a1-ds]}]
-       (t2/delete! :model/MetadataGenerationProposal a1-ds)
+       (t2/delete! :model/MetadataGenerationProposal :id a1-ds)
        (testing "pending proposals of all runs per table"
          (is (= [{:table_id a :table_name "A" :schema "S" :pending 2 :human_set_pending 1}
                  {:table_id b :table_name "B" :schema "S" :pending 1 :human_set_pending 0}
@@ -75,7 +75,7 @@
          (is (=? [{:table_id b :pending 1}]
                  (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals/tables" :table-id b))))
        (testing "an inactive table is left out"
-         (t2/update! :model/Table c {:active false})
+         (t2/update! :model/Table :id c {:active false})
          (is (= [a b] (map :table_id (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals/tables"
                                                            :database-id db-id)))))
        (testing "a scope needs a database or a table that exists"
@@ -99,18 +99,18 @@
                   {:id c1-sem}]
                  (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :database-id db-id))))
        (testing "a deleted proposal is left out"
-         (t2/delete! :model/MetadataGenerationProposal a1-ds)
+         (t2/delete! :model/MetadataGenerationProposal :id a1-ds)
          (is (= [a1-sem a2-human]
                 (map :id (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :table-id a)))))
        (testing "a table without pending proposals has none"
-         (t2/delete! :model/MetadataGenerationProposal b1-sem)
+         (t2/delete! :model/MetadataGenerationProposal :id b1-sem)
          (is (= [] (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :table-id b))))))))
 
 (deftest inactive-field-proposals-test
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-proposals!
      (fn [db-id {:keys [a]} {:keys [a1-sem a1-ds a2-human]}]
-       (t2/update! :model/Field (t2/select-one-fn :field_id :model/MetadataGenerationProposal :id a2-human)
+       (t2/update! :model/Field :id (t2/select-one-fn :field_id :model/MetadataGenerationProposal :id a2-human)
                    {:active false})
        (testing "proposals of an inactive field are not counted"
          (is (=? [{:table_id a :pending 2 :human_set_pending 0}]
@@ -124,11 +124,11 @@
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-proposals!
      (fn [db-id {:keys [b c]} {:keys [a1-sem a2-human]}]
-       (t2/update! :model/Field (t2/select-one-fn :field_id :model/MetadataGenerationProposal :id a1-sem)
+       (t2/update! :model/Field :id (t2/select-one-fn :field_id :model/MetadataGenerationProposal :id a1-sem)
                    {:visibility_type :hidden})
-       (t2/update! :model/Field (t2/select-one-fn :field_id :model/MetadataGenerationProposal :id a2-human)
+       (t2/update! :model/Field :id (t2/select-one-fn :field_id :model/MetadataGenerationProposal :id a2-human)
                    {:visibility_type :sensitive})
-       (t2/update! :model/Table b {:visibility_type :hidden})
+       (t2/update! :model/Table :id b {:visibility_type :hidden})
        (testing "proposals of hidden and sensitive fields and of hidden tables are not listed"
          (is (= [] (map :id (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals"
                                                   :database-id db-id :schema "S")))))

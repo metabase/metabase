@@ -35,7 +35,7 @@
                  (apply conj (pop s)
                         ;; reverse the nodes for the stack so it goes down first child first
                         (map #(.item nodelist %) (reverse (range length)))))]
-        (reduce (fn [node f] (f node)) node post-fns)
+        (run! #(% node) post-fns)
         (recur s'))))
   svg-document)
 

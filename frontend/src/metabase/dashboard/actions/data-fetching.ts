@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
@@ -54,6 +55,7 @@ import {
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
 import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
+import { throwIfSignalAborted } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -922,7 +924,7 @@ export const fetchDashboard = createAsyncThunk(
 
       // A request without the signal, such as the prefetched path's metadata,
       // can outlive a newer fetch or an unmount, so its result is dropped here
-      signal.throwIfAborted();
+      throwIfSignalAborted(signal);
       fetchDashboardCancellation = null;
 
       const isUsingCachedResults = entities != null;

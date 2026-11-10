@@ -2,10 +2,7 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
-import {
-  getRawTableFieldId,
-  hasAiProposals,
-} from "metabase/metadata/utils/field";
+import { hasAiProposals } from "metabase/metadata/utils/field";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { AiPreviewFieldset } from "../AiPreviewFieldset";
@@ -45,7 +42,7 @@ export function AiPreviewFieldSection({
          * Make sure internal component state is reset when changing fields.
          * This is to avoid state mix-up with optimistic updates.
          */
-        key={getRawTableFieldId(field)}
+        key={field.id}
         field={field}
         parent={parent}
         table={table}

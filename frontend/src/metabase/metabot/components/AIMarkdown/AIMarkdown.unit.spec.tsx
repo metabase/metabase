@@ -12,6 +12,8 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCollection,
@@ -19,7 +21,6 @@ import {
   createMockTable,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { AIMarkdown } from "./AIMarkdown";
 
@@ -40,7 +41,7 @@ const setup = (
     "token-features": createMockTokenFeatures({ library: true }),
   });
 
-  setupLibraryEndpoints(true);
+  setupLibraryEndpoints({ hasLibrary: true });
   setupCardEndpoints(createMockCard({ id: 123, name: "Test Question" }));
   setupCardEndpoints(
     createMockCard({
@@ -174,7 +175,11 @@ describe("AIMarkdown", () => {
       {
         conversationCharts: {
           "chart-1": {
-            queries: [createMockStructuredDatasetQuery()],
+            queries: [
+              Lib.toLegacyQuery(
+                Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+              ),
+            ],
             visualization_settings: { chart_type: "bar" },
           },
         },

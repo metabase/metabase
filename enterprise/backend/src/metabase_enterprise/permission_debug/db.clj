@@ -5,13 +5,22 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
+
+(mu/defn user-superuser?
+  "Whether the User with `user-id` is a superuser."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one-fn :is_superuser :model/User :id user-id))
+
+(mu/defn card
+  "The Card with `card-id`, or nil."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one :model/Card :id card-id))
 
 (defn- blocked-tables-select
   [user-id tables-expr permissions-blocking permissions-granting]
   {:select [[:db.name :db_name] :blocked.schema [:blocked.name :table_name] [:pg.name :group_name]]
-   :from   [(warehouse-schema-overlay/table-query {:alias :blocked, :user-settings? false})]
+   :from   [[(t2/table-name :model/Table) :blocked]]
    :join   [[(perms/select-tables-and-groups-granting-perm
               {:user-id user-id :is-superuser? false}
               permissions-blocking) :perm_grant] [:= :blocked.id :perm_grant.id]

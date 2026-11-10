@@ -180,9 +180,14 @@
 (defmethod sql-tools/add-into-clause-impl :macaw
   [_parser driver sql table-name]
   (let [^net.sf.jsqlparser.statement.select.Select parsed-query (parsed-query sql driver)
-        ^net.sf.jsqlparser.statement.select.PlainSelect select-body (.getSelectBody parsed-query)]
+        ^net.sf.jsqlparser.statement.select.PlainSelect select-body (.getPlainSelect parsed-query)]
     (.setIntoTables select-body [(net.sf.jsqlparser.schema.Table. ^String table-name)])
     (str parsed-query)))
+
+(defmethod sql-tools/add-insert-clause-impl :macaw
+  [_parser _driver sql table-name]
+  ;; Macaw does not move a `WITH` clause before `INSERT INTO`.
+  (format "INSERT INTO %s %s" table-name sql))
 
 (defmethod sql-tools/replace-names-impl :macaw
   [_parser driver sql-string replacements opts]

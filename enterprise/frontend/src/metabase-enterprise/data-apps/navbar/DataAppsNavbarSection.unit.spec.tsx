@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import { createMockDataApp } from "metabase-types/api/mocks";
@@ -75,5 +76,32 @@ describe("DataAppsNavbarSection", () => {
     expect(
       screen.queryByRole("link", { name: /Disabled|Outdated/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("links to the site-url origin when apps are served cross-origin", async () => {
+    fetchMock.get("path:/api/ee/apps", [
+      createMockDataApp({ name: "gizmo", display_name: "Gizmo" }),
+    ]);
+
+    renderWithProviders(
+      <Route
+        path="/"
+        element={<DataAppsNavbarSection onItemSelect={jest.fn()} />}
+      />,
+      {
+        withRouter: true,
+        storeInitialState: createMockState({
+          settings: createMockSettingsState({
+            "isolated-origin": "https://apps.example.com",
+            "site-url": "https://mb.example.com",
+          }),
+        }),
+      },
+    );
+
+    expect(await screen.findByRole("link", { name: /Gizmo/ })).toHaveAttribute(
+      "href",
+      "https://mb.example.com/apps/gizmo",
+    );
   });
 });

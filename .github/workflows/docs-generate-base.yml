@@ -50,7 +50,7 @@ jobs:
         uses: ./.github/actions/prepare-frontend
 
       - name: Generate documentation
-        run: docs-generator/bin/mage generate-docs --dir "$GITHUB_WORKSPACE"
+        run: docs-generator/bin/mage docs-generate --dir "$GITHUB_WORKSPACE"
 
       - name: Check for changes
         id: check_changes
@@ -117,7 +117,7 @@ jobs:
           $([ "$TOTAL_CHANGES" -gt 10 ] && echo "- ... and $((TOTAL_CHANGES - 10)) more files")
 
           ## Generation command
-          Documentation was generated using \`./bin/mage generate-docs\`.
+          Documentation was generated using \`./bin/mage docs-generate\`.
 
           Please review the changes and merge if they look correct." \
               --label "Type:Documentation" \

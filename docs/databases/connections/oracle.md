@@ -1,5 +1,6 @@
 ---
 title: Oracle
+summary: Connect Metabase to Oracle, including supported versions, adding the Oracle JDBC driver, Oracle Cloud Autonomous Database, and every connection setting.
 redirect_from:
   - /docs/latest/administration-guide/databases/oracle
 ---

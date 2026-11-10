@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import type {
-  ConcreteTableId,
+  TableId,
   MetadataGenerationApplyResult,
   MetadataGenerationEstimate,
   MetadataGenerationProposal,
@@ -76,7 +76,7 @@ export function setupListMetadataGenerationProposalTablesEndpoint(
 }
 
 export function setupListMetadataGenerationProposalsEndpoint(
-  tableId: ConcreteTableId,
+  tableId: TableId,
   proposals: MetadataGenerationProposal[],
 ) {
   const name = `metadata-generation-proposals-${tableId}`;

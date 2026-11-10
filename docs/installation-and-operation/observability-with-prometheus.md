@@ -1,5 +1,6 @@
 ---
 title: Observability with Prometheus
+summary: Export Metabase metrics in Prometheus format, with a walkthrough of running Metabase and Prometheus together locally.
 ---
 
 # Observability with Prometheus

@@ -6,7 +6,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn- managed-groups-clause
@@ -62,6 +61,11 @@
                  limit  (assoc :limit limit)
                  offset (assoc :offset offset)))))
 
+(mu/defn permissions-group
+  "The PermissionsGroup with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/PermissionsGroup :id id))
+
 (mu/defn permissions-group-exists?
   "Whether a PermissionsGroup with `id` exists."
   [id :- ms/PositiveInt]
@@ -77,7 +81,7 @@
   "Set the name of the PermissionsGroup with `id`, returning the number updated."
   [id         :- ms/PositiveInt
    group-name :- :string]
-  (t2/update! :model/PermissionsGroup id {:name group-name}))
+  (t2/update! :model/PermissionsGroup :id id {:name group-name}))
 
 (mu/defn delete-permissions-group!
   "Delete the PermissionsGroup with `id`, returning the number deleted."
@@ -105,11 +109,16 @@
   [user-id :- ::lib.schema.id/user]
   (t2/exists? :model/User :id user-id :is_superuser false))
 
+(mu/defn group-membership
+  "The PermissionsGroupMembership with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/PermissionsGroupMembership :id id))
+
 (mu/defn set-group-membership-manager!
   "Set the group manager flag of the PermissionsGroupMembership with `id`, returning the number updated."
   [id             :- ms/PositiveInt
    group-manager? :- :boolean]
-  (t2/update! :model/PermissionsGroupMembership id {:is_group_manager group-manager?}))
+  (t2/update! :model/PermissionsGroupMembership :id id {:is_group_manager group-manager?}))
 
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no
@@ -155,5 +164,4 @@
 (mu/defn tables-for-databases
   "The id, Database id, and schema of the Tables of the Databases with `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select [:model/Table :id :db_id :schema] :db_id [:in database-ids]
-             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select [:model/Table :id :db_id :schema] :db_id [:in database-ids]))

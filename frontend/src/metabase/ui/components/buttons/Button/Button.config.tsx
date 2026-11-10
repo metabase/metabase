@@ -146,6 +146,7 @@ export const buttonOverrides = {
     vars: (_theme, props) => ({ root: getRootVars(props) }),
     classNames: {
       root: ButtonStyles.root,
+      inner: ButtonStyles.inner,
       label: ButtonStyles.label,
       loader: ButtonStyles.loader,
     },

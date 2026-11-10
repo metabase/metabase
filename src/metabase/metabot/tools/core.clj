@@ -7,21 +7,21 @@
   or what text each audience sees — that is `metabase.metabot.tools.runtime`'s job, so a tool says
   what happened exactly once.
 
-  A record rather than a function because several of our tools are the *same* tool under different
-  configuration, and a record says so. The four `search` tools share a scope, a title function and a
-  body, and differ only in their name, description, argument schema, allowed entity types and an
-  options map — four instances of one type, not four functions that happen to resemble each other.
+  Several tools use the same implementation with different settings. The three `search` tools share
+  a name, scope, title function and handler, but differ in their descriptions, argument schemas,
+  allowed entity types and options.
 
   Handlers return success only. There is no error-shaped success value and no `{:output \"Failed
   to …\"}` convention: a failure is thrown, so forgetting to handle one cannot silently hand the
   model a sentence nobody wrote.
 
-  Everything a tool does about a failure is written at the call site, and the default — doing
-  nothing — is that the failure ends the turn:
+  Everything a tool does about a failure is written at the call site. A failure it does nothing
+  about is undeclared: the model learns only that the call failed, and the agent loop decides
+  whether the turn goes on. What a tool can do instead:
 
   - *relay a foreign error*: a converter ([[with-entity]], [[with-pipeline-errors]]) turns one known
     shape into a declared recoverable error. A shape a converter does not recognise passes through
-    unchanged and is therefore unrecoverable.
+    unchanged and is therefore undeclared.
   - *do one thing per item*: implement [[BatchedTool]] as well, and let [[handle]] delegate to
     [[handle-each]]. A declared recoverable error then becomes that item's contribution instead of
     ending the turn.
@@ -95,9 +95,8 @@
   Closed on purpose: a misspelled key (`:capability`, `:scopes`) would otherwise read as \"this tool
   needs nothing\" and quietly drop a gate.
 
-  `:description` is the model-facing text. It is a field rather than a docstring because a tool that
-  exists in several configurations should be able to build it — the four `search` tools each hardcode
-  theirs today precisely because a docstring cannot be computed.
+  `:description` is the model-facing text. It is a field so that tools with several configurations
+  can compute it. The three `search` tools each hardcode theirs because docstrings cannot be computed.
 
   `:name`, `:description`, `:args` and `:scope` are the neutral core: every consumer needs all four,
   and `:scope` is shared because both surfaces check strings from the same `api-scope` registry (MCP
@@ -122,7 +121,14 @@
    [:args         :any]
    [:scope                  {:optional true} [:maybe :string]]
    [:metabot/capabilities   {:optional true} [:maybe [:set :keyword]]]
-   [:metabot/title-fn       {:optional true} [:maybe fn?]]])
+   [:metabot/title-fn       {:optional true} [:maybe fn?]]
+   ;; Set by a tool that saves something. A failure it did not declare may have come after the save,
+   ;; so `metabase.metabot.tools.runtime/invoke` ends the turn instead of letting the model try again.
+   [:metabot/writes?        {:optional true} [:maybe :boolean]]
+   ;; Set by a tool whose call changes state that other calls read, such as a stored query. In one model response,
+   ;; `metabase.metabot.self.core/tool-executor-xf` starts its call once the calls before it have finished, and the
+   ;; calls after it once it has finished.
+   [:metabot/runs-alone?    {:optional true} [:maybe :boolean]]])
 
 (mr/def ::result
   "What [[handle]] returns. Success only — a failure is thrown.
@@ -400,10 +406,9 @@
   The declaration is the published one, so a batched tool's entry carries its batched `:args` and the
   runtime validates the model's arguments against the shape it was actually offered.
 
-  Rejects two tools claiming the same name: within a profile the name is how the model and the
-  runtime address a tool, so a collision means one of them is unreachable and which one depends on
-  the order of the seq. Across profiles a name legitimately belongs to several tools — `search` has
-  four — which is why there is no global registry."
+  Rejects duplicate names within a profile, where both the model and the runtime use the name to
+  identify a tool. A collision would make one tool unreachable, depending on their order. Tools in
+  different profiles may share a name, as the three `search` tools do, so there is no global registry."
   [tools]
   (reduce (fn [acc tool]
             (let [{tool-name :name :as declared} (validate-tool! tool)]
@@ -427,7 +432,7 @@
   (try
     (thunk)
     (catch Throwable e
-      (if (and (not (contains? (ex-data e) tools.error/error-key))
+      (if (and (not (tools.error/declared? e))
                (contains? refusal-status-codes (:status-code (ex-data e))))
         (tools.error/throw-recoverable! ::recoverable.common/not-found
                                         (cond-> {} kind (assoc :kind kind) (some? id) (assoc :id id))
@@ -474,6 +479,11 @@
       (let [{:keys [agent-error? status-code error humanized]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
+          ;; Its payload and recovery steps are more specific than anything below would rebuild. A declared
+          ;; not-found carries a 404, and a declared recoverable carries `:agent-error?`, so both would match.
+          (tools.error/declared? e)
+          (throw e)
+
           ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
           (and agent-error? code)
           (tools.error/throw-recoverable!
@@ -498,7 +508,8 @@
     (with-pipeline-errors
       (construct/execute-representations-query query))
 
-  Three cases:
+  Four cases:
+  - a declared tool error passes through unchanged, so a nested `with-entity` keeps the entity it names;
   - an `:agent-error?` exception whose ex-data carries an `:error` code declared in
     `metabase.metabot.tools.recoverable.pipeline` becomes that error, with the pipeline's own
     sentence as the message;

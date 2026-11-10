@@ -98,6 +98,7 @@
                          (and (vector? x) (#{:asc :desc} (first x))) ::order-by
                          :else                                        ::expression))}
    [:metadata/column                    ::lib.schema.metadata/column]
+   [:metadata/database                  ::lib.schema.metadata/database]
    [:metadata/table                     ::lib.schema.metadata/table]
    [:metadata/card                      ::card-metadata]
    [:metadata/metric                    ::metric-metadata]
@@ -534,10 +535,11 @@
 
 (defmethod display-info-method :metadata/table
   [query stage-number table]
-  (merge (default-display-info query stage-number table)
-         {:is-source-table (= (lib.util/source-table-id query) (:id table))
-          :schema (:schema table)
-          :visibility-type (:visibility-type table)}))
+  (cond-> (merge (default-display-info query stage-number table)
+                 {:is-source-table (= (lib.util/source-table-id query) (:id table))
+                  :schema (:schema table)
+                  :visibility-type (:visibility-type table)})
+    (:description table) (assoc :description (:description table))))
 
 (mr/def ::column-metadata-with-source
   "Schema for the column metadata that should be returned by [[metadata]]. A column metadata that is also required to

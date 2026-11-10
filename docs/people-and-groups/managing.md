@@ -1,5 +1,6 @@
 ---
 title: People and groups
+summary: Create, edit, and deactivate accounts, and organize people into the groups that drive your permissions.
 redirect_from:
   - /docs/latest/administration-guide/04-managing-users
 ---

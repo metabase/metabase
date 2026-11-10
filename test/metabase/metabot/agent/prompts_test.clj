@@ -232,13 +232,14 @@
           "unresolved {% include %} tags mean rendering failed and the raw template was returned"))))
 
 (deftest ^:parallel build-system-message-content-document-skills-test
-  (testing "the document prompt lists the notebook query skills its model chart tool needs"
+  (testing "the document prompt lists the notebook query skills its model chart tool needs, and the read_resource skill"
     (binding [scope/*current-user-scope* api-scope/unrestricted]
       (let [profile (profiles/get-profile :document-generate-content)
             content (prompts/build-system-message-content profile {} (profiles/profile->tools profile []) [])]
         (doseq [skill-id [:construct-notebook-query-core
                           :construct-notebook-query-advanced
-                          :construct-notebook-query-operators]]
+                          :construct-notebook-query-operators
+                          :read-resource]]
           (is (str/includes? content (:description (skills/get-skill skill-id)))))))))
 
 ;;; Embedded profile (BOT-1891)

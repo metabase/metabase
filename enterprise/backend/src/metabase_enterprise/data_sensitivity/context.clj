@@ -23,9 +23,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
-   [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.field-values :as field-values]))
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.user-settings :as user-settings]))
 
 (set! *warn-on-reflection* true)
 
@@ -102,13 +101,11 @@
              [:truncation :int]
              [:error      [:maybe :string]]]]])
 
-(defn- human-set-keys [user-settings]
-  (into #{} (filter #(warehouse-schema-overlay/field-user-set? user-settings %)) field/field-user-settings))
+(defn- human-set-keys [settings]
+  (user-settings/user-set-field-columns settings))
 
-(defn- ai-set-keys [user-settings]
-  (into #{}
-        (filter #(warehouse-schema-overlay/field-ai-set? user-settings %))
-        (keys warehouse-schema-overlay/field-ai-columns)))
+(defn- ai-set-keys [settings]
+  (user-settings/ai-set-field-columns settings))
 
 (defn- fk-targets
   "Map of target field id -> `schema.table.field` for every `fk_target_field_id` among `fields` whose target

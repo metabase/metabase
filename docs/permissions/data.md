@@ -1,5 +1,6 @@
 ---
 title: Data permissions
+summary: Control which groups can view data, create queries, download results, manage metadata and databases, upload, and run transforms, by database, schema, or table.
 redirect_from:
   - /docs/latest/administration-guide/data-permissions
 ---
@@ -113,6 +114,8 @@ See [impersonated view data permissions](./impersonation.md)
 
 **Blocked** ensures people in a group can’t see the data from this database, schema, or table, regardless of their permissions at the collection level.
 
+Blocked applies to the data. It stops a group from seeing results, and it doesn't hide the query definitions of questions that the group can otherwise view. Query definitions follow [collection permissions](./collections.md#collection-vs-data-permissions).
+
 The Blocked view data permission can be set at the database, schema, or table level. Essentially, what Blocked does is make collections permissions _insufficient_ to view a question. For example, even if a question is in a collection that the group has access to, but that question queries a data source that is Blocked for that group, people in that group won't be able to view that question _unless_ they're in another group with the data permissions to that data source.
 
 Setting blocked access for a group ALWAYS prevents the group from viewing questions built with the native query editor that query ANY tables from the same database. So even if you only block a single table in a database, the group won't be able to view the results of SQL questions that query ANY table in that database. The reason: Metabase doesn't (yet) parse SQL queries, so it can't know for sure whether the SQL queries the table you want to block.
@@ -124,6 +127,8 @@ If a person in a Blocked group belongs to _another_ group that has its View data
 Specifies whether a group can create new questions based on the data source. Creating queries includes the ability to drill-through and filter questions, or anything that involves changing the results. This permission also determines whether a group will get access to the [database browser](../exploration-and-organization/exploration.md#browse-your-databases) to explore that data source.
 
 To enable Create queries permissions for a group, that group must be able to view the data source ("Can view" permission.)
+
+Create queries permissions control who can write and run queries. They don't hide the queries behind questions that already exist. A group without native query permissions can't write SQL, and won't see the **View SQL** button in the query builder, but they can still read the SQL of a saved native question in a collection they have access to. Metabase returns a question's query definition to anyone who can view that question. See [Collection vs data permissions](./collections.md#collection-vs-data-permissions).
 
 Create query levels include:
 

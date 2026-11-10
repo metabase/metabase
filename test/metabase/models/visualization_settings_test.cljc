@@ -72,6 +72,16 @@
       ;; for a non-table card, the :click_behavior map is directly underneath :visualization_settings
       (t/is (= norm-click-bhvr-map (mb.viz/db->norm db-click-bhv-map))))))
 
+(t/deftest ^:parallel currency-position-conversion-test
+  (doseq [position ["before" "after"]]
+    (let [db-form   {:column_settings {"[\"name\",\"Price\"]" {:currency_position position}}}
+          norm-form {::mb.viz/column-settings {{::mb.viz/column-name "Price"}
+                                               {::mb.viz/currency-position position}}}]
+      (t/is (= norm-form (mb.viz/db->norm db-form)))
+      (t/is (= db-form (mb.viz/norm->db norm-form)))
+      (t/is (= {::mb.viz/currency-position position}
+               (mb.viz/db->norm-column-settings-entries {:currency_position position}))))))
+
 (t/deftest ^:parallel form-transformation-test
   (t/testing "The deprecated k:mm :time_style is converted to HH:mm when normalized, and kept in the new style when converted back to the DB form"
     (let [db-col-settings-old {:column_settings {"[\"name\",\"Column Name\"]" {:time_style "k:mm"}}}

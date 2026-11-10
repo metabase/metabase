@@ -18,6 +18,8 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
+(set! *warn-on-reflection* true)
+
 ;;; ------------------------------------------------ User Definitions ------------------------------------------------
 
 ;; ## Test Users

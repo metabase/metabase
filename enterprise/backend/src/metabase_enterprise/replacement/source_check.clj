@@ -6,12 +6,10 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.queries.db :as queries.db]
    [metabase.source-swap.core :as source-swap]
    [metabase.source-swap.schema :as source-swap.schema]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,8 +44,8 @@
   [entity-type :- ::replacement.schema/source-entity-type
    entity-id   :- ::replacement.schema/source-entity-id]
   (case entity-type
-    :card  (:database_id (queries.db/card entity-id))
-    :table (:db_id (warehouse-schema.db/table entity-id))))
+    :card  (replacement.db/card-database-id entity-id)
+    :table (replacement.db/table-database-id entity-id)))
 
 (mu/defn- format-column-mappings :- [:sequential ::replacement.schema/column-mapping]
   "Format column mappings by applying format-column to source and target columns."

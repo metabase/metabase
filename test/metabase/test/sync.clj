@@ -5,6 +5,8 @@
    [metabase.test.data :as data]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;; deliberately has no root value: the reader below checks `bound?` to tell a live cache from no cache at all
 #_{:clj-kondo/ignore [:uninitialized-var :metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *sync-steps-run-to-completion-cache*)

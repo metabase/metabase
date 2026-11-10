@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase-enterprise.impersonation.middleware :as impersonation.middleware]
+   [metabase-enterprise.impersonation.query-cache :as query-cache]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.test :as met]
    [metabase.actions.execution :as actions.execution]
@@ -36,6 +37,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
+   (clojure.lang ExceptionInfo)
    (com.mchange.v2.c3p0 PooledDataSource)
    (java.sql Connection)
    (java.util.concurrent CountDownLatch)))
@@ -923,7 +925,7 @@
             (mt/as-admin (persist-models!))
             (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                            :attributes     {"impersonation_attr" "impersonation_role"}}
-              (let [details (t2/select-one-fn :details :model/Database (mt/id))
+              (let [details (t2/select-one-fn :details :model/Database :id (mt/id))
                     spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
                 ;; Create impersonation_role on test DB so that the non-admin can execute queries
                 (doseq [statement ["DROP ROLE IF EXISTS \"impersonation_role\";"
@@ -1031,7 +1033,7 @@
             (with-impersonation-db!
               (let [tables-set #(->> (driver/describe-database
                                       driver/*driver*
-                                      (driver.u/ensure-lib-database (t2/select-one :model/Database (mt/id))))
+                                      (driver.u/ensure-lib-database (t2/select-one :model/Database :id (mt/id))))
                                      :tables
                                      (into #{}))
                     default-table-set (tables-set)]
@@ -1181,6 +1183,32 @@
                     "SELECT set_config('role', 'none', false); DROP TABLE table"
                     "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;"))))))))))
 
+(deftest cached-refusal-fails-query-like-uncached-refusal-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-model-cleanup [:model/ImpersonationQueryCache]
+        (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                       :attributes     {"impersonation_attr" "impersonation_role"}}
+          (let [run-query (fn [sql]
+                            (try
+                              (qp/process-query (lib/native-query (mt/metadata-provider) sql))
+                              (catch ExceptionInfo e
+                                {:message         (ex-message e)
+                                 :refusal-message (ex-message (ex-cause e))
+                                 :refusal-data    (ex-data (ex-cause e))})))]
+            (doseq [[result sql] [[:unparseable "SELECT ("]
+                                  [:invalid "SELECT 1; SELECT 2"]
+                                  [:unvalidatable (str "SELECT 1 WHERE 1 IN (" (str/join ", " (range 3000)) ")")]]]
+              (testing result
+                (let [sql      (str "/* " (mt/random-name) " */ " sql)
+                      uncached (mt/with-dynamic-fn-redefs [query-cache/validated-query (fn [_engine _allow-write? _admin? _native validate]
+                                                                                         (validate))]
+                                 (run-query sql))]
+                  (is (= result (get-in uncached [:refusal-data :impersonation/result])))
+                  (is (= uncached (run-query sql)))
+                  (is (t2/exists? :model/ImpersonationQueryCache :input_query sql))
+                  (is (= uncached (run-query sql))))))))))))
+
 (deftest reject-non-select-statements-for-admin-on-impersonated-db-test
   (testing "Admin users are also validated on impersonated databases"
     (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
@@ -1304,7 +1332,8 @@
                         (is (= original-name (read-name)))))))))))))))
 
 (deftest admins-can-run-show-timezone-statement-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :postgres})
+  (mt/test-drivers (mt/normal-driver-select {:+parent :postgres
+                                             :+features [:connection-impersonation]})
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             role-a (u/lower-case-en (mt/random-name))]
@@ -1552,7 +1581,8 @@
     ;; End-to-end check that the rejection holds through the real QP preprocess chain, and that it happens
     ;; *before* execution: we ask the warehouse directly rather than trusting the QP status, so that a
     ;; refactor moving validation after execution begins would fail here.
-    (mt/test-drivers (mt/normal-driver-select {:+parent :postgres})
+    (mt/test-drivers (mt/normal-driver-select {:+parent :postgres
+                                               :+features [:connection-impersonation]})
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
               role-a       (u/lower-case-en (mt/random-name))]

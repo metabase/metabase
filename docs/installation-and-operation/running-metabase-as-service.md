@@ -1,5 +1,6 @@
 ---
 title: Running Metabase as a systemd service
+summary: Register Metabase as a systemd service on Linux that you can start, stop, and uninstall.
 redirect_from:
   - /docs/latest/operations-guide/running-metabase-on-debian
   - /docs/installation-and-operation/running-metabase-on-debian

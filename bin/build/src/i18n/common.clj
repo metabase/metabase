@@ -9,43 +9,39 @@
 (set! *warn-on-reflection* true)
 
 (defn locales
-  "Set of all locales for which we have i18n bundles.
+  "Set of all locales with a catalog in `directory`.
 
-    (locales) ; -> #{\"nl\" \"pt\" \"zh\" \"tr\" \"it\" \"fa\" ...}"
-  []
+    (locales directory) ; -> #{\"nl\" \"pt\" \"zh\" \"tr\" \"it\" \"fa\" ...}"
+  [directory]
   (into
    (sorted-set)
-   (for [^java.io.File file (.listFiles (io/file (u/filename u/project-root-directory "locales")))
+   (for [^java.io.File file (.listFiles (io/file directory))
          :let               [file-name (.getName file)]
          :when              (and (str/ends-with? file-name ".po")
                                  (not (str/starts-with? file-name "metabase")))]
      (str/replace file-name #"\.po$" ""))))
 
 (defn locale-source-po-filename
-  "E.g.
-
-  (locale-source-po-filename \"fr\")
-  ;; =>
-  \"/home/cam/metabase/locales/fr.po\""
-  [locale]
-  (u/filename u/project-root-directory "locales" (format "%s.po" locale)))
+  "Path to the catalog for `locale` in `directory`."
+  [locale directory]
+  (str (io/file directory (format "%s.po" locale))))
 
 ;; see https://github.com/zanata/jgettext/tree/master/src/main/java/org/fedorahosted/tennera/jgettext
 
-(defn- catalog ^Catalog [locale]
+(defn- catalog ^Catalog [locale directory]
   (let [parser (PoParser.)]
-    (.parseCatalog parser (io/file (locale-source-po-filename locale)))))
+    (.parseCatalog parser (io/file (locale-source-po-filename locale directory)))))
 
-(defn- po-headers [locale]
-  (when-let [^Message message (.locateHeader (catalog locale))]
+(defn- po-headers [locale directory]
+  (when-let [^Message message (.locateHeader (catalog locale directory))]
     (let [header-fields (HeaderFields/wrap (.getMsgstr message))]
       (into {} (for [^String k (.getKeys header-fields)]
                  [k (if (= k "Language")
                       locale
                       (.getValue header-fields k))])))))
 
-(defn- po-messages-seq [locale]
-  (for [^Message message (iterator-seq (.iterator (catalog locale)))
+(defn- po-messages-seq [locale directory]
+  (for [^Message message (iterator-seq (.iterator (catalog locale directory)))
         ;; remove any empty translations
         :when            (not (str/blank? (.getMsgid message)))]
     {:id                (.getMsgid message)
@@ -61,9 +57,9 @@
 
 (defn po-contents
   "Contents of the PO file for a `locale`."
-  [locale]
-  {:headers  (po-headers locale)
-   :messages (po-messages-seq locale)})
+  [locale directory]
+  {:headers  (po-headers locale directory)
+   :messages (po-messages-seq locale directory)})
 
 (defn backend-message?
   "True if `message` (the shape returned by `po-messages-seq`) originates from a Clojure source file

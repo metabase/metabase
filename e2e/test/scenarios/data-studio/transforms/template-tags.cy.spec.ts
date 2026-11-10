@@ -17,7 +17,6 @@ describe("scenarios > data-studio > transforms > template tags", () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/transform/*").as("updateTransform");
-    cy.intercept("POST", "/api/transform/*/run").as("runTransform");
   });
 
   it("should be possible to use template tags in an SQL transform, and the data reference, snippets and multiple template tags in a new SQL transform", () => {
@@ -345,14 +344,8 @@ function editorSidebar() {
 
 function assertIsTransformRunnable() {
   H.DataStudio.Transforms.runTab().click();
-  getRunButton().click();
-  cy.wait("@runTransform");
-  getRunButton().should("have.text", "Ran successfully");
+  H.runTransformFromUiAndWaitForStatus("succeeded");
   H.DataStudio.Transforms.definitionTab().click();
-}
-
-function getRunButton(options: { timeout?: number } = {}) {
-  return cy.findAllByTestId("run-button").eq(0, options);
 }
 
 function assertNoParameterSettingsAreVisible() {

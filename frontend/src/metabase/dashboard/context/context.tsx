@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { assoc } from "icepick";
 import {
   type PropsWithChildren,

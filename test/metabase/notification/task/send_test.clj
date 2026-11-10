@@ -107,7 +107,7 @@
                             ;; other tests insert the same query
                             notification.execute/execute-card    (fn [_creator-id card-id]
                                                                    {:type   :card
-                                                                    :card   (t2/select-one :model/Card card-id)
+                                                                    :card   (t2/select-one :model/Card :id card-id)
                                                                     :result {:status :completed :row_count 1 :data {:rows [[1]]}}})
                             channel/render-notification          (fn [& _]
                                                                    ;; the worker waits until the test checked the run
@@ -120,7 +120,7 @@
                 (#'task.notification/send-notification* (t2/select-one-pk :model/NotificationSubscription
                                                                           :notification_id (:id notification)))
                 (let [run-id     (t2/select-one-pk :model/TaskRun :notification_id (:id notification))
-                      run-status #(t2/select-one-fn :status :model/TaskRun run-id)]
+                      run-status #(t2/select-one-fn :status :model/TaskRun :id run-id)]
                   (is (= :started (run-status))
                       "the job has ended, and the run stays started while the worker sends")
                   (deliver release true)
@@ -155,7 +155,7 @@
         (testing "deletes triggers for subscriptions that no longer exist"
           (let [subscription-id (first (t2/select-pks-vec :model/NotificationSubscription
                                                           :notification_id (:id notification)))]
-            (t2/delete! :notification_subscription subscription-id)
+            (t2/delete! :notification_subscription :id subscription-id)
             (testing "sanity check that it has trigger before"
               (is (not-empty (notification.tu/send-notification-triggers subscription-id))))
             (notification.task.send-trigger/init-send-notification-triggers!)
@@ -177,12 +177,12 @@
           (is (not-empty notification-triggers)))
         (testing "skips triggers for inactive notifications"
           ;; Deactivate the notification
-          (t2/update! :model/Notification (:id notification) {:active false})
+          (t2/update! :model/Notification :id (:id notification) {:active false})
           (notification.task.send-trigger/init-send-notification-triggers!)
           (is (empty? (notification.tu/send-notification-triggers subscription-id))))
         (testing "recreates triggers when notification is reactivated"
           ;; Reactivate the notification
-          (t2/update! :model/Notification (:id notification) {:active true})
+          (t2/update! :model/Notification :id (:id notification) {:active true})
           (notification.task.send-trigger/init-send-notification-triggers!)
           (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))))))
 

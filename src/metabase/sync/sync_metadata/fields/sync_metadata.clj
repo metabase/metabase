@@ -4,7 +4,6 @@
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
   (:require
    [clojure.string :as str]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.fields.common :as common]
@@ -84,9 +83,12 @@
         new-base-type?
         (not= old-base-type new-base-type)
 
+        ;; a key type from the database replaces an accepted AI semantic type, but no other semantic type
         new-semantic-type?
-        (and (nil? old-semantic-type)
-             (not= old-semantic-type new-semantic-type))
+        (and (not= old-semantic-type new-semantic-type)
+             (or (nil? old-semantic-type)
+                 (and (#{:type/PK :type/FK} new-semantic-type)
+                      (sync-util/ai-semantic-type? (u/the-id metabase-field)))))
 
         new-comment?
         (and (str/blank? old-field-comment)
@@ -128,7 +130,7 @@
                       old-base-type
                       new-base-type)
            (when-not (= old-base-type :type/*)
-             (field-user-settings/unset-user-settings!
+             (field-user-settings/unset-field-user-settings!
               (select-keys metabase-field [:id]) [:effective_type :coercion_strategy :semantic_type])
              (common/clear-ai-semantic-type! (u/the-id metabase-field)))
            {:base_type           new-base-type
@@ -147,7 +149,7 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-effective-type
                       new-base-type)
-           (field-user-settings/unset-user-settings! (select-keys metabase-field [:id]) [:effective_type :coercion_strategy])
+           (field-user-settings/unset-field-user-settings! (select-keys metabase-field [:id]) [:effective_type :coercion_strategy])
            {:effective_type new-base-type})
          (when new-semantic-type?
            (log/infof "Semantic type of %s has changed from '%s' to '%s'."
@@ -239,7 +241,7 @@
            {:preview_display false}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (pos? (sync.db/update-field! (u/the-id metabase-field) updates)))
+             (pos? (sync-util/update-field-unless-user-set! (u/the-id metabase-field) updates)))
       1
       0)))
 

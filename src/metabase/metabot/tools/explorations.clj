@@ -13,9 +13,11 @@
    [clojure.string :as str]
    [metabase.explorations.core :as explorations]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.timeline.core :as timeline]
    [metabase.util.json :as json]))
 
@@ -71,6 +73,42 @@
   [:map {:closed true}
    [:q {:optional true} [:maybe :string]]])
 
+(defn- curated-only-index
+  "Under [[shared/curated-only?]], keep only the metrics of the research `index` this Metabot may use (see
+   [[curation/usable-metric-ids]]). The truncation stamp is left as the catalog computed it."
+  [index]
+  (if (shared/curated-only?)
+    (let [usable (curation/usable-metric-ids (map :id (:metrics index)))]
+      (update index :metrics (fn [rows] (filterv #(contains? usable (:id %)) rows))))
+    index))
+
+(defn- check-curated-metrics!
+  "Under [[shared/curated-only?]], reject the first of `metric-ids` this Metabot may not use. A missing or unreadable
+  id is left to the catalog, which reports it as missing."
+  [metric-ids]
+  (when (shared/curated-only?)
+    (doseq [id metric-ids]
+      (curation/check-curated-readable-subject! (str "metric " id) ["metric" id]))))
+
+(defn- curated-only-candidates
+  "Under [[shared/curated-only?]], keep only the metrics of the research `candidates` this Metabot may use, and the
+  dimension groups that still slice one of them. A `q` search reaches every readable metric the catalog matches,
+  so the result is filtered the way [[curated-only-index]] filters the index."
+  [candidates]
+  (if (shared/curated-only?)
+    (let [usable (curation/usable-metric-ids (map :id (:metrics candidates)))]
+      (-> candidates
+          (update :metrics (fn [rows] (filterv #(contains? usable (:id %)) rows)))
+          (update :dimension_groups
+                  (fn [groups]
+                    (into []
+                          (keep (fn [group]
+                                  (let [ids (filterv usable (:metric_ids group))]
+                                    (when (seq ids)
+                                      (assoc group :metric_ids ids)))))
+                          groups)))))
+    candidates))
+
 (defrecord ListResearchMetricsTool []
   tools/Tool
   (declaration [_]
@@ -88,7 +126,7 @@
      :args        list-research-metrics-schema})
 
   (handle [_ {:keys [q]} _ctx]
-    {:output (json/encode (explorations/research-metric-index {:q q}))}))
+    {:output (json/encode (curated-only-index (explorations/research-metric-index {:q q})))}))
 
 (def list-research-metrics-tool
   "The `list_research_metrics` tool."
@@ -133,7 +171,9 @@
   (handle [_ {:keys [q metric_ids]} _ctx]
     (when (and (str/blank? q) (empty? metric_ids))
       (needs-metric-ids-or-q! {}))
-    {:output (json/encode (explorations/research-candidates {:metric-ids metric_ids :q q}))}))
+    (check-curated-metrics! metric_ids)
+    {:output (json/encode (curated-only-candidates
+                           (explorations/research-candidates {:metric-ids metric_ids :q q})))}))
 
 (def get-research-candidates-tool
   "The `get_research_candidates` tool."
@@ -346,6 +386,7 @@
      :args        add-research-groups-schema})
 
   (handle [_ {:keys [groups]} _ctx]
+    (check-curated-metrics! (map :metric_id groups))
     (let [payload (research-groups-payload groups)]
       {:output     (format-added-groups payload)
        :data-parts [(streaming/research-plan-update-part payload)]})))

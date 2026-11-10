@@ -24,6 +24,7 @@
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.tools.save-entity :as tools.save-entity]
    [metabase.metabot.tools.search :as tools.search]
+   [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.skills :as tools.skills]
    [metabase.metabot.tools.slackbot-query :as tools.slackbot-query]
    [metabase.metabot.tools.snippets :as tools.snippets]
@@ -31,8 +32,6 @@
    [metabase.metabot.tools.static-viz :as tools.static-viz]
    [metabase.metabot.tools.subscriptions :as tools.subscriptions]
    [metabase.metabot.tools.timelines :as tools.timelines]
-   [metabase.metabot.tools.todo :as tools.todo]
-   [metabase.metabot.tools.transforms :as tools.transforms]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -43,12 +42,12 @@
   analyze-chart-sql-tool]
  [tools.search search-tool
   sql-search-tool
-  nlq-search-tool
-  transform-search-tool]
+  nlq-search-tool]
  [tools.entity-retrieval
   retrieve-library-entities-tool]
  [tools.construct
-  construct-notebook-query-tool
+  construct-notebook-query-tool]
+ [tools.shared
   without-show-chart]
  [tools.run-query
   run-query-tool
@@ -68,8 +67,6 @@
   list-available-data-sources-tool
   list-available-fields-tool
   get-field-values-tool]
- [tools.transforms
-  get-transform-details-tool]
  [tools.sql
   create-sql-query-tool
   create-sql-query-code-edit-tool
@@ -85,9 +82,6 @@
  [tools.snippets
   list-snippets-tool
   get-snippet-details-tool]
- [tools.todo
-  todo-write-tool
-  todo-read-tool]
  [tools.timelines
   list-timelines-tool
   get-timeline-details-tool]
@@ -108,14 +102,17 @@
  [tools.skills
   load-skill-tool])
 
+(def sql-query-tool-names
+  "Names of the tools that write a SQL query."
+  #{"create_sql_query"
+    "edit_sql_query"
+    "replace_sql_query"})
+
 (def query-generation-tool-names
   "Tool names that produce a runnable query (SQL or notebook). Both the in-app
   and slackbot variants of `construct_notebook_query` register under the same
   `:tool-name`, so a single string covers both."
-  #{"create_sql_query"
-    "edit_sql_query"
-    "replace_sql_query"
-    "construct_notebook_query"})
+  (conj sql-query-tool-names "construct_notebook_query"))
 
 (def ^:private query-result-tool-names
   "Names of the tools that return query results: those that need `:feature-query-execution`."
@@ -141,9 +138,9 @@
 
   An entry keeps the keys the adapters and the system-message builder already read (`:tool-name`,
   `:doc`, `:schema`, `:title-fn`, `:prompt`, `:system-instructions`, `:capabilities`, `:scope`), and
-  its `:fn` performs the whole call through `metabase.metabot.tools.runtime/invoke`. So argument
-  coercion, argument validation, the scope check, the result check and error rendering all happen in
-  one place, and `:fn` never throws.
+  `:runs-alone?`, which the tool executor reads. Its `:fn` performs the whole call through
+  `metabase.metabot.tools.runtime/invoke`. So argument coercion, argument validation, the scope
+  check, the result check and error rendering all happen in one place, and `:fn` never throws.
 
   `:schema` is synthesised as `[:=> [:cat args] :any]` because that is the shape
   `metabase.metabot.self.schema/tool-function` reads. It is the declaration's `:args` either way."
@@ -170,5 +167,6 @@
           :title-fn            (:metabot/title-fn declaration)
           :prompt              (:metabot/prompt declaration)
           :system-instructions (:metabot/system-instructions declaration)
+          :runs-alone?         (:metabot/runs-alone? declaration)
           :fn                  (fn [arguments]
                                  (tools.runtime/invoke entries ctx tool-name arguments))})))))

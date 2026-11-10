@@ -28,6 +28,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
@@ -42,7 +43,6 @@
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -87,7 +87,7 @@
    which `lib-be/instance->metadata` carries over from the Field's `effective_type` (`base_type` when
    unset)."
   [field-id]
-  (let [{:keys [base_type effective_type]} (warehouse-schema.db/field field-id)]
+  (let [{:keys [base_type effective_type]} (mcp.db/field-types field-id)]
     (isa? (or effective_type base_type) :type/Temporal)))
 
 (defn- parses-as-date?
@@ -425,7 +425,7 @@
     [:maybe [:int {:min 0 :description "Index of the first value to return (default 0) — continue a truncated response. Each page refetches from the source, which returns at most 1000 values, so narrow with `query` rather than paging to reach anything past that."}]]]])
 
 (registry/deftool get-parameter-values
-  "Fetch the valid values for one filter on a dashboard or saved question, so you filter with real values instead of guessing. Pass target (\"dashboard\" or \"question\" — the latter accepts any card id: question, model, or metric), id (numeric or 21-char entity_id), and parameter_id from get_content's `parameters` (each lists id, name, type). Values come back as [value] pairs, or [value, display_label] when the column is remapped — filter with the first element, show the second. query searches a large list rather than paging it; constraints (dashboards only) chain-filters — pass the other filters' current selections keyed by parameter id to get only the values still valid alongside them. Paged with limit (default 100, max 1000) and offset. A parameter with nothing behind it (e.g. a free-text template tag) returns no values. A column-backed date parameter answers with its range instead of a value list — {kind: \"date\", min, max, distinct_dates, accepts} — where accepts is the grammar to write a value in (\"YYYY-MM-DD\", \"YYYY-MM-DD~YYYY-MM-DD\", \"past30days\", \"thisyear\") and min/max are the column's real first and last dates to write between. constraints narrow the range as they narrow a list; query, limit and offset don't apply to it. Pair with run_saved_question, which takes these values as its `parameters`."
+  "Fetch the valid values for one filter on a dashboard or saved question, so you filter with real values instead of guessing. Pass target (\"dashboard\" or \"question\" — the latter accepts any card id: question, model, or metric), id (numeric or 21-char entity_id), and parameter_id from get_content's `parameters` (each lists id, name and type; a dashboard's parameters also show any default and value source). Values come back as [value] pairs, or [value, display_label] when the column is remapped — filter with the first element, show the second. query searches a large list rather than paging it; constraints (dashboards only) chain-filters — pass the other filters' current selections keyed by parameter id to get only the values still valid alongside them. Paged with limit (default 100, max 1000) and offset. A parameter with nothing behind it (e.g. a free-text template tag) returns no values. A column-backed date parameter answers with its range instead of a value list — {kind: \"date\", min, max, distinct_dates, accepts} — where accepts is the grammar to write a value in (\"YYYY-MM-DD\", \"YYYY-MM-DD~YYYY-MM-DD\", \"past30days\", \"thisyear\") and min/max are the column's real first and last dates to write between. constraints narrow the range as they narrow a list; query, limit and offset don't apply to it. Pair with run_saved_question, which takes these values as its `parameters`."
   {:name           "get_parameter_values"
    :default-access :allowed
    :scope          metabot.scope/agent-content-read

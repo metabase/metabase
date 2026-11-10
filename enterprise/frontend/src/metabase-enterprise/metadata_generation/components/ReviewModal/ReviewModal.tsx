@@ -58,7 +58,7 @@ import {
   useStartMetadataGenerationRunMutation,
 } from "metabase-enterprise/api";
 import type {
-  ConcreteTableId,
+  TableId,
   DatabaseId,
   FieldId,
   MetadataGenerationApplyFailure,
@@ -332,8 +332,7 @@ type ReviewContentProps = {
 };
 
 function ReviewContent({ databaseId, tables, draft }: ReviewContentProps) {
-  const [selectedTableId, setSelectedTableId] =
-    useState<ConcreteTableId | null>(null);
+  const [selectedTableId, setSelectedTableId] = useState<TableId | null>(null);
   const [detailFieldId, setDetailFieldId] = useState<FieldId | null>(null);
   const [listWidth, setListWidth] = useState(DEFAULT_LIST_WIDTH);
   const [paneWidth, setPaneWidth] = useState(DEFAULT_PANE_WIDTH);
@@ -675,8 +674,8 @@ function getApplyFailureLabel(
 type TableListProps = {
   tables: MetadataGenerationProposalTable[];
   displayNames: Record<number, string>;
-  selectedTableId: ConcreteTableId;
-  onSelect: (tableId: ConcreteTableId) => void;
+  selectedTableId: TableId;
+  onSelect: (tableId: TableId) => void;
 };
 
 function TableList({

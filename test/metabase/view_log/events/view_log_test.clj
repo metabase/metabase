@@ -148,7 +148,7 @@
         (#'events.view-log/update-dashboard-last-viewed-at!* [{:id dashboard-id-1 :timestamp one-hour-ago}
                                                               {:id dashboard-id-1 :timestamp two-hours-ago}])
         (is (= one-hour-ago
-               (-> (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id-1)
+               (-> (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id-1)
                    t/offset-date-time
                    (.withNano 0))))))
     (testing "if the existing last_viewed_at is greater than the updating values, do not override it"
@@ -156,7 +156,7 @@
         [:model/Dashboard {dashboard-id-2 :id} {:last_viewed_at now}]
         (#'events.view-log/update-dashboard-last-viewed-at!* [{:id dashboard-id-2 :timestamp one-hour-ago}])
         (is (= now
-               (-> (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id-2)
+               (-> (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id-2)
                    t/offset-date-time
                    (.withNano 0))))))))
 
@@ -212,9 +212,9 @@
           (is (= 0 (:view_count card))
               "view_count should be 0 before the event is published")
           (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
-          (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card))))
+          (is (= 1 (t2/select-one-fn :view_count :model/Card :id (:id card))))
           (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
-          (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))))
+          (is (= 2 (t2/select-one-fn :view_count :model/Card :id (:id card)))))))))
 
 (deftest card-query-model-view-count-test
   (mt/test-helpers-set-global-values!
@@ -225,9 +225,9 @@
           (is (= 0 (:view_count model))
               "view_count should be 0 before the event is published")
           (events/publish-event! :event/card-query {:card-id (u/id model) :user-id (u/id user) :context :ad-hoc})
-          (is (= 1 (t2/select-one-fn :view_count :model/Card (u/id model))))
+          (is (= 1 (t2/select-one-fn :view_count :model/Card :id (u/id model))))
           (events/publish-event! :event/card-query {:card-id (u/id model) :user-id (u/id user) :context :ad-hoc})
-          (is (= 2 (t2/select-one-fn :view_count :model/Card (u/id model)))))))))
+          (is (= 2 (t2/select-one-fn :view_count :model/Card :id (u/id model)))))))))
 
 (deftest dashboard-read-view-count-test
   (mt/test-helpers-set-global-values!
@@ -241,11 +241,11 @@
             (is (= 0 (:view_count dashboard) (:view_count card))
                 "view_count should be 0 before the event is published")
             (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
-            (is (= 1 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))
-            (is (= 0 (t2/select-one-fn :view_count :model/Card (:id card)))
+            (is (= 1 (t2/select-one-fn :view_count :model/Dashboard :id (:id dashboard))))
+            (is (= 0 (t2/select-one-fn :view_count :model/Card :id (:id card)))
                 "view_count for cards on the dashboard should not be incremented")
             (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
-            (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))))))))
+            (is (= 2 (t2/select-one-fn :view_count :model/Dashboard :id (:id dashboard))))))))))
 
 (deftest table-read-view-count-test
   (mt/test-helpers-set-global-values!
@@ -256,10 +256,10 @@
           (is (= 0 (:view_count table))
               "view_count should be 0 before the event is published")
           (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
-          (is (= 1 (t2/select-one-fn :view_count :model/Table (:id table)))
+          (is (= 1 (t2/select-one-fn :view_count :model/Table :id (:id table)))
               "view_count should be incremented")
           (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
-          (is (= 2 (t2/select-one-fn :view_count :model/Table (:id table)))
+          (is (= 2 (t2/select-one-fn :view_count :model/Table :id (:id table)))
               "view_count should be incremented"))))))
 
 (deftest oversized-row-does-not-destroy-batch-test
@@ -315,12 +315,12 @@
         (is (= 2 ;; one for update card, one for table
                @call-count)
             "and groups db calls by frequency")
-        (is (= 1 (t2/select-one-fn :view_count :model/Table table-id))
+        (is (= 1 (t2/select-one-fn :view_count :model/Table :id table-id))
             "view_count for table-id should be 1")
-        (is (= 2 (t2/select-one-fn :view_count :model/Card card-1-id))
+        (is (= 2 (t2/select-one-fn :view_count :model/Card :id card-1-id))
             "view_count for card-1 should be 2")
         (is (= 4 ;; 2 old + 2 new
-               (t2/select-one-fn :view_count :model/Card card-2-id))
+               (t2/select-one-fn :view_count :model/Card :id card-2-id))
             "view_count for card-2 should be 2")))))
 
 ;;; ---------------------------------------- API tests begin -----------------------------------------

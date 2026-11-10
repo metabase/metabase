@@ -29,6 +29,7 @@ export const createMockDataAppGroup = (
   id: 1,
   name: "Support",
   member_count: 0,
+  is_tenant_group: false,
   ...opts,
 });
 

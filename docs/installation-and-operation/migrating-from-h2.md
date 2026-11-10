@@ -1,5 +1,6 @@
 ---
 title: Migrating to a production application database
+summary: Move your Metabase off the built-in H2 database to a production-ready PostgreSQL application database.
 redirect_from:
   - /docs/latest/operations-guide/migrating-from-h2
   - /docs/latest/operations-guide/running-migrations-manually

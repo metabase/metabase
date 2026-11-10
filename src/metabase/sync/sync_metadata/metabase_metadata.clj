@@ -56,8 +56,9 @@
        ;; TODO: this needs to support schemas
        (when-let [table-id (sync.db/active-table-id-by-name (u/the-id database) table-name)]
          (if field-name
-           (sync.db/update-field-by-name! table-id field-name {k value})
-           (sync.db/update-table! table-id {k value})))
+           (when-let [field-id (sync.db/field-id-by-name table-id field-name)]
+             (sync-util/update-field-unless-user-set! field-id {k value}))
+           (sync-util/update-table-unless-user-set! table-id {k value})))
        (sync.db/update-database! (u/the-id database) {k value})))))
 
 (mu/defn- sync-metabase-metadata-table!

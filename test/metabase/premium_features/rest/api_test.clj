@@ -4,8 +4,11 @@
    [clj-http.cookies :as cookies]
    [clojure.test :refer :all]
    [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.test-util :as premium-features.tu]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util.json :as json]
+   [metabase.util.retry :as retry])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -33,22 +36,71 @@
 
 (deftest post-token-refresh-test
   (testing "POST /api/premium-features/token/refresh"
-    (testing "clears cache and returns fresh token status"
-      (let [cleared? (atom false)]
-        (mt/with-dynamic-fn-redefs [premium-features/token-status           (constantly fake-token-status)
-                                    premium-features/premium-embedding-token (constantly nil)
-                                    token-check/clear-cache!                (fn [] (reset! cleared? true))]
+    (testing "refreshes and returns the fresh token status"
+      (let [refreshed? (atom false)]
+        (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly nil)
+                                    token-check/refresh-now!                (fn []
+                                                                              (reset! refreshed? true)
+                                                                              fake-token-status)]
           (is (=? (dissoc fake-token-status :trial)
                   (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
-          (is (true? @cleared?))))))
+          (is (true? @refreshed?))))))
   (testing "requires superusers"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 "premium-features/token/refresh"))))
   (testing "returns 404 if no token is set"
-    (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly nil)
+    (mt/with-dynamic-fn-redefs [token-check/refresh-now!                (constantly nil)
                                 premium-features/premium-embedding-token (constantly nil)]
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 "premium-features/token/refresh"))))))
+
+(deftest post-token-refresh-returns-fresh-status-test
+  (testing "POST /api/premium-features/token/refresh fetches from the store and returns what it said"
+    (let [entry  (var-get #'token-check/entry)
+          saved  @entry
+          status (atom {:valid true :status "ok" :features ["sandboxes"]})]
+      (try
+        (mt/with-temp-env-var-value! [mb-premium-embedding-token nil]
+          (mt/with-temporary-raw-setting-values [premium-embedding-token (premium-features.tu/random-token)]
+            (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _] {:status 200 :body (json/encode @status)})]
+              (is (=? {:valid true :features ["sandboxes"]}
+                      (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
+              (reset! status {:valid true :status "ok" :features ["sandboxes" "audit-app"]})
+              (is (=? {:valid true :features ["sandboxes" "audit-app"]}
+                      (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
+              (is (= #{"sandboxes" "audit-app"} (token-check/*token-features*))))))
+        (finally
+          (reset! entry saved))))))
+
+(deftest post-token-refresh-reports-a-failed-check-test
+  (testing "POST /api/premium-features/token/refresh reports a failed store call, while feature checks keep the held status"
+    (let [entry (var-get #'token-check/entry)
+          saved @entry
+          fail? (atom false)]
+      (try
+        (mt/with-temp-env-var-value! [mb-premium-embedding-token nil]
+          (mt/with-temporary-raw-setting-values [premium-embedding-token (premium-features.tu/random-token)]
+            (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
+                                                                 (if @fail?
+                                                                   (throw (ex-info "network failure!" {}))
+                                                                   {:status 200
+                                                                    :body   (json/encode {:valid    true
+                                                                                          :status   "ok"
+                                                                                          :features ["sandboxes"]})}))]
+              (is (=? {:valid true :features ["sandboxes"]}
+                      (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
+              (reset! fail? true)
+              (binding [retry/*test-time-config-hook* #(assoc % :initial-interval-millis 1 :max-interval-millis 2)]
+                (is (= {:valid         false
+                        :canonical?    false
+                        :status        "Unable to validate token"
+                        :error-details "network failure!"}
+                       (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh"))))
+              (is (premium-features/has-feature? :sandboxes))
+              (is (=? {:valid true :features ["sandboxes"]} (premium-features/token-status))))))
+        (finally
+          (.close ^dev.failsafe.CircuitBreaker @#'token-check/breaker)
+          (reset! entry saved))))))
 
 (deftest post-token-refresh-invalidates-llm-proxy-cache-test
   (testing "POST /api/premium-features/token/refresh invalidates the AI service token cache when explicitly configured"
@@ -59,7 +111,7 @@
             (mt/with-temporary-setting-values [llm-proxy-base-url  "https://proxy.example.com/llm/"
                                                ai-service-base-url "https://ai-service.example.com/"]
               (let [request* (atom nil)]
-                (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly fake-token-status)
+                (mt/with-dynamic-fn-redefs [token-check/refresh-now! (constantly fake-token-status)
                                             http/post                     (fn [url request-options]
                                                                             (reset! request* [url request-options])
                                                                             {:status 200})]
@@ -68,7 +120,7 @@
                     (is (= (str "https://ai-service.example.com/v1/invalidate-token-cache/" token) url))
                     (is (false? (:throw-exceptions opts))))))))))))
   (testing "POST /api/premium-features/token/refresh does not invalidate the AI service cache when it is not configured"
-    (mt/with-dynamic-fn-redefs [premium-features/token-status            (constantly fake-token-status)
+    (mt/with-dynamic-fn-redefs [token-check/refresh-now!                (constantly fake-token-status)
                                 premium-features/premium-embedding-token (constantly "proxy-token")
                                 http/post                                (fn [& _]
                                                                            (throw (ex-info "should not be called" {})))]
@@ -79,7 +131,7 @@
   (testing "POST /api/premium-features/token/refresh sets the premium-features-last-updated cookie"
     ;; user-real-request hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
     #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-    (with-redefs [premium-features/token-status            (constantly fake-token-status)
+    (with-redefs [token-check/refresh-now!                (constantly fake-token-status)
                   premium-features/premium-embedding-token (constantly nil)]
       (let [cs (cookies/cookie-store)]
         (mt/user-real-request :crowberto :post 200 "premium-features/token/refresh"
@@ -100,7 +152,7 @@
       (mt/with-premium-features #{:metabase-ai-managed}
         (mt/with-temp-env-var-value! [mb-premium-embedding-token nil]
           (mt/with-temporary-raw-setting-values [premium-embedding-token token]
-            (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly fake-token-status)
+            (mt/with-dynamic-fn-redefs [token-check/refresh-now! (constantly fake-token-status)
                                         http/post (fn [url opts] (reset! request* [url opts]) {:status 200})]
               (testing "a stored base URL gets no more than llm-allowed-networks allows"
                 (mt/with-temporary-setting-values [ai-service-base-url "http://10.0.0.1/"]

@@ -5,7 +5,6 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.util :as u]
-   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
@@ -62,8 +61,7 @@
   This is the handler for the /get-tables tool endpoint."
   [{:keys [database-id]}]
   {:structured-output
-   {:database (some-> (warehouses.db/database database-id)
-                      (select-keys [:id :name :description :engine]))
+   {:database (metabot.db/database-summary database-id)
     :tables   (database-tables database-id)}})
 
 (defn similar?

@@ -8,13 +8,12 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn active-table
   "The active Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id :active true))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -53,8 +52,7 @@
   fields. JSON child fields are excluded: SQL unfolding sets only `nfc_path`, Mongo sets `nfc_path` and `parent_id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select :model/Field
-             {:from     [(warehouse-schema-overlay/field-query)]
-              :where    (active-fields-where [:= :table_id table-id])
+             {:where    (active-fields-where [:= :table_id table-id])
               :order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn active-field-count :- ms/IntGreaterThanOrEqualToZero
@@ -62,9 +60,16 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (if (seq table-ids)
     (t2/count :model/Field
-              {:from  [(warehouse-schema-overlay/field-query)]
-               :where (active-fields-where [:in :table_id table-ids])})
+              {:where (active-fields-where [:in :table_id table-ids])})
     0))
+
+(mu/defn proposals-for-fields :- [:sequential (ms/InstanceOf :model/MetadataGenerationProposal)]
+  "The pending proposals of the Fields in `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (if (seq field-ids)
+    (t2/select [:model/MetadataGenerationProposal :field_id :attribute :proposed_value :reasoning :confidence]
+               :field_id [:in field-ids])
+    []))
 
 (mu/defn user-settings-by-field
   "A map of field id to its FieldUserSettings row, for the ids in `field-ids` that have one."
@@ -83,13 +88,11 @@
   tables that [[active-tables]] could return. Other ids have no row."
   [field-ids :- [:set ::lib.schema.id/field]]
   (let [fields (t2/select [:model/Field :id :name :table_id]
-                          {:from  [(warehouse-schema-overlay/field-query)]
-                           :where (active-fields-where [:in :id field-ids])})
+                          {:where (active-fields-where [:in :id field-ids])})
         tables (when (seq fields)
                  (into {} (map (juxt :id identity))
                        (t2/select [:model/Table :id :name :schema]
-                                  {:from  [(warehouse-schema-overlay/table-query)]
-                                   :where (active-tables-where [:in :id (into #{} (map :table_id) fields)])})))]
+                                  {:where (active-tables-where [:in :id (into #{} (map :table_id) fields)])})))]
     (into [] (keep (fn [{:keys [id name table_id]}]
                      (when-let [table (get tables table_id)]
                        {:id id :name name :table_name (:name table) :table_schema (:schema table)})))
@@ -98,22 +101,19 @@
 (mu/defn tables-by-id
   "A map of table id to the id, name, and schema of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (into {} (map (juxt :id identity)) (t2/select [:model/Table :id :name :schema] :id [:in table-ids]
-                                                {:from [(warehouse-schema-overlay/table-query)]})))
+  (into {} (map (juxt :id identity)) (t2/select [:model/Table :id :name :schema] :id [:in table-ids])))
 
 (mu/defn visible-table
   "The Table with `table-id` when [[active-tables]] could return it, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table {:from  [(warehouse-schema-overlay/table-query)]
-                               :where (active-tables-where [:= :id table-id])}))
+  (t2/select-one :model/Table {:where (active-tables-where [:= :id table-id])}))
 
 (mu/defn active-tables
   "The active Tables of `database-id` with no `visibility_type` as users see it, as sync selects them, ordered by
   schema then name."
   [database-id :- ::lib.schema.id/database]
   (t2/select :model/Table
-             {:from     [(warehouse-schema-overlay/table-query)]
-              :where    (active-tables-where [:= :db_id database-id])
+             {:where    (active-tables-where [:= :db_id database-id])
               :order-by [[:schema :asc] [:name :asc]]}))
 
 ;;; Metadata generation runs
@@ -191,7 +191,7 @@
                               (filter (fn [p]
                                         (let [id (existing ((juxt :field_id :attribute) p))]
                                           (or (nil? id)
-                                              (zero? (t2/update! :model/MetadataGenerationProposal id
+                                              (zero? (t2/update! :model/MetadataGenerationProposal :id id
                                                                  (select-keys p [:last_run_id :proposed_value
                                                                                  :confidence :reasoning])))))))
                               proposals))]
@@ -232,8 +232,8 @@
   generation selects, with the proposal table aliased `p`, the Table `t` and the Field `f`."
   [{:keys [database_id schema table_ids]}]
   {:from  [[:metadata_generation_proposal :p]]
-   :join  [(warehouse-schema-overlay/table-query {:alias :t}) [:= :t.id :p.table_id]
-           (warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :p.field_id]]
+   :join  [[(t2/table-name :model/Table) :t] [:= :t.id :p.table_id]
+           [(t2/table-name :model/Field) :f] [:= :f.id :p.field_id]]
    :where (cond-> [:and
                    (visible-table-where :t)
                    (visible-field-where :f)]
@@ -294,13 +294,12 @@
     (into {}
           (map (juxt :id identity))
           (t2/hydrate (t2/select :model/Field
-                                 {:from  [(warehouse-schema-overlay/field-query)]
-                                  :where [:and
+                                 {:where [:and
                                           [:in :id field-ids]
                                           (visible-field-where)
                                           [:in :table_id ^:allow-subquery
                                            {:select [:id]
-                                            :from   [(warehouse-schema-overlay/table-query)]
+                                            :from   [(t2/table-name :model/Table)]
                                             :where  (visible-table-where)}]]})
                       :can_write))
     {}))

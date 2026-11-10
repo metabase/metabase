@@ -12,7 +12,6 @@
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.warehouses.db :as warehouses.db]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
@@ -22,7 +21,7 @@
 
 (def ^String sample-database-name
   "Canonical name of the bundled Sample Database. Shared with consumers that need to
-  identify or validate the sample DB."
+  identify or validate the sample DB (e.g. workspace-manager config import)."
   "Sample Database")
 
 (def ^:private ^String sqlite-sample-database-filename "sample-database.sqlite")
@@ -106,7 +105,7 @@
     (let [engine (sample-database-engine)
           details (try-to-extract-sample-database! engine)
           db (if (sample-data.db/sample-database-exists?)
-               (warehouses.db/database (first (sample-data.db/set-sample-database-details! details)))
+               (sample-data.db/database (first (sample-data.db/set-sample-database-details! details)))
                (sample-data.db/insert-sample-database! sample-database-name details engine))]
       (log/debug "Syncing Sample Database...")
       (sync/sync-database! (u/the-id db)))

@@ -135,13 +135,10 @@ export async function checkReleaseArtifacts({
   return { ok: false, version, commit, missing, tagRun };
 }
 
-type Link = (text: string, url: string) => string;
-
-const plainLink: Link = (text, url) => `${text} (${url})`;
+const link = (text: string, url: string) => `${text} (${url})`;
 
 export function buildReleaseArtifactMismatchMessage(
   check: Extract<ReleaseArtifactCheck, { ok: false }>,
-  link: Link = plainLink,
 ) {
   const { version, commit, missing, tagRun } = check;
 

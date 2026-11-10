@@ -29,7 +29,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as methodical])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -153,8 +152,12 @@
 
   nil)
 
-(defn- database-for-action [action-or-id]
-  (actions.db/database-for-action (u/the-id action-or-id)))
+(defn- database-for-action
+  "The Database `action-or-id` runs against; an ad-hoc action, which has no ID, names it as its `:database_id`."
+  [action-or-id]
+  (if (and (map? action-or-id) (nil? (:id action-or-id)))
+    (some-> (:database_id action-or-id) actions.db/database)
+    (actions.db/database-for-action (u/the-id action-or-id))))
 
 (defn check-actions-enabled
   "Throws an appropriate error if actions are unsupported or disabled for the database the action runs against,
@@ -257,7 +260,7 @@
   "Uses cache to prevent redundant look-ups with an action call chain."
   [table-id]
   (assert table-id "Id cannot be nil")
-  (cached-database (cached-value [:table-by-db-ids table-id] #(:db_id (warehouse-schema.db/table table-id)))))
+  (cached-database (cached-value [:table-by-db-ids table-id] #(actions.db/table-database-id table-id))))
 
 (mu/defn- check-permissions
   [policy   :- :keyword

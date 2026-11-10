@@ -1,9 +1,9 @@
 (ns metabase.tiles.api
   "`/api/tiles` endpoints."
   (:require
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.dashboards.db :as dashboards.db]
    ;; TODO (Cam 10/10/25) -- update the tile API to use MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; tile API field refs are still legacy MBQL; keep the legacy schema until the MBQL 5 port above
@@ -14,10 +14,10 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.queries.db :as queries.db]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.tiles.db :as tiles.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -226,6 +226,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:zoom/:x/:y"
   "Generates a single tile image for an ad-hoc query."
+  {:scope api-scope/data-app}
   [{:keys [zoom x y]} :- [:map {:closed true}
                           [:zoom ms/Int]
                           [:x ms/Int]
@@ -295,6 +296,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a saved Card."
+  {:scope api-scope/data-app}
   [{:keys [card-id zoom x y]}
    :- [:map {:closed true}
        [:card-id ::lib.schema.id/card]
@@ -306,7 +308,7 @@
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
-  (process-tiles-query-for-card (api/check-404 (queries.db/card card-id))
+  (process-tiles-query-for-card (api/check-404 (tiles.db/card card-id))
                                 parameters zoom x y lat-field lon-field))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -315,6 +317,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a dashcard."
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id zoom x y], :as _route-params}
    :- [:map {:closed true}
        [:dashboard-id ::lib.schema.id/dashboard]
@@ -328,7 +331,7 @@
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
-  (process-tiles-query-for-dashcard (api/check-404 (dashboards.db/dashboard dashboard-id))
-                                    (api/check-404 (dashboards.db/dashboard-card dashcard-id))
-                                    (api/check-404 (queries.db/card card-id))
+  (process-tiles-query-for-dashcard (api/check-404 (tiles.db/dashboard dashboard-id))
+                                    (api/check-404 (tiles.db/dashcard dashcard-id))
+                                    (api/check-404 (tiles.db/card card-id))
                                     parameters zoom x y lat-field lon-field))

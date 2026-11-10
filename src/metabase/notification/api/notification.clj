@@ -14,7 +14,6 @@
    [metabase.notification.core :as notification]
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
-   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -160,7 +159,7 @@
        (filter #(#{:notification-recipient/user :notification-recipient/raw-value} ((comp keyword :type) %)))
        (map (fn [recipient]
               (if (= :notification-recipient/user ((comp keyword :type) recipient))
-                (or (-> recipient :user :email) (:email (users.db/user (:user_id recipient))))
+                (or (-> recipient :user :email) (notification.db/user-email (:user_id recipient)))
                 (-> recipient :details :value))))
        (remove nil?)
        set))
@@ -338,11 +337,7 @@
       (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
                                                               :user-id api/*current-user-id*}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/unsubscribe"
+(api.macros/defendpoint :post "/:id/unsubscribe" :- ::api/generic-204-no-content
   "Unsubscribe current user from a notification."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (unsubscribe-user! id api/*current-user-id*)

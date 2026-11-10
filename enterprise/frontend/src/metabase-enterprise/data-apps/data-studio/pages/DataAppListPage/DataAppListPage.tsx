@@ -24,9 +24,10 @@ import * as Urls from "metabase/urls";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
+import { getDataAppStatusLabel } from "../../../utils";
 import { DataAppMoreMenu } from "../../components/DataAppMoreMenu";
-import { getDataAppStatusLabel } from "../../utils";
 
+import { DataAppBuildGuide } from "./DataAppBuildGuide";
 import { DataAppListEmptyState } from "./DataAppListEmptyState";
 
 export function DataAppListPage() {
@@ -111,6 +112,7 @@ export function DataAppListPage() {
         <DataAppListEmptyState />
       ) : (
         <Stack style={{ overflow: "hidden" }}>
+          {!isLoading && <DataAppBuildGuide />}
           <TextInput
             placeholder={t`Search...`}
             leftSection={<Icon name="search" />}

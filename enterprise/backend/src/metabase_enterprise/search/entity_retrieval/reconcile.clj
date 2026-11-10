@@ -29,9 +29,7 @@
    [metabase-enterprise.search.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.search.semantic.embedding :as embedding]
    [metabase.collections.core :as collections]
-   [metabase.measures.db :as measures.db]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
-   [metabase.segments.db :as segments.db]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -206,8 +204,8 @@
         (#{"measure" "segment"} entity-type)
         ;; A measure/segment is a member only when its parent table is a current library table.
         (when-let [table-id (if (= entity-type "measure")
-                              (:table_id (measures.db/measure entity-local-id))
-                              (:table_id (segments.db/segment entity-local-id)))]
+                              (entity-retrieval.db/measure-table-id entity-local-id)
+                              (entity-retrieval.db/segment-table-id entity-local-id))]
           (when (seq (library-tables lib-ids table-id))
             (first (if (= entity-type "measure")
                      (library-measures [table-id] entity-local-id)

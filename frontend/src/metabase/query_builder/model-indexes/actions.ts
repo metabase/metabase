@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import type { Dispatch } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetColumn, Field, FieldReference } from "metabase-types/api";
+import type { DatasetColumn, FieldReference } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
 
 import {
@@ -14,11 +14,11 @@ import {
 
 import { getPkRef } from "./utils";
 
-export type FieldWithMaybeIndex = Field & {
+export type FieldWithMaybeIndex = DatasetColumn & {
   should_index?: boolean;
 };
 
-type FieldWithIndexAndRef = Field & {
+type FieldWithIndexAndRef = DatasetColumn & {
   should_index: boolean;
   field_ref: FieldReference;
 };
@@ -127,15 +127,9 @@ function getIndexIdsToRemove(
   return indexIdsToRemove;
 }
 
-export function cleanIndexFlags<T extends DatasetColumn | Field>(
-  fields: T[] = [],
-): T[] {
+export function cleanIndexFlags(fields: DatasetColumn[] = []): DatasetColumn[] {
   const indexesToClean = fields.reduce(
-    (
-      indexesToClean: number[],
-      field: FieldWithMaybeIndex | DatasetColumn,
-      thisIndex: number,
-    ) => {
+    (indexesToClean: number[], field: DatasetColumn, thisIndex: number) => {
       if ("should_index" in field && field.should_index !== undefined) {
         indexesToClean.push(thisIndex);
       }

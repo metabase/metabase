@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { jt, t } from "ttag";
@@ -148,7 +149,7 @@ function ActionsPopover({
       <Menu shadow="sm" width={200} position="bottom-end">
         <Menu.Target>
           <UnstyledButton aria-label={`group-action-button`}>
-            <Icon c="text-disabled" name="ellipsis" />
+            <Icon c="text-secondary" name="ellipsis" />
           </UnstyledButton>
         </Menu.Target>
         <Menu.Dropdown>
@@ -305,7 +306,7 @@ const ApiKeyCount = ({ apiKeys }: { apiKeys: ApiKey[] }) => {
     return null;
   }
   return (
-    <Box component="span" c="text-disabled">
+    <Box component="span" c="text-secondary">
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}

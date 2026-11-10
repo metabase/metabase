@@ -51,7 +51,7 @@
   can originate one. Permissions are participation-based — a conversation can
   have multiple participants (e.g. multiple users in a shared Slack thread)."
   [conversation-id]
-  (when-let [conversation (metabot.db/metabot-conversation conversation-id)]
+  (when-let [conversation (metabot.db/conversation conversation-id)]
     (api/check-403 (mi/can-read? conversation))))
 
 (defn- make-out-of-sync-fn
@@ -429,9 +429,7 @@
                         :ip-address (request/ip-address req)}]
     (streaming-request body* request-info)))
 
-(api.macros/defendpoint :post "/feedback"  :- [:map
-                                               [:status [:= 204]]
-                                               [:body :nil]]
+(api.macros/defendpoint :post "/feedback" :- ::api/generic-204-no-content
   "Persist Metabot feedback."
   [_route-params
    _query-params
@@ -445,9 +443,7 @@
   (metabot.feedback/persist-feedback! body)
   api/generic-204-no-content)
 
-(api.macros/defendpoint :post "/source-feedback" :- [:map
-                                                     [:status [:= 204]]
-                                                     [:body :nil]]
+(api.macros/defendpoint :post "/source-feedback" :- ::api/generic-204-no-content
   "Persist Metabot source feedback."
   [_route-params
    _query-params

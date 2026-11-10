@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import type { ExpandedState, Row } from "@tanstack/react-table";
 import {
   type ReactNode,
@@ -73,7 +74,7 @@ export function useLibraryTreeTableInstance({
           if (isEmptyStateData(data)) {
             return (
               <Flex align="center" gap="0.25rem" data-testid="empty-state-row">
-                <Text c="text-disabled" fz="inherit">
+                <Text c="text-secondary" fz="inherit">
                   {data.description}
                 </Text>
                 {!isRemoteSyncReadOnly && (
@@ -95,8 +96,8 @@ export function useLibraryTreeTableInstance({
                   <Group gap="sm" miw={0} align="center">
                     <Text truncate>{row.original.name}</Text>
                     <Group gap="xxs">
-                      <Icon name="collection" size={12} c="text-disabled" />
-                      <Text fz="xs" c="text-disabled" truncate>
+                      <Icon name="collection" size={12} c="text-secondary" />
+                      <Text fz="xs" c="text-secondary" truncate>
                         {row.original.parentCollectionName}
                       </Text>
                     </Group>

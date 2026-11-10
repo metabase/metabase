@@ -22,7 +22,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
-   [metabase.warehouses.db :as warehouses.db])
+   [metabase.workspaces.table-remapping :as ws.table-remapping])
   (:import
    (clojure.lang ITransientSet)))
 
@@ -184,7 +184,7 @@
    Throws an exception if there is already a table with the same name, schema and database ID."
   [database :- i/DatabaseInstance
    table    :- TableMetadata]
-  (insert-table! database table {:sample? (boolean (:is_sample (warehouses.db/database (:id database))))}))
+  (insert-table! database table {:sample? (sync.db/database-sample? (:id database))}))
 
 (mu/defn- reactivate-table!
   "Mark an existing inactive Table active again, refreshing its cruft-dependent columns. `existing`
@@ -193,20 +193,20 @@
   [database          :- i/DatabaseInstance
    existing          :- (ms/InstanceOf :model/Table)
    {:keys [sample?]} :- [:map {:closed true} [:sample? :boolean]]]
-  (sync.db/update-table! (:id existing)
-                         (cond-> (cruft-dependent-cols existing database ::reactivate)
-                           ;; do not unhide tables w/ cruft settings
-                           (some? (:visibility_type existing)) (dissoc :visibility_type)
-                           true                                (assoc :active true)
-                           sample?                             (assoc :data_authority :ingested
-                                                                      :data_source    :ingested))))
+  (sync-util/update-table-unless-user-set! (:id existing)
+                                           (cond-> (cruft-dependent-cols existing database ::reactivate)
+                                             ;; do not unhide tables w/ cruft settings
+                                             (some? (:visibility_type existing)) (dissoc :visibility_type)
+                                             true                                (assoc :active true)
+                                             sample?                             (assoc :data_authority :ingested
+                                                                                        :data_source    :ingested))))
 
 (mu/defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if a matching inactive one exists."
   [database :- i/DatabaseInstance
    {schema :schema table-name :name :as table} :- TableMetadata]
   (if-let [existing (sync.db/inactive-table-by-schema-and-name (u/the-id database) schema table-name)]
-    (reactivate-table! database existing {:sample? (boolean (:is_sample (warehouses.db/database (u/the-id database))))})
+    (reactivate-table! database existing {:sample? (sync.db/database-sample? (u/the-id database))})
     (create-table! database table)))
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
@@ -311,7 +311,7 @@
                  v))
     (boolean
      (when (seq changes)
-       (sync.db/update-table! (:id metabase-table) changes)
+       (sync-util/update-table-unless-user-set! (:id metabase-table) changes)
        true))))
 
 (mu/defn- update-tables-metadata-if-needed! :- :int
@@ -445,7 +445,8 @@
 
   Captures any `_metabase_metadata` table(s) from the raw batch (for the downstream metabase-metadata
   step), then narrows the batch -- dropping tables we never sync, collapsing duplicate `(name, schema)`,
-  and dropping names too long for the app DB -- and creates/reactivates new tables
+  dropping names too long for the app DB, and dropping workspace-isolated tables (they back canonical
+  Tables via remap, so they get no `:model/Table` of their own) -- and creates/reactivates new tables
   and updates metadata on existing ones. The reconcile is error-handled per batch: on failure we log,
   skip the batch, and mark the sync incomplete so retirement is skipped."
   [database :- i/DatabaseInstance
@@ -455,7 +456,8 @@
   (letfn [(reconcile! []
             (let [tables         (as-> batch <>
                                    (into #{} (comp (remove ignore-table?) (m/distinct-by table-name+schema)) <>)
-                                   (remove-tables-with-too-long-names database <>))
+                                   (remove-tables-with-too-long-names database <>)
+                                   (ws.table-remapping/filter-workspace-side-tables <> (u/the-id database)))
                   existing       (existing-tables-by-name+schema database tables)
                   existing-row   #(get existing (table-name+schema %))
                   already-active (into #{} (filter #(:active (existing-row %))) tables)
@@ -495,9 +497,10 @@
 
 (mu/defn- retire-unseen-tables! :- :int
   "Retire active app-DB tables the warehouse no longer reports. `seen` holds the `:model/Table` id of
-  every table reconciled this sync (accumulated by [[sync-table-batch!]]). Streams the active app-DB
-  table ids and retires, a batch at a time, the ones not in `seen` -- so we never hold either the full
-  active set or the full retire set in memory. Returns the number retired."
+  every table reconciled this sync (accumulated by [[sync-table-batch!]], including the injected
+  workspace-canonical tuples). Streams the active app-DB table ids and retires, a batch at a time, the
+  ones not in `seen` -- so we never hold either the full active set or the full retire set in memory.
+  Returns the number retired."
   [database :- i/DatabaseInstance
    seen     :- [:set ::lib.schema.id/table]]
   (transduce
@@ -536,9 +539,10 @@
            context  (transduce (partition-all table-sync-batch-size)
                                (completing reconcile-batch)
                                {:created 0, :updated 0, :complete? true
-                                :sample? (boolean (:is_sample (warehouses.db/database (:id database))))
+                                :sample? (sync.db/database-sample? (:id database))
                                 :seen (transient #{}), :metabase-metadata []}
                                (:tables db-metadata))
+           context  (reconcile-batch context (ws.table-remapping/inject-workspace-canonical-tuples [] (u/the-id database)))
            {:keys [created updated complete?]} context]
        (when-let [holder (:metabase-metadata-tables db-metadata)]
          (vreset! holder (:metabase-metadata context)))

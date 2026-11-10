@@ -19,6 +19,7 @@
      subscription reads cover live Pulse rows and rows migrated to the notification API."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -36,12 +37,10 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
-   [metabase.notification.db :as notification.db]
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -182,7 +181,7 @@
    or nil when the stored definition can't be serialized."
   [kind row]
   (try
-    (let [table          (warehouse-schema.db/table (:table_id row))
+    (let [table          (mcp.db/table-by-id (:table_id row))
           mp             (lib-be/application-database-metadata-provider (:db_id table))
           metadata       (case kind
                            :measure (lib.metadata/measure mp (:id row))
@@ -396,15 +395,16 @@
                             u/remove-nils))
                       dashcards)}))
 
-;;; ----------------------------------------------------- alert ----------------------------------------------------
+(defn- dashboard-parameters
+  "The `parameters` include: each stored parameter with every property, and the ids of the dashcards wired to it.
+   The concise row shows only some of those properties."
+  [row]
+  (let [dash                   (::dashboard row)
+        param-id->dashcard-ids (projections/parameter-dashcard-ids dash)]
+    {:parameters (mapv #(m/assoc-some % :dashcard_ids (param-id->dashcard-ids (u/qualified-name (:id %))))
+                       (:parameters dash))}))
 
-(defn- notification-of-type
-  "The Notification with `id` if its payload type is `payload-type`, or nil."
-  [id payload-type]
-  (when (pos-int? id)
-    (let [notification (notification.db/notification id)]
-      (when (= payload-type (:payload_type notification))
-        notification))))
+;;; ----------------------------------------------------- alert ----------------------------------------------------
 
 (defn- fetch-notification
   "Fetch + read-check one notification row of `payload-type` by numeric id. Notifications have
@@ -413,7 +413,7 @@
   (when-not (int? id-or-eid)
     (common/throw-teaching-error
      (message/msg ["%s take a numeric id — they have no entity_id."] plural)))
-  (let [notification (notification-of-type id-or-eid payload-type)]
+  (let [notification (mcp.db/notification-by-payload-type id-or-eid payload-type)]
     (when-not (and notification (mi/can-read? notification))
       (common/throw-not-found (keyword tool-type) id-or-eid))
     (projections/notification-row
@@ -445,7 +445,7 @@
           (projections/subscription-row (redaction/redact-pulse pulse-row))
           (common/throw-not-found :subscription id-or-eid)))
       (or (when (int? id-or-eid)
-            (let [notification (notification-of-type id-or-eid :notification/dashboard)]
+            (let [notification (mcp.db/notification-by-payload-type id-or-eid :notification/dashboard)]
               (when (and notification (mi/can-read? notification))
                 (projections/notification-row
                  (redaction/hydrate-and-redact-notification notification)))))
@@ -518,7 +518,7 @@
    "segment"      {:fetch #(fetch-measure-or-segment :model/Segment %)
                    :includes {"definition" (definition-include #(measure-or-segment-definition :segment %))}}
    "dashboard"    {:fetch fetch-dashboard
-                   :includes {"parameters" (fn [row] {:parameters (vec (:parameters row))})
+                   :includes {"parameters" dashboard-parameters
                               "layout"     (fn [row] {:layout (dashboard-layout row)})}}
    "document"     {:fetch fetch-document
                    :includes {"layout"   (fn [row] {:layout (document-layout row)})

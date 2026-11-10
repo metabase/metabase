@@ -74,7 +74,6 @@ import {
   selectTimelineEvents,
   setCurrentState,
   setDatasetEditorTab,
-  setDatasetQuery,
   setDidFirstNonTableChartRender,
   setIsShowingSnippetSidebar,
   setLimit,
@@ -83,6 +82,7 @@ import {
   setNativeEditorSelectedRange,
   setNotebookNativePreviewSidebarWidth,
   setParameterValueToDefault,
+  setQuery,
   setQueryBuilderMode,
   setSnippetCollectionId,
   setTemplateTag,
@@ -120,7 +120,7 @@ import {
   getCard,
   getDataReferenceStack,
   getDocumentTitle,
-  getEmbeddedParameterVisibility,
+  getEmbeddedParameterVisibilityGetter,
   getFirstQueryResult,
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
@@ -222,8 +222,7 @@ const mapStateToProps = (state: State) => {
       "non-table-chart-generated",
     ),
 
-    getEmbeddedParameterVisibility: (slug: string) =>
-      getEmbeddedParameterVisibility(state, slug),
+    getEmbeddedParameterVisibility: getEmbeddedParameterVisibilityGetter(state),
   };
 };
 
@@ -275,7 +274,7 @@ const mapDispatchToProps = {
   selectTimelineEvents,
   setCurrentState,
   setDatasetEditorTab,
-  setDatasetQuery,
+  setQuery,
   setDidFirstNonTableChartRender,
   setIsShowingSnippetSidebar,
   setLimit,

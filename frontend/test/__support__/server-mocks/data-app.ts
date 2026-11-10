@@ -8,12 +8,17 @@ import type {
   GroupId,
 } from "metabase-types/api";
 
-export function setupListDataAppsEndpoint(apps: DataApp[], delay?: number) {
+import type { MockResponse } from "./types";
+
+export function setupListDataAppsEndpoint(
+  apps: MockResponse<DataApp[]>,
+  delay?: number,
+) {
   fetchMock.get("path:/api/ee/apps", apps, { delay });
 }
 
-export function setupListDataAppsEndpointWithError(error: string) {
-  fetchMock.get("path:/api/ee/apps", { status: 500, body: error });
+export function setupDataAppEndpoint(app: DataApp) {
+  fetchMock.get(`path:/api/ee/apps/${app.name}`, app);
 }
 
 export function setupDataAppRepoStatusEndpoint(status: DataAppRepoStatus) {
@@ -26,10 +31,6 @@ export function setupDataAppRepoStatusEndpointWithError(error: string) {
 
 export function setupUpdateDataAppEndpoint(app: DataApp) {
   fetchMock.put(`path:/api/ee/apps/${app.name}`, app);
-}
-
-export function setupDeleteDataAppEndpoint(name: string) {
-  fetchMock.delete(`path:/api/ee/apps/${name}`, 204);
 }
 
 export function setupDataAppGroupsEndpoint(

@@ -154,6 +154,21 @@ const shouldAddLatestTag = ({
   return majorVersion === latestMajorVersion;
 };
 
+export const getRollingTagsForVersion = ({
+  version,
+  isLatest,
+  isLts,
+}: {
+  version: string;
+  isLatest: boolean;
+  isLts: boolean;
+}) => [
+  ...(isLatest ? ["latest"] : []),
+  ...(isLts ? [getLtsTag(version)] : []),
+  getDotXs(version, 1),
+  ...(getVersionType(version) !== "major" ? [getDotXs(version, 2)] : []),
+];
+
 export const getExtraTagsForVersion = async ({
   version,
   latestMajorVersion,
@@ -161,25 +176,20 @@ export const getExtraTagsForVersion = async ({
   version: string;
   latestMajorVersion?: string;
 }) => {
-  const ossVersion = getOSSVersion(version);
-  const eeVersion = getEnterpriseVersion(version);
-  const versionType = getVersionType(version);
-
-  // eg. v0.23.x / v1.23.x
-  const baseTags = [getDotXs(ossVersion, 1), getDotXs(eeVersion, 1)];
-  // eg. v0.23.4.x / v1.23.4.x
-  const minorTags =
-    versionType !== "major"
-      ? [getDotXs(ossVersion, 2), getDotXs(eeVersion, 2)]
-      : [];
+  const isLatest = shouldAddLatestTag({ version, latestMajorVersion });
+  const isLts = await isLtsVersion({ version });
 
   return [
-    ...baseTags,
-    ...minorTags,
-    ...(shouldAddLatestTag({ version, latestMajorVersion }) ? ["latest"] : []),
-    ...((await isLtsVersion({ version }))
-      ? [getLtsTag(ossVersion), getLtsTag(eeVersion)]
-      : []),
+    ...getRollingTagsForVersion({
+      version: getOSSVersion(version),
+      isLatest,
+      isLts,
+    }),
+    ...getRollingTagsForVersion({
+      version: getEnterpriseVersion(version),
+      isLatest: false,
+      isLts,
+    }),
   ];
 };
 

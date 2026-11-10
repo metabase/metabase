@@ -3,9 +3,12 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCreateGlossaryEndpoint,
+  setupCreateGlossaryEndpointWithError,
   setupDeleteGlossaryEndpoint,
+  setupDeleteGlossaryEndpointWithError,
   setupListGlossaryEndpoint,
   setupUpdateGlossaryEndpoint,
+  setupUpdateGlossaryEndpointWithError,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -15,8 +18,19 @@ import { createMockUser } from "metabase-types/api/mocks";
 
 import { GlossaryContainer } from "./GlossaryContainer";
 
+// The API returns more than the editable fields, and none of the extras belong in a request body
+const SERVER_FIELDS = {
+  created_at: "2026-11-03T12:00:00Z",
+  creator_id: 1,
+};
+
 const GLOSSARY: GlossaryItem[] = [
-  { id: 1, term: "ARR", definition: "Annual recurring revenue" },
+  {
+    id: 1,
+    term: "ARR",
+    definition: "Annual recurring revenue",
+    ...SERVER_FIELDS,
+  },
 ];
 
 type SetupOpts = {
@@ -37,10 +51,12 @@ const setup = ({ canWrite, getGlossary = () => GLOSSARY }: SetupOpts) => {
       currentUser: createMockUser(),
     }),
     withRouter: true,
+    withUndos: true,
   });
 };
 
-const getNewTermButton = () => screen.queryByRole("button", { name: /term/i });
+const getNewTermButton = () =>
+  screen.queryByRole("button", { name: /new term/i });
 
 const getTable = () => screen.getByRole("table");
 
@@ -59,12 +75,14 @@ const BOAT: GlossaryItem = {
   id: 7,
   term: "Boat",
   definition: "A small vessel for traveling on water.",
+  ...SERVER_FIELDS,
 };
 
 const KITTEN: GlossaryItem = {
   id: 7,
   term: "Kitten",
   definition: "Young cat",
+  ...SERVER_FIELDS,
 };
 
 async function assertCreateGlossaryTermFlow(server: GlossaryServer) {
@@ -77,17 +95,19 @@ async function assertCreateGlossaryTermFlow(server: GlossaryServer) {
   await userEvent.type(screen.getByPlaceholderText(/boat/i), "  Boat  ");
   await userEvent.type(
     screen.getByPlaceholderText(/a small vessel.*/i),
-    "  A small vessel for traveling on water.  ",
+    "  A small vessel for traveling on water.  {Enter}",
   );
-  await userEvent.click(screen.getByLabelText("Save"));
 
   await waitFor(() =>
     expect(
       fetchMock.callHistory.called("path:/api/glossary", { method: "POST" }),
     ).toBe(true),
   );
-  // The row shown while the request is pending is replaced by the server's row.
+  // The pending row is read-only until the server's row replaces it
   const pendingTerm = within(getTable()).getByText("Boat");
+  expect(
+    within(getTable()).queryByDisplayValue("Boat"),
+  ).not.toBeInTheDocument();
   server.glossary = [BOAT];
   createResponse.resolve(BOAT);
   await waitFor(() => expect(pendingTerm).not.toBeInTheDocument());
@@ -96,34 +116,49 @@ async function assertCreateGlossaryTermFlow(server: GlossaryServer) {
     term: "Boat",
     definition: "A small vessel for traveling on water.",
   });
-  expect(within(getTable()).getByText("Boat")).toBeInTheDocument();
+  expect(within(getTable()).getByDisplayValue("Boat")).toBeInTheDocument();
   expect(
-    within(getTable()).getByText("A small vessel for traveling on water."),
+    within(getTable()).getByDisplayValue(
+      "A small vessel for traveling on water.",
+    ),
   ).toBeInTheDocument();
+  expect(await screen.findByText("Term added")).toBeInTheDocument();
 }
 
 async function assertUpdateGlossaryTermFlow(server: GlossaryServer) {
   setupUpdateGlossaryEndpoint(KITTEN);
 
-  await userEvent.click(within(getTable()).getByText("Boat"));
-  await userEvent.clear(screen.getByPlaceholderText(/boat/i));
-  await userEvent.type(screen.getByPlaceholderText(/boat/i), "Kitten");
-  await userEvent.clear(screen.getByPlaceholderText(/a small vessel.*/i));
-  await userEvent.type(
-    screen.getByPlaceholderText(/a small vessel.*/i),
-    "Young cat",
+  server.glossary = [{ ...BOAT, term: KITTEN.term }];
+  const term = within(getTable()).getByDisplayValue("Boat");
+  await userEvent.clear(term);
+  await userEvent.type(term, "Kitten{Enter}");
+  await waitFor(() =>
+    expect(getRequestBody("path:/api/glossary/7", "PUT")).toEqual({
+      term: "Kitten",
+      definition: "A small vessel for traveling on water.",
+    }),
   );
-  server.glossary = [KITTEN];
-  await userEvent.click(screen.getByRole("button", { name: /save/i }));
 
+  server.glossary = [KITTEN];
+  const definition = within(getTable()).getByDisplayValue(
+    "A small vessel for traveling on water.",
+  );
+  await userEvent.clear(definition);
+  await userEvent.type(definition, "Young cat{Enter}");
   await waitFor(() =>
     expect(getRequestBody("path:/api/glossary/7", "PUT")).toEqual({
       term: "Kitten",
       definition: "Young cat",
     }),
   );
-  expect(await within(getTable()).findByText("Kitten")).toBeInTheDocument();
-  expect(within(getTable()).getByText("Young cat")).toBeInTheDocument();
+
+  expect(
+    await within(getTable()).findByDisplayValue("Kitten"),
+  ).toBeInTheDocument();
+  expect(within(getTable()).getByDisplayValue("Young cat")).toBeInTheDocument();
+  await waitFor(() =>
+    expect(screen.getAllByText("Term updated")).toHaveLength(2),
+  );
 }
 
 async function assertDeleteGlossaryTermFlow(server: GlossaryServer) {
@@ -147,15 +182,18 @@ async function assertDeleteGlossaryTermFlow(server: GlossaryServer) {
     ).toBe(true),
   );
   await waitFor(() =>
-    expect(within(getTable()).queryByText("Kitten")).not.toBeInTheDocument(),
+    expect(
+      within(getTable()).queryByDisplayValue("Kitten"),
+    ).not.toBeInTheDocument(),
   );
+  expect(await screen.findByText("Term deleted")).toBeInTheDocument();
 }
 
 describe("GlossaryContainer", () => {
   it("lets the user manage the glossary when the API reports it as writable", async () => {
     setup({ canWrite: true });
 
-    expect(await screen.findByText("ARR")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("ARR")).toBeInTheDocument();
     expect(getNewTermButton()).toBeInTheDocument();
   });
 
@@ -163,6 +201,7 @@ describe("GlossaryContainer", () => {
     setup({ canWrite: false });
 
     expect(await screen.findByText("ARR")).toBeInTheDocument();
+    expect(within(getTable()).queryByRole("textbox")).not.toBeInTheDocument();
     expect(getNewTermButton()).not.toBeInTheDocument();
   });
 
@@ -175,5 +214,74 @@ describe("GlossaryContainer", () => {
     await assertUpdateGlossaryTermFlow(server);
 
     await assertDeleteGlossaryTermFlow(server);
+  });
+
+  it("keeps the typed term in the new row and reports the error when adding it fails", async () => {
+    setup({ canWrite: true });
+    setupCreateGlossaryEndpointWithError();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /new term/i }),
+    );
+    await userEvent.type(screen.getByPlaceholderText(/boat/i), "Boat");
+    await userEvent.type(
+      screen.getByPlaceholderText(/a small vessel.*/i),
+      "A small vessel{Enter}",
+    );
+
+    expect(await screen.findByText("Failed to add term")).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText(/boat/i)).toHaveValue("Boat");
+    expect(screen.getByPlaceholderText(/a small vessel.*/i)).toHaveValue(
+      "A small vessel",
+    );
+    expect(
+      screen.queryByText("This term already exists in the Glossary"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(getTable()).getAllByRole("textbox", { name: "Term" }),
+    ).toHaveLength(2);
+  });
+
+  it("reverts the field and reports the error when updating fails", async () => {
+    setup({ canWrite: true });
+    setupUpdateGlossaryEndpointWithError(GLOSSARY[0].id);
+
+    const term = await within(getTable()).findByDisplayValue("ARR");
+    await userEvent.clear(term);
+    await userEvent.type(term, "MRR{Enter}");
+
+    expect(
+      await screen.findByText("Failed to update term"),
+    ).toBeInTheDocument();
+    expect(
+      await within(getTable()).findByDisplayValue("ARR"),
+    ).toBeInTheDocument();
+    expect(
+      within(getTable()).queryByDisplayValue("MRR"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the entry and reports the error when deleting fails", async () => {
+    setup({ canWrite: true });
+    setupDeleteGlossaryEndpointWithError(GLOSSARY[0].id);
+
+    await userEvent.click(
+      await within(getTable()).findByRole("button", { name: /delete/i }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: /delete/i,
+      }),
+    );
+
+    expect(
+      await screen.findByText("Failed to delete term"),
+    ).toBeInTheDocument();
+    expect(
+      await within(getTable()).findByDisplayValue("ARR"),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
   });
 });

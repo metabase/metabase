@@ -7,9 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
-   [metabase.collections.core :as collections]
    [metabase.config.core :as config]
-   [metabase.data-apps.core :as data-apps]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.search.config :as search.config]
@@ -129,11 +127,7 @@
     {:message (search/init-index! {:force-reset? true})}
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/force-reindex"
+(api.macros/defendpoint :post "/force-reindex" :- [:map {:closed true} [:message :string]]
   "This will trigger an immediate reindexing, if we are using search index."
   []
   (api/check-superuser)
@@ -300,18 +294,6 @@
     :include-metadata?                   include-metadata
     :display-type                        (set display-type)}))
 
-(defn- data-app-search-params
-  "`query-params` narrowed, for a data-app `request`, to the Library's content; without a Library, the search looks for
-  tables in the Trash, which holds none."
-  [request query-params]
-  (if (data-apps/request-data-app request)
-    (if-let [library (collections/library-collection)]
-      (assoc query-params :collection (:id library))
-      (-> query-params
-          (dissoc :ids)
-          (assoc :models ["table"] :collection (collections/trash-collection-id))))
-    query-params))
-
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
@@ -350,9 +332,7 @@
   A search query that has both filters applied will only return models and cards."
   {:scope api-scope/data-app}
   [_route-params
-   query-params :- search-request-schema
-   _body
-   request]
+   query-params :- search-request-schema]
   (api/check-valid-page-params (request/limit) (request/offset))
   ;; tuning/diagnostic knobs are admin-only: explain re-executes the vector scan and counts the whole index
   ;; table per request, and the scan-budget knobs let a request inflate its own cost
@@ -361,7 +341,7 @@
             (some? (:vector_search_explain query-params)))
     (api/check-superuser))
   (try
-    (u/prog1 (search/search (params->search-context (data-app-search-params request query-params)))
+    (u/prog1 (search/search (params->search-context query-params))
       (analytics/inc! :metabase-search/response-ok)
       (analytics/observe! :metabase-search/response-results (:total <>)))
     (catch Exception e

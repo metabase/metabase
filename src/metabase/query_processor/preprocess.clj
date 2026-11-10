@@ -109,6 +109,7 @@
    #'optimize-temporal-clauses/optimize-temporal-clauses
    #'limit/add-default-limit
    #'qp.middleware.enterprise/apply-download-limit
+   #'qp.middleware.enterprise/apply-workspace-remapping
    #'check-features/check-features])
 
 (def ^:private ^Long slow-middleware-warning-threshold-ms

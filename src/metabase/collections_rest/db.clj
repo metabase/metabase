@@ -4,8 +4,12 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
+
+(mu/defn collection
+  "The Collection with `id`, or nil."
+  [id :- [:maybe ::lib.schema.id/collection]]
+  (t2/select-one :model/Collection :id id))
 
 (mu/defn directly-archived-descendant-collections
   "The directly archived Collections whose location starts with `location-prefix`."
@@ -37,7 +41,7 @@
   "The distinct `:collection_id`s of the published, unarchived Tables."
   []
   (t2/query {:select-distinct [:collection_id]
-             :from            [(warehouse-schema-overlay/table-query)]
+             :from            [(t2/table-name :model/Table)]
              :where           [:and
                                [:= :is_published true]
                                [:= :archived_at nil]]}))

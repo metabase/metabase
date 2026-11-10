@@ -43,14 +43,14 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (let [target-type "table"
-            schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            schema      (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
         (with-transform-cleanup! [{table1-name :name :as target1} {:type   target-type
                                                                    :schema schema
                                                                    :name   "g_products"}
                                   {table2-name :name :as target2} {:type   target-type
                                                                    :schema schema
                                                                    :name   "gizmo_products"}]
-          (let [table-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
+          (let [table-name (t2/select-one-fn :name :model/Table :id (mt/id :transforms_products))
                 t1-query (make-query table-name "category" lib/starts-with "G")]
             (mt/with-temp [:model/Transform t1 {:name   "transform1"
                                                 :source {:type  :query
@@ -80,7 +80,7 @@
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :left-join]})
     (mt/dataset transforms-dataset/transforms-test
       (let [target-type "table"
-            schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            schema      (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
         (with-transform-cleanup! [no-limit-table {:type   target-type
                                                   :schema schema
                                                   :name   "widgets_daily_no_limit"}
@@ -213,7 +213,7 @@
                               (lib/order-by products-id :asc))]
                 (testing "user without create schema permissions should be able to create tables in existing schema"
                   (with-transform-cleanup! [target-table {:type   "table"
-                                                          :schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                                                          :schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))
                                                           :name   "widget_products"}]
                     (mt/with-temp [:model/Transform transform {:name   "transform"
                                                                :source {:type  :query
@@ -253,7 +253,7 @@
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
     (mt/with-premium-features #{:database-routing}
       (with-transform-cleanup! [target-table {:type   :table
-                                              :schema (t2/select-one-fn :schema :model/Table (mt/id :products))
+                                              :schema (t2/select-one-fn :schema :model/Table :id (mt/id :products))
                                               :name   "products"}]
         (let [mp (mt/metadata-provider)
               products (lib.metadata/table mp (mt/id :products))
@@ -412,7 +412,7 @@
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
     (mt/with-premium-features #{:database-routing}
       (with-transform-cleanup! [target-table {:type   :table
-                                              :schema (t2/select-one-fn :schema :model/Table (mt/id :products))
+                                              :schema (t2/select-one-fn :schema :model/Table :id (mt/id :products))
                                               :name   "products"}]
         (let [mp (mt/metadata-provider)
               products (lib.metadata/table mp (mt/id :products))
@@ -445,7 +445,7 @@
                 password      (:password details)
                 readonly-user (u/lower-case-en (mt/random-name))
                 spec          (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
-                schema        (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                schema        (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))
                 make-widget-query
                 (fn [mp]
                   (let [transforms-products (lib.metadata/table mp (mt/id :transforms_products))
@@ -517,10 +517,10 @@
         (mt/dataset transforms-dataset/transforms-test
           (let [db-id               (mt/id)
                 transform-cache-key [db-id :transform]
-                schema              (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                schema              (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))
                 old-write-details   (:write_data_details (mt/db))]
             (when-not old-write-details
-              (t2/update! :model/Database db-id {:write_data_details (:details (mt/db))}))
+              (t2/update! :model/Database :id db-id {:write_data_details (:details (mt/db))}))
             (try
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
               (testing "transform pool does not exist before transform execution"
@@ -542,7 +542,7 @@
                     (testing "transform pool is created during transform execution"
                       (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool transform-cache-key))))))
               (finally
-                (t2/update! :model/Database db-id {:write_data_details old-write-details})
+                (t2/update! :model/Database :id db-id {:write_data_details old-write-details})
                 (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))))))))))
 
 (deftest transform-run-refreshes-target-stats-test
@@ -551,8 +551,8 @@
     ;; The ANALYZE effect is observable on Postgres (Redshift inherits the same impl); assert it here.
     (mt/test-driver :postgres
       (mt/dataset transforms-dataset/transforms-test
-        (let [schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
-              source-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
+        (let [schema      (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))
+              source-name (t2/select-one-fn :name :model/Table :id (mt/id :transforms_products))
               admin-spec  (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               ;; A table has one pg_statistic row per analyzed column; a never-analyzed CTAS table has none.
               analyzed-column-count

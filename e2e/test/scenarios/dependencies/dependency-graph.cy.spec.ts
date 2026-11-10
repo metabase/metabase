@@ -748,11 +748,6 @@ function verifyCardDependentsNavigation({
     groupTitle: "1 SQL snippet",
     dependentItemTitle: names.snippet,
   });
-  verifyPanelNavigation({
-    itemTitle,
-    groupTitle: "1 data action",
-    dependentItemTitle: names.action,
-  });
 }
 
 function getElementCenter(element: HTMLElement) {
@@ -963,7 +958,6 @@ function getCardBasedDependentNames(namePrefix: string) {
     metric: `${namePrefix} metric`,
     transform: `${namePrefix} transform`,
     snippet: `${namePrefix} snippet`,
-    action: `${namePrefix} data action`,
   };
 }
 
@@ -1000,7 +994,6 @@ function createCardBasedDependents({
     name: names.snippet,
     content: `{{#${cardId}}}`,
   });
-  createCardBasedAction({ name: names.action, cardId });
 }
 
 function createMetricBasedCard({
@@ -1261,22 +1254,6 @@ function createSnippetBasedAction({
     name: SNIPPET_BASED_ACTION_NAME,
     query: `DELETE FROM ${tableName} WHERE {{snippet: ${snippetName}}}`,
     templateTags: getSnippetTemplateTags({ snippetId, snippetName }),
-  });
-}
-
-function createCardBasedAction({
-  name,
-  cardId,
-}: {
-  name: string;
-  cardId: CardId;
-}) {
-  return createDataAction({
-    name,
-    query: `DELETE FROM ${TABLE_NAME} WHERE id IN (SELECT id FROM {{#${cardId}}})`,
-    templateTags: {
-      [`#${cardId}`]: { type: "card", "card-id": cardId },
-    },
   });
 }
 

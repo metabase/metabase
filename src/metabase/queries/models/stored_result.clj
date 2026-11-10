@@ -9,20 +9,18 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.query-permissions.core :as query-perms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.tools.default-fields :as t2.default-fields]))
+   [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/StoredResult [_model] :stored_result)
 
 (t2/deftransforms :model/StoredResult
-  {:result_data       (mi/transform-secret-value "stored_result.result_data")
-   :dataset_query     mi/transform-json
-   :data_access_token perms/data-access-token-transform})
+  {:result_data         (mi/transform-secret-value "stored_result.result_data")
+   :dataset_query       mi/transform-json
+   :data_access_token   perms/data-access-token-transform
+   :resolved_source_ids query-perms/resolved-source-ids-transform})
 
 (doto :model/StoredResult
   (derive :metabase/model)
   (derive :hook/timestamped?))
-
-(t2.default-fields/define-default-fields :model/StoredResult
-  [:id :creator_id :database_id :dataset_query :data_access_token :row_count :created_at :updated_at])

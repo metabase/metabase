@@ -79,10 +79,16 @@ describe("useUserMetabotPermissions", () => {
     setup({ isMetabotEnabled: false });
     const perms = await getPerms();
     expect(perms.hasMetabotAccess).toBe(false);
+    expect(perms.hasNlqAccess).toBe(false);
     expect(perms.canUseMetabot).toBe(false);
     expect(perms.canUseSqlGeneration).toBe(false);
     expect(perms.canUseNlq).toBe(false);
     expect(perms.canUseOtherTools).toBe(false);
+    expect(
+      fetchMock.callHistory.called(
+        "path:/api/metabot/permissions/user-permissions",
+      ),
+    ).toBe(false);
   });
 
   it("does not fetch user permissions without an authenticated user", async () => {
@@ -142,6 +148,7 @@ describe("useUserMetabotPermissions", () => {
     });
     const perms = await getPerms();
     expect(perms.hasMetabotAccess).toBe(false);
+    expect(perms.hasNlqAccess).toBe(false);
     expect(perms.canUseMetabot).toBe(false);
     expect(perms.canUseSqlGeneration).toBe(false);
     expect(perms.canUseNlq).toBe(false);

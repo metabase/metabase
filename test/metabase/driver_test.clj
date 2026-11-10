@@ -139,7 +139,7 @@
                               (catch Exception _
                                 false))))))
             ;; clean up the database
-            (t2/delete! :model/Database (u/the-id db))))))))
+            (t2/delete! :model/Database :id (u/the-id db))))))))
 
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
@@ -175,7 +175,7 @@
               ;; so fake it by changing the database details
               (let [details     (:details (mt/db))
                     new-details (merge details (tx/bad-connection-details driver/*driver*))]
-                (t2/update! :model/Database (u/the-id db) {:details new-details}))
+                (t2/update! :model/Database :id (u/the-id db) {:details new-details}))
               ;; otherwise destroy the db and use the original details
               (tx/destroy-db! driver/*driver* dbdef))
             (testing "after deleting a database, sync should fail"
@@ -184,7 +184,7 @@
               (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
                 (mt/user-http-request :crowberto :post 422 (str "/database/" (u/the-id db) "/sync_schema"))))
             ;; clean up the database
-            (t2/delete! :model/Database (u/the-id db))))))))
+            (t2/delete! :model/Database :id (u/the-id db))))))))
 
 (deftest ^:parallel supports-table-privileges-matches-implementations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)
@@ -366,9 +366,9 @@
 (deftest ^:parallel describe-table-fks-test
   (testing "`describe-fks` should be usable in the way we used to use the old `describe-table-fks` method"
     (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints)
-      (let [orders   (t2/select-one [:model/Table :name :schema] (mt/id :orders))
-            products (t2/select-one [:model/Table :name :schema] (mt/id :products))
-            people   (t2/select-one [:model/Table :name :schema] (mt/id :people))
+      (let [orders   (t2/select-one [:model/Table :name :schema] :id (mt/id :orders))
+            products (t2/select-one [:model/Table :name :schema] :id (mt/id :products))
+            people   (t2/select-one [:model/Table :name :schema] :id (mt/id :people))
             fmt      (partial ddl.i/format-name driver/*driver*)]
         (is (= #{{:fk-table-schema (:schema orders)
                   :fk-table-name   (:name orders)
@@ -395,9 +395,9 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints)
       (let [db            (lib.metadata/database (mt/metadata-provider))
             fmt           (partial ddl.i/format-name driver/*driver*)
-            orders        (t2/select-one :model/Table (mt/id :orders))
-            products      (t2/select-one :model/Table (mt/id :products))
-            people        (t2/select-one :model/Table (mt/id :people))
+            orders        (t2/select-one :model/Table :id (mt/id :orders))
+            products      (t2/select-one :model/Table :id (mt/id :products))
+            people        (t2/select-one :model/Table :id (mt/id :people))
             entire-db-fks (driver/describe-fks driver/*driver* (driver.u/ensure-lib-database db))
             schema-db-fks (driver/describe-fks driver/*driver* (driver.u/ensure-lib-database db)
                                                :schema-names (when (:schema orders) [(:schema orders)]))

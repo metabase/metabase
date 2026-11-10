@@ -15,7 +15,6 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
-   [metabase.queries.db :as queries.db]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -23,7 +22,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.db :as warehouses.db]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -74,7 +73,7 @@
                                    [:persisted-info-id ms/PositiveInt]]]
   (api/let-404 [persisted-info (first (fetch-persisted-info {:persisted-info-id persisted-info-id} nil nil))]
     (api/read-check :model/Card (:card_id persisted-info))
-    (api/write-check (warehouses.db/database (:database_id persisted-info)))
+    (api/write-check (model-persistence.db/database (:database_id persisted-info)))
     persisted-info))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -87,7 +86,7 @@
                          [:card-id ms/PositiveInt]]]
   (api/let-404 [persisted-info (first (fetch-persisted-info {:card-id card-id} nil nil))]
     (api/read-check :model/Card card-id)
-    (api/read-check (warehouses.db/database (:database_id persisted-info)))
+    (api/read-check (model-persistence.db/database (:database_id persisted-info)))
     persisted-info))
 
 (def ^:private CronSchedule
@@ -98,11 +97,7 @@
     [:fn {:error/message (deferred-tru "String representing a cron schedule")} #(= 7 (count (str/split % #" ")))]]
    (deferred-tru "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>")))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/set-refresh-schedule"
+(api.macros/defendpoint :post "/set-refresh-schedule" :- ::api/generic-204-no-content
   "Set the cron schedule to refresh persisted models.
    Shape should be JSON like {cron: \"0 30 1/8 * * ? *\"}."
   [_route-params
@@ -120,13 +115,10 @@
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/enable"
+(api.macros/defendpoint :post "/enable" :- ::api/generic-204-no-content
   "Enable global setting to allow databases to persist models."
   []
+  (workspaces/check-not-in-workspace-mode! "Model persistence")
   (perms/check-has-application-permission :setting)
   (log/info "Enabling model persistence")
   (model-persistence.settings/persisted-models-enabled! true)
@@ -147,11 +139,7 @@
                                              {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
     (task.persist-refresh/disable-persisting!)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/disable"
+(api.macros/defendpoint :post "/disable" :- ::api/generic-204-no-content
   "Disable global setting to allow databases to persist models. This will remove all tasks to refresh tables, remove
   that option from databases which might have it enabled, and delete all cached tables."
   []
@@ -169,19 +157,15 @@
 ;;; Card endpoints
 ;;;
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/card/:card-id/persist"
+(api.macros/defendpoint :post "/card/:card-id/persist" :- ::api/generic-204-no-content
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
   query in place of the model's query."
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
-  (api/let-404 [{:keys [database_id] :as card} (queries.db/card card-id)]
+  (api/let-404 [{:keys [database_id] :as card} (model-persistence.db/card card-id)]
     (api/write-check card)
-    (let [database (warehouses.db/database database_id)]
+    (let [database (model-persistence.db/database database_id)]
       (api/write-check database)
       (when-not (driver.u/supports? (:engine database) :persist-models database)
         (throw (ex-info (tru "Database does not support persisting")
@@ -197,39 +181,31 @@
         (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
       api/generic-204-no-content)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/card/:card-id/refresh"
+(api.macros/defendpoint :post "/card/:card-id/refresh" :- ::api/generic-204-no-content
   "Refresh the persisted model caching `card-id`."
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
-  (api/let-404 [card           (queries.db/card card-id)
+  (api/let-404 [card           (model-persistence.db/card card-id)
                 persisted-info (model-persistence.db/persisted-info-for-card card-id)]
     (when (not (queries/model? card))
       (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
     (when (:archived card)
       (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))
     (api/write-check card)
-    (api/write-check (warehouses.db/database (:database_id persisted-info)))
+    (api/write-check (model-persistence.db/database (:database_id persisted-info)))
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/card/:card-id/unpersist"
+(api.macros/defendpoint :post "/card/:card-id/unpersist" :- ::api/generic-204-no-content
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query."
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
-  (api/let-404 [card (queries.db/card card-id)]
+  (api/let-404 [card (model-persistence.db/card card-id)]
     (api/write-check card)
     (when-let [persisted-info (model-persistence.db/persisted-info-for-card card-id)]
-      (api/write-check (warehouses.db/database (:database_id persisted-info)))
+      (api/write-check (model-persistence.db/database (:database_id persisted-info)))
       (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off"))
     api/generic-204-no-content))
 
@@ -248,7 +224,7 @@
   (api/check (model-persistence.settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
-  (api/let-404 [database (warehouses.db/database id)]
+  (api/let-404 [database (model-persistence.db/database id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
       ;; todo: some other response if already persisted?
@@ -267,15 +243,11 @@
                             {:error    error
                              :database (:name database)}))))))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/database/:id/unpersist"
+(api.macros/defendpoint :post "/database/:id/unpersist" :- ::api/generic-204-no-content
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/let-404 [database (warehouses.db/database id)]
+  (api/let-404 [database (model-persistence.db/database id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
       (do (model-persistence.db/update-database! id {:settings (dissoc (:settings database) :persist-models-enabled)})

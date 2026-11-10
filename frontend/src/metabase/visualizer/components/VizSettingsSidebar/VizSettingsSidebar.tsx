@@ -74,7 +74,7 @@ const ErrorComponent = forwardRef<HTMLDivElement, { message?: string }>(
   function ErrorComponent({ message }, ref) {
     return (
       <Center style={{ height: "100%" }}>
-        <ErrorView ref={ref} isSmall isDashboard error={message} />
+        <ErrorView ref={ref} isSmall error={message} />
       </Center>
     );
   },

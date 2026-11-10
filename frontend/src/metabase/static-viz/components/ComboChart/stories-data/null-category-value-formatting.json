@@ -23,7 +23,6 @@
         "graph.x_axis.scale": "ordinal",
         "graph.metrics": ["Y"]
       },
-      "collection_preview": true,
       "entity_id": "6ETcEaZ00mDekkxOlAW6b",
       "display": "line",
       "parameter_mappings": [],

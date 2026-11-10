@@ -92,13 +92,13 @@
     (mt/with-sample-h2-app-db!
       (is (= 1
              (appearance/example-dashboard-id)))
-      (t2/update! :model/Dashboard 1 {:archived true})
+      (t2/update! :model/Dashboard :id 1 {:archived true})
       (is (nil? (appearance/example-dashboard-id))))))
 
 (deftest sample-content-permissions-test
   (mt/with-sample-h2-app-db!
     (let [dashboard  (t2/select-one :model/Dashboard :creator_id config/internal-mb-user-id)
-          collection (t2/select-one :model/Collection (:collection_id dashboard))
+          collection (t2/select-one :model/Collection :id (:collection_id dashboard))
           card       (t2/select-one :model/Card :creator_id config/internal-mb-user-id)]
       (testing "Rasta (as a member of 'All Users') should have sufficient privileges to edit the example content"
         (mt/with-current-user (mt/user->id :rasta)

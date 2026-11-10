@@ -2,11 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
+   [metabase.warehouse-schema.ai-proposals :as ai-proposals]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
@@ -23,7 +22,7 @@
   (cond-> v (keyword? v) u/qualified-name))
 
 (defn- preview [field-id]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:ai-proposals? true})]}))
+  (first (ai-proposals/with-ai-proposal-previews [(warehouse-schema.db/field field-id)])))
 
 (defn- propose! [table-id field-id attribute value & {:as more}]
   (t2/insert-returning-pk! :model/MetadataGenerationProposal
@@ -44,7 +43,7 @@
                      :model/Field {human-id :id :as human-field} {:table_id table-id attribute deterministic}
                      :model/Field {none :id}          {:table_id table-id attribute deterministic}]
         (field-user-settings/set-ai-values-for-fields! {ai-id {attribute ai}})
-        (field-user-settings/upsert-user-settings human-field {attribute human})
+        (field-user-settings/upsert-field-user-settings! human-field {attribute human})
         (doseq [field-id [plain ai-id human-id]]
           (propose! table-id field-id attribute proposed))
         (testing "the default read never returns a pending value and keeps human > AI > deterministic"
@@ -65,22 +64,13 @@
   (testing "a proposal for one attribute leaves the other attributes at their merged values"
     (mt/with-temp [:model/Table {table-id :id} {}
                    :model/Field {field-id :id :as field} {:table_id table-id :description "sync" :semantic_type :type/Category}]
-      (field-user-settings/upsert-user-settings field {:description "human"})
+      (field-user-settings/upsert-field-user-settings! field {:description "human"})
       (propose! table-id field-id :semantic_type :type/City)
       (is (=? {:description   "human"
                :semantic_type :type/City
                :ai_proposals  {:semantic_type {:value "type/City" :conflict false}}}
               (preview field-id)))
       (is (= #{:semantic_type} (set (keys (:ai_proposals (preview field-id)))))))))
-
-(deftest default-read-has-one-join-test
-  (testing "the default field-query joins only the user settings"
-    (let [sql (first (mdb/compile (first (warehouse-schema-overlay/field-query))))]
-      (is (not (str/includes? (u/lower-case-en sql) "metadata_generation_proposal")))
-      (is (= 1 (count (re-seq #"(?i)\bjoin\b" sql))))))
-  (testing "the preview adds one join per attribute"
-    (let [sql (first (mdb/compile (first (warehouse-schema-overlay/field-query {:ai-proposals? true}))))]
-      (is (= 4 (count (re-seq #"(?i)\bjoin\b" sql)))))))
 
 (deftest preview-api-test
   (mt/with-temp [:model/Database {db-id :id}    {}

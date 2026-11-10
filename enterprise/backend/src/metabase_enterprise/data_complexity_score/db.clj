@@ -10,7 +10,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn active-field-counts-by-table
@@ -27,6 +26,11 @@
   "The Table ID and name of the unarchived Measures on the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Measure :table_id :name] :archived false :table_id [:in table-ids]))
+
+(mu/defn collection
+  "The Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one :model/Collection :id collection-id))
 
 (mu/defn verified-card-ids
   "The IDs of the Cards whose most recent moderation review is verified."
@@ -60,7 +64,7 @@
   [audit-database-id :- ::lib.schema.id/database]
   (t2/select [:model/Table :id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
              :active true
-             :db_id  [:not= audit-database-id] {:from [(warehouse-schema-overlay/table-query)]}))
+             :db_id  [:not= audit-database-id]))
 
 (mu/defn metabot-by-entity-id
   "The Metabot with `entity-id`, or nil."
@@ -73,10 +77,10 @@
    source      :- :string]
   (t2/select-one :model/DataComplexityScore :fingerprint fingerprint :source source {:order-by [[:id :desc]]}))
 
-(mu/defn data-complexity-score :- [:maybe ::data-complexity-score.schema/data-complexity-score]
-  "The ::data-complexity-score.schema/data-complexity-score with `id`, or nil."
+(mu/defn score-entry
+  "The DataComplexityScore with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/DataComplexityScore :id [:auto/param id]))
+  (t2/select-one :model/DataComplexityScore :id id))
 
 (mu/defn scored-within-hours?
   "Whether a DataComplexityScore of `source` for `fingerprint` was created within the last `hours` hours of

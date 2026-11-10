@@ -38,7 +38,7 @@
                                     :total_tables 1
                                     :table_errors [{:table_id table-id :message "usage limit"}]
                                     :usage        usage)
-          row (t2/select-one :model/MetadataGenerationRun run-id)]
+          row (t2/select-one :model/MetadataGenerationRun :id run-id)]
       (testing "a new run is pending and active, with keyword status, scope and attributes"
         (is (=? {:status       :pending
                  :is_active    true
@@ -54,17 +54,17 @@
         (is (mr/validate ::run/metadata-generation-run row)))
       (testing "the scope schema accepts each scope type"
         (doseq [scope [{:type :database} {:type :schemas :schemas ["PUBLIC"]} {:type :tables :table_ids [1]}]]
-          (t2/update! :model/MetadataGenerationRun run-id {:scope scope})
-          (is (= scope (t2/select-one-fn :scope :model/MetadataGenerationRun run-id)))
+          (t2/update! :model/MetadataGenerationRun :id run-id {:scope scope})
+          (is (= scope (t2/select-one-fn :scope :model/MetadataGenerationRun :id run-id)))
           (is (mr/validate ::run/scope scope))))
       (testing "a move to running keeps the run active"
-        (t2/update! :model/MetadataGenerationRun run-id {:status :running})
+        (t2/update! :model/MetadataGenerationRun :id run-id {:status :running})
         (is (=? {:status :running :is_active true :ended_at nil}
-                (t2/select-one :model/MetadataGenerationRun run-id))))
+                (t2/select-one :model/MetadataGenerationRun :id run-id))))
       (testing "a terminal status clears is_active and sets ended_at"
-        (t2/update! :model/MetadataGenerationRun run-id {:status :succeeded})
+        (t2/update! :model/MetadataGenerationRun :id run-id {:status :succeeded})
         (is (=? {:status :succeeded :is_active nil :ended_at some?}
-                (t2/select-one :model/MetadataGenerationRun run-id)))))))
+                (t2/select-one :model/MetadataGenerationRun :id run-id)))))))
 
 (deftest one-active-run-per-database-test
   (mt/with-temp [:model/Database {db-id :id} {}
@@ -75,7 +75,7 @@
       (testing "another database can have its own active run"
         (is (some? (insert-run! other-db-id))))
       (testing "after the first run ends, a new run can start"
-        (t2/update! :model/MetadataGenerationRun run-id {:status :canceled})
+        (t2/update! :model/MetadataGenerationRun :id run-id {:status :canceled})
         (is (some? (insert-run! db-id)))))))
 
 (deftest proposal-round-trip-test
@@ -85,7 +85,7 @@
                  :model/Field    {field-id :id}    {:table_id table-id}]
     (let [{run-id :id}      (insert-run! db-id)
           {proposal-id :id} (insert-proposal! run-id table-id field-id)
-          row               (t2/select-one :model/MetadataGenerationProposal proposal-id)]
+          row               (t2/select-one :model/MetadataGenerationProposal :id proposal-id)]
       (testing "a new proposal is pending, with keyword attribute and confidence"
         (is (=? {:last_run_id    run-id
                  :table_id       table-id
@@ -110,7 +110,7 @@
       (let [{run-id :id} (insert-run! db-id)]
         (insert-proposal! run-id table-id field-a)
         (insert-proposal! run-id table-id field-b)
-        (t2/delete! :model/Field field-a)
+        (t2/delete! :model/Field :id field-a)
         (is (= #{field-b} (t2/select-fn-set :field_id :model/MetadataGenerationProposal :last_run_id run-id))))))
   (testing "deleting a table deletes its proposals"
     (mt/with-temp [:model/Database {db-id :id}    {}
@@ -121,7 +121,7 @@
       (let [{run-id :id} (insert-run! db-id)]
         (insert-proposal! run-id table-a field-a)
         (insert-proposal! run-id table-b field-b)
-        (t2/delete! :model/Table table-a)
+        (t2/delete! :model/Table :id table-a)
         (is (= #{table-b} (t2/select-fn-set :table_id :model/MetadataGenerationProposal :last_run_id run-id))))))
   (testing "deleting a run keeps its proposals and clears last_run_id"
     (mt/with-temp [:model/Database {db-id :id}    {}
@@ -129,15 +129,15 @@
                    :model/Field    {field-id :id} {:table_id table-id}]
       (let [{run-id :id}      (insert-run! db-id)
             {proposal-id :id} (insert-proposal! run-id table-id field-id)]
-        (t2/delete! :model/MetadataGenerationRun run-id)
-        (is (=? {:last_run_id nil} (t2/select-one :model/MetadataGenerationProposal proposal-id))))))
+        (t2/delete! :model/MetadataGenerationRun :id run-id)
+        (is (=? {:last_run_id nil} (t2/select-one :model/MetadataGenerationProposal :id proposal-id))))))
   (testing "deleting a database deletes its runs and the proposals of its fields"
     (mt/with-temp [:model/Database {db-id :id}    {}
                    :model/Table    {table-id :id} {:db_id db-id}
                    :model/Field    {field-id :id} {:table_id table-id}]
       (let [{run-id :id} (insert-run! db-id)]
         (insert-proposal! run-id table-id field-id)
-        (t2/delete! :model/Database db-id)
+        (t2/delete! :model/Database :id db-id)
         (is (zero? (t2/count :model/MetadataGenerationRun :database_id db-id)))
         (is (zero? (t2/count :model/MetadataGenerationProposal :field_id field-id))))))
   (testing "deleting a user keeps runs and clears the user reference"
@@ -147,6 +147,6 @@
                    :model/Field    {field-id :id} {:table_id table-id}]
       (let [{run-id :id}      (insert-run! db-id :creator_id user-id)
             {proposal-id :id} (insert-proposal! run-id table-id field-id)]
-        (t2/delete! :model/User user-id)
-        (is (=? {:creator_id nil} (t2/select-one :model/MetadataGenerationRun run-id)))
-        (is (some? (t2/select-one :model/MetadataGenerationProposal proposal-id)))))))
+        (t2/delete! :model/User :id user-id)
+        (is (=? {:creator_id nil} (t2/select-one :model/MetadataGenerationRun :id run-id)))
+        (is (some? (t2/select-one :model/MetadataGenerationProposal :id proposal-id)))))))

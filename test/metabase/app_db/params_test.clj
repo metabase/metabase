@@ -25,7 +25,7 @@
 (deftest marker-binds-on-the-write-path-test
   (testing "a marked value is bound in an update"
     (mt/with-temp [:model/ContentTranslation {id :id} {:locale "de" :msgid "a" :msgstr "b"}]
-      (t2/update! :model/ContentTranslation id {:msgstr [:auto/param "updated"]})
+      (t2/update! :model/ContentTranslation :id id {:msgstr [:auto/param "updated"]})
       (is (= "updated" (:msgstr (t2/select-one :model/ContentTranslation :id id))))))
   (testing "and in an insert"
     (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "a" :msgstr "b"}]

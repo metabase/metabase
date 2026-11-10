@@ -3,8 +3,10 @@
    [metabase.actions.schema]
    [metabase.collections.schema]
    [metabase.content-verification.schema]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.models.schema :as models.schema]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.timeline.schema]
@@ -66,7 +68,7 @@
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:public_uuid             {:optional true} [:maybe :string]]
-   [:made_public_by_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:made_public_by_id       {:optional true} [:maybe ::lib.schema.id/user]]
    [:enable_embedding        {:optional true} [:maybe :boolean]]
    [:embedding_params        {:optional true} [:maybe ms/EmbeddingParams]]
    [:archived                {:optional true} [:maybe :boolean]]
@@ -124,7 +126,7 @@
    [:visualization_settings {:optional true} [:maybe ::dashboard-card.visualization-settings]]
    [:entity_id              {:optional true} [:maybe :string]]
    [:action_id              {:optional true} [:maybe ::lib.schema.id/action]]
-   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id       {:optional true} [:maybe ::lib.schema.id/dashboard-tab]]
    [:inline_parameters      {:optional true} [:maybe [:sequential :string]]]])
 
 (mr/def ::dashboard-card-series
@@ -157,3 +159,42 @@
    [:entity_id    {:optional true} [:maybe :string]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::external-dashboard
+  "A Dashboard as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib-be.schema/external-registry}
+   [:merge
+    [:select-keys ::dashboard [:archived :archived_directly :auto_apply_filters :caveats :collection_position
+                               :description :embedding_params :enable_embedding :embedding_type :entity_id :name
+                               :points_of_interest :position :public_uuid :show_in_getting_started :width
+                               :collection_id :creator_id :made_public_by_id :parameters]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:tabs {:optional true} [:maybe [:sequential [:ref ::external-dashboard-tab]]]]
+     [:dashcards {:optional true} [:maybe [:sequential [:ref ::external-dashboard-card]]]]]]])
+
+(mr/def ::external-dashboard-tab
+  "A DashboardTab as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib-be.schema/external-registry}
+   [:merge
+    [:select-keys ::dashboard-tab [:entity_id :name :position]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-dashboard-card
+  "A DashboardCard as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib-be.schema/external-registry}
+   [:merge
+    [:select-keys ::dashboard-card [:col :entity_id :inline_parameters :row :size_x :size_y :card_id :action_id
+                                    :dashboard_tab_id :parameter_mappings :visualization_settings]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:series {:optional true} [:maybe [:sequential [:ref ::external-dashboard-card-series]]]]]]])
+
+(mr/def ::external-dashboard-card-series
+  "A DashboardCardSeries as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib-be.schema/external-registry}
+   [:merge
+    [:select-keys ::dashboard-card-series [:position :card_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

@@ -1,5 +1,6 @@
 ---
 title: Running the Metabase JAR file
+summary: Run the open-source Metabase JAR with Java, either locally to try it out or as a production install.
 redirect_from:
   - /docs/latest/operations-guide/running-the-metabase-jar-file
   - /docs/installation-and-operation/java-versions

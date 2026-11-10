@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting LDAP
+summary: Fix LDAP authentication problems, with a sample configuration you can test against.
 ---
 
 # Troubleshooting LDAP

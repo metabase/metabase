@@ -591,10 +591,10 @@
                   Month/MAY   2
                   3))))
      (testing "checks for type of cases"
-       (is (thrown? Exception #"`case-enum` only works.*"
-                    (u/case-enum Month/JANUARY
-                      Month/JANUARY    1
-                      DayOfWeek/SUNDAY 2))))))
+       (is (thrown-with-msg? Exception #"`case-enum` only works.*"
+                             (u/case-enum Month/JANUARY
+                               Month/JANUARY    1
+                               DayOfWeek/SUNDAY 2))))))
 
 (deftest ^:parallel truncate-string-to-byte-count-test
   (letfn [(truncate-string-to-byte-count [s byte-length]

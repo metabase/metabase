@@ -776,7 +776,7 @@ describe("scenarios > dashboard", () => {
         cy.get("body").should("have.attr", "data-scroll-locked");
 
         H.modal().within(() => {
-          cy.icon("close").click();
+          cy.findByLabelText("Close").click();
         });
         H.modal().should("not.exist");
         cy.get("body").should("not.have.attr", "data-scroll-locked");

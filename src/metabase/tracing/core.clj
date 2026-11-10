@@ -29,6 +29,7 @@
    [steffan-westcott.clj-otel.sdk.otel-sdk :as otel-sdk])
   (:import
    (io.opentelemetry.api.trace Span SpanContext)
+   (io.opentelemetry.sdk OpenTelemetrySdk)
    (io.opentelemetry.sdk.trace IdGenerator)
    (java.time Duration)
    (org.apache.logging.log4j ThreadContext)))
@@ -343,6 +344,22 @@
       (generateSpanId [_]
         (.generateSpanId default-gen)))))
 
+(defn build-otel-sdk
+  "Build an OTel SDK with an OTLP HTTP span exporter. Touches no global state: the SDK is neither
+   installed as clj-otel's default nor registered globally, so tests can exercise the exact
+   SDK + exporter wiring [[init!]] uses. The caller owns the returned SDK and must `.close` it."
+  ^OpenTelemetrySdk [{:keys [endpoint service-name queue-size timeout-ms delay-ms]}]
+  (otel-sdk/init-otel-sdk!
+   service-name
+   {:set-as-default         false
+    :register-shutdown-hook false  ;; we manage shutdown ourselves
+    :tracer-provider
+    {:id-generator    (make-id-generator)
+     :span-processors [{:exporters        [(otlp-http/span-exporter {:endpoint endpoint})]
+                        :max-queue-size   queue-size
+                        :exporter-timeout (Duration/ofMillis timeout-ms)
+                        :schedule-delay   (Duration/ofMillis delay-ms)}]}}))
+
 (defn init!
   "Initialize the OTel SDK with OTLP HTTP exporter. No-op when MB_TRACING_ENABLED=false.
    Should be called as early as possible in startup — has no database dependency."
@@ -356,22 +373,17 @@
             log-level-str (tracing.settings/tracing-log-level)
             queue-size    (tracing.settings/tracing-max-queue-size)
             timeout-ms    (tracing.settings/tracing-export-timeout-ms)
-            delay-ms      (tracing.settings/tracing-schedule-delay-ms)
-            exporter      (otlp-http/span-exporter {:endpoint endpoint})]
+            delay-ms      (tracing.settings/tracing-schedule-delay-ms)]
         (log/infof "Initializing OpenTelemetry tracing: service=%s endpoint=%s groups=%s log-level=%s"
                    service-name endpoint groups-str log-level-str)
         (log/infof "Batch span processor config: max-queue-size=%d export-timeout-ms=%d schedule-delay-ms=%d"
                    queue-size timeout-ms delay-ms)
-        (let [otel (otel-sdk/init-otel-sdk!
-                    service-name
-                    {:set-as-default        true
-                     :register-shutdown-hook false  ;; we manage shutdown ourselves
-                     :tracer-provider
-                     {:id-generator    (make-id-generator)
-                      :span-processors [{:exporters        [exporter]
-                                         :max-queue-size   queue-size
-                                         :exporter-timeout (Duration/ofMillis timeout-ms)
-                                         :schedule-delay   (Duration/ofMillis delay-ms)}]}})]
+        (let [otel (build-otel-sdk {:endpoint     endpoint
+                                    :service-name service-name
+                                    :queue-size   queue-size
+                                    :timeout-ms   timeout-ms
+                                    :delay-ms     delay-ms})]
+          (otel/set-default-otel! otel)
           (reset! otel-sdk-instance otel)
           (init-enabled-groups! groups-str log-level-str)
           (log/info "OpenTelemetry tracing initialized successfully")))

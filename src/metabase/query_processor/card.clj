@@ -435,7 +435,11 @@
                         (assoc :viz-settings merged-viz)
                         (update :middleware (fn [middleware]
                                               (merge
-                                               {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                               {:js-int-to-string?      true
+                                                :ignore-cached-results? ignore-cache
+                                                ;; a visualizer dashcard renders as its own display, not the card's
+                                                :display                (or (some-> dash-viz :visualization :display keyword)
+                                                                            (:display card))}
                                                middleware))))
         info        (cond-> {:executed-by            api/*current-user-id*
                              :context                context

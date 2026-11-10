@@ -34,13 +34,14 @@ import {
   thumbsUp,
 } from "metabase/metabot/tests/utils";
 import { registerVisualizations } from "metabase/visualizations/register";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCollection,
   createMockDocument,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import {
   AgentMessage,
@@ -452,7 +453,10 @@ describe("AgentMessage", () => {
 
 describe("UserMessage chart mentions", () => {
   it("renders a chart mention as an icon chip using conversation state", async () => {
-    const datasetQuery = createMockStructuredDatasetQuery();
+    const datasetQuery = Lib.createTestJsQuery(
+      SAMPLE_PROVIDER,
+      DEFAULT_TEST_QUERY,
+    );
     const metabotState = assocIn(
       getMetabotInitialState(),
       ["conversations", "omnibot", "state"],

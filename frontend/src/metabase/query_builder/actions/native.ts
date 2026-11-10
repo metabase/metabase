@@ -1,11 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { createAction } from "redux-actions";
 
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import {
+  setTemplateTag as setQueryTemplateTag,
+  setTemplateTagConfig as setQuestionTemplateTagConfig,
+} from "metabase/querying/native";
 import { createThunkAction } from "metabase/redux";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { settingsApi } from "metabase/settings";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import * as Lib from "metabase-lib";
 import type {
   CardId,
   DatabaseId,
@@ -120,9 +125,8 @@ export const insertSnippet =
     if (!question) {
       return;
     }
-    // Unjustified type cast. FIXME
-    const query = question.legacyNativeQuery() as NativeQuery;
-    const queryText = query.queryText();
+    const query = question.query();
+    const queryText = Lib.rawNativeQuery(query);
     const nativeEditorCursorOffset =
       getNativeEditorCursorOffset(getState()) ?? queryText.length;
     const nativeEditorSelectedText =
@@ -133,8 +137,9 @@ export const insertSnippet =
       queryText.slice(0, selectionStart) +
       `{{snippet: ${name}}}` +
       queryText.slice(nativeEditorCursorOffset);
-    const datasetQuery = query.setQueryText(newText).datasetQuery();
-    dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
+    dispatch(
+      updateQuestion(question.setQuery(Lib.withNativeQuery(query, newText))),
+    );
   };
 
 export const SET_TEMPLATE_TAG = "metabase/qb/SET_TEMPLATE_TAG";
@@ -146,10 +151,8 @@ export const setTemplateTag = createThunkAction(
       if (!question) {
         return;
       }
-      // Unjustified type cast. FIXME
-      const query = question.legacyNativeQuery() as NativeQuery;
-      const newQuestion = query.setTemplateTag(tag.name, tag).question();
-      dispatch(updateQuestion(newQuestion));
+      const newQuery = setQueryTemplateTag(question.query(), tag);
+      dispatch(updateQuestion(question.setQuery(newQuery)));
     };
   },
 );
@@ -163,12 +166,11 @@ export const setTemplateTagConfig = createThunkAction(
       if (!question) {
         return;
       }
-      // Unjustified type cast. FIXME
-      const query = question.legacyNativeQuery() as NativeQuery;
-      const newQuestion = query
-        .setTemplateTagConfig(tag, parameterConfig)
-        .question();
-      dispatch(updateQuestion(newQuestion));
+      dispatch(
+        updateQuestion(
+          setQuestionTemplateTagConfig(question, tag, parameterConfig),
+        ),
+      );
     };
   },
 );

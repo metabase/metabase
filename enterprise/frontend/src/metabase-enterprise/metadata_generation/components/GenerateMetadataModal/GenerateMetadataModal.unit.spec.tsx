@@ -9,7 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type {
-  ConcreteTableId,
+  TableId,
   MetadataGenerationEstimate,
   MetadataGenerationRunId,
 } from "metabase-types/api";
@@ -51,7 +51,7 @@ const ESTIMATE_URL = "path:/api/ee/data-sensitivity/runs/estimate";
 
 type SetupOpts = {
   estimate?: MetadataGenerationEstimate;
-  initialTableIds?: ConcreteTableId[];
+  initialTableIds?: TableId[];
   isScopeFixed?: boolean;
   runId?: MetadataGenerationRunId;
   startError?: { status: number; message: string };

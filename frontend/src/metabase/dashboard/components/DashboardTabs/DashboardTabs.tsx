@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
 import { t } from "ttag";
 import { uniq } from "underscore";
@@ -46,24 +47,21 @@ export function DashboardTabs({
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
 
-  useRegisterShortcut(
-    [
-      {
-        id: "dashboard-change-tab",
-        perform: (_, event) => {
-          if (!event?.key) {
-            return;
-          }
-          const key = parseInt(event.key);
-          const tab = tabs[key - 1];
-          if (tab) {
-            selectTab(tab.id);
-          }
-        },
+  useRegisterShortcut([
+    {
+      id: "dashboard-change-tab",
+      perform: (_, event) => {
+        if (!event?.key) {
+          return;
+        }
+        const key = parseInt(event.key);
+        const tab = tabs[key - 1];
+        if (tab) {
+          selectTab(tab.id);
+        }
       },
-    ],
-    [tabs],
-  );
+    },
+  ]);
 
   if (!showTabs) {
     return null;

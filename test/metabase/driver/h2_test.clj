@@ -10,6 +10,7 @@
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.h2 :as h2]
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.settings :as driver.settings]
@@ -230,7 +231,7 @@
                                                    :display-name "date"
                                                    :type         :dimension
                                                    :widget-type  :date/all-options
-                                                   :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                                   :field-id     (mt/id :checkins :date)}}}
               :parameters [{:type :date/all-options
                             :target [:dimension [:template-tag "date"]]
                             :value "past30years"}]}))))))
@@ -303,12 +304,12 @@
     (let [trigger-creation-attempt (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
                                                    "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
                                                    "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
-      (is (thrown? clojure.lang.ExceptionInfo
-                   #"DDL commands are not allowed to be used with h2."
-                   (#'h2/check-action-commands-allowed
-                    {:database (mt/id)
-                     :engine :h2
-                     :native {:query trigger-creation-attempt}}))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"DDL commands are not allowed to be used with H2."
+                            (#'h2/check-action-commands-allowed
+                             {:database (mt/id)
+                              :engine :h2
+                              :native {:query trigger-creation-attempt}}))))))
 
 (defn- check-read-only-statements [query]
   (mt/with-metadata-provider (mt/id)
@@ -336,16 +337,18 @@
       "update venues set name = 'bill'; some query that can't be parsed;")))
 
 (deftest ^:parallel check-read-only-test-2
-  (testing "not read only statements should fail"
-    (are [query] (thrown?
-                  clojure.lang.ExceptionInfo
-                  #"Only SELECT statements are allowed in a native query."
-                  (mt/with-metadata-provider (mt/id)
-                    (#'h2/check-read-only-statements
-                     {:database 1
-                      :type     :native
-                      :native   {:query query}}))
-                  "update venues set name = 'bill'")
+  (testing "not read only statements are refused as :invalid-query, so callers report a query error, not an internal one"
+    (are [query] (=? {:message "Only SELECT statements are allowed in a native query."
+                      :data    {:type :invalid-query}}
+                     (try
+                       (mt/with-metadata-provider (mt/id)
+                         (#'h2/check-read-only-statements
+                          {:database 1
+                           :type     :native
+                           :native   {:query query}}))
+                       (catch clojure.lang.ExceptionInfo e
+                         {:message (ex-message e), :data (ex-data e)})))
+      "update venues set name = 'bill'"
       "insert into venues (name) values ('bill')"
       "delete venues"
       "select 1; update venues set name = 'bill'; delete venues;"
@@ -524,3 +527,15 @@
   (testing "ordinary values still read normally"
     (let [spec (mdb/spec :h2 {:db "mem:h2_read_test"})]
       (is (= [{:x 1}] (jdbc/query spec ["SELECT 1 AS x"]))))))
+
+(deftest workspace-isolation-details-uses-admin-overlay-test
+  (mt/test-driver :h2
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:workspaces}
+       (testing "a Toucan Database row's admin overlay supplies the connection string the workspace user's is built off"
+         (let [database (assoc (mt/db) :admin_details {:db "mem:ws_admin_overlay;USER=ADMIN;PASSWORD=admin"})]
+           (driver.conn/with-admin-connection
+             (is (str/starts-with? (-> (driver/workspace-isolation-details :h2 database {:id 1 :name "ws"})
+                                       :database_details
+                                       :db)
+                                   "mem:ws_admin_overlay")))))))))

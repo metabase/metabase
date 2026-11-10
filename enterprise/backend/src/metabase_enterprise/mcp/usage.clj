@@ -8,10 +8,9 @@
   best-effort: a failure is logged and swallowed so logging never fails the MCP request and
   adds negligible latency."
   (:require
-   [metabase-enterprise.mcp.db :as ee.mcp.db]
+   [metabase-enterprise.mcp.db :as mcp.db]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
-   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]))
@@ -53,7 +52,7 @@
     (when (and session-id
                ;; mcp-remote fires a throwaway transport-probe handshake; never record it
                (not (mcp.usage/proxy-probe? (:name client-info)))
-               (not (ee.mcp.db/session-log-exists? session-id)))
+               (not (mcp.db/session-log-exists? session-id)))
       (let [;; `pii-fields-from` returns the gated PII columns only when
             ;; `analytics-pii-retention-enabled` is on (nil otherwise). Allowlist the two columns
             ;; `mcp_session_log` actually has — selecting explicitly (rather than dissoc-ing the
@@ -62,7 +61,7 @@
             pii (select-keys (analytics/pii-fields-from {:user-agent user-agent
                                                          :ip-address ip-address})
                              [:user_agent :ip_address])]
-        (ee.mcp.db/insert-session-log!
+        (mcp.db/insert-session-log!
          (merge {:id             session-id
                  :user_id        user-id
                  :tenant_id      tenant-id
@@ -79,7 +78,7 @@
   [session-id]
   (try
     (when session-id
-      (ee.mcp.db/end-session-log! session-id))
+      (mcp.db/end-session-log! session-id))
     (catch Throwable e
       (log/warnf "Failed to record MCP session end: %s" (ex-message e)))))
 
@@ -97,8 +96,7 @@
      :client_version (truncate (:version client-info) client-version-max-length)}
 
     session-id
-    (some-> (mcp.db/mcp-session-log session-id)
-            (select-keys [:client_name :client_version]))
+    (mcp.db/session-client-identity session-id)
 
     :else nil))
 
@@ -120,7 +118,7 @@
           pii (select-keys (analytics/pii-fields-from {:user-agent user-agent
                                                        :ip-address ip-address})
                            [:user_agent :ip_address :sanitized_user_agent])]
-      (ee.mcp.db/insert-tool-call-log!
+      (mcp.db/insert-tool-call-log!
        (merge {:tool_name       (or (not-empty (truncate tool-name tool-name-max-length))
                                     unknown-tool-name)
                :user_id         user-id

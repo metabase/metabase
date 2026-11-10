@@ -19,6 +19,8 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
+(set! *warn-on-reflection* true)
+
 (defn toucan-model?
   "Check if `model` is a toucan model."
   [model]
@@ -83,6 +85,16 @@
 (defmethod revision-readable? :default
   [_model _object]
   true)
+
+(defmulti check-revert-available
+  "Throw a 402 unless the token has the premium feature that a revert of `model` to a revision needs. The default
+  throws nothing."
+  {:arglists '([model])}
+  mi/dispatch-on-model)
+
+(defmethod check-revert-available :default
+  [_model]
+  nil)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -257,10 +269,7 @@
             [:entity      [:fn toucan-model?]]]]
   (let [{:keys [id user-id revision-id entity]} info
         model-name (name entity)
-        serialized-instance (let [revision (revisions.db/revision revision-id)]
-                              (when (and (= model-name (:model revision))
-                                         (= id (:model_id revision)))
-                                (:object revision)))]
+        serialized-instance (revisions.db/revision-object model-name id revision-id)]
     (t2/with-transaction [_conn]
       (let [already-in-target-state? (= serialized-instance
                                         (revisions.db/latest-revision-object model-name id))]

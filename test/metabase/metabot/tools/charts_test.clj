@@ -10,7 +10,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
@@ -21,6 +23,7 @@
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
@@ -142,6 +145,34 @@
         (is (= {:query-id "q-1" :query count-by-category}
                (select-keys (:structured-output result) [:query-id :query])))))))
 
+(deftest edit-chart-after-query-edit-keeps-edited-query-test
+  (testing "edit_chart uses the stored query, not the chart's older copy, after that query was edited"
+    ;; The chart keeps a copy of its query. An SQL edit updates only the query, so the copy is stale. edit_chart
+    ;; returns its query under `:query-id`, which the end-of-response memory update stores as that query.
+    (let [edited  (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (meta/field-metadata :products :vendor)))
+          memory  (atom (-> {:state   {:queries {"q-1" count-by-category}
+                                       :charts  {"c-1" {:chart_id               "c-1"
+                                                        :query_id               "q-1"
+                                                        :queries                [count-by-category]
+                                                        :visualization_settings {:chart_type :bar}}}}
+                             :context {}}
+                            (memory/set-query "q-1" edited)))
+          result  (binding [shared/*memory-atom* memory]
+                    (test-util/call-tool charts/edit-chart-tool {:chart_id         "c-1"
+                                                                 :new_viz_settings {:chart_type "pie"}
+                                                                 :title            "Products by vendor"
+                                                                 :description      "Count of products by vendor."}))
+          chart-id (get-in result [:structured-output :chart-id])
+          state    (:state (swap! memory #'agent/update-memory [{:type :tool-output :result result}]))]
+      (is (=? {:structured-output {:query-id "q-1" :query edited}
+               :data-parts        [{:data {:query {:query (links/->frontend-query edited)}}}]}
+              result))
+      (is (=? {:queries {"q-1" edited}
+               :charts  {chart-id {:query_id "q-1" :queries [edited]}}}
+              state)))))
+
 (defn- invoke
   "Call the tool `tool-name` with `args` the way the agent loop does, in a conversation whose state is `state`. The
   profile offers both chart tools and `construct_notebook_query`, which the recovery steps name. Returns the result,
@@ -158,6 +189,22 @@
 
 (def ^:private chart-args
   {:title "Orders by month" :description "Monthly count of orders."})
+
+(deftest chart-tools-say-that-the-chart-is-not-saved-test
+  (let [state {:queries {"q-1" count-by-category}
+               :charts  {"c-1" {:chart_id               "c-1"
+                                :query_id               "q-1"
+                                :queries                [count-by-category]
+                                :visualization_settings {:chart_type :bar}}}}]
+    (doseq [[tool-name args] [["create_chart" (assoc chart-args
+                                                     :data_source  {:query_id "q-1"}
+                                                     :viz_settings {:chart_type "bar"})]
+                              ["edit_chart" (assoc chart-args
+                                                   :chart_id         "c-1"
+                                                   :new_viz_settings {:chart_type "pie"})]]]
+      (testing tool-name
+        (is (str/includes? (:output (invoke tool-name args state))
+                           instructions/not-saved-instruction))))))
 
 (deftest create-chart-unknown-query-id-test
   (testing "a query ID that the conversation doesn't hold fails, and the model reads the query IDs that it does hold"
@@ -379,7 +426,7 @@
                           {}))))))))
 
 (deftest chart-tools-undeclared-failure-test
-  (testing "a failure that no error declares ends the turn instead of reaching the model"
+  (testing "a failure that no error declares is `:internal`, so its text never reaches the model"
     (mt/with-dynamic-fn-redefs [create-chart-tools/create-chart (fn [_] (throw (ex-info "boom" {})))
                                 edit-chart-tools/edit-chart     (fn [_] (throw (ex-info "boom" {})))]
       (is (=? {:error {:class :unrecoverable :code :internal}}

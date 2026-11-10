@@ -29,9 +29,9 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.field :as warehouse-schema.field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.user-settings :as user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -39,7 +39,7 @@
 (defn- human-set?
   "Whether a person set the value of the attribute of proposal `p` now."
   [settings {:keys [field_id attribute]}]
-  (warehouse-schema-overlay/field-user-set? (get settings field_id) attribute))
+  (contains? (user-settings/user-set-field-columns (get settings field_id)) attribute))
 
 (mr/def ::table-counts
   [:map {:closed true}
@@ -93,8 +93,7 @@
 
 (defn- current-source [settings field attribute]
   (let [value (current-value field attribute)]
-    (or (warehouse-schema-overlay/field-value-source settings attribute
-                                                     (if (= :description attribute) (not-empty value) value))
+    (or (user-settings/field-value-source settings attribute (if (= :description attribute) (not-empty value) value))
         :none)))
 
 (defn- with-current
@@ -243,9 +242,9 @@
       (doseq [[field-id ss] ai-writes
               :let [human (vec (keep #(when (= :human (:source %)) (:attribute %)) ss))]
               :when (seq human)]
-        (field-user-settings/unset-user-settings! {:id field-id} human))
+        (field-user-settings/unset-field-user-settings! {:id field-id} human))
       (doseq [[field-id ss] (group-by :field_id (filter :edited_value writes))]
-        (field-user-settings/upsert-user-settings {:id field-id} (into {} (map (juxt :attribute value-to-write)) ss)))
+        (field-user-settings/upsert-field-user-settings! {:id field-id} (into {} (map (juxt :attribute value-to-write)) ss)))
       (doseq [[field-id ids] dims
               :let [field    (get fields field-id)
                     new-type (some #(when (= :semantic_type (:attribute %)) (value-to-write %)) (by-field field-id))]

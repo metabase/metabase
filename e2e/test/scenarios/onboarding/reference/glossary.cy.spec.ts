@@ -1,51 +1,48 @@
 const { H } = cy;
 
 function executeCreateGlossaryTermFlow() {
-  cy.intercept("POST", "/api/glossary", (req) => {
-    expect(req.body).to.deep.equal({
-      term: "Boat",
-      definition: "A small vessel for traveling on water.",
-    });
-  }).as("createGlossary");
+  cy.intercept("POST", "/api/glossary").as("createGlossary");
 
   cy.findByRole("button", { name: /new term/i }).click();
 
   cy.findByPlaceholderText(/boat/i).type("  Boat  ");
   cy.findByPlaceholderText(/a small vessel.*/i).type(
-    "  A small vessel for traveling on water.  ",
+    "  A small vessel for traveling on water.  {enter}",
   );
 
-  cy.findByLabelText("Save").click();
-
-  cy.wait("@createGlossary");
+  cy.wait("@createGlossary").its("request.body").should("deep.equal", {
+    term: "Boat",
+    definition: "A small vessel for traveling on water.",
+  });
 
   cy.get("table").within(() => {
-    cy.findByText("Boat").should("be.visible");
-    cy.findByText("A small vessel for traveling on water.").should(
+    cy.findByDisplayValue("Boat").should("be.visible");
+    cy.findByDisplayValue("A small vessel for traveling on water.").should(
       "be.visible",
     );
   });
 }
 
 function executeUpdateGlossaryTermFlow() {
-  cy.intercept("PUT", "/api/glossary/*", (req) => {
-    expect(req.body).to.deep.equal({
-      term: "Kitten",
-      definition: "Young cat",
-    });
-  }).as("updateGlossary");
+  cy.intercept("PUT", "/api/glossary/*").as("updateGlossary");
 
-  cy.get("table").findByText("Boat").click();
-  cy.findByPlaceholderText(/boat/i).clear().type("Kitten");
-  cy.findByPlaceholderText(/a small vessel.*/i)
+  cy.get("table").findByDisplayValue("Boat").clear().type("Kitten{enter}");
+  cy.wait("@updateGlossary").its("request.body").should("deep.equal", {
+    term: "Kitten",
+    definition: "A small vessel for traveling on water.",
+  });
+
+  cy.get("table")
+    .findByDisplayValue("A small vessel for traveling on water.")
     .clear()
-    .type("Young cat");
-  cy.findByRole("button", { name: /save/i }).click();
-  cy.wait("@updateGlossary");
+    .type("Young cat{enter}");
+  cy.wait("@updateGlossary")
+    .its("request.body")
+    .should("deep.equal", { term: "Kitten", definition: "Young cat" });
 
   cy.get("table").within(() => {
-    cy.findByText("Kitten").should("be.visible");
-    cy.findByText("Young cat").should("be.visible");
+    cy.findByDisplayValue("Kitten").should("be.visible");
+    cy.findByDisplayValue("Young cat").should("be.visible");
   });
 }
 
@@ -53,7 +50,7 @@ function executeDeleteGlossaryTermFlow() {
   cy.intercept("DELETE", "/api/glossary/*").as("deleteGlossary");
 
   cy.get("table").within(() => {
-    cy.findByText("Kitten").should("be.visible").realHover();
+    cy.findByDisplayValue("Kitten").should("be.visible").realHover();
     cy.findByRole("button", { name: /delete/i }).click();
   });
 
@@ -62,7 +59,7 @@ function executeDeleteGlossaryTermFlow() {
   });
 
   cy.wait("@deleteGlossary");
-  cy.get("table").findByText("Kitten").should("not.exist");
+  cy.get("table").findByDisplayValue("Kitten").should("not.exist");
 }
 
 describe("data reference > glossary", () => {
@@ -91,8 +88,8 @@ describe("data reference > glossary", () => {
 
     cy.wait("@getGlossary");
     cy.get("table").within(() => {
-      cy.findByText("Alpha").should("be.visible");
-      cy.findByText("Beta").should("be.visible");
+      cy.findByDisplayValue("Alpha").should("be.visible");
+      cy.findByDisplayValue("Beta").should("be.visible");
     });
   });
 });
@@ -119,9 +116,10 @@ describe("data studio > glossary", () => {
     });
 
     executeUpdateGlossaryTermFlow();
-    H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_glossary_term_updated",
-    });
+    H.expectUnstructuredSnowplowEvent(
+      { event: "data_studio_glossary_term_updated" },
+      2,
+    );
 
     executeDeleteGlossaryTermFlow();
     H.expectUnstructuredSnowplowEvent({

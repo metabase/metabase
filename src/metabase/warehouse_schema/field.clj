@@ -4,6 +4,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
+   [metabase.warehouse-schema.ai-proposals :as ai-proposals]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
@@ -30,12 +31,14 @@
 
 (defn get-field
   "Get `Field` with ID. `preview-ai-proposals?` needs `include-editable-data-model?`: for a superuser, the Field reads
-  its pending AI proposals as if accepted, see [[warehouse-schema.db/field]]. Other users get the normal read."
+  its pending AI proposals as if accepted, see [[ai-proposals/with-ai-proposal-previews]]. Other users get the normal
+  read."
   [id {:keys [include-editable-data-model? preview-ai-proposals?]}]
   (api/check-400 (or (not preview-ai-proposals?) include-editable-data-model?)
                  "preview_ai_proposals requires include_editable_data_model")
   (let [ai-proposals? (boolean (and preview-ai-proposals? api/*is-superuser?*))
-        field         (-> (api/check-404 (warehouse-schema.db/field id {:ai-proposals? ai-proposals?}))
+        field         (-> (api/check-404 (warehouse-schema.db/field id))
+                          (cond-> ai-proposals? (-> vector ai-proposals/with-ai-proposal-previews first))
                           (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
         field         (if include-editable-data-model?
                         (-> (hydrate-target-with-data-model-perms field)

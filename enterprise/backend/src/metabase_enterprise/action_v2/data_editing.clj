@@ -13,8 +13,7 @@
    [metabase.query-processor.core :as qp]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
-   [metabase.util.queue :as queue]
-   [metabase.warehouse-schema.db :as warehouse-schema.db])
+   [metabase.util.queue :as queue])
   (:import
    (java.util.concurrent ArrayBlockingQueue)))
 
@@ -29,10 +28,8 @@
   "A layer of indirection on the actual [[field-value-invalidation-queue]], for testing."
   nil)
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:private ^:dynamic *invalidate-select-batch-size*
-  "Chunk size when fetching :model/Field rows for invalidation. Keeps a single SQL `IN (…)`
-  clause well under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
+(def ^:private invalidate-select-batch-size
+  "Chunk size when fetching :model/Field rows for invalidation, so each app-DB `IN (…)` clause stays bounded."
   500)
 
 (defn- batch-invalidate-field-values!
@@ -42,7 +39,7 @@
   (let [field-ids (into #{} cat field-batches)
         fields    (when (seq field-ids)
                     (->> field-ids
-                         (partition-all *invalidate-select-batch-size*)
+                         (partition-all invalidate-select-batch-size)
                          (mapcat (fn [batch]
                                    (action-v2.db/fields batch)))))]
     (sync.field-values/sync-fields-grouped-by-table! fields)))
@@ -89,7 +86,7 @@
   (assert (seq pk-fields) "Table must have at least one primary key column")
   ;; TODO pass in the db-id from above rather
   (when (seq rows)
-    (let [{:keys [db_id]} (api/check-404 (warehouse-schema.db/table table-id))
+    (let [{:keys [db_id]} (api/check-404 (action-v2.db/table table-id))
           row-pks (seq (map (partial get-row-pks pk-fields) rows))]
       (assert (every? valid-pks row-pks) "All rows must have valid primary keys")
       (let [mp    (lib-be/application-database-metadata-provider db_id)

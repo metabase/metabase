@@ -44,7 +44,7 @@
                                          :active false :position 102}
                  :model/Field user-sens {:table_id (mt/id :people) :name "user_sensitive_f" :base_type :type/Text
                                          :position 104}]
-    (field-user-settings/upsert-user-settings user-sens {:visibility_type :sensitive})
+    (field-user-settings/upsert-field-user-settings! user-sens {:visibility_type :sensitive})
     (let [packet (schema-only-packet (people-table))
           ids    (into #{} (map :id) (:fields packet))]
       (testing "details-only fields are included"
@@ -135,7 +135,7 @@
     (testing "a field with no user-settings row shows the Field's description"
       (is (= "Comment from the database" (:description (field-by-name (schema-only-packet (people-table)) "labeled_f")))))
     (testing "non-nil user-settings values and a cleared flagged column are reported as human-set"
-      (field-user-settings/upsert-user-settings f {:semantic_type :type/Email :data_sensitivity :PUBLIC :description nil})
+      (field-user-settings/upsert-field-user-settings! f {:semantic_type :type/Email :data_sensitivity :PUBLIC :description nil})
       (let [entry (field-by-name (schema-only-packet (people-table)) "labeled_f")]
         (is (= #{:semantic_type :data_sensitivity :description} (:human_set entry)))
         (is (nil? (:description entry)) "a cleared description hides the Field's description, as the overlay does")

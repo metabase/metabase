@@ -249,24 +249,41 @@
                         (mapv #(m/remove-vals nil? (select-keys % [:id :name])) (:series dc)))
     :inline_parameters (not-empty (:inline_parameters dc))}))
 
-(defn- dashboard-parameters-summary
-  "One row per dashboard parameter: id, name, type, and the ids of the dashcards it is wired
-   to through their `:parameter_mappings`, including the negative ids of a dry run's unsaved dashcards."
+(defn parameter-dashcard-ids
+  "A map from each wired parameter's id, as a string, to the sorted ids of `dash`'s dashcards wired to it.
+   A dry run's unsaved dashcards appear under their negative ids."
   [dash]
-  (let [param-id->dashcard-ids (reduce (fn [acc {dashcard-id :id :keys [parameter_mappings]}]
-                                         (reduce #(update %1 (u/qualified-name (:parameter_id %2)) (fnil conj #{}) dashcard-id)
-                                                 acc
-                                                 parameter_mappings))
-                                       {}
-                                       (:dashcards dash))]
+  (update-vals (reduce (fn [acc {dashcard-id :id :keys [parameter_mappings]}]
+                         (reduce #(update %1 (u/qualified-name (:parameter_id %2)) (fnil conj #{}) dashcard-id)
+                                 acc
+                                 parameter_mappings))
+                       {}
+                       (:dashcards dash))
+               (comp vec sort)))
+
+(defn- dashboard-parameters-summary
+  "One row per dashboard parameter, with a subset of its stored properties and the ids of the dashcards wired to it."
+  [dash]
+  (let [param-id->dashcard-ids (parameter-dashcard-ids dash)]
     (mapv (fn [{param-id :id :as param}]
             (m/remove-vals
              nil?
-             {:id           param-id
-              :name         (:name param)
-              :type         (:type param)
-              :dashcard_ids (not-empty
-                             (vec (sort (remove nil? (get param-id->dashcard-ids (u/qualified-name param-id))))))}))
+             ;; TODO (Chris 2026-10-30) -- decide with evals which parameter properties concise reads show.
+             ;; A static list's `values_source_config` holds every value, so a long list fills the agent's
+             ;; context in every concise read and every `dashboard_write` response.
+             ;; The row leaves out `values_query_type` and `isMultiSelect`, though a `"none"` query type means
+             ;; the widget is a text box that never offers the static list shown here.
+             {:id                   param-id
+              :name                 (:name param)
+              :type                 (:type param)
+              :default              (:default param)
+              :required             (:required param)
+              :values_source_type   (:values_source_type param)
+              ;; A card source shows the card id and its value and label fields even to users who can't read the card.
+              ;; The REST endpoint `GET /api/dashboard/:id` returns stored parameters the same way, so
+              ;; redacting them only here would not keep them from those users.
+              :values_source_config (:values_source_config param)
+              :dashcard_ids         (get param-id->dashcard-ids (u/qualified-name param-id))}))
           (:parameters dash))))
 
 (defn dashboard-row
@@ -292,7 +309,17 @@
 (def ^:private dashboard-sample
   (-> (zipmap dashboard-detailed-keys (repeat "x"))
       (assoc :tabs [{:id 1 :name "x"}]
-             :parameters [{:id "x" :name "x" :type "x" :dashcard_ids [1]}]
+             :parameters [{:id                   "x"
+                           :name                 "x"
+                           :type                 "x"
+                           :default              "x"
+                           :required             true
+                           :values_source_type   "x"
+                           :values_source_config {:values      ["x"]
+                                                  :card_id     1
+                                                  :value_field ["x"]
+                                                  :label_field ["x"]}
+                           :dashcard_ids         [1]}]
              :dashcards [{:id 1 :kind "x" :card {:id 1 :name "x"} :text "x" :dashboard_tab_id 1
                           :row 0 :col 0 :size_x 1 :size_y 1 :series [{:id 1 :name "x"}]
                           :inline_parameters ["x"]}])))

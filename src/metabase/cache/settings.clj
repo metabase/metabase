@@ -5,6 +5,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
+(set! *warn-on-reflection* true)
+
 (defsetting enable-query-caching
   (deferred-tru "Allow caching results of queries that take a long time to run.")
   :type       :boolean

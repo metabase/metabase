@@ -204,4 +204,4 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"invalid parameterized_object_type"
-             (t2/update! :model/ParameterCard pc-id {:parameterized_object_type "invalid"})))))))
+             (t2/update! :model/ParameterCard :id pc-id {:parameterized_object_type "invalid"})))))))

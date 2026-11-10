@@ -75,9 +75,7 @@
   retried callback doesn't burn the key."
   [key]
   (when (relay-state-key? key)
-    (when-let [relay-state (sso.db/sso-relay-state (hash-key key))]
-      (when (t/after? (t/instant (:expires_at relay-state)) (t/instant (t/offset-date-time)))
-        relay-state))))
+    (sso.db/unexpired-relay-state (hash-key key) (t/offset-date-time))))
 
 (defn delete!
   "Consume (delete) the RelayState entry for the (plaintext) `key`. Called after a successful login; the single

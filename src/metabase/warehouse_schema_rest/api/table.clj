@@ -6,8 +6,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
-   [metabase.collections.db :as collections.db]
-   [metabase.data-apps.core :as data-apps]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -34,16 +32,16 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
-   [metabase.warehouses.db :as warehouses.db]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(events/derive! :event/table-update :metabase/event)
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
@@ -56,7 +54,7 @@
 (def ^:private EntityType
   "Schema for a valid table entity type, as either a keyword or a string."
   (mu/with-api-error-message
-   [:fn #(isa? types/entity-hierarchy (keyword %) :entity/*)]
+   [:fn {:json-schema {:type "string"}} #(isa? types/entity-hierarchy (keyword %) :entity/*)]
    (deferred-tru "value must be a valid entity type (keyword or string).")))
 
 (mr/def ::data-authority-write
@@ -127,30 +125,22 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id"
+  ;; partial schema only
+  :- [:map {:closed false}
+      [:data_authority ::data-authority-read]]
   "Get `Table` with ID."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model]}
    :- [:map {:closed true}
-       [:include_editable_data_model {:optional true} [:maybe :boolean]]]
-   _body
-   request]
-  ;; partial schema only
-  :- [:map {:closed false}
-      [:data_authority ::data-authority-read]]
-  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
+       [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
   (let [api-perm-check-fn (if include_editable_data_model
                             schema.table/check-data-model-perms
                             api/read-check)]
-    (-> (api/check-404 (warehouse-schema.db/table id))
+    (-> (api/check-404 (warehouse-schema-rest.db/table id))
         api-perm-check-fn
         (t2/hydrate :db :pk_field :collection)
         schema.table/present-table)))
@@ -162,7 +152,7 @@
 (api.macros/defendpoint :get "/:table-id/data"
   "Get the data for the given table"
   [{:keys [table-id]} :- [:map {:closed true} [:table-id ms/PositiveInt]]]
-  (let [table (warehouse-schema.db/table table-id)
+  (let [table (warehouse-schema-rest.db/table table-id)
         db-id (:db_id table)]
     (api/query-check table)
     (qp.store/with-metadata-provider db-id
@@ -197,7 +187,7 @@
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:field_order             {:optional true} [:maybe FieldOrder]]
-   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+   [:data_authority          {:optional true} ::data-authority-write]
    [:data_source             {:optional true} [:maybe :string]]
    [:data_layer              {:optional true} [:maybe :string]]
    [:owner_email             {:optional true} [:maybe :string]]
@@ -227,8 +217,8 @@
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
-    (schema.table-user-settings/upsert-user-settings existing-table changes))
-  (let [updated-table        (warehouse-schema.db/table id)
+    (schema.table-user-settings/upsert-table-user-settings! existing-table changes))
+  (let [updated-table        (warehouse-schema-rest.db/table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
@@ -245,7 +235,7 @@
     (quick-task/submit-task!
      (fn []
        (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (warehouses.db/database db-id)]
+         (let [database (warehouse-schema-rest.db/database db-id)]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
            (if (binding [driver.settings/*allow-testing-h2-connections* true
@@ -260,7 +250,7 @@
 (defn- check-can-publish-tables-to-collection!
   [tables collection-id]
   (api/check-data-studio-access)
-  (let [collection (api/check-404 (collections.db/collection collection-id))]
+  (let [collection (api/check-404 (warehouse-schema-rest.db/collection collection-id))]
     (api/check-400 (= (:type collection) collections/library-data-collection-type)
                    (tru "Tables can only be published to Semantic layer/Data collections."))
     (api/check-403 (every? mi/can-query? tables))))
@@ -341,46 +331,11 @@
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-       [:preview_ai_proposals        {:default false} [:maybe ms/BooleanValue]]]
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
+       [:preview_ai_proposals        {:default false} [:maybe ms/BooleanValue]]]]
   (schema.table/fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                                :include-hidden-fields?       include_hidden_fields
                                                :include-editable-data-model? include_editable_data_model
                                                :preview-ai-proposals?        preview_ai_proposals}))
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/card__:id/query_metadata"
-  "Return metadata for the 'virtual' table for a Card."
-  {:scope api-scope/data-app}
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
-   _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-card id))
-  (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/card__:id/fks"
-  "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
-   serves mainly as a placeholder to avoid having to change anything on the frontend."
-  [_route-params :- [:map {:closed true}
-                     [:id ms/PositiveInt]]]
-  []) ; return empty array
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -390,11 +345,7 @@
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
-   _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
+                    [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (warehouse-schema-rest.db/active-unretired-field-ids-for-table id))]
     (for [origin-field (warehouse-schema-rest.db/active-fields-targeting field-ids)
@@ -407,21 +358,17 @@
        :origin_id      (:id origin-field)
        :origin         origin-field
        :destination_id (:fk_target_field_id origin-field)
-       :destination    (t2/hydrate (warehouse-schema.db/field (:fk_target_field_id origin-field)) :table)})))
+       :destination    (t2/hydrate (warehouse-schema-rest.db/field (:fk_target_field_id origin-field)) :table)})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/rescan_values"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/rescan_values" :- [:map {:closed true} [:status [:= :success]]]
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [table (api/write-check (warehouse-schema.db/table id))]
+  (let [table (api/write-check (warehouse-schema-rest.db/table id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
@@ -435,17 +382,13 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/discard_values"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/discard_values" :- [:map {:closed true} [:status [:= :success]]]
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/write-check (warehouse-schema.db/table id))
+  (api/write-check (warehouse-schema-rest.db/table id))
   (when-let [field-ids (warehouse-schema-rest.db/field-ids-for-table id)]
     (warehouse-schema-rest.db/delete-field-values-for-fields! field-ids))
   {:status :success})
@@ -458,7 +401,7 @@
   "Return related entities."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (-> (warehouse-schema.db/table id) api/read-check xrays/related))
+  (-> (warehouse-schema-rest.db/table id) api/read-check xrays/related))
 
 (api.macros/defendpoint :put "/:id/fields/order" :- [:map
                                                      [:success [:= true]]]
@@ -471,8 +414,8 @@
             [:sequential ms/PositiveInt]
             [:map {:closed true} [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
-    (-> (warehouse-schema.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order))
-    (events/publish-event! :event/table-update {:object  (warehouse-schema.db/table id)
+    (-> (warehouse-schema-rest.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order))
+    (events/publish-event! :event/table-update {:object  (warehouse-schema-rest.db/table id)
                                                 :user-id api/*current-user-id*}))
   {:success true})
 
@@ -554,19 +497,13 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/sync_schema"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/sync_schema" :- [:map {:closed true} [:status [:= :ok]]]
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [table    (api/check-404 (warehouse-schema.db/table id))
-        database (api/check-404 (let [database (warehouses.db/database (:db_id table))]
-                                  (when (nil? (:router_database_id database))
-                                    database)))]
+  (let [table    (api/check-404 (warehouse-schema-rest.db/table id))
+        database (api/check-404 (warehouse-schema-rest.db/non-destination-database (:db_id table)))]
     (api/check-403
      (perms/user-has-permission-for-table?
       api/*current-user-id*

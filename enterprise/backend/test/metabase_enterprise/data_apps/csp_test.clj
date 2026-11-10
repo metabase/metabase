@@ -50,7 +50,7 @@
       (mt/with-premium-features #{:data-apps}
         (is (= ["https://api.example.com"] (mw.security/data-app-connect-src-hosts app-name)))
         (testing "including a disabled app's, whose document only superusers reach"
-          (t2/update! :model/DataApp app-id {:enabled false})
+          (t2/update! :model/DataApp :id app-id {:enabled false})
           (is (= ["https://api.example.com"] (mw.security/data-app-connect-src-hosts app-name))))))
     (testing "without the feature it falls back to []"
       (mt/with-premium-features #{}

@@ -1,11 +1,7 @@
 import cx from "classnames";
 import { type ReactNode, useMemo } from "react";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useGetCollectionQuery,
-} from "metabase/api";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { CollectionBadge } from "metabase/common/collections/components/CollectionBadge";
 import {
   BREADCRUMB_TRAIL_CLASS_NAME,
@@ -13,8 +9,7 @@ import {
 } from "metabase/common/components/Breadcrumb";
 import { Group, type GroupProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { Table } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import { CollectionBreadcrumb } from "./CollectionBreadcrumb";
 import { Separator } from "./Separator";
@@ -22,18 +17,12 @@ import { getCollectionList } from "./utils";
 
 interface Props extends GroupProps {
   rowName: ReactNode;
-  table: Table;
+  card: Card;
 }
 
-export const ModelNav = ({ rowName, table, className, ...props }: Props) => {
-  const modelId = getQuestionIdFromVirtualTableId(table.id);
-
-  const { data: card } = useGetCardQuery(
-    modelId == null ? skipToken : { id: modelId },
-  );
-
+export const ModelNav = ({ rowName, card, className, ...props }: Props) => {
   const { data: collection } = useGetCollectionQuery(
-    card?.collection_id ? { id: card.collection_id } : skipToken,
+    card.collection_id ? { id: card.collection_id } : skipToken,
   );
 
   const collections = useMemo(() => {
@@ -64,15 +53,11 @@ export const ModelNav = ({ rowName, table, className, ...props }: Props) => {
         </>
       )}
 
-      {card && (
-        <>
-          <Breadcrumb icon="model" to={Urls.card(card)} showTooltip>
-            {card.name}
-          </Breadcrumb>
+      <Breadcrumb icon="model" to={Urls.card(card)} showTooltip>
+        {card.name}
+      </Breadcrumb>
 
-          <Separator />
-        </>
-      )}
+      <Separator />
 
       {rowName && <Breadcrumb showTooltip>{rowName}</Breadcrumb>}
     </Group>

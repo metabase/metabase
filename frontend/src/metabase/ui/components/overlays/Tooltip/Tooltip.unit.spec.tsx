@@ -27,6 +27,48 @@ const setup = () => {
   return { user };
 };
 
+type NeighbouringTargetsProps = {
+  isPinnedOpened: boolean;
+  hasFirstTarget: boolean;
+};
+
+const NeighbouringTargets = ({
+  isPinnedOpened,
+  hasFirstTarget,
+}: NeighbouringTargetsProps) => (
+  <div>
+    {(hasFirstTarget ? ["First", "Second"] : ["Second"]).map((name) => (
+      <Tooltip
+        key={name}
+        label={`${name} tooltip`}
+        transitionProps={{ duration: FADE_DURATION_MS }}
+      >
+        <button>{name}</button>
+      </Tooltip>
+    ))}
+    <Tooltip label="Pinned tooltip" opened={isPinnedOpened}>
+      <button>Pinned</button>
+    </Tooltip>
+    <span>Elsewhere</span>
+  </div>
+);
+
+const setupNeighbouringTargets = () => {
+  const user = setupUser();
+  let props: NeighbouringTargetsProps = {
+    isPinnedOpened: false,
+    hasFirstTarget: true,
+  };
+  const { rerender } = render(<NeighbouringTargets {...props} />);
+  const updateProps = (changes: Partial<NeighbouringTargetsProps>) => {
+    props = { ...props, ...changes };
+    rerender(<NeighbouringTargets {...props} />);
+  };
+  const openPinnedTooltip = () => updateProps({ isPinnedOpened: true });
+  const removeFirstTarget = () => updateProps({ hasFirstTarget: false });
+  return { user, openPinnedTooltip, removeFirstTarget };
+};
+
 const ISOLATED_EVENTS = [
   { type: "click", fire: fireEvent.click },
   { type: "dblclick", fire: fireEvent.dblClick },
@@ -106,6 +148,148 @@ describe("Tooltip", () => {
     await waitFor(() => {
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     });
+  });
+
+  it("lets the pointer through until it has finished fading in", async () => {
+    const { user } = setup();
+
+    await user.hover(screen.getByRole("button", { name: "Target" }));
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip).not.toHaveAttribute("data-hoverable");
+
+    await waitFor(() => expect(tooltip).toHaveAttribute("data-hoverable"));
+  });
+
+  it("hides the previous tooltip straight away when the pointer moves to another target", async () => {
+    const { user } = setupNeighbouringTargets();
+
+    await user.hover(screen.getByRole("button", { name: "First" }));
+    const firstTooltip = await screen.findByRole("tooltip", {
+      name: "First tooltip",
+    });
+    // With nothing to replace, it fades in as usual.
+    expect(firstTooltip).not.toHaveAttribute("data-entering-instantly");
+
+    await user.hover(screen.getByRole("button", { name: "Second" }));
+    const secondTooltip = await screen.findByRole("tooltip", {
+      name: "Second tooltip",
+    });
+    expect(firstTooltip).toHaveAttribute("data-replaced");
+    expect(secondTooltip).toHaveAttribute("data-entering-instantly");
+
+    await waitFor(() => {
+      expect(secondTooltip).not.toHaveAttribute("data-entering-instantly");
+    });
+  });
+
+  it("brings back a hidden tooltip that's still open as soon as the one that hid it closes", async () => {
+    const { user } = setupNeighbouringTargets();
+
+    await user.tab();
+    const firstTooltip = await screen.findByRole("tooltip", {
+      name: "First tooltip",
+    });
+
+    const secondTarget = screen.getByRole("button", { name: "Second" });
+    await user.hover(secondTarget);
+    const secondTooltip = await screen.findByRole("tooltip", {
+      name: "Second tooltip",
+    });
+    expect(firstTooltip).toHaveAttribute("data-replaced");
+
+    await user.unhover(secondTarget);
+    // Hidden rather than fading out, so the first tooltip shows at once.
+    await waitFor(() => {
+      expect(secondTooltip).toHaveAttribute("data-replaced");
+    });
+    expect(secondTooltip).toBeInTheDocument();
+    expect(firstTooltip).not.toHaveAttribute("data-replaced");
+  });
+
+  it("keeps showing a brought-back tooltip while it fades out", async () => {
+    const { user } = setupNeighbouringTargets();
+
+    await user.tab();
+    const firstTooltip = await screen.findByRole("tooltip", {
+      name: "First tooltip",
+    });
+
+    const secondTarget = screen.getByRole("button", { name: "Second" });
+    await user.hover(secondTarget);
+    const secondTooltip = await screen.findByRole("tooltip", {
+      name: "Second tooltip",
+    });
+    await user.unhover(secondTarget);
+    await waitFor(() => {
+      expect(firstTooltip).not.toHaveAttribute("data-replaced");
+    });
+
+    // Close the first tooltip while the second is still fading out.
+    await user.click(screen.getByText("Elsewhere"));
+    await waitFor(() => {
+      expect(firstTooltip).not.toHaveAttribute("data-hoverable");
+    });
+    expect(secondTooltip).toBeInTheDocument();
+    expect(secondTooltip).toHaveAttribute("data-replaced");
+    expect(firstTooltip).not.toHaveAttribute("data-replaced");
+  });
+
+  it("fades in the next tooltip as usual after a shown one is removed", async () => {
+    const { user, removeFirstTarget } = setupNeighbouringTargets();
+
+    await user.hover(screen.getByRole("button", { name: "First" }));
+    await screen.findByRole("tooltip", { name: "First tooltip" });
+
+    removeFirstTarget();
+    expect(
+      screen.queryByRole("tooltip", { name: "First tooltip" }),
+    ).not.toBeInTheDocument();
+
+    await user.hover(screen.getByRole("button", { name: "Second" }));
+    const secondTooltip = await screen.findByRole("tooltip", {
+      name: "Second tooltip",
+    });
+    expect(secondTooltip).not.toHaveAttribute("data-entering-instantly");
+  });
+
+  it("neither hides nor is hidden by a tooltip whose owner controls whether it's open", async () => {
+    const { user, openPinnedTooltip } = setupNeighbouringTargets();
+
+    await user.hover(screen.getByRole("button", { name: "First" }));
+    const firstTooltip = await screen.findByRole("tooltip", {
+      name: "First tooltip",
+    });
+
+    openPinnedTooltip();
+    const pinnedTooltip = await screen.findByRole("tooltip", {
+      name: "Pinned tooltip",
+    });
+    expect(firstTooltip).not.toHaveAttribute("data-replaced");
+    expect(pinnedTooltip).not.toHaveAttribute("data-entering-instantly");
+
+    await user.hover(screen.getByRole("button", { name: "Second" }));
+    await screen.findByRole("tooltip", { name: "Second tooltip" });
+    expect(pinnedTooltip).not.toHaveAttribute("data-replaced");
+  });
+
+  it("fades out a replacing tooltip that closes before it has finished appearing", async () => {
+    const { user } = setupNeighbouringTargets();
+
+    await user.hover(screen.getByRole("button", { name: "First" }));
+    await screen.findByRole("tooltip", { name: "First tooltip" });
+    await user.hover(screen.getByRole("button", { name: "Second" }));
+    const secondTooltip = await screen.findByRole("tooltip", {
+      name: "Second tooltip",
+    });
+    expect(secondTooltip).toHaveAttribute("data-entering-instantly");
+
+    await user.hover(screen.getByText("Elsewhere"));
+    await waitFor(() => {
+      expect(secondTooltip).not.toHaveAttribute("data-entering-instantly");
+    });
+    // With nothing replacing it, it stays visible while it fades.
+    expect(secondTooltip).not.toHaveAttribute("data-replaced");
+    expect(secondTooltip).toBeInTheDocument();
   });
 
   it.each(ISOLATED_EVENTS)(

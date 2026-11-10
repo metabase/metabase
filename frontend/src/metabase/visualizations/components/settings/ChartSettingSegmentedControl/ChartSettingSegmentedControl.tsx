@@ -5,10 +5,14 @@ import {
   encodeWidgetValue,
 } from "metabase/viz-core";
 
+import { getChartSettingLabelId } from "../get-chart-setting-label-id";
+
 export const ChartSettingSegmentedControl = ({
+  id,
   options,
   onChange,
   value,
+  disabled,
 }: ChartSettingSegmentedControlProps) => {
   const handleChange = (encodedValue: string) => {
     const option = options.find(
@@ -22,9 +26,14 @@ export const ChartSettingSegmentedControl = ({
   return (
     <SegmentedControl
       fullWidth
+      // Settings live in narrow sidebars and popovers; tighter segments
+      // leave more room for labels before they truncate.
+      itemPaddingX="sm"
+      aria-labelledby={id ? getChartSettingLabelId(id) : undefined}
       data={options.map(getSegmentedControlItem)}
       value={encodeWidgetValue(value)}
       onChange={handleChange}
+      disabled={disabled}
     />
   );
 };

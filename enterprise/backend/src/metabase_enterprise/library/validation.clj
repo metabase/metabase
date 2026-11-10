@@ -1,7 +1,7 @@
 (ns metabase-enterprise.library.validation
   (:require
    [clojure.set :as set]
-   [metabase.collections.db :as collections.db]
+   [metabase-enterprise.library.db :as library.db]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
@@ -23,12 +23,8 @@
     :error-message         "Can only add metrics to the 'Metrics' collection"}
 
    collection/library-dashboards-collection-type
-   {:allowed-content-types #{:model/Dashboard
-                             :dashboard-question
-                             :model/Pulse
-                             :model/Timeline
-                             collection/library-dashboards-collection-type}
-    :error-message         "Can only add dashboards to the 'Dashboards' collection"}})
+   {:allowed-content-types (complement #{:table :collection})
+    :error-message         "Cannot add tables or regular collections to the 'Dashboards' collection"}})
 
 (defenterprise check-library-content
   "Check if the collection's content matches the allowed content.
@@ -36,7 +32,7 @@
   :feature :library
   [content-type collection-id]
   (when collection-id
-    (let [collection-type (:type (collections.db/collection collection-id))]
+    (let [collection-type (library.db/collection-type collection-id)]
       (when-let [{:keys [allowed-content-types error-message]} (some-> collection-type
                                                                        library-collection-content-specs)]
         (when-not (allowed-content-types content-type)
@@ -58,6 +54,6 @@
     (when (and (collection/is-library-collection? (:id collection))
                (contains? change-keys :location)
                (when-let [parent-id (collection/location-path->parent-id (:location collection))]
-                 (not= (:type collection) (:type (collections.db/collection parent-id)))))
+                 (not= (:type collection) (library.db/collection-type parent-id))))
       (throw (ex-info "Cannot move a semantic layer collection outside the semantic layer" {}))))
   true)

@@ -61,14 +61,14 @@ export const MenuItemComponent = ({
           {item.label}
         </Text>
         {item.description && (
-          <Text size="sm" c="text-disabled" lh="md">
+          <Text size="sm" c="text-secondary" lh="md">
             {item.description}
           </Text>
         )}
       </Stack>
 
       {item.hasSubmenu && (
-        <Icon name="chevronright" size=".75rem" c="text-disabled" />
+        <Icon name="chevronright" size=".75rem" c="text-secondary" />
       )}
     </Group>
   </UnstyledButton>

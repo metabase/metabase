@@ -1150,7 +1150,7 @@
 
 (deftest have-select-privelege?-timeout-test
   (mt/test-driver :mysql
-    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table :id (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
         (testing "checking select privilege defaults to allow on timeout (#56737)"
           (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT sleep(3)"])]
@@ -1464,6 +1464,16 @@
 
 (deftest ^:parallel query-error-evidence-test
   (mt/test-driver :mysql
-    (doseq [[state code expected] [["HY000" 4176 true] ["HY000" 1205 false] [nil 4176 false]]]
+    (doseq [[^String state code expected] [["HY000" 4176 true] ["HY000" 1205 false] [nil 4176 false]]]
       (is (= expected (sql-jdbc.execute/impl-error-in-query?
-                       :mysql (SQLTransientConnectionException. "Row read failed" state code)))))))
+                       :mysql (SQLTransientConnectionException. "Row read failed" state (int code))))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 3306 :user "u" :db "a?b"}
+                   {:host "localhost" :port 3306 :user "u" :db "a%3Fb"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :mysql details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))

@@ -215,7 +215,11 @@
     :operator {:lib/type :mbql/expression-parts
                :operator (:operator expression-spec)
                :options {}
-               :args (mapv #(expression-spec->expression-parts query stage-number % available-columns)
+               :args (into []
+                           (mapcat (fn [{arg-type :type, value :value, :as arg}]
+                                     (if (and (= arg-type :literal) (sequential? value))
+                                       value
+                                       [(expression-spec->expression-parts query stage-number arg available-columns)])))
                            (:args expression-spec))}))
 
 (mu/defn- named-expression-spec? :- :boolean
@@ -423,25 +427,10 @@
         query            (lib.query/query metadata-providerable source)]
     (reduce-kv append-stage-clauses query stages)))
 
-(mu/defn- field-id->field-ref :- :mbql.clause/field
-  [query    :- ::lib.schema/query
-   field-id :- pos-int?]
-  (->> field-id
-       (lib.metadata/field query)
-       lib.ref/ref))
-
-(mu/defn- adjust-template-tag
-  [query :- ::lib.schema/query
-   spec  :- ::lib.schema.test-spec/test-template-tag-spec]
-  (u/update-if-exists spec :dimension #(field-id->field-ref query %)))
-
-(mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tags
-  [query                  :- ::lib.schema/query
-   inferred-template-tags :- ::lib.schema.template-tag/template-tags
-   template-tags-spec     :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
-  (let [spec-tags              (for [spec template-tags-spec]
-                                 (adjust-template-tag query spec))
-        inferred-tag-name->tag (into {} (map (juxt :name identity)) inferred-template-tags)
+(mu/defn- merge-template-tags :- ::lib.schema.template-tag/template-tags
+  [inferred-template-tags :- ::lib.schema.template-tag/template-tags
+   spec-tags              :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
+  (let [inferred-tag-name->tag (into {} (map (juxt :name identity)) inferred-template-tags)
         spec-tag-name->tag     (into {} (map (juxt :name identity)) spec-tags)
         tag-names              (into []
                                      (comp cat
@@ -460,7 +449,7 @@
    template-tags-spec :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
   (let [inferred-template-tags (or (lib.native/template-tags query) [])]
     (->> template-tags-spec
-         (adjust-template-tags query inferred-template-tags)
+         (merge-template-tags inferred-template-tags)
          (lib.native/with-template-tags query))))
 
 (def ^:private parse-native-query-spec

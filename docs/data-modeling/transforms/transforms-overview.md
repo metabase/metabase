@@ -92,7 +92,7 @@ If you've set [`MB_TRANSFORMS_ENABLED`](../../configuring-metabase/environment-v
 
 _Data Studio > Data transformation_
 
-> If you're using remote sync, you won't be able to create transforms if your instance is in ["read-only" sync mode](../../installation-and-operation/remote-sync.md).
+> If you're using remote sync, you won't be able to create transforms if your instance is in ["read-only" sync mode](../semantic-layer/remote-sync.md).
 
 See [permissions needed to create transforms](#permissions-for-transforms).
 
@@ -135,7 +135,7 @@ _Data Studio > Data transformation_
 
 You can edit the transform's name and description, query/script, target table, and incremental settings. You can edit the transform even if it already ran or is scheduled to run.
 
-If you're using remote sync, you won't be able to edit transforms if your instance is in ["read-only" sync mode](../../installation-and-operation/remote-sync.md).
+If you're using remote sync, you won't be able to edit transforms if your instance is in ["read-only" sync mode](../semantic-layer/remote-sync.md).
 
 ![Edit transform settings](../images/transform-edit-settings.png)
 
@@ -287,15 +287,9 @@ _Admin > Settings > Remote sync_
 
 {% include plans-blockquote.html feature="Versioning transforms" %}
 
-You can check your transforms into git with [Remote Sync](../../installation-and-operation/remote-sync.md). If you enable transform sync, Metabase will serialize transforms as YAML files and push them to your specified GitHub repo branch.
+You can version your transforms with [Remote sync](../semantic-layer/remote-sync.md). Metabase serializes transforms as YAML files and pushes them to your repository along with the Library.
 
-To enable git sync of transforms:
-
-1. Go to Admin settings by clicking the **grid** icon in top right and select **Admin**.
-2. On the **Settings** tab, pick **Remote sync** in the left sidebar.
-3. Follow the steps to [Set up Remote Sync](../../installation-and-operation/remote-sync.md), and toggle **Transforms** sync on.
-
-Keep in mind that this setting only controls whether transforms are checked _into_ the git repo. The transform sync setting does _not_ affect how the instance behaves in read-only mode. If your instance is in read-only mode, you will not be able to create or edit transforms.
+If your Metabase is in Read-only mode, you can't create or edit transforms. See [Syncing transforms](../semantic-layer/remote-sync.md#syncing-transforms).
 
 ## Transforms vs models
 

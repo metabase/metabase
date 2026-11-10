@@ -11,7 +11,6 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -19,18 +18,17 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- user-table
-  "The Table with `table-id` as users see it. A bare `t2/select :model/Table` shows what sync wrote."
+  "The Table with `table-id`."
   [table-id]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id))
 
 (defn- user-tables
-  "The Tables with `table-ids` as users see it, ordered by `order-by`."
+  "The Tables with `table-ids`, ordered by `order-by`."
   [table-ids order-by]
-  (t2/select :model/Table :id [:in table-ids] {:from     [(warehouse-schema-overlay/table-query)]
-                                               :order-by [order-by]}))
+  (t2/select :model/Table :id [:in table-ids] {:order-by [order-by]}))
 
 (defn- user-table-fn
-  "The value of `column` on the Table with `table-id` as users see it."
+  "The value of `column` on the Table with `table-id`."
   [column table-id]
   (get (user-table table-id) column))
 
@@ -39,7 +37,7 @@
     (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-temp [:model/Transform transform {}
                      :model/Table     {table-id :id} {:transform_id (:id transform)}]
-        (t2/delete! :model/Transform (:id transform))
+        (t2/delete! :model/Transform :id (:id transform))
         (testing "metabase_table.transform_id -> transform.id is ON DELETE SET NULL, not left dangling"
           (is (nil? (user-table-fn :transform_id table-id))))
         (testing "GET /api/table/:id does not crash"

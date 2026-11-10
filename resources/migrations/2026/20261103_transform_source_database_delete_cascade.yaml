@@ -1,0 +1,44 @@
+## Delete a transform with its source database, as a Card is deleted with its database: delete the query transforms
+## whose source database is already gone, then recreate fk_tranform_source_database_id with ON DELETE CASCADE instead
+## of SET NULL. source_database_id stays nullable, since a Python transform without source tables has no source
+## database.
+
+databaseChangeLog:
+  - changeSet:
+      id: pz7hdr
+      author: ranquild
+      comment: Delete the query transforms whose source database was deleted
+      changes:
+        - sql:
+            sql: DELETE FROM transform WHERE source_database_id IS NULL AND source_type IN ('native', 'mbql')
+      rollback:
+
+  - changeSet:
+      id: cyme8a
+      author: ranquild
+      comment: Drop fk_tranform_source_database_id (recreated next with ON DELETE CASCADE)
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: transform
+            constraintName: fk_tranform_source_database_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: source_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_tranform_source_database_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: kq4w2m
+      author: ranquild
+      comment: Recreate fk_tranform_source_database_id with ON DELETE CASCADE
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: source_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_tranform_source_database_id
+            onDelete: CASCADE

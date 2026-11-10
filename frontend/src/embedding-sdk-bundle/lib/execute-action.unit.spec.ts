@@ -31,25 +31,94 @@ describe("executeAction", () => {
     activeStore = undefined;
     fetchMock.removeRoutes().clearHistory();
     EMBEDDING_SDK_CONFIG.isDataApp = false;
+    EMBEDDING_SDK_CONFIG.isDataAppDev = false;
   });
 
   describe("an action definition", () => {
     const ACTION_ENTITY_ID = "appActionEntity000091";
-    const definition = { action: { id: ACTION_ENTITY_ID } };
+    const ACTION_ID = 91;
+    const definition = {
+      entityId: ACTION_ENTITY_ID,
+      kind: "row/update" as const,
+      table: { id: 3 },
+    };
 
-    it("runs the action its definition names in a data app", async () => {
+    it("runs the saved action its entity ID names in a data app", async () => {
       EMBEDDING_SDK_CONFIG.isDataApp = true;
-      fetchMock.post(`path:/api/action/${ACTION_ENTITY_ID}/execute`, {
+      fetchMock.post("path:/api/eid-translation/translate", {
+        entity_ids: {
+          [ACTION_ENTITY_ID]: { id: ACTION_ID, type: "action", status: "ok" },
+        },
+      });
+      fetchMock.post(`path:/api/action/${ACTION_ID}/execute`, {
         status: 200,
-        body: { "rows-affected": 1 },
+        body: { "rows-updated": [1] },
       });
 
-      await executeAction(setup())({ actionId: definition });
+      const result = await executeAction(setup())({
+        actionId: definition,
+        parameters: { id: 1 },
+      });
 
+      expect(result).toEqual({ "rows-updated": [1] });
+      const calls = fetchMock.callHistory.calls(
+        `path:/api/action/${ACTION_ID}/execute`,
+      );
+      expect(calls).toHaveLength(1);
+      expect(JSON.parse(String(calls[0].options.body))).toEqual({
+        parameters: { id: 1 },
+      });
+    });
+
+    it("runs the action itself, without saving it, in the dev preview", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+      EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+      fetchMock.post("path:/api/action/execute", {
+        status: 200,
+        body: { "rows-updated": [1] },
+      });
+
+      await executeAction(setup())({
+        actionId: definition,
+        parameters: { id: 1 },
+      });
+
+      const calls = fetchMock.callHistory.calls("path:/api/action/execute");
+      expect(calls).toHaveLength(1);
+      expect(JSON.parse(String(calls[0].options.body))).toEqual({
+        action: {
+          name: "row/update",
+          type: "implicit",
+          kind: "row/update",
+          table_id: 3,
+        },
+        parameters: { id: 1 },
+      });
       expect(
-        fetchMock.callHistory.calls(
-          `path:/api/action/${ACTION_ENTITY_ID}/execute`,
-        ),
+        fetchMock.callHistory.calls("path:/api/eid-translation/translate"),
+      ).toHaveLength(0);
+    });
+
+    it("runs the saved action an older app's definition names by `action.id`", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+      fetchMock.post("path:/api/eid-translation/translate", {
+        entity_ids: {
+          [ACTION_ENTITY_ID]: { id: ACTION_ID, type: "action", status: "ok" },
+        },
+      });
+      fetchMock.post(`path:/api/action/${ACTION_ID}/execute`, {
+        status: 200,
+        body: { "rows-updated": [1] },
+      });
+
+      const result = await executeAction(setup())({
+        actionId: { action: { id: ACTION_ENTITY_ID } },
+        parameters: { id: 1 },
+      });
+
+      expect(result).toEqual({ "rows-updated": [1] });
+      expect(
+        fetchMock.callHistory.calls(`path:/api/action/${ACTION_ID}/execute`),
       ).toHaveLength(1);
     });
 

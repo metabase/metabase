@@ -18,7 +18,7 @@ type NativeQueryEditorProps = NativeQueryEditorCoreProps & {
  *
  * Assemble only the parts you need via the composition API:
  *
- *     <NativeQueryEditor question={question} query={query} setDatasetQuery={...}>
+ *     <NativeQueryEditor question={question} setQuery={...}>
  *       <NativeQueryEditor.TopBar>
  *         <NativeQueryEditor.Sidebar features={...} />
  *         <NativeQueryEditor.VisibilityToggler />

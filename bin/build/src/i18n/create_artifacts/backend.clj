@@ -60,7 +60,7 @@
   rather than re-parsed here so scanner and writer stay in sync."
   [locale drop-msgids po-contents]
   (let [target-file (target-filename locale)]
-    (u/step (format "Create backend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
+    (u/step (format "Create backend artifact %s" target-file)
       (u/create-directory-unless-exists! target-directory)
       (u/delete-file-if-exists! target-file)
       (write-edn-file! po-contents drop-msgids target-file)

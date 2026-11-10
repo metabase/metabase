@@ -8,12 +8,13 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
-   [metabase.measures.db :as measures.db]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.metrics.core :as metrics]
    [metabase.metrics.db :as metrics.db]
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
-   [metabase.queries.db :as queries.db]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -27,13 +28,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- metric-card
-  "The Card with `id` if it is a metric, or nil."
-  [id]
-  (let [card (queries.db/card id)]
-    (when (= (:type card) :metric)
-      card)))
 
 (mr/def ::Metric
   "Schema for a Metric in list responses (without hydrated dimensions)."
@@ -90,9 +84,9 @@
 
 (mu/defn- hydrated-metric [id :- ms/PositiveInt
                            include-orphaned? :- :boolean]
-  (api/read-check (metric-card id))
+  (api/read-check (metrics.db/metric-card id))
   (metrics/sync-dimensions! :metadata/metric id)
-  (cond-> (-> (metric-card id)
+  (cond-> (-> (metrics.db/metric-card id)
               metrics.perms/filter-dimensions-for-user
               (update :dimensions #(or % []))
               (update :dimension_mappings #(or % [])))
@@ -180,10 +174,10 @@
                       source-id   (lib-metric/expression-leaf-id leaf)]
                   (case source-type
                     :metric  (do
-                               (api/read-check (metric-card source-id))
+                               (api/read-check (metrics.db/metric-card source-id))
                                [(lib-metric/expression-leaf-uuid leaf) source-id])
                     :measure (do
-                               (api/query-check (measures.db/measure source-id))
+                               (api/query-check (metrics.db/measure source-id))
                                nil))))
               (lib-metric/expression-leaves expression))))
 
@@ -351,10 +345,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- read-check-metric! [id]
-  (api/read-check (metric-card id)))
+  (api/read-check (metrics.db/metric-card id)))
 
 (defn- write-check-metric! [id]
-  (api/write-check (metric-card id)))
+  (api/write-check (metrics.db/metric-card id)))
 
 (defn- notify-dimensions-changed!
   "Announce a write to metric `id`'s curated dimensions, given the `before` Card that
@@ -368,7 +362,7 @@
    Revisions are unaffected: `metabase.revisions.impl.card` excludes both columns from the snapshot, and
    `push-revision!` skips a revision whose serialization is unchanged."
   [id before]
-  (events/publish-event! :event/card-update {:object          (metric-card id)
+  (events/publish-event! :event/card-update {:object          (metrics.db/metric-card id)
                                              :previous-object before
                                              :user-id         api/*current-user-id*}))
 
@@ -402,7 +396,13 @@
                                                        [:id             ms/NonBlankString]
                                                        [:display_name   {:optional true} ms/NonBlankString]
                                                        [:description    {:optional true} [:maybe :string]]
-                                                       [:mapping_target ::lib-metric.schema/dimension-mapping.target]]]]]]
+                                                       ;; This is not `::lib-metric.schema/dimension-mapping.target`
+                                                       ;; because `field-ref->key` strips `:base-type`, which is
+                                                       ;; required for name-based refs (#85634).
+                                                       [:mapping_target [:tuple
+                                                                         [:= {:decode/normalize lib.schema.common/normalize-keyword} :field]
+                                                                         [:ref ::lib.schema.ref/field.options]
+                                                                         [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]]]]]]]]
   (let [before (write-check-metric! id)]
     (u/prog1 (metrics/add-dimensions! :metadata/metric id dimensions)
       (notify-dimensions-changed! id before))))

@@ -203,6 +203,8 @@
                          "ask_for_sql_clarification"}
   :tools               [#'tools/sql-search-tool
                         #'tools/read-resource-tool
+                        #'tools/list-snippets-tool
+                        #'tools/get-snippet-details-tool
                         #'tools/create-sql-query-code-edit-tool
                         #'tools/edit-sql-query-tool
                         #'tools/replace-sql-query-tool
@@ -244,7 +246,10 @@
   ;; Producing a chart draft is the answer; a successful construct ends the turn (schema collection
   ;; is a non-terminal preparatory step). Failed constructs don't terminate, so the model retries.
   :terminal-tools  #{"document_construct_model_chart" "document_construct_sql_chart"}
+  ;; `list_available_data_sources` lists only the models and metrics in the Metabot's scope. `read_resource` lets the
+  ;; model find a database and its tables, for example for a SQL chart when the user mentioned no database.
   :tools           [#'tools/list-available-data-sources-tool
+                    #'tools/read-resource-tool
                     #'tools/list-available-fields-tool
                     #'tools/get-field-values-tool
                     #'tools/document-schema-collect-tool

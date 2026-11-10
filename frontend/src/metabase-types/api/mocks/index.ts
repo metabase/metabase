@@ -9,6 +9,7 @@ export * from "./content-diagnostics";
 export * from "./custom-viz";
 export * from "./dashboard";
 export * from "./data-app";
+export * from "./data-test-run";
 export * from "./database";
 export * from "./dataset";
 export * from "./dependencies";

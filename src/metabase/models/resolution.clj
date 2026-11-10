@@ -25,6 +25,7 @@
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.cache.models.cache-config
     :model/Card                              metabase.queries.models.card
+    :model/CardTest                          metabase-enterprise.data-testing.models.card-test
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
@@ -45,6 +46,7 @@
     :model/DashboardCardSeries               metabase.dashboards.models.dashboard-card-series
     :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
+    :model/DataTestRun                       metabase-enterprise.data-testing.models.data-test-run
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.models
     :model/Dependency                        metabase-enterprise.dependencies.models.dependency
@@ -69,6 +71,7 @@
     :model/Glossary                          metabase.glossary.models.glossary
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
     :model/ImplicitAction                    metabase.actions.models
+    :model/ImpersonationQueryCache           metabase-enterprise.impersonation.models.impersonation-query-cache
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/McpFeedback                       metabase.mcp.models.mcp-feedback
     :model/McpGroupPermission                metabase.mcp.models.mcp-group-permission
@@ -125,7 +128,6 @@
     :model/QueryField                        metabase.queries.models.query-field
     :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
-    :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
     :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
     :model/ResultMetadataStatus              metabase-enterprise.dependencies.models.result-metadata-status
@@ -142,6 +144,7 @@
     :model/StoredResultUse                   metabase.queries.models.stored-result-use
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
+    :model/TableRemapping                    metabase-enterprise.workspaces.models.table-remapping
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/TaskRun                           metabase.task-history.models.task-run
     :model/Tenant                            metabase-enterprise.tenants.models
@@ -155,8 +158,7 @@
     :model/TransformRun                      metabase.transforms.models.transform-run
     :model/TransformRunCancelation           metabase.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase.transforms.models.transform-tag
-    :model/TransformTest                     metabase-enterprise.transform-testing.models
-    :model/TransformTestRun                  metabase-enterprise.transform-testing.models.transform-test-run
+    :model/TransformTest                     metabase-enterprise.data-testing.models
     :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily
@@ -167,7 +169,9 @@
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
-    :model/ViewLog                           metabase.view-log.models.view-log})
+    :model/ViewLog                           metabase.view-log.models.view-log
+    :model/Workspace                         metabase-enterprise.workspaces.models.workspace
+    :model/WorkspaceDatabase                 metabase-enterprise.workspaces.models.workspace-database})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

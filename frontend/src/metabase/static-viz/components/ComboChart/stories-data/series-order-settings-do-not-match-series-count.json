@@ -62,7 +62,6 @@
         "graph.series_order_dimension": "CATEGORY",
         "graph.metrics": ["count"]
       },
-      "collection_preview": true,
       "entity_id": "5FH6zqIQSnyhJazutwBlU",
       "archived_directly": false,
       "display": "area",

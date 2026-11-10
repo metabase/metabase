@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
@@ -43,7 +42,7 @@
                                  :template-tags {"time-unit" {:name         "time-unit"
                                                               :display-name "id"
                                                               :type         :temporal-unit
-                                                              :dimension    [:field (mt/id :orders :created_at) nil]}}))
+                                                              :field-id     (mt/id :orders :created_at)}}))
             parameterized-query (assoc native-query
                                        :parameters [{:type   :temporal-unit
                                                      :name   "time-unit"
@@ -91,7 +90,7 @@
                                  :template-tags {"time-unit" {:name         "time-unit"
                                                               :display-name "id"
                                                               :type         :temporal-unit
-                                                              :dimension    [:field (mt/id :orders :created_at) nil]
+                                                              :field-id     (mt/id :orders :created_at)
                                                               :alias        (mt/make-alias driver/*driver* "created_at")}}))
             parameterized-query (assoc native-query
                                        :parameters [{:type   :temporal-unit
@@ -144,7 +143,7 @@
                        q0 {"unit" (merge existing
                                          {:display-name "Unit"
                                           :type         :temporal-unit
-                                          :dimension    (lib/ref (lib.metadata/field mp (mt/id :people :created_at)))
+                                          :field-id     (mt/id :people :created_at)
                                           :default      default})})))]
         (testing "the clause is included and bucketed when a default value is present"
           (let [rows (mt/rows (qp/process-query (make "year")))]
@@ -164,7 +163,7 @@
                                  :template-tags {"time-unit" {:name         "time-unit"
                                                               :display-name "id"
                                                               :type         :temporal-unit
-                                                              :dimension    [:field 1000000000 nil]}}))
+                                                              :field-id     1000000000}}))
                          :parameters [{:type   :temporal-unit
                                        :name   "time-unit"
                                        :target [:variable [:template-tag "time-unit"]]
@@ -183,7 +182,7 @@
                                  :template-tags {"time-unit" {:name         "time-unit"
                                                               :display-name "id"
                                                               :type         :temporal-unit
-                                                              :dimension    [:field (mt/id :orders :created_at) nil]}}))
+                                                              :field-id     (mt/id :orders :created_at)}}))
                          :parameters [{:type   :temporal-unit
                                        :name   "time-unit"
                                        :target [:dimension [:template-tag "time-unit"]]

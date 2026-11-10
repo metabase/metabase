@@ -6,10 +6,7 @@ import type { MetadataGenerationPendingBadgeProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Badge, Group, Icon, Stack, Switch, Text, Tooltip } from "metabase/ui";
 import { useListMetadataGenerationProposalsQuery } from "metabase-enterprise/api";
-import {
-  type MetadataGenerationProposal,
-  isConcreteTableId,
-} from "metabase-types/api";
+import type { MetadataGenerationProposal } from "metabase-types/api";
 
 import { getAttributeLabel } from "../../utils";
 import { formatProposalValue, isHumanSet } from "../ReviewModal/utils";
@@ -22,7 +19,7 @@ export function PendingBadge({
 }: MetadataGenerationPendingBadgeProps) {
   const isAdmin = useSelector(getUserIsAdmin);
   const { data: proposals = [] } = useListMetadataGenerationProposalsQuery(
-    isAdmin && isConcreteTableId(tableId) ? { table_id: tableId } : skipToken,
+    isAdmin && tableId != null ? { table_id: tableId } : skipToken,
   );
   const pending =
     fieldId != null

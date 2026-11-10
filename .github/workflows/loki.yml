@@ -105,6 +105,21 @@ jobs:
         if: failure()
         run: bun run test-visual:loki-report
 
+      # Keep the artifact small: drop screenshots of passing stories, keeping each failed story's
+      # current/reference/difference images, and current images of stories with no reference yet.
+      - name: Remove passing screenshots
+        if: failure()
+        working-directory: .loki
+        run: |
+          shopt -s nullglob
+          for f in current/*.png; do
+            name="${f#current/}"
+            if [ ! -e "difference/$name" ] && [ -e "reference/$name" ]; then rm "$f"; fi
+          done
+          for f in reference/*.png; do
+            [ -e "difference/${f#reference/}" ] || rm "$f"
+          done
+
       - name: Upload Artifact
         id: artifact-upload-step
         if: failure()

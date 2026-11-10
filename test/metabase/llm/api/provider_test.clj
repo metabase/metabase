@@ -17,6 +17,8 @@
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- connection

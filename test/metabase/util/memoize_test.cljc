@@ -60,31 +60,31 @@
 (deftest ^:parallel fast-interner-test
   (testing "equal-but-distinct inputs collapse to one identical canonical object,
             which is the canonicalized form (sorted-map), not the lookup argument"
-    (let [intern (memo/fast-interner #(into (sorted-map) %))
-          in1    {:b 2 :a 1}                        ; hash-map
-          in2    {:a 1 :b 2}]                       ; = in1, distinct object
-      (is (not (identical? in1 in2)))               ; genuinely distinct inputs
-      (is (= in1 (intern in1)))                     ; value equality preserved
-      (is (sorted? (intern in1)))                   ; canonical form returned, not the input hash-map
-      (is (identical? (intern in1) (intern in2))))) ; equal inputs share the one canonical object
+    (let [interner (memo/fast-interner #(into (sorted-map) %))
+          in1      {:b 2 :a 1}                          ; hash-map
+          in2      {:a 1 :b 2}]                         ; = in1, distinct object
+      (is (not (identical? in1 in2)))                   ; genuinely distinct inputs
+      (is (= in1 (interner in1)))                       ; value equality preserved
+      (is (sorted? (interner in1)))                     ; canonical form returned, not the input hash-map
+      (is (identical? (interner in1) (interner in2))))) ; equal inputs share the one canonical object
   (testing "the zero-arg arity interns values as-is"
-    (let [intern (memo/fast-interner)]
-      (is (= :kw (intern :kw)))
-      (is (identical? (intern :kw) (intern :kw)))))
+    (let [interner (memo/fast-interner)]
+      (is (= :kw (interner :kw)))
+      (is (identical? (interner :kw) (interner :kw)))))
   (testing "nil is returned unchanged without calling the canonicalizer"
-    (let [calls  (atom 0)
-          intern (memo/fast-interner (fn [x]
-                                       (swap! calls inc)
-                                       x))]
-      (is (nil? (intern nil)))
+    (let [calls    (atom 0)
+          interner (memo/fast-interner (fn [x]
+                                         (swap! calls inc)
+                                         x))]
+      (is (nil? (interner nil)))
       (is (zero? @calls))))
   (testing "a cached false counts as a hit, not a miss"
-    (let [calls  (atom 0)
-          intern (memo/fast-interner (fn [x]
-                                       (swap! calls inc)
-                                       x))]
-      (is (false? (intern false)))
-      (is (false? (intern false)))
+    (let [calls    (atom 0)
+          interner (memo/fast-interner (fn [x]
+                                         (swap! calls inc)
+                                         x))]
+      (is (false? (interner false)))
+      (is (false? (interner false)))
       (is (= 1 @calls)))))
 
 (deftest ^:parallel bounded-evicts-when-keyspace-overflows-test

@@ -1,11 +1,18 @@
 (ns metabase-enterprise.metabot.tools.entity-details-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase-enterprise.sandbox.test-util :as sandbox.tu]
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.field-stats :as field-stats]
+   [metabase.permissions.core :as perms]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -103,3 +110,59 @@
               (mt/with-test-user :crowberto
                 (t2/update! :model/Card :id (:card_id sandbox) {:result_metadata nil}))
               (is (empty? (metric-dimensions))))))))))
+
+(deftest sandboxed-metric-dimension-through-one-visible-fk-test
+  (testing "a card metric whose sandbox hides one of two FK columns to a table gives a Reference that builds"
+    ;; PRICE becomes a second FK from VENUES to CATEGORIES. The sandbox returns CATEGORY_ID but not PRICE, so the
+    ;; user sees CATEGORIES through one FK column, while the card still returns both.
+    (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:semantic_type      :type/FK
+                                                                  :fk_target_field_id (mt/id :categories :id)}
+      (met/with-gtaps! {:gtaps {:venues {:query (sandbox.tu/restricted-column-query (mt/id))}}}
+        (perms/set-table-permission! &group (mt/id :categories) :perms/create-queries :query-builder)
+        (mt/with-temp [:model/Card {card-id :id, card-eid :entity_id}
+                       {:name          "Venues"
+                        :type          :question
+                        :dataset_query (lib/query (mt/metadata-provider)
+                                                  (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}
+                       :model/Card {metric-id :id, metric-eid :entity_id}
+                       {:name          "Venue count"
+                        :type          :metric
+                        :dataset_query (-> (lib/query (mt/metadata-provider)
+                                                      (lib.metadata/card (mt/metadata-provider) card-id))
+                                           (lib/aggregate (lib/count)))}]
+          (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+                dims    (->> (entity-details/get-metric-details {:metric-id          metric-id
+                                                                 :with-field-values? false})
+                             :structured-output
+                             :queryable-dimensions
+                             (filter #(= [db-name "PUBLIC" "CATEGORIES" "NAME"] (:portable_fk %))))
+                build   (fn [dim]
+                          (try
+                            (-> (construct/execute-representations-query
+                                 (walk/keywordize-keys
+                                  {"lib/type" "mbql/query"
+                                   "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                                "source-card" card-eid
+                                                "breakout"    [(or (:reference dim)
+                                                                   ["field" {} (:portable_fk dim)])]
+                                                "aggregation" [["metric" {} metric-eid]]}]}))
+                                (get-in [:structured-output :query]))
+                            (catch clojure.lang.ExceptionInfo e
+                              (ex-message e))))
+                drill   (:structured-output (field-stats/field-values {:entity-type "metric"
+                                                                       :entity-id   metric-id
+                                                                       :field-id    (mt/id :categories :name)
+                                                                       :limit       5}))]
+            (testing "the dimensions list shows only the visible route"
+              (is (= 1 (count dims))))
+            (doseq [[label dim] {"dimensions list" (first dims), "drill-in" drill}]
+              (testing label
+                (testing "names the visible FK column in its Reference"
+                  (is (= [db-name "PUBLIC" "VENUES" "CATEGORY_ID"]
+                         (get-in dim [:reference 1 "source-field"]))))
+                (testing "gives a Reference that builds, joins through the visible FK column and runs"
+                  (let [result (build dim)]
+                    (is (map? result) (str "query failed: " result))
+                    (when (map? result)
+                      (is (str/includes? (:query (qp.compile/compile result)) "\"__mb_source\".\"CATEGORY_ID\""))
+                      (is (seq (mt/rows (qp/process-query result)))))))))))))))

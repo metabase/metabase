@@ -28,6 +28,8 @@ import type { SdkBreadcrumbItemType } from "embedding-sdk-bundle/types/breadcrum
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Stack } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -141,6 +143,7 @@ export const setup = async () => {
   const TEST_CARD = createMockCard({
     id: 1,
     name: "Test Question",
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   });
 
   const collectionItems = [
