@@ -765,8 +765,10 @@
                              (throw e)))))))]
     (when readable?
       (throw (ex-info (str "This ClickHouse server lets every user read the system database, which holds the queries "
-                           "of all users. Set access_control_improvements.select_from_system_db_requires_grant to "
-                           "true in the server configuration, restart it, and retry.")
+                           "of all users. A ClickHouse server administrator must set "
+                           "access_control_improvements.select_from_system_db_requires_grant to true in the server "
+                           "configuration (config.xml), restart the server, and retry. It is off by default on "
+                           "ClickHouse 23.3 to 24.3, so this is a one-time setup step.")
                       {:status-code 412})))))
 
 (defmethod driver/init-workspace-isolation! :clickhouse
