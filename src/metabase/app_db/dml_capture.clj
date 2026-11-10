@@ -121,12 +121,14 @@
 
 ;; Toucan's `before-delete` gets this same workaround from [[metabase.app-db.setup]], but only under its own
 ;; dispatch value, so capture has to do it for itself (https://github.com/camsaul/toucan2/issues/203).
-;; A caller may pass a DELETE map to `delete!`, and a SELECT built from it would keep the `:delete` and
-;; `:delete-from` keys and compile to nonsense.
+;; A caller may pass a `:delete-from` map to `delete!`, and a SELECT built from it would keep that key and compile
+;; to nonsense.
+;; The `{:delete [...], :from [...]}` spelling needs no case: Honey SQL cannot compile a top-level `:delete`, so such
+;; a delete fails whether or not it is captured.
 (defn- delete-query->select-query
   "Restate an explicit HoneySQL DELETE map as a map a SELECT can be built from."
   [query]
-  (cond-> (dissoc query :delete)
+  (cond-> query
     (contains? query :delete-from) (-> (dissoc :delete-from)
                                        (assoc :from [(:delete-from query)]))))
 
@@ -153,13 +155,13 @@
                           (catch Exception e
                             (log/errorf e "Skipping DML capture for %s: could not build pre-image query" model)
                             nil))]
-      ;; The LIMIT stops the database sending rows past the ceiling; JDBC drivers such as PostgreSQL's otherwise
-      ;; buffer the whole result set before the reduction sees a row.
-      (let [rows (transduce (comp (take (inc max-pre-image-rows))
-                                  ;; Modelless rows still come back as toucan2 instances; the contract is plain maps.
-                                  (map #(into {} (t2.realize/realize %))))
-                            conj []
-                            (t2.execute/reducible-query sql-args))]
+      ;; The LIMIT alone enforces the ceiling: it stops the database sending rows past it, where JDBC drivers such
+      ;; as PostgreSQL's would otherwise buffer the whole result set before the reduction sees a row.
+      (let [rows (transduce
+                  ;; Modelless rows still come back as toucan2 instances; the contract is plain maps.
+                  (map #(into {} (t2.realize/realize %)))
+                  conj []
+                  (t2.execute/reducible-query sql-args))]
         (cond
           ;; Query-inspection tooling (`toucan2.tools.compile/compile`) rebinds execution to hand back the
           ;; compiled query instead of running it, without calling the reducing function, so `transduce` above
@@ -191,9 +193,10 @@
             (deliver-captured! model {:op :delete, :model model, :rows rows})))))))
 
 ;;; A model may mix capture with toucan2's row-level tools; methodical needs to be told the capture method is
-;;; the innermost of the pack, i.e. closest to the statement actually executing. Tools that re-dispatch an
-;;; upgraded query rather than call `next-method` would otherwise re-enter capture, so the method guards with
-;;; `::captured?` in `parsed-args`.
+;;; the innermost of the pack, i.e. closest to the statement actually executing. A tool that re-dispatched an
+;;; upgraded query rather than call `next-method` would re-enter capture, so the method guards with `::captured?`
+;;; in `parsed-args`. No tool in toucan2 1.0.575 does that (`before-delete` calls `next-method`), so the guard is
+;;; defensive.
 ;;;
 ;;; TODO (Chris 2026-07-24) -- this namespace's eventual home is a toucan2 tool. It is pure toucan2
 ;;; machinery, and its hardest-won content is composition knowledge about toucan2 internals: the prefer
