@@ -45,6 +45,18 @@
   (is (= ["DROP DATABASE IF EXISTS `mb__ws_1`"]
          (#'mysql/drop-workspace-isolation-sqls "mb__ws_1" "u" false))))
 
+(defn- metadata ^java.sql.DatabaseMetaData [product major minor]
+  (reify java.sql.DatabaseMetaData
+    (getDatabaseProductName [_] product)
+    (getDatabaseMajorVersion [_] major)
+    (getDatabaseMinorVersion [_] minor)))
+
+(deftest account-lock-supported?-test
+  (testing "MySQL always has ACCOUNT LOCK; MariaDB has it from 10.4, including 10.10 and later"
+    (is (= [true false false true true true]
+           (map #(#'mysql/account-lock-supported? (apply metadata %))
+                [["MySQL" 5 7] ["MariaDB" 10 2] ["MariaDB" 10 3] ["MariaDB" 10 4] ["MariaDB" 10 11] ["MariaDB" 11 4]])))))
+
 ;;; ------------------------------------------------ Live tests ------------------------------------------------------
 
 (defn- admin-spec [database]
@@ -181,3 +193,25 @@
                            (.execute stmt "SELECT 1"))))))
         (finally
           (driver/destroy-workspace-isolation! :mysql database workspace))))))
+
+(deftest ^:synchronized kill-denied-does-not-stop-teardown-test
+  (mt/test-driver :mysql
+    (let [database  (mt/db)
+          workspace (new-workspace database)
+          admin     (str "ws_noconn_" (rand-int 1000000))
+          password  "LimitedAdm1n!"]
+      (try
+        (driver/init-workspace-isolation! :mysql database workspace)
+        (driver/grant-workspace-read-access! :mysql database workspace [])
+        ;; an admin that sees every session (PROCESS) but cannot end another user's (no CONNECTION_ADMIN or SUPER)
+        (jdbc/execute! (admin-spec database) [(format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'" admin password)])
+        (jdbc/execute! (admin-spec database) [(format "GRANT PROCESS ON *.* TO `%s`@'%%'" admin)])
+        (jdbc/execute! (admin-spec database) [(format "GRANT SELECT ON `%s`.* TO `%s`@'%%'" (-> database :details :db) admin)])
+        (with-open [_idle (open-session database workspace)
+                    conn  (open-session database {:database_details {:user admin :password password}})
+                    stmt  (.createStatement conn)]
+          (testing "an idle session the admin may not KILL is skipped, so teardown goes on to the drops"
+            (is (nil? (#'mysql/kill-user-sessions! {:connection conn} stmt (-> workspace :database_details :user))))))
+        (finally
+          (driver/destroy-workspace-isolation! :mysql database workspace)
+          (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" admin)]))))))

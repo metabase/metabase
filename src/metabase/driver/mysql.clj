@@ -1475,6 +1475,13 @@
   [user]
   (format "ALTER USER IF EXISTS %s@'%%' ACCOUNT LOCK" (quote-field user)))
 
+(defn- account-lock-supported?
+  "Whether the server has `ACCOUNT LOCK`. MySQL has it in every supported version; MariaDB from 10.4. Compares major
+  and minor as integers, because `db-version` reads MariaDB 10.11 as 10.1."
+  [^DatabaseMetaData metadata]
+  (or (not= "MariaDB" (.getDatabaseProductName metadata))
+      (>= (compare [(.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata)] [10 4]) 0)))
+
 (defn- drop-workspace-isolation-sqls [db-name user user-exists?]
   (cond-> [(format "DROP DATABASE IF EXISTS %s" (quote-schema db-name))]
     user-exists? (conj (format "DROP USER IF EXISTS %s@'%%'" (quote-field user)))))
@@ -1487,8 +1494,13 @@
     (try
       (.execute stmt (format "KILL %d" (long id)))
       (catch java.sql.SQLException e
-        ;; ER_NO_SUCH_THREAD: the session ended on its own
-        (when-not (= 1094 (.getErrorCode e))
+        (case (.getErrorCode e)
+          ;; ER_NO_SUCH_THREAD: the session ended on its own
+          1094 nil
+          ;; ER_KILL_DENIED_ERROR: the admin lacks CONNECTION_ADMIN or SUPER. The drops still succeed while the
+          ;; session is idle; DROP DATABASE waits only if it holds a metadata lock.
+          1095 (log/warnf "Cannot end session %d of workspace user %s, so teardown may wait for it: %s"
+                          (long id) user (ex-message e))
           (throw e))))))
 
 (defmethod driver/destroy-workspace-isolation! :mysql
@@ -1501,7 +1513,8 @@
        (let [user-exists? (boolean (mysql-user-exists? {:connection conn} username))]
          (with-open [^Statement stmt (.createStatement conn)]
            (when user-exists?
-             (.execute stmt (lock-workspace-user-sql username))
+             (when (account-lock-supported? (.getMetaData conn))
+               (.execute stmt (lock-workspace-user-sql username)))
              (kill-user-sessions! {:connection conn} stmt username))
            (doseq [sql (drop-workspace-isolation-sqls db-name username user-exists?)]
              (.addBatch ^Statement stmt ^String sql))
