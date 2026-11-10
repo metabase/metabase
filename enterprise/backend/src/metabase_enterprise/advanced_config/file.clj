@@ -103,7 +103,6 @@
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
-   [metabase-enterprise.workspaces.core :as ws]
    [metabase.lib.core :as lib]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
@@ -299,16 +298,7 @@
 
 (defenterprise boot-initialize!
   "Read the config file from disk and run [[initialize!]] on it with `{{env VAR}}` templates expanded.
-  Does nothing when there is no config file.
-  When the config contains a `:workspace` section, locks the workspace against
-  runtime mutation (see
-  [[metabase-enterprise.workspaces.core/workspace-locked-by-config?]])."
+  Does nothing when there is no config file."
   :feature :none
   []
-  (let [parsed (config-from-disk)
-        result (initialize! parsed {:expand-templates? true})]
-    ;; Only the boot path locks. Runtime config uploads (POST /api/ee/advanced-config)
-    ;; call `initialize!` directly, bypassing this wrapper, so they never lock.
-    (when (get-in parsed [:config :workspace])
-      (ws/mark-locked-by-config!))
-    result))
+  (initialize! (config-from-disk) {:expand-templates? true}))
