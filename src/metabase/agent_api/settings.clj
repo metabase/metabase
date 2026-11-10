@@ -23,9 +23,19 @@
   :export?    true
   :doc        false)
 
+;; The opt-in for the deprecated Agent API. It replaces `agent-api-enabled?`, which was on by default and now has no
+;; effect.
+;;
+;; Do not add `:deprecated-name :agent-api-enabled?` here. A value of the old setting must not carry over: an admin has
+;; to opt in to the deprecated API explicitly.
+;;
+;; `:deprecated` is set without `^:deprecated` on the symbol. The setting goes away with the Agent API, so a write of
+;; it logs a deprecation warning. The gate in [[metabase.agent-api.validation]] has to read it until then, and the
+;; metadata would flag that read.
 (defsetting deprecated-agent-api-enabled?
   (deferred-tru "Whether the deprecated Agent API stays available. The Agent API is deprecated and will be removed in Metabase 67; use the MCP server for agents instead. Off by default; an admin turns it on to keep using the Agent API until it is removed.")
   :type       :boolean
   :visibility :public
   :default    false
+  :deprecated "0.66.0"
   :export?    true)

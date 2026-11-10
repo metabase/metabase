@@ -178,16 +178,20 @@
   (testing "External Agent API routes return 403 until an admin opts in to the deprecated Agent API"
     (mt/with-temporary-setting-values [deprecated-agent-api-enabled? nil]
       (is (= agent-api-off-message
-             (mt/user-http-request :rasta :get 403 "agent/v1/ping")))))
-  (testing "the deprecated setting agent-api-enabled? has no effect"
-    (mt/with-temporary-raw-setting-values [:deprecated-agent-api-enabled? "false"
-                                           :agent-api-enabled?            "true"]
-      (is (= agent-api-off-message
-             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))
-    (mt/with-temporary-raw-setting-values [:deprecated-agent-api-enabled? "true"
-                                           :agent-api-enabled?            "false"]
-      (is (= {:message "pong"}
-             (mt/user-http-request :rasta :get 200 "agent/v1/ping"))))))
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping")))
+      (testing "a stored value of the deprecated setting agent-api-enabled? is not an opt-in"
+        (mt/with-temporary-raw-setting-values [:agent-api-enabled? "true"]
+          (is (= agent-api-off-message
+                 (mt/user-http-request :rasta :get 403 "agent/v1/ping")))))
+      (testing "the env var of the deprecated setting agent-api-enabled? is not an opt-in"
+        (mt/with-temp-env-var-value! [mb-agent-api-enabled "true"]
+          (is (= agent-api-off-message
+                 (mt/user-http-request :rasta :get 403 "agent/v1/ping")))))))
+  (testing "External Agent API routes are served after the opt-in, whatever agent-api-enabled? says"
+    (mt/with-temporary-setting-values [deprecated-agent-api-enabled? true]
+      (mt/with-temporary-raw-setting-values [:agent-api-enabled? "false"]
+        (is (= {:message "pong"}
+               (mt/user-http-request :rasta :get 200 "agent/v1/ping")))))))
 
 (deftest ai-features-enabled-setting-test
   (testing "External Agent API routes return 403 when AI features are globally disabled"
