@@ -1149,8 +1149,9 @@
 (def ^:private fulltext-query-schema
   (keyword-query-schema
    #{"and" "or" "not" "phrase" "prefix"}
-   (str "The words to match in names and descriptions: one term, or a tree of `and`, `or` and `not` nodes over "
-        "terms, `phrase`s and `prefix`es. Terms match whole words after stemming, so `orders` finds `order` but "
+   (str "The words to match: one term, or a tree of `and`, `or` and `not` nodes over terms, `phrase`s and "
+        "`prefix`es. Every arg of an `and` must match the same item. Use `or` only for other words for the same "
+        "idea, never to join different ideas. Terms match whole words after stemming, so `orders` finds `order` but "
         "`cust` finds nothing unless it is a `prefix`. Very common words such as `the` match nothing.")))
 
 (def ^:private substring-or-query-schema
@@ -1313,10 +1314,10 @@
   "`fulltext_search` for the general profiles."
   (->SearchTool
    :general :fulltext
-   (str "Find data and content by the words in its name and description. Matches whole words (stemmed), and combines "
-        "terms with `and`, `or` and `not`, `phrase`s and `prefix`es. Use it for the distinctive words of what you "
-        "want, exact names and codes, and exclusions. Searches tables, models, metrics, measures, segments, "
-        "dashboards, documents, saved questions, and collections.")))
+   (str "Find data and content by the words in its name and description, or in a document's body. Matches whole "
+        "words (stemmed). Join the key words of one idea with `and` or a `phrase`, use `or` only for other words for "
+        "the same idea, and exclude with `not`. Searches tables, models, metrics, measures, segments, dashboards, "
+        "documents, saved questions, and collections.")))
 
 (def substring-or-search-tool
   "`substring_search` for the general profiles, on the in-place engine."
@@ -1348,7 +1349,8 @@
   (->SearchTool
    :sql :fulltext
    (str "Find SQL-queryable tables and models in a database by the words in their names and descriptions. Matches "
-        "whole words (stemmed), and combines terms with `and`, `or` and `not`, `phrase`s and `prefix`es.")))
+        "whole words (stemmed). Join the key words of one idea with `and` or a `phrase`, and use `or` only for other "
+        "words for the same idea.")))
 
 (def sql-substring-or-search-tool
   "`substring_search` for the SQL profile, on the in-place engine."
@@ -1379,8 +1381,9 @@
   (->SearchTool
    :nlq :fulltext
    (str "Find data to answer a question by the words in its name and description: tables, models, metrics, "
-        "measures, segments, questions, and collections, or dashboards and documents as save destinations. Matches "
-        "whole words (stemmed), and combines terms with `and`, `or` and `not`, `phrase`s and `prefix`es.")))
+        "measures, segments, questions, and collections, or dashboards and documents as save destinations, whose "
+        "body is searched too. Matches whole words (stemmed). Join the key words of one idea with `and` or a "
+        "`phrase`, and use `or` only for other words for the same idea.")))
 
 (def nlq-substring-or-search-tool
   "`substring_search` for the NLQ profiles, on the in-place engine."

@@ -218,7 +218,12 @@
                                           "Instead: search for the likely words.")))))
       (testing "with nothing missing there is no unavailable section"
         (is (not (str/includes? (render {"fulltext_search" #'metabot.tools/fulltext-search-tool} {})
-                                "## Unavailable tools")))))))
+                                "## Unavailable tools"))))
+      (testing "full-text guidance keeps `or` for other words for one idea, and an `and` to one item"
+        (let [content (render {"fulltext_search" #'metabot.tools/fulltext-search-tool} {})]
+          (is (str/includes? content "Use `or` only for other words for the same idea"))
+          (is (str/includes? content "Every arg of an `and` must match the same item"))
+          (is (not (str/includes? content "give its distinctive words as an `or`"))))))))
 
 (deftest ^:parallel inject-context-test
   (testing "prepends the rendered context block to the message"
