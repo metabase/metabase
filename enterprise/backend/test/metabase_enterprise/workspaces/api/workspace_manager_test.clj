@@ -135,6 +135,10 @@
                            "Content-Disposition" "attachment; filename=\"config.yml\""}}
                 (mt/user-http-request-full-response
                  :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/config")))))
+      (testing "422, not a retryable 409, when only an admin can fix the database's connection settings"
+        (t2/update! :model/Database :id db-id {:details {:additional-options "user=parent_admin"}})
+        (mt/user-http-request :crowberto :get 422 (str "ee/workspace-manager/" ws-id "/config"))
+        (t2/update! :model/Database :id db-id {:details {}}))
       (testing "409 when a database is not :provisioned"
         (t2/update! :model/WorkspaceDatabase :workspace_id ws-id {:status :unprovisioned})
         (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))
