@@ -226,6 +226,8 @@
        - :session/skip? - Optional; when true, the login creates no session
        - :user/personal-only? - Optional; when true, a user who is not a personal account is refused before any
          change is made to them
+       - :jwt/audiences - Optional; when present, a JWT login refuses an `aud` claim that names none of these
+         audiences, and accepts a missing claim with a warning
        - :jwt/require-exp-and-iat? - Optional; when true, a JWT login refuses a JWT that lacks an `exp` or `iat`
          claim, or whose `iat` is in the future
 
@@ -300,6 +302,7 @@
    [:email {:optional true} [:maybe :string]]
    [:error {:optional true} [:maybe :keyword]]
    [:jwt-data {:optional true} [:maybe ms/JWTClaims]]
+   [:jwt/audiences {:optional true} [:maybe [:sequential :string]]]
    [:jwt/require-exp-and-iat? {:optional true} [:maybe :boolean]]
    [:message {:optional true} [:maybe [:or :string ms/LocalizedString]]]
    [:oidc-nonce {:optional true} [:maybe :string]]

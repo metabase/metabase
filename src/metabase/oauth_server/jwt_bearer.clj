@@ -63,7 +63,7 @@
 
 (def ^:private own-reason-errors
   "These `:error` values identify refused JWT logins whose `:message` was written by Metabase for the caller."
-  #{:non-personal-user :missing-email :missing-exp-or-iat :future-iat :invalid-tenant})
+  #{:non-personal-user :missing-email :missing-exp-or-iat :future-iat :invalid-tenant :invalid-audience})
 
 (defn- verified-login-refusal?
   "Whether a refused JWT login `result` comes from an assertion that passed verification.
@@ -96,15 +96,18 @@
 
   Return the login result for the JWT `assertion`, which must have `exp` and `iat` claims: its `:user` is the user
   the JWT names, and its `:jwt-data` holds the verified claims.
+  An `aud` claim, when present, must name the issuer or the token endpoint.
   Throw `ex-info` carrying `invalid_grant` and the [[refusal-description]] when the login is refused."
-  [assertion request]
-  (let [{:keys [success? message] :as result}
+  [provider assertion request]
+  (let [{:keys [issuer token-endpoint]} (:config provider)
+        {:keys [success? message] :as result}
         (try
           (auth-identity/login! :provider/jwt (assoc request
                                                      :token                    assertion
                                                      :session/skip?            true
                                                      :user/personal-only?      true
-                                                     :jwt/require-exp-and-iat? true))
+                                                     :jwt/require-exp-and-iat? true
+                                                     :jwt/audiences            [issuer token-endpoint]))
           (catch ExceptionInfo e
             {:message     (ex-message e)
              :status-code (:status-code (ex-data e))}))]
@@ -159,7 +162,7 @@
   [provider request {:keys [assertion scopes resource]}]
   (let [scopes  (or scopes (mcp/v2-scopes))
         _       (check-request! assertion scopes resource)
-        login   (log-in! assertion request)
+        login   (log-in! provider assertion request)
         scopes  (scopes-allowed-by-claim scopes (:jwt-data login))
         user    (:user login)
         user-id (:id user)

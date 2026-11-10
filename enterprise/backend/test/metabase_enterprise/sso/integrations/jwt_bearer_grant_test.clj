@@ -142,6 +142,31 @@
             (is (t2/exists? :model/PermissionsGroupMembership
                             :user_id (t2/select-one-pk :model/User :email email), :group_id group-id))))))))
 
+(deftest exchange-audience-test
+  (with-jwt-bearer-setup!
+    (let [issuer (system/site-url)
+          email  "jwt-bearer-audience@metabase.com"]
+      (testing "an assertion naming this server, or without an audience, is accepted"
+        (doseq [claims [{:aud issuer}
+                        {:aud (str issuer "/oauth/token")}
+                        {:aud ["https://another-service.example.com" issuer]}
+                        {}]]
+          (testing (pr-str claims)
+            (mt/with-log-messages-for-level [messages [metabase-enterprise.sso.providers.jwt :warn]]
+              (is (=? {:access_token string?}
+                      (:body (token-response 200 {:assertion (assertion (assoc claims :email email))}))))
+              (is (= (when-not (:aud claims)
+                       [(str "Accepted a JWT without an aud claim. Sign it with aud set to " issuer)])
+                     (seq (map :message (messages)))))))))
+      (testing "an assertion naming only other services is refused before provisioning"
+        (doseq [aud ["https://another-service.example.com"
+                     ["https://another-service.example.com" "https://yet-another-service.example.com"]]]
+          (testing (pr-str aud)
+            (let [email "jwt-bearer-audience-refused@metabase.com"]
+              (is (= {:error "invalid_grant", :error_description (str "The JWT's aud claim must name " issuer ".")}
+                     (:body (token-response 400 {:assertion (assertion {:email email, :aud aud})}))))
+              (is (not (t2/exists? :model/User :email email))))))))))
+
 (deftest exchange-scope-test
   (with-jwt-bearer-setup!
     (let [email "jwt-bearer-scope@metabase.com"]
@@ -344,6 +369,8 @@
       (mcp.tu/with-group-level-mode
         (let [verified   [["unsupported_grant_type" #(assertion {:email "jwt-bearer-no-mcp@metabase.com"})]
                           ["invalid_grant"          #(assertion {:first_name "Jay"})]
+                          ["invalid_grant"          #(assertion {:email "jwt-bearer-wrong-aud@metabase.com"
+                                                                 :aud "https://another-service.example.com"})]
                           ["invalid_scope"          #(assertion {:email "jwt-bearer-no-scope@metabase.com"
                                                                  :scope "openid"})]]
               unverified [["invalid_grant" #(jwt/sign {:email "jwt-bearer-forged@metabase.com"} "not-the-secret")]
