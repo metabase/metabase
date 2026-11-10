@@ -177,7 +177,6 @@ const EventForm = ({
                 </Flex>
               ) : (
                 <Button
-                  size="lg"
                   onClick={() => setFieldValue("time_matters", true)}
                 >{t`Add time`}</Button>
               )}

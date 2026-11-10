@@ -103,7 +103,6 @@ export function GlossaryTable({
         />
         {!readOnly && (
           <Button
-            size="lg"
             leftSection={<Icon name="add" />}
             onClick={() => setNewRowDraft(EMPTY_DRAFT)}
           >

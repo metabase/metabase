@@ -52,7 +52,6 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
               setOpenModal(hasSecretKey ? "confirm-regenerate" : "create-key")
             }
             variant={hasSecretKey ? "default" : "filled"}
-            size="lg"
           >
             {hasSecretKey ? t`Regenerate key` : t`Set up key`}
           </Button>

@@ -41,7 +41,7 @@ export function FilterOptionsPicker({
       <Popover.Target>
         <Indicator
           size={8}
-          offset={isCompact ? 6 : 12}
+          offset={isCompact ? 6 : 9}
           disabled={hasDefaultFilterOptions}
         >
           {isCompact ? (

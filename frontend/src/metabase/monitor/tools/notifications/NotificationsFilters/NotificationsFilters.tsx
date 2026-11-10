@@ -86,7 +86,6 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
       onOpen={() => setDraft(stateToDraft(state))}
       onApply={handleApply}
       onClear={handleClear}
-      buttonProps={{ size: "lg" }}
     >
       <FilterSection label={t`Channel`}>
         {CHANNEL_VALUES.map((channel) => (

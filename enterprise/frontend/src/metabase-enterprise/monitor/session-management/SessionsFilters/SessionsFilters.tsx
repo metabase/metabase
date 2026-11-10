@@ -105,7 +105,6 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
       onOpen={() => setDraft(stateToDraft(state))}
       onApply={() => onChange({ ...draft, page: 0 })}
       onClear={() => onChange({ ...EMPTY_FILTERS, page: 0 })}
-      buttonProps={{ size: "lg" }}
     >
       <FilterSection label={t`Auth method`}>
         {SESSION_PROVIDERS.map((provider) => (
