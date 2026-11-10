@@ -5,7 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.actions.models :as action]
+   [metabase.actions.models.action :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]

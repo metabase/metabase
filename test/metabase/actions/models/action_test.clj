@@ -1,10 +1,10 @@
-(ns ^:mb/driver-tests metabase.actions.models-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.models-test]}}}}}}
+(ns ^:mb/driver-tests metabase.actions.models.action-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.models.action-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.actions.models :as action]
+   [metabase.actions.models.action :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.config.core :as config]
    [metabase.driver :as driver]

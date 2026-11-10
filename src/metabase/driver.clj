@@ -1501,7 +1501,7 @@
   nil)
 
 (defmulti execute-write-query!
-  "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.actions.models]]).
+  "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.actions.models.query-action]]).
   Drivers that support `:actions/custom` must implement this method."
   {:changelog-test/ignore true, :added "0.44.0", :arglists '([driver query])}
   dispatch-on-initialized-driver

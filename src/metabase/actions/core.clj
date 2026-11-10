@@ -8,7 +8,7 @@
    [metabase.actions.execution]
    [metabase.actions.hierarchy]
    [metabase.actions.http]
-   [metabase.actions.models]
+   [metabase.actions.models.action]
    [metabase.actions.scope]
    [potemkin :as p]))
 
@@ -18,7 +18,7 @@
   metabase.actions.execution/keep-me
   metabase.actions.hierarchy/keep-me
   metabase.actions.http/keep-me
-  metabase.actions.models/keep-me
+  metabase.actions.models.action/keep-me
   metabase.actions.scope/keep-me)
 
 (p/import-vars
@@ -56,7 +56,7 @@
   execute-action!
   execute-dashcard!
   fetch-values]
- [metabase.actions.models
+ [metabase.actions.models.action
   adhoc-action
   check-action-databases-enabled
   check-implicit-action-table-pk

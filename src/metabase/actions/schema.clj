@@ -129,7 +129,7 @@
 
 (mr/def ::action.parameter
   "One entry of an Action's `:parameters`. An implicit action's are computed from the model's Fields rather than
-  authored, and carry annotations `metabase.actions.models/implicit-action-parameters` adds and
+  authored, and carry annotations `metabase.actions.models.action/field-implicit-parameter` adds and
   `select-actions-implicit-params` reads when it filters and orders them."
   [:merge
    ::parameters.schema/parameter

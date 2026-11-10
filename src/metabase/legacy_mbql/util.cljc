@@ -51,7 +51,7 @@
   (let [s (u/qualified-name token)]
     (if (str/starts-with? s "type/")
       ;; TODO (Cam 8/12/25) -- there's tons of code using incorrect parameter types or normalizing base types
-      ;; incorrectly, for example [[metabase.actions.models/implicit-action-parameters]]. We need to actually start
+      ;; incorrectly, for example [[metabase.actions.models.action/field-implicit-parameter]]. We need to actually start
       ;; validating parameters against the `:metabase.lib.schema.parameter/parameter` schema. We should probably throw
       ;; an error here instead of silently correcting it... I was going to do that but it broke too many things
       (do

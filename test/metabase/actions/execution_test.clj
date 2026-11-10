@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.actions.db :as actions.db]
    [metabase.actions.execution :as actions.execution]
-   [metabase.actions.models :as action]
+   [metabase.actions.models.action :as action]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]

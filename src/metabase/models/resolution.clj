@@ -12,7 +12,7 @@
   and other important code that should be loaded for side effects (such as method implementations).
 
   Tests will check to make sure new models get included in this map."
-  '{:model/Action                            metabase.actions.models
+  '{:model/Action                            metabase.actions.models.action
     :model/AgentApiCallLog                   metabase.agent-api.models.agent-api-call-log
     :model/AnalysisFinding                   metabase-enterprise.dependencies.models.analysis-finding
     :model/AnalysisFindingError              metabase-enterprise.dependencies.models.analysis-finding-error
@@ -70,8 +70,8 @@
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
     :model/Glossary                          metabase.glossary.models.glossary
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
-    :model/HttpAction                        metabase.actions.models
-    :model/ImplicitAction                    metabase.actions.models
+    :model/HttpAction                        metabase.actions.models.http-action
+    :model/ImplicitAction                    metabase.actions.models.implicit-action
     :model/ImpersonationQueryCache           metabase-enterprise.impersonation.models.impersonation-query-cache
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/McpFeedback                       metabase.mcp.models.mcp-feedback
@@ -121,7 +121,7 @@
     :model/PulseChannel                      metabase.pulse.models.pulse-channel
     :model/PulseChannelRecipient             metabase.pulse.models.pulse-channel-recipient
     :model/Query                             metabase.queries.models.query
-    :model/QueryAction                       metabase.actions.models
+    :model/QueryAction                       metabase.actions.models.query-action
     :model/QueryCache                        metabase.cache.models.query-cache
     :model/QueryExecution                    metabase.queries.models.query-execution
     :model/QueryField                        metabase.queries.models.query-field

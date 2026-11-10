@@ -7,7 +7,7 @@
    [metabase.actions.audit :as actions.audit]
    [metabase.actions.db :as actions.db]
    [metabase.actions.http :as actions.http]
-   [metabase.actions.models :as action]
+   [metabase.actions.models.action :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]

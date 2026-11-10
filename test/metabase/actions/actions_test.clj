@@ -8,7 +8,7 @@
    [metabase.actions.actions :as actions]
    [metabase.actions.error :as actions.error]
    [metabase.actions.execution :as actions.execution]
-   [metabase.actions.models :as action]
+   [metabase.actions.models.action :as action]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
