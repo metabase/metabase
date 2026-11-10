@@ -1,1 +1,4 @@
-export { DataModelSystemSegmentPage } from "./DataModelSystemSegmentPage";
+export {
+  DataModelSystemSegmentPage,
+  SystemSegmentPage,
+} from "./DataModelSystemSegmentPage";

@@ -11,11 +11,18 @@ export {
   type SystemSegmentInference,
   type SystemSegmentRole,
   getMilestoneCohortProposals,
+  getSystemSegmentColumnQuestion,
+  getSystemSegmentCondition,
   getSystemSegmentDescription,
   getSystemSegmentLabel,
+  getSystemSegmentMarkedWhen,
+  getSystemSegmentMarkedWhenLabel,
+  getSystemSegmentMissingColumnMessage,
+  getSystemSegmentNotApplicableLabel,
   inferDefaultSegment,
   inferRequiredFilter,
   inferSystemSegment,
+  isSystemSegmentColumn,
 } from "./inference";
 export {
   type ResolvedSegmentSetting,

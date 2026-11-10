@@ -31,6 +31,18 @@ const STAGE_INDEX = -1;
 // Hoisted: the metadata selector memoises on the options object
 const WITH_HIDDEN_TABLES: MetadataSelectorOpts = { includeHiddenTables: true };
 
+/**
+ * - `on`: an admin set it up
+ * - `guessed`: sync found its column; an admin hasn't confirmed it
+ * - `not-set-up`: nothing marks its rows yet, so it filters nothing
+ * - `not-applicable`: an admin said the table has no such rows
+ */
+export type SystemSegmentStatus =
+  | "on"
+  | "guessed"
+  | "not-set-up"
+  | "not-applicable";
+
 export type ResolvedSystemSegment = {
   role: SystemSegmentRole;
   label: string;
@@ -39,8 +51,18 @@ export type ResolvedSystemSegment = {
   query: Lib.Query | undefined;
   filterNames: string[];
   isEdited: boolean;
+  /** Set when an admin wrote a custom filter instead of picking a column */
+  hasCustomFilter: boolean;
+  /** The one condition on its marking column, if it has one */
+  condition: FieldCondition | undefined;
+  status: SystemSegmentStatus;
   inference: SystemSegmentInference;
 };
+
+/** Whether a segment filters anything, so it can be a default or a member */
+export function isUsableSystemSegment({ status }: ResolvedSystemSegment) {
+  return status === "on" || status === "guessed";
+}
 
 export type ResolvedDefaultSegment = {
   segment: DefaultSegment;
@@ -58,6 +80,16 @@ export type TableSegmentsModel = {
   requiredFilter: ResolvedRequiredFilter;
   /** `undefined` goes back to the definition sync built */
   setSystemSegmentQuery: (role: SystemSegmentRole, query?: Lib.Query) => void;
+  /** `undefined` goes back to the column sync found */
+  setSystemSegmentCondition: (
+    role: SystemSegmentRole,
+    condition?: FieldCondition,
+  ) => void;
+  setSystemSegmentApplicable: (
+    role: SystemSegmentRole,
+    isApplicable: boolean,
+  ) => void;
+  confirmSystemSegment: (role: SystemSegmentRole) => void;
   setDefaultSegment: (segment: DefaultSegment) => void;
   /** `null` sets no required filter */
   setRequiredFilterQuery: (query: Lib.Query | null) => void;
@@ -211,6 +243,8 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
   const {
     getTableSegmentsOverrides,
     setSystemSegmentDefinition,
+    setSystemSegmentCondition,
+    setSystemSegmentApplicable,
     setDefaultSegment,
     setRequiredFilter,
   } = useTableSegments();
@@ -235,22 +269,42 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
           ? inferSystemSegment(fields, role, currentVersion)
           : { conditions: [], signal: generationOffSignal, confidence: "high" };
       const definition = overrides.systemSegments[role];
+      const conditionOverride = overrides.systemSegmentConditions[role];
+      const conditions = conditionOverride
+        ? [conditionOverride]
+        : inference.conditions;
       const query = definition
         ? fromDefinition(definition)
-        : baseQuery && applyConditions(baseQuery, inference.conditions);
+        : baseQuery && applyConditions(baseQuery, conditions);
+      const filterNames = query ? getFilterNames(query) : [];
+      const isEdited = definition != null || conditionOverride != null;
+      const status: SystemSegmentStatus =
+        overrides.notApplicableSystemSegments.includes(role)
+          ? "not-applicable"
+          : filterNames.length === 0
+            ? "not-set-up"
+            : isEdited
+              ? "on"
+              : "guessed";
       return {
         role,
         label: getSystemSegmentLabel(role),
         description: getSystemSegmentDescription(role),
         query,
-        filterNames: query ? getFilterNames(query) : [],
-        isEdited: definition != null,
+        filterNames,
+        isEdited,
+        hasCustomFilter: definition != null,
+        condition:
+          definition == null && conditions.length === 1
+            ? conditions[0]
+            : undefined,
+        status,
         inference,
       };
     },
   );
 
-  const defaultInference: DefaultSegmentInference =
+  const syncDefaultInference: DefaultSegmentInference =
     generationOffSignal == null
       ? inferDefaultSegment(fields, currentVersion)
       : {
@@ -268,6 +322,17 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
     )
       ? undefined
       : overrides.defaultSegment;
+  const inferredDefaultSegment = syncDefaultInference.segment;
+  const isInferredDefaultUsable =
+    inferredDefaultSegment.type !== "system" ||
+    systemSegments.some(
+      (segment) =>
+        segment.role === inferredDefaultSegment.role &&
+        isUsableSystemSegment(segment),
+    );
+  const defaultInference: DefaultSegmentInference = isInferredDefaultUsable
+    ? syncDefaultInference
+    : { ...syncDefaultInference, segment: { type: "all" } };
   const defaultSegmentValue = defaultOverride ?? defaultInference.segment;
   const defaultSegment: ResolvedDefaultSegment = {
     segment: defaultSegmentValue,
@@ -319,6 +384,24 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
         role,
         query ? Lib.toJsQuery(query) : undefined,
       ),
+    setSystemSegmentCondition: (
+      role: SystemSegmentRole,
+      condition?: FieldCondition,
+    ) => setSystemSegmentCondition(table, role, condition),
+    setSystemSegmentApplicable: (
+      role: SystemSegmentRole,
+      isApplicable: boolean,
+    ) => setSystemSegmentApplicable(table, role, isApplicable),
+    confirmSystemSegment: (role: SystemSegmentRole) => {
+      const segment = systemSegments.find(
+        (systemSegment) => systemSegment.role === role,
+      );
+      if (segment?.condition != null) {
+        setSystemSegmentCondition(table, role, segment.condition);
+      } else if (segment?.query != null) {
+        setSystemSegmentDefinition(table, role, Lib.toJsQuery(segment.query));
+      }
+    },
     setDefaultSegment: (segment: DefaultSegment) =>
       setDefaultSegment(table, segment),
     /** `null` sets no required filter */

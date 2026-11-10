@@ -7,14 +7,19 @@ import { isObject } from "metabase-types/guards";
 
 import {
   type DefaultSegment,
+  type FieldCondition,
   SYSTEM_SEGMENT_ROLES,
   type SystemSegmentRole,
 } from "./inference";
 
 /** What an admin set; anything absent comes from sync's inference */
 export type TableSegmentsOverrides = {
-  /** System segments an admin edited */
+  /** System segments an admin wrote a custom filter for */
   systemSegments: Partial<Record<SystemSegmentRole, DatasetQuery>>;
+  /** System segments an admin pointed at the column that marks their rows */
+  systemSegmentConditions: Partial<Record<SystemSegmentRole, FieldCondition>>;
+  /** System segments an admin said don't apply to the table */
+  notApplicableSystemSegments: SystemSegmentRole[];
   defaultSegment?: DefaultSegment;
   /** `null` means an admin said the table has no required filter */
   requiredFilter?: DatasetQuery | null;
@@ -32,6 +37,8 @@ const STORAGE_KEY = "metabase-prototype-table-segments";
 
 const EMPTY_OVERRIDES: TableSegmentsOverrides = {
   systemSegments: {},
+  systemSegmentConditions: {},
+  notApplicableSystemSegments: [],
   resolvedCohortKeys: [],
 };
 
@@ -42,6 +49,25 @@ function parseDatasetQuery(value: unknown): DatasetQuery | undefined {
   // Written by this store from `Lib.toJsQuery`, so anything shaped like a
   // query with a database is one of ours
   return value as DatasetQuery;
+}
+
+function parseSystemSegmentCondition(
+  value: unknown,
+): FieldCondition | undefined {
+  if (!isObject(value) || typeof value.fieldId !== "number") {
+    return undefined;
+  }
+  if (value.operator === "=" && typeof value.value === "boolean") {
+    return { fieldId: value.fieldId, operator: "=", value: value.value };
+  }
+  if (value.operator === "is-null" || value.operator === "not-null") {
+    return { fieldId: value.fieldId, operator: value.operator };
+  }
+  return undefined;
+}
+
+function parseSystemSegmentRole(value: unknown): SystemSegmentRole | undefined {
+  return SYSTEM_SEGMENT_ROLES.find((role) => role === value);
 }
 
 function parseDefaultSegment(value: unknown): DefaultSegment | undefined {
@@ -75,8 +101,28 @@ function parseOverrides(value: unknown): TableSegmentsOverrides {
         }),
       )
     : {};
+  const systemSegmentConditions = isObject(value.systemSegmentConditions)
+    ? Object.fromEntries(
+        SYSTEM_SEGMENT_ROLES.flatMap((role) => {
+          const condition =
+            isObject(value.systemSegmentConditions) &&
+            parseSystemSegmentCondition(value.systemSegmentConditions[role]);
+          return condition ? [[role, condition]] : [];
+        }),
+      )
+    : {};
+  const notApplicableSystemSegments = Array.isArray(
+    value.notApplicableSystemSegments,
+  )
+    ? value.notApplicableSystemSegments.flatMap((role) => {
+        const knownRole = parseSystemSegmentRole(role);
+        return knownRole ? [knownRole] : [];
+      })
+    : [];
   return {
     systemSegments,
+    systemSegmentConditions,
+    notApplicableSystemSegments,
     defaultSegment: parseDefaultSegment(value.defaultSegment),
     requiredFilter:
       value.requiredFilter === null
@@ -143,6 +189,47 @@ export function useTableSegments() {
           definition == null
             ? _.omit(overrides.systemSegments, role)
             : { ...overrides.systemSegments, [role]: definition },
+        systemSegmentConditions:
+          definition == null
+            ? overrides.systemSegmentConditions
+            : _.omit(overrides.systemSegmentConditions, role),
+      })),
+    [updateOverrides],
+  );
+
+  /** `undefined` goes back to the column sync found */
+  const setSystemSegmentCondition = useCallback(
+    (
+      table: Pick<Table, "db_id" | "id">,
+      role: SystemSegmentRole,
+      condition: FieldCondition | undefined,
+    ) =>
+      updateOverrides(table, (overrides) => ({
+        ...overrides,
+        systemSegments: _.omit(overrides.systemSegments, role),
+        systemSegmentConditions:
+          condition == null
+            ? _.omit(overrides.systemSegmentConditions, role)
+            : { ...overrides.systemSegmentConditions, [role]: condition },
+        notApplicableSystemSegments: _.without(
+          overrides.notApplicableSystemSegments,
+          role,
+        ),
+      })),
+    [updateOverrides],
+  );
+
+  const setSystemSegmentApplicable = useCallback(
+    (
+      table: Pick<Table, "db_id" | "id">,
+      role: SystemSegmentRole,
+      isApplicable: boolean,
+    ) =>
+      updateOverrides(table, (overrides) => ({
+        ...overrides,
+        notApplicableSystemSegments: isApplicable
+          ? _.without(overrides.notApplicableSystemSegments, role)
+          : _.uniq([...overrides.notApplicableSystemSegments, role]),
       })),
     [updateOverrides],
   );
@@ -182,6 +269,8 @@ export function useTableSegments() {
   return {
     getTableSegmentsOverrides,
     setSystemSegmentDefinition,
+    setSystemSegmentCondition,
+    setSystemSegmentApplicable,
     setDefaultSegment,
     setRequiredFilter,
     resolveCohort,

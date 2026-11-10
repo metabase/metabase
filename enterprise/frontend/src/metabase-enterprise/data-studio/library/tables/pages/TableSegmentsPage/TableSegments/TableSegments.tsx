@@ -19,12 +19,7 @@ export function TableSegments({ table }: TableSegmentsProps) {
             Urls.dataStudioPublishedTableSegment(table.id, segmentId),
           newSegment: Urls.dataStudioPublishedTableSegmentNew(table.id),
           systemSegment: (role) =>
-            Urls.dataStudioDataModelSystemSegment({
-              databaseId: table.db_id,
-              schemaName: table.schema,
-              tableId: table.id,
-              role,
-            }),
+            Urls.dataStudioPublishedTableSystemSegment(table.id, role),
         }}
       />
     </Stack>

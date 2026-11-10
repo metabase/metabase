@@ -16,5 +16,7 @@ export {
   type SegmentGroupMember,
   type SegmentGroupSource,
   createSegmentGroupId,
+  getSegmentGroupMemberKey,
+  isSegmentGroupMemberPresent,
   useSegmentGroups,
 } from "./segment-groups";

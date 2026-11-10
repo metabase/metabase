@@ -21,6 +21,7 @@ import {
   getKindPartitionProposal,
   getProcessPartitionProposal,
   getSegmentGroupSourceLabel,
+  isSegmentGroupMemberPresent,
   useSegmentGroups,
 } from "metabase/metadata/segment-groups";
 import { useSegmentSettings } from "metabase/metadata/table-segments";
@@ -137,8 +138,7 @@ export function getMemberLabels(
 ): string[] {
   return [
     ...group.members
-      // A deleted segment drops out of its groups
-      .filter(({ segmentId }) => segments.some(({ id }) => id === segmentId))
+      .filter((member) => isSegmentGroupMemberPresent(member, segments))
       .map(({ label }) => label),
     ...(group.other ? [t`Other`] : []),
   ];
@@ -162,9 +162,8 @@ export function SegmentGroupItem({
     group.kind === "overlapping" ? t`Members can overlap` : null,
   ].filter(Boolean);
   const segments = table.segments ?? [];
-  // A deleted segment drops out of its groups
   const memberLabels = group.members
-    .filter(({ segmentId }) => segments.some(({ id }) => id === segmentId))
+    .filter((member) => isSegmentGroupMemberPresent(member, segments))
     .map(({ label }) => label);
 
   return (

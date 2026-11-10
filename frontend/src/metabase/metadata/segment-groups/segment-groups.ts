@@ -2,7 +2,11 @@ import { useCallback } from "react";
 import _ from "underscore";
 
 import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
-import type { FieldId, SegmentId, Table } from "metabase-types/api";
+import {
+  SYSTEM_SEGMENT_ROLES,
+  type SystemSegmentRole,
+} from "metabase/metadata/table-segments";
+import type { FieldId, Segment, SegmentId, Table } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 /** Members of a partition never overlap; an overlapping group is a filter set */
@@ -16,11 +20,31 @@ export const SEGMENT_GROUP_KINDS: SegmentGroupKind[] = [
 /** What made the group: a process's buckets, a flag, a kind column, or an admin */
 export type SegmentGroupSource = "process" | "flag" | "kind" | "admin";
 
-export type SegmentGroupMember = {
-  segmentId: SegmentId;
-  /** The member's name in this group, which can differ from the segment's */
-  label: string;
-};
+/**
+ * A custom segment, or one of the table's system segments. `label` is the
+ * member's name in this group, which can differ from the segment's.
+ */
+export type SegmentGroupMember =
+  | { segmentId: SegmentId; label: string }
+  | { systemRole: SystemSegmentRole; label: string };
+
+/** Unique within a group, for keys and drag-and-drop */
+export function getSegmentGroupMemberKey(member: SegmentGroupMember): string {
+  return "segmentId" in member
+    ? `custom:${member.segmentId}`
+    : `system:${member.systemRole}`;
+}
+
+/** A custom member whose segment was deleted drops out of its groups */
+export function isSegmentGroupMemberPresent(
+  member: SegmentGroupMember,
+  segments: Pick<Segment, "id">[],
+): boolean {
+  return (
+    !("segmentId" in member) ||
+    segments.some(({ id }) => id === member.segmentId)
+  );
+}
 
 /**
  * A named, ordered set of segments on one table: the spec's segment_group.
@@ -59,11 +83,16 @@ const EMPTY_TABLE: TableSegmentGroups = {
 const SOURCES: SegmentGroupSource[] = ["process", "flag", "kind", "admin"];
 
 function parseMember(value: unknown): SegmentGroupMember | null {
-  return isObject(value) &&
-    typeof value.segmentId === "number" &&
-    typeof value.label === "string"
-    ? { segmentId: value.segmentId, label: value.label }
-    : null;
+  if (!isObject(value) || typeof value.label !== "string") {
+    return null;
+  }
+  if (typeof value.segmentId === "number") {
+    return { segmentId: value.segmentId, label: value.label };
+  }
+  const systemRole = SYSTEM_SEGMENT_ROLES.find(
+    (role) => role === value.systemRole,
+  );
+  return systemRole ? { systemRole, label: value.label } : null;
 }
 
 function parseGroup(value: unknown): SegmentGroup | null {

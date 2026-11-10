@@ -7,6 +7,8 @@ import {
   type SegmentGroupMember,
   createSegmentGroupId,
   getSegmentGroupKindLabel,
+  getSegmentGroupMemberKey,
+  isSegmentGroupMemberPresent,
 } from "metabase/metadata/segment-groups";
 import {
   Button,
@@ -23,11 +25,16 @@ import {
 import type { Segment } from "metabase-types/api";
 
 import { GroupMemberList } from "../GroupMemberList";
+import {
+  type ResolvedSystemSegment,
+  isUsableSystemSegment,
+} from "../table-segments";
 
 type SegmentGroupModalProps = {
   /** The group to edit; none makes a new one */
   group: SegmentGroup | undefined;
   segments: Segment[];
+  systemSegments: ResolvedSystemSegment[];
   onSave: (group: SegmentGroup) => void;
   onDelete: (groupId: string) => void;
   onClose: () => void;
@@ -40,29 +47,44 @@ type SegmentGroupModalProps = {
 export function SegmentGroupModal({
   group,
   segments,
+  systemSegments,
   onSave,
   onDelete,
   onClose,
 }: SegmentGroupModalProps) {
   const [name, setName] = useState(group?.name ?? "");
-  // Required: an empty name turns red once someone has been in it and left
+  // Required: an empty name turns red only after someone typed one and cleared it
   const [isNameFocused, setIsNameFocused] = useState(false);
-  const [isNameTouched, setIsNameTouched] = useState(false);
-  const isNameMissing = isNameTouched && !isNameFocused && name.trim() === "";
+  const [hasTypedName, setHasTypedName] = useState(false);
+  const isNameMissing = hasTypedName && !isNameFocused && name.trim() === "";
   const [kind, setKind] = useState<SegmentGroupKind>(
     group?.kind ?? "partition",
   );
   const [members, setMembers] = useState<SegmentGroupMember[]>(
     // Members whose segment was deleted drop out on the next save
-    (group?.members ?? []).filter(({ segmentId }) =>
-      segments.some(({ id }) => id === segmentId),
+    (group?.members ?? []).filter((member) =>
+      isSegmentGroupMemberPresent(member, segments),
     ),
   );
   const [other, setOther] = useState(group?.other ?? false);
 
-  const availableSegments = segments.filter(
-    ({ id }) => !members.some(({ segmentId }) => segmentId === id),
+  const memberKeys = new Set(members.map(getSegmentGroupMemberKey));
+  const memberOptions: { member: SegmentGroupMember; label: string }[] = [
+    ...segments.map((segment) => ({
+      member: { segmentId: segment.id, label: segment.name },
+      label: segment.name,
+    })),
+    // A system segment that filters nothing can't split rows
+    ...systemSegments.filter(isUsableSystemSegment).map((segment) => ({
+      member: { systemRole: segment.role, label: segment.label },
+      label: segment.label,
+    })),
+  ];
+  const availableOptions = memberOptions.filter(
+    ({ member }) => !memberKeys.has(getSegmentGroupMemberKey(member)),
   );
+  const getMemberName = (member: SegmentGroupMember) =>
+    getSegmentGroupMemberName(member, segments, systemSegments);
   // A group can start empty and gain segments as they're made
   const canSave = name.trim() !== "";
 
@@ -73,7 +95,7 @@ export function SegmentGroupModal({
       kind,
       members: members.map((member) => ({
         ...member,
-        label: member.label.trim() || getSegmentName(segments, member),
+        label: member.label.trim() || getMemberName(member),
       })),
       other: kind === "partition" && other,
       source: group?.source ?? "admin",
@@ -95,13 +117,13 @@ export function SegmentGroupModal({
           placeholder={t`Deal outcome`}
           value={name}
           required
-          error={isNameMissing}
-          onChange={(event) => setName(event.target.value)}
-          onFocus={() => setIsNameFocused(true)}
-          onBlur={() => {
-            setIsNameFocused(false);
-            setIsNameTouched(true);
+          error={isNameMissing && t`Give the group a name`}
+          onChange={(event) => {
+            setName(event.target.value);
+            setHasTypedName(true);
           }}
+          onFocus={() => setIsNameFocused(true)}
+          onBlur={() => setIsNameFocused(false)}
           data-autofocus
         />
 
@@ -140,32 +162,45 @@ export function SegmentGroupModal({
           <Select
             aria-label={t`Add a segment`}
             placeholder={
-              availableSegments.length > 0
+              availableOptions.length > 0
                 ? t`Add a segment`
                 : t`No more segments on this table`
             }
-            data={availableSegments.map(({ id, name }) => ({
-              value: String(id),
-              label: name,
-            }))}
+            data={[
+              {
+                group: t`Custom segments`,
+                items: getOptionItems(
+                  availableOptions.filter(
+                    ({ member }) => "segmentId" in member,
+                  ),
+                ),
+              },
+              {
+                group: t`System segments`,
+                items: getOptionItems(
+                  availableOptions.filter(
+                    ({ member }) => "systemRole" in member,
+                  ),
+                ),
+              },
+            ].filter(({ items }) => items.length > 0)}
             value={null}
-            disabled={availableSegments.length === 0}
+            disabled={availableOptions.length === 0}
             searchable
             onChange={(value) => {
-              const segment = segments.find(({ id }) => String(id) === value);
-              if (segment) {
-                setMembers([
-                  ...members,
-                  { segmentId: segment.id, label: segment.name },
-                ]);
+              const option = availableOptions.find(
+                ({ member }) => getSegmentGroupMemberKey(member) === value,
+              );
+              if (option) {
+                setMembers([...members, option.member]);
               }
             }}
           />
           {members.length > 0 && (
             <GroupMemberList<SegmentGroupMember>
               items={members}
-              getId={({ segmentId }) => segmentId}
-              getName={(member) => getSegmentName(segments, member)}
+              getId={getSegmentGroupMemberKey}
+              getName={getMemberName}
               header={
                 <Group gap="sm" wrap="nowrap">
                   <Text size="sm" fw="bold" c="text-secondary" flex={1}>
@@ -182,20 +217,21 @@ export function SegmentGroupModal({
                 <Group gap="sm" wrap="nowrap">
                   <Group gap="xs" wrap="nowrap" flex={1} miw={0}>
                     <Icon name="segment" c="core-filter" flex="0 0 auto" />
-                    <Text truncate title={getSegmentName(segments, member)}>
-                      {getSegmentName(segments, member)}
+                    <Text truncate title={getMemberName(member)}>
+                      {getMemberName(member)}
                     </Text>
                   </Group>
                   <TextInput
                     flex={1}
                     miw={0}
-                    aria-label={t`Label for ${getSegmentName(segments, member)}`}
+                    aria-label={t`Label for ${getMemberName(member)}`}
                     value={member.label}
-                    placeholder={getSegmentName(segments, member)}
+                    placeholder={getMemberName(member)}
                     onChange={(event) =>
                       setMembers(
                         members.map((known) =>
-                          known.segmentId === member.segmentId
+                          getSegmentGroupMemberKey(known) ===
+                          getSegmentGroupMemberKey(member)
                             ? { ...known, label: event.target.value }
                             : known,
                         ),
@@ -208,7 +244,9 @@ export function SegmentGroupModal({
               onRemove={(member) =>
                 setMembers(
                   members.filter(
-                    ({ segmentId }) => segmentId !== member.segmentId,
+                    (known) =>
+                      getSegmentGroupMemberKey(known) !==
+                      getSegmentGroupMemberKey(member),
                   ),
                 )
               }
@@ -240,5 +278,22 @@ export function SegmentGroupModal({
   );
 }
 
-const getSegmentName = (segments: Segment[], member: SegmentGroupMember) =>
-  segments.find(({ id }) => id === member.segmentId)?.name ?? member.label;
+function getSegmentGroupMemberName(
+  member: SegmentGroupMember,
+  segments: Segment[],
+  systemSegments: ResolvedSystemSegment[],
+): string {
+  return "segmentId" in member
+    ? (segments.find(({ id }) => id === member.segmentId)?.name ?? member.label)
+    : (systemSegments.find(({ role }) => role === member.systemRole)?.label ??
+        member.label);
+}
+
+function getOptionItems(
+  options: { member: SegmentGroupMember; label: string }[],
+) {
+  return options.map(({ member, label }) => ({
+    value: getSegmentGroupMemberKey(member),
+    label,
+  }));
+}

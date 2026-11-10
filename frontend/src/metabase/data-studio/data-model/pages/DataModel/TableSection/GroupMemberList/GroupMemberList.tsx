@@ -8,7 +8,7 @@ import { ActionIcon, Box, Card, Group, Icon } from "metabase/ui";
 type GroupMemberListProps<T> = {
   /** In order */
   items: T[];
-  getId: (item: T) => number;
+  getId: (item: T) => number | string;
   /** For the remove button's label */
   getName: (item: T) => string;
   /** The row's middle: a name, or an input for the member's label */

@@ -42,8 +42,11 @@ export function isPartitionOnField(
   }
   return (
     group.members.length > 0 &&
-    group.members.every(({ segmentId }) => {
-      const segment = segments.find(({ id }) => id === segmentId);
+    group.members.every((member) => {
+      const segment =
+        "segmentId" in member
+          ? segments.find(({ id }) => id === member.segmentId)
+          : undefined;
       if (!segment) {
         return false;
       }

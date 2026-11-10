@@ -88,6 +88,110 @@ export function getSystemSegmentDescription(role: SystemSegmentRole): string {
   }
 }
 
+export function getSystemSegmentColumnQuestion(
+  role: SystemSegmentRole,
+): string {
+  switch (role) {
+    case "exclude_deleted":
+      return t`Which column marks deleted rows?`;
+    case "current_rows":
+      return t`Which column marks the current version?`;
+    case "exclude_test":
+      return t`Which column marks test rows?`;
+  }
+}
+
+export function getSystemSegmentMissingColumnMessage(
+  role: SystemSegmentRole,
+): string {
+  switch (role) {
+    case "exclude_deleted":
+      return t`No column marks deleted rows yet, so this segment filters nothing.`;
+    case "current_rows":
+      return t`No column marks the current version yet, so this segment filters nothing.`;
+    case "exclude_test":
+      return t`No column marks test rows yet, so this segment filters nothing.`;
+  }
+}
+
+export function getSystemSegmentNotApplicableLabel(
+  role: SystemSegmentRole,
+): string {
+  switch (role) {
+    case "exclude_deleted":
+      return t`This table has no deleted rows`;
+    case "current_rows":
+      return t`This table has no old versions`;
+    case "exclude_test":
+      return t`This table has no test data`;
+  }
+}
+
+export function getSystemSegmentMarkedWhenLabel(
+  role: SystemSegmentRole,
+): string {
+  switch (role) {
+    case "exclude_deleted":
+      return t`A row is deleted when the column is`;
+    case "current_rows":
+      return t`A row is the current version when the column is`;
+    case "exclude_test":
+      return t`A row is test data when the column is`;
+  }
+}
+
+/** Current rows keep the marked rows; the others leave them out */
+function keepsMarkedRows(role: SystemSegmentRole): boolean {
+  return role === "current_rows";
+}
+
+/** Columns that can mark rows for a system segment: yes/no flags and dates */
+export function isSystemSegmentColumn(field: Field): boolean {
+  return isBoolean(field) || isDate(field);
+}
+
+/**
+ * The segment's condition when `field` marks the rows: a flag marks them by
+ * its value, a date by being set (`true`) or empty (`false`).
+ */
+export function getSystemSegmentCondition(
+  role: SystemSegmentRole,
+  field: Field,
+  isMarkedWhen: boolean,
+): FieldCondition {
+  const fieldId = idOf(field);
+  const keepsMarked = keepsMarkedRows(role);
+  if (isDate(field)) {
+    const keepsSet = keepsMarked === isMarkedWhen;
+    return { fieldId, operator: keepsSet ? "not-null" : "is-null" };
+  }
+  return {
+    fieldId,
+    operator: "=",
+    value: keepsMarked ? isMarkedWhen : !isMarkedWhen,
+  };
+}
+
+/** Which value of the condition's column marks rows, for the setup form */
+export function getSystemSegmentMarkedWhen(
+  role: SystemSegmentRole,
+  condition: FieldCondition,
+): boolean | undefined {
+  const keepsMarked = keepsMarkedRows(role);
+  switch (condition.operator) {
+    case "=":
+      return typeof condition.value === "boolean"
+        ? keepsMarked === condition.value
+        : undefined;
+    case "not-null":
+      return keepsMarked;
+    case "is-null":
+      return !keepsMarked;
+    default:
+      return undefined;
+  }
+}
+
 const nameOf = (field: Field) => field.name.toLowerCase();
 const idOf = (field: Field) => getRawTableFieldId(field);
 

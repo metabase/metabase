@@ -188,6 +188,11 @@ export function SegmentList({
                 defaultSegment.type === "system" &&
                 defaultSegment.role === segment.role
               }
+              onConfirm={
+                canCreateSegment
+                  ? () => model.confirmSystemSegment(segment.role)
+                  : undefined
+              }
             />
           ))}
         </ListSection>
@@ -327,6 +332,7 @@ export function SegmentList({
           key={editingGroupId ?? "new"}
           group={editingGroup}
           segments={tableSegments}
+          systemSegments={model.systemSegments}
           onSave={(group) => {
             saveSegmentGroup(table, group);
             setEditingGroupId(undefined);

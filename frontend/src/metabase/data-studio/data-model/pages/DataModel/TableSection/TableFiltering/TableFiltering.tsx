@@ -7,13 +7,17 @@ import {
   DetailsTable,
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
-import {
-  type DefaultSegment,
-  SYSTEM_SEGMENT_ROLES,
-  getSystemSegmentLabel,
-} from "metabase/metadata/table-segments";
+import type { DefaultSegment } from "metabase/metadata/table-segments";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import { ActionIcon, Icon, Input, Menu, Popover } from "metabase/ui";
+import {
+  ActionIcon,
+  Icon,
+  Input,
+  Menu,
+  Popover,
+  Stack,
+  Text,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Segment, Table } from "metabase-types/api";
 
@@ -22,7 +26,9 @@ import { InferredValue } from "../InferenceReview";
 import {
   type ResolvedDefaultSegment,
   type ResolvedRequiredFilter,
+  type ResolvedSystemSegment,
   type TableSegmentsModel,
+  isUsableSystemSegment,
   useTableSegmentsModel,
 } from "../table-segments";
 
@@ -113,7 +119,16 @@ function DefaultSegmentValue({
   disabled: boolean;
 }) {
   const [isMenuOpenOnMount, setIsMenuOpenOnMount] = useState(false);
-  const { defaultSegment, setDefaultSegment } = model;
+  const { defaultSegment, setDefaultSegment, systemSegments } = model;
+  const defaultValue = defaultSegment.segment;
+  const unusableDefault =
+    defaultValue.type === "system"
+      ? systemSegments.find(
+          (segment) =>
+            segment.role === defaultValue.role &&
+            !isUsableSystemSegment(segment),
+        )
+      : undefined;
 
   if (isDefaultSegmentInferred(defaultSegment)) {
     const inferredSegment = defaultSegment.inference.segment;
@@ -132,16 +147,36 @@ function DefaultSegmentValue({
     );
   }
 
-  return (
+  const picker = (
     <DefaultSegmentPicker
-      value={defaultSegment.segment}
+      value={defaultValue}
       label={defaultSegment.label}
+      systemSegments={systemSegments}
       customSegments={customSegments}
       disabled={disabled}
       isOpenOnMount={isMenuOpenOnMount}
       onChange={setDefaultSegment}
     />
   );
+
+  if (unusableDefault == null) {
+    return picker;
+  }
+
+  return (
+    <Stack gap="xs" py="xs">
+      {picker}
+      <Text size="sm" c="feedback-warning" px="md">
+        {t`${unusableDefault.label} isn't set up, so questions still start from all records.`}
+      </Text>
+    </Stack>
+  );
+}
+
+function getUnusableSystemSegmentHint({ status }: ResolvedSystemSegment) {
+  return status === "not-applicable"
+    ? t`Turned off for this table`
+    : t`Not set up: choose the column that marks its rows first`;
 }
 
 /**
@@ -151,6 +186,7 @@ function DefaultSegmentValue({
 function DefaultSegmentPicker({
   value,
   label,
+  systemSegments,
   customSegments,
   disabled,
   isOpenOnMount,
@@ -158,17 +194,25 @@ function DefaultSegmentPicker({
 }: {
   value: DefaultSegment;
   label: string;
+  systemSegments: ResolvedSystemSegment[];
   customSegments: Segment[];
   disabled: boolean;
   isOpenOnMount: boolean;
   onChange: (segment: DefaultSegment) => void;
 }) {
   const [isShowingCustom, setIsShowingCustom] = useState(false);
-  const builtInChoices: { segment: DefaultSegment; label: string }[] = [
+  const builtInChoices: {
+    segment: DefaultSegment;
+    label: string;
+    disabledHint?: string;
+  }[] = [
     { segment: { type: "all" }, label: t`All records` },
-    ...SYSTEM_SEGMENT_ROLES.map((role) => ({
-      segment: { type: "system" as const, role },
-      label: getSystemSegmentLabel(role),
+    ...systemSegments.map((systemSegment) => ({
+      segment: { type: "system" as const, role: systemSegment.role },
+      label: systemSegment.label,
+      disabledHint: isUsableSystemSegment(systemSegment)
+        ? undefined
+        : getUnusableSystemSegmentHint(systemSegment),
     })),
   ];
   const checkIfSelected = (segment: DefaultSegment) =>
@@ -235,9 +279,19 @@ function DefaultSegmentPicker({
               <Menu.Item
                 key={choice.label}
                 rightSection={checkIfSelected(choice.segment)}
+                disabled={choice.disabledHint != null}
                 onClick={() => onChange(choice.segment)}
               >
-                {choice.label}
+                {choice.disabledHint != null ? (
+                  <Stack gap={2}>
+                    <Text c="inherit">{choice.label}</Text>
+                    <Text size="sm" c="text-secondary">
+                      {choice.disabledHint}
+                    </Text>
+                  </Stack>
+                ) : (
+                  choice.label
+                )}
               </Menu.Item>
             ))}
             <Menu.Divider />
