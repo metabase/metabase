@@ -322,6 +322,14 @@ function getCell(rowIndex: number, columnId: string) {
   return cell;
 }
 
+/**
+ * The header remounts each time the grid gets new data, so query it again for
+ * each assertion.
+ */
+function getHeader() {
+  return within(screen.getByTestId("table-header"));
+}
+
 function getRowSelectSection(rowIndex: number) {
   return within(getRowSection("center-pinned-quadrant", rowIndex));
 }
@@ -594,28 +602,25 @@ describe("EditTableDataContainer", () => {
   describe("filter and sort", () => {
     it("cycles a column sort through ascending, descending and none", async () => {
       const { router, store } = await setupGrid();
-      const header = screen.getByTestId("table-header");
 
-      await userEvent.click(within(header).getByText("Name"));
-      expect(
-        await within(header).findByLabelText("chevronup icon"),
-      ).toBeInTheDocument();
-      expect(
-        within(header).getAllByTestId("header-sort-indicator"),
-      ).toHaveLength(1);
-      expect(router?.location.search).toMatch(/^\?query=/);
+      await userEvent.click(getHeader().getByText("Name"));
       await waitForGridToSettle(store, { datasetRequests: 2 });
+      expect(getHeader().getByLabelText("chevronup icon")).toBeInTheDocument();
+      expect(getHeader().getAllByTestId("header-sort-indicator")).toHaveLength(
+        1,
+      );
+      expect(router?.location.search).toMatch(/^\?query=/);
 
-      await userEvent.click(within(header).getByText("Name"));
-      expect(
-        await within(header).findByLabelText("chevrondown icon"),
-      ).toBeInTheDocument();
+      await userEvent.click(getHeader().getByText("Name"));
       await waitForGridToSettle(store, { datasetRequests: 3 });
+      expect(
+        getHeader().getByLabelText("chevrondown icon"),
+      ).toBeInTheDocument();
 
-      await userEvent.click(within(header).getByText("Name"));
+      await userEvent.click(getHeader().getByText("Name"));
       await waitFor(() =>
         expect(
-          within(header).queryByTestId("header-sort-indicator"),
+          getHeader().queryByTestId("header-sort-indicator"),
         ).not.toBeInTheDocument(),
       );
       expect(router?.location.search).toBe("");
@@ -635,12 +640,9 @@ describe("EditTableDataContainer", () => {
       ).toHaveTextContent("1");
       await waitForGridToSettle(store, { datasetRequests: 2 });
 
-      const header = screen.getByTestId("table-header");
-      await userEvent.click(within(header).getByText("Name"));
-      expect(
-        await within(header).findByLabelText("chevronup icon"),
-      ).toBeInTheDocument();
+      await userEvent.click(getHeader().getByText("Name"));
       await waitForGridToSettle(store, { datasetRequests: 3 });
+      expect(getHeader().getByLabelText("chevronup icon")).toBeInTheDocument();
 
       const lastQuery = JSON.parse(
         String(fetchMock.callHistory.lastCall("dataset")?.options.body),
@@ -657,11 +659,7 @@ describe("EditTableDataContainer", () => {
       expect(
         await screen.findByTestId("filters-visibility-control"),
       ).toHaveTextContent("1");
-      expect(
-        within(screen.getByTestId("table-header")).getByLabelText(
-          "chevronup icon",
-        ),
-      ).toBeInTheDocument();
+      expect(getHeader().getByLabelText("chevronup icon")).toBeInTheDocument();
 
       const filtersPanel = screen.getByTestId("qb-filters-panel");
       expect(
