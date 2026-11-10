@@ -162,7 +162,7 @@
             (is (=? {:status :unprovisioned} (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
             (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
               (is (nil? (ws/delete-workspace! (:id ws)))))))
-        (testing "provisioning failure whose cleanup also fails keeps the workspace and throws for retry"
+        (testing "provisioning failure whose cleanup also fails keeps the workspace and throws, so that a later delete can retry"
           (let [wedged (reify provisioning/Provisioner
                          (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
                          (init!    [_ _ _ _]   (throw (ex-info "boom" {:status-code 409})))
@@ -236,6 +236,52 @@
               "the DELETE ran to completion after the lock was released")
           (is (zero? @destroyed)
               "destroy would drop the user init refused, which may belong to another parent"))))))
+
+(deftest create-workspace-failure-never-destroys-a-database-whose-init-never-ran-test
+  (mt/with-temp [:model/Database {db1-id :id} {:engine   :postgres
+                                               :details  {}
+                                               :settings {:database-enable-workspaces true}}
+                 :model/Table _ {:db_id db1-id :schema "public" :active true}
+                 :model/Database {db2-id :id} {:engine   :postgres
+                                               :details  {}
+                                               :settings {:database-enable-workspaces true}}
+                 :model/Table _ {:db_id db2-id :schema "public" :active true}]
+    (mt/with-model-cleanup [:model/Workspace]
+      (letfn [(refusing [refused-db-id inited destroyed]
+                (reify provisioning/Provisioner
+                  (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                  (init!    [_ _ db _]
+                    (swap! inited conj (:id db))
+                    (when (= refused-db-id (:id db))
+                      (throw (ex-info "user exists" {:status-code 409 :workspace/cleanup? false}))))
+                  (grant!   [_ _ _ _ _] nil)
+                  (destroy! [_ _ db _]  (swap! destroyed conj (:id db)))))
+              (create! [ws-name provisioner]
+                (with-redefs [provisioning/dispatching-provisioner provisioner]
+                  (try
+                    (ws/create-workspace! {:name         ws-name
+                                           :creator_id   (mt/user->id :crowberto)
+                                           :database_ids [db1-id db2-id]})
+                    nil
+                    (catch ExceptionInfo e (ex-data e)))))]
+        (testing "the second database refuses after the first one's init ran: the first is destroyed"
+          (let [inited    (atom #{})
+                destroyed (atom #{})]
+            (is (=? {:status-code 409 :cleanup_required false}
+                    (create! "Second refused" (refusing db2-id inited destroyed))))
+            (is (= #{db1-id db2-id} @inited))
+            (is (= #{db1-id} @destroyed))))
+        (testing "the first database refuses: the second one's init never ran, so nothing of it is destroyed"
+          (let [inited    (atom #{})
+                destroyed (atom #{})]
+            (is (=? {:status-code 409 :cleanup_required false}
+                    (create! "First refused" (refusing db1-id inited destroyed))))
+            (is (= #{db1-id} @inited)
+                "only the first database's init ran")
+            (is (= #{} @destroyed)
+                "destroy drops the role and schema of the computed names, which another parent may own")
+            (is (not (t2/exists? :model/Workspace :name "First refused")))
+            (is (not (t2/exists? :model/WorkspaceDatabase :database_id [:in [db1-id db2-id]])))))))))
 
 (defn- add-database!
   "Test helper: insert a WorkspaceDatabase row for `workspace-id` and provision it

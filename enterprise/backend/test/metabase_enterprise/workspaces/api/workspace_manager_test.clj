@@ -117,7 +117,8 @@
   (testing "POST / never returns 200 when provisioning fails"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
-                                                :settings {:database-enable-workspaces true}}]
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
       (mt/with-model-cleanup [:model/Workspace]
         (letfn [(provisioner [init-error destroy-error]
                   (reify provisioning/Provisioner
@@ -154,7 +155,8 @@
   (testing "POST / is a 500 that asks for a delete when the warehouse is clean but the Workspace row stays"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
-                                                :settings {:database-enable-workspaces true}}]
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
       (mt/with-model-cleanup [:model/Workspace]
         (let [failing (reify provisioning/Provisioner
                         (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
@@ -176,9 +178,11 @@
     (mt/with-temp [:model/Database {db1-id :id} {:engine   :postgres
                                                  :details  {}
                                                  :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db1-id :schema "public" :active true}
                    :model/Database {db2-id :id} {:engine   :postgres
                                                  :details  {}
-                                                 :settings {:database-enable-workspaces true}}]
+                                                 :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db2-id :schema "public" :active true}]
       (mt/with-model-cleanup [:model/Workspace]
         (let [inited    (atom #{})
               destroyed (atom #{})

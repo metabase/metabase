@@ -230,10 +230,26 @@
 
 (defn- provision-workspace-databases!
   "Provision every WorkspaceDatabase of the hydrated workspace `ws` synchronously
-  (blocking), failing fast on the first error."
+  (blocking), stopping at the first error. Returns nil when every database is
+  provisioned, else `{:error t, :never-started ids}`: the error, and the ids of
+  the rows after the failed one, whose provisioning never started."
   [ws]
-  (doseq [{wsd-id :id} (:databases ws)]
-    (provisioning/provision-single! wsd-id)))
+  (loop [[wsd-id & more] (map :id (:databases ws))]
+    (when wsd-id
+      (if-let [t (try
+                   (provisioning/provision-single! wsd-id)
+                   nil
+                   (catch Throwable t t))]
+        {:error t, :never-started more}
+        (recur more)))))
+
+(defn- delete-never-started-workspace-database!
+  "Delete the row `wsd-id`, whose provisioning never started, under its per-row lock. Init never ran for it, so the
+  warehouse has nothing of its, and a teardown would drop a user and schema of its computed names that another
+  parent may own."
+  [wsd-id]
+  (provisioning/with-workspace-database-lock wsd-id
+    (ws.db/delete-workspace-database! wsd-id)))
 
 (defn- teardown-workspace-databases!
   "Tear down every WorkspaceDatabase of `workspace-id` — any state, blocking.
@@ -270,7 +286,8 @@
    of warehouse resources that may (partially) exist, so they must survive an
    instance crash mid-provision; a rollback would erase them while the warehouse
    objects live on. Cleanup after a provisioning failure is therefore explicit:
-   every database is torn down. When the cleanup removes everything, the Workspace
+   the rows whose provisioning never started are deleted, and every other
+   database is torn down. When the cleanup removes everything, the Workspace
    row is deleted and the provisioning error is rethrown with its own
    `:status-code` (500 when it has none). When the cleanup itself fails, the
    workspace is kept with the failed rows (`:unprovisioned`), so the leak stays
@@ -288,34 +305,33 @@
         ws        (workspace/create-workspace! {:name       name
                                                 :creator_id creator_id
                                                 :databases  databases})]
-    (try
-      (provision-workspace-databases! ws)
-      (catch Throwable t
-        (let [cleanup-error (try
-                              (teardown-workspace-databases! (:id ws))
+    (when-let [{t :error, never-started :never-started} (provision-workspace-databases! ws)]
+      (let [cleanup-error (try
+                            (run! delete-never-started-workspace-database! never-started)
+                            (teardown-workspace-databases! (:id ws))
+                            nil
+                            ;; Cleanup failed: the workspace and the failed rows are
+                            ;; kept so the teardown can be retried via delete. The
+                            ;; errors are not logged (raw warehouse errors are
+                            ;; sensitive), but the caller gets them in the
+                            ;; response, as it does from a failed delete.
+                            (catch Throwable cleanup-t cleanup-t))
+            delete-error  (when-not cleanup-error
+                            (try
+                              (workspace/delete-workspace! (:id ws))
                               nil
-                              ;; Cleanup failed: the workspace and the failed rows are
-                              ;; kept so the teardown can be retried via delete. The
-                              ;; errors are not logged (raw warehouse errors are
-                              ;; sensitive), but the caller gets them in the
-                              ;; response, as it does from a failed delete.
-                              (catch Throwable cleanup-t cleanup-t))
-              delete-error  (when-not cleanup-error
-                              (try
-                                (workspace/delete-workspace! (:id ws))
-                                nil
-                                ;; a fixed message: a raw app-DB error can name tables
-                                (catch Throwable delete-t
-                                  (ex-info "Could not delete the workspace row." {} delete-t))))
-              ;; either way the Workspace row survives, and only a delete removes it
-              kept-error    (or cleanup-error delete-error)]
-          ;; a single failure keeps its status, like a driver's 409 for a role it refuses
-          (throw (combined-exception (cond-> [t] kept-error (conj kept-error))
-                                     {:status-code      (if kept-error
-                                                          500
-                                                          (or (:status-code (ex-data t)) 500))
-                                      :cleanup_required (some? kept-error)
-                                      :response/keys    #{:cleanup_required}})))))
+                              ;; a fixed message: a raw app-DB error can name tables
+                              (catch Throwable delete-t
+                                (ex-info "Could not delete the workspace row." {} delete-t))))
+            ;; either way the Workspace row survives, and only a delete removes it
+            kept-error    (or cleanup-error delete-error)]
+        ;; a single failure keeps its status, like a driver's 409 for a role it refuses
+        (throw (combined-exception (cond-> [t] kept-error (conj kept-error))
+                                   {:status-code      (if kept-error
+                                                        500
+                                                        (or (:status-code (ex-data t)) 500))
+                                    :cleanup_required (some? kept-error)
+                                    :response/keys    #{:cleanup_required}}))))
     (workspace/get-workspace (:id ws))))
 
 (defn delete-workspace!
