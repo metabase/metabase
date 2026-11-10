@@ -21,10 +21,10 @@
                      :bundle_path "./dist/index.js" :allowed_hosts nil})))
   (is (= {:enabled false} (normalize ::data-apps.schema/data-app.update {:enabled false}))))
 
-(deftest data-app-insert-requires-the-manifest-columns-test
-  (is (valid? ::data-apps.schema/data-app.insert {:slug "a" :name "A" :bundle_path "i.js"}))
+(deftest data-app-create-requires-manifest-columns-test
+  (is (valid? ::data-apps.schema/data-app.create {:slug "a" :name "A" :bundle_path "i.js"}))
   (doseq [k [:slug :name :bundle_path]]
-    (is (not (valid? ::data-apps.schema/data-app.insert
+    (is (not (valid? ::data-apps.schema/data-app.create
                      (dissoc {:slug "a" :name "A" :bundle_path "i.js"} k)))
         (str "should require " k))))
 
