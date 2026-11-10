@@ -1255,16 +1255,19 @@
                     [table-name privileges])))
           table-names)))
 
-;; Coerces boolean fields since mysql returns them as 0/1 integers
+(defn- metadata-boolean [value]
+  (if (boolean? value) value (pos? value)))
+
+;; MySQL returns numeric flags, while compatible databases can return JDBC booleans.
 (defmethod sql-jdbc.sync/describe-fields-pre-process-xf :mysql
   [_driver _db & _args]
   (map (fn [col]
          (-> col
-             (update :pk? pos?)
-             (update :database-required pos?)
-             (update :database-is-auto-increment pos?)
-             (update :database-is-nullable pos?)
-             (update :database-is-generated pos?)))))
+             (update :pk? metadata-boolean)
+             (update :database-required metadata-boolean)
+             (update :database-is-auto-increment metadata-boolean)
+             (update :database-is-nullable metadata-boolean)
+             (update :database-is-generated metadata-boolean)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :mysql
   [driver & {:keys [table-names details]}]

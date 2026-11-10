@@ -228,6 +228,21 @@
           (is (= #{"dbone_a" "dbone_b" "dbone_c"}
                  (into #{} (map :name) (driver/describe-fields :mysql (driver.u/ensure-lib-database database))))))))))
 
+(deftest ^:parallel describe-fields-boolean-metadata-test
+  (let [flag-keys [:pk? :database-required :database-is-auto-increment
+                   :database-is-nullable :database-is-generated]
+        row       (assoc (zipmap flag-keys (repeat false)) :name "birds")
+        xf        (sql-jdbc.sync/describe-fields-pre-process-xf :mysql nil)]
+    (doseq [flag-key flag-keys
+            [input expected] [[0 false] [1 true] [(int 0) false] [(int 1) true] [false false] [true true]]]
+      (testing (str flag-key " returned as " (pr-str input) " (" (class input) ")")
+        (is (= [(assoc row flag-key expected)]
+               (into [] xf [(assoc row flag-key input)])))))
+    (testing "A single metadata row can contain both JDBC booleans and numeric flags"
+      (is (= [(merge row {:pk? false, :database-required true, :database-is-auto-increment true
+                         :database-is-nullable false, :database-is-generated false})]
+             (into [] xf [(merge row (zipmap flag-keys [0 true 1 false 0]))]))))))
+
 (deftest describe-fields-without-generation-expression-test
   (mt/test-driver :mysql
     (testing "Sync works when metadata has EXTRA but no GENERATION_EXPRESSION (AnalyticDB)"
