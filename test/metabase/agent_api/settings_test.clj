@@ -2,7 +2,18 @@
   (:require
    [clojure.test :refer :all]
    [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]))
+
+(deftest agent-api-enabled-setting-is-removed-test
+  (testing "agent-api-enabled?, the switch before 0.66, is removed"
+    (is (not (setting/registered? :agent-api-enabled?)))
+    (testing "an upgraded instance that still stores a value for it serves its settings, without that key"
+      (mt/with-temporary-raw-setting-values [:agent-api-enabled? "true"]
+        (is (not (contains? (mt/user-http-request :rasta :get 200 "session/properties")
+                            :agent-api-enabled?)))
+        (is (not-any? #(= "agent-api-enabled?" (:key %))
+                      (mt/user-http-request :crowberto :get 200 "setting")))))))
 
 (deftest deprecated-agent-api-off-by-default-test
   (testing "an instance that never set it has the deprecated Agent API off, and one that opted in keeps it on"

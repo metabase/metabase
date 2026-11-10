@@ -1,19 +1,7 @@
 (ns metabase.agent-api.settings
   (:require
-   [metabase.llm.settings :as llm.settings]
-   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
-
-(defsetting ^:deprecated agent-api-enabled?
-  (deferred-tru "Deprecated and without effect. The Agent API is on only when `deprecated-agent-api-enabled?` is on.")
-  :type       :boolean
-  :visibility :public
-  :default    true
-  :deprecated "0.66.0"
-  :getter     #(and (llm.settings/ai-features-enabled?)
-                    (setting/get-value-of-type :boolean :agent-api-enabled?))
-  :export?    true
-  :doc        false)
 
 (defsetting mcp-execute-sql-enabled
   (deferred-tru "Whether the MCP `execute_sql` tool is available. Disable to remove the tool entirely; underlying native-query permissions still apply when enabled.")
@@ -23,8 +11,9 @@
   :export?    true
   :doc        false)
 
-;; The opt-in for the deprecated Agent API. It replaces `agent-api-enabled?`, which was on by default and now has no
-;; effect.
+;; The opt-in for the deprecated Agent API. It replaces `agent-api-enabled?`, which was on by default and is removed.
+;; An upgraded instance can still hold a value for the removed setting, in a stored row or in the env var
+;; `MB_AGENT_API_ENABLED`. Nothing reads it.
 ;;
 ;; Do not add `:deprecated-name :agent-api-enabled?` here. A value of the old setting must not carry over: an admin has
 ;; to opt in to the deprecated API explicitly.

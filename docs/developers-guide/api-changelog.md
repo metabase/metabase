@@ -9,8 +9,19 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 - The Agent API (`/api/agent`) is deprecated and will be removed in Metabase 68. Use the MCP server for your agents
   instead. The Agent API is now off by default: every endpoint answers `403 Forbidden` until an admin turns it on in
-  **Admin > AI > MCP**, or the instance starts with `MB_DEPRECATED_AGENT_API_ENABLED=true`. The setting
-  `agent-api-enabled?` (`MB_AGENT_API_ENABLED`) is deprecated and no longer has an effect.
+  **Admin > AI > MCP**, or the instance starts with `MB_DEPRECATED_AGENT_API_ENABLED=true`.
+
+- The setting `agent-api-enabled?`, which turned the Agent API on and off, has been removed with no deprecation
+  period. Its value does not carry over: an instance that had the Agent API on has it off after the upgrade. To turn
+  the Agent API on, use the opt-in described above, the setting `deprecated-agent-api-enabled?`.
+  - `GET /api/session/properties` and `GET /api/setting` no longer return `agent-api-enabled?`.
+  - `GET /api/setting/:key` and `PUT /api/setting/:key` with the key `agent-api-enabled?` answer an admin with
+    `500 Internal Server Error` and any other user with `403 Forbidden`, as they do for any setting that does not
+    exist. `PUT /api/setting` skips the key.
+  - The environment variable `MB_AGENT_API_ENABLED` is ignored, and so is an `agent-api-enabled?` key in a config
+    file. An instance that held the Agent API off with `MB_AGENT_API_ENABLED=false` holds it off with
+    `MB_DEPRECATED_AGENT_API_ENABLED=false` instead: the environment variable takes precedence over the value that
+    an admin sets.
 
 - `POST /api/ee/transform-test/run`, which ran a transform test that wasn't saved, has been removed. Save the test and
   run it with `POST /api/ee/transform-test/:id/run`.

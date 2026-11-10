@@ -79,7 +79,8 @@
     "ldap-sync-admin-group"
     "user-recent-views"
     "most-recently-viewed-dashboard"
-    "llm-max-tokens"})
+    "llm-max-tokens"
+    "agent-api-enabled?"})
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-retired-setting-names*

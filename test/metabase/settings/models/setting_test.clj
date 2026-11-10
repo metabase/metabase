@@ -1375,6 +1375,10 @@
   (testing "the removed llm-max-tokens setting's name cannot be reused by a new setting"
     (is (contains? @#'setting/retired-setting-names "llm-max-tokens"))))
 
+(deftest ^:parallel agent-api-enabled?-is-retired-test
+  (testing "the removed agent-api-enabled? setting's name cannot be reused by a new setting"
+    (is (contains? @#'setting/retired-setting-names "agent-api-enabled?"))))
+
 (deftest duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"
     (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set))

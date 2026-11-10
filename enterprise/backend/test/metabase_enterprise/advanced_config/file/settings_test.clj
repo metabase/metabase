@@ -81,6 +81,22 @@
         (is (=? [{:level :warn, :message (u/colorize :yellow "Ignoring unknown setting in config: config-from-file-settings-test-setting-FAKE.")}]
                 (messages)))))))
 
+(deftest removed-setting-test
+  (testing "A config file that sets a removed Setting logs a warning, and its other Settings are applied"
+    ;; `agent-api-enabled?` is removed in 0.66.0. A config file written for 0.65 can have it.
+    (mt/with-temporary-setting-values [config-from-file-settings-test-setting nil]
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.advanced-config.file.settings :warn]]
+        (is (= :ok
+               (advanced-config.file/initialize!
+                {:version 1
+                 :config  {:settings {:agent-api-enabled?                     true
+                                      :config-from-file-settings-test-setting "applied"}}})))
+        (is (=? [{:level   :warn
+                  :message (u/colorize :yellow "Ignoring unknown setting in config: agent-api-enabled?.")}]
+                (messages)))
+        (is (= "applied"
+               (config-from-file-settings-test-setting)))))))
+
 (deftest boot-initialize-test
   (testing "The OSS boot hook applies the config file from disk, with `{{env VAR}}` templates expanded"
     (mt/with-temp-file [filename "boot-config-file.yml"]
