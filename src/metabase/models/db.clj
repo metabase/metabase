@@ -42,6 +42,7 @@
    :model/FieldUserSettings        :metabase.warehouse-schema.schema/field-user-settings.update
    :model/FieldValues              :metabase.warehouse-schema.schema/field-values.update
    :model/Glossary                 :metabase.glossary.schema/glossary.update
+   :model/HttpAction               :metabase.actions.schema/http-action.update
    :model/ImplicitAction           :metabase.actions.schema/implicit-action.update
    :model/Measure                  :metabase.measures.schema/measure.update
    :model/Metabot                  :metabase.metabot.schema/metabot.update

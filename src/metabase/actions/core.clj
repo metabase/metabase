@@ -7,6 +7,7 @@
    [metabase.actions.events]
    [metabase.actions.execution]
    [metabase.actions.hierarchy]
+   [metabase.actions.http]
    [metabase.actions.models]
    [metabase.actions.scope]
    [potemkin :as p]))
@@ -16,6 +17,7 @@
   metabase.actions.error/keep-me
   metabase.actions.execution/keep-me
   metabase.actions.hierarchy/keep-me
+  metabase.actions.http/keep-me
   metabase.actions.models/keep-me
   metabase.actions.scope/keep-me)
 
@@ -48,6 +50,8 @@
   violate-unique-constraint]
  [metabase.actions.hierarchy
   derive!]
+ [metabase.actions.http
+  check-http-action]
  [metabase.actions.execution
   execute-action!
   execute-dashcard!

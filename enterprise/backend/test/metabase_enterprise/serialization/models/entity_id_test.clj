@@ -40,6 +40,7 @@
     :model/ApiKey
     :model/ApiKeyUsageLog
     :model/AuthIdentity
+    :model/HttpAction
     :model/ImplicitAction
     :model/QueryAction
     :model/ApplicationPermissionsRevision

@@ -1,0 +1,48 @@
+## HTTP actions: an action that sends an HTTP request built from templates filled with its parameters
+
+databaseChangeLog:
+  - changeSet:
+      id: s06gqz
+      author: ranquild
+      comment: Add http_action
+      changes:
+        - createTable:
+            tableName: http_action
+            remarks: The HTTP request of an action of type http
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The action this request belongs to
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_http_action
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_http_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: method
+                  type: varchar(16)
+                  remarks: The HTTP method, such as POST
+                  constraints:
+                    nullable: false
+              - column:
+                  name: url
+                  type: ${text.type}
+                  remarks: The URL template
+                  constraints:
+                    nullable: false
+              - column:
+                  name: query_params
+                  type: ${text.type}
+                  remarks: JSON object of query parameter names to value templates
+              - column:
+                  name: headers
+                  type: ${text.type}
+                  remarks: JSON object of header names to value templates
+              - column:
+                  name: body
+                  type: ${text.type}
+                  remarks: JSON template of the request body

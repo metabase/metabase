@@ -134,11 +134,15 @@
            search
            serialization
            settings
+           startup
            users.schema
            util
            warehouses
            workspaces}
-   :model-exports #{:model/Action :model/ImplicitAction :model/QueryAction}
+   :model-exports #{:model/Action
+                    :model/HttpAction
+                    :model/ImplicitAction
+                    :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1849,6 +1853,7 @@
                     :model/FieldUserSettings
                     :model/FieldValues
                     :model/Glossary
+                    :model/HttpAction
                     :model/ImplicitAction
                     :model/Measure
                     :model/Metabot
@@ -2683,6 +2688,7 @@
                     :model/Field
                     :model/FieldUserSettings
                     :model/FieldValues
+                    :model/HttpAction
                     :model/ImplicitAction
                     :model/Measure
                     :model/MetabotPrompt

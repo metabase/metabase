@@ -112,6 +112,7 @@
    :model/ExplorationQueryResult
    :model/ExplorationThread
    :model/ExplorationThreadTimeline
+   :model/HttpAction
    :model/ImplicitAction
    :model/ImpersonationQueryCache
    :model/LoginHistory

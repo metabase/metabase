@@ -64,6 +64,10 @@
    [:ref ::lib.schema.parameter/parameter.value.scalar]
    [:sequential [:ref ::lib.schema.parameter/parameter.value.scalar]]])
 
+(mr/def ::execute-parameter-value
+  "A parameter value on an execute request, or nil without one."
+  [:maybe execute-parameter-value])
+
 (mr/def ::execute-parameter-values
   "Parameter values for executing an action, keyed by the action's parameter names -- string-keyed, like every map whose
   keys are not ours to declare (see [[metabase.util.malli.schema/string-keyed-map]])."
@@ -85,6 +89,7 @@
   [:enum
    {:decode/normalize keyword
     :description      (deferred-tru "Unsupported action type")}
+   :http
    :implicit
    :query])
 
@@ -103,6 +108,24 @@
 (def ^:private query-action-entries
   [[:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
    [:dataset_query {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]])
+
+(mr/def ::http-action.method
+  [:enum "GET" "POST" "PUT" "PATCH" "DELETE"])
+
+(mr/def ::http-action.templates
+  "Names, such as query parameter or header names, mapped to value templates."
+  (ms/string-keyed-map :string))
+
+(mr/def ::http-action.body
+  "The JSON template of a request body, whose strings are value templates."
+  ms/OpaqueJSONObject)
+
+(def ^:private http-action-entries
+  [[:method       {:optional true} [:maybe ::http-action.method]]
+   [:url          {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:query_params {:optional true} [:maybe ::http-action.templates]]
+   [:headers      {:optional true} [:maybe ::http-action.templates]]
+   [:body         {:optional true} [:maybe ::http-action.body]]])
 
 (mr/def ::action.parameter
   "One entry of an Action's `:parameters`. An implicit action's are computed from the model's Fields rather than
@@ -170,11 +193,12 @@
     [:merge
      (action-columns schema-type request?)
      [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
-              :dispatch         (comp #{:implicit :query} keyword :type)}
+              :dispatch         (comp #{:http :implicit :query} keyword :type)}
+      [:http     (into [:map {:closed true}] http-action-entries)]
       [:implicit (into [:map {:closed true}] implicit-action-entries)]
       [:query    (into [:map {:closed true}] query-entries)]
       ;; a partial update need not repeat `:type`; accept every type's keys rather than dropping them
-      [nil       (into [:map {:closed true}] cat [implicit-action-entries query-entries])]]]))
+      [nil       (into [:map {:closed true}] cat [http-action-entries implicit-action-entries query-entries])]]]))
 
 (mr/def ::action
   "An Action as it should appear when we `SELECT` it from the app DB."
@@ -217,6 +241,26 @@
    [:action_id {:optional true} [:maybe ::lib.schema.id/action]]
    [:kind      {:optional true} [:maybe [:or :keyword :string]]]
    [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
+
+(mr/def ::http-action
+  "An HttpAction as selected from the app DB: every column of `:http_action`."
+  [:map {:closed true}
+   [:action_id    ::lib.schema.id/action]
+   [:method       ::http-action.method]
+   [:url          :string]
+   [:query_params [:maybe ::http-action.templates]]
+   [:headers      [:maybe ::http-action.templates]]
+   [:body         [:maybe ::http-action.body]]])
+
+(mr/def ::http-action.update
+  "What an update (or insert) of an HttpAction accepts: every column of `:http_action`, all optional."
+  [:map {:closed true}
+   [:action_id    {:optional true} [:maybe ::lib.schema.id/action]]
+   [:method       {:optional true} [:maybe ::http-action.method]]
+   [:url          {:optional true} [:maybe :string]]
+   [:query_params {:optional true} [:maybe ::http-action.templates]]
+   [:headers      {:optional true} [:maybe ::http-action.templates]]
+   [:body         {:optional true} [:maybe ::http-action.body]]])
 
 (mr/def ::query-action.dataset-query
   "The `:dataset_query` column of a QueryAction, decoded."
@@ -266,7 +310,8 @@
                                     :parameter_mappings :visualization_settings]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]
-     [:type        {:optional true} [:enum "implicit" "query"]]
+     [:type        {:optional true} [:enum "http" "implicit" "query"]]
+     [:http        {:optional true} [:maybe [:sequential [:ref ::external-http-action]]]]
      [:query       {:optional true} [:maybe [:sequential [:ref ::external-query-action]]]]
      [:implicit    {:optional true} [:maybe [:sequential [:ref ::external-implicit-action]]]]]]])
 
@@ -285,3 +330,10 @@
     [:select-keys ::implicit-action [:kind :table_id]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-http-action
+  "An HttpAction as serialization writes it."
+  [:merge
+   [:select-keys ::http-action [:method :url :query_params :headers :body]]
+   [:map {:closed true}
+    [:serdes/meta {:optional true} ::models.schema/external-meta]]])

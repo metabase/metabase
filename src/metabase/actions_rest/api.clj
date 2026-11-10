@@ -86,6 +86,7 @@
   (actions/check-implicit-actions-supported action)
   (actions/check-implicit-action-table-pk action)
   (actions/check-action-databases-enabled action)
+  (actions/check-http-action action)
   (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
@@ -114,6 +115,8 @@
       (let [merged (merge (actions/select-action :id id) action)]
         (actions/check-implicit-action-table-pk merged)
         (actions/check-action-databases-enabled merged)))
+    (when (some #(contains? action %) [:type :parameters :url :query_params :headers :body])
+      (actions/check-http-action (merge (actions/select-action :id id) action)))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (events/publish-event! :event/action-update {:object action :user-id api/*current-user-id*})

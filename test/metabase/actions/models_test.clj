@@ -318,7 +318,7 @@
                      :model/Collection {other-id :id} {:namespace "data-actions"}]
         (mt/with-model-cleanup [:model/Action]
           (doseq [[label action-type columns message]
-                  [["a query action" :query nil #"must be an implicit action on a table"]
+                  [["a query action" :query nil #"must be an HTTP action or an implicit action on a table"]
                    ["archived" :implicit {:archived true} #"can't be archived"]
                    ["public" :implicit {:public_uuid (str (random-uuid)) :made_public_by_id (mt/user->id :crowberto)}
                     #"can't be made public"]

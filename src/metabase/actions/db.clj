@@ -172,6 +172,11 @@
   [action :- ::actions.schema/implicit-action.update]
   (t2/insert! :model/ImplicitAction action))
 
+(mu/defn insert-http-action!
+  "Insert the HttpAction `action`, returning the number inserted."
+  [action :- ::actions.schema/http-action.update]
+  (t2/insert! :model/HttpAction action))
+
 (mu/defn update-query-action!
   "Apply `changes` to the QueryAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
@@ -184,6 +189,12 @@
    changes   :- ::actions.schema/implicit-action.update]
   (t2/update! :model/ImplicitAction :action_id action-id changes))
 
+(mu/defn update-http-action!
+  "Apply `changes` to the HttpAction with `action-id`, returning the number updated."
+  [action-id :- ::lib.schema.id/action
+   changes   :- ::actions.schema/http-action.update]
+  (t2/update! :model/HttpAction :action_id action-id changes))
+
 (mu/defn delete-query-action!
   "Delete the QueryAction of the Action with `action-id`, returning the number deleted."
   [action-id :- ::lib.schema.id/action]
@@ -193,6 +204,16 @@
   "Delete the ImplicitAction of the Action with `action-id`, returning the number deleted."
   [action-id :- ::lib.schema.id/action]
   (t2/delete! :model/ImplicitAction :action_id action-id))
+
+(mu/defn delete-http-action!
+  "Delete the HttpAction of the Action with `action-id`, returning the number deleted."
+  [action-id :- ::lib.schema.id/action]
+  (t2/delete! :model/HttpAction :action_id action-id))
+
+(mu/defn http-actions
+  "The HttpActions of the Actions with `action-ids`."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select :model/HttpAction :action_id [:in action-ids]))
 
 (mu/defn query-actions
   "The QueryActions of the Actions with `action-ids`."

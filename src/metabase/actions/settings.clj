@@ -2,6 +2,8 @@
   (:require
    [metabase.actions.db :as actions.db]
    [metabase.settings.core :as setting]
+   [metabase.startup.core :as startup]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :as i18n]
    [metabase.warehouses.models.database :as database]))
 
@@ -58,3 +60,24 @@
   :visibility       :public
   :database-local   :only
   :export?          true)
+
+(setting/defsetting http-action-allowed-networks
+  (str "Controls which types of hosts HTTP actions may send requests to.\n"
+       "Options:\n"
+       "- external-only (default - only external hosts)\n"
+       "- allow-private (external + private networks but NOT localhost)\n"
+       "- allow-all (no restrictions including localhost).\n")
+  :type       :keyword
+  :visibility :internal
+  :default    :external-only
+  :export?    false
+  :setter     :none
+  :doc        (str "Set this when an HTTP action must reach a host on your private network "
+                   "(`allow-private`) or on this machine (`allow-all`). Default is `external-only`")
+  :getter     (fn []
+                (let [[env-var-name raw-value] (setting/env-var-source :http-action-allowed-networks)]
+                  (or (u.http/env-network-policy env-var-name raw-value)
+                      :external-only))))
+
+(defmethod startup/def-startup-validation! ::http-action-allowed-networks [_]
+  (http-action-allowed-networks))

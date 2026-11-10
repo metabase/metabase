@@ -782,7 +782,7 @@
                       (m/find-first #(= (:id model-less) (:id %))
                                     (mt/user-http-request :crowberto :get 200 "action" :type "query")))))
             (testing "an unknown type is rejected"
-              (mt/user-http-request :crowberto :get 400 "action" :type "http"))))))))
+              (mt/user-http-request :crowberto :get 400 "action" :type "graphql"))))))))
 
 (deftest action-can-write-test
   (testing "GET /api/action and GET /api/action/:id hydrate :can_write from the action's collection"
@@ -1325,11 +1325,3 @@
                     :errors {:user_id "This value does not exist in table \"users\"."}}
                    (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
                                          {:parameters {"id" 1 "user_id" 99999}})))))))))
-
-(deftest http-action-type-rejected-test
-  (testing "HTTP actions no longer exist, so the API rejects their type"
-    (mt/with-actions-enabled
-      (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}]
-        (is (contains? (:specific-errors (mt/user-http-request :crowberto :post 400 "action"
-                                                               {:name "HTTP" :type "http" :model_id model-id}))
-                       :type))))))

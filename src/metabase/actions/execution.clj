@@ -6,6 +6,7 @@
    [metabase.actions.args :as actions.args]
    [metabase.actions.audit :as actions.audit]
    [metabase.actions.db :as actions.db]
+   [metabase.actions.http :as actions.http]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
@@ -90,6 +91,34 @@
                           {:action     action
                            :parameters request-parameters}
                           e)))))))
+
+(mu/defn- execute-http-action!
+  "Sends the request of the HTTP `action`, filled in with `request-parameters` of shape `{<parameter-id> <value>}`."
+  [{action-id :id, :keys [parameters], :as action} :- ::actions.schema/action.executable
+   request-parameters                              :- RequestParameters
+   opts                                            :- [:maybe ExecuteActionOpts]]
+  (actions.audit/with-audited-execution
+    {:action       :http/execute
+     :action-id    action-id
+     :dashboard-id (:dashboard-id opts)
+     :database-id  nil
+     :user-id      api/*current-user-id*
+     :context      (:context opts :action-execute)
+     :native?      false
+     :template     {:type :internal, :action :http/execute, :action-id action-id}
+     :inputs       [(m/filter-vals some? request-parameters)]}
+    (constantly nil)
+    (check-action-read-perms action)
+    (actions.http/check-http-action action)
+    (let [missing (keep (fn [{:keys [id slug required]}]
+                          (when (and required (nil? (get request-parameters id)))
+                            (or slug id)))
+                        parameters)]
+      (api/check (empty? missing) 400 (tru "Missing values for the required parameters {0}." (pr-str (vec missing)))))
+    (actions.http/send! (actions.http/request action (into {}
+                                                           (keep (fn [{:keys [id slug]}]
+                                                                   (when slug [slug (get request-parameters id)])))
+                                                           parameters)))))
 
 (mu/defn- implicit-action-table
   "The Table, with its Fields, that the implicit `action` writes to: its model's source Table when it has a model."
@@ -266,6 +295,8 @@
        (execute-implicit-action! action request-parameters opts)
        :query
        (execute-custom-action! action request-parameters opts)
+       :http
+       (execute-http-action! action request-parameters opts)
        (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action))))))
 
 (mu/defn execute-dashcard!

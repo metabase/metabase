@@ -192,6 +192,9 @@
 (defmethod rows-by-parent-pks :model/ImplicitAction [model parent-pks columns]
   (children-rows model parent-pks columns serialization.db/implicit-actions-by-action-ids))
 
+(defmethod rows-by-parent-pks :model/HttpAction [model parent-pks columns]
+  (children-rows model parent-pks columns serialization.db/http-actions-by-action-ids))
+
 (defn- with-retries
   "What `f` returns, retried up to `retries` times with backoff when it throws a transient DB error, like a deadlock."
   [retries f]
