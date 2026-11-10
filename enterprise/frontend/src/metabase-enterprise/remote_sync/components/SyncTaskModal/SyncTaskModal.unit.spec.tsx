@@ -56,16 +56,16 @@ describe("SyncTaskModal", () => {
         sync_task_type: "export",
         initiated_by_user: {
           id: 2,
-          first_name: "Ada",
-          last_name: "Lovelace",
-          email: "ada@example.com",
+          first_name: "Test",
+          last_name: "User",
+          email: "user@example.com",
         },
       }),
     });
 
     expect(await screen.findByText("Exporting content…")).toBeInTheDocument();
     expect(
-      screen.getByText(/^Started by Ada Lovelace at /),
+      screen.getByText(/^Started by Test User at /),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
