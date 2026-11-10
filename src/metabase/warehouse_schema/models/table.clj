@@ -159,6 +159,17 @@
   [table]
   (dissoc table :is_defective_duplicate :unique_table_helper))
 
+(defn- deserializing-matching-visibility-fields?
+  "Whether `changes` is a serdes import carrying both `visibility_type` and `data_layer` as a pair that describes the
+  same visibility. Exports always write both, so an import onto a table whose visibility changed since the export
+  changes both at once."
+  [{:keys [visibility_type data_layer]}]
+  (let [visibility-type (keyword visibility_type)
+        data-layer      (keyword data_layer)]
+    (and mi/*deserializing?*
+         (or (= data-layer (visibility-type->data-layer visibility-type))
+             (= visibility-type (data-layer->visibility-type data-layer))))))
+
 (defn validate-user-changes!
   "Throw a 400 for a change in `changes` a user is not allowed to make to `original-table`."
   [changes original-table]
@@ -189,7 +200,8 @@
   (when (and (contains? changes :visibility_type)
              (contains? changes :data_layer)
              (not= (keyword (:visibility_type changes)) (keyword (:visibility_type original-table)))
-             (not= (keyword (:data_layer changes)) (keyword (:data_layer original-table))))
+             (not= (keyword (:data_layer changes)) (keyword (:data_layer original-table)))
+             (not (deserializing-matching-visibility-fields? changes)))
     (throw (ex-info "Cannot update both visibility_type and data_layer"
                     {:status-code 400}))))
 
@@ -205,6 +217,9 @@
                           (not= (keyword data_layer)
                                 (keyword original-v2)))]
     (cond
+      (and v1-changing? v2-changing? (deserializing-matching-visibility-fields? changes))
+      changes
+
       ;; Error: don't allow updating both at once
       (and v1-changing? v2-changing?)
       (throw (ex-info "Cannot update both visibility_type and data_layer"
