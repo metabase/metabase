@@ -116,9 +116,13 @@
                       (map (fn [[db-name-kw {:keys [output]}]]
                              [(:id (resolve-db (clojure.core/name db-name-kw)))
                               (or (:schema output) (:db output))]))
-                      databases)]
+                      databases)
+        identity? (or (contains? section :id) (contains? section :parent_url))]
+    ;; Refuse an env-var conflict before any write, so a refused section changes nothing.
+    (when identity?
+      (ws/check-identity-not-set-by-env-var! id parent_url))
     (ws/set-instance-workspace! schemas)
-    (when (or (contains? section :id) (contains? section :parent_url))
+    (when identity?
       (ws/set-instance-identity! id parent_url))
     (log/infof "Loaded workspace %s from config.yml with %d database(s)"
                (pr-str name) (count schemas))

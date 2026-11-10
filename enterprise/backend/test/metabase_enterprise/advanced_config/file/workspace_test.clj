@@ -120,6 +120,16 @@
                 :databases    {db-id "mb__isolation_44490_1933"}}
                (ws/instance-workspace)))))))
 
+(deftest apply-workspace-section-identity-env-var-conflict-writes-nothing-test
+  (testing "a section whose :id an env var contradicts throws before the workspace is written (review follow-up)"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
+        (mt/with-temp-env-var-value! [:mb-workspace-id "7"]
+          (is (thrown-with-msg? ExceptionInfo #"MB_WORKSPACE_ID"
+                                (advanced-config.file.workspace/apply-workspace-section!
+                                 (assoc (workspace-section "ws-test-db") :id 42))))
+          (is (nil? (ws/instance-workspace))))))))
+
 (deftest re-apply-replaces-atom-test
   (testing "re-applying with a different config replaces the setting — no mismatch detection, file is the truth"
     (mt/with-empty-h2-app-db!

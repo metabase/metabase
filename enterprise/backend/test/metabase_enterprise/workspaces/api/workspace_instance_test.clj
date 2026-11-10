@@ -128,6 +128,10 @@
         (testing "the same id as the env var is accepted"
           (is (= 7 (:workspace_id (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current"
                                                         {:workspace_id 7 :databases []})))))))
+    (testing "the id is compared as a number, so MB_WORKSPACE_ID=07 accepts 7"
+      (mt/with-temp-env-var-value! [:mb-workspace-id "07"]
+        (is (= 7 (:workspace_id (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current"
+                                                      {:workspace_id 7 :databases []}))))))
     (mt/with-temp-env-var-value! [:mb-workspace-parent-url "https://env.example.com"]
       (is (re-find #"MB_WORKSPACE_PARENT_URL"
                    (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"

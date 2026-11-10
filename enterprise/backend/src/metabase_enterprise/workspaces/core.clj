@@ -159,12 +159,13 @@
   "Throw a 400 when `MB_WORKSPACE_ID` or `MB_WORKSPACE_PARENT_URL` holds a value other
    than `workspace-id` or `parent-url` (nil means cleared): the env var wins over the
    stored value, so a write would report success and change nothing. Call it before
-   other writes so a refused request changes nothing."
+   other writes so a refused request changes nothing. The id is compared as a number, so
+   `MB_WORKSPACE_ID=07` accepts 7; an env value that isn't a number refuses every write."
   [workspace-id parent-url]
-  (doseq [[setting-name wanted] [[:workspace-id workspace-id]
-                                 [:workspace-parent-url parent-url]]
+  (doseq [[setting-name wanted parse] [[:workspace-id workspace-id #(or (parse-long %) %)]
+                                       [:workspace-parent-url parent-url identity]]
           :let [env-value (setting/env-var-value setting-name)]
-          :when (and env-value (not= (some-> wanted str) env-value))]
+          :when (and env-value (not= wanted (parse env-value)))]
     (throw (ex-info (str (name setting-name) " is set to " env-value " by the "
                          (setting/env-var-name setting-name) " env var and can't be changed at runtime.")
                     {:status-code 400}))))
