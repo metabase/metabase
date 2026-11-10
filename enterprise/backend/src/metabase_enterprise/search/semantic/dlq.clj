@@ -93,11 +93,6 @@
   They are data exception (22), integrity constraint violation (23) and program limit exceeded (54)."
   #{"22" "23" "54"})
 
-(defn- cause-chain
-  "`t` followed by its causes, outermost first."
-  [^Throwable t]
-  (take-while some? (iterate ex-cause t)))
-
 (defn- deterministic-sql-error? [t]
   (when-let [state (when (instance? SQLException t)
                      (.getSQLState ^SQLException t))]
@@ -129,7 +124,7 @@
         AssertionError :permanent
         NullPointerException :permanent
         nil)
-      (when (some deterministic-sql-error? (cause-chain t))
+      (when (some deterministic-sql-error? (u/full-exception-chain t))
         :permanent)
       :transient))
 
@@ -357,7 +352,7 @@
         ex-policy   ({:transient transient-policy, :permanent permanent-policy} ex-category transient-policy)]
     ;; The DLQ catches the exception, so this is the only place its cause reaches the logs.
     (log/warnf "Semantic indexing failed for a batch of %d (%s error, will retry): %s"
-               (count gate-docs) (name ex-category) (ex-message (last (cause-chain ex))))
+               (count gate-docs) (name ex-category) (ex-message (last (u/full-exception-chain ex))))
     (log/debug ex "Semantic indexing failure")
     {:failures (mapv (fn [gate-doc]
                        {:gate-doc gate-doc
