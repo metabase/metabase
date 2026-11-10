@@ -10,7 +10,8 @@
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secrets]
    [metabase.util :as u]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.yaml :as yaml]
+   [ring.util.codec :as codec]))
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
@@ -218,11 +219,31 @@
 
 (def ^:private login-option-name
   "Names of JDBC options that set a login or carry a credential, matched against option names normalized by
-   [[driver.u/normalize-connection-parameter]] (percent-decoded, case-folded, `_ . - +` and whitespace removed): the
-   exact login names, or any name containing a credential word (`SecretAccessKey`, `SessionToken`, `sslpassword`).
-   MySQL's `passwordCharacterEncoding` and Redshift's `TokenType` name no credential and are let through."
+   [[driver.u/normalize-connection-parameter]] (case-folded, `_ . - +` and whitespace removed): the exact login names,
+   or any name containing a credential word (`SecretAccessKey`, `SessionToken`, `sslpassword`). MySQL's
+   `passwordCharacterEncoding` and Redshift's `TokenType` name no credential and are let through."
   #"(?x) (?!passwordcharacterencoding$|tokentype$)
          (?:user|username|uid|sslkey|accesskeyid|aadsecureprincipalid|.*(?:password|pwd|secret|token).*)")
+
+(def ^:private login-option-assignment
+  "An exact login name set anywhere in a normalized `:additional-options` string, after any non-word character. A
+   backstop for separators other than `&` and `;`."
+  #"(?U)(?:^|\W)(user|username|uid|sslkey|accesskeyid|aadsecureprincipalid)=")
+
+(def ^:private max-percent-decode-rounds
+  "How many times an `:additional-options` string may be percent-encoded before it is refused outright."
+  5)
+
+(defn- percent-decode-fully
+  "`s` percent-decoded until it stops changing, or nil when it still changes after [[max-percent-decode-rounds]]
+   rounds. Drivers may decode option names more than once, and an encoded `&` or `;` can hide a name."
+  [s]
+  (loop [s (str s), rounds 0]
+    (let [decoded (codec/percent-decode s)]
+      (cond
+        (= decoded s)                       s
+        (< rounds max-percent-decode-rounds) (recur decoded (inc rounds))
+        :else                               nil))))
 
 (defn- additional-option-names
   "The option names in an `:additional-options` string: `name=value` pairs separated by `&` (Postgres, MySQL,
@@ -233,17 +254,26 @@
         :when (seq option-name)]
     option-name))
 
+(defn- login-option
+  "What in the `additional-options` string sets a login or carries a credential, as text for an error message, or
+   nil. The string is percent-decoded fully before it is split, so encoded names and separators are seen."
+  [additional-options]
+  (if-let [decoded (percent-decode-fully additional-options)]
+    (or (some #(when (re-matches login-option-name (driver.u/normalize-connection-parameter %)) %)
+              (additional-option-names decoded))
+        (second (re-find login-option-assignment (driver.u/normalize-connection-parameter decoded))))
+    (format "an option percent-encoded more than %d times" max-percent-decode-rounds)))
+
 (defn- check-additional-options!
   "Throw a 422 when the parent's `:additional-options` set a login or carry a credential. The string ships to the
    config as is, and drivers such as pgjdbc let URL options override the workspace's `:user`/`:password`, so the child
    would connect as the parent and the config's holder would read the parent's password."
   [db]
-  (when-let [option-name (some #(when (re-matches login-option-name (driver.u/normalize-connection-parameter %)) %)
-                               (additional-option-names (:additional-options (:details db))))]
+  (when-let [option (some-> (:additional-options (:details db)) login-option)]
     (throw (ex-info (format (str "Database %s sets %s in its additional JDBC connection options, which would give the "
                                  "workspace the parent's login. Remove it from the database's connection settings, or "
                                  "remove the database from the workspace.")
-                            (pr-str (:name db)) option-name)
+                            (pr-str (:name db)) option)
                     {:status-code 422
                      :database_id (:id db)}))))
 

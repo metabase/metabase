@@ -565,7 +565,15 @@
                                               "?sslmode=require&PASSWORD=parent-secret"  "PASSWORD"
                                               "encrypt=true;sslpassword=parent-secret"   "sslpassword"
                                               ;; the ClickHouse driver percent-decodes option names
-                                              "us%65r=parent_admin&pass%77ord=parent-pw" "us%65r"
+                                              "us%65r=parent_admin&pass%77ord=parent-pw" "user"
+                                              "us%2565r=parent_admin"                    "user"
+                                              ;; an encoded separator hides no name
+                                              "x%26user=parent_admin"                    "user"
+                                              "a=1%3Bpassword=x"                         "password"
+                                              ;; a separator other than & or ;
+                                              "a=b,user=parent_admin"                    "user"
+                                              "us%25252525252565r=parent_admin"
+                                              "an option percent-encoded more than 5 times"
                                               "ssl_key=/parent/key.pem"                  "ssl_key"
                                               ;; Redshift IAM: the credential word need not end the name
                                               "SecretAccessKey=parent-secret"            "SecretAccessKey"
