@@ -44,8 +44,25 @@ env:
   DOCRUNNER_MAX_TURNS: "100"
   SCREENSHOTS_MODEL: claude-sonnet-5-5
   SCREENSHOTS_MAX_TURNS: "150"
-  # The bot posts the agent text. A zero-width space after each `@` stops the mentions, also in code spans.
-  NOMENTION_JQ: 'def nomention: gsub("(?<a>^|[^A-Za-z0-9_])@(?<n>[A-Za-z0-9])"; "\(.a)@\u200b\(.n)");'
+  # The bot posts text from the agents, and no person reviews it first. `sanitize` makes this text safer:
+  # - A URL that is not on github.com/metabase or metabase.com goes in a code span, thus it is not a link.
+  #   First, the filter removes each backslash before `:` or `/`, and escapes each `&` before an entity,
+  #   because Markdown can hide a URL with them.
+  # - A closing keyword before a GitHub URL puts the URL in a code span. A zero-width space after the `#` of a
+  #   closing keyword (for example `Fixes #123`) stops the reference. Thus a merge does not close that issue.
+  # - A zero-width space after each `@` stops the mentions, also in code spans.
+  SANITIZE_JQ: |
+    def sanitize:
+      gsub("\\\\(?=[:/])"; "")
+      | gsub("&(?=#?[A-Za-z0-9]+;)"; "&amp;")
+      | gsub("(?<![A-Za-z0-9_/:.@-])(?<u>(?:https?:|//|www\\.)[^\\s<>()\\[\\]\"'`]+)";
+          if (.u | test("^https://(?:github\\.com/metabase/|(?:[a-z0-9-]+\\.)*metabase\\.com(?:[/?#]|$))"; "i"))
+          then .u else "`\(.u)`" end; "i")
+      | gsub("(?<k>\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\\s*:?\\s*)(?<u>https://github\\.com/[^\\s<>()\\[\\]\"'`]+)";
+          "\(.k)`\(.u)`"; "i")
+      | gsub("(?<k>\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\\s*:?\\s*)(?<r>(?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#)(?=[0-9])";
+          "\(.k)\(.r)\u200b"; "i")
+      | gsub("(?<a>^|[^A-Za-z0-9_])@(?<n>[A-Za-z0-9])"; "\(.a)@\u200b\(.n)");
 
 jobs:
   docrunner:
@@ -101,30 +118,53 @@ jobs:
             echo "This issue has an open docrunner PR: $url"
           fi
 
-      # Rendered HTML has no hidden text (no HTML comments), thus the agent sees what the writer saw.
-      # The linked PRs also come from the rendered HTML, thus a PR in hidden text does not get to the agent.
+      # The agent gets only the text that the writer saw:
+      # - Rendered HTML has no HTML comments. `visible` also removes the `alt` and `title` attributes, because the
+      #   page does not show them. Text in a closed `<details>` block still gets to the agent.
+      # - The writer read the issue, then added the label. Comments and timeline links from after that time do not
+      #   get to the agent. If the issue body changed after that time, Docrunner stops. For a dispatch, the cutoff
+      #   is the start of this step.
+      # - The linked PRs come from the visible HTML and from the timeline. A person who writes a PR can put any text
+      #   in it. Thus Docrunner uses only PRs from people who can write to the repo, the same rule that
+      #   claude-code-action uses for the person who adds the label.
       - name: Write the context for the agent
         if: steps.existing.outputs.url == ''
         env:
           GH_TOKEN: ${{ github.token }}
+          LABELED_AT: ${{ github.event.issue.updated_at }}
+          VISIBLE_JQ: 'def visible: gsub("\\s(?:alt|title)=\"[^\"]*\""; "");'
         run: |
           T="$RUNNER_TEMP/docrunner"
           accept="Accept: application/vnd.github.full+json"
           mkdir -p .docrunner/prs
+          cutoff="${LABELED_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+          echo "Cutoff: $cutoff"
+
+          edited=$(gh api graphql -F number="$ISSUE" -f owner="$GITHUB_REPOSITORY_OWNER" -f name="${GITHUB_REPOSITORY#*/}" \
+            -f query='query($owner: String!, $name: String!, $number: Int!) {
+              repository(owner: $owner, name: $name) { issue(number: $number) { lastEditedAt } } }' \
+            --jq '.data.repository.issue.lastEditedAt // ""')
+          if [[ "$edited" > "$cutoff" ]]; then
+            echo "Docrunner did not run, because a person changed the issue body after the label was added ($edited). Read the issue again." > "$T/reason.md"
+            echo "::error::The issue body changed after the cutoff."
+            exit 1
+          fi
+
           gh api -H "$accept" --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" \
-            | jq -s 'add // []' > "$T/comments.json"
+            | jq -s 'add // []' > "$T/all-comments.json"
+          jq --arg c "$cutoff" '[.[] | select(.updated_at <= $c)]' "$T/all-comments.json" > "$T/comments.json"
+          late=$(jq --arg c "$cutoff" '[.[] | select(.updated_at > $c)] | length' "$T/all-comments.json")
+          echo "Comments from after the cutoff, not used: $late"
 
           {
-            jq -r '.body_html // ""' "$T/issue.json"
-            jq -r '.[].body_html // ""' "$T/comments.json"
+            jq -r "$VISIBLE_JQ"' .body_html // "" | visible' "$T/issue.json"
+            jq -r "$VISIBLE_JQ"' .[].body_html // "" | visible' "$T/comments.json"
           } > "$T/body.html"
-          # A PR that says "Closes #N" shows only on the timeline. Use only PRs from people who contributed before:
-          # a person who writes a PR can put any text in it.
+          # A PR that says "Closes #N" shows only on the timeline.
           gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE/timeline" \
-            | jq -s -r --arg repo "$GITHUB_REPOSITORY" 'add // [] | .[]
-                | select(.event == "cross-referenced") | .source.issue // empty
-                | select((.html_url // "" | startswith("https://github.com/\($repo)/pull/")) and .user.type != "Bot"
-                         and (.author_association | IN("OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR")))
+            | jq -s -r --arg repo "$GITHUB_REPOSITORY" --arg c "$cutoff" 'add // [] | .[]
+                | select(.event == "cross-referenced" and .created_at <= $c) | .source.issue // empty
+                | select(.html_url // "" | startswith("https://github.com/\($repo)/pull/"))
                 | .number' > "$T/timeline-refs.txt" || true
           # GitHub renders a full PR link, and a reference like `#12345` to a PR, as a link to `.../pull/<number>`.
           # A reference to an issue links to `.../issues/<number>`.
@@ -137,9 +177,18 @@ jobs:
             [ "${#prs[@]}" -lt 5 ] || break
             [ "$n" != "$ISSUE" ] || continue
             gh api -H "$accept" "repos/$GITHUB_REPOSITORY/pulls/$n" > "$T/pr.json" 2> /dev/null < /dev/null || continue
+            author=$(jq -r 'select(.user.type == "User") | .user.login' "$T/pr.json")
+            perm=""
+            if [ -n "$author" ]; then
+              perm=$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$author/permission" --jq '.permission' 2> /dev/null < /dev/null || true)
+            fi
+            if [ "$perm" != admin ] && [ "$perm" != write ]; then
+              echo "Not used: #$n. The author cannot write to the repo."
+              continue
+            fi
             gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$n/files" < /dev/null | jq -s 'add // []' > "$T/files.json"
             {
-              jq -r '"# Pull request #\(.number): \(.title)\n\nURL: \(.html_url)\nState: \(.state)\(if .merged then ", merged" else "" end)\nBase branch: \(.base.ref)\n\n## Description (rendered HTML)\n\n\(.body_html // "")\n\n## Changed files\n"' "$T/pr.json"
+              jq -r "$VISIBLE_JQ"' "# Pull request #\(.number): \(.title)\n\nURL: \(.html_url)\nState: \(.state)\(if .merged then ", merged" else "" end)\nBase branch: \(.base.ref)\n\n## Description (rendered HTML)\n\n\(.body_html // "" | visible)\n\n## Changed files\n"' "$T/pr.json"
               jq -r '.[] | "### \(.filename) (\(.status), +\(.additions) -\(.deletions))\n\n" +
                 (if .patch == null then "No text patch.\n"
                  elif .changes <= 2000 then "~~~~~diff\n\(.patch)\n~~~~~\n"
@@ -149,8 +198,11 @@ jobs:
           done < "$T/refs.txt"
 
           {
-            jq -r '"# Issue #\(.number): \(.title)\n\nURL: \(.html_url)\nState: \(.state)\nLabels: \([.labels[].name] | join(", "))\n\n## Issue body (rendered HTML)\n\n\(.body_html // "")\n"' "$T/issue.json"
-            jq -r '.[] | "## Comment by \(.user.login) on \(.created_at)\n\n\(.body_html // "")\n"' "$T/comments.json"
+            jq -r "$VISIBLE_JQ"' "# Issue #\(.number): \(.title)\n\nURL: \(.html_url)\nState: \(.state)\nLabels: \([.labels[].name] | join(", "))\n\n## Issue body (rendered HTML)\n\n\(.body_html // "" | visible)\n"' "$T/issue.json"
+            jq -r "$VISIBLE_JQ"' .[] | "## Comment by \(.user.login) on \(.created_at)\n\n\(.body_html // "" | visible)\n"' "$T/comments.json"
+            if [ "$late" -gt 0 ]; then
+              printf '## Comments that are not included\n\n%s comments were added or changed after the label was added. This file does not include them.\n\n' "$late"
+            fi
             echo "## Linked pull requests"
             echo
             if [ "${#prs[@]}" -gt 0 ]; then
@@ -164,8 +216,12 @@ jobs:
       # Tool rules (see https://code.claude.com/docs/en/permissions):
       # - dontAsk denies each call that no allow rule permits. Reads are permitted only in the working folder,
       #   because no rule allows a bare Read, Glob, or Grep. Thus no reads of /proc or of the home folder.
-      # - The Bash deny gives back Glob and Grep, and removes the shell. Skill is off, because a skill grants
-      #   its `allowed-tools` (docs-write lists Bash and Write). The agent reads the skill files as text.
+      # - The Bash deny removes the shell. On Linux, Claude Code leaves out Glob and Grep by default, and 2.1.119 and
+      #   later give them back when Bash is denied. The action installs 2.1.150. Do not name Glob or Grep in
+      #   --allowedTools: a bare allow rule permits searches outside the working folder. Do not use --tools for them:
+      #   before 2.1.162, it ignores these names. "Find the status" fails the run if the agent did not have them.
+      # - Skill is off, because a skill grants its `allowed-tools` (docs-write lists Bash and Write). The agent reads
+      #   the skill files as text.
       # - `Edit(docs/**/*.md)` controls the Edit and Write tools. The agent can write only Markdown files in `docs/`.
       #   Thus it cannot write a config file that a later step runs, for example `docs/.prettierrc.mjs`.
       # - `Read(./.git/**)`: the action puts the job token in `.git/config`.
@@ -249,9 +305,16 @@ jobs:
             status=exists
           elif [ "$AGENT_OUTCOME" != success ] || ! jq -e 'type == "object"' <<< "$RESULT" > /dev/null 2>&1; then
             status=failed
+          elif [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ] && ! jq -e \
+              '(["Glob", "Grep"] - [.[] | select(.type == "system" and .subtype == "init") | .tools[]?]) == []' \
+              "$EXEC_FILE" > /dev/null 2>&1; then
+            # The prompt tells the agent to search with Glob and Grep. See the tool rules at "Run the docs agent".
+            status=failed
+            echo "Docrunner failed: the agent did not have the Glob and Grep tools, thus it could not search the docs." > "$T/reason.md"
+            echo "::error::The agent session did not have the Glob and Grep tools."
           elif [ "$(jq -r '.status' <<< "$RESULT")" = no-change ]; then
             status=no-change
-            jq -r "$NOMENTION_JQ"' .body // "" | nomention' <<< "$RESULT" > "$T/agent-body.md"
+            jq -r "$SANITIZE_JQ"' .body // "" | sanitize' <<< "$RESULT" > "$T/agent-body.md"
           elif [ -z "$changed" ]; then
             status=no-change
             {
@@ -259,7 +322,7 @@ jobs:
               echo
               echo "The notes of the agent:"
               echo
-              jq -r "$NOMENTION_JQ"' .body // "" | nomention' <<< "$RESULT"
+              jq -r "$SANITIZE_JQ"' .body // "" | sanitize' <<< "$RESULT"
             } > "$T/agent-body.md"
           else
             status=done
@@ -270,15 +333,16 @@ jobs:
             # The JSON schema also has this rule. This filter is a second check.
             images=$(jq -c --arg re "$IMAGE_PATH_RE" \
               '[.images // [] | .[] | select((.path | type) == "string" and (.path | test($re)))] | unique_by(.path) | .[:10]' <<< "$RESULT")
-            title=$(jq -r '.title // ""' <<< "$RESULT" | tr '\r\n' '  ' | sed -E 's/ +/ /g; s/^ //; s/ $//' | cut -c1-200)
+            # `.[0:200]` counts characters, not bytes, thus it does not cut a character in two.
+            title=$(jq -r "$SANITIZE_JQ"' .title // "" | gsub("\\s+"; " ") | sub("^ "; "") | sub(" $"; "") | sanitize | .[0:200]' <<< "$RESULT")
             if [ -z "$title" ]; then
               title="docs: draft for #$ISSUE"
             fi
             {
-              jq -r "$NOMENTION_JQ"' .body | nomention' <<< "$RESULT"
+              jq -r "$SANITIZE_JQ"' .body | sanitize' <<< "$RESULT"
               if [ "$images" != '[]' ]; then
                 printf '\n## Images\n\nThe `screenshots` job tries to add these images in a second commit. Examine each image.\n\n'
-                jq -r "$NOMENTION_JQ"' .[] | "- `\(.path)`: \(.shows | gsub("\\s+"; " ") | nomention)\n  - Steps: \(.steps | gsub("\\s+"; " ") | nomention)"' <<< "$images"
+                jq -r "$SANITIZE_JQ"' .[] | "- `\(.path)`: \(.shows | gsub("\\s+"; " ") | sanitize)\n  - Steps: \(.steps | gsub("\\s+"; " ") | sanitize)"' <<< "$images"
               fi
               printf '\n---\n\nResolves #%s\n\n' "$ISSUE"
               printf 'Check the backport label. For a feature that is only on `master`, change it to `no-backport`.\n\n'
@@ -295,7 +359,7 @@ jobs:
           if jq -e . <<< "$RESULT" > /dev/null 2>&1; then
             jq . <<< "$RESULT" > "$out/agent-result.json"
           fi
-          for f in pr-body.md agent-body.md; do
+          for f in pr-body.md agent-body.md reason.md; do
             if [ -f "$T/$f" ]; then cp "$T/$f" "$out/$f"; fi
           done
           if [ -d .docrunner ]; then cp -R .docrunner "$out/context"; fi
@@ -381,12 +445,20 @@ jobs:
               ;;
             no-change)
               {
-                if [ -s "$T/agent-body.md" ]; then cat "$T/agent-body.md"; else echo "Docrunner made no change."; fi
+                if [ -s "$T/agent-body.md" ]; then
+                  printf '_Docrunner wrote this comment. A person did not review it._\n\n'
+                  cat "$T/agent-body.md"
+                else
+                  echo "Docrunner made no change."
+                fi
                 printf '\n---\n\nDocrunner made no change. Run: %s\n' "$RUN_URL"
               } > "$f"
               ;;
             *)
-              echo "Docrunner failed. Run: $RUN_URL" > "$f"
+              {
+                if [ -s "$T/reason.md" ]; then cat "$T/reason.md"; else echo "Docrunner failed."; fi
+                printf '\nRun: %s\n' "$RUN_URL"
+              } > "$f"
               ;;
           esac
           if [ "$GITHUB_EVENT_NAME" = issues ] && [ "$STATUS" != done ] && [ "$STATUS" != exists ]; then
@@ -398,6 +470,13 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = issues ]; then
             gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$ISSUE/labels/Docrunner" > /dev/null || true
           fi
+
+      # `continue-on-error` keeps the agent step green. This step makes a failed run red in the list of runs.
+      - name: Fail the job if Docrunner failed
+        if: always() && steps.status.outputs.status == 'failed'
+        run: |
+          echo "::error::Docrunner failed. See the agent step and the artifact."
+          exit 1
 
   screenshots:
     name: Take the screenshots
@@ -642,11 +721,11 @@ jobs:
           f="$T/pr-comment.md"
           {
             if [ -f "$out/screenshots.json" ]; then
-              echo "Docrunner screenshots:"
+              echo "Docrunner screenshots. The notes are from the agent, and a person did not review them:"
               echo
-              jq -r "$NOMENTION_JQ"' .[] | if .saved
-                then "- Added `\(.path)`. \(.note | nomention)"
-                else "- Not added: `\(.path)` (\(.reason)). \(.note | nomention)" end' "$out/screenshots.json"
+              jq -r "$SANITIZE_JQ"' .[] | if .saved
+                then "- Added `\(.path)`. \(.note | sanitize)"
+                else "- Not added: `\(.path)` (\(.reason)). \(.note | sanitize)" end' "$out/screenshots.json"
               echo
               if [ -n "$SHA" ]; then
                 echo "Commit: $SHA. Examine each image: the state, the crop, and the size."
@@ -660,3 +739,9 @@ jobs:
             echo "Run: $RUN_URL"
           } > "$f"
           gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" -F body=@"$f" > /dev/null
+
+      - name: Fail the job if the screenshot agent failed
+        if: always() && steps.claude.outcome == 'failure'
+        run: |
+          echo "::error::The screenshot agent failed. See the agent step and the artifact."
+          exit 1
