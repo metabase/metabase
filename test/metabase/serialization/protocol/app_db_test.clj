@@ -125,7 +125,7 @@
                                                                 :database_type "TEXT"})
                                               ["a" "b" "c"])]
         (mt/with-dynamic-fn-redefs [t2/insert-returning-instances! (fn [model rows]
-                                                                    (reverse (insert-returning-instances! model rows)))]
+                                                                     (reverse (insert-returning-instances! model rows)))]
           (let [fields (protocol/insert-rows! store :model/Field field-rows)]
             (testing "with generated primary keys"
               (is (= ["a" "b" "c"] (map :name fields))))
