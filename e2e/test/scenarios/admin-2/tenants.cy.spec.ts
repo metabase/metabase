@@ -9,7 +9,7 @@ import {
   COLLECTION_GROUP_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { getPermissionRowPermissions } from "e2e/support/helpers";
-import { DataPermissionValue } from "metabase-types/api/permissions";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 
 const { STATIC_ORDERS_ID, STATIC_PRODUCTS_ID } = SAMPLE_DB_TABLES;
 

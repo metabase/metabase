@@ -1,7 +1,7 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { ALL_EXTERNAL_USERS_GROUP_ID } from "e2e/support/cypress_sample_instance_data";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/e2e-jwt-helpers";
-import { DataPermissionValue } from "metabase-types/api/permissions";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 
 const { H } = cy;
 
