@@ -192,6 +192,40 @@
         (is (not (re-find #"p\[\[w" (ex-message e)))
             "the message must not echo the value")))))
 
+(deftest build-workspace-config-template-forms-outside-details-test
+  (testing "The refusal also covers database names (which are workspace map keys), workspace fields, and stub entries"
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "DW [[a]]"
+                    :engine  :postgres
+                    :details {:host "db.example" :port 5432}}
+                   :model/Database _
+                   {:name    "Stub [[b]]"
+                    :engine  :postgres
+                    :details {:host "stub.example" :port 5432}}
+                   :model/Workspace {ws-id :id} {:name       "named"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "p"}
+                    :output_namespace "ws_named"
+                    :input_schemas    ["public" "{{env MB_WS_TEST_SCHEMA}}"]
+                    :status           :provisioned}]
+      (let [e (try
+                (config/build-workspace-config ws-id)
+                nil
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? e))
+        (is (= 409 (:status-code (ex-data e))))
+        (is (= #{"database \"DW [[a]]\" field name"
+                 "database \"DW [[a]]\" field details.schema-filters-patterns"
+                 "database \"Stub [[b]]\" field name"
+                 "workspace field databases.DW [[a]]"
+                 "workspace field databases.DW [[a]].input_schemas.1"}
+               (set (:locations (ex-data e)))))
+        (is (not (re-find #"MB_WS_TEST" (ex-message e)))
+            "the message must not echo a templated value")))))
+
 (deftest build-workspace-config-empty-workspace-test
   (testing "A workspace with no databases still produces the version+config outer shape"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name       "Empty"
