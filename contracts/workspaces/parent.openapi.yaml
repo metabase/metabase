@@ -344,11 +344,12 @@ paths:
       description: |
         Besides the workspace password, the file carries parent secrets that pass through the Database's
         `details`: an enabled SSH tunnel's credential, `additional-options`, and on master the client-certificate
-        fields. Treat the file as a parent secret. BigQuery (not eligible today) would also carry the parent's own
+        fields. Treat the file as a parent secret. The tunnel credential ships by design (decision "tunnel-cred:
+        ship it"): the sidecar opens the same tunnel, and no hardening PR removes it. BigQuery (not eligible today) would also carry the parent's own
         `service-account-json`, which its workspace connection impersonates from. #86584 does not remove it:
         `service-account-json` is not on its deny list.
 
-        hardening (#86584): the parent refuses (409) a database whose `additional-options` set a login or carry
+        hardening (#86584): the parent refuses (422) a database whose `additional-options` set a login or carry
         a credential. The options are split on `&` and `;`; a name matches, case-insensitively, when it is
         `user`, `username`, `uid`, `sslkey`, `accesskeyid` or `aadsecureprincipalid`, or ends in `password`, `pwd`,
         `secret` or `token`. A legitimate option with such a name (a trust-store password) is refused too.
@@ -366,7 +367,7 @@ paths:
 
             hardening (#86585): the SSL root certificate and SSH known hosts are inlined as `-value` with
             `-options: uploaded`; every other Secret `-id` and `-options` key is dropped. Only uploaded Secrets are inlined; a Secret given as a file path on the
-            parent's server is refused (409) and its file is never read.
+            parent's server is refused (422) and its file is never read.
           headers:
             Content-Disposition:
               schema: { type: string, const: 'attachment; filename="config.yml"' }
@@ -379,17 +380,22 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          x-pr: [86584, 86585, 86787]
           description: |
-            At least one database is not `provisioned`. Plain-text body.
+            At least one database is not `provisioned`. Plain-text body. This is the only 409, and it clears by
+            waiting: retry.
 
             A `provisioning` row means a create is running, or one was interrupted (a crash leaves the row in
             `provisioning`, and nothing moves it on). The two look the same. If no create is running, DELETE the
             workspace.
-
-            hardening adds causes that waiting never clears; an admin must change the database. Every cause has
-            the same status and a plain-text English body, so a client cannot tell them apart except by the text.
-            Only "not provisioned" clears by waiting. The added causes:
+          x-source: EE/config.clj:131
+          content:
+            text/plain: { schema: { type: string } }
+        "422":
+          description: |
+            A database's connection settings or a workspace value need an admin to change them. Waiting never
+            clears it: do not retry until an admin has fixed the cause the message names. Plain-text English body;
+            the causes share the status, so only the text tells them apart. The messages name the database by its
+            name, which is not unique. Causes:
             - #86584: the database's `additional-options` set a login or carry a credential (see the operation's
               description). The message says which option to remove.
             - #86585: the SSL root certificate or the SSH known hosts is a file path on the parent's server, which
@@ -398,13 +404,10 @@ paths:
             - #86585: the tunnel is on and its known-hosts Secret no longer exists. The message asks the admin to
               enter the known hosts again.
             - #86585: the database uses SSL client-certificate auth, which workspaces do not support.
-            The messages name the database by its name, which is not unique. Whether these causes get another
-            status (for example 422) or a JSON body with a cause code is undecided.
-
-            hardening (#86787): also when an emitted value contains `{{`. The sidecar expands
-            `{{env X}}` templates at boot, so the parent never emits one. The message names each database and
-            field path, never the value.
-          x-source: EE/config.clj:131
+            - #86787: an emitted value contains `{{` or `[[`. The sidecar expands `{{env X}}` templates at boot, so
+              the parent never emits one. The message names each database and field path, never the value.
+          x-status: hardening
+          x-pr: [86584, 86585, 86787]
           content:
             text/plain: { schema: { type: string } }
 

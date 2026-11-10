@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "metabase/contracts/workspaces/config.schema.json",
   "title": "Workspace config.yml (parent -> sidecar)",
-  "description": "What GET /api/ee/workspace-manager/{id}/config returns, and what a sidecar loads at boot from MB_CONFIG_FILE_PATH. The only artifact that carries a warehouse password. Also carries parent secrets that pass through `details`: an enabled tunnel's credential, `additional-options`; on master, client-cert fields. Treat it as a parent secret. The parent's file contains no template forms; templating is for sections the caller adds. master copies `details` as-is, so a parent value can hold `{{env X}}`, which the sidecar expands at boot; hardening (#86787): the parent answers 409 instead of emitting a value that contains `{{`. Built by enterprise/backend/src/metabase_enterprise/workspaces/config.clj:112, loaded by enterprise/backend/src/metabase_enterprise/advanced_config/file/workspace.clj. x-status follows parent.openapi.yaml. A caller may add other config.yml sections (settings, ...) before boot; the parent emits only these.",
+  "description": "What GET /api/ee/workspace-manager/{id}/config returns, and what a sidecar loads at boot from MB_CONFIG_FILE_PATH. The only artifact that carries a warehouse password. Also carries parent secrets that pass through `details`: an enabled tunnel's credential, `additional-options`; on master, client-cert fields. Treat it as a parent secret. The enabled tunnel's credential ships by design (decision \"tunnel-cred: ship it\"): the sidecar opens the same tunnel. The parent's file contains no template forms; templating is for sections the caller adds. master copies `details` as-is, so a parent value can hold `{{env X}}`, which the sidecar expands at boot; hardening (#86787): the parent answers 422 instead of emitting a value that contains `{{` or `[[`. Built by enterprise/backend/src/metabase_enterprise/workspaces/config.clj:112, loaded by enterprise/backend/src/metabase_enterprise/advanced_config/file/workspace.clj. x-status follows parent.openapi.yaml. A caller may add other config.yml sections (settings, ...) before boot; the parent emits only these.",
   "x-status": "master",
   "type": "object",
   "required": ["version", "config"],
@@ -110,11 +110,11 @@
         },
         {
           "x-pr": 86585,
-          "description": "Secrets ship as values, not as ids. An inlined Secret ships as `<secret>-value` with `<secret>-options: \"uploaded\"`: `ssl-root-cert-value` and, with the tunnel on, `tunnel-known-hosts-value`. A value is plain text when it is printable ASCII (a PEM certificate, known-hosts text), else a base64 `data:application/octet-stream;base64,...` URI (a DER certificate). No Secret `<secret>-id` key ships, nor the `-options` of a Secret that is not inlined. Only uploaded Secrets are inlined: a Secret given as a file path on the parent's server makes GET /config answer 409 instead, and the file is never read. On master the parent's Secret id is sent, which means nothing in the sidecar's app db."
+          "description": "Secrets ship as values, not as ids. An inlined Secret ships as `<secret>-value` with `<secret>-options: \"uploaded\"`: `ssl-root-cert-value` and, with the tunnel on, `tunnel-known-hosts-value`. A value is plain text when it is printable ASCII (a PEM certificate, known-hosts text), else a base64 `data:application/octet-stream;base64,...` URI (a DER certificate). No Secret `<secret>-id` key ships, nor the `-options` of a Secret that is not inlined. Only uploaded Secrets are inlined: a Secret given as a file path on the parent's server makes GET /config answer 422 instead, and the file is never read. On master the parent's Secret id is sent, which means nothing in the sidecar's app db."
         },
         {
           "x-pr": 86584,
-          "description": "`additional-options` still ships, but never with an option that sets a login or carries a credential: GET /config answers 409 for such a database (see parent.openapi.yaml, GET /{id}/config). The enabled tunnel's credential (the one for the tunnel-auth-option in use) still ships."
+          "description": "`additional-options` still ships, but never with an option that sets a login or carries a credential: GET /config answers 422 for such a database (see parent.openapi.yaml, GET /{id}/config). The enabled tunnel's credential (the one for the tunnel-auth-option in use) still ships, by design: it is a parent secret the sidecar needs to open the tunnel."
         }
       ]
     },
