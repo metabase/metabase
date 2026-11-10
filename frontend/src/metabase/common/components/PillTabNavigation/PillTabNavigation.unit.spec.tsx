@@ -32,8 +32,8 @@ describe("PillTabNavigation", () => {
       tabs: [{ label: "Failing", onClick, isSelected: true }],
     });
 
-    const tab = screen.getByRole("button", { name: "Failing" });
-    expect(tab).toHaveAttribute("aria-current", "page");
+    const tab = screen.getByRole("tab", { name: "Failing" });
+    expect(tab).toHaveAttribute("aria-selected", "true");
     await userEvent.click(tab);
     expect(onClick).toHaveBeenCalledTimes(1);
     await userEvent.keyboard("{Enter}");
@@ -48,9 +48,9 @@ describe("PillTabNavigation", () => {
         { label: "Failing", onClick: jest.fn<void, []>() },
       ],
     });
-    const usage = screen.getByRole("link", { name: "Usage" });
-    const events = screen.getByRole("link", { name: "Events" });
-    const failing = screen.getByRole("button", { name: "Failing" });
+    const usage = screen.getByRole("tab", { name: "Usage" });
+    const events = screen.getByRole("tab", { name: "Events" });
+    const failing = screen.getByRole("tab", { name: "Failing" });
 
     await userEvent.tab();
     expect(usage).toHaveFocus();
@@ -75,7 +75,7 @@ describe("PillTabNavigation", () => {
     { modifier: "shiftKey" },
   ])("leaves $modifier + arrow keys to the browser", ({ modifier }) => {
     setup();
-    const usage = screen.getByRole("link", { name: "Usage" });
+    const usage = screen.getByRole("tab", { name: "Usage" });
     usage.focus();
 
     const isNotPrevented = fireEvent.keyDown(usage, {
@@ -89,20 +89,23 @@ describe("PillTabNavigation", () => {
 
   it("leaves arrow keys to the browser when there is only one tab", () => {
     setup({ tabs: [{ label: "Usage", to: "/monitor/example/usage" }] });
-    const usage = screen.getByRole("link", { name: "Usage" });
+    const usage = screen.getByRole("tab", { name: "Usage" });
     usage.focus();
 
     expect(fireEvent.keyDown(usage, { key: "ArrowRight" })).toBe(true);
     expect(usage).toHaveFocus();
   });
 
-  it("keeps every tab reachable with the Tab key", async () => {
+  it("uses roving tabIndex", async () => {
     setup({ initialRoute: "/monitor/example/events" });
 
     await userEvent.tab();
-    expect(screen.getByRole("link", { name: "Usage" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "Events" })).toHaveFocus();
     await userEvent.tab();
-    expect(screen.getByRole("link", { name: "Events" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "Usage" })).not.toHaveFocus();
+    expect(screen.getByRole("tab", { name: "Events" })).not.toHaveFocus();
+    await userEvent.keyboard("{Shift>}{Tab}");
+    expect(screen.getByRole("tab", { name: "Events" })).toHaveFocus();
   });
 
   it("shows a resolved zero count without hiding the tab", () => {
@@ -117,7 +120,7 @@ describe("PillTabNavigation", () => {
     });
 
     expect(
-      within(screen.getByRole("link", { name: "Events" })).getByText("0"),
+      within(screen.getByRole("tab", { name: "Events" })).getByText("0"),
     ).toBeInTheDocument();
   });
 
@@ -134,10 +137,10 @@ describe("PillTabNavigation", () => {
     });
 
     expect(
-      screen.getByRole("button", { name: "Failing" }),
+      screen.getByRole("tab", { name: "Failing" }),
     ).toHaveAccessibleDescription("3");
     expect(
-      screen.getByRole("link", { name: "Events" }),
+      screen.getByRole("tab", { name: "Events" }),
     ).not.toHaveAccessibleDescription();
   });
 
@@ -153,7 +156,7 @@ describe("PillTabNavigation", () => {
     });
 
     expect(
-      within(screen.getByRole("link", { name: "Events" })).getByText("37,918"),
+      within(screen.getByRole("tab", { name: "Events" })).getByText("37,918"),
     ).toBeInTheDocument();
   });
 
@@ -168,7 +171,7 @@ describe("PillTabNavigation", () => {
       ],
     });
 
-    const tab = screen.getByRole("link", { name: "Events" });
+    const tab = screen.getByRole("tab", { name: "Events" });
     expect(tab).toHaveAttribute("href", "/monitor/example/events");
     expect(within(tab).getByTestId("tab-count-skeleton")).toBeInTheDocument();
     expect(tab).not.toHaveAccessibleDescription();
@@ -185,7 +188,7 @@ describe("PillTabNavigation", () => {
       ],
     });
 
-    const tab = screen.getByRole("link", { name: "Events" });
+    const tab = screen.getByRole("tab", { name: "Events" });
     expect(within(tab).queryByText(/\d/)).not.toBeInTheDocument();
     expect(tab).not.toHaveAccessibleDescription();
     expect(
@@ -196,11 +199,11 @@ describe("PillTabNavigation", () => {
   it("renders each tab as a real link to its route", () => {
     setup();
 
-    expect(screen.getByRole("link", { name: "Usage" })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: "Usage" })).toHaveAttribute(
       "href",
       "/monitor/example/usage",
     );
-    expect(screen.getByRole("link", { name: "Events" })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: "Events" })).toHaveAttribute(
       "href",
       "/monitor/example/events",
     );
@@ -209,12 +212,13 @@ describe("PillTabNavigation", () => {
   it("marks the tab matching the current pathname as the current page", () => {
     setup({ initialRoute: "/monitor/example/events" });
 
-    expect(screen.getByRole("link", { name: "Usage" })).not.toHaveAttribute(
-      "aria-current",
+    expect(screen.getByRole("tab", { name: "Usage" })).toHaveAttribute(
+      "aria-selected",
+      "false",
     );
-    expect(screen.getByRole("link", { name: "Events" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    expect(screen.getByRole("tab", { name: "Events" })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
   });
 
@@ -227,12 +231,13 @@ describe("PillTabNavigation", () => {
       initialRoute: "/monitor/example/usage",
     });
 
-    expect(screen.getByRole("link", { name: "Usage" })).not.toHaveAttribute(
-      "aria-current",
+    expect(screen.getByRole("tab", { name: "Usage" })).toHaveAttribute(
+      "aria-selected",
+      "false",
     );
-    expect(screen.getByRole("link", { name: "Events" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    expect(screen.getByRole("tab", { name: "Events" })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
   });
 
@@ -249,16 +254,16 @@ describe("PillTabNavigation", () => {
       initialRoute: "/monitor/example/broken/nested",
     });
 
-    expect(screen.getByRole("link", { name: "Broken" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    expect(screen.getByRole("tab", { name: "Broken" })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
   });
 
   it("shows the tab icon when provided", () => {
     setup();
 
-    const tab = screen.getByRole("link", { name: "Usage" });
+    const tab = screen.getByRole("tab", { name: "Usage" });
     expect(
       within(tab).getByRole("img", { name: "lineandbar icon" }),
     ).toBeInTheDocument();
@@ -290,10 +295,10 @@ describe("PillTabNavigation", () => {
       ],
     });
 
-    const tab = screen.getByRole("link", { name: "Events" });
+    const tab = screen.getByRole("tab", { name: "Events" });
     expect(within(tab).getByTestId("pill-tab-count")).toHaveTextContent("0");
     expect(
-      within(screen.getByRole("link", { name: "Usage" })).queryByTestId(
+      within(screen.getByRole("tab", { name: "Usage" })).queryByTestId(
         "pill-tab-count",
       ),
     ).not.toBeInTheDocument();

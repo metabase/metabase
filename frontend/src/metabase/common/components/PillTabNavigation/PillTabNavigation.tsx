@@ -48,10 +48,17 @@ function handleTabKeyDown(event: KeyboardEvent<HTMLElement>) {
   if (hasModifier) {
     return;
   }
+
+  // for consistency between links and buttons
+  if (event.key === " " || event.key === "Enter") {
+    event.preventDefault();
+    event.currentTarget.click();
+  }
+
   const tabs = Array.from(
     event.currentTarget
-      .closest("[data-pill-tab-navigation]")
-      ?.querySelectorAll<HTMLElement>("[data-pill-tab]") ?? [],
+      .closest("[role=tablist]")
+      ?.querySelectorAll<HTMLElement>("[role=tab]") ?? [],
   );
   const index = tabs.indexOf(event.currentTarget);
   const targetIndex = getFocusTargetIndex(event.key, index, tabs.length);
@@ -76,29 +83,36 @@ export function PillTabNavigation({
   const { pathname } = useLocation();
   const countIdPrefix = useId();
 
+  const tabsWithSelected = tabs.map((tab) => ({
+    ...tab,
+    isSelected: isTabSelected(tab, pathname),
+  }));
+  const hasAnySelected = tabsWithSelected.some(({ isSelected }) => isSelected);
+
   return (
     <Flex
       component="nav"
       gap="xxs"
       wrap="wrap"
-      data-pill-tab-navigation
       data-testid={testId}
+      role="tablist"
     >
-      {tabs.map((tab, index) => {
-        const selected = isTabSelected(tab, pathname);
+      {tabsWithSelected.map((tab, index) => {
+        const { isSelected: selected } = tab;
         const countId = `${countIdPrefix}-count-${index}`;
         const hasLoadedCount = tab.count?.status === "loaded";
         const tabProps = {
           align: "center",
           gap: "xxs",
           className: cx(S.tab, { [S.selected]: selected }),
+          role: "tab",
           "aria-label": tab.label,
           "aria-describedby": hasLoadedCount ? countId : undefined,
-          "aria-current": selected ? "page" : undefined,
+          "aria-selected": selected,
+          tabIndex: selected || !hasAnySelected ? 0 : -1,
           "data-testid": tab["data-testid"],
           onClick: tab.onClick,
           onKeyDown: handleTabKeyDown,
-          "data-pill-tab": true,
         } as const;
         const content = (
           <>
