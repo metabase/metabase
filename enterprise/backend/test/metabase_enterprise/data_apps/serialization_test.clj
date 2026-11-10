@@ -4,12 +4,11 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
-   [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase-enterprise.serialization.test-util :as ts]
-   [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
@@ -21,18 +20,18 @@
   (.getBytes "console.log(1)" "UTF-8"))
 
 (defn- export!
-  "Export the data apps, with the collection each owns (its serdes descendant) when `with-collections?`."
+  "Export the data apps, with the collection each owns (what its export contains) when `with-collections?`."
   [dir & {:keys [with-collections?]}]
-  (serialization/store! (if with-collections?
-                          (extract/extract {:targets        (mapv (fn [id] ["DataApp" id])
-                                                                  (t2/select-pks-vec :model/DataApp))
-                                            :no-settings    true
-                                            :no-data-model  true})
-                          (serdes/extract-all "DataApp" {}))
-                        (serialization/file-writer dir)))
+  (ee.serialization/store! (if with-collections?
+                             (ee.serialization/extract {:targets       (ee.serialization/make-targets-of-type
+                                                                        :model/DataApp (t2/select-pks-vec :model/DataApp))
+                                                        :no-settings   true
+                                                        :no-data-model true})
+                             (serialization/export :model/DataApp (ee.serialization/select-rows :model/DataApp {})))
+                           (ee.serialization/file-writer dir)))
 
 (defn- import! [dir]
-  (serialization/load-metabase! (serialization/ingest-yaml dir)))
+  (ee.serialization/load-metabase! (ee.serialization/ingest-yaml dir)))
 
 (defn- bundle-text [app]
   (String. ^bytes (t2/select-one-fn :bundle [:model/DataApp :bundle] :id (:id app)) "UTF-8"))
@@ -48,8 +47,13 @@
       (io/make-parents f)
       (spit f content))))
 
+(defn- resource-collection-entity-id
+  "The entity id of the resource collection of `app`, which an import never changes."
+  [app]
+  (t2/select-one-fn :entity_id :model/Collection :id (:resource_collection_id app)))
+
 (defn- app-yaml [entity-id slug & {:as extra}]
-  (merge {:serdes/meta [{:model "DataApp" :id entity-id :label slug}]
+  (merge {:serdes/meta [{:model "DataApp"}]
           :entity_id   entity-id
           :slug        slug
           :name        "Sales"
@@ -124,8 +128,13 @@
       (ts/with-random-dump-dir [dump-dir "data-app-no-collection-"]
         (write-app-files! dump-dir "x" (app-yaml "pZrj7PDuz3vSWYYi0QFhd" "x" :collection "nosuchcollection00001")
                           {"dist/index.js" "B"})
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Collection 'nosuchcollection00001' was not found"
-                              (import! dump-dir)))
+        (is (=? {:model :model/Collection :id "nosuchcollection00001"}
+                (try
+                  (import! dump-dir)
+                  nil
+                  (catch clojure.lang.ExceptionInfo e
+                    (some #(when (serialization/target-not-found? %) (ex-data %))
+                          (take-while some? (iterate ex-cause e)))))))
         (is (not (t2/exists? :model/DataApp :entity_id "pZrj7PDuz3vSWYYi0QFhd")))))))
 
 (deftest import-updates-in-place-and-keeps-local-state-test
@@ -134,7 +143,8 @@
       (mt/with-temp [:model/DataApp app {:name "sales-ops" :enabled false} :model/PermissionsGroup group {}]
         (group-access/add-groups! app [(:id group)])
         (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops" :name "Renamed"
-                                                         :path "./dist/index.js")
+                                                         :path "./dist/index.js"
+                                                         :collection (resource-collection-entity-id app))
                           {"dist/index.js" "console.log(2)"})
         (import! dump-dir)
         (let [updated (t2/select-one :model/DataApp :id (:id app))]
@@ -165,8 +175,8 @@
           (write-app-files! dump-dir "x" (app-yaml "pZrj7PDuz3vSWYYi0QFhd" "x" :path "../../secret.js") {})
           (is (= "Invalid resource file path: ../../secret.js"
                  (try
-                   (serialization/ingest-one (serialization/ingest-yaml dump-dir)
-                                             [{:model "DataApp" :id "pZrj7PDuz3vSWYYi0QFhd"}])
+                   (ee.serialization/ingest-many (ee.serialization/ingest-yaml dump-dir)
+                                                 [[:model/DataApp "pZrj7PDuz3vSWYYi0QFhd"]])
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-message (ex-cause e))))))))
@@ -176,14 +186,16 @@
   (mt/with-premium-features #{:data-apps}
     (ts/with-random-dump-dir [dump-dir "data-app-description-"]
       (mt/with-temp [:model/DataApp app {:name "sales-ops" :description "Pipeline health"}]
-        (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops") {"dist/index.js" "B"})
+        (write-app-files! dump-dir "sales-ops"
+                          (app-yaml (:entity_id app) "sales-ops" :collection (resource-collection-entity-id app))
+                          {"dist/index.js" "B"})
         (import! dump-dir)
         (is (nil? (t2/select-one-fn :description :model/DataApp :id (:id app))))))))
 
 (deftest export-includes-data-apps-test
   (mt/with-temp [:model/DataApp {app-entity-id :entity_id} {}]
-    (is (some #(= [{:model "DataApp" :id app-entity-id}] (map (fn [m] (dissoc m :label)) (:serdes/meta %)))
-              (into [] (extract/extract {:no-collections true :no-data-model true :no-settings true}))))))
+    (is (some #(= [:model/DataApp app-entity-id] (serialization/key-of %))
+              (into [] (ee.serialization/extract {:no-collections true :no-data-model true :no-settings true}))))))
 
 (deftest round-trip-with-resources-test
   (testing "an app travels with its collection and what that holds, written under collections/data_apps/"

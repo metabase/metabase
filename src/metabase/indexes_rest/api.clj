@@ -140,8 +140,7 @@
       (indexes-rest.db/set-table-index-structured! id structured)
       (indexes-rest.db/table-index id))))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/request/:id"
+(api.macros/defendpoint :delete "/request/:id" :- ::api/generic-204-no-content
   "Mark an index request `delete-pending`. The physical index is only dropped when the target table is next rebuilt
   (pending changes force a full run), so the row stays visible in this state until that rebuild removes it."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]

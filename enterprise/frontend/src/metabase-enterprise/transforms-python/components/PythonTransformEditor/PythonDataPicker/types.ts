@@ -1,6 +1,6 @@
-import type { ConcreteTableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 export type TableSelection = {
-  tableId: ConcreteTableId | undefined;
+  tableId: TableId | undefined;
   alias: string;
 };

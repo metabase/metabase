@@ -1,5 +1,6 @@
 ---
 title: API keys
+summary: Create API keys for programmatic requests to the Metabase API, with permissions set by the group you assign each key to.
 ---
 
 # API keys

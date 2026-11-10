@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import type { OmniPickerItem } from "../EntityPicker";
@@ -20,33 +19,29 @@ export const getDataPickerValue = (
 ):
   | (DataPickerValue & { db_id?: DatabaseId; schema?: SchemaName })
   | undefined => {
-  const pickerInfo = Lib.pickerInfo(query, joinable);
+  const databaseId = Lib.databaseID(query) ?? undefined;
   const displayInfo = Lib.displayInfo(query, stageIndex, joinable);
 
-  if (!pickerInfo) {
-    return undefined;
-  }
-
-  if (pickerInfo.cardId != null) {
+  if (Lib.isCardMetadata(joinable)) {
     return {
-      id: pickerInfo.cardId,
+      id: Lib.pickerInfo(query, joinable).id,
       // name: displayInfo.displayName,
       model: displayInfo.isModel
         ? "dataset"
         : displayInfo.isMetric
           ? "metric"
           : "card",
-      database_id: pickerInfo.databaseId,
-      schema: getSchemaName(displayInfo.schema), // for compatibility with MiniPicker for now
+      database_id: databaseId,
+      schema: displayInfo.schema ?? undefined, // for compatibility with MiniPicker for now
     };
   }
 
   return {
-    id: pickerInfo.tableId,
+    id: Lib.pickerInfo(query, joinable).id,
     model: "table",
-    database_id: pickerInfo.databaseId,
-    db_id: pickerInfo.databaseId, // for compatibility with MiniPicker for now
-    schema: getSchemaName(displayInfo.schema), // for compatibility with MiniPicker for now
+    database_id: databaseId,
+    db_id: databaseId, // for compatibility with MiniPicker for now
+    schema: displayInfo.schema ?? undefined, // for compatibility with MiniPicker for now
   };
 };
 

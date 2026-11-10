@@ -339,12 +339,12 @@ Metabase couldn't sample this field from the database, so there are no statistic
 {% endif %}
 {% endif %}
 {% if is_field_metadata %}
-{% if field_metadata_value_xml %}
+{% if any field_metadata_value_xml field_metadata_source field_metadata_reference %}
 <field-metadata field_id="{{field_metadata_field_id}}">
 {% if field_metadata_source %}    Source table: {{field_metadata_source}}
-{% endif %}{% if field_metadata_reference %}    Reference (copy into a field clause): {{field_metadata_reference|safe}}
-{% endif %}    {{field_metadata_value_xml|safe}}
-</field-metadata>
+{% endif %}{% if field_metadata_reference %}    Reference (copy as is if it starts with ["field"; else put it in a field clause): {{field_metadata_reference|safe}}
+{% endif %}{% if field_metadata_value_xml %}    {{field_metadata_value_xml|safe}}
+{% endif %}</field-metadata>
 {% else %}
 No metadata available to display. This doesn't mean the column is empty or cannot be queried - there may be various reasons why values aren't shown here.
 {% endif %}
@@ -371,7 +371,8 @@ No metadata available to display. This doesn't mean the column is empty or canno
 {% endif %}
 {% if is_get_metadata_result %}
 {% if metadata_has_any %}
-{% if metadata_metrics_xml %}{{metadata_metrics_xml|safe}}{% endif %}{% if metadata_tables_xml %}{{metadata_tables_xml|safe}}{% endif %}{% if metadata_models_xml %}{{metadata_models_xml|safe}}{% endif %}{% if metadata_errors %}
+{% if metadata_metrics_xml %}{{metadata_metrics_xml|safe}}{% endif %}{% if metadata_tables_xml %}{{metadata_tables_xml|safe}}{% endif %}{% if metadata_models_xml %}{{metadata_models_xml|safe}}{% endif %}{% if metadata_questions_xml %}The cards in <questions> are saved questions, not metrics or models.{% if metadata_questions_have_query %} The <query> of a question shows the table and filters it uses.{% endif %}
+{{metadata_questions_xml|safe}}{% endif %}{% if metadata_errors %}
 <errors>
 The following errors were encountered while fetching metadata:
 {{metadata_errors|safe}}

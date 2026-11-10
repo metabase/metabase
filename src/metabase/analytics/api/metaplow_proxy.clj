@@ -26,6 +26,7 @@
    [diehard.core :as dh]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -170,6 +171,7 @@
 (api.macros/defendpoint :post "/send"
   "Forward a Metabase Track payload to the configured collector server-side, bypassing the customer page's
   `connect-src` CSP."
+  {:scope api-scope/data-app}
   [_route-params
    _query-params
    body :- TrackEnvelope]

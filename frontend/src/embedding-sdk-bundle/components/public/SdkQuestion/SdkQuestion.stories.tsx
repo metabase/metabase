@@ -12,13 +12,9 @@ import {
   questionIds,
 } from "embedding-sdk-bundle/test/storybook-id-args";
 import { Box, Stack } from "metabase/ui";
-import {
-  createMockNativeCard,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-  createMockParameter,
-} from "metabase-types/api/mocks";
-import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { createMockCard, createMockParameter } from "metabase-types/api/mocks";
 
 import { SdkQuestion } from "./SdkQuestion";
 import { nativeQuestionWithParametersData } from "./data/data";
@@ -127,15 +123,16 @@ export const WithEditableSqlParametersCustomLayout = {
       handlers: [
         http.get(`*/api/card/${QUESTION_ID}`, () =>
           HttpResponse.json(
-            createMockNativeCard({
+            createMockCard({
               name: "Test Question",
               display: "table",
               id: QUESTION_ID,
-              dataset_query: createMockNativeDatasetQuery({
-                native: createMockNativeQuery({
+              query_type: "native",
+              dataset_query: Lib.toLegacyQuery(
+                Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
                   query:
                     "SELECT * FROM people WHERE state = {{State}} [[ and city = {{City}} ]] [[ and source = {{Source}} ]]",
-                  "template-tags": {
+                  templateTags: {
                     State: {
                       type: "text",
                       name: "State",
@@ -156,8 +153,7 @@ export const WithEditableSqlParametersCustomLayout = {
                     },
                   },
                 }),
-                database: SAMPLE_DB_ID,
-              }),
+              ),
               parameters: [
                 createMockParameter({
                   id: "1",
@@ -307,15 +303,16 @@ export const ControlledSqlParameters = {
       handlers: [
         http.get(`*/api/card/${QUESTION_ID}`, () =>
           HttpResponse.json(
-            createMockNativeCard({
+            createMockCard({
               name: "Controlled SQL parameters demo",
               display: "table",
               id: QUESTION_ID,
-              dataset_query: createMockNativeDatasetQuery({
-                native: createMockNativeQuery({
+              query_type: "native",
+              dataset_query: Lib.toLegacyQuery(
+                Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
                   query:
                     "SELECT * FROM people WHERE state = {{state}} [[ and city = {{city}} ]] [[ and source = {{source}} ]]",
-                  "template-tags": {
+                  templateTags: {
                     state: {
                       type: "text",
                       name: "state",
@@ -336,8 +333,7 @@ export const ControlledSqlParameters = {
                     },
                   },
                 }),
-                database: SAMPLE_DB_ID,
-              }),
+              ),
               parameters: [
                 createMockParameter({ id: "1", slug: "state" }),
                 createMockParameter({ id: "2", slug: "city" }),

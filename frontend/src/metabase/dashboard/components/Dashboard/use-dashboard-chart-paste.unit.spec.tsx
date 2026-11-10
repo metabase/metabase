@@ -14,6 +14,8 @@ import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { getDashcards } from "metabase/dashboard/selectors";
 import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -22,12 +24,13 @@ import {
   createMockDataset,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { useDashboardChartPaste } from "./use-dashboard-chart-paste";
 
 const TEST_DB = createSampleDatabase();
-const datasetQuery = createMockStructuredDatasetQuery();
+const datasetQuery = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
 
 const CREATED_CARD = createMockCard({
   id: 99,

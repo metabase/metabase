@@ -292,7 +292,7 @@ function createNativeQuestionWithFieldFilterAndDashboard({
               name: "boolean",
               "display-name": "Boolean",
               type: "dimension",
-              dimension: ["field", fieldId, null],
+              "field-id": fieldId,
               "widget-type": "boolean/=",
               default: null,
             },

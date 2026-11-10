@@ -348,7 +348,7 @@
                            :metabase.lib.field/temporal-unit :metabase.lib.field/original-effective-type
                            :metabase.lib.field/simple-display-name
                            :metabase.lib.query/transformation-added-base-type
-                           :lib/stage-metadata :condition :parameters :dimension :strategy :lib/uuid :lib/type
+                           :lib/stage-metadata :condition :parameters :dimension :field-id :strategy :lib/uuid :lib/type
                            :model/inner_ident :stages :lib/model-display-name]
                   :string]]
   (let [fn-schemas (map (fn [[k message]]

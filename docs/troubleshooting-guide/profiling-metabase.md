@@ -1,5 +1,6 @@
 ---
 title: Profiling your Metabase
+summary: Use JMX and VisualVM to diagnose memory problems, stalls, and slow response times in your Metabase.
 redirect_from:
   - /docs/latest/operations-guide/jmx-monitoring
   - /docs/latest/operations-guide/enable-jmx

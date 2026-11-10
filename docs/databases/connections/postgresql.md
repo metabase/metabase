@@ -1,5 +1,6 @@
 ---
 title: PostgreSQL
+summary: Connect Metabase to PostgreSQL or Supabase, including which versions are supported and every connection setting.
 redirect_from:
   - /docs/latest/administration-guide/databases/postgresql
 ---

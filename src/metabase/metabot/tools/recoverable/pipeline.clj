@@ -2,7 +2,7 @@
   "One declared recoverable error per `:error` code the representations pipeline raises.
 
   The pipeline (`metabase.agent-lib.representations*`, `metabase.metabot.tools.construct`,
-  `metabase.models.serialization.resolve.mp`) throws a bare statement of what went wrong plus
+  `metabase.serialization.protocol.mp`) throws a bare statement of what went wrong plus
   structured `ex-data` carrying an `:error` keyword. It deliberately knows nothing about which tools
   its caller has, so it cannot say how to recover. This namespace supplies that half: each `:error`
   code gets a declaration whose recovery steps are written in the tool vocabulary — `read_resource`,
@@ -155,10 +155,26 @@
               "entity_id string.")})
 
 (def ^:private cross-database-step
+  "The recovery step for a query that references a table, card, measure or segment in another database."
   {:uses #{}
-   :text (str "A query can only reference saved questions, models, metrics, measures and segments "
-              "from its own database. Use one from that database, or change the source to a table "
-              "in the referenced item's database.")})
+   :text (str "Don't combine data from two databases in Metabase (two different `database_id`s) in one query, in a "
+              "notebook query or in SQL. If you can't read the results of a query on each database, tell the user "
+              "that you can't combine data from these two databases, and say what you can do instead.")})
+
+(def ^:private query-per-database-step
+  ;; The text names no row count: the `row_limit` schema of `run_query` gives the model its maximum.
+  {:uses #{"run_query"}
+   :text (str "Build one query for each database, run each one with `run_query` at its largest `row_limit`, and "
+              "match the rows on a column that both results have. If a result is truncated, make that query coarser "
+              "or filter it on the keys of the other result and run it again. A result that is still truncated, or "
+              "filtered on the keys of a truncated result, is partial. Combine partial rows only when they answer the "
+              "question, and say that the answer comes from partial data: this is the one case where you may count "
+              "truncated rows, and the count is a lower bound, never the total. Otherwise tell the user that the data "
+              "is too large to combine.")})
+
+(def ^:private cross-database-recovery
+  "The steps for a query that reads two databases. A profile without `run_query` reads only the first."
+  [cross-database-step query-per-database-step])
 
 (defn- card-fields-step
   "Return a recovery step listing `what` from the source card, or nil when `payload` names no card."
@@ -218,6 +234,10 @@
                    :text (str "Call `read_resource` with `metabase://database/<numeric id>/tables` to list the "
                               "available tables and retry with a more specific portable FK.")}
                   (with-id database-id))]})
+
+(defpipeline-error cross-database-table!
+  "A portable table FK names a different database than the query's."
+  cross-database-recovery)
 
 ;;; Database resolution
 
@@ -323,7 +343,7 @@
 
 (defpipeline-error cross-database-card!
   "The referenced card belongs to a different database than the query."
-  [cross-database-step])
+  cross-database-recovery)
 
 (defpipeline-error unknown-measure!
   "A measure entity_id matched no measure."
@@ -340,7 +360,7 @@
 
 (defpipeline-error cross-database-measure!
   "The referenced measure belongs to a different database than the query."
-  [cross-database-step])
+  cross-database-recovery)
 
 (defpipeline-error unknown-segment!
   "A segment entity_id matched no segment."
@@ -357,7 +377,7 @@
 
 (defpipeline-error cross-database-segment!
   "The referenced segment belongs to a different database than the query."
-  [cross-database-step])
+  cross-database-recovery)
 
 (defpipeline-error incompatible-metric!
   "A metric was used with an incompatible stage source."

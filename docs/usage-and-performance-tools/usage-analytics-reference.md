@@ -679,7 +679,6 @@ The Query Source column on the [Query log](#query-log) model takes one of:
 - ad-hoc
 - agent
 - cache-refresh
-- collection
 - csv-download
 - dashboard
 - dashboard-subscription

@@ -86,7 +86,6 @@
         "graph.dimensions": ["CREATED_AT", "SOURCE"],
         "graph.metrics": ["count"]
       },
-      "collection_preview": true,
       "entity_id": "elJj3X35uaPqBgFxecuVU",
       "display": "line",
       "parameter_mappings": [],

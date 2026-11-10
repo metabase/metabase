@@ -320,7 +320,9 @@
       (is (=? {:toolConfig {:functionCallingConfig {:mode "AUTO"}}}
               (body-for "auto")))
       (is (=? {:toolConfig {:functionCallingConfig {:mode "ANY"}}}
-              (body-for "required"))))))
+              (body-for "required")))
+      (is (=? {:toolConfig {:functionCallingConfig {:mode "NONE"}}}
+              (body-for "none"))))))
 
 (deftest ^:parallel request-body-structured-output-test
   (testing "a :schema forces a structured_output function call via mode ANY + allowedFunctionNames"

@@ -1,5 +1,6 @@
 import type {
   BrowserEmbedOptions,
+  DataAppEmbedOptions,
   ExplorationEmbedOptions,
   MetabotEmbedOptions,
   SdkIframeDashboardEmbedSettings,
@@ -37,7 +38,10 @@ export type SdkIframeEmbedSetupTemplateSettings =
   | SdkIframeQuestionEmbedSettings
   | ExplorationEmbedOptions
   | BrowserEmbedOptions
-  | MetabotEmbedOptions;
+  | MetabotEmbedOptions
+  // Data apps does not support theme overrides.
+  // Keep the wizard's saved theme when switching experiences only.
+  | Omit<DataAppEmbedOptions, "theme">;
 
 /**
  * Settings used by the embed setup route.

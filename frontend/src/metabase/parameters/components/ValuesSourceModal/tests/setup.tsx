@@ -1,5 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
@@ -9,7 +10,6 @@ import {
   setupParameterValuesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
-  setupTableQueryMetadataEndpoint,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
@@ -22,10 +22,10 @@ import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Card, ParameterValues, TokenFeatures } from "metabase-types/api";
 import {
+  createMockCardQueryMetadata,
   createMockCollection,
   createMockDatabase,
   createMockParameterValues,
-  createMockTable,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -81,11 +81,9 @@ export const setup = async ({
     setupCollectionsEndpoints({ collections: [rootCollection] });
     setupCardsEndpoints(cards);
     cards.forEach((card) =>
-      setupTableQueryMetadataEndpoint(
-        createMockTable({
-          id: `card__${card.id}`,
-          fields: card.result_metadata ?? [],
-        }),
+      setupCardQueryMetadataEndpoint(
+        card,
+        createMockCardQueryMetadata({ databases: [createMockDatabase()] }),
       ),
     );
   } else {

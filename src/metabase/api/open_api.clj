@@ -218,8 +218,6 @@
                                  :name        "X-API-Key"
                                  :description "API key for authentication"}}))))
 
-;; REPL example; api-routes is cross-module, resolved at runtime
-#_{:clj-kondo/ignore [:metabase/modules]}
 (comment
   (require '[metabase.api.macros])
 

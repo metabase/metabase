@@ -1,18 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
-import type Database from "metabase-lib/v1/metadata/Database";
-import Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
-import NativeQuery, {
+import {
   NATIVE_QUERY_TEMPLATE,
-} from "metabase-lib/v1/queries/NativeQuery";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+  STRUCTURED_QUERY_TEMPLATE,
+} from "metabase-lib/v1/queries/templates";
 import type {
   Card,
   CardCreationType,
@@ -24,9 +22,9 @@ import type {
   DashCardId,
   DashboardId,
   DatabaseId,
+  DatasetColumn,
   DatasetData,
   DatasetQuery,
-  Field,
   LastEditInfo,
   ParameterId,
   Parameter as ParameterObject,
@@ -44,7 +42,7 @@ export type QuestionCreatorOpts = {
   cardType?: CardType;
   collectionId?: CollectionId;
   dashboardId?: DashboardId;
-  metadata?: Metadata;
+  metadata: Lib.JsMetadata;
   parameterValues?: ParameterValuesMap;
   name?: string;
   display?: CardDisplayType;
@@ -75,7 +73,7 @@ class Question {
    * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery})
    * need metadata for accessing databases, tables and metrics.
    */
-  _metadata: Metadata;
+  _metadata: Lib.JsMetadata;
 
   /**
    * Parameter values mean either the current values of dashboard filters or SQL editor template parameters.
@@ -96,11 +94,11 @@ class Question {
     // card boundary stays loosely typed. Internally it is treated as a `Card`,
     // guarding the saved-only fields (id, name, type, ...) where they are read.
     card: any,
-    metadata?: Metadata,
+    metadata: Lib.JsMetadata,
     parameterValues?: ParameterValuesMap,
   ) {
     this._card = card;
-    this._metadata = metadata || new Metadata();
+    this._metadata = metadata;
     this._parameterValues = parameterValues || {};
   }
 
@@ -108,7 +106,7 @@ class Question {
     return new Question(this._card, this._metadata, this._parameterValues);
   }
 
-  metadata(): Metadata {
+  metadata(): Lib.JsMetadata {
     return this._metadata;
   }
 
@@ -144,49 +142,6 @@ class Question {
         .dissoc("description")
         .value(),
     );
-  }
-
-  /**
-   * A question contains either a:
-   * - StructuredQuery for queries written in MBQL
-   * - NativeQuery for queries written in data source's native query language
-   *
-   * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
-   */
-  _legacyNativeQuery = _.once((): NativeQuery | undefined => {
-    const datasetQuery = this._card.dataset_query;
-
-    if (this.isNative()) {
-      return new NativeQuery(this, datasetQuery);
-    }
-
-    const isVirtualDashcard = !this._card.id;
-    // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
-    if (!isVirtualDashcard) {
-      const queryType =
-        datasetQuery != null && "type" in datasetQuery
-          ? datasetQuery.type
-          : undefined;
-      console.warn("Unknown query type: " + queryType);
-    }
-  });
-
-  legacyNativeQuery(): NativeQuery | undefined {
-    return this._legacyNativeQuery();
-  }
-
-  /**
-   * Returns a new Question object with an updated query.
-   * The query is saved to the `dataset_query` field of the Card object.
-   */
-  setLegacyQuery(newQuery: NativeQuery): Question {
-    if (this._card.dataset_query !== newQuery.datasetQuery()) {
-      return this.setCard(
-        assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
-      );
-    }
-
-    return this;
   }
 
   datasetQuery(): DatasetQuery {
@@ -340,10 +295,12 @@ class Question {
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
-    const { isNative } = Lib.queryDisplayInfo(this.query());
-    return isNative
-      ? (this.legacyNativeQuery()?.canRun() ?? false)
-      : Lib.canRun(this.query(), this.type());
+    const query = this.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+    return (
+      Lib.canRun(query, this.type()) &&
+      (!isNative || Lib.validateTemplateTags(query).length === 0)
+    );
   }
 
   canWrite(): boolean {
@@ -351,33 +308,18 @@ class Question {
   }
 
   canWriteActions(): boolean {
-    const database = this.database();
+    const databaseInfo = Lib.databaseDisplayInfo(this.query());
 
     return (
       this.canWrite() &&
-      database != null &&
-      database.canWrite() &&
-      database.hasActionsEnabled()
+      databaseInfo != null &&
+      databaseInfo.nativePermissions === "write" &&
+      databaseInfo.isActionsEnabled
     );
   }
 
-  supportsImplicitActions(): boolean {
-    const query = this.query();
-
-    // we want to check the metadata for the underlying table, not the model
-    const sourceTableId = Lib.sourceTableOrCardId(query);
-    const table = this.metadata().table(sourceTableId);
-
-    const hasSinglePk =
-      table?.fields?.filter((field) => field.isPK())?.length === 1;
-    const { isNative } = Lib.queryDisplayInfo(this.query());
-
-    return !isNative && !Lib.hasClauses(query, -1) && hasSinglePk;
-  }
-
   canAutoRun(): boolean {
-    const db = this.database();
-    return (db && db.auto_run_queries) || false;
+    return Lib.databaseDisplayInfo(this.query())?.autoRunQueries ?? false;
   }
 
   /**
@@ -393,17 +335,16 @@ class Question {
     }
 
     const metadata = this.metadataProvider();
-    const tableId = getQuestionVirtualTableId(this.id());
-    const table = Lib.tableOrCardMetadata(metadata, tableId);
-    if (!table) {
+    const card = Lib.cardMetadata(metadata, this.id());
+    if (!card) {
       return this;
     }
 
-    const query = Lib.queryFromTableOrCardMetadata(metadata, table);
+    const query = Lib.queryFromTableOrCardMetadata(metadata, card);
     return this.setQuery(query);
   }
 
-  composeQuestionAdhoc(options: QuestionCreatorOpts = {}): Question {
+  composeQuestionAdhoc(options: { display?: CardDisplayType } = {}): Question {
     if (!this.isSaved()) {
       return this;
     }
@@ -517,13 +458,6 @@ class Question {
     return this._card && this._card.public_uuid;
   }
 
-  database(): Database | null {
-    const metadata = this.metadata();
-    const databaseId = this.databaseId();
-    const database = metadata.database(databaseId);
-    return database;
-  }
-
   databaseId(): DatabaseId | null {
     const query = this.query();
     return Lib.databaseID(query);
@@ -545,7 +479,7 @@ class Question {
     });
   }
 
-  setResultMetadataDiff(metadataDiff: Record<string, Partial<Field>>) {
+  setResultMetadataDiff(metadataDiff: Record<string, Partial<DatasetColumn>>) {
     const metadata = this.getResultMetadata();
     const newMetadata = metadata.map((column) => {
       const columnDiff = metadataDiff[column.name];
@@ -772,7 +706,7 @@ class Question {
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
-  }: QuestionCreatorOpts = {}) {
+  }: QuestionCreatorOpts) {
     // `create` builds an unsaved draft that lacks the fields a saved Card has
     // (id, entity_id, name, type, ...). The Question class nevertheless treats
     // `_card` as a full Card, so we assert the draft shape here.

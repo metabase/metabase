@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useDebouncedValue, useResizeObserver } from "@mantine/hooks";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { getIn } from "icepick";

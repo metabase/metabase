@@ -427,7 +427,7 @@
    :doc "Validate the kondo and module ratchet files against the source tree (about half a minute, most of it a kondo run over the files with a discouraged-var or discouraged-namespace ignore)."
    :examples [["./bin/mage kondo-ratchets" "Fail on an invalid ratchets file, an over-budget suppression, or a missing justification comment"]]
    :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
-   :task (task! (dev.kondo-ratchet/check {:attribute mage.kondo-ratchet/attribute-occurrences!}))}
+   :task (task! (dev.kondo-ratchet/check (mage.kondo-ratchet/ratchet-options)))}
 
   kondo-ratchets-shrink
   {:group "Ratchets"
@@ -438,7 +438,7 @@
               ["./bin/mage kondo-ratchets-shrink --seed :discouraged-var" "Set every discouraged-var symbol's budget to its current count"]]
    :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it); :discouraged-var/SYMBOL seeds one discouraged symbol, a bare :discouraged-var/:discouraged-namespace all of them"]]
    :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
-   :task (task! (dev.kondo-ratchet/fix! (assoc (:options parsed) :attribute mage.kondo-ratchet/attribute-occurrences!)))}
+   :task (task! (dev.kondo-ratchet/fix! (merge (:options parsed) (mage.kondo-ratchet/ratchet-options))))}
 
   kondo-ratchets-history
   {:group "Ratchets"

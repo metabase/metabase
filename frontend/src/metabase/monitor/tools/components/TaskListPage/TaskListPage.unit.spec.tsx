@@ -598,6 +598,29 @@ describe("TaskListPage", () => {
     });
   });
 
+  it("should only highlight the task from the query param when the task picker opens (GDGT-2860)", async () => {
+    setup({
+      location: createMockLocation({
+        pathname: PATHNAME,
+        search: "?task=task-b",
+      }),
+    });
+    await waitForLoaderToBeRemoved();
+
+    const taskPicker = screen.getByPlaceholderText("Filter by task");
+    await waitFor(() => {
+      expect(taskPicker).toHaveValue("task-b");
+    });
+    await userEvent.click(taskPicker);
+
+    expect(
+      await screen.findByRole("option", { name: "task-a" }),
+    ).not.toHaveAttribute("data-combobox-selected");
+    expect(screen.getByRole("option", { name: "task-b" })).toHaveAttribute(
+      "data-combobox-active",
+    );
+  });
+
   it("accepts status query param", async () => {
     setup({
       location: createMockLocation({

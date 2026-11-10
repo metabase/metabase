@@ -247,6 +247,7 @@
                            :points_of_interest :position :preview_display :semantic_type :settings
                            :unique_field_helper :visibility_type :table_id :fk_target_field_id :parent_id]]
     [:map {:closed true}
+     [:dimensions {:optional true} [:maybe [:sequential [:ref ::external-dimension]]]]
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
 (mr/def ::external-field-user-settings

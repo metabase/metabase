@@ -422,9 +422,18 @@
        :inputs       []
        :expectations []}))
 
-   :model/TransformTestRun
+   :model/CardTest
    (fn [_]
-     {:status         "started"
+     (default-timestamped
+      {:creator_id   (rasta-id)
+       :name         (str "Test Card Test " (u/generate-nano-id))
+       :inputs       []
+       :expectations []}))
+
+   :model/DataTestRun
+   (fn [_]
+     {:test_type      :transform
+      :status         "started"
       :start_time     (t/instant)
       :last_heartbeat (t/instant)})
 
@@ -452,7 +461,20 @@
             :email (u.random/random-email)
             :entity_id (u/generate-nano-id)
             :date_joined (t/zoned-date-time)
-            :updated_at (t/zoned-date-time)})})
+            :updated_at (t/zoned-date-time)})
+
+   :model/Workspace
+   (fn [_] (default-timestamped
+            {:name       (u.random/random-name)
+             :creator_id (rasta-id)}))
+
+   :model/WorkspaceDatabase
+   (fn [_] (default-timestamped
+            {:database_id      (data/id)
+             :database_details {}
+             :input_schemas    []
+             :output_namespace ""
+             :status           :unprovisioned}))})
 
 ;; `with-temp` cleanup calls `t2/delete!` directly, which would hit our before-delete guard.
 ;; Bind `*allow-direct-deletion*` so with-temp cleanup works.

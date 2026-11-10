@@ -18,9 +18,7 @@ dashcards:
   col: 0
   size_x: 12
   size_y: 6
-  dashboard_tab_id:
-  - 7RZUq1g5o1C5ws_e3ppKf
-  - XcmNByL-bsDQ15jLHBUwr
+  dashboard_tab_id: XcmNByL-bsDQ15jLHBUwr
   inline_parameters: []
   parameter_mappings:
   - card_id: h5F2EjHsRd73Dqqh8sAtd
@@ -41,9 +39,7 @@ dashcards:
   col: 0
   size_x: 18
   size_y: 9
-  dashboard_tab_id:
-  - 7RZUq1g5o1C5ws_e3ppKf
-  - frlnbZFzBEzun9_GwdiZd
+  dashboard_tab_id: frlnbZFzBEzun9_GwdiZd
   inline_parameters: []
   parameter_mappings: []
   series: []

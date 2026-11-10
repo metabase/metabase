@@ -1,5 +1,6 @@
 ---
 title: "Migrate from Metabase Cloud to a self-hosted Metabase"
+summary: Move your Metabase Cloud instance onto your own infrastructure without losing your questions, dashboards, people, or settings.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true

@@ -603,6 +603,8 @@ categories:
             url: "https://www.metabase.com/docs/latest/cloud/limitations"
           - name: "Change region"
             url: "https://www.metabase.com/docs/latest/cloud/change-region"
+          - name: "Connect to your database"
+            url: "https://www.metabase.com/docs/latest/cloud/connecting-to-your-database"
           - name: "Metabase IP addresses"
             url: "https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist"
           - name: "IP allowlist"

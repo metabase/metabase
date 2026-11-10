@@ -1,5 +1,6 @@
 ---
 title: Permissions overview
+summary: Set permissions on data, collections, features, snippets, and notifications, and isolate data with row and column security and other multi-tenant tools.
 redirect_from:
   - /docs/latest/permissions
 ---

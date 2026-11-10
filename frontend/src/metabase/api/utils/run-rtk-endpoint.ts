@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 /**
  * Structural minimum of an RTK Query endpoint descriptor. Concrete endpoints from
  * RTK Query carry many extra properties (hooks, selectors, etc.) and concrete

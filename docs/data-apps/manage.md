@@ -28,11 +28,11 @@ Before you let more people open an app, check which data the app reads and write
 
 ![Data app Overview tab](./images/data-apps-overview-tab.png)
 
-These tabs don't show everything that the app can read. The app can also query any table that the person who opens it can access, and the metrics in your semantic layer. See [what a data app can read and write](./build.md#what-a-data-app-can-read-and-write).
+These tabs don't show everything that the app can read. The app can also query any table that the person who opens it can access, and the metrics in your semantic layer. The app can also get data from, and send data to, the [sites in `allowed_hosts`](./build.md#let-an-app-fetch-data-from-other-sites) in its manifest in your repository, `data_apps/<slug>/data_app.yaml`. See [what a data app can read and write](./build.md#what-a-data-app-can-read-and-write).
 
 To see what a question or action depends on, open the question or action, and go to its **Dependencies** tab. To see the whole app, look up the app in the [dependency graph](../data-modeling/tools/graph.md).
 
-To see the questions and actions that your apps run, who runs them, and what fails, check out [Data app analytics](../monitor/data-app-analytics.md) in Monitor.
+To see the questions and actions that your apps run, who runs them, and what fails, check out [Data app analytics](../monitor/data-app-analytics.md) in Monitor. Data app analytics doesn't log requests to other sites.
 
 ## Make an app live or a draft
 

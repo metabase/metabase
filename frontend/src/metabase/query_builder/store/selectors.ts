@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
 import { merge } from "icepick";
@@ -21,6 +22,7 @@ import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import { filterTimelinesByXAxes } from "metabase/timelines/panel/utils";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
+import { getIsPKFromSourcePredicate } from "metabase/visualizations/components/ObjectDetail/utils";
 import {
   getCollectionTimelinesVisibility,
   getRecordedTimelineEventsVisibility,
@@ -40,7 +42,6 @@ import {
   normalizeParameterValue,
   normalizeParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import type {
   Bookmark,
   ColumnFormattingSetting,
@@ -49,6 +50,7 @@ import type {
   DatasetColumn,
   DatasetQuery,
   Field,
+  FieldId,
   Series,
   TimelineEventsVisibility,
 } from "metabase-types/api";
@@ -301,48 +303,48 @@ export const getNextRunParameters = createSelector(
   (parameters) => normalizeParameters(parameters),
 );
 
-export const getTableId = createSelector([getQuestion], (question) => {
-  if (!question) {
-    return;
-  }
+const getSourceTableId = createSelector([getQuestion], (question) =>
+  question != null ? Lib.primarySourceTableId(question.query()) : null,
+);
 
-  return Lib.sourceTableOrCardId(question.query());
-});
+export const getSourceCardId = createSelector([getQuestion], (question) =>
+  question != null ? Lib.primarySourceCardId(question.query()) : null,
+);
 
 export const getTableMetadata = createSelector(
-  [getTableId, getShallowTables],
+  [getSourceTableId, getShallowTables],
   (tableId, tables) => (tableId != null ? tables[tableId] : undefined),
 );
 
-const NO_FIELD_IDS: Field["id"][] = [];
+const NO_FIELD_IDS: FieldId[] = [];
 
 const getTableFieldIds = (state: QueryBuilderStoreState) => {
-  const tableId = getTableId(state);
+  const tableId = getSourceTableId(state);
   return tableId != null
     ? getShallowTableFieldIds(state, tableId)
     : NO_FIELD_IDS;
 };
 
 export const getTableForeignKeys = (state: QueryBuilderStoreState) => {
-  const tableId = getTableId(state);
+  const tableId = getSourceTableId(state);
   return (tableId != null && getShallowTableForeignKeys(state, tableId)) || [];
 };
 
 export const getPKColumnIndex = createSelector(
-  [getFirstQueryResult, getTableId],
-  (result, tableId) => {
+  [getFirstQueryResult, getSourceTableId, getSourceCardId],
+  (result, tableId, cardId) => {
     if (!result || !result.data) {
       return;
     }
     const { cols } = result.data;
+    const isPKFromSource = getIsPKFromSourcePredicate({ tableId, cardId });
 
-    const hasMultiplePks =
-      cols.filter(getIsPKFromTablePredicate(tableId)).length > 1;
+    const hasMultiplePks = cols.filter(isPKFromSource).length > 1;
 
     if (hasMultiplePks) {
       return -1;
     }
-    return cols.findIndex(getIsPKFromTablePredicate(tableId));
+    return cols.findIndex(isPKFromSource);
   },
 );
 
@@ -397,7 +399,7 @@ export const getRowIndexToPKMap = createSelector(
 function areLegacyQueriesEqual(
   queryA: DatasetQuery | undefined,
   queryB: DatasetQuery | undefined,
-  tableFieldIds: Field["id"][],
+  tableFieldIds: FieldId[],
 ) {
   if (queryA == null || queryB == null) {
     return false;
@@ -422,7 +424,7 @@ function areComposedEntitiesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: Field["id"][];
+  tableFieldIds: FieldId[];
 }) {
   const isQuestion = originalQuestion?.type() === "question";
   if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {
@@ -470,7 +472,7 @@ export function areQueriesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: Field["id"][];
+  tableFieldIds: FieldId[];
 }) {
   return (
     areLegacyQueriesEqual(

@@ -145,7 +145,7 @@
 
    SECURITY: Replacement values are injected into the SQL AST as identifier names
    without sanitization. Callers MUST ensure replacement values are system-generated
-   (e.g., database metadata). Never pass
+   (e.g., workspace isolation schema names, database metadata). Never pass
    user-controlled input as replacement values."
   ([driver :- [:maybe :keyword]
     sql-string :- :string
@@ -175,6 +175,7 @@
 
 (mu/defn simple-query? :- ::simple-query-result
   "Check if SQL string is a simple SELECT (no LIMIT, OFFSET, or CTEs).
+  Used by Workspaces to determine if automatic checkpoints can be inserted.
 
   Returns a map with:
   - `:is_simple` - boolean indicating if query is simple
@@ -290,9 +291,9 @@
 (mu/defn read-only-select-problem :- [:maybe [:map [:reason :keyword] [:detail [:maybe :string]]]]
   "Why `sql` is not a read-only select ([[read-only-select?]]), or nil when it is one.
   The `:reason` is one of `:multiple-statements`, `:not-a-select`, `:writes-or-locks`, `:statement-word`,
-  `:session-function`, `:sql-executing-function`, `:dynamic-function-call`, `:executable-comment`,
-  `:bare-dash-comment`, `:backslash-quote`, `:unicode-identifier`, `:large-literal-list`, `:too-long` and
-  `:unparseable`.
+  `:session-function`, `:external-table`, `:sql-executing-function`, `:dynamic-function-call`,
+  `:executable-comment`, `:bare-dash-comment`, `:backslash-quote`, `:lone-carriage-return`, `:unicode-identifier`,
+  `:large-literal-list`, `:too-long` and `:unparseable`.
   For `:statement-word`, `:detail` is the word, and for `:session-function` and `:sql-executing-function` it is the
   function's name."
   [driver :- :keyword

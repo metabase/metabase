@@ -1,5 +1,6 @@
 ---
 title: Session expiration
+summary: Control how long people stay logged in to Metabase, with absolute session limits and inactivity timeouts.
 redirect_from:
   - /docs/latest/operations-guide/changing-session-expiration
 ---

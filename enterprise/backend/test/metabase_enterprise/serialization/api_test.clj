@@ -3,14 +3,13 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
+   [metabase.serialization.entity :as serialization.entity]
    [metabase.test :as mt]
    [metabase.util.compress :as u.compress]
    [metabase.util.random :as u.random]
@@ -74,23 +73,14 @@
       (not raw?) (map first)
       (not raw?) set)))
 
-(defn- extract-one-error [entity-id orig]
-  (fn [model-name opts instance]
-    (if (= (:entity_id instance) entity-id)
-      (throw (ex-info "[test] deliberate error message" {:test true}))
-      (orig model-name opts instance))))
-
-(defn- sanitize-key [m k]
-  (let [x (k m)]
-    (if (and x (or (not (string? x)) (= 21 (count x))))
-      (assoc m k "**ID**")
-      m)))
-
-(defn- extract-and-sanitize-exception-map [log]
-  (->> (re-find #"ERROR .* (\{.*\})(\n|$)" log)
-       second
-       read-string
-       (walk/postwalk #(-> % (sanitize-key :id) (sanitize-key :entity_id)))))
+(defn- export-error!
+  "A replacement for [[serialization.entity/validate-export]] that fails the export of the entity with `entity-id`."
+  [entity-id]
+  (let [orig (mt/original-fn #'serialization.entity/validate-export)]
+    (fn [model entity]
+      (if (= entity-id (:entity_id entity))
+        (throw (ex-info "[test] deliberate error message" {:test true}))
+        (orig model entity)))))
 
 (defmacro with-serialization-test-data!
   "Sets up standard test context: search index, snowplow, premium features, and test entities."
@@ -166,8 +156,7 @@
                   (is (= #{:transform :log :collection-entity :settings :schema :database :python-library}
                          (tar-file-types f)))))
               (testing "On exception API returns tar.gz with error in export.log"
-                (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                                  (mt/original-fn #'serdes/extract-one))]
+                (mt/with-dynamic-fn-redefs [serialization.entity/validate-export (export-error! (:entity_id card))]
                   (let [res (binding [api.serialization/*additive-logging* false]
                               (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                                     :collection (:id coll) :data_model false :settings false))
@@ -387,7 +376,7 @@
                                             {:file ba}))
                 log (slurp (io/input-stream res))]
             (testing "Error message indicates missing collection"
-              (is (re-find #"Collection 'DoesNotExist' was not found" log)))
+              (is (re-find #"DoesNotExist.* was not found" log)))
             (testing "Snowplow failure event was sent"
               (is (=? {"success"       false
                        "event"         "serialization"
@@ -396,7 +385,7 @@
                        "duration_ms"   int?
                        "count"         0
                        "error_count"   0
-                       "error_message" #"Collection 'DoesNotExist' was not found.*"}
+                       "error_message" #"(?s).*DoesNotExist.* was not found.*"}
                       (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))))
 
 (deftest import-continue-on-error-test
@@ -416,16 +405,16 @@
                                           :continue_on_error true)
                 log (slurp (io/input-stream res))]
             (testing "Log contains the missing-collection error"
-              (is (re-find #"Collection 'DoesNotExist' was not found" log)))
+              (is (re-find #"DoesNotExist.* was not found" log)))
             (testing "Snowplow event shows partial success with error count"
               (is (=? {"success"     true
                        "event"       "serialization"
                        "direction"   "import"
                        "source"      "api"
                        "duration_ms" int?
-                       "count"       11
+                       "count"       12
                        "error_count" 1
-                       "models"      "Collection,Dashboard,PythonLibrary,TransformJob,TransformTag"}
+                       "models"      "Card,Collection,Dashboard,PythonLibrary,TransformJob,TransformTag"}
                       (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))))
 
 (deftest import-invalid-archive-test
@@ -440,20 +429,15 @@
 (deftest export-extraction-error-test
   (testing "Export with error still returns tar.gz with export.log containing error details"
     (with-serialization-test-data! [coll _dash card]
-      (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                        (mt/original-fn #'serdes/extract-one))]
+      (mt/with-dynamic-fn-redefs [serialization.entity/validate-export (export-error! (:entity_id card))]
         (testing "Error details are in export.log inside the archive"
           (binding [api.serialization/*additive-logging* false]
             (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                             :collection (:id coll) :data_model false :settings false)
                   log (read-export-log res)]
               (is (some? log) "export.log should be present in the archive")
-              (is (= {:id        "**ID**"
-                      :entity_id "**ID**"
-                      :model     "Card"
-                      :table     :report_card
-                      :cause     "[test] deliberate error message"}
-                     (extract-and-sanitize-exception-map log))))))
+              (is (re-find #"Error extracting Card \d+" log))
+              (is (re-find #"deliberate error message" log)))))
         (testing "Snowplow failure event was sent"
           (is (=? {"event"           "serialization"
                    "direction"       "export"
@@ -467,7 +451,7 @@
                    "field_values"    false
                    "secrets"         false
                    "success"         false
-                   "error_message"   #"(?s)Error extracting Card \d+ .*"}
+                   "error_message"   #"(?s)Error extracting Card \d+.*"}
                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))
         (testing "full_stacktrace parameter includes full stack trace in export.log"
           (binding [api.serialization/*additive-logging* false]
@@ -482,13 +466,13 @@
 (deftest export-continue-on-error-test
   (testing "Export with continue_on_error=true succeeds partially despite errors"
     (with-serialization-test-data! [coll _dash card]
-      (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                        (mt/original-fn #'serdes/extract-one))]
+      (mt/with-dynamic-fn-redefs [serialization.entity/validate-export (export-error! (:entity_id card))]
         (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                         :collection (:id coll) :data_model false :settings false
                                         :continue_on_error true)]
-          (testing "Log contains the deliberate error"
-            (is (re-find #"deliberate error message" (read-export-log res)))))
+          (testing "Log contains skipped entity"
+            (is (re-find #"Skipping Error extracting Card \d+"
+                         (read-export-log res)))))
         (testing "Snowplow event shows partial success with error count"
           (is (=? {"event"           "serialization"
                    "direction"       "export"
@@ -499,7 +483,7 @@
                    "field_values"    false
                    "duration_ms"     pos?
                    "count"           11
-                   "error_count"     1
+                   "error_count"     0
                    "source"          "api"
                    "secrets"         false
                    "success"         true
@@ -649,8 +633,8 @@
           (let [db (t2/select-one :model/Database :name db-name)]
             (is (some? db))
             (is (=? {:host "localhost" :port 5432 :dbname "mydb"} (:details db)))
-            (is (not (contains? db :admin_details)) "an older archive's admin_details is ignored")
-            (doseq [k [:details :write_data_details]]
+            (is (map? (:admin_details db)) "admin_details survives the import, with its low-level keys dropped")
+            (doseq [k [:details :write_data_details :admin_details]]
               (is (= #{} (set (keys (select-keys (get db k) [:subname :classname :connection-uri :INIT]))))
                   (str k " should keep none of the low-level keys"))))
           (finally

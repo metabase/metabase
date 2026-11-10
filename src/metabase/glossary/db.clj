@@ -46,8 +46,3 @@
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
-
-(mu/defn glossary-entry-by-term
-  "The Glossary entry for `term`, or nil."
-  [term :- :string]
-  (t2/select-one :model/Glossary :term term))

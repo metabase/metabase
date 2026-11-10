@@ -1,5 +1,6 @@
 ---
 title: Backing up Metabase
+summary: Back up the application database that holds your questions, dashboards, collections, and settings, with instructions for H2, Amazon RDS, and self-hosted PostgreSQL.
 redirect_from:
   - /docs/latest/operations-guide/backing-up-metabase-application-data
 ---

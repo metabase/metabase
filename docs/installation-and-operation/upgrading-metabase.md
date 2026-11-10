@@ -1,5 +1,6 @@
 ---
 title: Upgrading Metabase
+summary: Upgrade Metabase Cloud or a self-hosted Metabase, including backing up first, what happens during an upgrade, rolling back, and upgrading a cluster.
 redirect_from:
   - /docs/latest/operations-guide/upgrading-metabase
 ---

@@ -18,6 +18,9 @@ import { DataAppListPage } from "./DataAppListPage";
 
 const BUILD_DOCS_URL =
   "https://www.metabase.com/docs/latest/data-apps/build.html";
+const INTRO_TITLE = "Apps built on your semantic layer";
+const INTRO_DESCRIPTION =
+  "Data apps are highly customizable applications built on top of your vetted metrics and data. Create a data app with your AI agent of choice and the Metabase CLI, then sync it with git, and choose which groups can open and use it.";
 
 type SetupOpts = {
   apps: DataApp[];
@@ -67,11 +70,9 @@ describe("DataAppListPage", () => {
     setup({ apps: [] });
 
     expect(
-      await screen.findByText(
-        "Have your AI agent build a data app with the Metabase CLI. The app lives in your Git repository, and reaches each Metabase that syncs with it when you pull the changes.",
-      ),
+      await screen.findByRole("heading", { name: INTRO_TITLE }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Install the Metabase CLI/)).toBeInTheDocument();
+    expect(screen.getByText(INTRO_DESCRIPTION)).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Learn how to build data apps" }),
     ).toHaveAttribute("href", BUILD_DOCS_URL);
@@ -80,10 +81,8 @@ describe("DataAppListPage", () => {
   it("shows the build guide above the apps", async () => {
     setup({ apps: [createMockDataApp()] });
 
-    const guide = await screen.findByRole("region", {
-      name: "How to build a data app",
-    });
-    expect(guide).toHaveTextContent(/Install the Metabase CLI/);
+    const guide = await screen.findByRole("region", { name: INTRO_TITLE });
+    expect(guide).toHaveTextContent(INTRO_DESCRIPTION);
     expect(
       screen.getByRole("link", { name: "Learn how to build data apps" }),
     ).toHaveAttribute("href", BUILD_DOCS_URL);
@@ -99,7 +98,7 @@ describe("DataAppListPage", () => {
     );
 
     expect(
-      screen.queryByRole("region", { name: "How to build a data app" }),
+      screen.queryByRole("region", { name: INTRO_TITLE }),
     ).not.toBeInTheDocument();
     const call = fetchMock.callHistory.lastCall(
       acknowledgementRequestNames.put,
@@ -123,7 +122,7 @@ describe("DataAppListPage", () => {
       ).toBe(true),
     );
     expect(
-      screen.queryByRole("region", { name: "How to build a data app" }),
+      screen.queryByRole("region", { name: INTRO_TITLE }),
     ).not.toBeInTheDocument();
   });
 });

@@ -80,7 +80,6 @@
    [:archived :boolean]
    [:copy {:optional true} :boolean]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_preview {:optional true} [:maybe :boolean]]
    [:fully_parameterized {:optional true} [:maybe :boolean]]
    [:based_on_upload {:optional true} [:maybe [:or ms/PositiveInt :string]]]
    [:collection {:optional true} [:maybe ::Collection]]
@@ -127,6 +126,14 @@
    [:effective_ancestors {:optional true} [:sequential [:ref ::collection]]]
    [:can_restore         {:optional true} :boolean]
    [:can_delete          {:optional true} :boolean]])
+
+(mr/def ::effective-ancestor
+  "A collection that `:effective_ancestors` lists, other than the Root Collection placeholder."
+  [:map {:closed true}
+   [:id                ::lib.schema.id/collection]
+   [:name              :string]
+   [:type              [:maybe :string]]
+   [:personal_owner_id [:maybe ms/PositiveInt]]])
 
 (mr/def ::collection-or-root
   "A Collection row, or the Root Collection placeholder."

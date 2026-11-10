@@ -24934,7 +24934,6 @@
       "parameter_mappings": [],
       "display": "table",
       "entity_id": "noB7eY-iX0Wo-n8USQTJo",
-      "collection_preview": true,
       "visualization_settings": {
         "table.cell_column": "SUBTOTAL"
       },

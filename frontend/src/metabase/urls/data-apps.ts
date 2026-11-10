@@ -17,13 +17,6 @@ export const DATA_APP_ROOT_URL = `/${DATA_APP_URL_SEGMENT}`;
  */
 export const DATA_APP_EMBED_PREFIX = `/embed/${DATA_APP_URL_SEGMENT}`;
 
-/**
- * Same-origin document Near-Membrane loads as the sandbox realm iframe. It carries
- * its own CSP granting `'unsafe-eval'`, which is what lets the data-app document
- * itself drop that grant.
- */
-export const DATA_APP_REALM_HOST_URL = "/api/ee/apps/sandbox-host";
-
 export function dataApp(name: string) {
   return `${DATA_APP_ROOT_URL}/${encodeURIComponent(name)}`;
 }

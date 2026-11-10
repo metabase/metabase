@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -11,6 +12,11 @@
   "Lifecycle states for a table index request. Mirrors `metabase.indexes.schema/statuses`; duplicated here (rather
   than required) to keep this namespace free of module-internal logic dependencies."
   [:enum :create-pending :update-pending :delete-pending :running :succeeded :failed])
+
+(mu/defn synced-table-indexes-clause :- [:fn vector?]
+  "The clause over the TableIndex table aliased `alias` selecting the indexes of the transforms remote sync syncs."
+  [alias :- :keyword]
+  (remote-sync/synced-fk-clause alias :transform_id :model/Transform))
 
 (mu/defn table-indexes-for-transform
   "The TableIndexes of the Transform with `transform-id`, in id order."

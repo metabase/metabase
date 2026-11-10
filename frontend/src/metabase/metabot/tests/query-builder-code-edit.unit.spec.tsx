@@ -17,12 +17,11 @@ import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMes
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type { State } from "metabase/redux/store";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
-  createMockNativeDatasetQuery,
   createMockUser,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
@@ -55,12 +54,10 @@ const SUGGESTED_SQL = "SELECT * FROM ORDERS";
 
 const TEST_NATIVE_CARD = createMockCard({
   id: 101,
-  dataset_query: createMockNativeDatasetQuery({
-    database: TEST_DB.id,
-    native: {
-      query: INITIAL_SQL,
-    },
-  }),
+  query_type: "native",
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query: INITIAL_SQL }),
+  ),
 });
 
 const QuerySuggestionProbe = ({ question }: { question: Question }) => {
@@ -158,7 +155,7 @@ describe("query builder code edits from omnibot", () => {
     } as any);
 
     const metadata = createMockMetadataFromState(storeInitialState);
-    const question = checkNotNull(metadata.question(TEST_NATIVE_CARD.id));
+    const question = new Question(TEST_NATIVE_CARD, metadata);
 
     const { store } = renderWithProviders(
       <MetabotProvider>

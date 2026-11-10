@@ -8,6 +8,9 @@ import {
   setup,
   testConversationId,
 } from "metabase/metabot/tests/utils";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { MetabotChatHistory } from "./MetabotChatHistory";
 
@@ -85,11 +88,11 @@ describe("MetabotChatHistory", () => {
               title: "Orders",
               query: {
                 id: "q-1",
-                query: {
-                  database: 1,
-                  type: "query",
-                  query: { "source-table": 1 },
-                },
+                query: Lib.toJsQuery(
+                  Lib.createTestQuery(SAMPLE_PROVIDER, {
+                    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+                  }),
+                ),
               },
               display: "table",
             },

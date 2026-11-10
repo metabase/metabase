@@ -54,7 +54,7 @@ The function receives a URL string. Return `{ handled: true }` to prevent defaul
 
 The plugin `handleLink` can only be used [globally](#plugin-scope) on provider level. `handleLink` is also available in [web components](../config.md#web-component-plugins) via `pluginsConfig` in `defineMetabaseConfig`, with the same API.
 
-To create clickable links in your table columns, set the column's formatting to [display as link](../../data-modeling/metadata/formatting.md#display-as).
+To create clickable links in your table columns, set the column's formatting to [display as link](../../data-modeling/metadata/formatting.md#display-as-text-link-or-image).
 
 ### `getNoDataIllustration` and `getNoObjectIllustration`
 

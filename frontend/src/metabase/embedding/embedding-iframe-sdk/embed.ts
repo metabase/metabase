@@ -1,9 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import type {
   NavigatedEntityParameters,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
 import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-shared/errors";
 import * as MetabaseErrors from "embedding-sdk-shared/errors";
+import {
+  getDataAppEmbedUrl,
+  getEmbeddedAppNameFromPath,
+  normalizeDataAppPath,
+  validateDataAppPath,
+} from "embedding-sdk-shared/lib/embedded-data-app-path";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
@@ -170,6 +177,9 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   private _authManager: EmbedAuthManager | null = null;
   private _removeMessageListener: (() => void) | null = null;
 
+  // Used to track if the data app path prop has changed or not
+  private _dataAppPath: string | null = null;
+
   ["custom-context"]: unknown;
 
   constructor() {
@@ -189,7 +199,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         const attrValue = this.getAttribute(attr);
         if (attrValue !== null) {
           const key = attributeToSettingKey(attr);
-          acc[key] = parseAttributeValue(attrValue);
+          acc[key] = parseAttributeValue(attrValue, attr);
         }
         return acc;
       },
@@ -268,6 +278,10 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       ...settings,
     } as SdkIframeEmbedElementSettings;
 
+    if (this._handleDataAppPathPropChange(settings, newValues)) {
+      return;
+    }
+
     // If the iframe isn't ready yet, don't send the message now.
     if (!this._isEmbedReady) {
       return;
@@ -308,13 +322,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       this.id = `metabase-embed-${Math.random().toString(36).slice(2)}`;
     }
 
-    try {
-      this._setup();
-
-      registerEmbed(this);
-    } catch (error) {
-      console.error("[metabase.embed.error]", error);
-    }
+    this._initializeEmbed();
   }
 
   disconnectedCallback() {
@@ -327,7 +335,24 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     oldVal: string | null,
     newVal: string | null,
   ) {
-    if (!this._iframe || oldVal === newVal) {
+    if (!this._iframe) {
+      if (
+        oldVal !== newVal &&
+        this.isConnected &&
+        this._componentName === "metabase-data-app" &&
+        attrName === "path"
+      ) {
+        this._initializeEmbed();
+      }
+
+      return;
+    }
+
+    if (this._handleRepeatedDataAppPathWrite(attrName, oldVal, newVal)) {
+      return;
+    }
+
+    if (oldVal === newVal) {
       return;
     }
 
@@ -342,7 +367,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     this._updateSettings({
-      [key]: parseAttributeValue(newVal),
+      [key]: parseAttributeValue(newVal, attrName),
     });
   }
 
@@ -354,37 +379,109 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
   }
 
-  private _setup() {
-    this._validateEmbedSettings(this.properties);
+  private _initializeEmbed() {
+    try {
+      this._setup();
 
-    // Initialize the auth manager
+      registerEmbed(this);
+    } catch (error) {
+      console.error("[metabase.embed.error]", error);
+    }
+  }
+
+  private _setup() {
+    const props = this.properties;
+    this._validateEmbedSettings(props);
+
+    if (props.componentName === "metabase-data-app") {
+      this._setupDataAppIframe(props);
+      return;
+    }
+
+    this._setupIframe(props);
+  }
+
+  private _setupIframe({ instanceUrl }: { instanceUrl: string }) {
+    const iframe = this._createIframe(
+      new URL(`${instanceUrl}/${EMBEDDING_ROUTE}`),
+    );
+
     this._authManager = PLUGIN_EMBED_JS_EE.EmbedAuthManager
       ? new PLUGIN_EMBED_JS_EE.EmbedAuthManager(this)
       : null;
 
-    this._iframe = document.createElement("iframe");
-    // Random query param is needed to allow parallel EmbedJS iframes loading.
-    // Without it multiple EmbedJS iframes on a page loaded sequentially.
-    // We don't cache the iframe content, so random query parameter does not break caching.
-    this._iframe.src = `${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}?${EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME}=${_iframeCounter++}`;
-    this._iframe.style.width = "100%";
-    this._iframe.style.height = "100%";
-    this._iframe.style.border = "none";
-    this._iframe.style.minHeight = "600px";
-
-    this._iframe.setAttribute("data-metabase-embed", "true");
-
-    // Chrome blocks the Clipboard API in cross-origin iframes unless the host
-    // explicitly delegates the permission (e.g. copying a Metabot answer).
-    this._iframe.setAttribute("allow", "clipboard-write");
-
     this._removeMessageListener = listenForEajsMessages({
       messageSource: "iframe-content",
-      iframe: this._iframe,
+      iframe,
       handler: this._handleMessage,
     });
 
-    this.appendChild(this._iframe);
+    this.appendChild(iframe);
+  }
+
+  private _setupDataAppIframe({
+    instanceUrl,
+    path,
+  }: {
+    instanceUrl: string;
+    path: string;
+  }) {
+    this._dataAppPath = path;
+
+    const element = this;
+    const iframe = this._createIframe(getDataAppEmbedUrl(instanceUrl, path));
+
+    const context: EmbedAuthManagerContext = {
+      get properties() {
+        return element.properties;
+      },
+      sendMessage: (type, data) => {
+        // Discard auth messages if the requesting iframe is no longer current.
+        if (this._iframe === iframe) {
+          this.sendMessage(type, data);
+        }
+      },
+    };
+
+    this._authManager = PLUGIN_EMBED_JS_EE.EmbedAuthManager
+      ? new PLUGIN_EMBED_JS_EE.EmbedAuthManager(context)
+      : null;
+
+    this._removeMessageListener = listenForEajsMessages({
+      messageSource: "iframe-content",
+      iframe,
+      expectedOrigin: new URL(instanceUrl).origin,
+      handler: this._handleMessage,
+    });
+
+    this.appendChild(iframe);
+  }
+
+  private _createIframe(url: URL) {
+    // Random query param is needed to allow parallel EmbedJS iframes loading.
+    // Without it multiple EmbedJS iframes on a page loaded sequentially.
+    // We don't cache the iframe content, so random query parameter does not break caching.
+    url.searchParams.set(
+      EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME,
+      String(_iframeCounter++),
+    );
+
+    const iframe = document.createElement("iframe");
+    this._iframe = iframe;
+
+    iframe.src = url.toString();
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+    iframe.style.border = "none";
+    iframe.style.minHeight = "600px";
+
+    iframe.setAttribute("data-metabase-embed", "true");
+
+    // Chrome blocks the Clipboard API in cross-origin iframes unless the host
+    // explicitly delegates the permission (e.g. copying a Metabot answer).
+    iframe.setAttribute("allow", "clipboard-write");
+
+    return iframe;
   }
 
   private _getIsLocalhost() {
@@ -415,6 +512,19 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   private _validateEmbedSettings(settings: SdkIframeEmbedElementSettings) {
     if (!settings.instanceUrl) {
       raiseError("instanceUrl must be provided");
+    }
+
+    if (settings.componentName === "metabase-data-app") {
+      validateDataAppPath(settings.path);
+
+      if (
+        settings.isGuest ||
+        settings.guestEmbedProviderUri ||
+        settings.useExistingUserSession ||
+        settings.apiKey
+      ) {
+        raiseError("Data apps require SSO authentication.");
+      }
     }
 
     // Ensure auth methods are mutually exclusive
@@ -484,7 +594,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
           type: "metabase.embed.handleLinkResponse",
           data: { requestId, handled },
         },
-        "*",
+        this._getMessageTargetOrigin(),
       );
     }
 
@@ -533,9 +643,17 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
       this._iframe.contentWindow.postMessage(
         { type, data: normalizedData },
-        "*",
+        this._getMessageTargetOrigin(),
       );
     }
+  }
+
+  private _getMessageTargetOrigin() {
+    if (this._componentName === "metabase-data-app") {
+      return new URL(this.globalSettings.instanceUrl).origin;
+    }
+
+    return "*";
   }
 
   private _reportAuthenticationError(error: unknown) {
@@ -672,6 +790,67 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     return data.jwt;
+  }
+
+  private _handleRepeatedDataAppPathWrite(
+    attrName: string,
+    oldValue: string | null,
+    newValue: string | null,
+  ): boolean {
+    const isRepeatedDataAppPathWrite =
+      this._componentName === "metabase-data-app" &&
+      attrName === "path" &&
+      oldValue === newValue &&
+      newValue !== null;
+
+    if (!isRepeatedDataAppPathWrite) {
+      return false;
+    }
+
+    this.sendMessage("metabase.embed.navigateToDataAppPath", {
+      path: newValue,
+    });
+
+    return true;
+  }
+
+  /**
+   * Data app path property can be changed after the embed is created.
+   *
+   * Switching app name re-mounts the iframe. Otherwise, only do client-side routing.
+   */
+  private _handleDataAppPathPropChange(
+    settings: Partial<SdkIframeEmbedElementSettings>,
+    nextValues: SdkIframeEmbedElementSettings,
+  ): boolean {
+    const hasDataAppPathChanged =
+      nextValues.componentName === "metabase-data-app" &&
+      "path" in settings &&
+      normalizeDataAppPath(nextValues.path) !==
+        normalizeDataAppPath(this._dataAppPath ?? "");
+
+    if (!hasDataAppPathChanged) {
+      return false;
+    }
+
+    this._validateEmbedSettings(nextValues);
+
+    // Do not remount when the app name remains the same.
+    // `useDataAppPathNavigation` hook will do client-side routing.
+    if (
+      getEmbeddedAppNameFromPath(nextValues.path) ===
+      getEmbeddedAppNameFromPath(this._dataAppPath ?? "")
+    ) {
+      return false;
+    }
+
+    this._removeMessageListener?.();
+    this._isEmbedReady = false;
+    this._iframe?.remove();
+    this._iframe = null;
+    this._setup();
+
+    return true;
   }
 
   // `parameters`, `sqlParameters` and `navigatedEntityParameters` are JS properties whose value
@@ -866,6 +1045,24 @@ export const MetabaseQuestionElement = createCustomElement(
 );
 export type MetabaseQuestionElement = InstanceType<
   typeof MetabaseQuestionElement
+>;
+
+export const MetabaseDataAppElement = createCustomElement(
+  "metabase-data-app",
+  ["path"],
+  (Base) =>
+    class extends Base {
+      get path(): string {
+        return this.getAttribute("path") ?? "";
+      }
+      set path(value: string) {
+        this.setAttribute("path", value);
+      }
+    },
+);
+
+export type MetabaseDataAppElement = InstanceType<
+  typeof MetabaseDataAppElement
 >;
 
 const MetabaseManageContentElement = createCustomElement("metabase-browser", [

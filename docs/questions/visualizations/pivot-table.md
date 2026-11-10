@@ -1,5 +1,6 @@
 ---
 title: Pivot tables
+summary: Swap rows and columns, group data, and add subtotals and grand totals, with conditional formatting and heatmaps.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/pivot-table
 ---

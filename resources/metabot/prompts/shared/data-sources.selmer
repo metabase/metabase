@@ -1,0 +1,2 @@
+{% include "metabot/prompts/shared/prompt_snippets/data-sources.selmer" %}
+{% if has_query_execution %}{% include "metabot/prompts/shared/prompt_snippets/cross-database-query-per-database.selmer" %}{% else %}{% include "metabot/prompts/shared/prompt_snippets/cross-database-refusal.selmer" %}{% endif %}
