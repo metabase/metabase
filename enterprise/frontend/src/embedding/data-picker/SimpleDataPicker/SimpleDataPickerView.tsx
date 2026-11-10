@@ -6,6 +6,7 @@ import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { CONTAINER_WIDTH } from "metabase/querying/common/components/DataSelector/constants";
 import { Flex, Icon, NavLink, Paper, ScrollArea, TextInput } from "metabase/ui";
+import type { SearchModel } from "metabase-types/api";
 
 interface SimpleDataPickerProps {
   selectedSource?: DataSource;
@@ -16,6 +17,7 @@ interface SimpleDataPickerProps {
 interface Options {
   source: DataSource;
   name: string;
+  model: SearchModel;
 }
 
 const TEN_OPTIONS_HEIGHT = 10 * 33;
@@ -82,7 +84,15 @@ export function SimpleDataPickerView({
                 <NavLink
                   key={`${option.source.type}:${option.source.id}`}
                   active={isSelected}
-                  leftSection={<Icon c={iconColor} name="table" aria-hidden />}
+                  leftSection={
+                    <Icon
+                      c={iconColor}
+                      // Embedding shows models as tables, so they share the table icon. A metric
+                      // gets its own: picking one summarizes its table, not its rows.
+                      name={option.model === "metric" ? "metric" : "table"}
+                      aria-hidden
+                    />
+                  }
                   label={tc(option.name)}
                   onClick={() => onClick(option.source)}
                   variant="primary"

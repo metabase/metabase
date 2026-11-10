@@ -1,4 +1,5 @@
 import { QueryStatus } from "@reduxjs/toolkit/query";
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
@@ -10,6 +11,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { defer } from "metabase/utils/promise";
@@ -18,6 +20,8 @@ import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
+
+import type { SavedEntityType } from "../types";
 
 import { SavedEntityPicker } from "./SavedEntityPicker";
 
@@ -40,6 +44,23 @@ const COLLECTIONS = {
     here: ["card"],
   }),
 };
+
+const LIBRARY_METRICS_COLLECTION = createMockCollection({
+  id: 6466,
+  name: "Metrics",
+  type: "library-metrics",
+  here: ["metric"],
+});
+const LIBRARY_COLLECTION = createMockCollection({
+  id: 6464,
+  name: "Library",
+  type: "library",
+  below: ["metric"],
+  children: [
+    createMockCollection({ id: 6465, name: "Data", type: "library-data" }),
+    LIBRARY_METRICS_COLLECTION,
+  ],
+});
 
 function mockCollectionItemsEndpoint() {
   fetchMock.get({
@@ -72,6 +93,8 @@ function mockCollectionItemsEndpoint() {
 }
 
 type SetupOpts = {
+  type?: SavedEntityType;
+  collections?: Collection[];
   rootCollectionRequest?: "loads-after-collections" | "fails";
   collectionsTreeRequest?: "fails";
 };
@@ -89,6 +112,8 @@ function mockRootCollectionRequest(
 }
 
 async function setup({
+  type = "question",
+  collections = [COLLECTIONS.PERSONAL, COLLECTIONS.REGULAR],
   rootCollectionRequest,
   collectionsTreeRequest,
 }: SetupOpts = {}) {
@@ -96,9 +121,7 @@ async function setup({
   if (collectionsTreeRequest === "fails") {
     fetchMock.get("path:/api/collection/tree", 500);
   }
-  setupCollectionsEndpoints({
-    collections: [COLLECTIONS.PERSONAL, COLLECTIONS.REGULAR],
-  });
+  setupCollectionsEndpoints({ collections });
 
   mockCollectionItemsEndpoint();
 
@@ -114,11 +137,7 @@ async function setup({
   }
 
   const { store } = renderWithProviders(
-    <SavedEntityPicker
-      type="question"
-      onSelect={jest.fn()}
-      onBack={jest.fn()}
-    />,
+    <SavedEntityPicker type={type} onSelect={jest.fn()} onBack={jest.fn()} />,
   );
   // a held "Our analytics" keeps the loader up until the test releases it
   if (rootCollectionRequest !== "loads-after-collections") {
@@ -156,6 +175,29 @@ describe("SavedEntityPicker", () => {
 
     const options = await screen.findAllByTestId("option-text");
     expect(options.map((node) => node.textContent)).toEqual(["a", "A", "B"]);
+  });
+
+  it("requests Library collections so items published in the Library are listed", async () => {
+    await setup();
+
+    const [call] = fetchMock.callHistory.calls("path:/api/collection/tree");
+    expect(new URL(call.url).searchParams.get("include-library")).toBe("true");
+  });
+
+  it("lists the metrics in the Library's Metrics folder when selecting the Library collection in the Metrics bucket", async () => {
+    setupCollectionItemsEndpoint({
+      collection: LIBRARY_METRICS_COLLECTION,
+      collectionItems: [
+        createMockCollectionItem({ id: 4, name: "Revenue", model: "metric" }),
+      ],
+    });
+    await setup({ type: "metric", collections: [LIBRARY_COLLECTION] });
+
+    const tree = screen.getByTestId("saved-entity-collection-tree");
+    expect(within(tree).queryByText("Metrics")).not.toBeInTheDocument();
+    await userEvent.click(within(tree).getByText("Library"));
+
+    expect(await screen.findByText("Revenue")).toBeInTheDocument();
   });
 
   it("shows a loader while Our analytics is still loading after the collections", async () => {
