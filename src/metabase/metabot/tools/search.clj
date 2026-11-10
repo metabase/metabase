@@ -172,6 +172,32 @@
   [location]
   (some-> location collection/location-path->ids))
 
+(defn- readable-collection-ids
+  "The ids of the Collection `rows` the current user can read."
+  [rows]
+  (into #{} (comp (filter mi/can-read?) (map :id)) rows))
+
+(defn- without-unreadable-collection
+  "`result` without its nested `:collection` when the current user can't read that collection.
+  A table, and so a measure or segment bound to it, is reachable through data permissions, which say nothing about
+  the collection it is published in.
+  The nested map carries the collection's name, and [[enrich-with-collection-descriptions]] may have added its
+  description."
+  [readable-ids result]
+  (let [cid (result-collection-id result)]
+    (cond-> result
+      (and cid (not (collection-result? result)) (not (readable-ids cid)))
+      (dissoc :collection))))
+
+(defn- remove-unreadable-collections
+  "Drop the nested `:collection` from each result whose collection the current user can't read."
+  [results]
+  (let [ids          (->> results (remove collection-result?) (keep result-collection-id) distinct)
+        readable-ids (if (seq ids)
+                       (readable-collection-ids (metabot.db/collection-path-rows ids))
+                       #{})]
+    (mapv (partial without-unreadable-collection readable-ids) results)))
+
 (defn- enrich-with-collection-paths
   "Stamp each collection-bearing result with :collection_path and :library_member (boolean, gated by the
    :library premium feature).
@@ -203,7 +229,7 @@
         ;; A table (and so a measure/segment bound to it) is reachable through *data* permissions,
         ;; which say nothing about its collection. Everything name-shaped is gated on reading that
         ;; collection; only the root's `:type` survives below, per the disclosure note there.
-        readable-ids (into #{} (comp (filter mi/can-read?) (map :id)) direct-rows)
+        readable-ids (readable-collection-ids direct-rows)
         ;; The names from the top of the readable chain down to `coll-id`, or down to its parent when
         ;; `include-self?` is false. Only readable ancestors (from :effective_location) contribute names,
         ;; so we never leak the name of a collection the user can't see.
@@ -234,12 +260,7 @@
     (mapv (fn [r]
             (let [cid  (result-collection-id r)
                   path (when cid (path-of cid (not (collection-result? r))))]
-              (cond-> r
-                ;; drop the whole nested map when its collection is unreadable: it carries the name,
-                ;; and `enrich-with-collection-descriptions` may already have added the description
-                (and cid (not (readable-ids cid)) (not (collection-result? r)))
-                (dissoc :collection)
-
+              (cond-> (without-unreadable-collection readable-ids r)
                 path (assoc :collection_path path)
                 ;; Only expose the premium `:library_member` signal when the feature is on, leaving the
                 ;; key absent otherwise so external /v1/search consumers see a consistent shape.
@@ -640,6 +661,8 @@
              enrich-with-portable-entity-ids
              enrich-with-metric-sources
              enrich-with-measure-segment-base-tables
+             ;; after base tables: that step resolves a measure/segment's binding collection
+             remove-unreadable-collections
              (validate-and-enrich-documents (boolean archived)))
         (vary-meta assoc
                    :total total

@@ -13,6 +13,7 @@
    [metabase.mcp.v2.tools.search :as tools.search]
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -498,6 +499,25 @@
               (is (not (:isError content)))
               (is (some #(and (= "table" (:type %)) (= table-id (:id %))) rows)
                   (str "the table is in the results: " (pr-str rows))))))))))
+
+(deftest search-hides-unreadable-collection-on-published-table-test
+  (testing "a published table in a collection the user can't read shows neither its name nor its description"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-additional-premium-features #{:library}
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Collection {secret-id :id} {:name        "McpSecretColl"
+                                                            :description "McpSecretDescription"
+                                                            :type        "library-data"}
+                         :model/Database   {db-id :id}     {:name "McpPublishedDB"}
+                         :model/Table      _               {:name "McpPublishedTable" :db_id db-id
+                                                            :is_published true :collection_id secret-id}]
+            (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+            (mt/with-current-user (mt/user->id :rasta)
+              (let [text (-> (tools.search/search-tool {:term_queries ["McpPublished"] :type ["table"]}
+                                                       {:token-scopes #{"agent:content:read"}})
+                             :content first :text)]
+                (is (str/includes? text "McpPublishedTable") "the table is still reachable through data permissions")
+                (is (not (str/includes? text "McpSecret")))))))))))
 
 (deftest library-table-ranks-first-test
   (testing "search ranks a table in the Library above a final-layer table outside it"

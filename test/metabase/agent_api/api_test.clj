@@ -226,6 +226,25 @@
             (is (contains? results ["AgentSearchAcmeDashboard" "dashboard"]))
             (is (contains? results ["AgentSearchAcmeCollection" "collection"]))))))))
 
+(deftest search-hides-unreadable-collection-on-published-table-test
+  (testing "a published table in a collection the user can't read shows neither its name nor its description"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-additional-premium-features #{:library}
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Collection {secret-id :id} {:name        "AgentSearchSecretColl"
+                                                            :description "AgentSearchSecretDescription"
+                                                            :type        "library-data"}
+                         :model/Database   {db-id :id}     {:name "AgentSearchPublishedDB"}
+                         :model/Table      {tbl-id :id}    {:name "AgentSearchPublishedTable" :db_id db-id
+                                                            :is_published true :collection_id secret-id}]
+            (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+            (let [row (some #(when (= tbl-id (:id %)) %)
+                            (:data (mt/user-http-request :rasta :post 200 "agent/v1/search"
+                                                         {:term_queries ["AgentSearchPublished"]})))]
+              (is (some? row) "the table is still reachable through data permissions")
+              (is (nil? (:collection row)))
+              (is (not (str/includes? (pr-str row) "AgentSearchSecret"))))))))))
+
 (deftest coerce-query-list-test
   (let [coerce #'agent-api.api/coerce-query-list]
     (testing "arrays pass through unchanged"

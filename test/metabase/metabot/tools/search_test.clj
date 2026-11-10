@@ -767,6 +767,27 @@
                   (is (true? (:library_member tbl)))
                   (is (true? (:library_member msr))))))))))))
 
+(deftest multi-query-search-hides-unreadable-collection-test
+  ;; The multi-query `search` behind `/v1/search` and MCP v2 has no collection-path step, so it needs its own
+  ;; check that a published table carries no name or description of a collection the user can't read.
+  (testing "a published table in an unreadable collection carries no collection through the multi-query search"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-additional-premium-features #{:library}
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Collection {secret-id :id} {:name        "Pb7SecretColl"
+                                                            :description "Pb7SecretDescription"
+                                                            :type        "library-data"}
+                         :model/Database   {db-id :id}     {:name "Pb7DB"}
+                         :model/Table      {tbl-id :id}    {:name "Pb7PublishedTable" :db_id db-id
+                                                            :is_published true :collection_id secret-id}]
+            (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+            (mt/with-test-user :rasta
+              (let [tbl (some #(when (= tbl-id (:id %)) %)
+                              (search/search {:term-queries ["Pb7"] :entity-types ["table"]}))]
+                (is (some? tbl) "the table is still reachable through data permissions")
+                (is (nil? (:collection tbl)))
+                (is (not (str/includes? (pr-str tbl) "Pb7Secret")))))))))))
+
 (deftest measure-segment-inherit-library-membership-test
   ;; A measure or segment is only surfaced by `retrieve_library_entities` because its binding table
   ;; was published into the Library, so it must carry the same `library_member` the table does.
