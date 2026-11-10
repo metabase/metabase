@@ -321,6 +321,24 @@
           (search.ingestion/doc-ids "action" [:= 1 :this.model_id])))
       (is (=? [{:limit 3}] @queries)))))
 
+(deftest cascade-enumeration-counts-documents-not-rows-test
+  (testing "a document whose row a spec join repeats counts once toward the ceiling"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card       {card-id :id} {:name "Twice Revised Card", :collection_id coll-id}]
+      ;; Raw inserts, since the model's hooks keep a single `most_recent` revision.
+      (t2/insert! (t2/table-name :model/Revision) (repeat 2 {:model       "Card"
+                                                             :model_id    card-id
+                                                             :object      "{}"
+                                                             :user_id     (mt/user->id :rasta)
+                                                             :timestamp   :%now
+                                                             :most_recent true}))
+      (try
+        ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+        (with-redefs [search.ingestion/max-enumerated-documents 1]
+          (is (= #{card-id} (search.ingestion/doc-ids "card" [:= coll-id :this.collection_id]))))
+        (finally
+          (t2/delete! (t2/table-name :model/Revision) :model "Card" :model_id card-id))))))
+
 (deftest reconcile-leaves-unenumerable-survivors-alone-test
   (testing "when the surviving documents cannot be enumerated, reconcile purges none of them"
     (search.tu/with-appdb-search-if-available-without-fallback
