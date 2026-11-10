@@ -623,7 +623,10 @@
   ;; with data before init runs, the workspace user inherits read access to that
   ;; data. Whether to refuse-on-collision or clear-on-collision is a design
   ;; decision tracked separately; this test does not assert one way or the other.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
+  ;; MySQL refuses the existing database instead: see `metabase.driver.mysql.workspace-test`.
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :workspace)
+                        (filter #(isa? driver/hierarchy % :sql-jdbc))
+                        (remove #{:mysql}))
     (testing "init-workspace-isolation! is robust when its target output namespace already exists"
       (let [driver       driver/*driver*
             database     (mt/db)
@@ -1102,8 +1105,10 @@
   ;; per provisioning attempt, so init must reset the surviving user's password
   ;; — engines whose `CREATE USER IF NOT EXISTS` silently no-ops need an
   ;; explicit ALTER, or the persisted password stops matching the warehouse.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
-                           (mt/normal-drivers-with-feature :workspace))
+  ;; MySQL refuses the existing user instead: see `metabase.driver.mysql.workspace-test`.
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :workspace)
+                        (filter #(isa? driver/hierarchy % :sql-jdbc))
+                        (remove #{:mysql}))
     (testing "re-running init for the same workspace id resets the user's password"
       (let [driver    driver/*driver*
             database  (mt/db)

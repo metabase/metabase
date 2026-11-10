@@ -1399,10 +1399,47 @@
 (defn- quote-schema [s] (sql.u/quote-name :mysql :schema s))
 (defn- quote-field  [s] (sql.u/quote-name :mysql :field s))
 
+(defn- grant-db-wildcards?
+  "Whether `_` and `%` are wildcards in the database of a `GRANT ... ON db.*`. They are, unless MySQL's
+  `partial_revokes` is ON, which makes them literal. MariaDB has no `partial_revokes`."
+  [conn]
+  (not= "ON" (:value (first (jdbc/query conn ["SHOW GLOBAL VARIABLES LIKE 'partial_revokes'"])))))
+
+(defn- quote-grant-db
+  "`db` quoted as the database of a `GRANT ... ON db.*`. When `_` and `%` are wildcards there, a grant on `mb_ws`
+  would also cover `mbXws`: they are escaped, so the grant covers `db` alone."
+  [wildcards? db]
+  (quote-schema (cond-> db
+                  wildcards? (str/replace #"[_%]" "\\\\$0"))))
+
 (defn- mysql-user-exists?
   "Check if a MySQL user exists."
   [conn username]
   (seq (jdbc/query conn ["SELECT 1 FROM mysql.user WHERE user = ?" username])))
+
+(defn- database-exists? [conn db-name]
+  (seq (jdbc/query conn ["SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?" db-name])))
+
+(defn- workspace-object-exists-error [kind quoted-name]
+  (ex-info (format "The warehouse already has a %s named %s. It may belong to another workspace, so it was left unchanged."
+                   kind quoted-name)
+           {:status-code 409, :workspace/cleanup? false}))
+
+(defn- init-workspace-isolation-sqls
+  "The statements that create the workspace database `db-name` and the user `user`, and grant the user its database.
+  Neither has IF NOT EXISTS: an object that is already there may belong to another workspace."
+  [wildcards? db-name user escaped-password]
+  (let [quoted-user (quote-field user)]
+    [(format "CREATE DATABASE %s" (quote-schema db-name))
+     (format "CREATE USER %s@'%%' IDENTIFIED BY '%s'" quoted-user escaped-password)
+     ;; Least-privilege grant on the workspace's own DB (vs. ALL PRIVILEGES,
+     ;; dropping GRANT OPTION, CREATE VIEW/ROUTINE, TRIGGER, etc.):
+     ;;   SELECT, INSERT, UPDATE, DELETE - full DML on its own tables
+     ;;   CREATE - transform target / CTAS
+     ;;   DROP   - swap/cleanup
+     ;;   ALTER  - required (with DROP/CREATE) for RENAME TABLE swaps
+     (format "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER ON %s.* TO %s@'%%'"
+             (quote-grant-db wildcards? db-name) quoted-user)]))
 
 (defmethod driver/init-workspace-isolation! :mysql
   [driver database workspace]
@@ -1410,70 +1447,80 @@
   ;; We create a separate database for workspace isolation.
   (let [db-name          (:schema workspace)
         {:keys [user password]} (:database_details workspace)
-        escaped-password (sql.u/escape-sql password :ansi)
-        quoted-db        (quote-schema db-name)
-        quoted-user      (quote-field user)]
+        escaped-password (sql.u/escape-sql password :ansi)]
     ;; No transaction: MySQL DDL (CREATE DATABASE/USER, GRANT) implicitly commits
     ;; per statement, so a transaction wrapper would be decorative. Failure
     ;; recovery is compensation via the idempotent destroy, not rollback.
     (sql-jdbc.execute/do-with-connection-with-options
      driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
-       (let [user-sql (if (mysql-user-exists? {:connection conn} user)
-                        (format "ALTER USER %s@'%%' IDENTIFIED BY '%s'"
-                                quoted-user escaped-password)
-                        (format "CREATE USER %s@'%%' IDENTIFIED BY '%s'"
-                                quoted-user escaped-password))]
-         (with-open [^Statement stmt (.createStatement conn)]
-           (doseq [sql [;; Create the isolated database
-                        (format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
-                        user-sql
-                        ;; Least-privilege grant on the workspace's own DB (vs. ALL PRIVILEGES,
-                        ;; dropping GRANT OPTION, CREATE VIEW/ROUTINE, TRIGGER, etc.):
-                        ;;   SELECT, INSERT, UPDATE, DELETE - full DML on its own tables
-                        ;;   CREATE - transform target / CTAS
-                        ;;   DROP   - swap/cleanup
-                        ;;   ALTER  - required (with DROP/CREATE) for RENAME TABLE swaps
-                        (format "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER ON %s.* TO %s@'%%'"
-                                quoted-db quoted-user)]]
-             (.addBatch ^Statement stmt ^String sql))
-           (try
-             (.executeBatch ^Statement stmt)
-             (catch Throwable t
-               (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password]))))))))
-    nil))
-
-(defmethod driver/destroy-workspace-isolation! :mysql
-  [driver database workspace]
-  (let [db-name     (:schema workspace)
-        username    (-> workspace :database_details :user)
-        quoted-db   (quote-schema db-name)
-        quoted-user (quote-field username)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver (driver.u/ensure-lib-database database) {:write? true}
-     (fn [^Connection conn]
+       ;; refused before any DDL, so the refusal leaves nothing to tear down
+       (when (mysql-user-exists? {:connection conn} user)
+         (throw (workspace-object-exists-error "user" (quote-field user))))
+       (when (database-exists? {:connection conn} db-name)
+         (throw (workspace-object-exists-error "database" (quote-schema db-name))))
        (with-open [^Statement stmt (.createStatement conn)]
-         (doseq [sql (cond-> [(format "DROP DATABASE IF EXISTS %s" quoted-db)]
-                       (mysql-user-exists? {:connection conn} username)
-                       (conj (format "DROP USER IF EXISTS %s@'%%'" quoted-user)))]
+         (doseq [sql (init-workspace-isolation-sqls (grant-db-wildcards? {:connection conn})
+                                                    db-name user escaped-password)]
            (.addBatch ^Statement stmt ^String sql))
          (try
            (.executeBatch ^Statement stmt)
            (catch Throwable t
-             (throw (driver.u/batch-exception t)))))))))
+             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password])))))))
+    nil))
+
+(defn- lock-workspace-user-sql
+  "Locks the workspace user's account, so it cannot open a session between the kills and the drops of teardown."
+  [user]
+  (format "ALTER USER IF EXISTS %s@'%%' ACCOUNT LOCK" (quote-field user)))
+
+(defn- drop-workspace-isolation-sqls [db-name user user-exists?]
+  (cond-> [(format "DROP DATABASE IF EXISTS %s" (quote-schema db-name))]
+    user-exists? (conj (format "DROP USER IF EXISTS %s@'%%'" (quote-field user)))))
+
+(defn- kill-user-sessions!
+  "Ends every session of `user`. A session open in a transaction holds metadata locks on the tables it used, and DROP
+  DATABASE waits for them; DROP USER leaves its sessions open."
+  [conn ^Statement stmt user]
+  (doseq [id (map :id (jdbc/query conn ["SELECT ID AS id FROM information_schema.PROCESSLIST WHERE USER = ?" user]))]
+    (try
+      (.execute stmt (format "KILL %d" (long id)))
+      (catch java.sql.SQLException e
+        ;; ER_NO_SUCH_THREAD: the session ended on its own
+        (when-not (= 1094 (.getErrorCode e))
+          (throw e))))))
+
+(defmethod driver/destroy-workspace-isolation! :mysql
+  [driver database workspace]
+  (let [db-name  (:schema workspace)
+        username (-> workspace :database_details :user)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver (driver.u/ensure-lib-database database) {:write? true}
+     (fn [^Connection conn]
+       (let [user-exists? (boolean (mysql-user-exists? {:connection conn} username))]
+         (with-open [^Statement stmt (.createStatement conn)]
+           (when user-exists?
+             (.execute stmt (lock-workspace-user-sql username))
+             (kill-user-sessions! {:connection conn} stmt username))
+           (doseq [sql (drop-workspace-isolation-sqls db-name username user-exists?)]
+             (.addBatch ^Statement stmt ^String sql))
+           (try
+             (.executeBatch ^Statement stmt)
+             (catch Throwable t
+               (throw (driver.u/batch-exception t))))))))))
 
 (defn- grant-workspace-read-access-sqls
-  "Build SQL statements that grant `username` SELECT on all tables in each database
-  named in `schemas`. MySQL has no schema layer — `qualified-name-components`
-  is `[]` — so each entry in `schemas` is interpreted as a database name.
+  "Build SQL statements that grant `username` SELECT on all tables in `bound-db`, the database the Metabase `Database`
+  connects to, and in each database named in `schemas`. MySQL has no schema layer — `qualified-name-components`
+  is `[]` — so each entry in `schemas` is interpreted as a database name, and the input schemas are empty: the
+  workspace reads the bound database, and its JDBC handshake needs access to it.
   Workspace-scoped users receive database-wide SELECT via `GRANT SELECT ON db.*`."
-  [username schemas]
-  (let [quoted-user      (quote-field username)
-        source-databases (set schemas)]
+  [wildcards? username bound-db schemas]
+  (let [quoted-user (quote-field username)]
     (mapv (fn [db]
             (format "GRANT SELECT ON %s.* TO %s@'%%'"
-                    (quote-schema db) quoted-user))
-          source-databases)))
+                    (quote-grant-db wildcards? db) quoted-user))
+          (distinct (cons bound-db schemas)))))
 
 (defmethod driver/grant-workspace-read-access! :mysql
   [driver database workspace schemas]
@@ -1483,12 +1530,13 @@
   ;; itself allows `GRANT SELECT ON other_db.*` as long as the admin has it,
   ;; so we don't reject inputs that don't equal `:details.db`.
   (let [username (-> workspace :database_details :user)
-        sqls     (grant-workspace-read-access-sqls username schemas)]
+        bound-db (driver.sql/db-slot-value driver database)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        (with-open [^Statement stmt (.createStatement conn)]
-         (doseq [sql sqls]
+         (doseq [sql (grant-workspace-read-access-sqls (grant-db-wildcards? {:connection conn})
+                                                       username bound-db schemas)]
            (.addBatch ^Statement stmt ^String sql))
          (try
            (.executeBatch ^Statement stmt)
