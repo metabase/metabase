@@ -126,6 +126,7 @@ export const TOOL_MESSAGES = {
     active: () => t`Creating a query`,
     done: () => t`Created a query`,
   },
+  fulltext_search: { active: () => t`Searching`, done: () => t`Searched` },
   get_field_values: {
     active: () => t`Retrieving table metadata`,
     done: () => t`Retrieved table metadata`,
@@ -165,6 +166,8 @@ export const TOOL_MESSAGES = {
     active: () => t`Searching database tables`,
     done: () => t`Searched database tables`,
   },
+  semantic_search: { active: () => t`Searching`, done: () => t`Searched` },
+  substring_search: { active: () => t`Searching`, done: () => t`Searched` },
   write_transform_python: {
     active: () => t`Writing Python`,
     done: () => t`Wrote Python`,

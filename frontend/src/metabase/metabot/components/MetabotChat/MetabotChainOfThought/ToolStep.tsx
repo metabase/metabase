@@ -7,7 +7,7 @@ import { Collapse, Icon, Text, UnstyledButton } from "metabase/ui";
 
 import S from "./MetabotChainOfThought.module.css";
 import { SearchResultsList } from "./SearchResults";
-import { SEARCH_TOOL_NAME } from "./constants";
+import { SEARCH_TOOL_NAMES } from "./constants";
 import {
   type ToolChainStep,
   activeToolLabel,
@@ -18,7 +18,7 @@ import {
 } from "./utils";
 
 const toolLabelContent = (step: ToolChainStep, done: boolean) => {
-  if (step.name === SEARCH_TOOL_NAME) {
+  if (SEARCH_TOOL_NAMES.has(step.name)) {
     const label =
       titledToolLabel(step, done) ?? (done ? t`Searched` : t`Searching`);
     return (
