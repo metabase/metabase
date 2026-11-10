@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]))
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel normalize-mbql-clause-impostor-in-visualization-settings-test
   (let [viz-settings
@@ -108,3 +109,16 @@
                                               "[\"name\",0]"                 {"a" 4}
                                               "[\"ref\",[\"weird\"]]"        {"a" 5}
                                               "[\"REF\",[\"field\",1,null]]" {"a" 6}}})))))
+
+(deftest ^:parallel normalize-drops-invalid-values-test
+  (testing "invalid values of the keys the schema types are dropped, so the settings stay valid"
+    (let [normalized (lib/normalize ::lib.schema.visualization-settings/visualization-settings
+                                    {"click_behavior"   "x"
+                                     "table.columns"    42
+                                     "graph.dimensions" ["A"]
+                                     "column_settings"  {"[\"name\",\"A\"]" {"click_behavior" 42 "currency" "USD"}
+                                                         "[\"name\",\"B\"]" 7}})]
+      (is (= {:graph.dimensions ["A"]
+              :column_settings  {"[\"name\",\"A\"]" {:currency "USD"}}}
+             normalized))
+      (is (mr/validate ::lib.schema.visualization-settings/visualization-settings normalized)))))

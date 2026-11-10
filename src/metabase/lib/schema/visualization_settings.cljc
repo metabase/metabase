@@ -74,13 +74,14 @@
       :bounded/threshold 4096)))
 
 (defn- normalize-column-settings
-  "The `column-settings` with their keys normalized, without those that aren't valid."
+  "The `column-settings` with their keys normalized, without the settings whose key isn't valid or that aren't maps."
   [column-settings]
   (if (map? column-settings)
     (into {}
           (keep (fn [[k v]]
-                  (when-let [k #?(:clj  (some-> k lib.schema.common/normalize-string-key normalize-column-key)
-                                  :cljs (lib.schema.common/normalize-string-key k))]
+                  (when-let [k (and (or (nil? v) (map? v))
+                                    #?(:clj  (some-> k lib.schema.common/normalize-string-key normalize-column-key)
+                                       :cljs (lib.schema.common/normalize-string-key k)))]
                     [k v])))
           column-settings)
     column-settings))
@@ -95,13 +96,26 @@
         (some? (:column_settings settings)) (assoc :column_settings (:column_settings settings))))
     settings))
 
+(defn- drop-invalid-settings
+  "The settings `m` without the values of the keys of `schemas` that don't match their schemas, as when the frontend
+  wrote them wrong, so that such a value never makes the settings invalid."
+  [schemas m]
+  (if (map? m)
+    (reduce-kv (fn [m k schema]
+                 (cond-> m
+                   (and (contains? m k) (not (mr/validate [:maybe schema] (get m k)))) (dissoc k)))
+               m
+               schemas)
+    m))
+
 (mr/def ::column-settings
   "The `:column_settings` of a visualization: the settings of each column, by its JSON-encoded reference or name, with
-  keyword keys all the way down."
+  keyword keys all the way down, without the invalid ones."
   [:map-of {:decode/normalize normalize-column-settings}
    :string
    [:maybe [:map {:closed false, ::mr/deliberately-open true, :description "column settings"
-                  :decode/normalize keywordize-keys}
+                  :decode/normalize {:enter keywordize-keys
+                                     :leave (partial drop-invalid-settings {:click_behavior ::click-behavior})}}
             [:click_behavior {:optional true} [:maybe ::click-behavior]]]]])
 
 (defn- normalize-table-column
@@ -142,9 +156,17 @@
    [:rows {:optional true} [:maybe [:sequential [:maybe ::column-name-or-ref]]]]])
 
 (mr/def ::visualization-settings
-  "Chart-rendering settings authored by the frontend, as their column stores them. The backend reads no fixed key set
-  but these, so the keys are whatever the visualization the user picked needs."
-  [:map {:closed false, ::mr/deliberately-open true, :decode/normalize keywordize-settings
+  "Chart-rendering settings authored by the frontend, as their column stores them, without the invalid values of
+  these keys. The backend reads no fixed key set but these, so the keys are whatever the visualization the user picked
+  needs."
+  [:map {:closed false, ::mr/deliberately-open true
+         :decode/normalize {:enter keywordize-settings
+                            :leave (partial drop-invalid-settings {:column_settings            ::column-settings
+                                                                   :click_behavior             ::click-behavior
+                                                                   :table.columns              ::table.columns
+                                                                   :table.column_formatting    ::table.column-formatting
+                                                                   :pivot_table.column_split   ::pivot-table.column-split
+                                                                   :pivot_table.collapsed_rows ::pivot-table.collapsed-rows})}
          :description #?(:clj (i18n/deferred-tru "Value must be a map.") :cljs "visualization settings")
          #?@(:clj [:error/fn (constantly (i18n/deferred-tru "Value must be a map."))])}
    [:column_settings            {:optional true} [:maybe ::column-settings]]
