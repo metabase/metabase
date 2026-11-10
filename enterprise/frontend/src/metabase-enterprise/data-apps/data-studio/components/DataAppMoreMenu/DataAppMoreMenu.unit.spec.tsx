@@ -38,7 +38,7 @@ const openMenu = () =>
 
 describe("DataAppMoreMenu", () => {
   it("offers to open a live app and make it a draft", async () => {
-    setup({ app: createMockDataApp({ name: "sales", enabled: true }) });
+    setup({ app: createMockDataApp({ slug: "sales", enabled: true }) });
 
     await openMenu();
 
@@ -51,7 +51,7 @@ describe("DataAppMoreMenu", () => {
   });
 
   it("opens the embed wizard with the app selected and SSO enabled", async () => {
-    setup({ app: createMockDataApp({ name: "sales" }) });
+    setup({ app: createMockDataApp({ slug: "sales" }) });
 
     await openMenu();
     await userEvent.click(
@@ -71,7 +71,7 @@ describe("DataAppMoreMenu", () => {
 
   it("opens the app on the site-url origin when apps are served cross-origin", async () => {
     setup({
-      app: createMockDataApp({ name: "sales", enabled: true }),
+      app: createMockDataApp({ slug: "sales", enabled: true }),
       settings: {
         "isolated-origin": "https://apps.example.com",
         "site-url": "https://mb.example.com",
@@ -117,8 +117,8 @@ describe("DataAppMoreMenu", () => {
   it("makes a live app a draft only after confirmation", async () => {
     setup({
       app: createMockDataApp({
-        name: "sales",
-        display_name: "Sales",
+        slug: "sales",
+        name: "Sales",
         enabled: true,
       }),
     });

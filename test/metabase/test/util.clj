@@ -182,8 +182,8 @@
 
    :model/DataApp
    (fn [_] {:entity_id    (u/generate-nano-id)
-            :name         (u/lower-case-en (u.random/random-name))
-            :display_name (u.random/random-name)
+            :slug         (u/lower-case-en (u.random/random-name))
+            :name         (u.random/random-name)
             :bundle_path  "dist/index.js"
             :bundle       (.getBytes "" "UTF-8")})
 

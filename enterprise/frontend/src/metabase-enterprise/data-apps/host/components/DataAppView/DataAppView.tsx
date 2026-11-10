@@ -89,7 +89,7 @@ function useDataAppFrameOrigin() {
 }
 
 /**
- * /apps/:name(/*) — renders the requested data-app inside an isolated
+ * /apps/:slug(/*) — renders the requested data-app inside an isolated
  * iframe, mirroring the iframe's internal route into the parent's URL.
  *
  * Sync semantics:
@@ -105,19 +105,19 @@ function useDataAppFrameOrigin() {
  * it just uses React Router as if it were the top-level app.
  */
 type DataAppViewProps = {
-  name?: string;
+  slug?: string;
   enableUrlMirroring?: boolean;
   enableDrafts?: boolean;
 };
 
 export function DataAppView({
-  name: nameProp,
+  slug: slugProp,
   enableUrlMirroring = false,
   enableDrafts = false,
 }: DataAppViewProps = {}) {
-  const { name: nameParam = "" } = useParams<{ name: string }>();
-  const name = nameProp ?? nameParam;
-  const validName = name.length > 0;
+  const { slug: slugParam = "" } = useParams<{ slug: string }>();
+  const slug = slugProp ?? slugParam;
+  const validSlug = slug.length > 0;
 
   const { isolatedOrigin, frameOrigin, originMismatch } =
     useDataAppFrameOrigin();
@@ -148,18 +148,18 @@ export function DataAppView({
     setBundleError(null);
     setAppReady(false);
     setLoadError(null);
-  }, [name]);
+  }, [slug]);
 
   // Read parent path → iframe src ONCE; never re-derive on later renders.
   const [src] = useState(() =>
-    validName ? deriveIframeSrc(name, isolatedOrigin) : "",
+    validSlug ? deriveIframeSrc(slug, isolatedOrigin) : "",
   );
 
   const {
     data: meta,
     isLoading: metaLoading,
     error: metaError,
-  } = useGetDataAppQuery(name, { skip: !validName });
+  } = useGetDataAppQuery(slug, { skip: !validSlug });
 
   useEffect(() => {
     if (!iframeEl || !isCrossOrigin) {
@@ -171,7 +171,7 @@ export function DataAppView({
   useEffect(() => {
     // This mirror reaches into the iframe's `history`, which works only same-origin.
     // A cross-origin iframe reports its route with a message instead (below).
-    if (!iframeEl || !validName || !enableUrlMirroring || isCrossOrigin) {
+    if (!iframeEl || !validSlug || !enableUrlMirroring || isCrossOrigin) {
       return undefined;
     }
 
@@ -189,7 +189,7 @@ export function DataAppView({
         const win = iframeEl.contentWindow;
 
         if (win) {
-          detach = attachIframeUrlMirror(win, name);
+          detach = attachIframeUrlMirror(win, slug);
         }
       } catch (error) {
         detach = null;
@@ -212,7 +212,7 @@ export function DataAppView({
       iframeEl.removeEventListener("load", onLoad);
       detach?.();
     };
-  }, [iframeEl, name, validName, enableUrlMirroring, isCrossOrigin]);
+  }, [iframeEl, slug, validSlug, enableUrlMirroring, isCrossOrigin]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -250,14 +250,14 @@ export function DataAppView({
         isDataAppMessage(data, DATA_APP_ROUTE_MESSAGE_TYPE) &&
         typeof data.path === "string"
       ) {
-        mirrorIframePath(data.path, name);
+        mirrorIframePath(data.path, slug);
       }
     };
 
     window.addEventListener("message", onMessage);
 
     return () => window.removeEventListener("message", onMessage);
-  }, [frameOrigin, isCrossOrigin, enableUrlMirroring, name]);
+  }, [frameOrigin, isCrossOrigin, enableUrlMirroring, slug]);
 
   // The iframe can fail to load without ever posting back — blocked by a CSP
   // `frame-src` violation, unreachable, or hung — which would otherwise leave the
@@ -266,7 +266,7 @@ export function DataAppView({
   useEffect(() => {
     // Stop once anything resolves the wait — including a `loadError` already set
     // by the CSP signal — so the timeout can't clobber a more specific message.
-    if (!validName || appReady || bundleError || loadError) {
+    if (!validSlug || appReady || bundleError || loadError) {
       return undefined;
     }
 
@@ -295,9 +295,9 @@ export function DataAppView({
       document.removeEventListener("securitypolicyviolation", onViolation);
       window.clearTimeout(timer);
     };
-  }, [validName, appReady, bundleError, loadError, frameOrigin]);
+  }, [validSlug, appReady, bundleError, loadError, frameOrigin]);
 
-  if (!validName) {
+  if (!validSlug) {
     return (
       <NotFound
         title={t`Data app not found`}
@@ -474,7 +474,7 @@ export function DataAppView({
       */}
       <iframe
         ref={setIframeEl}
-        title={meta.display_name}
+        title={meta.name}
         src={src}
         sandbox="allow-scripts allow-same-origin allow-downloads allow-forms allow-modals allow-popups"
         allow="clipboard-write"
