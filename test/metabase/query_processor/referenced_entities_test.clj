@@ -17,8 +17,11 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.referenced-entities :as referenced-entities]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- ref-entity
   "The test HTTP client keywordizes the type key and parses numeric JSON keys back to ints."
@@ -637,6 +640,22 @@
         (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id))
         (is (= ["PRICE" "count"]
                (mapv :name (t2/select-one-fn :result_metadata :model/Card :id metric-id))))))))
+
+(deftest measure-goal-keeps-same-id-card-metadata-test
+  ;; above every existing card and measure, with enough headroom that the chart's auto id won't land on it
+  (let [shared-id (+ 100000 (max (or (t2/select-one-fn :id :model/Card {:order-by [[:id :desc]]}) 0)
+                                 (or (t2/select-one-fn :id :model/Measure {:order-by [[:id :desc]]}) 0)))]
+    (mt/with-temp [:model/Measure _                {:id         shared-id
+                                                    :name       "Venue count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (venues-count-measure)}
+                   :model/Card    {twin-id :id}    {:id            shared-id
+                                                    :dataset_query (mt/mbql-query venues {:limit 1})}
+                   :model/Card    {chart-id :id}   (goal-chart "measure" shared-id)]
+      (testing "a measure goal leaves the result_metadata of a card with the same id unchanged"
+        (let [before (t2/select-one-fn :result_metadata :model/Card :id twin-id)]
+          (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id))
+          (is (= before (t2/select-one-fn :result_metadata :model/Card :id twin-id))))))))
 
 (deftest dataset-endpoint-unreadable-measure-test
   (testing "a referenced measure whose table the caller can't read fails softly without failing the main query"
