@@ -9,6 +9,7 @@
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
@@ -188,19 +189,23 @@
                          (instance? Throwable seen-cache)
                          (identical? before seen-cache))))))))))
 
-(deftest held-cache-state-test
-  (testing "reads and writes through one cache state stay on its cache when the app DB this thread sees changes"
-    (let [state  (setting.cache/current-state)
-          before (setting.cache/cache state)]
-      (try
-        (mdb/with-application-db (assoc (mdb/app-db) :id Integer/MAX_VALUE)
-          (setting.cache/update-cache! state "held-cache-test-key" "held")
-          (is (= {:through-state "held", :current nil}
-                 {:through-state (get (setting.cache/cache state) "held-cache-test-key")
-                  :current       (get (setting.cache/cache) "held-cache-test-key")})))
-        (finally
-          ;; puts the cache back as it was: a nil cache reads as not yet loaded, and an empty one would not
-          (reset! (#'setting.cache/cache* state) before))))))
+(deftest write-across-app-db-id-bump-test
+  (testing "a write whose app DB gets a new id after the cache restore is read back through the new id's cache"
+    (mt/discard-setting-changes [test-setting-1]
+      ;; a fresh id, so the bump below changes only this binding
+      (mdb/with-application-db (assoc (mdb/app-db) :id (- (inc (rand-int Integer/MAX_VALUE))))
+        (setting-test/test-setting-1! "before the bump")
+        ;; a read sets the update-check clock, so the write's own reads do not restore the cache before it does
+        (setting-test/test-setting-1)
+        (let [restore! (mt/original-fn #'setting.cache/restore-cache!)
+              bumped?  (atom false)]
+          (mt/with-dynamic-fn-redefs [setting.cache/restore-cache! (fn [& args]
+                                                                     (u/prog1 (apply restore! args)
+                                                                       (when (compare-and-set! bumped? false true)
+                                                                         (mdb/increment-app-db-unique-indentifier!))))]
+            (setting-test/test-setting-1! "after the bump"))
+          (is (= {:bumped? true, :value "after the bump"}
+                 {:bumped? @bumped?, :value (setting-test/test-setting-1)})))))))
 
 (deftest restore-uses-the-state-it-checked-test
   (testing "a restore fills the cache whose clock and lock it checked, even if the state this thread sees changes"

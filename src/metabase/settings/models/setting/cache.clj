@@ -61,12 +61,10 @@
 
 (defn update-cache!
   "Update the String value of a Setting in the Settings cache."
-  ([setting-name new-value]
-   (update-cache! (current-state) setting-name new-value))
-  ([state setting-name ^String new-value]
-   (if (seq new-value)
-     (swap! (cache* state) assoc  setting-name new-value)
-     (swap! (cache* state) dissoc setting-name))))
+  [setting-name, ^String new-value]
+  (if (seq new-value)
+    (swap! (cache*) assoc  setting-name new-value)
+    (swap! (cache*) dissoc setting-name)))
 
 ;; CACHE SYNCHRONIZATION
 ;;
@@ -92,7 +90,7 @@
 
 (defn update-settings-last-updated!
   "Update the value of `settings-last-updated` in the DB; if the row does not exist, insert one."
-  [state]
+  []
   (log/debug "Updating value of settings-last-updated in DB...")
   ;; Written raw, not through `:model/Setting`, so that `value` gets the plaintext timestamp a version predating
   ;; `value_with_aad` compares in SQL. `value_with_aad` is encrypted under the marker's AAD like any other setting's.
@@ -113,7 +111,7 @@
                         (str/join "; " (keep ex-message (take-while some? (iterate #(.getNextException ^java.sql.SQLException %) e)))))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
-  (swap! (cache* state) assoc settings-last-updated-key (settings.db/setting-value settings-last-updated-key)))
+  (swap! (cache*) assoc settings-last-updated-key (settings.db/setting-value settings-last-updated-key)))
 
 (defn cache-last-updated-at
   "Fetch the value of `settings-last-updated`, indicating the timestamp of the settings cache. Possibly null.
