@@ -66,7 +66,7 @@ If you're migrating from a Metabase Cloud Pro plan to a self-hosted Pro plan, yo
    ```
    export MB_DB_TYPE=postgres
    export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
-   java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar load-from-h2 /path/to/metabase.db
+   java -jar metabase.jar load-from-h2 /path/to/metabase.db
    ```
 
    Use the path to your snapshot file _without_ the `.mv.db` extension. For example, if your snapshot file is `/path/to/metabase.db.mv.db`, use `/path/to/metabase.db`.
@@ -84,7 +84,7 @@ If you're migrating from a Metabase Cloud Pro plan to a self-hosted Pro plan, yo
    ```
    export MB_DB_TYPE=postgres
    export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
-   java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+   java -jar metabase.jar
    ```
 
    If you run Metabase in Docker, start a new container with the same application database settings. See [Start a new Docker container that uses the new app db](../../installation-and-operation/migrating-from-h2.md#6-start-a-new-docker-container-that-uses-the-new-app-db).

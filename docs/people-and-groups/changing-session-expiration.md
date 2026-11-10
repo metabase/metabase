@@ -21,7 +21,7 @@ The default value is 14 days. To set a custom value, use the environment variabl
 
 ```sh
 # sessions expire after 24 hours
-MAX_SESSION_AGE=1440 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+MAX_SESSION_AGE=1440 java -jar metabase.jar
 ```
 
 This setting applies equally to everyone regardless of their browser behavior or activity patterns. Use it when your security policy requires people to log in again on a predictable schedule.
@@ -38,7 +38,7 @@ To configure session time out, go to **Admin** > **Authentication** > **Overview
 
 ```sh
 # log out after 2 hours of inactivity
-MB_SESSION_TIMEOUT='{"amount":120,"unit":"minutes"}' java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+MB_SESSION_TIMEOUT='{"amount":120,"unit":"minutes"}' java -jar metabase.jar
 ```
 
 Note that if you're configuring session timeout in Metabase Admin settings, you need to specify the timeout only in minutes or hours, but the `MB_SESSION_TIMEOUT` variable also accepts `"unit":"seconds"`.
@@ -52,7 +52,7 @@ By default, the login page has **Remember me** checked, so sessions survive brow
 `MB_SESSION_COOKIES` controls whether sessions end when the browser closes. Setting it to `true` removes the **Remember me** checkbox and enforces browser-close logout for everyone.
 
 ```sh
-MB_SESSION_COOKIES=true java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+MB_SESSION_COOKIES=true java -jar metabase.jar
 ```
 
 `MAX_SESSION_AGE` and `MB_SESSION_TIMEOUT` still apply — even someone who never closes their browser can be logged out by the age limit or an inactivity window.

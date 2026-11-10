@@ -27,7 +27,7 @@ Metabase stores connection information for the various databases you add in the 
    ```
 3. Set the key as an environment variable and start Metabase as usual.
    ```
-   MB_ENCRYPTION_SECRET_KEY="IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=" java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+   MB_ENCRYPTION_SECRET_KEY="IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=" java -jar metabase.jar
    ```
 
 Once you set the `MB_ENCRYPTION_SECRET_KEY` value, Metabase will automatically encrypt and store the connection details for each new database that you add. If you set the key on a new Metabase, that's all you need to do. To encrypt an existing Metabase, see the next section.
@@ -44,7 +44,7 @@ If you're adding an encryption key to a Metabase that already has data, you need
 ### Example command for enabling encryption
 
 ```
-MB_ENCRYPTION_SECRET_KEY=your-key java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar enable-encryption
+MB_ENCRYPTION_SECRET_KEY=your-key java -jar metabase.jar enable-encryption
 ```
 
 If Metabase reports that the database isn't encrypted but you didn't just add the key, don't run `enable-encryption`: someone has changed the application database directly. Restore it from a backup. (A wrong key is reported separately, as a key mismatch.)
@@ -60,7 +60,7 @@ If Metabase reports that the database isn't encrypted but you didn't just add th
 ### Example command for rotating a key
 
 ```
-MB_ENCRYPTION_SECRET_KEY=your-current-key java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar rotate-encryption-key new-key
+MB_ENCRYPTION_SECRET_KEY=your-current-key java -jar metabase.jar rotate-encryption-key new-key
 ```
 
 ## Disabling an encryption key
@@ -70,5 +70,5 @@ To disable an encryption key, follow the steps to [rotate an encryption key](#ro
 ### Example command for disabling a key
 
 ```
-MB_ENCRYPTION_SECRET_KEY="your-current-key" java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar rotate-encryption-key ""
+MB_ENCRYPTION_SECRET_KEY="your-current-key" java -jar metabase.jar rotate-encryption-key ""
 ```
