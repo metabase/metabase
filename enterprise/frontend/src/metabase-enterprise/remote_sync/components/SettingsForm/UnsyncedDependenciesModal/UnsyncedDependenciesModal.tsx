@@ -93,7 +93,7 @@ const DependencyGroupItem = ({ group }: DependencyGroupItemProps) => (
       >
         <EntityLink entity={dependency}>
           <Group gap="sm" wrap="nowrap">
-            <Icon name={getModelIcon(dependency.model)} />
+            <Icon name={getModelIcon(dependency.model)} aria-hidden />
             <Box>{dependency.name}</Box>
           </Group>
         </EntityLink>
