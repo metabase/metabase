@@ -380,58 +380,65 @@ describe("MetabotChainOfThought", () => {
     expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
 
-  it("labels a search step with its query and a muted result count", async () => {
-    setup(
-      chain({
-        steps: [
-          {
-            kind: "tool",
-            id: "t1",
-            name: "search",
-            title: "revenue",
-            status: "ended",
-            searchResults: {
-              totalCount: 12,
-              results: [
-                {
-                  id: 5,
-                  type: "dashboard",
-                  name: "Revenue Dashboard",
-                  collection: { id: 3, name: "Finance" },
-                },
-                {
-                  id: 9,
-                  type: "table",
-                  name: "orders",
-                  display_name: "Orders",
-                  database_id: 1,
-                  database_name: "Sample DB",
-                  database_schema: "PUBLIC",
-                },
-              ],
+  it.each(["search", "semantic_search", "fulltext_search", "substring_search"])(
+    "labels a %s step with its query and a muted result count",
+    async (name) => {
+      setup(
+        chain({
+          steps: [
+            {
+              kind: "tool",
+              id: "t1",
+              name,
+              title: "revenue",
+              status: "ended",
+              searchResults: {
+                totalCount: 12,
+                results: [
+                  {
+                    id: 5,
+                    type: "dashboard",
+                    name: "Revenue Dashboard",
+                    collection: { id: 3, name: "Finance" },
+                  },
+                  {
+                    id: 9,
+                    type: "table",
+                    name: "orders",
+                    display_name: "Orders",
+                    database_id: 1,
+                    database_name: "Sample DB",
+                    database_schema: "PUBLIC",
+                  },
+                ],
+              },
             },
-          },
-        ],
-        startedAtMs: 1000,
-        endedAtMs: 2000,
-      }),
-      false,
-    );
-    // expand the chain, then expand the search step's results collapse
-    await expandChain();
-    expect(screen.getByText(/Searched for revenue/)).toBeInTheDocument();
-    expect(screen.getByText("12 results")).toBeInTheDocument();
-    expect(screen.queryByText("Explored 12 entities")).not.toBeInTheDocument();
-    await userEvent.click(screen.getByText("12 results"));
-    expect(screen.getByText("Revenue Dashboard")).toBeInTheDocument();
-    // collection context for a saved item
-    expect(screen.getByText("Finance")).toBeInTheDocument();
-    // tables prefer display_name, and show their database › schema
-    expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.queryByText("orders")).not.toBeInTheDocument();
-    expect(screen.getByText("Sample DB", { exact: false })).toBeInTheDocument();
-    expect(screen.getByText("PUBLIC", { exact: false })).toBeInTheDocument();
-  });
+          ],
+          startedAtMs: 1000,
+          endedAtMs: 2000,
+        }),
+        false,
+      );
+      // expand the chain, then expand the search step's results collapse
+      await expandChain();
+      expect(screen.getByText(/Searched for revenue/)).toBeInTheDocument();
+      expect(screen.getByText("12 results")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Explored 12 entities"),
+      ).not.toBeInTheDocument();
+      await userEvent.click(screen.getByText("12 results"));
+      expect(screen.getByText("Revenue Dashboard")).toBeInTheDocument();
+      // collection context for a saved item
+      expect(screen.getByText("Finance")).toBeInTheDocument();
+      // tables prefer display_name, and show their database › schema
+      expect(screen.getByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("orders")).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Sample DB", { exact: false }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("PUBLIC", { exact: false })).toBeInTheDocument();
+    },
+  );
 
   it("links measures to the explorer and segments through their base table", async () => {
     setup(
