@@ -235,4 +235,3 @@ jobs:
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
           OLDEST_SUPPORTED_VERSION: ${{ steps.oldest-supported.outputs.result }}
         run: bin/check-migration-versions
-
