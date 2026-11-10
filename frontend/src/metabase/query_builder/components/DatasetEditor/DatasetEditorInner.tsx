@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { merge } from "icepick";

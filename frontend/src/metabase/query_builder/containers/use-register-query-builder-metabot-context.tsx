@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { dayjs } from "metabase/dayjs";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";

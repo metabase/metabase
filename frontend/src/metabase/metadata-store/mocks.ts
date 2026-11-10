@@ -8,7 +8,6 @@ import type {
   Measure,
   NativeQuerySnippet,
   NormalizedMetric,
-  SavedQuestionDatabase,
   Schema,
   Segment,
   Table,
@@ -28,7 +27,7 @@ import {
 } from "./schema";
 
 export interface EntitiesStateOpts {
-  databases?: (Database | SavedQuestionDatabase)[];
+  databases?: Database[];
   schemas?: Schema[];
   tables?: Table[];
   fields?: Field[];

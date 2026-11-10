@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { type ComponentType, lazy } from "react";
 import { isValidElementType } from "react-is";
 import { t } from "ttag";

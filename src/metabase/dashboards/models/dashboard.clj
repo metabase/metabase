@@ -302,14 +302,15 @@
     (-> card :dataset_query not-empty)
     (let [_    (query-perms/check-run-permissions-for-query (:dataset_query card))
           card (dashboards.db/insert-card!
-                (-> card
-                    (update :result_metadata #(or % (-> card
-                                                        :dataset_query
-                                                        legacy-result-metadata-for-query)))
-                    (dissoc :id
-                            :public_uuid :made_public_by_id
-                            :enable_embedding :embedding_params)
-                    (assoc :creator_id api/*current-user-id*)))]
+                (->> (-> card
+                         (update :result_metadata #(or % (-> card
+                                                             :dataset_query
+                                                             legacy-result-metadata-for-query)))
+                         (dissoc :id
+                                 :public_uuid :made_public_by_id
+                                 :enable_embedding :embedding_params)
+                         (assoc :creator_id api/*current-user-id*))
+                     (lib/normalize ::queries.schema/card.update)))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
       (t2/hydrate card :creator :dashboard_count :can_write :collection))))
 

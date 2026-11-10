@@ -49,6 +49,45 @@ describe("SyncTaskModal", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("shows what running task does and who started it", async () => {
+    setup({
+      task: createMockRemoteSyncTask({
+        id: 1,
+        sync_task_type: "export",
+        initiated_by_user: {
+          id: 2,
+          first_name: "Test",
+          last_name: "User",
+          email: "user@example.com",
+        },
+      }),
+    });
+
+    expect(await screen.findByText("Exporting content…")).toBeInTheDocument();
+    expect(screen.getByText(/^Started by Test User at /)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Please wait until this finishes before editing content.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows where cancelled task stopped", async () => {
+    setup({
+      task: createMockRemoteSyncTask({
+        id: 1,
+        status: "cancelled",
+        progress: 0.5,
+        error_message:
+          "The sync stopped because the server didn't respond for 5 minutes. It may have restarted.",
+      }),
+    });
+
+    expect(
+      await screen.findByText(/^Stopped at 50% · Started at /),
+    ).toBeInTheDocument();
+  });
+
   it("closes when task succeeds", async () => {
     const { onClose } = setup({
       task: createMockRemoteSyncTask({

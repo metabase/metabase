@@ -24,8 +24,8 @@ import * as Urls from "metabase/urls";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
+import { getDataAppStatusLabel } from "../../../utils";
 import { DataAppMoreMenu } from "../../components/DataAppMoreMenu";
-import { getDataAppStatusLabel } from "../../utils";
 
 import { DataAppBuildGuide } from "./DataAppBuildGuide";
 import { DataAppListEmptyState } from "./DataAppListEmptyState";

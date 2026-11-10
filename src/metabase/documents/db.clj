@@ -9,6 +9,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -16,11 +17,13 @@
 
 (mu/defn synced-documents-clause :- [:fn vector?]
   "The clause over the Document table aliased `alias` selecting the documents remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   [:and
-   [:= (u/qualified-key alias :archived) false]
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
    [:= (u/qualified-key alias :exploration_id) nil]
-   (remote-sync/synced-fk-clause alias :collection_id :model/Collection)])
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn document
   "The Document with `id`, or nil."

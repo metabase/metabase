@@ -9,12 +9,14 @@ import { t } from "ttag";
 
 import { Center, Loader } from "metabase/ui";
 import { color } from "metabase/ui/colors";
+import { isDataAppBrokerMode } from "metabase-enterprise/data-apps/broker/iframe-broker";
 
 import { type ErrorDetail, describeError } from "../../lib/describe-error";
 import { readNameFromUrl } from "../../lib/read-name-from-url";
 import { reportErrorToParent } from "../../lib/report-error-to-parent";
 import { reportReadyToParent } from "../../lib/report-ready-to-parent";
 import { useDataAppBundle } from "../../lib/use-data-app-bundle";
+import { DataAppErrorState } from "../DataAppErrorState/DataAppErrorState";
 import { DataAppProvider } from "../DataAppProvider/DataAppProvider";
 
 /**
@@ -23,8 +25,8 @@ import { DataAppProvider } from "../DataAppProvider/DataAppProvider";
  * Without this, a throw inside the bundle — e.g. an opaque `#<Object>` from the
  * Near-Membrane sandbox — unmounts the whole tree and leaves a blank iframe.
  */
-class BundleErrorBoundary extends Component<
-  { children: ReactNode },
+export class BundleErrorBoundary extends Component<
+  { children: ReactNode; embedded?: boolean },
   { detail: ErrorDetail | null }
 > {
   state: { detail: ErrorDetail | null } = { detail: null };
@@ -41,11 +43,20 @@ class BundleErrorBoundary extends Component<
       detail.stack ?? "",
       info,
     );
-    reportErrorToParent(false, detail);
+
+    if (!this.props.embedded) {
+      reportErrorToParent(false, detail);
+    }
   }
 
   render() {
     if (this.state.detail) {
+      // Show errors inline for embedded data apps.
+      // `reportErrorToParent` reports to Metabase's origin, not embed parent.
+      if (this.props.embedded) {
+        return <DataAppErrorState message={this.state.detail.message} />;
+      }
+
       // `componentDidCatch` already reported the error to the host, which shows
       // the themed failure screen; a neutral loader covers the handoff.
       return (
@@ -54,6 +65,7 @@ class BundleErrorBoundary extends Component<
         </Center>
       );
     }
+
     return this.props.children;
   }
 }
@@ -70,7 +82,11 @@ class BundleErrorBoundary extends Component<
  * as `{ component, theme }`.
  */
 function BundleHost({ name }: { name: string }) {
-  const { data, failed } = useDataAppBundle(name);
+  // The isolated origin serves this document without the app's hosts in its CSP, so the
+  // bundle's policy is installed here.
+  const { data, failed } = useDataAppBundle(name, {
+    installContentSecurityPolicy: isDataAppBrokerMode(),
+  });
 
   useEffect(() => {
     if (data && !failed) {
@@ -127,7 +143,8 @@ function DataAppStandaloneMessage({ message }: { message: string }) {
  * Iframe-top React app. Reads the data-app name from the URL, mounts the
  * bundle, and gets out of the way. Any sub-routes the bundle navigates to
  * (via `history.pushState`, `react-router`, etc.) are mirrored back to the
- * parent URL by `attachIframeUrlMirror` — the bundle doesn't need to know.
+ * parent URL — by `attachIframeUrlMirror` same-origin, by route messages from
+ * the isolated origin — and the bundle doesn't need to know.
  */
 export const DataAppIframeApp = () => {
   const name = useMemo(() => readNameFromUrl(), []);

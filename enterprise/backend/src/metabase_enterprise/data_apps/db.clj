@@ -3,9 +3,9 @@
   model definitions and hydration methods."
   (:require
    [clojure.set :as set]
-   [metabase.collections.models.collection :as collection]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -50,7 +50,7 @@
   [slug :- :string]
   (t2/exists? :model/DataApp :name slug))
 
-(mu/defn resource-collection?
+(mu/defn collection-owned-by-data-app?
   "Whether the Collection with `collection-id` is the resource collection of a DataApp."
   [collection-id :- pos-int?]
   (t2/exists? :model/DataApp :resource_collection_id collection-id))
@@ -114,20 +114,37 @@
   (t2/delete! :model/Collection :id collection-id))
 
 (mu/defn readable-data-app-ids-select
-  "A HoneySQL query of the ids of the DataApps that the User with `user-id` can read: every app for a superuser, else
-  the enabled apps whose resource collection they can read."
+  "A HoneySQL query of readable DataApp ids. Non-superusers need a resource-collection grant from a matching-tenancy group."
   [user-id    :- ms/PositiveInt
    superuser? :- :boolean]
   (if superuser?
     ^:allow-subquery {:select [:id] :from [(t2/table-name :model/DataApp)]}
-    ^:allow-subquery {:select [:id]
-                      :from   [(t2/table-name :model/DataApp)]
+    ^:allow-subquery {:select [:app.id]
+                      :from   [[(t2/table-name :model/DataApp) :app]]
+                      :join   [[(t2/table-name :model/Permissions) :grant]
+                               [:= :grant.collection_id :app.resource_collection_id]
+                               [(t2/table-name :model/PermissionsGroupMembership) :membership]
+                               [:= :membership.group_id :grant.group_id]
+                               [(t2/table-name :model/User) :member]
+                               [:= :member.id :membership.user_id]
+                               [(t2/table-name :model/PermissionsGroup) :assigned_group]
+                               [:= :assigned_group.id :grant.group_id]]
                       :where  [:and
-                               [:= :enabled true]
-                               [:in :resource_collection_id
-                                (collection/visible-collection-query
-                                 {:permission-level :read :include-archived-items :all}
-                                 {:current-user-id user-id :is-superuser? false})]]}))
+                               [:= :app.enabled true]
+                               [:= :membership.user_id user-id]
+                               [:= :grant.perm_type "perms/collection-access"]
+                               [:in :grant.perm_value ["read" "read-and-write"]]
+                               [:= :assigned_group.is_tenant_group [:not= :member.tenant_id nil]]
+                               (when-not (premium-features/has-feature? :tenants)
+                                 [:= :member.tenant_id nil])]}))
+
+(mu/defn data-app-readable?
+  "Whether the non-superuser with `user-id` can read the DataApp with `app-id`."
+  [user-id :- ms/PositiveInt
+   app-id  :- ms/PositiveInt]
+  (t2/exists? :model/DataApp {:where [:and
+                                      [:= :id app-id]
+                                      [:in :id (readable-data-app-ids-select user-id false)]]}))
 
 (mu/defn readable-data-apps
   "The DataApps that the User with `user-id` can read, without their bundles, ordered by display name."
@@ -180,16 +197,6 @@
    card-ids      :- [:set {:min 1} ::lib.schema.id/card]]
   (set/difference card-ids (when collection-id
                              (t2/select-pks-set :model/Card :id [:in card-ids] :collection_id collection-id))))
-
-(mu/defn external-metric-ids :- [:set ::lib.schema.id/card]
-  "Among `card-ids`, those of no metric in the Library's Metrics collection or one of its subcollections."
-  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
-  (set/difference card-ids (t2/select-fn-set :id [:model/Card :report_card.id]
-                                             {:join  [:collection [:= :collection.id :report_card.collection_id]]
-                                              :where [:and
-                                                      [:in :report_card.id card-ids]
-                                                      [:= :report_card.type "metric"]
-                                                      [:= :collection.type collection/library-metrics-collection-type]]})))
 
 (defn destination-database-ids
   "The IDs among `database-ids` of the databases that are routing destinations."

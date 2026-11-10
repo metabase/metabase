@@ -1,6 +1,6 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
-  (:refer-clojure :exclude [mapv empty? some])
+  (:refer-clojure :exclude [mapv empty? not-empty some])
   (:require
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
@@ -28,7 +28,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty? some]]
+   [metabase.util.performance :refer [mapv empty? not-empty some]]
    [metabase.warehouses.schema :as warehouses.schema]
    [ring.util.codec :as codec])
   (:import

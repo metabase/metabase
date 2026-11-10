@@ -10,6 +10,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -31,7 +32,8 @@
 
 (mu/defn synced-transform-tags-clause :- [:fn vector?]
   "The clause over the TransformTag table aliased `alias` selecting the tags remote sync syncs, all but the built-in ones."
-  [alias :- :keyword]
+  [alias :- :keyword
+   _opts :- ::remote-sync.schema/synced-filter-opts]
   [:= (u/qualified-key alias :built_in_type) nil])
 
 (mu/defn built-in-transform-tags-clause :- [:fn vector?]
@@ -41,8 +43,9 @@
 
 (mu/defn synced-transform-transform-tags-clause :- [:fn vector?]
   "The clause over the TransformTransformTag table aliased `alias` selecting the tags of synced transforms."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :transform_id :model/Transform))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :transform_id :model/Transform opts))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
@@ -98,6 +101,13 @@
   [transform-id :- ::lib.schema.id/transform
    changes      :- ::transforms.schema/transform.update]
   (t2/update! :model/Transform :id transform-id changes))
+
+(mu/defn lock-transform! :- :nil
+  "Lock the row of the Transform with `transform-id` against writes until the current transaction ends."
+  [transform-id :- ::lib.schema.id/transform]
+  (t2/select-pks-vec :model/Transform {:where [:= :id transform-id]
+                                       :for   :update})
+  nil)
 
 (mu/defn delete-transform!
   "Delete the Transform with `transform-id`."

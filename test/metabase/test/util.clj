@@ -422,9 +422,18 @@
        :inputs       []
        :expectations []}))
 
-   :model/TransformTestRun
+   :model/CardTest
    (fn [_]
-     {:status         "started"
+     (default-timestamped
+      {:creator_id   (rasta-id)
+       :name         (str "Test Card Test " (u/generate-nano-id))
+       :inputs       []
+       :expectations []}))
+
+   :model/DataTestRun
+   (fn [_]
+     {:test_type      :transform
+      :status         "started"
       :start_time     (t/instant)
       :last_heartbeat (t/instant)})
 

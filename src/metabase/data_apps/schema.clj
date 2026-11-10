@@ -17,7 +17,7 @@
 
 (def ^:private reserved-slugs
   "Slugs that collide with literal `/api/ee/apps/*` sub-routes, so an app with one would be unreachable."
-  #{"repo-status" "sandbox-host" "generate"})
+  #{"repo-status" "generate"})
 
 (defn- decoders
   "Schema properties decoding a value with `f` both in [[metabase.lib.core/normalize]] and at the API boundary."

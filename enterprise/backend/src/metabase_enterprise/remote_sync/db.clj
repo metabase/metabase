@@ -30,13 +30,13 @@
   [model :- :keyword]
   (let [pk (first (t2/primary-keys model))]
     (t2/select (into [model] (serialization/columns model))
-               pk [:in (remote-sync/synced-ids-clause model)]
+               pk [:in (remote-sync/synced-ids-clause model nil)]
                {:order-by [[pk :asc]]})))
 
 (mu/defn synced-count :- :int
   "The number of rows of `model` remote sync syncs."
   [model :- :keyword]
-  (t2/count model (first (t2/primary-keys model)) [:in (remote-sync/synced-ids-clause model)]))
+  (t2/count model (first (t2/primary-keys model)) [:in (remote-sync/synced-ids-clause model nil)]))
 
 (mu/defn delete-rows!
   "Deletes the rows of `model` with the primary keys `pks`, running its hooks."
@@ -80,7 +80,7 @@
   "The number of Cards remote sync syncs, by `:type`."
   []
   (t2/select-fn->fn :type :count [:model/Card :type [:%count.* :count]]
-                    :id [:in (remote-sync/synced-ids-clause :model/Card)]
+                    :id [:in (remote-sync/synced-ids-clause :model/Card nil)]
                     {:group-by [:type]}))
 
 (mu/defn task

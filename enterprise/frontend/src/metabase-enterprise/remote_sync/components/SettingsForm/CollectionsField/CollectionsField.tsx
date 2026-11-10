@@ -7,12 +7,14 @@ import type { SyncableCollection } from "../../../types";
 
 type CollectionsFieldProps = {
   title: string;
+  description?: string;
   emptyMessage: string;
   collections: SyncableCollection[];
 };
 
 export const CollectionsField = ({
   title,
+  description,
   emptyMessage,
   collections,
 }: CollectionsFieldProps) => {
@@ -21,7 +23,14 @@ export const CollectionsField = ({
 
   return (
     <Stack gap="sm">
-      <Text fw="bold">{title}</Text>
+      <Stack gap="xs">
+        <Text fw="bold">{title}</Text>
+        {description && (
+          <Text c="text-secondary" size="sm">
+            {description}
+          </Text>
+        )}
+      </Stack>
       {collections.length === 0 && (
         <Text c="text-secondary">{emptyMessage}</Text>
       )}

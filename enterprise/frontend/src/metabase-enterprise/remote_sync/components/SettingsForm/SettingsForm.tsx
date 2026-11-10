@@ -5,7 +5,6 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
-import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   Form,
   FormErrorMessage,
@@ -16,11 +15,10 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
-import { Button, Group, Loader, Radio, Stack, Tooltip } from "metabase/ui";
+import { Button, Group, Loader, Radio, Stack } from "metabase/ui";
 import {
   useCreateLibraryMutation,
   useGetRemoteSyncIsDirtyQuery,
-  useImportChangesMutation,
   useTestRemoteSyncConnectionMutation,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api";
@@ -33,8 +31,6 @@ import { isRemoteSyncUnsyncedDependenciesError } from "metabase-types/guards";
 
 import {
   trackBranchSwitched,
-  trackPullChanges,
-  trackRemoteSyncDeactivated,
   trackRemoteSyncSettingsChanged,
 } from "../../analytics";
 import type { SettingsFormValues, SyncableCollection } from "../../types";
@@ -161,7 +157,6 @@ const LoadedSettingsForm = ({
           <SettingsFormBody
             regularCollections={regularCollections}
             tenantCollections={tenantCollections}
-            onPullStarted={setTaskId}
             onCancel={onCancel}
           />
           {unsyncedDependencies != null && (
@@ -184,14 +179,12 @@ const LoadedSettingsForm = ({
 type SettingsFormBodyProps = {
   regularCollections: SyncableCollection[];
   tenantCollections: SyncableCollection[];
-  onPullStarted: (taskId: RemoteSyncTaskId) => void;
   onCancel?: () => void;
 };
 
 const SettingsFormBody = ({
   regularCollections,
   tenantCollections,
-  onPullStarted,
   onCancel,
 }: SettingsFormBodyProps) => {
   const isTenantsEnabled = useSetting("use-tenants");
@@ -256,6 +249,7 @@ const SettingsFormBody = ({
           <>
             <CollectionsField
               title={t`Collections to sync`}
+              description={t`Library and transforms always sync.`}
               emptyMessage={t`There are no top-level collections yet.`}
               collections={regularCollections}
             />
@@ -268,29 +262,18 @@ const SettingsFormBody = ({
             )}
           </>
         ) : (
-          <Group justify="space-between">
-            <FormSwitch
-              name="autoImport"
-              label={t`Pull changes automatically`}
-            />
-            {isEnabled && savedType === "read-only" && (
-              <PullButton isDirty={dirty} onPullStarted={onPullStarted} />
-            )}
-          </Group>
+          <FormSwitch name="autoImport" label={t`Pull changes automatically`} />
         )}
         <FormErrorMessage />
-        <Group justify="space-between">
-          {isEnabled ? <DisableButton /> : <span />}
-          <Group gap="sm">
-            {onCancel && (
-              <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
-            )}
-            <FormSubmitButton
-              label={isEnabled ? t`Save changes` : t`Set up remote sync`}
-              variant="filled"
-              disabled={!dirty || values.url.length === 0}
-            />
-          </Group>
+        <Group justify="flex-end" gap="sm">
+          {onCancel && (
+            <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
+          )}
+          <FormSubmitButton
+            label={isEnabled ? t`Save changes` : t`Set up remote sync`}
+            variant="filled"
+            disabled={!dirty || values.url.length === 0}
+          />
         </Group>
       </Stack>
     </Form>
@@ -322,69 +305,5 @@ const TestConnectionButton = () => {
         onClick={handleClick}
       >{t`Test connection`}</Button>
     </Group>
-  );
-};
-
-type PullButtonProps = {
-  isDirty: boolean;
-  onPullStarted: (taskId: RemoteSyncTaskId) => void;
-};
-
-const PullButton = ({ isDirty, onPullStarted }: PullButtonProps) => {
-  const [importChanges, { isLoading }] = useImportChangesMutation();
-  const [sendToast] = useToast();
-
-  const handleClick = async () => {
-    try {
-      const { task_id } = await importChanges({ force: true }).unwrap();
-      trackPullChanges({ triggeredFrom: "admin-settings", force: true });
-      if (task_id != null) {
-        onPullStarted(task_id);
-      }
-    } catch (error) {
-      sendToast({
-        message: getErrorMessage(error, t`Couldn't pull changes`),
-        variant: "negative",
-      });
-    }
-  };
-
-  return (
-    <Tooltip
-      label={t`Save settings before pulling changes`}
-      disabled={!isDirty}
-    >
-      <Button loading={isLoading} disabled={isDirty} onClick={handleClick}>
-        {t`Pull changes now`}
-      </Button>
-    </Tooltip>
-  );
-};
-
-const DisableButton = () => {
-  const [updateSettings, { isLoading }] = useUpdateRemoteSyncSettingsMutation();
-  const { show: showConfirmation, modalContent } = useConfirmation();
-
-  const handleClick = () =>
-    showConfirmation({
-      title: t`Turn off remote sync?`,
-      message: t`Content stays on this instance, but it won't sync with the repository any more.`,
-      confirmButtonText: t`Turn off`,
-      onConfirm: async () => {
-        await updateSettings({ "remote-sync-url": null }).unwrap();
-        trackRemoteSyncDeactivated();
-      },
-    });
-
-  return (
-    <>
-      <Button
-        variant="filled"
-        color="negative"
-        loading={isLoading}
-        onClick={handleClick}
-      >{t`Turn off remote sync`}</Button>
-      {modalContent}
-    </>
   );
 };

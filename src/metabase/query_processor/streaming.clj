@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv some not-empty]])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
@@ -321,3 +322,8 @@
   {:style/indent 1}
   [[map-binding export-format filename-prefix] & body]
   `(-streaming-response ~export-format ~filename-prefix (^:once fn* [~map-binding] ~@body)))
+
+(mr/def ::query-result-response
+  "Response schema for an endpoint that returns a [[streaming-response]] of query results.
+  OpenAPI documents the query result the stream carries."
+  (streaming-response/streaming-response-schema ::qp.schema/query-result))

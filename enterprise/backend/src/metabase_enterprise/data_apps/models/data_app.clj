@@ -125,10 +125,8 @@
   ([_model pk]
    (and (premium-features/has-feature? :data-apps)
         (or api/*is-superuser?*
-            (let [{:keys [enabled resource_collection_id]} (data-apps.db/data-app pk)]
-              (and (true? enabled)
-                   (some? resource_collection_id)
-                   (mi/can-read? :model/Collection resource_collection_id)))))))
+            (and api/*current-user-id*
+                 (data-apps.db/data-app-readable? api/*current-user-id* pk))))))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)
@@ -205,6 +203,13 @@
                                                                                  {:status-code 400}))))))
                                                         entities
                                                         files))}}})
+
+(defmethod serialization/before-load :model/DataApp [_ items]
+  (mapv (fn [{:keys [row local] :as item}]
+          (cond-> item
+            (and local (some-> ^bytes (:bundle row) bytes-hash (= (:bundle_hash local))))
+            (update :row dissoc :bundle)))
+        items))
 
 (defmethod serialization/storage-paths :model/DataApp [_ entities _ctx]
   (mapv (fn [app]
