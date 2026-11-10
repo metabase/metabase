@@ -71733,7 +71733,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test" ],
+            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test" ],
             "type" : "string"
           }
         } ],
@@ -71764,7 +71764,7 @@
                 "additionalProperties" : false,
                 "properties" : {
                   "entity" : {
-                    "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test" ],
+                    "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test" ],
                     "type" : "string"
                   },
                   "id" : {
@@ -71808,7 +71808,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test" ],
+            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test" ],
             "type" : "string"
           }
         }, {

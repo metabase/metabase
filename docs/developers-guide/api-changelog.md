@@ -18,6 +18,10 @@ summary: Breaking changes to the Metabase API, listed by release.
   change shows within, such as the table of a segment). They no longer have `collection_id`, `created_at`, `updated_at`,
   `authority_level`, `display`, `query_type`, `description`, `table_id`, `table_name` or `card_id`.
 
+- `POST /api/revision/revert` with `entity` `transform-test` needs the Transforms Testing premium feature, as the
+  `/api/ee/transform-test` endpoints do. Without it, it returns `402 Payment Required`. The revision history endpoints
+  `GET /api/revision?entity=transform-test` and `GET /api/revision/transform-test/:id` do not need it.
+
 - `POST /api/ee/transform-test/:id/run` answers a query under test that fails to run with the `error-code`
   `transform-test.query-failed` in place of `transform-test.transform-failed`. The status stays `422`.
 

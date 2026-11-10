@@ -43,7 +43,8 @@
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
           content
-          [:model/CustomVizPlugin
+          [:model/CardTest
+           :model/CustomVizPlugin
            :model/DataApp
            :model/EmbeddingTheme
            :model/FieldValues
@@ -85,8 +86,6 @@
    :model/BookmarkOrdering
    :model/CacheConfig
    :model/CardBookmark
-   ;; Until card tests have a serialization spec.
-   :model/CardTest
    :model/ChannelTemplate
    :model/CloudMigration
    :model/CollectionBookmark
