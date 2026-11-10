@@ -131,9 +131,9 @@
               (throw e)))))
       (count statuses))))
 
-(mu/defn- update-dependencies! :- [:maybe :boolean]
+(mu/defn update-dependencies! :- [:maybe :boolean]
   "Update the dependencies of up to a batch of entities, triggering the jobs that read them, and return whether the
-  batch took any."
+  batch took any. Run it through [[task.util/run-batch-locked!]] outside the job."
   []
   (when (premium-features/has-feature? :dependencies)
     (let [batch-size (deps.settings/dependency-backfill-batch-size)

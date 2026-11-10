@@ -33,6 +33,15 @@
   "A Quartz scheduler, or nil when none is running."
   [:maybe (ms/InstanceOfClass Scheduler)])
 
+(defonce ^:private batch-monitor (Object.))
+
+(defn run-batch-locked!
+  "Call `run-batch!` holding the lock every job's batch holds, and return what it returns. Taking a batch selects the
+  pending statuses and then inserts the missing ones, so two runners taking at once would process the same entities;
+  Quartz keeps each job to one run at a time, but a batch run outside Quartz has to take this lock to be as safe."
+  [run-batch!]
+  (locking batch-monitor (run-batch!)))
+
 (mu/defn- job-delay :- ms/IntGreaterThanOrEqualToZero
   "A random delay in seconds between `delay - variance` and `delay + variance` minutes."
   [delay    :- :int
@@ -92,7 +101,7 @@
    {:keys [run-batch! job-name batch-size] :as job} :- Job]
   (if (pos? (batch-size))
     (try
-      (if-some [delay-in-seconds (run-batch!)]
+      (if-some [delay-in-seconds (run-batch-locked! run-batch!)]
         (schedule-run! scheduler job delay-in-seconds)
         (log/debug "Job" job-name "has nothing more to do, stopping."))
       (catch Throwable e

@@ -108,6 +108,12 @@ enterprise/backend/src/metabase_enterprise/dependencies.* @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/dependencies @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/dependencies_test.* @metabase/data-apps
 
+# enterprise/lint (Data Apps)
+enterprise/backend/src/metabase_enterprise/lint @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/lint.* @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/lint @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/lint_test.* @metabase/data-apps
+
 # enterprise/remote-sync (Data Apps)
 enterprise/backend/src/metabase_enterprise/remote_sync @metabase/data-apps
 enterprise/backend/src/metabase_enterprise/remote_sync.* @metabase/data-apps

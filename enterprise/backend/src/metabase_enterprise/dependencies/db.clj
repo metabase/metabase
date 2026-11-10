@@ -1143,7 +1143,41 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/AnalysisFindingStatus :entity_type entity-type :entity_id [:in entity-ids]))
 
+(mu/defn failed-analysis-entities :- [:sequential [:map
+                                                   [:id            ms/PositiveInt]
+                                                   [:entity_id     [:maybe :string]]
+                                                   [:name          :string]
+                                                   [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+  "The `id`, `entity_id`, `name` and, when `collection?`, `collection_id` of the entities of `entity-type` whose
+  AnalysisFinding failed, leaving out archived ones when `archived?` names a column, and content Metabase manages
+  itself, such as usage analytics."
+  [entity-type :- ::dependencies.schema/entity-type
+   {:keys [archived? collection?]} :- [:map {:closed true}
+                                       [:archived?   :boolean]
+                                       [:collection? :boolean]]]
+  (let [model (deps.dependency-types/dependency-type->model entity-type)]
+    (t2/query {:select   (cond-> [:entity.id :entity.entity_id :entity.name]
+                           collection? (conj :entity.collection_id))
+               :from     [[(t2/table-name model) :entity]]
+               :join     [:analysis_finding [:and
+                                             [:= :analysis_finding.entity_id :entity.id]
+                                             [:= :analysis_finding.entity_type (name entity-type)]]]
+               :where    (cond-> [:and
+                                  [:= :analysis_finding.result false]
+                                  (mi/exclude-internal-content-hsql model :table-alias :entity)]
+                           archived? (conj [:= :entity.archived false]))
+               :order-by [[:entity.id :asc]]})))
+
 ;;; --------------------------------------------- Analysis finding errors ---------------------------------------------
+
+(mu/defn finding-errors-for-entities
+  "The AnalysisFindingErrors analyzing any of the entities `entity-type` `entity-ids`, oldest first."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (t2/select :model/AnalysisFindingError
+             :analyzed_entity_type entity-type
+             :analyzed_entity_id   [:in entity-ids]
+             {:order-by [[:id :asc]]}))
 
 (mu/defn finding-errors-for-entity
   "The AnalysisFindingErrors of the entity `entity-type` `entity-id`."
