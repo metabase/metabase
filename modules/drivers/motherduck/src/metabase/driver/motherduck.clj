@@ -179,9 +179,6 @@
                  ;; The endpoint's information_schema reports virtual generated columns as not
                  ;; generated. The field preprocessor below removes this unreliable value.
                  :describe-is-generated
-                 :uploads
-                 ;; Uploads only. DuckDB has no BIGSERIAL, and the endpoint doesn't implement `GENERATED ... AS IDENTITY`.
-                 :upload-with-auto-pk
                  :persist-models
                  ;; Before enabling: the inherited SET ROLE quotes role names on the server with Postgres's
                  ;; `quote_ident(?)`. Check that DuckDB's quote_ident escapes identically, or SET ROLE is injectable.
@@ -776,3 +773,81 @@
 (defmethod driver/insert-into! :motherduck
   [driver db-id table-name column-names values]
   ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    Uploads                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private auto-incrementing-pk-type
+  "The column type an upload's auto-incrementing primary key gets from `upload-type->database-type`. DuckDB has no
+  `BIGSERIAL`, and the endpoint doesn't implement `GENERATED ... AS IDENTITY`, so `create-table!` turns the column
+  into a `BIGINT` that defaults to a sequence of its own, as MotherDuck recommends."
+  [::auto-incrementing-pk])
+
+(defmethod driver/upload-type->database-type :motherduck
+  [driver upload-type]
+  (case upload-type
+    :metabase.upload/auto-incrementing-int-pk auto-incrementing-pk-type
+    ;; Postgres's `float` is `double precision`; through the endpoint it's DuckDB's 4-byte FLOAT.
+    :metabase.upload/float                    [:double-precision]
+    ;; DuckDB's VARCHAR(255) is plain VARCHAR; the length isn't enforced. Say so, rather than promise a limit that
+    ;; an upload longer than 255 characters would show to be hollow.
+    :metabase.upload/varchar-255              [:text]
+    ((get-method driver/upload-type->database-type :postgres) driver upload-type)))
+
+(defn- with-pk-sequences
+  "Replace each [[auto-incrementing-pk-type]] column of `column-definitions` with a `BIGINT` that defaults to a
+  sequence named for it. Returns `[sequence-names column-definitions]`, the latter as ordered pairs."
+  [driver table-name column-definitions]
+  (let [*sequences  (volatile! (transient []))
+        coltype-for (fn [column]
+                      (let [seq-name (pk-sequence-name driver table-name column)]
+                        (vswap! *sequences conj! seq-name)
+                        (str "BIGINT DEFAULT nextval('" (str/replace seq-name "'" "''") "')")))
+        columns     (perf/mapv (fn [[column type]]
+                                 (if (= type auto-incrementing-pk-type)
+                                   [column (coltype-for column)]
+                                   [column type]))
+                               column-definitions)]
+    [(persistent! @*sequences)
+     columns]))
+
+(defmethod driver/create-table! :motherduck
+  [driver db-id table-name column-definitions & {:as opts}]
+  (let [[sequences column-definitions] (with-pk-sequences driver table-name column-definitions)]
+    ;; Separately from the table, since the inherited method opens its own transaction. `IF NOT EXISTS` lets a
+    ;; retry find the sequence an earlier attempt left behind.
+    (when (seq sequences)
+      (execute-ddl! driver db-id (map #(str "CREATE SEQUENCE IF NOT EXISTS " %) sequences)))
+    (apply (get-method driver/create-table! :sql-jdbc)
+           driver db-id table-name column-definitions
+           (mapcat identity opts))))
+
+;; The endpoint takes one ALTER command per statement, so the inherited methods, which put every column in one
+;; statement, fail for two or more columns.
+(defmethod driver/add-columns! :motherduck
+  [driver db-id table-name column-definitions & {:keys [primary-key]}]
+  (when (seq primary-key)
+    ;; The endpoint refuses `ADD COLUMN ... PRIMARY KEY` and a `DEFAULT nextval(...)` on an added column. Uploads
+    ;; only ask for this on tables made before 0.49, which predate this driver.
+    (throw (ex-info (tru "MotherDuck can''t add a primary key column to an existing table.")
+                    {:table-name table-name, :primary-key primary-key})))
+  (->> column-definitions
+       (perf/mapv (fn [[column type]]
+                    (-> {:alter-table (qualified-table table-name)
+                         :add-column  [(into [(sql-jdbc.quoting/quote-identifier column)]
+                                             (if (string? type)
+                                               [[:raw type]]
+                                               type))]}
+                        (sql/format :quoted  true
+                                    :dialect (sql.qp/quote-style driver))
+                        first)))
+       (sql-jdbc.quoting/with-quoting driver)
+       (execute-ddl! driver db-id)))
+
+(defmethod driver/alter-table-columns! :motherduck
+  [driver db-id table-name column-definitions & opts]
+  (->> column-definitions
+       (perf/mapv (fn [[column type]]
+                    (apply sql-jdbc.sync/alter-table-columns-sql driver table-name {column type} opts)))
+       (execute-ddl! driver db-id)))
