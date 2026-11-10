@@ -1164,7 +1164,12 @@
           [["an existing user"
             {"FROM pg_user WHERE" [{:?column? 1}]}
             {:status-code 409, :workspace/cleanup? false, :user "mb__isolation_user_1"}
-            #"already has a user named \"mb__isolation_user_1\".*run `DROP USER \"mb__isolation_user_1\";`"]
+            #"already has a user named \"mb__isolation_user_1\".*run `DROP USER \"mb__isolation_user_1\";`.*revoke those first"]
+           ["an existing user and its schema, in the order the drops succeed"
+            {"FROM pg_user WHERE" [{:?column? 1}], "FROM pg_namespace WHERE" [{:?column? 1}]}
+            {:status-code 409, :workspace/cleanup? false, :user "mb__isolation_user_1", :schema "mb__isolation_ws_1"}
+            (re-pattern (str "already has a schema named \"mb__isolation_ws_1\" and a user named \"mb__isolation_user_1\"\\. "
+                             ".*run `DROP SCHEMA \"mb__isolation_ws_1\" CASCADE;`, then `DROP USER \"mb__isolation_user_1\";`"))]
            ["an existing schema"
             {"FROM pg_namespace WHERE" [{:?column? 1}]}
             {:status-code 409, :workspace/cleanup? false, :schema "mb__isolation_ws_1"}

@@ -1009,14 +1009,22 @@
   (jdbc/execute! conn ["SET LOCAL search_path TO pg_catalog"]))
 
 (defn- exists-error
-  "The 409 init throws for an object, described by `what`, that is already in the warehouse. It may belong to another
-  workspace, so init leaves it unchanged, and the caller must not tear down after this error. `drop-sql` is the
-  statement an admin runs to remove the object, when no workspace uses it, so that init can succeed."
-  [what drop-sql data]
-  (ex-info (format (str "The warehouse already has a %s. It may belong to another workspace, so it was left unchanged. "
-                        "If no workspace uses it, run `%s`, and retry.")
-                   what drop-sql)
-           (merge {:status-code 409, :workspace/cleanup? false} data)))
+  "The 409 init throws when objects it would create are already in the warehouse. `existing` lists them, each a map of
+  `:what` (a description), `:drop-sql` (the statement an admin runs to remove it when no workspace uses it) and
+  `:data`, in the order the drops must run: the schema first, because the user holds a privilege on it, and
+  `DROP USER` fails while it does. The objects may belong to another workspace, so init leaves them unchanged, and the
+  caller must not tear down after this error."
+  [existing]
+  (let [[they them] (if (= 1 (count existing)) ["It" "it"] ["They" "them"])
+        user?       (perf/some (comp :user :data) existing)]
+    (ex-info (str (format (str "The warehouse already has a %s. %s may belong to another workspace, so init left %s "
+                               "unchanged. If no workspace uses %s, run %s, and retry.")
+                          (str/join " and a " (map :what existing))
+                          they them them
+                          (str/join ", then " (map #(str "`" (:drop-sql %) "`") existing)))
+                  (when user?
+                    " `DROP USER` fails while the user holds a privilege on any object, so revoke those first."))
+             (apply merge {:status-code 409, :workspace/cleanup? false} (map :data existing)))))
 
 (defn- public-create-schemas
   "The schemas of the connected database that grant CREATE to PUBLIC."
@@ -1043,14 +1051,15 @@
   "Throws before init makes any change: a 409 when the workspace user or its output schema already exists, a 412 when
   PUBLIC can create in any schema."
   [conn user schema]
-  (when (user-exists? conn user)
-    (throw (exists-error (str "user named " (quote-field user))
-                         (format "DROP USER %s;" (quote-field user))
-                         {:user user})))
-  (when (schema-exists? conn schema)
-    (throw (exists-error (str "schema named " (quote-schema schema))
-                         (format "DROP SCHEMA %s CASCADE;" (quote-schema schema))
-                         {:schema schema})))
+  (let [existing (cond-> []
+                   (schema-exists? conn schema) (conj {:what     (str "schema named " (quote-schema schema))
+                                                       :drop-sql (format "DROP SCHEMA %s CASCADE;" (quote-schema schema))
+                                                       :data     {:schema schema}})
+                   (user-exists? conn user)     (conj {:what     (str "user named " (quote-field user))
+                                                       :drop-sql (format "DROP USER %s;" (quote-field user))
+                                                       :data     {:user user}}))]
+    (when (seq existing)
+      (throw (exists-error existing))))
   (check-no-public-create-anywhere! conn))
 
 (defn- init-workspace-sqls
