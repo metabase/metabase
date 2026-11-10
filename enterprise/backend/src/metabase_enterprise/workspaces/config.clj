@@ -143,7 +143,7 @@
      (str "workspace field " (path->str path)))))
 
 (defn- check-no-template-forms
-  "Throw a 409 if any string in `config` contains `{{` or `[[`. The sidecar expands `{{env X}}`
+  "Throw a 422 if any string in `config` contains `{{` or `[[`. The sidecar expands `{{env X}}`
    templates in every string of config.yml at boot, so a template the parent emits would read the
    developer's environment, and a `[[` without a `{{` inside makes the sidecar's boot throw.
    Templating is for sections the caller adds."
@@ -151,7 +151,7 @@
   (when-let [locations (seq (template-locations config))]
     (throw (ex-info (str "Cannot build config: values contain a template form ({{ or [[), which the sidecar would parse at boot: "
                          (str/join "; " locations))
-                    {:status-code  409
+                    {:status-code  422
                      :workspace_id workspace-id
                      :locations    (vec locations)})))
   config)
@@ -171,7 +171,8 @@
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
   `instance-workspace` setting stores. Returns nil when the workspace does not
   exist. Throws a 409 `ex-info` if any of the workspace's databases is not
-  `:provisioned`, or if any emitted string contains a template form (`{{` or `[[`)."
+  `:provisioned` (waiting clears it), and a 422 if any emitted string contains a
+  template form (`{{` or `[[`; only an admin can clear it)."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]

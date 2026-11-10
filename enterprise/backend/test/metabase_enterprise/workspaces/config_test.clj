@@ -138,7 +138,7 @@
            (config/build-workspace-config ws-id))))))
 
 (deftest build-workspace-config-emits-no-template-forms-test
-  (testing "The sidecar expands `{{env X}}` in every config.yml string at boot, so the parent refuses (409)
+  (testing "The sidecar expands `{{env X}}` in every config.yml string at boot, so the parent refuses (422)
             to emit a config carrying `{{`. The error names the database and field path, never the value."
     (mt/with-temp [:model/Database {db-id :id}
                    {:name    "Templated DW"
@@ -158,7 +158,7 @@
                 nil
                 (catch clojure.lang.ExceptionInfo e e))]
         (is (some? e))
-        (is (= 409 (:status-code (ex-data e))))
+        (is (= 422 (:status-code (ex-data e))))
         (is (= #{"database \"Templated DW\" field details.host"
                  "database \"Templated DW\" field details.password"}
                (set (:locations (ex-data e)))))
@@ -167,7 +167,7 @@
 
 (deftest build-workspace-config-emits-no-optional-forms-test
   (testing "The sidecar parses `[[...]]` in every config.yml string at boot and throws when one holds no
-            `{{`, so the parent refuses (409) to emit a config carrying `[[` as well."
+            `{{`, so the parent refuses (422) to emit a config carrying `[[` as well."
     (mt/with-temp [:model/Database {db-id :id}
                    {:name    "Bracketed DW"
                     :engine  :postgres
@@ -186,7 +186,7 @@
                 nil
                 (catch clojure.lang.ExceptionInfo e e))]
         (is (some? e))
-        (is (= 409 (:status-code (ex-data e))))
+        (is (= 422 (:status-code (ex-data e))))
         (is (= ["database \"Bracketed DW\" field details.password"]
                (:locations (ex-data e))))
         (is (not (re-find #"p\[\[w" (ex-message e)))
@@ -216,7 +216,7 @@
                 nil
                 (catch clojure.lang.ExceptionInfo e e))]
         (is (some? e))
-        (is (= 409 (:status-code (ex-data e))))
+        (is (= 422 (:status-code (ex-data e))))
         (is (= #{"database \"DW [[a]]\" field name"
                  "database \"DW [[a]]\" field details.schema-filters-patterns"
                  "database \"Stub [[b]]\" field name"
