@@ -1667,26 +1667,34 @@
   (testing "a collection's items never list tables, so recovery adds a table route when the search could match one"
     (mt/with-test-user :crowberto
       (mt/with-dynamic-fn-redefs [search/search-by-query (fn [_] (throw (ex-info "Search Index not found." {})))]
-        (let [recovery (fn [args]
-                         (-> (invoke-search [#'search/search-tool #'metabot.tools/read-resource-tool]
-                                            (merge args {:query "orders"}) nil "internal")
-                             :output
-                             str/split-lines
-                             second))
-              items    "Find the data with `read_resource` instead: read `metabase://collection/7/items`"]
-          (testing "with the Library, a collection holds published tables"
-            (mt/with-premium-features #{:library}
-              (is (= (str items ", and `metabase://databases`, then `metabase://database/{id}/tables` for tables.")
-                     (recovery {:collection_id 7})))
-              (is (= (str items ", and `metabase://database/" (mt/id) "/tables` for tables.")
-                     (recovery {:collection_id 7 :database_id (mt/id)})))
-              (is (= (str items ".")
-                     (recovery {:collection_id 7 :entity_types ["metric" "dashboard"]}))
-                  "a search that looked for no tables needs no table route")))
-          (testing "without the Library, a collection-scoped search never returns tables"
-            (mt/with-premium-features #{}
-              (is (= (str items ".")
-                     (recovery {:collection_id 7}))))))))))
+        (mt/with-temp [:model/Collection {data-id :id}    {:name "Data" :type "library-data"}
+                       :model/Collection {metrics-id :id} {:name "Metrics" :type "library-metrics"}
+                       :model/Collection {plain-id :id}   {:name "Plain"}]
+          (let [recovery (fn [args]
+                           (-> (invoke-search [#'search/search-tool #'metabot.tools/read-resource-tool]
+                                              (merge args {:query "orders"}) nil "internal")
+                               :output
+                               str/split-lines
+                               second))
+                items    (fn [id]
+                           (str "Find the data with `read_resource` instead: read `metabase://collection/" id "/items`"))]
+            (testing "with the Library, the Library's data collection holds published tables"
+              (mt/with-premium-features #{:library}
+                (is (= (str (items data-id) ", and `metabase://databases`, then `metabase://database/{id}/tables` "
+                            "for tables.")
+                       (recovery {:collection_id data-id})))
+                (is (= (str (items data-id) ", and `metabase://database/" (mt/id) "/tables` for tables.")
+                       (recovery {:collection_id data-id :database_id (mt/id)})))
+                (is (= (str (items data-id) ".")
+                       (recovery {:collection_id data-id :entity_types ["metric" "dashboard"]}))
+                    "a search that looked for no tables needs no table route")
+                (testing "but no other collection does"
+                  (doseq [id [metrics-id plain-id]]
+                    (is (= (str (items id) ".") (recovery {:collection_id id})))))))
+            (testing "without the Library, a collection-scoped search never returns tables"
+              (mt/with-premium-features #{}
+                (is (= (str (items data-id) ".")
+                       (recovery {:collection_id data-id})))))))))))
 
 (deftest confined-collection-is-not-overridable-test
   (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a
