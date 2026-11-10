@@ -25,6 +25,7 @@ import {
 import { AddCardSidebar } from "./AddCardSidebar";
 
 const CURRENT_USER_ID = 1;
+const TENANT_COLLECTION_ID = 200;
 const PERSONAL_COLLECTION_ID = 100;
 
 const OUR_ANALYTICS = createMockCollection({
@@ -41,7 +42,7 @@ const PERSONAL_COLLECTION = createMockCollection({
 });
 
 const TENANT_COLLECTION = createMockCollection({
-  id: 200,
+  id: TENANT_COLLECTION_ID,
   name: "Tenant collection: Acme",
   location: "/",
   namespace: "tenant-specific",
@@ -50,7 +51,7 @@ const TENANT_COLLECTION = createMockCollection({
 const TENANT_SUBCOLLECTION = createMockCollection({
   id: 201,
   name: "Tenant questions",
-  location: `/${TENANT_COLLECTION.id}/`,
+  location: `/${TENANT_COLLECTION_ID}/`,
   namespace: "tenant-specific",
 });
 
@@ -67,7 +68,7 @@ const TENANT = createMockTenant({
   id: 1,
   name: "Acme",
   slug: "acme",
-  tenant_collection_id: TENANT_COLLECTION.id,
+  tenant_collection_id: TENANT_COLLECTION_ID,
 });
 
 const TENANT_QUESTION = createMockCollectionItem({
@@ -88,7 +89,7 @@ function setup({
   isTenantUser = false,
 }: SetupOpts) {
   const dashboard = createMockDashboard({ collection: dashboardCollection });
-  const addCardToDashboard = jest.fn<void, [AddCardToDashboardOpts]>();
+  const addCardToDashboard = jest.fn<Promise<void>, [AddCardToDashboardOpts]>();
 
   setupCollectionsEndpoints({
     collections,
