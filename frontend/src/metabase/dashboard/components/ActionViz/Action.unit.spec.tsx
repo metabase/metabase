@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { type ComponentProps, useState } from "react";
 
 import {
   setupActionEndpoints,
@@ -7,9 +8,14 @@ import {
   setupDatabasesEndpoints,
   setupPrefetchDashcardValuesEndpoint,
 } from "__support__/server-mocks";
-import { createMockDashboardState } from "__support__/state";
+import {
+  createMockDashboardState,
+  createMockStoreDashboard,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  act,
+  fireEvent,
   getIcon,
   queryIcon,
   renderWithProviders,
@@ -17,20 +23,25 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { SET_PARAMETER_VALUE } from "metabase/dashboard/actions";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
+import { useSelector } from "metabase/redux";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   ActionDashboardCard,
+  DashboardCard,
   Database,
   ParameterTarget,
+  WritebackAction,
 } from "metabase-types/api";
 import {
   createMockActionDashboardCard as _createMockActionDashboardCard,
   createMockActionParameter,
   createMockCard,
   createMockDashboard,
+  createMockDashboardCard,
   createMockDatabase,
   createMockFieldSettings,
   createMockImplicitQueryAction,
@@ -549,6 +560,486 @@ describe("Actions > ActionViz > Action", () => {
       expect(
         screen.getByRole("button", { name: "Delete" }),
       ).toBeInTheDocument();
+    });
+  });
+});
+
+const EDITABLE_ACTION = createMockQueryAction({
+  ...ACTION,
+  visualization_settings: {
+    fields: {
+      parameter_1: createMockFieldSettings({
+        id: "parameter_1",
+        fieldType: "string",
+        inputType: "string",
+      }),
+      parameter_2: createMockFieldSettings({
+        id: "parameter_2",
+        fieldType: "number",
+        inputType: "number",
+      }),
+    },
+  },
+});
+
+const QUESTION_DASHCARD_ID = 789;
+const QUESTION_CARD = createMockCard({ id: 999, name: "Scores" });
+
+type StoreSetupOpts = {
+  action?: WritebackAction;
+  parameterMappings?: ActionDashboardCard["parameter_mappings"];
+  parameterValues?: Record<string, string>;
+  prefetchValues?: (parameters: unknown) => Record<string, unknown>;
+  withQuestionDashcard?: boolean;
+  executeResponse?: object;
+};
+
+/**
+ * Renders the action from the dashboard state, like the dashboard does, so
+ * edits made to the action in the execute modal reach the button through the
+ * store.
+ */
+function StoreAction(
+  props: Omit<ComponentProps<typeof Action>, "dashcard" | "dashboard">,
+) {
+  // The store only holds the action dashcard this test put there
+  const dashcard = useSelector(
+    (state) => state.dashboard.dashcards[DASHCARD_ID],
+  ) as ActionDashboardCard;
+  const [dashboard] = useState(() => createMockDashboard({ id: DASHBOARD_ID }));
+  return <Action {...props} dashcard={dashcard} dashboard={dashboard} />;
+}
+
+function setupWithStore({
+  action = ACTION,
+  parameterMappings = [],
+  parameterValues = {},
+  prefetchValues,
+  withQuestionDashcard = false,
+  executeResponse = { "rows-updated": [1] },
+}: StoreSetupOpts = {}) {
+  const dashcard = createMockActionDashboardCard({
+    action,
+    parameter_mappings: parameterMappings,
+  });
+  const questionDashcard = createMockDashboardCard({
+    id: QUESTION_DASHCARD_ID,
+    dashboard_id: DASHBOARD_ID,
+    card_id: QUESTION_CARD.id,
+    card: QUESTION_CARD,
+  });
+  const dashcards: DashboardCard[] = withQuestionDashcard
+    ? [dashcard, questionDashcard]
+    : [dashcard];
+
+  fetchMock.post(
+    `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute/values`,
+    async (call) => {
+      return prefetchValues?.(getRequestParameters(call.options.body)) ?? {};
+    },
+  );
+  fetchMock.post(ACTION_EXEC_MOCK_PATH, executeResponse);
+  fetchMock.post(
+    `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${QUESTION_DASHCARD_ID}/card/${QUESTION_CARD.id}/query`,
+    {},
+    { name: "question-dashcard-query" },
+  );
+  setupDatabasesEndpoints([DATABASE]);
+  setupCardsEndpoints([CARD]);
+  setupActionEndpoints(action);
+  // Echo the edited action back, like the API does
+  fetchMock.modifyRoute(`action-${action.id}-put`, {
+    response: (call: { options: RequestInit }) => {
+      const edits: unknown = JSON.parse(String(call.options.body));
+      return typeof edits === "object" ? { ...action, ...edits } : action;
+    },
+  });
+
+  return renderWithProviders(
+    <StoreAction
+      settings={{}}
+      parameterValues={parameterValues}
+      isSettings={false}
+      isEditingDashcard={false}
+      dispatch={jest.fn()}
+    />,
+    {
+      withUndos: true,
+      storeInitialState: {
+        entities: createMockEntitiesState({ databases: [DATABASE] }),
+        dashboard: createMockDashboardState({
+          dashboardId: DASHBOARD_ID,
+          dashboards: {
+            [DASHBOARD_ID]: createMockStoreDashboard({
+              id: DASHBOARD_ID,
+              dashcards: dashcards.map(({ id }) => id),
+            }),
+          },
+          dashcards: Object.fromEntries(dashcards.map((dc) => [dc.id, dc])),
+          parameterValues,
+        }),
+      },
+    },
+  );
+}
+
+async function openActionEditor() {
+  const modal = await screen.findByTestId("action-parameters-input-modal");
+  await userEvent.click(
+    within(modal).getByRole("button", { name: "Edit this action" }),
+  );
+  return screen.findByTestId("action-editor-modal");
+}
+
+async function submitActionEditor(editorModal: HTMLElement) {
+  await userEvent.click(
+    within(editorModal).getByRole("button", { name: "Update" }),
+  );
+  await waitFor(() => {
+    expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
+  });
+}
+
+async function findFormFieldEditor(editorModal: HTMLElement, label: string) {
+  await within(editorModal).findByLabelText(label);
+  return checkNotNull(
+    within(editorModal)
+      .getAllByTestId("form-field-container")
+      .find((container) => within(container).queryByLabelText(label)),
+  );
+}
+
+function getRequestParameters(requestBody: RequestInit["body"]): unknown {
+  const body: unknown = JSON.parse(String(requestBody));
+  return typeof body === "object" && body !== null && "parameters" in body
+    ? body.parameters
+    : undefined;
+}
+
+function getLastExecuteParameters() {
+  const call = fetchMock.callHistory.lastCall(ACTION_EXEC_MOCK_PATH);
+  return getRequestParameters(call?.options.body);
+}
+
+describe("Actions > ActionViz > Action (dashboard state)", () => {
+  it("shows the new action title and field placeholder in the execute modal after editing the action", async () => {
+    setupWithStore({ action: EDITABLE_ACTION });
+
+    await userEvent.click(await screen.findByText("Click me"));
+    const editorModal = await openActionEditor();
+
+    const titleField =
+      await within(editorModal).findByDisplayValue("My Awesome Action");
+    await userEvent.clear(titleField);
+    await userEvent.type(titleField, "New action name");
+    await userEvent.tab();
+
+    await userEvent.click(
+      within(
+        await findFormFieldEditor(editorModal, "Parameter 1"),
+      ).getByLabelText("Field settings"),
+    );
+    await userEvent.type(
+      await screen.findByLabelText("Placeholder text"),
+      "Test placeholder",
+    );
+
+    await submitActionEditor(editorModal);
+
+    const modal = screen.getByTestId("action-parameters-input-modal");
+    expect(
+      within(modal).getByRole("heading", { name: "New action name" }),
+    ).toBeInTheDocument();
+    expect(
+      within(modal).getByPlaceholderText("Test placeholder"),
+    ).toBeInTheDocument();
+  });
+
+  it("runs the action with the query parameters and field types edited in the execute modal", async () => {
+    const { store } = setupWithStore({ action: EDITABLE_ACTION });
+
+    await userEvent.click(await screen.findByText("Click me"));
+    let editorModal = await openActionEditor();
+
+    const titleField =
+      await within(editorModal).findByDisplayValue("My Awesome Action");
+    await userEvent.clear(titleField);
+    await userEvent.type(titleField, "New action name");
+    await userEvent.tab();
+    await submitActionEditor(editorModal);
+
+    editorModal = await openActionEditor();
+    fireEvent.change(
+      within(
+        await within(editorModal).findByTestId("mock-native-query-editor"),
+      ).getByRole("textbox"),
+      {
+        target: {
+          value:
+            "UPDATE many_data_types SET timestamp = {{ Timestamp }} WHERE id = {{ ID }}",
+        },
+      },
+    );
+
+    await userEvent.click(
+      within(await findFormFieldEditor(editorModal, "ID")).getByRole("radio", {
+        name: "Number",
+      }),
+    );
+    await userEvent.click(
+      within(await findFormFieldEditor(editorModal, "Timestamp")).getByRole(
+        "radio",
+        {
+          name: "Date",
+        },
+      ),
+    );
+    await submitActionEditor(editorModal);
+
+    const storedDashcard = store.getState().dashboard.dashcards[DASHCARD_ID];
+    const editedAction = checkNotNull(
+      "action" in storedDashcard ? storedDashcard.action : undefined,
+    );
+    const parameterId = (name: string) =>
+      checkNotNull(
+        editedAction.parameters?.find((parameter) => parameter.name === name),
+      ).id;
+
+    const modal = screen.getByTestId("action-parameters-input-modal");
+    expect(within(modal).getByLabelText("Timestamp")).toHaveAttribute(
+      "type",
+      "date",
+    );
+    expect(within(modal).getByLabelText("ID")).toHaveAttribute(
+      "inputmode",
+      "decimal",
+    );
+    expect(
+      within(modal).queryByLabelText("Parameter 1"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(within(modal).getByLabelText("Timestamp"), {
+      target: { value: "2020-02-02" },
+    });
+    await userEvent.type(within(modal).getByLabelText("ID"), "1");
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "New action name" }),
+    );
+
+    expect(
+      await screen.findByText("New action name ran successfully"),
+    ).toBeInTheDocument();
+    expect(getLastExecuteParameters()).toEqual({
+      [parameterId("ID")]: 1,
+      [parameterId("Timestamp")]: "2020-02-02",
+    });
+  });
+
+  it("closes the modal, shows a toast and reloads the dashboard cards after running a query action mapped to a dashboard filter (metabase#32974)", async () => {
+    const idParameter = createMockActionParameter({
+      id: "id-parameter",
+      name: "ID",
+      slug: "id",
+      type: "number/=",
+      target: ["variable", ["template-tag", "id"]],
+    });
+    const action = createMockQueryAction({
+      ...ACTION,
+      name: "Query action",
+      parameters: [idParameter],
+      visualization_settings: {
+        fields: {
+          [idParameter.id]: createMockFieldSettings({
+            id: idParameter.id,
+            fieldType: "number",
+            inputType: "number",
+            required: true,
+          }),
+        },
+      },
+    });
+
+    setupWithStore({
+      action,
+      parameterMappings: [
+        { parameter_id: "dash-id", target: idParameter.target },
+      ],
+      parameterValues: { "dash-id": "1" },
+      withQuestionDashcard: true,
+    });
+
+    await userEvent.click(await screen.findByText("Click me"));
+    const modal = await screen.findByTestId("action-parameters-input-modal");
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Query action" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("action-parameters-input-modal"),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      await screen.findByText("Query action ran successfully"),
+    ).toBeInTheDocument();
+    expect(getLastExecuteParameters()).toEqual({ [idParameter.id]: 1 });
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("question-dashcard-query")).toBe(
+        true,
+      );
+    });
+  });
+
+  describe("implicit update actions", () => {
+    function createUpdateAction(primaryKeyName: string) {
+      const primaryKey = createMockActionParameter({
+        id: primaryKeyName,
+        name: primaryKeyName,
+        slug: primaryKeyName,
+        type: "number/=",
+        target: ["variable", ["template-tag", primaryKeyName]],
+      });
+      const name = createMockActionParameter({
+        id: "name",
+        name: "Name",
+        slug: "name",
+        type: "string/=",
+        target: ["variable", ["template-tag", "name"]],
+      });
+      const action = createMockImplicitQueryAction({
+        id: 42,
+        name: "Update",
+        kind: "row/update",
+        model_id: ACTION_MODEL_ID,
+        database_id: DATABASE_ID,
+        parameters: [primaryKey, name],
+      });
+      return { action, primaryKey };
+    }
+
+    it.each(["id", "foo"])(
+      "passes the primary key called '%s' from a dashboard filter to the execute endpoint (metabase#51020)",
+      async (primaryKeyName) => {
+        const { action, primaryKey } = createUpdateAction(primaryKeyName);
+        setupWithStore({
+          action,
+          parameterMappings: [
+            { parameter_id: "dash-pk", target: primaryKey.target },
+          ],
+          parameterValues: { "dash-pk": "1" },
+          prefetchValues: () => ({ [primaryKeyName]: 1, name: "Foo" }),
+        });
+
+        await userEvent.click(await screen.findByText("Click me"));
+        const modal = await screen.findByTestId(
+          "action-parameters-input-modal",
+        );
+        const nameInput = await within(modal).findByLabelText("Name");
+        await waitFor(() => expect(nameInput).toHaveValue("Foo"));
+        await userEvent.type(nameInput, " Baz");
+        await userEvent.click(
+          within(modal).getByRole("button", { name: "Update" }),
+        );
+
+        expect(
+          await screen.findByText("Successfully updated"),
+        ).toBeInTheDocument();
+        expect(getLastExecuteParameters()).toEqual({
+          [primaryKeyName]: 1,
+          name: "Foo Baz",
+        });
+      },
+    );
+
+    it("refetches the form values when the dashboard filter changes the row id (metabase#33084)", async () => {
+      const { action, primaryKey } = createUpdateAction("id");
+      const rows: Record<string, string> = {
+        "5": "Energetic Elephants",
+        "10": "Jolly Jellyfish",
+      };
+      const { store } = setupWithStore({
+        action,
+        parameterMappings: [
+          { parameter_id: "dash-pk", target: primaryKey.target },
+        ],
+        parameterValues: { "dash-pk": "5" },
+        prefetchValues: (parameters) => {
+          const id =
+            typeof parameters === "object" &&
+            parameters !== null &&
+            "id" in parameters
+              ? String(parameters.id)
+              : "";
+          return { id, name: rows[id] };
+        },
+      });
+
+      await userEvent.click(await screen.findByText("Click me"));
+      let modal = await screen.findByTestId("action-parameters-input-modal");
+      await waitFor(() =>
+        expect(within(modal).getByLabelText("Name")).toHaveValue(
+          "Energetic Elephants",
+        ),
+      );
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Cancel" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("action-parameters-input-modal"),
+        ).not.toBeInTheDocument(),
+      );
+
+      act(() => {
+        store.dispatch({
+          type: SET_PARAMETER_VALUE,
+          payload: { id: "dash-pk", value: "10", isDraft: false },
+        });
+      });
+
+      await userEvent.click(screen.getByText("Click me"));
+      modal = await screen.findByTestId("action-parameters-input-modal");
+      await waitFor(() =>
+        expect(within(modal).getByLabelText("Name")).toHaveValue(
+          "Jolly Jellyfish",
+        ),
+      );
+    });
+
+    it("shows the constraint violation errors returned by the execute endpoint", async () => {
+      const { action, primaryKey } = createUpdateAction("id");
+      setupWithStore({
+        action,
+        parameterMappings: [
+          { parameter_id: "dash-pk", target: primaryKey.target },
+        ],
+        parameterValues: { "dash-pk": "10" },
+        prefetchValues: () => ({ id: 10, name: "Jolly Jellyfish" }),
+        executeResponse: {
+          status: 400,
+          body: {
+            message: "Name already exists.",
+            errors: { name: "This Name value already exists." },
+          },
+        },
+      });
+      await userEvent.click(await screen.findByText("Click me"));
+      const modal = await screen.findByTestId("action-parameters-input-modal");
+      const nameInput = within(modal).getByLabelText("Name");
+      await waitFor(() => expect(nameInput).toHaveValue("Jolly Jellyfish"));
+      await userEvent.clear(nameInput);
+      await userEvent.type(nameInput, "Kind Koalas");
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Update" }),
+      );
+
+      expect(
+        await within(modal).findByText("This Name value already exists."),
+      ).toBeInTheDocument();
+      expect(
+        within(modal).getByText("Name already exists."),
+      ).toBeInTheDocument();
+      expect(within(modal).getByLabelText("Name")).toBeInTheDocument();
     });
   });
 });
