@@ -10,6 +10,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
+  waitForSidesheetToOpen,
 } from "__support__/ui";
 import type { Document, Revision } from "metabase-types/api";
 import {
@@ -55,7 +56,7 @@ const mockDocument = createMockDocument({
   archived: false,
 });
 
-function setup({
+async function setup({
   document = mockDocument,
   revisions = mockRevisions,
 }: {
@@ -76,24 +77,22 @@ function setup({
     <DocumentRevisionHistorySidebar document={document} onClose={onClose} />,
     { storeInitialState: state },
   );
+  await waitForSidesheetToOpen();
+  await waitForLoaderToBeRemoved();
 
   return { onClose, document };
 }
 
 describe("DocumentRevisionHistorySidebar", () => {
   it("should render the sidebar when open", async () => {
-    setup();
-
-    await waitForLoaderToBeRemoved();
+    await setup();
 
     expect(screen.getByText("History")).toBeInTheDocument();
     expect(screen.getByTestId("document-history-list")).toBeInTheDocument();
   });
 
   it("should display revision history entries", async () => {
-    setup();
-
-    await waitForLoaderToBeRemoved();
+    await setup();
 
     expect(await screen.findByText(/created this/)).toBeInTheDocument();
     expect(
@@ -102,9 +101,7 @@ describe("DocumentRevisionHistorySidebar", () => {
   });
 
   it("should show revert buttons when user can write", async () => {
-    setup();
-
-    await waitForLoaderToBeRemoved();
+    await setup();
 
     await screen.findByText(/created this/);
     await screen.findByText(/renamed this Document/);
@@ -114,16 +111,14 @@ describe("DocumentRevisionHistorySidebar", () => {
   });
 
   it("should not show revert buttons when user cannot write", async () => {
-    setup();
-
-    await waitForLoaderToBeRemoved();
+    await setup();
 
     const revertButtons = screen.queryAllByRole("button", { name: "Revert" });
     expect(revertButtons).toHaveLength(0);
   });
 
   it("should not show revert buttons when document is archived", async () => {
-    setup({
+    await setup({
       document: createMockDocument({
         id: 1,
         name: "Test Document",
@@ -132,24 +127,18 @@ describe("DocumentRevisionHistorySidebar", () => {
       }),
     });
 
-    await waitForLoaderToBeRemoved();
-
     const revertButtons = screen.queryAllByRole("button", { name: "Revert" });
     expect(revertButtons).toHaveLength(0);
   });
 
   it("should handle empty revisions", async () => {
-    setup({ revisions: [] });
-
-    await waitForLoaderToBeRemoved();
+    await setup({ revisions: [] });
 
     expect(screen.getByTestId("document-history-list")).toBeInTheDocument();
   });
 
   it("should call onClose when close button is clicked", async () => {
-    const { onClose } = setup();
-
-    await waitForLoaderToBeRemoved();
+    const { onClose } = await setup();
 
     const closeButton = screen.getByRole("button", { name: /close/i });
     await userEvent.click(closeButton);

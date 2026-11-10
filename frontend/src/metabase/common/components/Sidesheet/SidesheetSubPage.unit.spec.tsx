@@ -5,7 +5,7 @@ import { render, screen, waitFor } from "__support__/ui";
 import { SidesheetSubPage } from "./SidesheetSubPage";
 
 describe("Sidesheet", () => {
-  it("should always render with a back button", () => {
+  it("should always render with a back button", async () => {
     render(
       <SidesheetSubPage
         isOpen
@@ -17,26 +17,38 @@ describe("Sidesheet", () => {
       </SidesheetSubPage>,
     );
 
-    expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
+    expect(await screen.findByTestId("sidesheet")).toBeInTheDocument();
     expect(screen.getByLabelText("chevronleft icon")).toBeInTheDocument();
   });
 
-  it("should not render when not open", () => {
+  it("should not render when not open", async () => {
     render(
-      <SidesheetSubPage
-        isOpen={false}
-        title="Subpage title"
-        onClose={jest.fn()}
-        onBack={jest.fn()}
-      >
-        hello world
-      </SidesheetSubPage>,
+      <>
+        <SidesheetSubPage
+          isOpen={false}
+          title="Closed subpage"
+          onClose={jest.fn()}
+          onBack={jest.fn()}
+        >
+          closed subpage
+        </SidesheetSubPage>
+        <SidesheetSubPage
+          isOpen
+          title="Open subpage"
+          onClose={jest.fn()}
+          onBack={jest.fn()}
+        >
+          open subpage
+        </SidesheetSubPage>
+      </>,
     );
 
-    expect(screen.queryByTestId("sidesheet")).not.toBeInTheDocument();
+    // An open sheet takes a few frames to appear, so wait for one before checking the closed one.
+    expect(await screen.findByText("open subpage")).toBeInTheDocument();
+    expect(screen.queryByText("closed subpage")).not.toBeInTheDocument();
   });
 
-  it("should render with title", () => {
+  it("should render with title", async () => {
     render(
       <SidesheetSubPage
         isOpen
@@ -48,10 +60,10 @@ describe("Sidesheet", () => {
       </SidesheetSubPage>,
     );
 
-    expect(screen.getByText("Subpage title")).toBeInTheDocument();
+    expect(await screen.findByText("Subpage title")).toBeInTheDocument();
   });
 
-  it("should render with children", () => {
+  it("should render with children", async () => {
     render(
       <SidesheetSubPage
         isOpen
@@ -64,7 +76,7 @@ describe("Sidesheet", () => {
       </SidesheetSubPage>,
     );
 
-    expect(screen.getByText("some content")).toBeInTheDocument();
+    expect(await screen.findByText("some content")).toBeInTheDocument();
     expect(screen.getByText("more content")).toBeInTheDocument();
   });
 
@@ -81,7 +93,7 @@ describe("Sidesheet", () => {
       </SidesheetSubPage>,
     );
 
-    const closeButton = screen.getByLabelText("Close");
+    const closeButton = await screen.findByLabelText("Close");
     await userEvent.click(closeButton);
     await waitFor(() => expect(closeSpy).toHaveBeenCalledTimes(1));
   });
@@ -101,7 +113,7 @@ describe("Sidesheet", () => {
       </SidesheetSubPage>,
     );
 
-    const backdrop = screen.getByTestId("modal-overlay");
+    const backdrop = await screen.findByTestId("modal-overlay");
     await userEvent.click(backdrop);
     await waitFor(() => expect(closeSpy).toHaveBeenCalledTimes(1));
   });
@@ -120,7 +132,7 @@ describe("Sidesheet", () => {
       </SidesheetSubPage>,
     );
 
-    const backBtn = screen.getByLabelText("chevronleft icon");
+    const backBtn = await screen.findByLabelText("chevronleft icon");
     await userEvent.click(backBtn);
     expect(backSpy).toHaveBeenCalledTimes(1);
   });

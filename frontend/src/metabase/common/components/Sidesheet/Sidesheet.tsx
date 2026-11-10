@@ -1,17 +1,16 @@
 import { useHotkeys } from "@mantine/hooks";
-import cx from "classnames";
 import type React from "react";
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 import { t } from "ttag";
 import { uniqueId } from "underscore";
 
-import Animation from "metabase/css/core/animation.module.css";
 import {
   Group,
   Modal,
@@ -20,6 +19,7 @@ import {
   SIDESHEET_TRANSITION_PROPS,
   Stack,
 } from "metabase/ui";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 
 import Styles from "./sidesheet.module.css";
 
@@ -88,13 +88,13 @@ const sizes: Record<SidesheetSize, string> = {
   auto: "auto",
 };
 
-// Enter stays a CSS keyframe (immediate, so the sheet's content is in the
-// DOM as soon as it opens); only the exit is a Mantine transition.
-const transitionProps = {
+const slideTransitionProps = {
   ...SIDESHEET_TRANSITION_PROPS,
   transition: "slide-left",
-  duration: 0,
 } as const;
+
+// The overlay would otherwise take the sheet's slide from the root's transitionProps.
+const overlayTransitionProps = { transition: "fade" } as const;
 
 export function Sidesheet({
   title,
@@ -113,6 +113,13 @@ export function Sidesheet({
   footer,
 }: SidesheetProps) {
   const titleId = useMemo(() => uniqueId("sidesheet-title"), []);
+
+  // Mantine's portal renders a commit late, so wait a frame for a sheet that mounts open to slide in.
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setIsReady(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   // Consumers usually unmount the sheet in `onClose`, so play the exit
   // transition first and only then tell them.
@@ -144,28 +151,29 @@ export function Sidesheet({
   };
   useHotkeys(closeHotkey ? [[closeHotkey, handleCloseHotkey]] : []);
 
+  // Like the theme's modal animations, the sheet doesn't move when reduced motion is preferred.
+  const transitionProps = isReducedMotionPreferred()
+    ? NO_ANIMATION_MODAL_PROPS.transitionProps
+    : slideTransitionProps;
+
   return (
     <SidesheetCloseContext.Provider value={requestClose}>
       <Modal.Root
         variant="sidesheet"
-        opened={isOpen && closeStatus !== "closing"}
+        opened={isOpen && isReady && closeStatus !== "closing"}
         onClose={requestClose}
         onExitTransitionEnd={handleExitTransitionEnd}
         closeOnEscape={closeOnEscape}
         shadow="xs_outline"
         h="100dvh"
         transitionProps={transitionProps}
-        // The theme's enter keyframes restart when the exit transition
-        // starts, so the sheet would slide back in before it slides out.
-        styles={
-          closeStatus === "closing"
-            ? NO_ANIMATION_MODAL_PROPS.styles
-            : undefined
-        }
+        // The theme's modal keyframes override the transition's inline styles, and one lifts the sheet.
+        styles={NO_ANIMATION_MODAL_PROPS.styles}
       >
         {withOverlay && (
           <Modal.Overlay
             bg="modal-overlay"
+            transitionProps={overlayTransitionProps}
             {...overlayProps}
             data-testid="modal-overlay"
           />
@@ -180,9 +188,7 @@ export function Sidesheet({
           bg="background_surface-primary"
           data-testid="sidesheet"
           data-offset={offset || undefined}
-          classNames={{
-            content: cx(Styles.SidesheetContent, Animation.slideLeft),
-          }}
+          classNames={{ content: Styles.SidesheetContent }}
           aria-labelledby={titleId}
         >
           <Modal.Header

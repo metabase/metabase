@@ -1,7 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { act, render, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  render,
+  screen,
+  waitFor,
+  waitForSidesheetToOpen,
+} from "__support__/ui";
 import { defer } from "metabase/utils/promise";
 
 import { Sidesheet, useSidesheetClose } from "./Sidesheet";
@@ -23,37 +29,44 @@ const Draft = () => {
 };
 
 describe("Sidesheet", () => {
-  it("should render when open", () => {
+  it("should render when open", async () => {
     render(
       <Sidesheet isOpen onClose={jest.fn()}>
         hello world
       </Sidesheet>,
     );
 
-    expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
+    expect(await screen.findByTestId("sidesheet")).toBeInTheDocument();
   });
 
-  it("should not render when not open", () => {
+  it("should not render when not open", async () => {
     render(
-      <Sidesheet isOpen={false} onClose={jest.fn()}>
-        hello world
-      </Sidesheet>,
+      <>
+        <Sidesheet isOpen={false} onClose={jest.fn()}>
+          closed sheet
+        </Sidesheet>
+        <Sidesheet isOpen onClose={jest.fn()}>
+          open sheet
+        </Sidesheet>
+      </>,
     );
 
-    expect(screen.queryByTestId("sidesheet")).not.toBeInTheDocument();
+    // An open sheet takes a few frames to appear, so wait for one before checking the closed one.
+    expect(await screen.findByText("open sheet")).toBeInTheDocument();
+    expect(screen.queryByText("closed sheet")).not.toBeInTheDocument();
   });
 
-  it("should render with title", () => {
+  it("should render with title", async () => {
     render(
       <Sidesheet title="My Title" isOpen onClose={jest.fn()}>
         hello world
       </Sidesheet>,
     );
 
-    expect(screen.getByText("My Title")).toBeInTheDocument();
+    expect(await screen.findByText("My Title")).toBeInTheDocument();
   });
 
-  it("should render with children", () => {
+  it("should render with children", async () => {
     render(
       <Sidesheet title="My Title" isOpen onClose={jest.fn()}>
         <div>some content</div>
@@ -61,11 +74,11 @@ describe("Sidesheet", () => {
       </Sidesheet>,
     );
 
-    expect(screen.getByText("some content")).toBeInTheDocument();
+    expect(await screen.findByText("some content")).toBeInTheDocument();
     expect(screen.getByText("more content")).toBeInTheDocument();
   });
 
-  it("should render header actions and a footer", () => {
+  it("should render header actions and a footer", async () => {
     render(
       <Sidesheet
         title="My Title"
@@ -78,7 +91,9 @@ describe("Sidesheet", () => {
       </Sidesheet>,
     );
 
-    expect(screen.getByRole("button", { name: "an action" })).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "an action" })).toBeVisible(),
+    );
     expect(screen.getByText("a footer")).toBeVisible();
   });
 
@@ -90,7 +105,7 @@ describe("Sidesheet", () => {
       </Sidesheet>,
     );
 
-    const closeButton = screen.getByLabelText("Close");
+    const closeButton = await screen.findByLabelText("Close");
     await userEvent.click(closeButton);
     await waitFor(() => expect(closeSpy).toHaveBeenCalledTimes(1));
   });
@@ -103,6 +118,7 @@ describe("Sidesheet", () => {
       </Sidesheet>,
     );
 
+    await waitForSidesheetToOpen();
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(closeSpy).toHaveBeenCalledTimes(1));
   });
@@ -116,7 +132,7 @@ describe("Sidesheet", () => {
     );
 
     await userEvent.click(
-      screen.getByRole("button", { name: "close from inside" }),
+      await screen.findByRole("button", { name: "close from inside" }),
     );
 
     expect(closeSpy).not.toHaveBeenCalled();
@@ -132,7 +148,7 @@ describe("Sidesheet", () => {
       </Sidesheet>,
     );
 
-    const backdrop = screen.getByTestId("modal-overlay");
+    const backdrop = await screen.findByTestId("modal-overlay");
     await userEvent.click(backdrop);
     await waitFor(() => expect(closeSpy).toHaveBeenCalledTimes(1));
   });
@@ -145,6 +161,7 @@ describe("Sidesheet", () => {
       </Sidesheet>,
     );
 
+    await waitForSidesheetToOpen();
     await userEvent.keyboard("]");
 
     expect(closeSpy).not.toHaveBeenCalled();
@@ -160,6 +177,7 @@ describe("Sidesheet", () => {
       </Sidesheet>,
     );
 
+    await waitForSidesheetToOpen();
     await userEvent.keyboard("a");
     expect(windowListener).toHaveBeenCalledTimes(1);
 
@@ -177,6 +195,7 @@ describe("Sidesheet", () => {
       </Sidesheet>,
     );
 
+    await waitForSidesheetToOpen();
     rerender(
       <Sidesheet title="My Title" isOpen={false} onClose={closeSpy}>
         hello world
@@ -226,7 +245,7 @@ describe("Sidesheet", () => {
             <CloseFromInside />
           </Sidesheet>,
         );
-        await userEvent.type(screen.getByLabelText("draft"), "unsaved");
+        await userEvent.type(await screen.findByLabelText("draft"), "unsaved");
         await userEvent.tab();
 
         await attemptClose();
@@ -266,7 +285,7 @@ describe("Sidesheet", () => {
         </Sidesheet>,
       );
 
-      await userEvent.click(screen.getByLabelText("Close"));
+      await userEvent.click(await screen.findByLabelText("Close"));
       await userEvent.keyboard("{Escape}");
       await userEvent.keyboard("]");
       await userEvent.click(

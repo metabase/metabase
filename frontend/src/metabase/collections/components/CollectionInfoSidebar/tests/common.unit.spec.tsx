@@ -119,7 +119,7 @@ describe("CollectionInfoSidebar (OSS)", () => {
       },
     });
 
-    const editableText = screen.getByText("Test Description");
+    const editableText = await screen.findByText("Test Description");
     await userEvent.click(editableText);
 
     const input = screen.getByDisplayValue("Test Description");
