@@ -9,6 +9,7 @@ import {
   COLLECTION_GROUP_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { getPermissionRowPermissions } from "e2e/support/helpers";
+import { DataPermissionValue } from "metabase-types/api/permissions";
 
 const { STATIC_ORDERS_ID, STATIC_PRODUCTS_ID } = SAMPLE_DB_TABLES;
 
@@ -421,6 +422,15 @@ describe("Tenants - management", () => {
 
   it("should show 'All tenant users' in permission warning tooltip for tenant groups (UXW-2474)", () => {
     cy.request("PUT", "/api/setting", { "use-tenants": true });
+
+    cy.updatePermissionsGraph({
+      [ALL_EXTERNAL_USERS_GROUP_ID!]: {
+        [SAMPLE_DB_ID]: {
+          "view-data": DataPermissionValue.UNRESTRICTED,
+          "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+        },
+      },
+    });
 
     // Create a tenant group
     cy.request("POST", "/api/permissions/group", {
