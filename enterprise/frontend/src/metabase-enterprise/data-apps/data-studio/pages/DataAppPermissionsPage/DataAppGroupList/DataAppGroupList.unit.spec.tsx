@@ -47,7 +47,7 @@ function setup({ groups, warnings = [], useTenants = false }: SetupOpts) {
   );
   renderWithProviders(
     <DataAppGroupList
-      app={createMockDataApp({ name: "sales", display_name: "Sales" })}
+      app={createMockDataApp({ slug: "sales", name: "Sales" })}
       selectedGroupId={undefined}
       onSelectGroup={onSelectGroup}
     />,

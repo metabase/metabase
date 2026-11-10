@@ -52,7 +52,7 @@ function setup({ useTenants = false, hasTenantsFeature = false } = {}) {
   const onClose = jest.fn<void, []>();
   renderWithProviders(
     <AddDataAppGroupsModal
-      app={createMockDataApp({ name: "sales", display_name: "Sales" })}
+      app={createMockDataApp({ slug: "sales", name: "Sales" })}
       onClose={onClose}
     />,
     {

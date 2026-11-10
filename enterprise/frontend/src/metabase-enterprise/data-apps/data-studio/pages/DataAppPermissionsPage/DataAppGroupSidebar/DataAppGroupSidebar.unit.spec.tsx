@@ -26,7 +26,7 @@ function setup({ group, warnings = [] }: SetupOpts) {
   const onClose = jest.fn<void, []>();
   renderWithProviders(
     <DataAppGroupSidebar
-      app={createMockDataApp({ name: "sales" })}
+      app={createMockDataApp({ slug: "sales" })}
       group={group}
       containerWidth={1200}
       onResizeStart={jest.fn<void, []>()}
