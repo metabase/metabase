@@ -7,7 +7,6 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.agent-api.api :as agent-api.api]
-   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.api.macros :as api.macros]
@@ -52,6 +51,13 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+
+;; The Agent API is deprecated and off until an admin opts in. These tests exercise it, so they opt in.
+;; No test in this namespace is `^:parallel`, so the fixture may set a Setting.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [deprecated-agent-api-enabled? true]
+                        (thunk))))
 
 (defn- orders-count-query
   "Create a simple count query on the orders table using lib functions."
@@ -166,16 +172,28 @@
       (testing "a session request with nil token-scopes is still unrestricted"
         (is (= 200 (status {:metabase-user-id (mt/user->id :rasta)})))))))
 
-(deftest agent-api-enabled-setting-test
-  (testing "External Agent API routes return 403 when disabled"
-    (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
-      (is (= "Agent API is not enabled."
-             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
+(def ^:private agent-api-off-message
+  "The Agent API is deprecated and off by default. An admin can turn it on in Admin > AI > MCP.")
+
+(deftest deprecated-agent-api-enabled-setting-test
+  (testing "External Agent API routes return 403 until an admin opts in to the deprecated Agent API"
+    (mt/with-temporary-setting-values [deprecated-agent-api-enabled? nil]
+      (is (= agent-api-off-message
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping")))))
+  (testing "the deprecated setting agent-api-enabled? has no effect"
+    (mt/with-temporary-raw-setting-values [:deprecated-agent-api-enabled? "false"
+                                           :agent-api-enabled?            "true"]
+      (is (= agent-api-off-message
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))
+    (mt/with-temporary-raw-setting-values [:deprecated-agent-api-enabled? "true"
+                                           :agent-api-enabled?            "false"]
+      (is (= {:message "pong"}
+             (mt/user-http-request :rasta :get 200 "agent/v1/ping"))))))
 
 (deftest ai-features-enabled-setting-test
   (testing "External Agent API routes return 403 when AI features are globally disabled"
-    (mt/with-temporary-raw-setting-values [:ai-features-enabled? "false"
-                                           :agent-api-enabled?   "true"]
+    (mt/with-temporary-raw-setting-values [:ai-features-enabled?          "false"
+                                           :deprecated-agent-api-enabled? "true"]
       (is (= "AI features are not enabled."
              (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
 
@@ -2169,7 +2187,7 @@
           (is (str/includes? (:error item) listing-uri))
           (is (not (str/includes? (:error item) "Call `search`"))))))))
 
-(deftest ^:parallel read-resource-tool-description-test
+(deftest read-resource-tool-description-test
   (let [endpoint    (some (fn [[_ endpoint]]
                             (when (= "read_resource" (get-in endpoint [:form :metadata :tool :name]))
                               endpoint))

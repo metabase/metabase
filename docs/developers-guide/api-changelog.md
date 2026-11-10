@@ -7,6 +7,11 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- The Agent API (`/api/agent`) is deprecated and will be removed in a future version. It is now off by default:
+  every endpoint answers `403 Forbidden` until an admin turns it on in **Admin > AI > MCP**, or the instance starts
+  with `MB_DEPRECATED_AGENT_API_ENABLED=true`. The setting `agent-api-enabled?` (`MB_AGENT_API_ENABLED`) is deprecated
+  and no longer has an effect.
+
 - `POST /api/ee/transform-test/run`, which ran a transform test that wasn't saved, has been removed. Save the test and
   run it with `POST /api/ee/transform-test/:id/run`.
 

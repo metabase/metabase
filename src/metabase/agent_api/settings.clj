@@ -4,11 +4,12 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(defsetting agent-api-enabled?
-  (deferred-tru "Whether the Agent API is enabled.")
+(defsetting ^:deprecated agent-api-enabled?
+  (deferred-tru "Deprecated and without effect. The Agent API is on only when `deprecated-agent-api-enabled?` is on.")
   :type       :boolean
   :visibility :public
   :default    true
+  :deprecated "0.66.0"
   :getter     #(and (llm.settings/ai-features-enabled?)
                     (setting/get-value-of-type :boolean :agent-api-enabled?))
   :export?    true
