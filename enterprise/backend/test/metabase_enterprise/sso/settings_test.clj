@@ -135,6 +135,20 @@
                                          scim-enabled                    true]
         (is (false? (sso-settings/saml-user-provisioning-enabled?)))))))
 
+(deftest saml-identity-provider-uri-validation-test
+  (testing "saml-identity-provider-uri rejects a schemeless value instead of silently accepting it (metabase#76232)"
+    (mt/with-premium-features #{:sso-saml}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid identity provider URI"
+           (sso-settings/saml-identity-provider-uri! "idp.example.com/sso")))
+      (testing "a proper absolute URL is still accepted"
+        (mt/with-temporary-setting-values [saml-identity-provider-uri default-idp-uri]
+          (is (= default-idp-uri (sso-settings/saml-identity-provider-uri)))))
+      (testing "clearing the setting (nil) is still allowed"
+        (mt/with-temporary-setting-values [saml-identity-provider-uri nil]
+          (is (nil? (sso-settings/saml-identity-provider-uri))))))))
+
 (deftest jwt-settings-token-features-test
   (testing "Getting JWT settings should return their default values without :sso-jwt feature flag enabled"
     (doseq [feature? [true false]]
@@ -208,6 +222,20 @@
            #"Setting jwt-enabled is not enabled because feature :sso-jwt is not available"
            (sso-settings/jwt-enabled! true))))))
 
+(deftest jwt-identity-provider-uri-validation-test
+  (testing "jwt-identity-provider-uri rejects a schemeless value instead of silently accepting it (metabase#76232)"
+    (mt/with-premium-features #{:sso-jwt}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid identity provider URI"
+           (sso-settings/jwt-identity-provider-uri! "idp.example.com/sso")))
+      (testing "a proper absolute URL is still accepted"
+        (mt/with-temporary-setting-values [jwt-identity-provider-uri default-idp-uri]
+          (is (= default-idp-uri (sso-settings/jwt-identity-provider-uri)))))
+      (testing "clearing the setting (nil) is still allowed"
+        (mt/with-temporary-setting-values [jwt-identity-provider-uri nil]
+          (is (nil? (sso-settings/jwt-identity-provider-uri))))))))
+
 (deftest jwt-enabled-without-configuration-test
   (testing "jwt-enabled returns true even when JWT is not configured"
     (mt/with-premium-features #{:sso-jwt}
@@ -220,7 +248,7 @@
   (testing "jwt-enabled-and-configured returns true only when both enabled and configured"
     (mt/with-premium-features #{:sso-jwt}
       (tu/with-temporary-setting-values [jwt-enabled               true
-                                         jwt-identity-provider-uri "example.com"
+                                         jwt-identity-provider-uri "https://example.com"
                                          jwt-shared-secret         "0123456789012345678901234567890123456789012345678901234567890123"]
         (is (true? (sso-settings/jwt-enabled)))
         (is (true? (sso-settings/jwt-configured)))
@@ -229,7 +257,7 @@
 (deftest can-turn-off-password-login-with-jwt-enabled
   (mt/with-premium-features #{:sso-jwt}
     (tu/with-temporary-setting-values [jwt-enabled               true
-                                       jwt-identity-provider-uri "example.com"
+                                       jwt-identity-provider-uri "https://example.com"
                                        jwt-shared-secret         "0123456789012345678901234567890123456789012345678901234567890123"
                                        enable-password-login     true]
       (testing "can't change enable-password-login setting if disabled-password-login feature is disabled"
