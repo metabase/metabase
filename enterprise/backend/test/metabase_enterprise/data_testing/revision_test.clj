@@ -392,3 +392,98 @@
                                                                           :id          card-test-id
                                                                           :revision_id creation-id})
             (is (= "Original" (t2/select-one-fn :name :model/CardTest :id card-test-id)))))))))
+
+(deftest card-test-revert-of-a-test-of-a-card-with-no-query-test
+  (mt/with-premium-features #{:transforms-testing}
+    (testing "A non-admin who may edit a card with no query is refused a revert of its test"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll :id}    {}
+                       :model/Card       {card-id :id} {:collection_id coll :dataset_query {}}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
+          (mt/with-current-user (mt/user->id :crowberto)
+            (mt/with-temp [:model/CardTest {card-test-id :id} {:card_id card-id :name "Original"}]
+              (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
+              (let [creation (last (revisions/revisions :model/CardTest card-test-id))
+                    body     {:entity "card-test" :id card-test-id :revision_id (:id creation)}]
+                (testing "premise: the card has no query and rasta may edit the card"
+                  (is (= {} (t2/select-one-fn :dataset_query :model/Card :id card-id)))
+                  (mt/with-current-user (mt/user->id :rasta)
+                    (is (true? (boolean (mi/can-write? :model/Card card-id))))))
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :post 403 "revision/revert" body)))
+                (is (= "Renamed" (t2/select-one-fn :name :model/CardTest :id card-test-id)))
+                (testing "control: an admin reverts"
+                  (mt/user-http-request :crowberto :post 200 "revision/revert" body)
+                  (is (= "Original" (t2/select-one-fn :name :model/CardTest :id card-test-id))))))))))))
+
+(deftest card-test-revisions-without-the-feature-answer-402-before-the-read-check-test
+  (testing "Without :transforms-testing, a non-admin who cannot read the card gets 402, also for a missing id"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll :id}    {}
+                     :model/Card       {card-id :id} {:collection_id coll}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (mt/with-temp [:model/CardTest {card-test-id :id} {:card_id card-id :name "Original"}]
+            (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
+            (let [creation-id (:id (last (revisions/revisions :model/CardTest card-test-id)))
+                  missing-id  (inc (t2/select-one-fn :id :model/CardTest {:order-by [[:id :desc]]}))
+                  requests    (fn [id]
+                                [[:get "revision" :entity "card-test" :id id]
+                                 [:get (str "revision/card-test/" id)]
+                                 [:post "revision/revert" {:entity "card-test" :id id :revision_id creation-id}]])]
+              (testing "premise: rasta may not read the test, and the missing id names no test"
+                (mt/with-current-user (mt/user->id :rasta)
+                  (is (false? (boolean (mi/can-read? :model/CardTest card-test-id)))))
+                (is (not (t2/exists? :model/CardTest :id missing-id))))
+              (testing "control: with the feature, the read check refuses rasta"
+                (mt/with-premium-features #{:transforms-testing}
+                  (doseq [[method & args] (requests card-test-id)]
+                    (testing (str method " " (first args))
+                      (apply mt/user-http-request :rasta method 403 args)))
+                  (doseq [[method & args] (requests missing-id)]
+                    (testing (str method " " (first args) " of a missing id")
+                      (apply mt/user-http-request :rasta method 404 args)))))
+              (mt/with-premium-features #{}
+                (doseq [id              [card-test-id missing-id]
+                        [method & args] (requests id)]
+                  (testing (str method " " (first args) " " id)
+                    (mt/assert-has-premium-feature-error
+                     "Transforms Testing"
+                     (apply mt/user-http-request :rasta method 402 args)))))
+              (is (= "Renamed" (t2/select-one-fn :name :model/CardTest :id card-test-id))))))))))
+
+(deftest card-test-revert-to-a-revision-about-a-deleted-card-test
+  (mt/with-premium-features #{:transforms-testing}
+    (testing "Reverting a card test to a revision about a deleted card is refused and changes nothing"
+      (mt/with-temp [:model/Card {old-card :id} {}
+                     :model/Card {new-card :id} {}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (mt/with-temp [:model/CardTest {card-test-id :id} {:card_id old-card :name "On the old card"}]
+            (t2/update! :model/CardTest :id card-test-id {:card_id new-card :name "On the new card"})
+            (let [creation (last (revisions/revisions :model/CardTest card-test-id))]
+              (t2/delete! :model/Card :id old-card)
+              (testing "premise: the revision names the deleted card, and the test remains"
+                (is (= old-card (get-in creation [:object :card_id])))
+                (is (not (t2/exists? :model/Card :id old-card)))
+                (is (t2/exists? :model/CardTest :id card-test-id)))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :crowberto :post 403 "revision/revert"
+                                           {:entity      "card-test"
+                                            :id          card-test-id
+                                            :revision_id (:id creation)})))
+              (is (= {:card_id new-card :name "On the new card"}
+                     (t2/select-one [:model/CardTest :card_id :name] :id card-test-id))))))))))
+
+(deftest card-test-update-revision-records-the-acting-user-test
+  (mt/with-premium-features #{:transforms-testing}
+    (testing "An update through the API records the user who made it, not the test's creator"
+      (mt/with-temp [:model/Card     {card-id :id}      {}
+                     :model/CardTest {card-test-id :id} {:card_id    card-id
+                                                         :creator_id (mt/user->id :rasta)
+                                                         :name       "Original"}]
+        (testing "premise: the creation revision names the creator"
+          (is (=? [{:is_creation true :user_id (mt/user->id :rasta)}]
+                  (revisions/revisions :model/CardTest card-test-id))))
+        (mt/user-http-request :crowberto :put 200 (str "ee/card-test/" card-test-id) {:name "Renamed"})
+        (is (=? [{:is_creation false :user_id (mt/user->id :crowberto) :object {:name "Renamed"}}
+                 {:is_creation true}]
+                (revisions/revisions :model/CardTest card-test-id)))))))
