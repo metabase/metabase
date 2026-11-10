@@ -52,8 +52,10 @@ import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
 import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
+import { describeCursor, getColumnType } from "./cursor-context";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
+import { getFunctionList } from "./on-device-completion";
 import { useAiCompletion } from "./use-ai-completion";
 import { hasActiveSnippet, useInitialClause } from "./utils";
 
@@ -238,6 +240,23 @@ export function Editor(props: EditorProps) {
     ],
   );
 
+  // A hook for the script that tests prompts for the on-device completion.
+  useEffect(() => {
+    const columns = availableColumns.map((column) => ({
+      name: formatIdentifier(
+        Lib.displayInfo(query, stageIndex, column).longDisplayName,
+      ),
+      type: getColumnType(column),
+    }));
+    const debug = {
+      validate,
+      functionList: getFunctionList({ expressionMode, database }),
+      columns,
+      describeCursor: (prefix: string) => describeCursor(prefix, columns),
+    };
+    Object.assign(window, { __expressionEditorDebug: debug });
+  }, [validate, expressionMode, database, availableColumns, query, stageIndex]);
+
   const proposeSource = useCallback((source: string, name?: string) => {
     setProposal({ source, name });
     requestAnimationFrame(() => ref.current?.view?.focus());
@@ -279,6 +298,8 @@ export function Editor(props: EditorProps) {
     expressionMode,
     availableColumns,
     name,
+    database,
+    validate,
     isEnabled: inline && !readOnly && !isProposing,
   });
 

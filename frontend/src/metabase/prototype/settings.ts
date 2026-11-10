@@ -1,16 +1,21 @@
 import type {
-  BooleanPrototypeSetting,
   NumberPrototypeSetting,
   PrototypeSetting,
+  SegmentedPrototypeSetting,
 } from "./types";
 
-export const EXPRESSION_AI_COMPLETION_SETTING: BooleanPrototypeSetting = {
-  key: "expression-ai-completion",
-  type: "boolean",
+export const EXPRESSION_AI_COMPLETION_SETTING: SegmentedPrototypeSetting = {
+  key: "expression-ai-completion-engine",
+  type: "segmented",
   label: "AI completion in custom expressions",
   description:
-    "Ghost text at the cursor after a pause in typing. Tab accepts it.",
-  defaultValue: true,
+    "Ghost text at the cursor after a pause in typing. Tab accepts it. On-device uses Gemini Nano in Chrome.",
+  options: [
+    { value: "off", label: "Off" },
+    { value: "server", label: "Server" },
+    { value: "on-device", label: "On-device" },
+  ],
+  defaultValue: "server",
 };
 
 export const EXPRESSION_AI_COMPLETION_DELAY_SETTING: NumberPrototypeSetting = {

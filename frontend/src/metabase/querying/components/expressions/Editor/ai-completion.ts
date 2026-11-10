@@ -136,7 +136,8 @@ function acceptSuggestion(view: EditorView) {
     changes: { from: suggestion.pos, insert: suggestion.text },
     selection: { anchor: suggestion.pos + suggestion.text.length },
     effects: setSuggestion.of(null),
-    userEvent: "input.complete",
+    // Not an "input" event, so that the accepted text starts no new request.
+    userEvent: "ai-completion.accept",
   });
   return true;
 }
