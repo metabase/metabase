@@ -431,13 +431,19 @@ export function Editor(props: EditorProps) {
 
   const parameterHintsExtensions = useParameterHints();
 
+  // A new list of extensions reconfigures the editor, which drops the fields
+  // of an active snippet (CodeMirror adds their state with appendConfig). So
+  // the list depends on the text only while the diff shows, and the text does
+  // not change then.
+  const diffOriginal = isProposing ? source : null;
+
   const extensions = useMemo(
     () =>
-      isProposing
+      diffOriginal != null
         ? [
             ...baseExtensions,
             ...parameterHintsExtensions,
-            unifiedMergeView({ original: source, mergeControls: false }),
+            unifiedMergeView({ original: diffOriginal, mergeControls: false }),
             ...diffControlsExtensions,
           ]
         : [
@@ -447,9 +453,8 @@ export function Editor(props: EditorProps) {
             ...inlinePromptExtensions,
           ],
     [
-      isProposing,
+      diffOriginal,
       baseExtensions,
-      source,
       diffControlsExtensions,
       aiCompletionExtensions,
       inlinePromptExtensions,

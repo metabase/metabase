@@ -33,7 +33,7 @@ import S from "./Editor.module.css";
 
 export type ParameterHintsMode = "literals" | "all";
 
-type Argument = { pos: number; isLiteral: boolean };
+type Argument = { pos: number; text: string; isLiteral: boolean };
 type Call = { name: string | null; args: Argument[]; isAtArgStart: boolean };
 type Hint = { pos: number; name: string };
 
@@ -85,7 +85,14 @@ function getHints(source: string, mode: ParameterHintsMode): Hint[] {
     const names = getArgumentNames(call.name, call.args.length);
     call.args.forEach((arg, index) => {
       const name = names[index];
-      if (name != null && (mode === "all" || arg.isLiteral)) {
+      // A hint that repeats the argument says nothing, for example on the
+      // placeholders of a function that autocomplete inserted.
+      const isSameAsArgument = arg.text === name;
+      if (
+        name != null &&
+        !isSameAsArgument &&
+        (mode === "all" || arg.isLiteral)
+      ) {
         hints.push({ pos: arg.pos, name });
       }
     });
@@ -110,7 +117,11 @@ function getHints(source: string, mode: ParameterHintsMode): Hint[] {
       break;
     }
     if (call?.isAtArgStart) {
-      call.args.push({ pos: token.start, isLiteral: LITERALS.has(token.type) });
+      call.args.push({
+        pos: token.start,
+        text: token.text,
+        isLiteral: LITERALS.has(token.type),
+      });
       call.isAtArgStart = false;
     }
     if (token.type === CALL) {
