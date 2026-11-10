@@ -1640,17 +1640,6 @@
                     "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
                    ["a confined collection" #'search/nlq-search-tool {} {:collection_id 42} "nlq"
                     "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
-                   ;; a collection's items never list tables, which a collection-scoped search can match
-                   ["the collection the caller asked for" #'search/search-tool {:collection_id 7} nil "internal"
-                    (str "Find the data with `read_resource` instead: read `metabase://collection/7/items`, and "
-                         "`metabase://databases`, then `metabase://database/{id}/tables` for tables.")]
-                   ["the collection and database the caller asked for" #'search/search-tool
-                    {:collection_id 7 :database_id (mt/id)} nil "internal"
-                    (str "Find the data with `read_resource` instead: read `metabase://collection/7/items`, and "
-                         "`metabase://database/" (mt/id) "/tables` for tables.")]
-                   ["the collection the caller asked for, without tables" #'search/search-tool
-                    {:collection_id 7 :entity_types ["metric" "dashboard"]} nil "internal"
-                    "Find the data with `read_resource` instead: read `metabase://collection/7/items`."]
                    ;; a collection outside the confined one is ignored, as it is for the search itself
                    ["a confined collection" #'search/search-tool {:collection_id Integer/MAX_VALUE} confined "internal"
                     "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
@@ -1673,6 +1662,31 @@
             (is (= {:error  {:class :recoverable :code ::search/search-failed}
                     :output (str "Search failed.\n" no-retry-step)}
                    (invoke-search [#'search/search-tool] {:query "orders"})))))))))
+
+(deftest search-failure-in-a-collection-browses-tables-test
+  (testing "a collection's items never list tables, so recovery adds a table route when the search could match one"
+    (mt/with-test-user :crowberto
+      (mt/with-dynamic-fn-redefs [search/search-by-query (fn [_] (throw (ex-info "Search Index not found." {})))]
+        (let [recovery (fn [args]
+                         (-> (invoke-search [#'search/search-tool #'metabot.tools/read-resource-tool]
+                                            (merge args {:query "orders"}) nil "internal")
+                             :output
+                             str/split-lines
+                             second))
+              items    "Find the data with `read_resource` instead: read `metabase://collection/7/items`"]
+          (testing "with the Library, a collection holds published tables"
+            (mt/with-premium-features #{:library}
+              (is (= (str items ", and `metabase://databases`, then `metabase://database/{id}/tables` for tables.")
+                     (recovery {:collection_id 7})))
+              (is (= (str items ", and `metabase://database/" (mt/id) "/tables` for tables.")
+                     (recovery {:collection_id 7 :database_id (mt/id)})))
+              (is (= (str items ".")
+                     (recovery {:collection_id 7 :entity_types ["metric" "dashboard"]}))
+                  "a search that looked for no tables needs no table route")))
+          (testing "without the Library, a collection-scoped search never returns tables"
+            (mt/with-premium-features #{}
+              (is (= (str items ".")
+                     (recovery {:collection_id 7}))))))))))
 
 (deftest confined-collection-is-not-overridable-test
   (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a

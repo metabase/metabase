@@ -1049,8 +1049,9 @@
   to.
   `collection-id`, unless nil, is the collection the caller asked for; it narrows the scope as [[scoped-collection-id]]
   allows.
-  `entity-types`, unless nil, are the types the search looked for. `tables?` records whether they include tables,
-  for a Metabot not confined to a collection; a confined one browses only its collection."
+  `entity-types`, unless nil, are the types the search looked for. `tables?` records whether a collection-scoped
+  search could have found a table: only with the `:library` feature, which lets a published table belong to a
+  collection, and only for a Metabot not confined to a collection, since a confined one browses only its own."
   ([metabot profile-id database-id]
    (search-scope metabot profile-id database-id nil))
   ([metabot profile-id database-id collection-id]
@@ -1062,7 +1063,8 @@
               :verified-only (and (boolean (:use_verified_content metabot))
                                   (not (shared/curated-only?)))}
        (and (seq entity-types) (nil? confined-id))
-       (assoc :tables? (contains? (set entity-types) "table"))))))
+       (assoc :tables? (and (contains? (set entity-types) "table")
+                            (premium-features/has-feature? :library)))))))
 
 (defn- table-browse-uri
   "Where `read_resource` lists the tables of database `database-id`, or all databases when it is nil."
