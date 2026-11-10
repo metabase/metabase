@@ -17,13 +17,13 @@ import {
   installDataAppRouteReporter,
 } from "../broker/iframe-broker";
 
-import { readNameFromUrl } from "./lib/read-name-from-url";
+import { readSlugFromUrl } from "./lib/read-slug-from-url";
 
 /**
  * Entry point loaded by `data-app.html` and served from the internal or SSO-embedded data app route.
  *
  * This script boots inside the iframe — separate from the host Metabase
- * app's React tree. It reads the data-app `:name` from the URL, fetches the
+ * app's React tree. It reads the data-app `:slug` from the URL, fetches the
  * bundle, instantiates it inside a Near Membrane sandbox bound to *this*
  * window, and renders the resulting component.
  */
@@ -63,7 +63,7 @@ const init = async () => {
     EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey = "enable-embedding-modular";
     EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
 
-    setDataApp(readNameFromUrl() ?? "");
+    setDataApp(readSlugFromUrl() ?? "");
     await import("sdk-iframe-embedding-ee-plugins");
 
     const { DataAppEmbed } =
