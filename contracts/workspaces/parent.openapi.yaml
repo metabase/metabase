@@ -37,6 +37,15 @@ info:
     as "user", "role" and "PUBLIC" below are Postgres terms; other engines have the same concept under another name
     (a login, the `public` role on SQL Server).
 
+    Admin prerequisites per engine (hardening; open question to the team). Some warehouses are open by default
+    in ways that break the workspace boundary, and hardening refuses create (412) until an admin closes them:
+    - Redshift: PUBLIC has CREATE on schema `public`. Fix: `REVOKE CREATE ON SCHEMA public FROM PUBLIC;`
+    - Postgres 14 and older: the same default and the same fix. Postgres 15 and later do not grant it.
+    - ClickHouse 23.3 to 24.3: every login can read `system.*` unless the server setting
+      `select_from_system_db_requires_grant` is on. Fix: turn it on in the server config.
+    The team has not decided the behavior: refuse (what the hardening PRs do now), warn and allow, or refuse
+    with a per-database opt-out. Treat these refusals as subject to change.
+
     Facts a client can rely on (master):
     - `created_at` and `updated_at` use the parent's app-DB clock.
     - The workspace password is the same on every `GET /{id}/config`.
@@ -82,8 +91,8 @@ paths:
         Write boundary: Metabase grants the user no write privilege outside the scratch namespace. Privileges the
         warehouse grants to PUBLIC (Postgres, Redshift) or to the `public` role (SQL Server) still apply, for
         example CREATE on `public` on Postgres 14 and older and on Redshift. master refuses an input schema where
-        PUBLIC has CREATE (500); hardening #86588 refuses (412) any schema where PUBLIC has CREATE, in any database
-        the user can connect to.
+        PUBLIC has CREATE (500); hardening #86588 refuses (412) any database, and any schema, where PUBLIC has
+        CREATE, in every database the user can connect to.
 
         Read boundary: the input schemas, plus what the engine grants every login (catalogs, objects granted to
         PUBLIC, other databases on a Postgres cluster, ClickHouse `system.*` while
@@ -166,9 +175,18 @@ paths:
             application/json: { schema: { $ref: "#/components/schemas/CreateFailure" } }
         "412":
           description: |
-            hardening (#86588, via #86601): a warehouse precondition failed, named in `message`. The preconditions
-            are per engine. On Postgres: the admin login lacks a privilege or role membership, PUBLIC can write to a
-            schema, or PUBLIC lacks CONNECT. Nothing is left behind (`cleanup_required: false`).
+            hardening (#86588, via #86601): a warehouse precondition failed. `message` names it, the statement
+            that fixes it, and who must run that statement (for example "As the owner of each database and schema
+            named, or a superuser, run ..."). The preconditions are per engine. On Postgres:
+            - the admin login lacks CREATEROLE, CREATE on the database, INHERIT, or a grant option on an input
+              schema;
+            - PUBLIC can create objects in a database, or in a schema of a database, that the workspace user may
+              connect to, or the admin login cannot connect to one of those databases to check;
+            - PUBLIC can write to a table of an input schema, now or later (a default privilege);
+            - the workspace user cannot get CONNECT (PUBLIC lacks it and the admin login cannot grant it).
+            Nothing is left behind
+            (`cleanup_required: false`). See "Admin prerequisites per engine" in the description: whether these
+            refusals stay refusals is an open question.
           x-status: hardening
           x-pr: [86588, 86601]
           content:
@@ -259,9 +277,15 @@ paths:
         for a warehouse that is gone for good. It logs each abandoned row's output namespace and database user at
         WARN so leftovers can be removed by hand. Rows in any other state are torn down as without `force`.
 
-        Sessions: only SQL Server ends the workspace user's sessions. On other engines DELETE may 500 while a
-        sidecar is connected as that user, possibly on every retry; stop the sidecar first.
+        Sessions, master: only SQL Server ends the workspace user's sessions. On other engines DELETE may 500
+        while a sidecar is connected as that user, possibly on every retry; stop the sidecar first.
+
+        hardening (#86587), Postgres: DELETE first ends the workspace user's sessions, stops it from logging in
+        (NOLOGIN) and revokes its grants, each step committed before the next. A running sidecar loses its
+        connection. These steps stay done when DELETE fails. When exactly one database's teardown fails, DELETE
+        answers with that failure's status, so the teardown 409s below reach the caller.
       x-status: master
+      x-pr: [86587]
       x-source: EE/core.clj:303, EE/provisioning.clj:217
       parameters:
         - name: force
@@ -285,8 +309,17 @@ paths:
             hardening (#86789): a create (or another request) holds a database of this workspace.
             Nothing was changed. Retry after the create ends. The body carries `"error-code": "workspace_busy"`
             (kebab-case, as the exception's data is rendered).
+
+            hardening (#86587), Postgres, when one database's teardown is the only failure:
+            - a session of the workspace user is still open after the lock-out. `message` gives the
+              `pg_terminate_backend` statement to run as a superuser.
+            - the user still owns objects or holds privileges, often in another database (SQLSTATE 2BP01). It can
+              no longer log in. `message` names the databases; run `DROP OWNED BY` there as a superuser, then
+              retry.
+            - a warehouse lock timed out: retry.
+            Only the lock timeout clears by retrying.
           x-status: hardening
-          x-pr: [86789]
+          x-pr: [86789, 86587]
           content:
             application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } }
         "500":
@@ -295,6 +328,10 @@ paths:
             the cluster lock (for example "Timed out waiting for the cluster lock row") means a create or another
             delete held the row: retry. Any other failure can be permanent (for example a sidecar still connected
             as the workspace user); retrying it may never succeed, so stop retrying and call a person.
+
+            hardening (#86587): a 500 whose message names a statement to run needs that statement before a retry
+            succeeds.
+          x-pr: [86587]
           content:
             application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } }
 
@@ -308,8 +345,15 @@ paths:
         Besides the workspace password, the file carries parent secrets that pass through the Database's
         `details`: an enabled SSH tunnel's credential, `additional-options`, and on master the client-certificate
         fields. Treat the file as a parent secret. BigQuery (not eligible today) would also carry the parent's own
-        `service-account-json`, which its workspace connection impersonates from.
+        `service-account-json`, which its workspace connection impersonates from. #86584 does not remove it:
+        `service-account-json` is not on its deny list.
+
+        hardening (#86584): the parent refuses (409) a database whose `additional-options` set a login or carry
+        a credential. The options are split on `&` and `;`; a name matches, case-insensitively, when it is
+        `user`, `username`, `uid`, `sslkey`, `accesskeyid` or `aadsecureprincipalid`, or ends in `password`, `pwd`,
+        `secret` or `token`. A legitimate option with such a name (a trust-store password) is refused too.
       x-status: master
+      x-pr: [86584]
       x-source: EE/api/workspace_manager.clj:132, EE/config.clj:112
       responses:
         "200":
@@ -320,7 +364,9 @@ paths:
             master: also 200 for a workspace with no databases (after a failed row delete); `workspace.databases`
             is then empty, which `config.schema.json` forbids, and the sidecar refuses to boot.
 
-            hardening (#86585): SSH known hosts are inlined, and every Secret `-id` and `-options` key is dropped.
+            hardening (#86585): the SSL root certificate and SSH known hosts are inlined as `-value` with
+            `-options: uploaded`; every other Secret `-id` and `-options` key is dropped. Only uploaded Secrets are inlined; a Secret given as a file path on the
+            parent's server is refused (409) and its file is never read.
           headers:
             Content-Disposition:
               schema: { type: string, const: 'attachment; filename="config.yml"' }
@@ -333,7 +379,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          x-pr: [86585, 86787]
+          x-pr: [86584, 86585, 86787]
           description: |
             At least one database is not `provisioned`. Plain-text body.
 
@@ -341,8 +387,19 @@ paths:
             `provisioning`, and nothing moves it on). The two look the same. If no create is running, DELETE the
             workspace.
 
-            hardening (#86585): also a database that uses SSL client-certificate auth, whose SSH known-hosts Secret
-            cannot be resolved, or whose Secret cannot be read.
+            hardening adds causes that waiting never clears; an admin must change the database. Every cause has
+            the same status and a plain-text English body, so a client cannot tell them apart except by the text.
+            Only "not provisioned" clears by waiting. The added causes:
+            - #86584: the database's `additional-options` set a login or carry a credential (see the operation's
+              description). The message says which option to remove.
+            - #86585: the SSL root certificate or the SSH known hosts is a file path on the parent's server, which
+              workspaces do not copy. The message asks the admin to upload the file in the database's connection
+              settings.
+            - #86585: the tunnel is on and its known-hosts Secret no longer exists. The message asks the admin to
+              enter the known hosts again.
+            - #86585: the database uses SSL client-certificate auth, which workspaces do not support.
+            The messages name the database by its name, which is not unique. Whether these causes get another
+            status (for example 422) or a JSON body with a cause code is undecided.
 
             hardening (#86787): also when an emitted value contains `{{`. The sidecar expands
             `{{env X}}` templates at boot, so the parent never emits one. The message names each database and

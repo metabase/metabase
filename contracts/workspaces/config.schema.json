@@ -82,7 +82,7 @@
           "description": "Comma-separated input schemas. hardening (#86610): each name is escaped so it matches only itself (non-[A-Za-z0-9_] characters become \\x{HEX})."
         },
         "db-filters-type": { "const": "inclusion", "description": "ClickHouse." },
-        "db-filters-patterns": { "type": "string", "description": "ClickHouse: comma-separated input schemas, unescaped, also after #86610 (ClickHouse reads them as names, not patterns)." },
+        "db-filters-patterns": { "type": "string", "description": "ClickHouse: comma-separated input schemas, unescaped, also after #86610. ClickHouse does not read them as patterns: it splits the value on `,`, trims each entry, and reads `-` as `_`. So a name that holds `,` or `-`, or starts or ends with whitespace, does not select exactly itself." },
         "dataset-filters-type": { "const": "inclusion", "description": "BigQuery." },
         "dataset-filters-patterns": { "type": "string", "x-pr": 86610, "description": "BigQuery: comma-separated input datasets, escaped like schema-filters-patterns (#86610)." }
       },
@@ -110,7 +110,11 @@
         },
         {
           "x-pr": 86585,
-          "description": "The SSL root certificate is sent as its value. On master the parent's Secret id is sent, which means nothing in the sidecar's app db."
+          "description": "Secrets ship as values, not as ids. An inlined Secret ships as `<secret>-value` with `<secret>-options: \"uploaded\"`: `ssl-root-cert-value` and, with the tunnel on, `tunnel-known-hosts-value`. A value is plain text when it is printable ASCII (a PEM certificate, known-hosts text), else a base64 `data:application/octet-stream;base64,...` URI (a DER certificate). No Secret `<secret>-id` key ships, nor the `-options` of a Secret that is not inlined. Only uploaded Secrets are inlined: a Secret given as a file path on the parent's server makes GET /config answer 409 instead, and the file is never read. On master the parent's Secret id is sent, which means nothing in the sidecar's app db."
+        },
+        {
+          "x-pr": 86584,
+          "description": "`additional-options` still ships, but never with an option that sets a login or carries a credential: GET /config answers 409 for such a database (see parent.openapi.yaml, GET /{id}/config). The enabled tunnel's credential (the one for the tunnel-auth-option in use) still ships."
         }
       ]
     },
