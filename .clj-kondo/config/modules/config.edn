@@ -4166,7 +4166,7 @@
                     :model/Table}}
 
   enterprise/lint
-  {:team       "Data Apps"
+  {:team       "Verification"
    :codeowners true
    :api  #{metabase-enterprise.lint.api}
    :uses #{api

@@ -643,8 +643,8 @@
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    ids         :- [:sequential ::deps.dependency-types/entity-id]]
-  (t2/select (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
-             :id [:in ids]))
+  (let [model (into [(deps.dependency-types/dependency-type->model entity-type)] columns)]
+    (into [] (mapcat #(t2/select model :id [:in %])) (partition-all 1000 ids))))
 
 (mu/defn entity-with-columns
   "The `columns` of the entity of the entity type `entity-type` with `id`, or nil."
@@ -1143,19 +1143,23 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/AnalysisFindingStatus :entity_type entity-type :entity_id [:in entity-ids]))
 
+;; A transform has no `archived` column, and a segment lives under its table rather than in a collection.
+(def ^:private failed-entity-columns
+  {:card      {:archived? true,  :collection? true}
+   :transform {:archived? false, :collection? true}
+   :segment   {:archived? true,  :collection? false}})
+
 (mu/defn failed-analysis-entities :- [:sequential [:map
                                                    [:id            ms/PositiveInt]
                                                    [:entity_id     :string]
                                                    [:name          :string]
                                                    [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  "The `id`, `entity_id`, `name` and, when `collection?`, `collection_id` of the entities of `entity-type` whose
-  AnalysisFinding failed, leaving out archived ones when `archived?` names a column, and content Metabase manages
-  itself, such as usage analytics."
-  [entity-type :- ::dependencies.schema/entity-type
-   {:keys [archived? collection?]} :- [:map {:closed true}
-                                       [:archived?   :boolean]
-                                       [:collection? :boolean]]]
-  (let [model (deps.dependency-types/dependency-type->model entity-type)]
+  "The `id`, `entity_id`, `name` and, for a type kept in collections, `collection_id` of the entities of `entity-type`
+  whose AnalysisFinding failed, leaving out archived ones, and content Metabase manages itself, such as usage
+  analytics."
+  [entity-type :- (into [:enum] (keys failed-entity-columns))]
+  (let [model                           (deps.dependency-types/dependency-type->model entity-type)
+        {:keys [archived? collection?]} (failed-entity-columns entity-type)]
     (t2/query {:select   (cond-> [:entity.id :entity.entity_id :entity.name]
                            collection? (conj :entity.collection_id))
                :from     [[(t2/table-name model) :entity]]
@@ -1171,13 +1175,15 @@
 ;;; --------------------------------------------- Analysis finding errors ---------------------------------------------
 
 (mu/defn finding-errors-for-entities
-  "The AnalysisFindingErrors analyzing any of the entities `entity-type` `entity-ids`, oldest first."
+  "The AnalysisFindingErrors analyzing any of the entities `entity-type` `entity-ids`, each entity's oldest first."
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ms/PositiveInt]]
-  (t2/select :model/AnalysisFindingError
-             :analyzed_entity_type entity-type
-             :analyzed_entity_id   [:in entity-ids]
-             {:order-by [[:id :asc]]}))
+  (into []
+        (mapcat #(t2/select :model/AnalysisFindingError
+                            :analyzed_entity_type entity-type
+                            :analyzed_entity_id   [:in %]
+                            {:order-by [[:id :asc]]}))
+        (partition-all 1000 entity-ids)))
 
 (mu/defn finding-errors-for-entity
   "The AnalysisFindingErrors of the entity `entity-type` `entity-id`."
