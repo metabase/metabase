@@ -69,15 +69,15 @@ export class DataAppBundleError extends Error {
 
 /**
  * Fetch a data-app bundle's raw JS source plus its fetch/XHR allowlist. Called
- * from the iframe-top `DataAppIframeApp` after it reads the `:name` from the
+ * from the iframe-top `DataAppIframeApp` after it reads the `:slug` from the
  * URL. Throws a [[DataAppBundleError]] on a transport failure or non-2xx
  * response.
  */
 export const fetchDataAppBundleCode = async (
-  name: string,
+  slug: string,
 ): Promise<FetchedDataAppBundle> => {
   const url = getSubpathSafeUrl(
-    `/api/ee/apps/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
+    `/api/ee/apps/${encodeURIComponent(slug)}/bundle?t=${Date.now()}`,
   );
 
   let res: Response;

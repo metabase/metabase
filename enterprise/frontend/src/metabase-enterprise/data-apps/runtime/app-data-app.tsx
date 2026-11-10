@@ -5,10 +5,10 @@ import { sdkBundleExports } from "embedding-sdk-bundle/sdk-bundle-exports";
 import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp";
 
 /**
- * Entry point loaded by `data-app.html` and served from `/embed/apps/:name`.
+ * Entry point loaded by `data-app.html` and served from `/embed/apps/:slug`.
  *
  * This script boots inside the iframe — separate from the host Metabase
- * app's React tree. It reads the data-app `:name` from the URL, fetches the
+ * app's React tree. It reads the data-app `:slug` from the URL, fetches the
  * bundle, instantiates it inside a Near Membrane sandbox bound to *this*
  * window, and renders the resulting component.
  */

@@ -23,8 +23,8 @@
 
 (defn app-url
   "The API URL of the data `app`, followed by `parts`."
-  [{app-name :name} & parts]
-  (str/join "/" (list* "ee/apps" app-name parts)))
+  [{slug :slug} & parts]
+  (str/join "/" (list* "ee/apps" slug parts)))
 
 (defn collection-entity-id
   "A stable resource collection entity ID for the app in `data_apps/<slug>`."
@@ -160,7 +160,7 @@
   the app afterwards deletes what it holds."
   [f]
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:name "birds"}]
+    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:slug "birds"}]
       (f collection-id))))
 
 (defn do-with-library!

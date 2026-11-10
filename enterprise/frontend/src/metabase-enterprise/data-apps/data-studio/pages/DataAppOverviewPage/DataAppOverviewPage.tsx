@@ -24,7 +24,7 @@ export function DataAppOverviewPage() {
       <DataAppHeader app={app} />
       <Flex flex={1} gap="lg" mih={0}>
         <Card withBorder p="xl" flex={1} mah={700}>
-          <DataAppView name={app.name} enableDrafts />
+          <DataAppView slug={app.slug} enableDrafts />
         </Card>
         <DataAppAboutSidebar app={app} />
       </Flex>

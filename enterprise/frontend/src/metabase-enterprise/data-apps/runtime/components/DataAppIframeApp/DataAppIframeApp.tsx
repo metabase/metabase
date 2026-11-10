@@ -11,7 +11,7 @@ import { Center, Loader } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 
 import { type ErrorDetail, describeError } from "../../lib/describe-error";
-import { readNameFromUrl } from "../../lib/read-name-from-url";
+import { readSlugFromUrl } from "../../lib/read-slug-from-url";
 import { reportErrorToParent } from "../../lib/report-error-to-parent";
 import { reportReadyToParent } from "../../lib/report-ready-to-parent";
 import { useDataAppBundle } from "../../lib/use-data-app-bundle";
@@ -69,8 +69,8 @@ class BundleErrorBoundary extends Component<
  * bundle's `App.tsx` returns pure content; the factory passes the theme through
  * as `{ component, theme }`.
  */
-function BundleHost({ name }: { name: string }) {
-  const { data, failed } = useDataAppBundle(name);
+function BundleHost({ slug }: { slug: string }) {
+  const { data, failed } = useDataAppBundle(slug);
 
   useEffect(() => {
     if (data && !failed) {
@@ -99,7 +99,7 @@ function BundleHost({ name }: { name: string }) {
   }
 
   return (
-    <DataAppProvider appName={name} providerProps={data?.providerProps}>
+    <DataAppProvider appSlug={slug} providerProps={data?.providerProps}>
       {content}
     </DataAppProvider>
   );
@@ -124,13 +124,13 @@ function DataAppStandaloneMessage({ message }: { message: string }) {
 }
 
 /**
- * Iframe-top React app. Reads the data-app name from the URL, mounts the
+ * Iframe-top React app. Reads the data-app slug from the URL, mounts the
  * bundle, and gets out of the way. Any sub-routes the bundle navigates to
  * (via `history.pushState`, `react-router`, etc.) are mirrored back to the
  * parent URL by `attachIframeUrlMirror` — the bundle doesn't need to know.
  */
 export const DataAppIframeApp = () => {
-  const name = useMemo(() => readNameFromUrl(), []);
+  const slug = useMemo(() => readSlugFromUrl(), []);
 
   if (window.parent === window) {
     return (
@@ -140,11 +140,11 @@ export const DataAppIframeApp = () => {
     );
   }
 
-  if (!name) {
+  if (!slug) {
     return (
-      <DataAppStandaloneMessage message={t`Missing data-app name in URL`} />
+      <DataAppStandaloneMessage message={t`Missing data-app slug in URL`} />
     );
   }
 
-  return <BundleHost name={name} />;
+  return <BundleHost slug={slug} />;
 };

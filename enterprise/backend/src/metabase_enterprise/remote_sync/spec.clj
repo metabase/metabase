@@ -397,8 +397,8 @@
                      :types  [:create :update :delete]}
     :eligibility    {:type :always}
     :archived-key   nil
-    :tracking       {:select-fields  [:name]
-                     :field-mappings {:model_name :name}}
+    :tracking       {:select-fields  [:slug]
+                     :field-mappings {:model_name :slug}}
     :removal        {:statuses #{"removed" "delete"}}
     :resources?     true
     :export-scope   :all

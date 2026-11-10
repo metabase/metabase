@@ -81,7 +81,7 @@ describe("attachIframeUrlMirror", () => {
 
   it("preserves the Metabase basename on a subpath install", () => {
     // Subpath install at `/mb`: the iframe `src` is built subpath-safe, so its
-    // pathname carries the basename (`/mb/embed/apps/:name/…`).
+    // pathname carries the basename (`/mb/embed/apps/:slug/…`).
     setBasename("/mb");
     const iframe = fakeIframeWindow("/mb/embed/apps/sales");
     const replaceSpy = jest.spyOn(window.history, "replaceState");

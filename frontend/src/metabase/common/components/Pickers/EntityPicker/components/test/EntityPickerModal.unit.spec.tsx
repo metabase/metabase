@@ -1092,13 +1092,13 @@ describe("EntityPickerModal", () => {
   describe("Data apps", () => {
     const OWLS = createMockDataApp({
       id: 8,
-      name: "owls",
-      display_name: "Owls",
+      slug: "owls",
+      name: "Owls",
     });
     const HERONS = createMockDataApp({
       id: 9,
-      name: "herons",
-      display_name: "Herons",
+      slug: "herons",
+      name: "Herons",
     });
     const options = { hasDataApps: true, hasConfirmButtons: false };
     const models: OmniPickerItem["model"][] = ["card", "data-app"];

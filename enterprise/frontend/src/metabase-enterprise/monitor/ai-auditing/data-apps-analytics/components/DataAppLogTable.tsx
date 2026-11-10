@@ -145,9 +145,7 @@ function useDataAppNames(): DataAppNames {
 
   return useMemo(
     () =>
-      new Map(
-        (dataApps ?? []).map((dataApp) => [dataApp.name, dataApp.display_name]),
-      ),
+      new Map((dataApps ?? []).map((dataApp) => [dataApp.slug, dataApp.name])),
     [dataApps],
   );
 }

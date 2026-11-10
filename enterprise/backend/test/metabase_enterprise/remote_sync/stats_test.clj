@@ -75,7 +75,7 @@
                    :model/Action             _        {:type :query :name "Library action" :model_id nil}
                    :model/NativeQuerySnippet _        {}
                    :model/Glossary           _        {:term "Term" :definition "A definition"}
-                   :model/DataApp            _        {:name "app" :display_name "App" :bundle_path "app.js"}]
+                   :model/DataApp            _        {:slug "app" :name "App" :bundle_path "app.js"}]
       (is (=? {:remote-sync-action-count         1
                :remote-sync-dashboard-count      1
                :remote-sync-data-app-count       1

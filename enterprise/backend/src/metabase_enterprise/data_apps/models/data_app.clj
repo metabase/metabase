@@ -95,7 +95,7 @@
     (if-let [collection-id (:resource_collection_id row)]
       (do (check-resource-collection collection-id nil)
           row)
-      (assoc row :resource_collection_id (data-apps.db/insert-resource-collection! (:name row))))))
+      (assoc row :resource_collection_id (data-apps.db/insert-resource-collection! (:slug row))))))
 
 (t2/define-before-update :model/DataApp
   [data-app]
@@ -150,9 +150,9 @@
                   :collection-id false
                   :created-at    true
                   :updated-at    true}
-   :search-terms [:name :display_name :description]
+   :search-terms [:slug :name :description]
    ;; A result's `name` can be its display name, and the app's URL needs its slug.
-   :render-terms {:data-app-slug :name}})
+   :render-terms {:data-app-slug :slug}})
 
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."
@@ -177,15 +177,13 @@
 (defmethod serdes/make-spec "DataApp"
   [_model-name _opts]
   {:schema    ::data-apps.schema/external-data-app
-   :copy      [:entity_id :description :version :allowed_hosts]
+   :copy      [:entity_id :slug :name :description :version :allowed_hosts]
    :skip      [;; admin-owned state of this instance
                :enabled
                ;; set by the import itself
                :bundle_hash]
    :transform {;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
                :resource_collection_id (assoc (serdes/fk :model/Collection) :as :collection)
-               :name         {:as :slug :export identity :import identity}
-               :display_name {:as :name :export identity :import identity}
                :bundle_path  {:as :path :export identity :import identity}
                :bundle       {:as                  :serdes/resources
                               :export-with-context (fn [app _k bundle]

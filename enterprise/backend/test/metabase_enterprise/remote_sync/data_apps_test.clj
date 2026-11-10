@@ -44,7 +44,7 @@
     result))
 
 (defn- bundle-text [slug]
-  (when-let [^bytes bundle (t2/select-one-fn :bundle [:model/DataApp :bundle] :name slug)]
+  (when-let [^bytes bundle (t2/select-one-fn :bundle [:model/DataApp :bundle] :slug slug)]
     (String. bundle "UTF-8")))
 
 (defmacro ^:private with-data-apps-sync [& body]
@@ -64,13 +64,13 @@
                                              :current "v0")]
       (testing "a pull imports the app, its collection and its bundle"
         (is (=? {:status :success :outcome {:kind "pulled" :count 2}} (import-at! src "v0" :force? true)))
-        (is (=? {:entity_id sales-eid :display_name "Sales" :resource_collection_id pos-int?}
-                (t2/select-one :model/DataApp :name "sales")))
+        (is (=? {:entity_id sales-eid :name "Sales" :resource_collection_id pos-int?}
+                (t2/select-one :model/DataApp :slug "sales")))
         (is (= "BUNDLE-V1" (bundle-text "sales"))))
       (testing "a pull whose repo no longer has the app's files removes it, and the hook removes its collection"
-        (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :name "sales")]
+        (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :slug "sales")]
           (is (= :success (:status (import-at! src "v1"))))
-          (is (not (t2/exists? :model/DataApp :name "sales")))
+          (is (not (t2/exists? :model/DataApp :slug "sales")))
           (is (not (t2/exists? :model/Collection :id collection-id))))))))
 
 (deftest bundle-only-pull-updates-the-bundle-test
@@ -101,7 +101,7 @@
                                   :collection shop-collection-eid :resources resources}))
 
 (defn- shop-collection-id []
-  (t2/select-one-fn :resource_collection_id :model/DataApp :name "shop"))
+  (t2/select-one-fn :resource_collection_id :model/DataApp :slug "shop"))
 
 (deftest pull-loads-an-apps-resources-test
   (testing "a pull loads an app's resource files as the entities they are, into the collection the manifest names"
@@ -163,7 +163,7 @@
         (let [collection-id (shop-collection-id)]
           (is (t2/exists? :model/Card :entity_id question-eid :collection_id collection-id))
           (is (= :success (:status (import-at! src "v1"))))
-          (is (not (t2/exists? :model/DataApp :name "shop")))
+          (is (not (t2/exists? :model/DataApp :slug "shop")))
           (testing "the hook deletes the collection and what it held"
             (is (not (t2/exists? :model/Collection :id collection-id)))
             (is (not (t2/exists? :model/Card :entity_id question-eid)))))))))

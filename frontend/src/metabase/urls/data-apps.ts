@@ -7,7 +7,7 @@ import type { CardId, WritebackActionId } from "metabase-types/api";
  */
 export const DATA_APP_URL_SEGMENT = "apps";
 
-/** User-facing page route: `/apps/:name`. */
+/** User-facing page route: `/apps/:slug`. */
 export const DATA_APP_ROOT_URL = `/${DATA_APP_URL_SEGMENT}`;
 
 /**
@@ -24,62 +24,62 @@ export const DATA_APP_EMBED_PREFIX = `/embed/${DATA_APP_URL_SEGMENT}`;
  */
 export const DATA_APP_REALM_HOST_URL = "/api/ee/apps/sandbox-host";
 
-export function dataApp(name: string) {
-  return `${DATA_APP_ROOT_URL}/${encodeURIComponent(name)}`;
+export function dataApp(slug: string) {
+  return `${DATA_APP_ROOT_URL}/${encodeURIComponent(slug)}`;
 }
 
 export function dataStudioDataApps() {
   return `/data-studio/${DATA_APP_URL_SEGMENT}`;
 }
 
-export function dataStudioDataApp(name: string) {
-  return `${dataStudioDataApps()}/${encodeURIComponent(name)}`;
+export function dataStudioDataApp(slug: string) {
+  return `${dataStudioDataApps()}/${encodeURIComponent(slug)}`;
 }
 
-export function dataStudioDataAppQuestions(name: string) {
-  return `${dataStudioDataApp(name)}/questions`;
+export function dataStudioDataAppQuestions(slug: string) {
+  return `${dataStudioDataApp(slug)}/questions`;
 }
 
-export function dataStudioDataAppActions(name: string) {
-  return `${dataStudioDataApp(name)}/actions`;
+export function dataStudioDataAppActions(slug: string) {
+  return `${dataStudioDataApp(slug)}/actions`;
 }
 
-export function dataStudioDataAppQuestion(name: string, cardId: CardId) {
-  return `${dataStudioDataAppQuestions(name)}/${cardId}`;
+export function dataStudioDataAppQuestion(slug: string, cardId: CardId) {
+  return `${dataStudioDataAppQuestions(slug)}/${cardId}`;
 }
 
 export function dataStudioDataAppQuestionDependencies(
-  name: string,
+  slug: string,
   cardId: CardId,
 ) {
-  return `${dataStudioDataAppQuestion(name, cardId)}/dependencies`;
+  return `${dataStudioDataAppQuestion(slug, cardId)}/dependencies`;
 }
 
-export function dataStudioDataAppPermissions(name: string) {
-  return `${dataStudioDataApp(name)}/permissions`;
+export function dataStudioDataAppPermissions(slug: string) {
+  return `${dataStudioDataApp(slug)}/permissions`;
 }
 
 export function dataStudioDataAppAction(
-  name: string,
+  slug: string,
   actionId: WritebackActionId,
 ) {
-  return `${dataStudioDataAppActions(name)}/${actionId}`;
+  return `${dataStudioDataAppActions(slug)}/${actionId}`;
 }
 
 export function dataStudioDataAppActionFields(
-  name: string,
+  slug: string,
   actionId: WritebackActionId,
   fieldId?: string,
 ) {
-  const fieldsUrl = `${dataStudioDataAppAction(name, actionId)}/fields`;
+  const fieldsUrl = `${dataStudioDataAppAction(slug, actionId)}/fields`;
   return fieldId != null
     ? `${fieldsUrl}/${encodeURIComponent(fieldId)}`
     : fieldsUrl;
 }
 
 export function dataStudioDataAppActionDependencies(
-  name: string,
+  slug: string,
   actionId: WritebackActionId,
 ) {
-  return `${dataStudioDataAppAction(name, actionId)}/dependencies`;
+  return `${dataStudioDataAppAction(slug, actionId)}/dependencies`;
 }

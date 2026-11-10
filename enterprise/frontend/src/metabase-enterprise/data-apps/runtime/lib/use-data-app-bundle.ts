@@ -17,14 +17,14 @@ export interface LoadedApp {
 }
 
 /**
- * Loads a data-app bundle by name and supervises it: fetches the bundle code,
+ * Loads a data-app bundle by slug and supervises it: fetches the bundle code,
  * instantiates it inside the Near-Membrane sandbox, and watches for uncaught
  * crashes. Any failure is reported up to the host `AppView` (which owns the
  * themed failure screen); the returned `failed` flag only gates what the iframe
  * renders in the meantime (the bundle vs. a neutral loader).
  */
 export const useDataAppBundle = (
-  name: string,
+  slug: string,
 ): {
   data: LoadedApp | null;
   failed: boolean;
@@ -39,7 +39,7 @@ export const useDataAppBundle = (
     setFailed(false);
 
     const load = async () => {
-      const { code, allowedHosts } = await fetchDataAppBundleCode(name);
+      const { code, allowedHosts } = await fetchDataAppBundleCode(slug);
 
       if (cancelled) {
         return;
@@ -47,7 +47,7 @@ export const useDataAppBundle = (
 
       const { component, providerProps } = await instantiateDataAppBundle(
         code,
-        name,
+        slug,
         window,
         allowedHosts,
       );
@@ -74,7 +74,7 @@ export const useDataAppBundle = (
     return () => {
       cancelled = true;
     };
-  }, [name]);
+  }, [slug]);
 
   useEffect(() => {
     // The bundle runs in a Near-Membrane sandbox that can throw errors which

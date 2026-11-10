@@ -66,7 +66,7 @@
         (mt/with-current-user (mt/user->id :rasta)
           (list-apps {} {})
           (testing "a disabled app isn't listed to a non-superuser"
-            (is (= [{:id (:id app) :name (:name app) :display_name (:display_name app) :enabled true :outdated false}]
+            (is (= [{:id (:id app) :slug (:slug app) :name (:name app) :enabled true :outdated false}]
                    (list-apps {} {})))))))))
 
 (deftest read-access-agrees-across-entry-points-test
@@ -83,8 +83,8 @@
                                            [(mt/user->id :lucky) false false]
                                            [(:id tenant-user) false false]]]
           (testing (str "read access for user " user-id)
-            (is (= (if allowed? [(:name app)] [])
-                   (mapv :name (mt/user-http-request user-id :get 200 "ee/apps"))))
+            (is (= (if allowed? [(:slug app)] [])
+                   (mapv :slug (mt/user-http-request user-id :get 200 "ee/apps"))))
             (mt/user-http-request user-id :get (if allowed? 200 403) (data-apps.tu/app-url app))
             (mt/user-http-request user-id :get (if allowed? 200 403) (data-apps.tu/app-url app "bundle"))
             (mt/with-current-user user-id
@@ -292,7 +292,7 @@
         (testing "a grant made on the collection is listed and admits the group's members"
           (perms/grant-collection-read-permissions! group-id collection-id)
           (is (= #{group-id} (access-group-ids app)))
-          (is (= {:id (:id app) :name (:name app) :display_name (:display_name app) :enabled true :outdated false}
+          (is (= {:id (:id app) :slug (:slug app) :name (:name app) :enabled true :outdated false}
                  (mt/user-http-request :rasta :get 200 (data-apps.tu/app-url app)))))))))
 
 (deftest tenant-users-cannot-inherit-app-access-test
