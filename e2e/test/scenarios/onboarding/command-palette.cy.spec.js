@@ -523,9 +523,13 @@ describe("shortcuts", () => {
 
     // Summarize sidebar
     cy.realPress("s");
-    cy.findByTestId("sidebar-content").should("contain.text", "Summarize by");
+    H.summarySidebar().should("contain.text", "Summarize by");
+    // the sidebar opens with its Summarize by field focused, which takes the keystrokes
+    cy.focused()
+      .should("have.attr", "aria-label", "Add a value by name")
+      .blur();
     cy.realPress("s");
-    cy.findByTestId("sidebar-content").should("not.exist");
+    H.summarySidebar().should("not.exist");
 
     // Sidesheet
     cy.realPress("]");

@@ -1231,7 +1231,7 @@ describe("issue 52627", () => {
       "Product → Category is Gadget",
     );
     H.summarize();
-    H.rightSidebar().findByText("Average of Total").should("be.visible");
+    H.summaryWellItem("values", "Average of Total").should("be.visible");
   });
 });
 

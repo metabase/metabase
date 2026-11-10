@@ -1441,10 +1441,7 @@ WHERE NOT (
       // Now, add in another column to the pivot table
       cy.button(/Summarize/).click();
 
-      cy.findByRole("listitem", { name: "Category" })
-        .realHover()
-        .button("Add dimension")
-        .click();
+      H.clickSummaryField("Category", { section: "Product", add: true });
 
       // Wait for the pivot call to return
       cy.wait("@pivot");
