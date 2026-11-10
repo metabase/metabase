@@ -185,3 +185,30 @@
                 (finally
                   (t2/delete! :model/Transform :name [:like "ws-target-check %"])
                   (jdbc/execute! spec [(format "DROP SCHEMA IF EXISTS %s CASCADE" iso-schema)]))))))))))
+
+(defn- pg-table-exists?
+  [spec schema table-name]
+  (= 1 (:count (first (jdbc/query spec ["SELECT count(*) AS count FROM information_schema.tables
+                                         WHERE table_schema = ? AND table_name = ?"
+                                        schema table-name])))))
+
+(deftest create-is-refused-when-only-the-workspace-copy-exists-test
+  (testing "in a workspace, POST /api/transform returns 409 when the workspace copy of the target exists and the canonical table does not"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:workspaces :advanced-permissions :transforms-basic :hosting}
+        (let [iso-schema "ws_copy_only_iso"
+              spec       (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+          (with-instance-workspace-for-db! iso-schema
+            (fn []
+              (try
+                (jdbc/execute! spec [(format "CREATE SCHEMA %s; CREATE TABLE %s.public__ws_copy_only (id INT)"
+                                             iso-schema iso-schema)])
+                (is (not (pg-table-exists? spec "public" "ws_copy_only")))
+                (is (pg-table-exists? spec iso-schema "public__ws_copy_only"))
+                (mt/user-http-request :crowberto :post 409 "transform"
+                                      {:name   "ws-copy-only"
+                                       :source {:type "query" :query (lib/native-query (mt/metadata-provider) "SELECT 1 AS x")}
+                                       :target {:type "table" :schema "public" :name "ws_copy_only"}})
+                (finally
+                  (t2/delete! :model/Transform :name "ws-copy-only")
+                  (jdbc/execute! spec [(format "DROP SCHEMA IF EXISTS %s CASCADE" iso-schema)]))))))))))
