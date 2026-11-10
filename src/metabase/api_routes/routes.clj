@@ -3,6 +3,7 @@
    [compojure.route :as route]
    [metabase.actions-rest.api]
    [metabase.actions-rest.secret-api]
+   [metabase.actions-rest.template-api]
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
    [metabase.agent-api.query-guards :as agent-api.query-guards]
@@ -86,6 +87,7 @@
 
 (comment metabase.actions-rest.api/keep-me
          metabase.actions-rest.secret-api/keep-me
+         metabase.actions-rest.template-api/keep-me
          metabase.activity-feed.api/keep-me
          metabase.agent-api.api/keep-me
          metabase.ai-tracing.api/keep-me
@@ -207,6 +209,7 @@
 (def ^:private route-map
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/action-secret"        (+auth 'metabase.actions-rest.secret-api)
+   "/action-template"      (+auth 'metabase.actions-rest.template-api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
    "/alert"                (+auth metabase.pulse.api/alert-routes)

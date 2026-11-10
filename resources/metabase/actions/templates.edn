@@ -1,0 +1,90 @@
+;; Built-in templates, by the service they call. An action template is the request of a new HTTP action: its
+;; {{variables}} become the action's fields, and {{secrets.<name>}} refers to a secret. A secret template starts a
+;; secret with its name and allowed hosts, and an action template lists the secret templates it needs.
+[{:id      "github"
+  :name    "GitHub"
+  :secrets [{:id            "github-token"
+             :name          "GitHub token"
+             :description   "A personal access token or a GitHub App token."
+             :secret_name   "github_token"
+             :allowed_hosts ["api.github.com"]}]
+  :actions [{:id               "github-create-issue"
+             :name             "Create an issue"
+             :description      "Open an issue in a repository."
+             :required_secrets ["github-token"]
+             :method           "POST"
+             :url              "https://api.github.com/repos/{{owner}}/{{repo}}/issues"
+             :headers          {"Accept"               "application/vnd.github+json"
+                                "Authorization"        "Bearer {{secrets.github_token}}"
+                                "X-GitHub-Api-Version" "2022-11-28"}
+             :body             {"title" "{{title}}"
+                                "body"  "{{description}}"}}
+            {:id               "github-comment-on-issue"
+             :name             "Comment on an issue"
+             :description      "Add a comment to an issue or a pull request."
+             :required_secrets ["github-token"]
+             :method           "POST"
+             :url              "https://api.github.com/repos/{{owner}}/{{repo}}/issues/{{issue_number}}/comments"
+             :headers          {"Accept"               "application/vnd.github+json"
+                                "Authorization"        "Bearer {{secrets.github_token}}"
+                                "X-GitHub-Api-Version" "2022-11-28"}
+             :body             {"body" "{{comment}}"}}
+            {:id               "github-close-issue"
+             :name             "Close an issue"
+             :description      "Close an issue as completed."
+             :required_secrets ["github-token"]
+             :method           "PATCH"
+             :url              "https://api.github.com/repos/{{owner}}/{{repo}}/issues/{{issue_number}}"
+             :headers          {"Accept"               "application/vnd.github+json"
+                                "Authorization"        "Bearer {{secrets.github_token}}"
+                                "X-GitHub-Api-Version" "2022-11-28"}
+             :body             {"state"        "closed"
+                                "state_reason" "completed"}}
+            {:id               "github-run-workflow"
+             :name             "Run a workflow"
+             :description      "Start a GitHub Actions workflow that has a workflow_dispatch trigger."
+             :required_secrets ["github-token"]
+             :method           "POST"
+             :url              "https://api.github.com/repos/{{owner}}/{{repo}}/actions/workflows/{{workflow}}/dispatches"
+             :headers          {"Accept"               "application/vnd.github+json"
+                                "Authorization"        "Bearer {{secrets.github_token}}"
+                                "X-GitHub-Api-Version" "2022-11-28"}
+             :body             {"ref" "{{ref}}"}}]}
+ {:id      "linear"
+  :name    "Linear"
+  :secrets [{:id            "linear-api-key"
+             :name          "Linear API key"
+             :description   "A personal API key from Linear's security settings."
+             :secret_name   "linear_api_key"
+             :allowed_hosts ["api.linear.app"]}]
+  :actions [{:id               "linear-create-issue"
+             :name             "Create an issue"
+             :description      "Create an issue in a team."
+             :required_secrets ["linear-api-key"]
+             :method           "POST"
+             :url              "https://api.linear.app/graphql"
+             :headers          {"Authorization" "{{secrets.linear_api_key}}"}
+             :body             {"query"     "mutation IssueCreate($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { id identifier url } } }"
+                                "variables" {"input" {"teamId"      "{{team_id}}"
+                                                      "title"       "{{title}}"
+                                                      "description" "{{description}}"}}}}
+            {:id               "linear-comment-on-issue"
+             :name             "Comment on an issue"
+             :description      "Add a comment to an issue."
+             :required_secrets ["linear-api-key"]
+             :method           "POST"
+             :url              "https://api.linear.app/graphql"
+             :headers          {"Authorization" "{{secrets.linear_api_key}}"}
+             :body             {"query"     "mutation CommentCreate($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { id url } } }"
+                                "variables" {"input" {"issueId" "{{issue_id}}"
+                                                      "body"    "{{comment}}"}}}}
+            {:id               "linear-move-issue"
+             :name             "Move an issue"
+             :description      "Move an issue to another workflow state, like Done."
+             :required_secrets ["linear-api-key"]
+             :method           "POST"
+             :url              "https://api.linear.app/graphql"
+             :headers          {"Authorization" "{{secrets.linear_api_key}}"}
+             :body             {"query"     "mutation IssueUpdate($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) { success issue { id state { name } } } }"
+                                "variables" {"id"    "{{issue_id}}"
+                                             "input" {"stateId" "{{state_id}}"}}}}]}]

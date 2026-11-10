@@ -387,3 +387,34 @@
    [:name          {:optional true} ::action-secret.name]
    [:value         {:optional true} [:maybe :string]]
    [:allowed_hosts {:optional true} ::action-secret.allowed-hosts]])
+
+(mr/def ::http-action-template
+  "A built-in template for a new HTTP action: the request it starts with and the secret templates whose secrets it
+  uses."
+  [:map {:closed true}
+   [:id               ::lib.schema.common/non-blank-string]
+   [:name             ::lib.schema.common/non-blank-string]
+   [:description      ::lib.schema.common/non-blank-string]
+   [:required_secrets [:sequential ::lib.schema.common/non-blank-string]]
+   [:method           ::http-action.method]
+   [:url              ::lib.schema.common/non-blank-string]
+   [:query_params     {:optional true} [:maybe ::http-action.templates]]
+   [:headers          {:optional true} [:maybe ::http-action.templates]]
+   [:body             {:optional true} [:maybe ::http-action.body]]])
+
+(mr/def ::action-secret-template
+  "A built-in template for a new secret: its name and allowed hosts, without a value."
+  [:map {:closed true}
+   [:id            ::lib.schema.common/non-blank-string]
+   [:name          ::lib.schema.common/non-blank-string]
+   [:description   ::lib.schema.common/non-blank-string]
+   [:secret_name   ::action-secret.name]
+   [:allowed_hosts ::action-secret.allowed-hosts]])
+
+(mr/def ::action-template-category
+  "The built-in secret and HTTP action templates for one service."
+  [:map {:closed true}
+   [:id      ::lib.schema.common/non-blank-string]
+   [:name    ::lib.schema.common/non-blank-string]
+   [:secrets [:sequential ::action-secret-template]]
+   [:actions [:sequential ::http-action-template]]])

@@ -11,6 +11,7 @@
    [metabase.actions.models.action]
    [metabase.actions.scope]
    [metabase.actions.secrets]
+   [metabase.actions.templates]
    [potemkin :as p]))
 
 (comment
@@ -21,7 +22,8 @@
   metabase.actions.http/keep-me
   metabase.actions.models.action/keep-me
   metabase.actions.scope/keep-me
-  metabase.actions.secrets/keep-me)
+  metabase.actions.secrets/keep-me
+  metabase.actions.templates/keep-me)
 
 (p/import-vars
  [metabase.actions.actions
@@ -79,4 +81,6 @@
   delete-secret!
   secret
   secrets
-  update-secret!])
+  update-secret!]
+ [metabase.actions.templates
+  action-template-categories])
