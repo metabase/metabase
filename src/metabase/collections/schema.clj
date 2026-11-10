@@ -1,5 +1,6 @@
 (ns metabase.collections.schema
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
@@ -150,8 +151,8 @@
    [:location             {:optional true} [:maybe :string]]
    [:personal_owner_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:slug                 {:optional true} [:maybe :string]]
-   [:namespace            {:optional true} [:maybe [:or :keyword :string]]]
-   [:authority_level      {:optional true} [:maybe [:or :keyword :string]]]
+   [:namespace            {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
+   [:authority_level      {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:entity_id            {:optional true} [:maybe :string]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:type                 {:optional true} [:maybe [:or :keyword :string]]]

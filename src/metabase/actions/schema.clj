@@ -146,7 +146,7 @@
                                [:description            {:optional true}    [:maybe :string]]
                                [:parameters             {:optional true}    [:maybe [:sequential ::action.parameter]]]
                                [:parameter_mappings     {:optional true}    [:maybe ::parameters.schema/parameter-mappings]]
-                               [:visualization_settings {:optional true}    [:maybe ms/VisualizationSettings]]]
+                               [:visualization_settings {:optional true}    [:maybe ::models.schema/visualization-settings]]]
                               (when-not request?
                                 [[:database_id        {:optional true} [:maybe ::lib.schema.id/database]]
                                  [:created_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
@@ -208,14 +208,14 @@
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
   [:map {:closed true}
    [:action_id ::lib.schema.id/action]
-   [:kind      [:or :keyword :string]]
+   [:kind      [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]
    [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
 
 (mr/def ::implicit-action.update
   "What an update (or insert) of a ImplicitAction accepts: every column of `:implicit_action` except `id`, all optional."
   [:map {:closed true}
    [:action_id {:optional true} [:maybe ::lib.schema.id/action]]
-   [:kind      {:optional true} [:maybe [:or :keyword :string]]]
+   [:kind      {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
 
 (mr/def ::query-action.dataset-query
@@ -261,12 +261,11 @@
   "An Action as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib-be.schema/external-registry}
    [:merge
-    [:select-keys ::action.columns [:archived :archived_directly :description :entity_id :name :public_uuid
+    [:select-keys ::action.columns [:archived :archived_directly :description :entity_id :name :public_uuid :type
                                     :creator_id :made_public_by_id :collection_id :model_id :parameters
                                     :parameter_mappings :visualization_settings]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]
-     [:type        {:optional true} [:enum "implicit" "query"]]
      [:query       {:optional true} [:maybe [:sequential [:ref ::external-query-action]]]]
      [:implicit    {:optional true} [:maybe [:sequential [:ref ::external-implicit-action]]]]]]])
 

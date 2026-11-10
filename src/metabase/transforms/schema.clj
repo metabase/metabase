@@ -244,7 +244,7 @@
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:built_in_type   {:optional true} [:maybe [:or :keyword :string]]]
-   [:ui_display_type {:optional true} [:maybe [:or :keyword :string]]]
+   [:ui_display_type {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:active          {:optional true} [:maybe :boolean]]])
 
 (mr/def ::transform-job-run

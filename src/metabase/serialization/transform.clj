@@ -26,16 +26,6 @@
   [_store _batch values _opts]
   (mapv #(cond-> % (string? %) u.date/parse) values))
 
-(defn export-keywords
-  "An export transform fn that names keyword values."
-  [_store _batch values _opts]
-  (mapv #(some-> % name) values))
-
-(defn import-keywords
-  "An import transform fn that keywordizes named values, so comparisons in model hooks see the values they store."
-  [_store _batch values _opts]
-  (mapv #(some-> % keyword) values))
-
 (def import-only-transform
   "A transform of a column that is imported as it is but never exported."
   {:import import-unchanged})
@@ -43,10 +33,6 @@
 (def date-transform
   "A transform of temporal values, by [[export-dates]] and [[import-dates]]."
   {:export export-dates :import import-dates})
-
-(def keyword-transform
-  "A transform of keyword values, by [[export-keywords]] and [[import-keywords]]."
-  {:export export-keywords :import import-keywords})
 
 (defn- column-values
   "The values `found`, a map from input to result, holds for the inputs `xs` of `model`, in order, nil for nil."
