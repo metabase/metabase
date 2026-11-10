@@ -309,14 +309,8 @@
   (when swapped
     (.invalidateAll swapped)
     (.cleanUp swapped))
-  (let [failures (into []
-                       (keep (fn [[[database-id _connection-type] pool-spec]]
-                               (try
-                                 (destroy-pool! database-id pool-spec)
-                                 nil
-                                 (catch Throwable e
-                                   [database-id e]))))
-                       pools)]
+  (let [failures (u/run-each! (for [[[database-id _connection-type] pool-spec] pools]
+                                [database-id #(destroy-pool! database-id pool-spec)]))]
     (when (seq failures)
       (throw (ex-info "Some connection pools failed to close"
                       {:failures failures}
