@@ -121,12 +121,26 @@
    :name  (or (remote-sync/synced-label model row) "")
    :model (u/lower-case-en (name model))})
 
+(defn- name-key
+  "What sorts the client-named entity `entity` by its name, ignoring case."
+  [{entity-name :name id :id}]
+  [(u/lower-case-en entity-name) (str id)])
+
 (defn- unsynced-dependency
   "The unsynced dependency `dependency` as the client lists it."
   [{:keys [model row used-by]}]
   (assoc (entity-ref model row)
          :collection_id (remote-sync/synced-collection-id model row)
-         :used_by       (mapv #(apply entity-ref %) used-by)))
+         :used_by       (vec (sort-by name-key (map #(apply entity-ref %) used-by)))))
+
+(defn- sorted-dependencies
+  "The unsynced `dependencies` with their collections, by the name of their top-level collection, those in no collection
+  last, then by name."
+  [dependencies]
+  (vec (sort-by (fn [{:keys [collection] :as dependency}]
+                  (let [top-level (or (first (:effective_ancestors collection)) collection)]
+                    [(nil? top-level) (some-> top-level name-key) (name-key dependency)]))
+                (with-collections (map unsynced-dependency dependencies)))))
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
   "Pull the synced content of the remote branch, or of `branch` to switch to it, into this instance, keeping its local
@@ -285,7 +299,7 @@
                       (if-let [dependencies (:unsynced-dependencies (ex-data e))]
                         {:status-code           400
                          :error-code            "unsynced-dependencies"
-                         :unsynced_dependencies (with-collections (map unsynced-dependency dependencies))
+                         :unsynced_dependencies (sorted-dependencies dependencies)
                          :response/keys         #{:unsynced_dependencies}}
                         (merge {:status-code 400} (ex-data e)))
                       e))))
