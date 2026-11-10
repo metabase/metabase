@@ -1,6 +1,4 @@
 import type {
-  ListTransformTestRunsRequest,
-  ListTransformTestRunsResponse,
   ListTransformTestsRequest,
   RunTransformTestResponse,
   TransformTest,
@@ -13,7 +11,6 @@ import {
   invalidateTags,
   listTag,
   provideTransformTestListTags,
-  provideTransformTestRunListTags,
   provideTransformTestTags,
 } from "./tags";
 
@@ -37,18 +34,6 @@ export const transformTestApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (test) => (test ? provideTransformTestTags(test) : []),
     }),
-    listTransformTestRuns: builder.query<
-      ListTransformTestRunsResponse,
-      ListTransformTestRunsRequest
-    >({
-      query: ({ id, ...params }) => ({
-        method: "GET",
-        url: "/api/ee/data-test-run",
-        params: { "test-type": "transform", "test-id": id, ...params },
-      }),
-      providesTags: (response) =>
-        provideTransformTestRunListTags(response?.data ?? []),
-    }),
     runTransformTest: builder.mutation<
       RunTransformTestResponse,
       TransformTestId
@@ -61,7 +46,7 @@ export const transformTestApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [
           listTag("transform-test"),
           idTag("transform-test", id),
-          listTag("transform-test-run"),
+          listTag("data-test-run"),
         ]),
     }),
   }),
@@ -70,6 +55,5 @@ export const transformTestApi = EnterpriseApi.injectEndpoints({
 export const {
   useListTransformTestsQuery,
   useGetTransformTestQuery,
-  useListTransformTestRunsQuery,
   useRunTransformTestMutation,
 } = transformTestApi;

@@ -17,6 +17,7 @@ export * from "./content-diagnostics";
 export * from "./custom-viz-plugin";
 export * from "./dashboard";
 export * from "./data-app";
+export * from "./data-test-run";
 export * from "./data-studio";
 export * from "./database";
 export * from "./dependencies";
