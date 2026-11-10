@@ -55,7 +55,7 @@
                    :output        {:schema "mb_isolation_github"}}}
                  (-> cfg :config :workspace :databases))))))))
 
-(deftest build-workspace-config-drops-tunnel-secrets-of-a-disabled-tunnel-test
+(deftest build-workspace-config-tunnel-and-secret-properties-test
   (let [tunnel-secrets {:tunnel-pass                   "tunnel-pass"
                         :tunnel-private-key            "tunnel-key"
                         :tunnel-private-key-passphrase "tunnel-key-pass"}

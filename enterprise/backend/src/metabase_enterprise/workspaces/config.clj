@@ -178,7 +178,8 @@
 
   Each database entry merges the underlying `metabase_database.details`, minus the
   parent's login properties (`parent-login-keys`), with the WorkspaceDatabase's
-  override credentials and adds `schema-filters-*` keys
+  override credentials, drops SSH-tunnel secrets the tunnel does not use
+  (`drop-unused-tunnel-secrets`), and adds `schema-filters-*` keys
   derived from `:input_schemas`. Per-database workspace entries carry the
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
   `instance-workspace` setting stores. Returns nil when the workspace does not
