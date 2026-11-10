@@ -53,19 +53,16 @@ export const QuestionActions = ({
 
   const dispatch = useDispatch();
 
-  useRegisterShortcut(
-    [
-      {
-        id: "query-builder-info-sidebar",
-        perform: onInfoClick,
-      },
-      {
-        id: "query-builder-bookmark",
-        perform: onToggleBookmark,
-      },
-    ],
-    [isShowingQuestionInfoSidebar, isBookmarked],
-  );
+  useRegisterShortcut([
+    {
+      id: "query-builder-info-sidebar",
+      perform: onInfoClick,
+    },
+    {
+      id: "query-builder-bookmark",
+      perform: onToggleBookmark,
+    },
+  ]);
 
   const infoButtonColor = isShowingQuestionInfoSidebar
     ? "core-brand"

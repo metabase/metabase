@@ -54,21 +54,18 @@ export const NewModals = () => {
     handleModalClose();
   }, [handleModalClose, pathname]);
 
-  useRegisterShortcut(
-    [
-      {
-        id: "shortcuts-modal",
-        perform: () => {
-          if (currentNewModalId) {
-            handleModalClose();
-          } else {
-            dispatch(setOpenModal("help"));
-          }
-        },
+  useRegisterShortcut([
+    {
+      id: "shortcuts-modal",
+      perform: () => {
+        if (currentNewModalId) {
+          handleModalClose();
+        } else {
+          dispatch(setOpenModal("help"));
+        }
       },
-    ],
-    [currentNewModalId],
-  );
+    },
+  ]);
 
   switch (currentNewModalId) {
     case "collection": {

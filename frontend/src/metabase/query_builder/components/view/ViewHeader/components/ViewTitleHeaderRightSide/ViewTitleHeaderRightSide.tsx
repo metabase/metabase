@@ -152,11 +152,12 @@ export function ViewTitleHeaderRightSide({
           {
             id: "query-builder-data-refresh",
             perform: () =>
-              isRunning ? cancelQuery : runQuestionQuery({ ignoreCache: true }),
+              isRunning
+                ? cancelQuery()
+                : runQuestionQuery({ ignoreCache: true }),
           },
         ]
       : [],
-    [isRunning, isShowingNotebook, hasRunButton],
   );
 
   return (

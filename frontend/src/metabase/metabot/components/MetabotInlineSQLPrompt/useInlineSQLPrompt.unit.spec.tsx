@@ -1,7 +1,7 @@
 jest.unmock("@uiw/react-codemirror");
 
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { type ReactElement, useState } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadataFromState } from "__support__/metadata";
@@ -23,6 +23,7 @@ import {
   within,
 } from "__support__/ui";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
+import { MetabotChainOfThought } from "metabase/metabot/components/MetabotChat/MetabotChainOfThought";
 import { MetabotProvider } from "metabase/metabot/context";
 import { lastReqBody, mockAgentEndpoint } from "metabase/metabot/tests/utils";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor/NativeQueryEditor";
@@ -80,6 +81,35 @@ const TEXT_ONLY_RESPONSE: SSEEvent[] = [
   { type: "text-delta", id: "t1", delta: "I can help with that!" },
   { type: "text-end", id: "t1" },
 ];
+
+// At 10 ms per paced word, this reasoning takes at least 15 s to replay.
+const LONG_REASONING_WORD_COUNT = 1500;
+// Keep it at most a third of the replay time above, and below the 30 s jest timeout.
+const SQL_ARRIVAL_TIMEOUT_MS = 5000;
+
+const LONG_REASONING_THEN_CODE_EDIT_RESPONSE: SSEEvent[] = [
+  { type: "reasoning-start", id: "r1" },
+  {
+    type: "reasoning-delta",
+    id: "r1",
+    delta: "word ".repeat(LONG_REASONING_WORD_COUNT),
+  },
+  { type: "reasoning-end", id: "r1" },
+  ...CODE_EDIT_RESPONSE,
+];
+
+const OTHER_CONVERSATION_REASONING = (
+  <MetabotChainOfThought
+    conversationId="other-conversation"
+    part={{
+      id: "chain-1",
+      role: "agent",
+      type: "chain_of_thought",
+      steps: [{ kind: "reasoning", text: "Weighing the join order" }],
+      finished: false,
+    }}
+  />
+);
 
 function TestEditor({ question }: { question: Question }) {
   const [currentQuestion, setCurrentQuestion] = useState(question);
@@ -146,9 +176,10 @@ function TestPage({ question }: { question: Question }) {
 
 interface SetupOpts {
   isMetabotEnabled?: boolean;
+  otherContent?: ReactElement;
 }
 
-function setup({ isMetabotEnabled = true }: SetupOpts = {}) {
+function setup({ isMetabotEnabled = true, otherContent }: SetupOpts = {}) {
   setupEnterprisePlugins();
   setupDatabasesEndpoints([TEST_DB, OTHER_DB]);
   setupUserMetabotPermissionsEndpoint();
@@ -173,9 +204,24 @@ function setup({ isMetabotEnabled = true }: SetupOpts = {}) {
   renderWithProviders(
     <MetabotProvider>
       <TestPage question={question} />
+      {otherContent}
     </MetabotProvider>,
     { storeInitialState: state },
   );
+}
+
+async function openOtherConversationReasoning() {
+  const header = await screen.findByTestId("metabot-chain-of-thought-header");
+  await userEvent.click(header);
+  const stepToggle = await waitFor(() =>
+    checkNotNull(
+      screen
+        .getAllByRole("button", { name: /Thinking/ })
+        .find((button) => button !== header),
+    ),
+  );
+  await userEvent.click(stepToggle);
+  expect(stepToggle).toHaveAttribute("aria-expanded", "true");
 }
 
 async function startGenerating() {
@@ -256,6 +302,19 @@ function rejectButton() {
 
 function queryDiffControls() {
   return screen.queryByTestId("accept-proposed-changes-button");
+}
+
+async function expectProposedSqlSoon() {
+  await waitFor(
+    () => {
+      expect(
+        screen.queryByTestId("metabot-inline-sql-prompt"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Working on it...")).not.toBeInTheDocument();
+      expect(screen.getByTestId("proposed-sql")).toHaveTextContent("SELECT 2");
+    },
+    { timeout: SQL_ARRIVAL_TIMEOUT_MS },
+  );
 }
 
 describe("useInlineSQLPrompt", () => {
@@ -351,6 +410,34 @@ describe("useInlineSQLPrompt", () => {
     await waitFor(() => expect(queryDiffControls()).not.toBeInTheDocument());
     expect(editorContent()).toHaveTextContent("SELECT 2");
     expect(editorContent()).not.toHaveTextContent("SELECT 1");
+  });
+
+  // https://github.com/metabase/metabase/issues/84969
+  it("shows the SQL soon after a stream with long reasoning", async () => {
+    const agent = mockAgentEndpoint({
+      events: LONG_REASONING_THEN_CODE_EDIT_RESPONSE,
+      waitForResponse: true,
+    });
+    setup();
+
+    await startGenerating();
+
+    agent.sendResponse();
+    await expectProposedSqlSoon();
+  });
+
+  it("keeps the SQL fast while another conversation shows open reasoning", async () => {
+    const agent = mockAgentEndpoint({
+      events: LONG_REASONING_THEN_CODE_EDIT_RESPONSE,
+      waitForResponse: true,
+    });
+    setup({ otherContent: OTHER_CONVERSATION_REASONING });
+
+    await openOtherConversationReasoning();
+    await startGenerating();
+
+    agent.sendResponse();
+    await expectProposedSqlSoon();
   });
 
   it("cancels the in-flight request when the prompt is closed", async () => {
