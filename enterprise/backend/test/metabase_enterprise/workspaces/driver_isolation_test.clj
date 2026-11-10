@@ -641,9 +641,10 @@
   ;; (`metabase.driver.sqlserver-test/init-workspace-isolation-refuses-existing-objects-test`).
   ;; MySQL refuses the existing database instead: see `metabase.driver.mysql.workspace-test`.
   ;; Redshift refuses the existing namespace with a 409: metabase.driver.redshift-test covers that.
+  ;; ClickHouse refuses the collision: `init-workspace-isolation-refuses-existing-objects-test`.
   (mt/test-drivers (->> (mt/normal-drivers-with-feature :workspace)
                         (filter #(isa? driver/hierarchy % :sql-jdbc))
-                        (remove #{:sqlserver :mysql :redshift}))
+                        (remove #{:sqlserver :mysql :redshift :clickhouse}))
     (testing "init-workspace-isolation! is robust when its target output namespace already exists"
       (let [driver       driver/*driver*
             database     (mt/db)
