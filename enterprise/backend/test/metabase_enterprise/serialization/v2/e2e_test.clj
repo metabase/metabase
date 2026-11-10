@@ -1500,6 +1500,13 @@
                    (t2/select-one-fn :dashboard_id :model/Card :name "Revenue"))))
           (imported-card-test-is-the-exported-one "Revenue ignores refunds" "Revenue" "creator@example.com"))))))
 
+(defn- exported-card-eids
+  "The entity ids of the Cards in `entities`, and the entity ids of the Cards their CardTests test."
+  [entities]
+  (let [eids (fn [model k] (into #{} (comp (filter #(= model (-> % :serdes/meta last :model))) (map k)) entities))]
+    {:cards  (eids "Card" :entity_id)
+     :tested (eids "CardTest" :card_id)}))
+
 (deftest selective-export-takes-the-tests-of-exported-cards-test
   (testing "An export of one collection takes the tests of its cards, and no others"
     (ts/with-dbs [source-db]
@@ -1512,28 +1519,18 @@
                                                :name "Revenue" :collection_id (:id finance))
               orders   (create-card-with-test! db creator "Orders are positive"
                                                :name "Orders" :collection_id (:id sales))
-              tested-card-eids (fn [opts] (into #{}
-                                                (comp (filter #(= "CardTest" (-> % :serdes/meta last :model)))
-                                                      (map :card_id))
-                                                (extract/extract (assoc opts :include-h2? true))))]
+              tested   (fn [opts] (:tested (exported-card-eids (extract/extract (assoc opts :include-h2? true)))))]
           (testing "the collection's card test, through its card"
             (is (= #{(:entity_id revenue)}
-                   (tested-card-eids {:targets [[:model/Collection (:id finance)]]}))))
+                   (tested {:targets [[:model/Collection (:id finance)]]}))))
           (testing "a card targeted directly brings its test"
             (is (= #{(:entity_id revenue)}
-                   (tested-card-eids {:targets [[:model/Card (:id revenue)]]}))))
+                   (tested {:targets [[:model/Card (:id revenue)]]}))))
           (testing "a full export takes every card test"
             (is (= #{(:entity_id revenue) (:entity_id orders)}
-                   (tested-card-eids {}))))
+                   (tested {}))))
           (testing "an export with no collections takes no card tests"
-            (is (= #{} (tested-card-eids {:no-collections true})))))))))
-
-(defn- exported-card-eids
-  "The entity ids of the Cards in `entities`, and the entity ids of the Cards their CardTests test."
-  [entities]
-  (let [eids (fn [model k] (into #{} (comp (filter #(= model (-> % :serdes/meta last :model))) (map k)) entities))]
-    {:cards  (eids "Card" :entity_id)
-     :tested (eids "CardTest" :card_id)}))
+            (is (= #{} (tested {:no-collections true})))))))))
 
 (deftest export-takes-no-test-of-a-card-it-leaves-out-test
   (testing "An export of a targeted card takes no test of the card when it leaves the card out"
