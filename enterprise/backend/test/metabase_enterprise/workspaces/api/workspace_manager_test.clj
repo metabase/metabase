@@ -310,6 +310,176 @@
             (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                   {:name "Nope" :database_ids []})))))))
 
+;;; ------------------------------------------ Idempotency-Key -------------------------------------------------
+
+(defn- counting-provisioner
+  "A stub provisioner whose `init!` (one call per provisioned database) counts its
+  calls in `inits` and then runs `on-init`."
+  [inits on-init]
+  (reify provisioning/Provisioner
+    (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+    (init!    [_ _ _ _]   (swap! inits inc) (on-init) nil)
+    (grant!   [_ _ _ _ _] nil)
+    (destroy! [_ _ _ _]   nil)))
+
+(defn- create-with-key [expected-status idempotency-key ws-name db-id]
+  (mt/user-http-request :crowberto :post expected-status "ee/workspace-manager/"
+                        {:request-options {:headers {"idempotency-key" idempotency-key}}}
+                        {:name ws-name :database_ids [db-id]}))
+
+(defn- do-with-eligible-database!
+  "Call `f` with the id of a committed Database eligible for workspaces, deleting it and
+  any Workspace created meanwhile afterwards. Not `mt/with-temp`: that runs its body in
+  a rollback-only transaction which the request threads of these tests would inherit
+  and share, so concurrent creates would not race in separate transactions."
+  [f]
+  (let [db-id (t2/insert-returning-pk! :model/Database {:name     (mt/random-name)
+                                                        :engine   :postgres
+                                                        :details  {}
+                                                        :settings {:database-enable-workspaces true}})]
+    (try
+      (mt/with-model-cleanup [:model/Workspace]
+        (f db-id))
+      (finally
+        (t2/delete! :model/Database :id db-id)))))
+
+(deftest create-idempotency-retry-after-success-test
+  (testing "a retry with the same Idempotency-Key returns the first workspace and provisions nothing"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [inits (atom 0)]
+         (with-redefs [provisioning/dispatching-provisioner (counting-provisioner inits (constantly nil))]
+           (let [first-ws (create-with-key 200 "retry-after-success" "Retried" db-id)
+                 retry-ws (create-with-key 200 "retry-after-success" "Retried" db-id)]
+             (is (=? {:id pos-int? :databases [{:status "provisioned"}]} first-ws))
+             (is (= first-ws retry-ws)
+                 "the retry gets the same response as the original create")
+             (is (= 1 @inits))
+             (is (= 1 (t2/count :model/Workspace :idempotency_key "retry-after-success"))))))))))
+
+(deftest create-idempotency-retry-while-in-flight-test
+  (testing "a retry while the first create is still provisioning answers 409 workspace_busy and provisions nothing"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [inits   (atom 0)
+             started (promise)
+             release (promise)]
+         (with-redefs [provisioning/dispatching-provisioner (counting-provisioner
+                                                             inits
+                                                             #(do (deliver started true)
+                                                                  (deref release 30000 nil)))]
+           (let [create (future (create-with-key 200 "retry-in-flight" "Slow" db-id))]
+             (try
+               (is (true? (deref started 10000 false)) "the first create reached the warehouse step")
+               (is (=? {:error-code "workspace_busy"}
+                       (create-with-key 409 "retry-in-flight" "Slow" db-id)))
+               (deliver release true)
+               (is (=? {:databases [{:status "provisioned"}]}
+                       (deref create 10000 ::timed-out))
+                   "the refused retry left the first create alone")
+               (is (= 1 @inits))
+               (finally
+                 (deliver release true)
+                 (deref create 10000 nil))))))))))
+
+(deftest create-idempotency-retry-after-failure-test
+  (testing "a create that failed and deleted its workspace frees the key: a retry provisions again"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [inits (atom 0)]
+         (with-redefs [provisioning/dispatching-provisioner (counting-provisioner
+                                                             inits
+                                                             #(throw (ex-info "Connection refused" {})))]
+           (is (=? {:message "Connection refused"}
+                   (create-with-key 500 "retry-after-failure" "Flaky" db-id)))
+           (is (zero? (t2/count :model/Workspace :idempotency_key "retry-after-failure"))))
+         (with-redefs [provisioning/dispatching-provisioner (counting-provisioner inits (constantly nil))]
+           (is (=? {:databases [{:status "provisioned"}]}
+                   (create-with-key 200 "retry-after-failure" "Flaky" db-id))))
+         (is (= 2 @inits))
+         (is (= 1 (t2/count :model/Workspace :idempotency_key "retry-after-failure"))
+             "the retry's workspace holds the freed key"))))))
+
+(deftest create-idempotency-retry-after-failed-cleanup-test
+  (testing "a retry of a create whose provisioning and cleanup both failed replays the 500 and provisions nothing"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [inits  (atom 0)
+             wedged (reify provisioning/Provisioner
+                      (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                      (init!    [_ _ _ _]   (swap! inits inc) (throw (ex-info "Connection refused" {})))
+                      (grant!   [_ _ _ _ _] nil)
+                      (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
+         (with-redefs [provisioning/dispatching-provisioner wedged]
+           ;; master keeps the workspace and answers 200; with #86601 this first create is the 500 too
+           (let [{ws-id :id} (create-with-key 200 "retry-after-failed-cleanup" "Wedged" db-id)]
+             (is (=? {:databases [{:status "unprovisioned"}]}
+                     (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))
+             (is (=? {:workspace_id ws-id :cleanup_required true}
+                     (create-with-key 500 "retry-after-failed-cleanup" "Wedged" db-id)))
+             (is (= 1 @inits) "the retry provisioned nothing")
+             (is (= 1 (t2/count :model/Workspace :idempotency_key "retry-after-failed-cleanup"))
+                 "the key stays on the kept workspace")
+             (testing "deleting the kept workspace finishes the cleanup"
+               (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                 (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))))))))))
+
+(deftest create-without-idempotency-key-test
+  (testing "without an Idempotency-Key, two identical creates make two workspaces"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [inits (atom 0)]
+         (with-redefs [provisioning/dispatching-provisioner (counting-provisioner inits (constantly nil))]
+           (let [a (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                         {:name "Twin" :database_ids [db-id]})
+                 b (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                         {:name "Twin" :database_ids [db-id]})]
+             (is (not= (:id a) (:id b)))
+             (is (= 2 @inits)))))))))
+
+(deftest create-idempotency-concurrent-test
+  (testing "two concurrent creates with the same Idempotency-Key provision once"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [inits   (atom 0)
+             go      (promise)
+             release (promise)]
+         (with-redefs [provisioning/dispatching-provisioner (counting-provisioner
+                                                             inits
+                                                             #(deref release 30000 nil))]
+           (let [first-done (promise)
+                 request    #(do @go
+                                 (let [response (mt/user-http-request-full-response
+                                                 :crowberto :post "ee/workspace-manager/"
+                                                 {:request-options {:headers {"idempotency-key" "concurrent"}}}
+                                                 {:name "Concurrent" :database_ids [db-id]})]
+                                   (deliver first-done true)
+                                   response))
+                 creates    [(future (request)) (future (request))]
+                 _          (deliver go true)
+                 ;; the winner blocks in provisioning until released, so the request
+                 ;; that answers first is the loser; then let the winner finish
+                 _          (deref first-done 10000 nil)
+                 _          (deliver release true)
+                 statuses   (mapv #(:status (deref % 30000 nil)) creates)
+                 ids        (into #{} (keep #(get-in (deref %) [:body :id])) creates)]
+             (is (every? #{200 409} statuses))
+             (is (some #{200} statuses))
+             (is (= 1 (count ids)) "every 200 is the same workspace")
+             (is (= 1 @inits))
+             (is (= 1 (t2/count :model/Workspace :idempotency_key "concurrent"))))))))))
+
+(deftest create-idempotency-key-validation-test
+  (testing "a blank or overlong Idempotency-Key is a 400 and creates nothing"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (with-redefs [provisioning/dispatching-provisioner (counting-provisioner (atom 0) (constantly nil))]
+         (doseq [bad-key ["   " (apply str (repeat 256 "k"))]]
+           (create-with-key 400 bad-key "Bad key" db-id))
+         (is (zero? (t2/count :model/Workspace :name "Bad key")))
+         (testing "255 characters is allowed"
+           (create-with-key 200 (apply str (repeat 255 "k")) "Long key" db-id)))))))
+
 (deftest rename-workspace-test
   (testing "PUT /:id renames a workspace and returns the updated WorkspaceResponse"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "Before"}]

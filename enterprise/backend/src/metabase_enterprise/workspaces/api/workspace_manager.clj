@@ -4,6 +4,7 @@
    [[metabase-enterprise.workspaces.core]] and permission predicates live on
    `:model/Workspace` and `:model/WorkspaceDatabase` (see `mi/can-read?`/`can-write?`/`can-create?`)."
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
@@ -97,17 +98,37 @@
   (api/read-check :model/Workspace id)
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
+(defn- request-idempotency-key
+  "The request's `Idempotency-Key` header, or nil when absent. 400 unless it is 1 to
+   255 characters and not blank."
+  [request]
+  (when-let [k (get-in request [:headers "idempotency-key"])]
+    (api/check-400 (and (not (str/blank? k)) (<= (count k) 255))
+                   "Idempotency-Key must be 1 to 255 characters and not blank")
+    k))
+
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
    for workspaces) and provision it (blocking). A failed provisioning is an error,
    never a 200: the database's status code, or 500, with `message` and
    `cleanup_required`, true when the workspace was kept and must be deleted to
-   finish the teardown."
-  [_route-params _query-params params :- CreateWorkspaceParams]
+   finish the teardown.
+
+   Send an `Idempotency-Key` header (1 to 255 characters) to make the request safe to
+   retry. A key that already has a workspace of the current user never provisions
+   again: the response is that workspace (200), 409 with error code
+   `workspace_busy` while it is still provisioning, or the failed create's 500 with
+   `workspace_id` and `cleanup_required` when that create kept the workspace. A
+   create that failed and deleted its workspace frees its key. The body of a retry
+   is not compared with the original, so send a key again only to retry the same
+   intended workspace."
+  [_route-params _query-params params :- CreateWorkspaceParams request]
   (api/create-check :model/Workspace params)
   (present-workspace
    (ws/create-workspace!
-    (assoc params :creator_id api/*current-user-id*))))
+    (assoc params
+           :creator_id      api/*current-user-id*
+           :idempotency_key (request-idempotency-key request)))))
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update a workspace's name."
