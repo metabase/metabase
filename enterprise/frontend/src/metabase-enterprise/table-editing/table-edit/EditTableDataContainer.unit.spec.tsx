@@ -5,13 +5,16 @@ import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
   within,
 } from "__support__/ui";
+import { Api } from "metabase/api";
 import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 import type { RowValues } from "metabase-types/api";
 import {
   createMockColumn,
@@ -157,12 +160,13 @@ type ExecuteBulkBody = {
   scope: { "table-id": number };
 };
 
+function parseExecuteBulkBody(body: unknown): ExecuteBulkBody {
+  return JSON.parse(String(body));
+}
+
 // Echoes the request back the way the backend reports written rows.
 function executeBulk({ options }: CallLog) {
-  // The body is whatever the table editing API built from this shape.
-  const { action, inputs, params } = JSON.parse(
-    String(options.body),
-  ) as ExecuteBulkBody;
+  const { action, inputs, params } = parseExecuteBulkBody(options.body);
 
   switch (action) {
     case TableActionId.CreateRow:
@@ -257,14 +261,45 @@ function setup({
 
 async function setupGrid(options?: Parameters<typeof setup>[0]) {
   const view = setup(options);
-  expect(await screen.findByText("Bravo")).toBeInTheDocument();
-  // Inline editing needs the update form description.
+  await waitForGridToSettle(view.store, { datasetRequests: 1 });
+  expect(screen.getByText("Bravo")).toBeInTheDocument();
+  return view;
+}
+
+/**
+ * Each time the dataset, the table metadata or a form description arrives, the
+ * grid builds new header and cell components for every column, and React
+ * remounts those cells. A click whose pointer events straddle a remount lands
+ * on a detached node and is lost, and a cell clicked before the update form
+ * description arrives does not know that its column is readonly. The sort
+ * indicator is read from the URL, so it shows before the dataset refetch that
+ * the sort starts has finished.
+ *
+ * So wait for every running API request, then for the animation frame on
+ * which RTK's `autoBatchEnhancer` notifies subscribers of the results, so that
+ * React has rendered them before the next interaction.
+ */
+async function waitForGridToSettle(
+  store: ReturnType<typeof setup>["store"],
+  { datasetRequests }: { datasetRequests: number },
+) {
+  await waitFor(() =>
+    expect(fetchMock.callHistory.calls("dataset")).toHaveLength(
+      datasetRequests,
+    ),
+  );
+  await act(async () => {
+    await Promise.all([
+      ...store.dispatch(Api.util.getRunningQueriesThunk()),
+      ...store.dispatch(Api.util.getRunningMutationsThunk()),
+    ]);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  });
   await waitFor(() =>
     expect(
-      fetchMock.callHistory.calls("path:/api/ee/action-v2/execute-form"),
-    ).toHaveLength(2),
+      screen.queryByTestId("edit-table-data-loading-overlay"),
+    ).not.toBeInTheDocument(),
   );
-  return view;
 }
 
 function getRowSection(quadrant: string, rowIndex: number) {
@@ -293,7 +328,7 @@ function getRowSelectSection(rowIndex: number) {
 
 function getLastExecuteBulkBody(): ExecuteBulkBody {
   const call = fetchMock.callHistory.lastCall("execute-bulk");
-  return JSON.parse(String(call?.options.body));
+  return parseExecuteBulkBody(call?.options.body);
 }
 
 async function dismissUndoToast(message: string) {
@@ -344,6 +379,20 @@ describe("EditTableDataContainer", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByText("You are not allowed to edit this table"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("edit-table-data-root"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not allow editing a read-only table", async () => {
+      setup({ isTableWritable: false });
+
+      expect(
+        await screen.findByText("This table is read-only"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("edit-table-data-restricted"),
       ).toBeInTheDocument();
       expect(
         screen.queryByTestId("edit-table-data-root"),
@@ -460,8 +509,13 @@ describe("EditTableDataContainer", () => {
         within(popover).getByRole("combobox"),
         "AM",
       );
-      const buttons = within(popover).getAllByRole("button");
-      await userEvent.click(buttons[buttons.length - 1]);
+      // The submit button has no accessible name: its only content is an
+      // aria-hidden check icon. The month navigation buttons are the only
+      // other unnamed buttons in the picker, and they carry a direction.
+      const submitButton = within(popover)
+        .getAllByRole("button", { name: "" })
+        .find((button) => !button.hasAttribute("data-direction"));
+      await userEvent.click(checkNotNull(submitButton));
 
       await dismissUndoToast("Successfully updated");
       expect(getLastExecuteBulkBody().params).toEqual({
@@ -485,7 +539,7 @@ describe("EditTableDataContainer", () => {
       expect(getCell(1, "active")).toHaveTextContent("true");
     });
 
-    it("does not make primary key cells editable", async () => {
+    it("does not make a cell editable when the form description marks its column readonly", async () => {
       await setupGrid();
 
       await userEvent.click(getCell(1, "id"));
@@ -498,10 +552,21 @@ describe("EditTableDataContainer", () => {
 
     it("shows an error toast when the backend rejects an inline edit", async () => {
       await setupGrid();
+      // What `POST /api/ee/action-v2/execute-bulk` sends when Postgres rejects
+      // an update with an error the driver has no parser for.
       fetchMock.modifyRoute("execute-bulk", {
         response: {
           status: 400,
-          body: { errors: [{ message: "value out of range" }] },
+          body: {
+            errors: [
+              {
+                index: 0,
+                error: "ERROR: smallint out of range",
+                message: "ERROR: smallint out of range",
+                "status-code": 400,
+              },
+            ],
+          },
         },
       });
 
@@ -515,12 +580,20 @@ describe("EditTableDataContainer", () => {
         await screen.findByText("Couldn't save table changes"),
       ).toBeInTheDocument();
       expectRecordModifiedEvent("update", "inline", "error");
+
+      await userEvent.click(screen.getByRole("button", { name: "More info" }));
+      expect(
+        screen.getByText("Couldn't save table changes:"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("ERROR: smallint out of range"),
+      ).toBeInTheDocument();
     });
   });
 
   describe("filter and sort", () => {
     it("cycles a column sort through ascending, descending and none", async () => {
-      const { router } = await setupGrid();
+      const { router, store } = await setupGrid();
       const header = screen.getByTestId("table-header");
 
       await userEvent.click(within(header).getByText("Name"));
@@ -531,11 +604,13 @@ describe("EditTableDataContainer", () => {
         within(header).getAllByTestId("header-sort-indicator"),
       ).toHaveLength(1);
       expect(router?.location.search).toMatch(/^\?query=/);
+      await waitForGridToSettle(store, { datasetRequests: 2 });
 
       await userEvent.click(within(header).getByText("Name"));
       expect(
         await within(header).findByLabelText("chevrondown icon"),
       ).toBeInTheDocument();
+      await waitForGridToSettle(store, { datasetRequests: 3 });
 
       await userEvent.click(within(header).getByText("Name"));
       await waitFor(() =>
@@ -547,7 +622,7 @@ describe("EditTableDataContainer", () => {
     });
 
     it("adds a filter and keeps filter and sort in the URL across reloads", async () => {
-      const { router, unmount } = await setupGrid();
+      const { router, store, unmount } = await setupGrid();
 
       await userEvent.click(screen.getByText("Filter"));
       await userEvent.click(await screen.findByRole("heading", { name: "ID" }));
@@ -558,11 +633,14 @@ describe("EditTableDataContainer", () => {
       expect(
         await screen.findByTestId("filters-visibility-control"),
       ).toHaveTextContent("1");
+      await waitForGridToSettle(store, { datasetRequests: 2 });
+
       const header = screen.getByTestId("table-header");
       await userEvent.click(within(header).getByText("Name"));
       expect(
         await within(header).findByLabelText("chevronup icon"),
       ).toBeInTheDocument();
+      await waitForGridToSettle(store, { datasetRequests: 3 });
 
       const lastQuery = JSON.parse(
         String(fetchMock.callHistory.lastCall("dataset")?.options.body),
