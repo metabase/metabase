@@ -246,7 +246,7 @@ The following fields are returned by this question.
 </viz_card>
 {% endif %}
 {% if is_dashboard %}
-<dashboard id="{{dashboard_id}}" is_verified="{{dashboard_verified}}">
+<dashboard id="{{dashboard_id}}" is_verified="{{dashboard_verified}}"{% if dashboard_archived %} archived="true"{% endif %}>
   <name>{{dashboard_name}}</name>
 {% if dashboard_description %}
   <description>{{dashboard_description}}</description>

@@ -801,8 +801,8 @@
 (defn dashboard->xml
   "Format dashboard for LLM consumption.
    Matches Python Dashboard.llm_representation exactly, except we additionally surface who created and last edited
-   the dashboard, its filters, and the tab the user has open."
-  [{:keys [id name description verified collection parameters dashcards open_tab] :as dashboard}]
+   the dashboard, whether it is in the trash, its filters, and the tab the user has open."
+  [{:keys [id name description verified archived collection parameters dashcards open_tab] :as dashboard}]
   ;; Group cards by tab and sort
   ;; TODO (Chris 2026-07-09) -- tabs sort by raw id here but by position in
   ;; resources/fetch-dashboard-items; align on position
@@ -826,6 +826,7 @@
      :dashboard
      {:dashboard_id (str id)
       :dashboard_verified (boolean verified)
+      :dashboard_archived (boolean archived)
       :dashboard_name name
       :dashboard_description description
       :dashboard_history_xml (dashboard-history->xml dashboard)

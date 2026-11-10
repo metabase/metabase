@@ -988,10 +988,11 @@
   (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-summary
-  "The ID, description, name, Collection ID, parameters, creator ID and creation time of the Dashboard with
-  `dashboard-id`, or nil."
+  "The ID, description, name, Collection ID, parameters, creator ID, creation time and archived flag of the Dashboard
+  with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters :creator_id :created_at]
+  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters :creator_id :created_at
+                  :archived]
                  :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-name

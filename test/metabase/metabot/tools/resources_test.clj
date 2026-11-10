@@ -694,17 +694,39 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Collection {sales-id :id}    {:name "Sales"}
                    :model/Collection emea              {:name "EMEA", :location (str "/" sales-id "/")}
+                   :model/Collection ops               {:name "Ops"}
+                   :model/Collection {nordics-id :id}  {:name "Nordics", :location (str "/" (:id ops) "/")}
                    :model/Collection {official-id :id} {:name "Finance", :authority_level "official"}
                    :model/Dashboard  {trashed-id :id}  {:name "EMEA overview", :collection_id (:id emea)}
+                   :model/Dashboard  {nested-id :id}   {:name "Nordics overview", :collection_id nordics-id}
+                   :model/Dashboard  {direct-id :id}   {:name              "Old sales"
+                                                        :collection_id     sales-id
+                                                        :archived          true
+                                                        :archived_directly true}
                    :model/Dashboard  {official :id}    {:name "Finance overview", :collection_id official-id}]
       (collection/archive-collection! emea)
-      (testing "a dashboard in a trashed collection has its path through the Trash"
-        (is (str/includes? (:output (read-uris {:uris [(str "metabase://dashboard/" trashed-id)]}))
-                           (str "<collection id=\"" (:id emea) "\" name=\"EMEA\" path=\"Our analytics / Trash / EMEA\">"))))
-      (testing "a dashboard in an official collection shows the collection's authority level"
-        (is (str/includes? (:output (read-uris {:uris [(str "metabase://dashboard/" official)]}))
-                           (str "<collection id=\"" official-id "\" name=\"Finance\" path=\"Our analytics / Finance\""
-                                " authority_level=\"official\">")))))))
+      (collection/archive-collection! ops)
+      (let [read-dashboard #(:output (read-uris {:uris [(str "metabase://dashboard/" %)]}))]
+        (testing "a dashboard in a trashed collection has its path through the Trash, and is archived"
+          (let [output (read-dashboard trashed-id)]
+            (is (str/includes? output (str "<collection id=\"" (:id emea) "\" name=\"EMEA\""
+                                           " path=\"Our analytics / Trash / EMEA\">")))
+            (is (str/includes? output " archived=\"true\">"))))
+        (testing "a dashboard in a collection trashed with its parent keeps the collection's location, and is archived"
+          (let [output (read-dashboard nested-id)]
+            (is (str/includes? output (str "<collection id=\"" nordics-id "\" name=\"Nordics\""
+                                           " path=\"Our analytics / Ops / Nordics\">")))
+            (is (str/includes? output " archived=\"true\">"))))
+        (testing "a dashboard trashed directly from a live collection is archived, with that collection's path"
+          (let [output (read-dashboard direct-id)]
+            (is (str/includes? output (str "<collection id=\"" sales-id "\" name=\"Sales\""
+                                           " path=\"Our analytics / Sales\">")))
+            (is (str/includes? output " archived=\"true\">"))))
+        (testing "a dashboard in an official collection shows the collection's authority level, and is not archived"
+          (let [output (read-dashboard official)]
+            (is (str/includes? output (str "<collection id=\"" official-id "\" name=\"Finance\""
+                                           " path=\"Our analytics / Finance\" authority_level=\"official\">")))
+            (is (not (str/includes? output "archived=")))))))))
 
 (deftest read-document-resource-test
   (mt/with-current-user (mt/user->id :crowberto)

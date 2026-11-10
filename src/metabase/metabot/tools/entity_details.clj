@@ -125,7 +125,8 @@
 
 (defn- dashboard-collection
   "The collection with `collection-id`, nil for the root collection, with its authority level and the path to it the
-  current user can see. A collection in the Trash has its path through the Trash."
+  current user can see. A collection trashed directly has its path through the Trash; one trashed with its parent
+  keeps its own location."
   [collection-id]
   (if-not collection-id
     (let [root-name (:name (collection/root-collection-with-ui-details nil))]
