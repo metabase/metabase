@@ -592,7 +592,7 @@
 
 (defn- transform-target-specs
   "The `{:from-spec :to-spec}` storage specs for remapping transform `target` on workspaced
-   database `db-id`. Pure: reads the workspace config and the database row, records nothing.
+   database `db-id`. Reads the workspace config and the database row; records nothing.
    Throws when the database is not workspaced."
   [db-id target]
   (let [workspace-ns (ws/db-workspace-namespace db-id)]
@@ -650,15 +650,11 @@
 
    Returns the to-side as a denormalized `{:db :schema :name}` map (consumer
    shape: `nil` for slots the driver doesn't fill, string otherwise). The
-   storage layer's `\"\"` sentinel never leaks above this boundary, so the value
-   can be `assoc`ed onto a transform target without a per-call denormalization shim.
+   storage layer's `\"\"` sentinel never leaks above this boundary.
 
    Throws when the database is not workspaced -- reaching this with a non-workspaced
    db is a programming error; gate on [[ws/db-workspace-namespace]] first."
   [db-id target]
   (let [{:keys [from-spec to-spec]} (transform-target-specs db-id target)]
     (add-mapping! db-id from-spec to-spec)
-    ;; Hand callers the denormalized shape so storage's `""` sentinel stays
-    ;; below the line. Symmetric with the read hooks (`workspace-remap-schema+name`,
-    ;; `canonical-schema+name`) which also denormalize at the boundary.
     (spec->consumer-shape to-spec)))

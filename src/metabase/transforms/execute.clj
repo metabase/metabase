@@ -12,7 +12,7 @@
 
 (mu/defn- resolve-target :- ::transforms-base.schema/transform
   "Apply the workspace target-rewrite hook before dispatch. On a workspaced child
-  instance for `(:database target)`, the hook rewrites `:schema` and `:name` to the
+  instance for `(:database target)`, the hook rewrites `:db`, `:schema` and `:name` to the
   workspace copy, and the canonical target is stashed as `:workspace-canonical-target`.
   Nothing is recorded here: the run records the TableRemapping only once its write has
   returned (see [[transforms-base.u/record-workspace-target-remapping!]]).

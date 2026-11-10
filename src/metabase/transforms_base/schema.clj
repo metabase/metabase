@@ -147,7 +147,7 @@
    [:name {:optional true} :string]
    [:description {:optional true} [:maybe :string]]
    [:full-incremental-run? {:optional true} :boolean]
-   ;; the target before the workspace rewrite, set by `metabase.transforms.execute` only when `:target` was
+   ;; the target before the workspace rewrite, set by `resolve-workspace-target` only when `:target` was
    ;; rewritten to a workspace copy; the run records its TableRemapping once its write returns
    [:workspace-canonical-target {:optional true} ::transform-target]
    [:entity_id             {:optional true} [:maybe :string]]
