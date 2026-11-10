@@ -1,4 +1,4 @@
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { color } from "metabase/ui/colors";
@@ -160,6 +160,7 @@ function getFailedQueryReason(
     .returnType<GoalRefErrorReason>()
     .with("too-many-rows", () => "too-many-rows")
     .with("not-found", () => "source-not-found")
+    .with("has-parameters", () => "has-parameters")
     .otherwise(() => "query-failed");
 }
 
@@ -204,6 +205,7 @@ export const getGoalErrorMessage = (
     .with("query-failed", () => message ?? t`Couldn't load this value`)
     .with("source-not-found", () => getMissingSourceMessage(sourceKind))
     .with("too-many-rows", () => getTooManyRowsMessage(sourceKind))
+    .with("has-parameters", () => getHasParametersMessage(sourceKind))
     .with("column-not-found", () => t`This column no longer exists`)
     .with("not-a-number", () => t`This value isn't a number`)
     .exhaustive();
@@ -233,6 +235,33 @@ const getTooManyRowsMessage = (sourceKind: ReferencedEntityKind | undefined) =>
       () => t`The measure's result must be a single value or row.`,
     )
     .with(undefined, () => t`The result must be a single value or row.`)
+    .exhaustive();
+
+const getHasParametersMessage = (
+  sourceKind: ReferencedEntityKind | undefined,
+) =>
+  match(sourceKind)
+    .with(
+      "question",
+      () =>
+        t`This question uses variables, directly or through a question it's built on. A goal runs on its own and can't fill them in, so pick a question without variables.`,
+    )
+    .with(
+      "model",
+      () =>
+        t`This model is built on a question that uses variables. A goal runs on its own and can't fill them in, so pick a source without variables.`,
+    )
+    .with(
+      "metric",
+      () =>
+        t`This metric is built on a question that uses variables. A goal runs on its own and can't fill them in, so pick a source without variables.`,
+    )
+    // measures can't have variables
+    .with(
+      P.union("measure", undefined),
+      () =>
+        t`This source uses variables. A goal runs on its own and can't fill them in, so pick a source without variables.`,
+    )
     .exhaustive();
 
 function isGoalSettingActive(

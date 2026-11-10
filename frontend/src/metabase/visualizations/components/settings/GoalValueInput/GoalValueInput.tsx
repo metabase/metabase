@@ -132,7 +132,7 @@ export const GoalValueInput = ({
   const sourceInfo = useReferencedEntity(foreignRef);
   const currentSource = useDynamicGoalSource(value);
   const sourceUrl = isEmbedding() ? undefined : sourceInfo.url;
-  const resolveEntityColumnValue = useEntityColumnValues(
+  const resolveEntityColumn = useEntityColumnValues(
     datasetQuery,
     data,
     entity,
@@ -456,13 +456,26 @@ export const GoalValueInput = ({
                 .with({ columns: [] }, () => (
                   <Menu.Item disabled>{t`No numeric columns`}</Menu.Item>
                 ))
-                .otherwise(({ columns }) => {
+                .otherwise(({ columns, kind }) => {
+                  const [firstColumn] = columns;
+                  const sourceError =
+                    firstColumn && resolveEntityColumn(firstColumn.name).error;
+
+                  // the source can't be a goal at all, so no column is worth offering
+                  if (sourceError?.reason === "has-parameters") {
+                    return (
+                      <Menu.Item disabled maw={COLUMN_MENU_MIN_WIDTH}>
+                        {getGoalErrorMessage(sourceError, kind)}
+                      </Menu.Item>
+                    );
+                  }
+
                   return columns.map((column) => (
                     <GoalColumnMenuItem
                       key={column.name}
                       formatOptions={formatOptions}
                       label={column.label}
-                      resolvedValue={resolveEntityColumnValue(column.name)}
+                      resolvedValue={resolveEntityColumn(column.name).value}
                       selected={foreignRef?.column === column.name}
                       onClick={() => selectEntityColumn(column.name)}
                     />

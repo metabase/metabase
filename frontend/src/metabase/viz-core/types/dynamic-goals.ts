@@ -31,6 +31,7 @@ export type GoalRefErrorReason =
   | "query-failed"
   | "source-not-found"
   | "too-many-rows"
+  | "has-parameters"
   | "column-not-found"
   | "not-a-number";
 

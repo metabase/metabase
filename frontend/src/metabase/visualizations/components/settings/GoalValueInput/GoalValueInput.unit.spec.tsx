@@ -387,6 +387,45 @@ describe("GoalValueInput", () => {
     expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
   });
 
+  it("explains instead of listing columns when the picked question uses variables", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Orders",
+        type: "question",
+        result_metadata: [
+          createMockField({ name: "total", base_type: "type/Integer" }),
+          createMockField({
+            name: "avg",
+            display_name: "Average",
+            base_type: "type/Integer",
+          }),
+        ],
+      }),
+    );
+    setupCardDatasetWithReferencedEntities(
+      createMockFailedReferencedEntitiesResults({
+        error: "Referenced card 9 uses variables, so it can't run on its own.",
+        error_type: "has-parameters",
+      }),
+    );
+    setup();
+
+    await openMenu();
+    await pickEntity("Orders");
+
+    const explanation = await screen.findByRole("menuitem", {
+      name: /This question uses variables/,
+    });
+    expect(explanation).toHaveAttribute("data-disabled", "true");
+    expect(
+      screen.queryByRole("menuitem", { name: /Average/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("selects the sole numeric column directly from the root menu", async () => {
     const { onChange } = setup({
       data: createMockDatasetData({
@@ -631,6 +670,29 @@ describe("GoalValueInput", () => {
     expect(
       await screen.findByText(
         "The question's result must be a single value or row.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("explains that a referenced question with variables can't be a goal", async () => {
+    setupCardEndpoints(
+      createMockCard({ id: 9, name: "Orders", type: "question" }),
+    );
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockFailedReferencedEntitiesResults({
+          error:
+            "Referenced card 9 uses variables, so it can't run on its own.",
+          error_type: "has-parameters",
+        }),
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
+
+    expect(
+      await screen.findByText(
+        "This question uses variables, directly or through a question it's built on. A goal runs on its own and can't fill them in, so pick a question without variables.",
       ),
     ).toBeInTheDocument();
   });
