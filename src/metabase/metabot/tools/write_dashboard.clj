@@ -16,6 +16,8 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
@@ -539,13 +541,34 @@
        (mapv (fn [{:keys [chart_id] :as op}]
                (assoc (save-entity/savable-chart chart_id) :chart-id chart_id :name (:name op))))))
 
+(defn- comparable-query
+  "`query` as MBQL 5, without the uuids, metadata provider and conversion marker that normalizing regenerates, so a
+  chart's legacy query compares equal to the question saved from it."
+  [query]
+  (-> (lib-be/normalize-query query)
+      (dissoc :lib/metadata :lib.convert/converted?)
+      lib/remove-lib-uuids))
+
+(defn- reusable-card-id
+  "The id of a question of the dashboard with `dashboard-id` that was saved from `chart-id` in the conversation with
+  `conversation-id` and holds `dataset-query`, or nil."
+  [conversation-id chart-id dashboard-id dataset-query]
+  ;; The viewing context names a chart after the saved question the user is viewing, so the same chart id can hold
+  ;; an edited query on a later turn. Matching the query keeps that edit from being dropped for the old question.
+  (let [wanted (comparable-query dataset-query)]
+    (some (fn [{:keys [id dataset_query]}]
+            (when (= wanted (comparable-query dataset_query))
+              id))
+          (metabot.db/conversation-dashboard-questions conversation-id chart-id dashboard-id))))
+
 (defn- save-chart!
   "Saves `chart` as a question of the dashboard with `dashboard-id`, and returns `{:chart-id :card-id :card}`.
-  A question already saved from the chart to this dashboard in this conversation is reused, without a `:card`."
+  A question already saved from the chart, with the same query, to this dashboard in this conversation is reused,
+  without a `:card`."
   [dashboard-id {:keys [chart-id name dataset_query display]}]
   (let [conversation-id (shared/current-conversation-id)]
     (if-let [card-id (some-> conversation-id
-                             (metabot.db/conversation-dashboard-question-id chart-id dashboard-id))]
+                             (reusable-card-id chart-id dashboard-id dataset_query))]
       {:chart-id chart-id, :card-id card-id}
       (let [card (queries/create-card! {:name                   name
                                         :dataset_query          dataset_query

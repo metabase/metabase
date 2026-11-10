@@ -236,6 +236,24 @@
           (is (= 1 (t2/count :model/Card :dashboard_id dash-id)))
           (is (= 2 (count (dashcards dash-id)))))))))
 
+(deftest reseeded-chart-saves-new-question-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-temp [:model/Dashboard           {dash-id :id}  {:name "Venues"}
+                   :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [add! (fn [query]
+                     (binding [shared/*memory-atom* (chart-memory convo-id query)]
+                       (call {:dashboard_id dash-id
+                              :ops          [{:op "add_card", :id -1, :chart_id "A", :name "Venues"}]})))]
+          (add! (venues-query))
+          ;; The viewing context names a chart after the question the user views, so an edit keeps the chart id.
+          (add! (lib/limit (venues-query) 5))
+          (testing "a chart whose query changed under the same id is saved again, and the new question is placed"
+            (let [cards (t2/select :model/Card :dashboard_id dash-id {:order-by [[:id :asc]]})]
+              (is (= [nil 5] (map (comp lib/current-limit :dataset_query) cards)))
+              (is (= (map :id cards)
+                     (map :card_id (dashcards dash-id)))))))))))
+
 ;;; -------------------------------------------------- Editing -----------------------------------------------------
 
 (deftest replace-chart-on-dashboard-test
