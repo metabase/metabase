@@ -5,6 +5,7 @@
    [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -12,10 +13,12 @@
 
 (mu/defn synced-segments-clause :- [:fn vector?]
   "The clause over the Segment table aliased `alias` selecting the segments of the tables remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   [:and
-   [:= (u/qualified-key alias :archived) false]
-   (remote-sync/synced-fk-clause alias :table_id :model/TableUserSettings)])
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   (remote-sync/synced-fk-clause alias :table_id :model/TableUserSettings opts)])
 
 (mu/defn insert-segment!
   "Insert a Segment and return the inserted instance."

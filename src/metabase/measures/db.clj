@@ -6,16 +6,19 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.schema :as measures.schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (mu/defn synced-measures-clause :- [:fn vector?]
   "The clause over the Measure table aliased `alias` selecting the measures of the tables remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   [:and
-   [:= (u/qualified-key alias :archived) false]
-   (remote-sync/synced-fk-clause alias :table_id :model/TableUserSettings)])
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   (remote-sync/synced-fk-clause alias :table_id :model/TableUserSettings opts)])
 
 (mu/defn insert-measure!
   "Insert a Measure and return the inserted instance."

@@ -2462,7 +2462,7 @@
   remote-sync
   {:team       "Data Apps"
    :codeowners true
-   :api  #{metabase.remote-sync.core}
+   :api  #{metabase.remote-sync.core metabase.remote-sync.schema}
    :uses #{premium-features serialization util}}
 
   request

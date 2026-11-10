@@ -4,6 +4,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -15,8 +16,9 @@
 
 (mu/defn synced-table-indexes-clause :- [:fn vector?]
   "The clause over the TableIndex table aliased `alias` selecting the indexes of the transforms remote sync syncs."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :transform_id :model/Transform))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :transform_id :model/Transform opts))
 
 (mu/defn table-indexes-for-transform
   "The TableIndexes of the Transform with `transform-id`, in id order."

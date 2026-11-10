@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.timeline.schema :as timeline.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -15,15 +16,18 @@
 
 (mu/defn synced-timeline-events-clause :- [:fn vector?]
   "The clause over the TimelineEvent table aliased `alias` selecting the events of the timelines remote sync syncs."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :timeline_id :model/Timeline))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :timeline_id :model/Timeline opts))
 
 (mu/defn synced-timelines-clause :- [:fn vector?]
   "The clause over the Timeline table aliased `alias` selecting the timelines remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   [:and
-   [:= (u/qualified-key alias :archived) false]
-   (remote-sync/synced-fk-clause alias :collection_id :model/Collection)])
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn insert-timeline!
   "Insert the Timeline `row` and return the inserted instance."

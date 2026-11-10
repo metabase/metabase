@@ -4,6 +4,7 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -11,7 +12,8 @@
 
 (mu/defn synced-python-libraries-clause :- [:fn vector?]
   "The clause over the PythonLibrary table aliased `alias` selecting the libraries remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   _opts :- ::remote-sync.schema/synced-filter-opts]
   [:= (u/qualified-key alias :is_default) false])
 
 (mu/defn table-database-ids
