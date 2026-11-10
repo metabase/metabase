@@ -117,6 +117,23 @@
     (map? (get-in viz-settings visualizer-settings-path))
     (update-in visualizer-settings-path update-goal-values f)))
 
+(defn goal-card-ids
+  "The ids of the cards the goals in `viz-settings` read, visualizer and hidden goals included."
+  [viz-settings]
+  (into #{} (keep (fn [[type id _column]] (when (= "card" type) id))) (goal-references viz-settings)))
+
+(defn remap-goal-card-ids
+  "Point each goal in `viz-settings`, visualizer and hidden goals included, that reads a card in `id->new-id` at the
+  card's new id."
+  [viz-settings id->new-id]
+  (cond-> viz-settings
+    (and (map? viz-settings) (seq id->new-id))
+    (update-dashcard-goal-values (fn [goal-value]
+                                   (let [{:keys [type id]} (goal-source goal-value)]
+                                     (if-let [new-id (and (= "card" type) (id->new-id id))]
+                                       (assoc goal-value :id new-id)
+                                       goal-value))))))
+
 (defn- visualizer-chart
   "The chart a visualizer dashcard draws, or nil when `dashcard` isn't one."
   [dashcard]

@@ -107,7 +107,7 @@
 (mu/defn update-card!
   "Apply `changes` to the Card with `card-id`, returning the number updated."
   [card-id :- ::lib.schema.id/card
-   changes :- (mut/select-keys ::queries.schema/card.update [:archived :archived_directly])]
+   changes :- (mut/select-keys ::queries.schema/card.update [:archived :archived_directly :visualization_settings])]
   (t2/update! :model/Card :id card-id changes))
 
 (mu/defn update-cards-for-document!
