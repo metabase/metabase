@@ -61,7 +61,7 @@ export function SettingsNav() {
               <UpsellGem />
             </Flex>
           }
-          icon="sync"
+          icon="git_branch"
         />
       ) : null}
       <NavDivider />

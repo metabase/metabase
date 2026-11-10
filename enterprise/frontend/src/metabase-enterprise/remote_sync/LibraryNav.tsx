@@ -7,7 +7,7 @@ export const LibraryNav = () => {
     <SettingsNavItem
       path="remote-sync"
       label={t`Git integration`}
-      icon="sync"
+      icon="git_branch"
     />
   );
 };
