@@ -243,7 +243,7 @@
    [:entity_id       {:optional true} [:maybe :string]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:built_in_type   {:optional true} [:maybe [:or :keyword :string]]]
+   [:built_in_type   {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:ui_display_type {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:active          {:optional true} [:maybe :boolean]]])
 
@@ -339,7 +339,7 @@
    [:entity_id     {:optional true} [:maybe :string]]
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:built_in_type {:optional true} [:maybe [:or :keyword :string]]]])
+   [:built_in_type {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]])
 
 (mr/def ::transform-transform-tag
   "A TransformTransformTag as selected from the app DB: every column of `:transform_transform_tag`."

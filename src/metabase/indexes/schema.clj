@@ -6,6 +6,7 @@
   `:direction`) to strings; [[keywordize-structured]] turns them back into keywords so a driver can dispatch on
   `:kind`."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
@@ -125,7 +126,7 @@
    [:transform_id     {:optional true} [:maybe ::lib.schema.id/transform]]
    [:index_name       {:optional true} [:maybe :string]]
    [:structured       {:optional true} [:maybe ::table-index.structured]]
-   [:status           {:optional true} [:maybe [:or :keyword :string]]]
+   [:status           {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:error_message    {:optional true} [:maybe :string]]
    [:created_by       {:optional true} [:maybe :int]]
    [:created_at       {:optional true} [:maybe ms/TemporalInstant]]

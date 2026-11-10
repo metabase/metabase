@@ -1,6 +1,7 @@
 (ns metabase.osi.schema
   "Malli schemas for the osi module."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
@@ -32,7 +33,7 @@
 (mr/def ::osi-ai-context.update
   "What an update (or insert) of a OsiAiContext accepts: every column of `:osi_ai_context` except `id`, all optional."
   [:map {:closed true}
-   [:entity_type     {:optional true} [:maybe [:or :keyword :string]]]
+   [:entity_type     {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:entity_local_id {:optional true} [:maybe ms/PositiveInt]]
    [:entity_id       {:optional true} [:maybe :string]]
    [:ai_context      {:optional true} [:maybe ::osi-ai-context.ai-context]]

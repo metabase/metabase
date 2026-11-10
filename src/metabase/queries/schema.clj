@@ -213,7 +213,7 @@
    [:card_schema                               {:optional true} [:maybe :int]]
    [:document_id                               {:optional true} [:maybe ::lib.schema.id/document]]
    [:legacy_query                              {:optional true} [:maybe :string]]
-   [:embedding_type                            {:optional true} [:maybe [:or :keyword :string]]]
+   [:embedding_type                            {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:public_uuid_prefix                        {:optional true} [:maybe :string]]
    [:dimensions                                {:optional true} [:maybe [:sequential ::card.dimension]]]
    [:dimension_mappings                        {:optional true} [:maybe [:sequential ::card.dimension-mapping]]]

@@ -64,7 +64,7 @@
    [:caveats                    {:optional true} [:maybe :string]]
    [:fingerprint                {:optional true} [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
    [:fingerprint_version        {:optional true} [:maybe :int]]
-   [:database_type              {:optional true} [:maybe [:or :keyword :string]]]
+   [:database_type              {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:has_field_values           {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:settings                   {:optional true} [:maybe ::field.settings]]
    [:database_position          {:optional true} [:maybe :int]]

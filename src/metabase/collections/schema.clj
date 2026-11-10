@@ -155,7 +155,7 @@
    [:authority_level      {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:entity_id            {:optional true} [:maybe :string]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
-   [:type                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:type                 {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:is_sample            {:optional true} [:maybe :boolean]]
    [:archive_operation_id {:optional true} [:maybe :string]]
    [:archived_directly    {:optional true} [:maybe :boolean]]

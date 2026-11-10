@@ -4,6 +4,7 @@
    [metabase.collections.schema]
    [metabase.content-verification.schema]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.schema :as models.schema]
@@ -83,7 +84,7 @@
    [:view_count              {:optional true} [:maybe :int]]
    [:archived_directly       {:optional true} [:maybe :boolean]]
    [:last_viewed_at          {:optional true} [:maybe ms/TemporalInstant]]
-   [:embedding_type          {:optional true} [:maybe [:or :keyword :string]]]
+   [:embedding_type          {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:public_uuid_prefix      {:optional true} [:maybe :string]]])
 
 (mr/def ::dashboard-card.parameter-mapping
