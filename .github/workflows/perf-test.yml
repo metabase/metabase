@@ -20,6 +20,8 @@ jobs:
     needs: [build]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Launch Perf Test
+    # Only applies the deployment and does not wait for a rollout, so a few minutes is normal.
+    timeout-minutes: 15
     permissions:
       id-token: write
       contents: read
