@@ -9,7 +9,7 @@
   [[isolated-origin-allowed-uri?]], sends `/apps/*` links back to the main host, and answers 404 to everything else,
   which includes login, SSO and the API. Static assets, probes and the middleware's own refusals on the isolated
   origin get [[inert-csp]]; its refusals and redirects are not cached. When the setting is set but unusable, refuses
-  the app document."
+  the app document. Embedded data apps (`/embed/embedded-apps/*`) stay on the main host either way."
   (:require
    [clojure.string :as str]
    [metabase.request.core :as request]
@@ -65,7 +65,7 @@
 (defn- isolated-origin-response [handler {:keys [uri request-method] :as request} respond raise]
   (let [request (assoc request ::isolated-origin? true)]
     (cond
-      (request/data-app? request)
+      (request/internal-data-app? request)
       (handler request respond raise)
 
       ;; A link into an app page (`DataAppLink`) resolves against the app document's host.
@@ -105,7 +105,7 @@
     (= isolated-origin (some-> (get headers "origin") u/lower-case-en))
     (respond (refusal 403 "Requests from the isolated origin are refused."))
 
-    (request/data-app? request)
+    (request/internal-data-app? request)
     (respond (redirect (with-query-string (str isolated-origin (system/site-path) uri) request)))
 
     ;; Such a write may be app code on a same-site isolated origin, so it runs without the session. It isn't refused:
@@ -125,7 +125,7 @@
       (if (on-isolated-origin? request isolated-origin)
         (isolated-origin-response handler request respond raise)
         (main-host-response handler request respond raise isolated-origin))
-      (if (and (request/data-app? request)
+      (if (and (request/internal-data-app? request)
                (server.settings/isolated-origin-misconfigured?))
         (respond (refusal 503 "Data apps are unavailable: MB_ISOLATED_ORIGIN is set to a value that can't be used."))
         (handler request respond raise)))))

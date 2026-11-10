@@ -275,8 +275,13 @@
     (doseq [uri ["/embed/dashboard/abc" "/public/question/abc" "/apps/sales"]]
       (is (nil? (csp-directive-for uri "form-action"))))))
 
+(defn- isolated-origin-csp-directive-for [uri directive]
+  (->> (str/split (get (isolated-origin-headers-for-uri uri) "Content-Security-Policy") #"; *")
+       (filter #(str/starts-with? % (str directive " ")))
+       first))
+
 (deftest data-app-unsafe-eval-test
-  ;; Why only the isolated-origin document gets 'unsafe-eval': see `content-security-policy-header`.
+  ;; Why only the isolated-origin document gets 'unsafe-eval': see `:allow-eval?` in `add-security-headers*`.
   (testing "same-origin: no data-app document or other embed page gets 'unsafe-eval'"
     (with-redefs [config/is-dev?                  false
                   server.settings/isolated-origin  (constantly nil)]
@@ -287,10 +292,12 @@
   (testing "cross-origin (MB_ISOLATED_ORIGIN): the app document on the isolated origin DOES get 'unsafe-eval'"
     (with-redefs [config/is-dev?                  false
                   server.settings/isolated-origin  (constantly "https://apps.example.com")]
-      (is (str/includes? (csp-directive-for "/embed/apps/sales" "script-src") "'unsafe-eval'"))
-      (is (str/includes? (csp-directive-for "/embed/apps/sales/sub/route" "script-src") "'unsafe-eval'"))
-      (testing "but the top page and unrelated documents do not"
-        (doseq [uri ["/apps/sales" "/embed/dashboard/abc" "/somepage"]]
+      (is (str/includes? (isolated-origin-csp-directive-for "/embed/apps/sales" "script-src") "'unsafe-eval'"))
+      (is (str/includes? (isolated-origin-csp-directive-for "/embed/apps/sales/sub/route" "script-src")
+                         "'unsafe-eval'"))
+      (testing "but no document on the main host does, an embedded data app's included"
+        (doseq [uri ["/apps/sales" "/embed/apps/sales" "/embed/embedded-apps/sales" "/embed/dashboard/abc"
+                     "/somepage"]]
           (is (not (str/includes? (csp-directive-for uri "script-src") "'unsafe-eval'"))
               (str uri " should not grant 'unsafe-eval'")))))))
 

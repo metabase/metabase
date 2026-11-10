@@ -98,7 +98,9 @@
                                  :query-string "tab=1"))
                      [:headers "Location"]))))
     (testing "non-data-app requests on the main host pass through untouched"
-      (is (= :passed-through (run (req "mb.example.com" "/api/dataset")))))))
+      (is (= :passed-through (run (req "mb.example.com" "/api/dataset")))))
+    (testing "an embedded data app stays on the main host, where its SDK session works"
+      (is (= :passed-through (run (req "mb.example.com" "/embed/embedded-apps/sales")))))))
 
 (deftest main-host-redirect-uses-the-normalized-isolated-origin-test
   (testing "a trailing slash in MB_ISOLATED_ORIGIN doesn't reach the redirect, where the apps
@@ -126,7 +128,7 @@
     (testing "refused on the isolated origin: anything that could set a cookie or reach the API, which the app
               reaches only through the top page"
       (doseq [uri ["/api/session" "/auth/sso" "/api/dataset" "/api/user/current"
-                   "/" "/api/ee/apps/sales/bundle" "/api/analytics-proxy"]]
+                   "/" "/api/ee/apps/sales/bundle" "/api/analytics-proxy" "/embed/embedded-apps/sales"]]
         (is (= 404 (:status (run (req "apps.example.com" uri))))
             (str uri " must be refused on the isolated origin"))))
     (testing "the isolated origin is matched by the x-forwarded-host header too"
@@ -237,8 +239,9 @@
     (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
       (mt/with-temp-env-var-value! [mb-isolated-origin "https://mb.example.com:8443"]
         (is (=? {:status 503} (run (req "mb.example.com" "/embed/apps/sales"))))
-        (testing "the rest of the main app keeps working"
-          (is (= :passed-through (run (req "mb.example.com" "/api/session/properties")))))))))
+        (testing "the rest of the main app keeps working, embedded data apps included, which don't use it"
+          (is (= :passed-through (run (req "mb.example.com" "/api/session/properties"))))
+          (is (= :passed-through (run (req "mb.example.com" "/embed/embedded-apps/sales")))))))))
 
 (deftest isolated-origin-serves-the-document-without-a-session-test
   (testing "the isolated origin serves the app document to a request without the session cookie, which never reaches it"

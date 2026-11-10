@@ -245,7 +245,7 @@
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  [nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img? allow-eval?]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -280,7 +280,7 @@
                                  ;; document doesn't. On the isolated origin there is no session cookie and no realm
                                  ;; host, so the membrane uses an `about:blank` realm that inherits this CSP (the
                                  ;; frontend picks it: `realmHostUrl` in the data-app runtime's `loader.ts`).
-                                 (when (and data-app-iframe? (server.settings/isolated-origin))
+                                 (when allow-eval?
                                    ["'unsafe-eval'"])
                                  (when-not config/is-dev?
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
@@ -410,9 +410,9 @@
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [frame-ancestors-mode nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  [frame-ancestors-mode nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img? allow-eval?]
   (update (content-security-policy-header nonce script-nonce? data-app-iframe? data-app-connect-hosts
-                                          allow-blob-img?)
+                                          allow-blob-img? allow-eval?)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode))))
 
@@ -529,16 +529,16 @@
    `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
    `:self` (same-origin only), `:main-app` (the site URL's origin), or `:none` (default — no framing unless
    interactive embedding is configured). `:script-nonce?` adds the nonce to `script-src`, see
-   [[script-nonce-response-key]]."
+   [[script-nonce-response-key]]. `:allow-eval?` adds `'unsafe-eval'` to `script-src`."
   [& {:keys [origin nonce script-nonce? frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts
-             allow-blob-img? cors]
+             allow-blob-img? allow-eval? cors]
       :or   {frame-ancestors :none, allow-cache? false, script-nonce? false, data-app-iframe? false,
-             allow-blob-img? false}}]
+             allow-blob-img? false, allow-eval? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors frame-ancestors nonce script-nonce? data-app-iframe?
-                                                        data-app-connect-hosts allow-blob-img?)
+                                                        data-app-connect-hosts allow-blob-img? allow-eval?)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk) cors)
    ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
    (x-frame-options-header frame-ancestors)
@@ -645,7 +645,10 @@
   "CSP for embedded data apps to be installed inside the data app iframe."
   [allowed-hosts]
   (get (content-security-policy-header
-        nil false true (drop-instance-origin allowed-hosts) true)
+        nil false true (drop-instance-origin allowed-hosts) true
+        ;; The isolated-origin document installs this policy too, and its `about:blank` realm needs `eval`. A
+        ;; same-origin document's own header keeps `eval` out whatever this policy allows.
+        (some? (server.settings/isolated-origin)))
        "Content-Security-Policy"))
 
 (defn- cacheable-status?
@@ -686,6 +689,10 @@
                  :allow-cache?                (and (request/cacheable? request)
                                                    (cacheable-status? (:status response)))
                  :data-app-iframe?            (data-app-iframe-request? request)
+                 ;; Only the app document on the isolated origin: an embedded app's document stays on the main host,
+                 ;; with the session its SDK holds, and keeps using the realm host.
+                 :allow-eval?                 (and (data-app-iframe-request? request)
+                                                   (mw.isolated-origin/isolated-origin-request? request))
                  ;; The external bootstrap shell uses HTTP(S) scheme sources without looking up the app. Its authorized
                  ;; app policy is installed before bundle evaluation. Per-app `allowed_hosts` go into
                  ;; `connect-src`/`form-action` (internal iframe doc) and `frame-src` (both the iframe doc and the top
