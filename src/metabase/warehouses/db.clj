@@ -109,14 +109,15 @@
 
 ;; The ids come from an earlier, unlocked scan, so keeping `database_id` in the predicate spares a card that moved to
 ;; another database in between.
-(mu/defn delete-cards!
-  "Delete the Cards with `card-ids` that still belong to the Database with `database-id`."
+(mu/defn delete-cards! :- :int
+  "Delete the Cards with `card-ids` that still belong to the Database with `database-id`, returning the number
+  deleted."
   [database-id :- ::lib.schema.id/database
    card-ids    :- [:sequential ::lib.schema.id/card]]
-  (t2/query {:delete-from (t2/table-name :model/Card)
-             :where       [:and
-                           [:= :database_id database-id]
-                           [:in :id card-ids]]}))
+  (first (t2/query {:delete-from (t2/table-name :model/Card)
+                    :where       [:and
+                                  [:= :database_id database-id]
+                                  [:in :id card-ids]]})))
 
 (mu/defn existing-card-ids :- [:set ::lib.schema.id/card]
   "The ids among `card-ids` that still name a Card."

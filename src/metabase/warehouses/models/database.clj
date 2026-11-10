@@ -456,9 +456,11 @@
                                  (catch Exception e
                                    (log/errorf e "Skipping search cascade enumeration for database %s" id)
                                    cascading))]
-                    (warehouses.db/delete-cards! id ids)
                     ;; A card that moved to another database since the scan survives, and keeps its documents.
-                    {:gone      (into gone (remove (warehouses.db/existing-card-ids ids)) ids)
+                    ;; Only a short count says one did, so a full batch skips the check.
+                    {:gone      (if (= (count ids) (warehouses.db/delete-cards! id ids))
+                                  (into gone ids)
+                                  (into gone (remove (warehouses.db/existing-card-ids ids)) ids))
                      :cascading merged}))
                 {:gone [], :cascading nil}
                 (eduction
