@@ -21,8 +21,7 @@
   nil)
 
 (defenterprise table-remappings-exist?
-  "Whether the Database with `db-id` has any TableRemapping, i.e. whether sync must go through the workspace
-  hooks at all. OSS fallback is false."
+  "Whether the Database with `db-id` has any TableRemapping. OSS fallback is false."
   metabase-enterprise.workspaces.table-remapping
   [_db-id]
   false)

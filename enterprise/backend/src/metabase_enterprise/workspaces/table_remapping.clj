@@ -336,7 +336,8 @@
    `from-spec` is `{:db :schema :name}`. Output uses nil-instead-of-empty-string for
    slots the driver doesn't emit."
   [database-id from-spec]
-  ;; Remappings first: they cost no query on a database without any, and then neither does this.
+  ;; Remappings first: outside workspace mode they usually cost no query on a database without any, and then neither
+  ;; does this.
   (let [remappings (ws.remapping/remappings-for-db database-id)]
     (when (seq remappings)
       (when-let [database (ws.db/database database-id)]

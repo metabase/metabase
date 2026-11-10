@@ -60,28 +60,20 @@
    {:db (:to_db row)   :schema (:to_schema row)   :table (:to_table_name row)}])
 
 (defn- may-have-remappings?
-  "False when `db-id` certainly has no TableRemapping, decided without a query. Every QP run and every synced table
-  asks, so instances without remappings must answer for free.
+  "False when `db-id` has no TableRemapping as far as this process's cache of the Database ids with remappings
+  knows. Every QP run and every synced table asks, so on an instance without remappings the answer must usually cost
+  no query; see [[table-remapping/database-ids-with-remappings]] for when it queries.
 
-  In workspace mode any node may insert a row at any time (transforms record one per target), and a node can't see
-  another node's write, so there the answer is always true and the caller queries. Outside workspace mode nothing
-  in production inserts rows, so this process's cache of the Database ids that have them is current.
+  In workspace mode the answer is always true and the caller queries: transforms on any node insert rows, and a
+  node does not see another node's write.
 
-  Two bounded windows let a node trust its cache while another node of the same instance is in workspace mode:
-  - A workspace set at runtime through the API on one node reaches the other nodes' settings caches only after the
-    settings-cache check interval (1 minute).
-  - During a rollout that sets `MB_INSTANCE_WORKSPACE`, nodes that don't have it yet are outside workspace mode until
-    they restart with it.
-
-  One window is unbounded: a rolling restart that removes `MB_INSTANCE_WORKSPACE`. A node that restarts without it
-  leaves workspace mode and fills its cache, while nodes that still have it keep inserting rows. The restarted node
-  never sees those rows until it writes a remapping itself or restarts again. Remove the env var with a full restart
-  of every node, not a rolling one.
-
-  Rows outlive workspace mode when `MB_INSTANCE_WORKSPACE` was the only source of the workspace and a restart drops
-  it, since the env var is never stored in the app DB. Removing the `config.yml` section and restarting keeps
-  workspace mode, because boot never clears the stored setting, and `DELETE /current` on the workspace-instance API
-  clears the setting and the rows together."
+  Outside workspace mode the cache can miss rows that another node inserted, for at most one minute after this node
+  last filled it. Rows can exist outside workspace mode: a restart that drops `MB_INSTANCE_WORKSPACE`, which is
+  never stored in the app DB; a write of the `instance-workspace` setting through the settings API; a
+  `DELETE /current` that clears the setting and then fails to delete the rows; and a run that records its row while
+  `DELETE /current` runs. The same window applies while another node is in workspace mode and this one is not yet:
+  until this node's settings cache picks up a runtime change, or during a rolling restart that adds or removes
+  `MB_INSTANCE_WORKSPACE`. A change of the setting that this node sees drops the cache."
   [db-id]
   (or (ws/workspace-mode?)
       (contains? (table-remapping/database-ids-with-remappings) db-id)))

@@ -1,9 +1,13 @@
 (ns metabase-enterprise.workspaces.no-remappings-test
   "On a database without table remappings the workspace hooks must cost no app-DB statements: they run on every
-  query, every synced table and every transform of every EE instance."
+  query, every synced table and every transform of every EE instance.
+
+  These tests avoid `mt/with-temp`: it opens an app-DB transaction, and inside one the remapping store bypasses its
+  cache, so a statement count would measure the uncached path."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase-enterprise.workspaces.query-processor.middleware :as ws.middleware]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
@@ -19,6 +23,8 @@
    [metabase.util.malli.fn :as mu.fn]
    [metabase.workspaces.table-remapping :as oss.table-remapping]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- call-count
   "The number of app-DB statements `thunk` makes."
@@ -118,7 +124,7 @@
                 (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))))
 
 (deftest workspace-mode-sees-rows-written-elsewhere-test
-  (testing "in workspace mode a row this process didn't write (another node's) takes effect on the next query"
+  (testing "in workspace mode a row this process didn't write (another node's) is seen by the next remapping check"
     (with-no-remappings!
       (fn []
         (try
@@ -168,3 +174,132 @@
             (is (not (contains? (table-remapping/database-ids-with-remappings) (mt/id)))))
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
+
+(defn- drop-ids-cache!
+  "Commit a write and its delete, so the model hooks drop this process's ids cache."
+  [db-id]
+  (ws.table-remapping/add-mapping! db-id {:schema "PUBLIC" :table "IDS_CACHE_RESET"} {:schema "ws_reset" :table "IDS_CACHE_RESET"})
+  (ws.table-remapping/remove-mapping! db-id {:schema "PUBLIC" :table "IDS_CACHE_RESET"}))
+
+(deftest read-overlapping-a-committed-write-does-not-cache-test
+  (testing "outside workspace mode, a cache fill whose read started before a committed insert does not hide the row"
+    (let [db-id     (mt/id)
+          from      {:schema "PUBLIC" :table "VENUES"}
+          to        {:schema "ws_race" :table "VENUES"}
+          real-read (mt/original-fn #'ws.db/table-remapping-database-ids)
+          reader    (atom nil)
+          read-done (promise)
+          release   (promise)]
+      (try
+        (ws.table-remapping/clear-mappings-for-db! db-id)
+        (drop-ids-cache! db-id)
+        (is (not (ws/workspace-mode?)) "premise: outside workspace mode")
+        (mt/with-dynamic-fn-redefs [ws.db/table-remapping-database-ids
+                                    (fn []
+                        (let [ids (real-read)]
+                          (when (= (Thread/currentThread) @reader)
+                            (deliver read-done ids)
+                            @release)
+                          ids))]
+          (let [fut (future
+                      (reset! reader (Thread/currentThread))
+                      (ws.remapping/enabled-for-db? db-id))]
+            (is (not (contains? (deref read-done 30000 ::timeout) db-id))
+                "premise: the reader's query ran before the insert")
+            (ws.table-remapping/add-mapping! db-id from to)
+            (deliver release true)
+            (is (false? (deref fut 30000 ::timeout)) "premise: the reader answered from its earlier read")))
+        (is (true? (ws.remapping/enabled-for-db? db-id))
+            "the committed row is seen on the next check")
+        (finally
+          (ws.table-remapping/clear-mappings-for-db! db-id))))))
+
+(deftest read-by-another-thread-before-commit-does-not-cache-test
+  (testing "outside workspace mode, another thread's cache fill during an open insert is dropped at commit"
+    (let [db-id (mt/id)
+          from  {:schema "PUBLIC" :table "VENUES"}
+          to    {:schema "ws_commit" :table "VENUES"}
+          seen  (atom ::not-run)]
+      (try
+        (ws.table-remapping/clear-mappings-for-db! db-id)
+        (drop-ids-cache! db-id)
+        (is (not (ws/workspace-mode?)) "premise: outside workspace mode")
+        (t2/with-transaction [_]
+          (ws.table-remapping/add-mapping! db-id from to)
+          ;; a plain Thread conveys no bindings, so it is outside this transaction
+          (doto (Thread. ^Runnable (fn [] (reset! seen (ws.remapping/enabled-for-db? db-id))))
+            (.start)
+            (.join 30000)))
+        (is (false? @seen) "premise: the other thread could not see the uncommitted row")
+        (is (true? (ws.remapping/enabled-for-db? db-id))
+            "the committed row is seen on the next check")
+        (finally
+          (ws.table-remapping/clear-mappings-for-db! db-id))))))
+
+(deftest rows-kept-after-leaving-workspace-mode-stay-enforced-test
+  (testing "a row another node recorded in workspace mode still remaps reads after workspace mode ends with the row kept"
+    (mt/with-premium-features #{:workspaces}
+      (let [db-id     (mt/id)
+            rewritten (fn []
+                        (let [seen (atom nil)]
+                          (binding [driver/*driver* :h2]
+                            ((ws.middleware/apply-workspace-sql-remapping (fn [query _rff] (reset! seen query)))
+                             {:database db-id :qp/compiled {:query "SELECT * FROM PUBLIC.VENUES"}}
+                             identity))
+                          (get-in @seen [:qp/compiled :query])))]
+        (try
+          (ws.table-remapping/clear-mappings-for-db! db-id)
+          (drop-ids-cache! db-id)
+          (is (false? (ws.remapping/enabled-for-db? db-id)) "premise: this node fills its cache before the workspace")
+          (is (not (contains? (table-remapping/database-ids-with-remappings) db-id)) "premise: the cache excludes the database")
+          (ws/set-instance-workspace! {:name      "test-ws"
+                                       :databases {db-id {:input_schemas ["PUBLIC"]
+                                                          :output        {:schema "ws_kept"}}}})
+          ;; a plain HoneySQL insert skips the model hooks, as another node's insert does
+          (t2/query-one {:insert-into :table_remapping
+                         :values      [{:database_id     db-id
+                                        :from_db         ""
+                                        :from_schema     "PUBLIC"
+                                        :from_table_name "VENUES"
+                                        :to_db           ""
+                                        :to_schema       "ws_kept"
+                                        :to_table_name   "PUBLIC__VENUES"
+                                        :created_at      :%now}]})
+          (testing "control: in workspace mode the row remaps reads"
+            (is (true? (ws.remapping/enabled-for-db? db-id)))
+            (is (re-find #"(?i)ws_kept" (rewritten))))
+          (mt/with-dynamic-fn-redefs [ws/clear-all-remappings! (fn [] (throw (ex-info "row delete failed" {})))]
+            (mt/user-http-request :crowberto :delete 500 "ee/workspace-instance/current"))
+          (is (not (ws/workspace-mode?)) "premise: DELETE /current cleared the workspace")
+          (is (t2/exists? :model/TableRemapping :database_id db-id) "premise: the row was kept")
+          (is (true? (ws.remapping/enabled-for-db? db-id)))
+          (is (= {:db "" :schema "ws_kept" :table "PUBLIC__VENUES"}
+                 (ws.remapping/get-mapping db-id {:db "" :schema "PUBLIC" :table "VENUES"})))
+          (is (re-find #"(?i)ws_kept" (rewritten)) "a query of PUBLIC.VENUES reads the copy")
+          (finally
+            (ws/clear-instance-workspace!)
+            (ws.table-remapping/clear-mappings-for-db! db-id)))))))
+
+(deftest cache-expires-test
+  (testing "outside workspace mode, a row another node inserted is seen once this node's cache is a minute old"
+    (let [db-id (mt/id)]
+      (try
+        (ws.table-remapping/clear-mappings-for-db! db-id)
+        (drop-ids-cache! db-id)
+        (is (not (ws/workspace-mode?)) "premise: outside workspace mode")
+        (is (false? (ws.remapping/enabled-for-db? db-id)) "premise: this node fills its cache")
+        ;; a plain HoneySQL insert skips the model hooks, as another node's insert does
+        (t2/query-one {:insert-into :table_remapping
+                       :values      [{:database_id     db-id
+                                      :from_db         ""
+                                      :from_schema     "PUBLIC"
+                                      :from_table_name "VENUES"
+                                      :to_db           ""
+                                      :to_schema       "ws_expire"
+                                      :to_table_name   "VENUES"
+                                      :created_at      :%now}]})
+        (is (false? (ws.remapping/enabled-for-db? db-id)) "premise: a fresh cache misses the row")
+        (swap! @#'table-remapping/database-ids-cache update :read-at - (* 61 1000 1000 1000))
+        (is (true? (ws.remapping/enabled-for-db? db-id)))
+        (finally
+          (ws.table-remapping/clear-mappings-for-db! db-id))))))
