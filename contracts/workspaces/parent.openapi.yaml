@@ -31,7 +31,9 @@ info:
 
     Engines: a database is eligible when its driver reports `:workspace`. A plugin driver whose parent is
     `:postgres` or `:mysql` inherits the flag unless it opts out, and `:mysql` also serves MariaDB. Metabase tests
-    Postgres, MySQL, Redshift, ClickHouse and SQL Server; hardening #86589 leaves only Postgres eligible. Words such
+    Postgres, MySQL, Redshift, ClickHouse and SQL Server, and all five stay eligible. hardening fixes each one in its
+    own PR: Postgres #86587 and #86588, MySQL/MariaDB #86797, Redshift #86798, ClickHouse #86799, SQL Server #86786
+    and #86801, and the password generator for all of them #86800. Words such
     as "user", "role" and "PUBLIC" below are Postgres terms; other engines have the same concept under another name
     (a login, the `public` role on SQL Server).
 
@@ -120,19 +122,17 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Workspace" }
         "400":
-          x-pr: [86612, 86589]
+          x-pr: [86612, 86797]
           description: |
             Invalid body; or a database is not eligible (driver lacks `:workspace`, the database-local setting
             `database-enable-workspaces` is off, or it is a router database).
 
             master: MySQL is eligible, and its creates succeed but are unusable: `input_schemas` is empty, so the
-            user gets no read grant and the sidecar cannot connect to the production database. hardening (#86589)
-            makes it ineligible.
+            user gets no read grant and the sidecar cannot connect to the production database. hardening (#86797)
+            also grants read access on the database the connection is bound to.
 
             hardening (#86612): also a database whose driver has schemas but which has no synced input schemas
             ("sync it first").
-
-            hardening (#86589): only Postgres reports `:workspace`, so every other engine is ineligible.
           headers:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
@@ -145,10 +145,11 @@ paths:
           description: |
             hardening (#86587, via #86601): a principal or namespace the workspace would create already exists and is
             not this row's (on Postgres: the role), or a lock is held. Nothing is left behind
-            (`cleanup_required: false`). #86587 checks this on Postgres only; on master every engine adopts the
-            existing user (see `output_namespace`).
+            (`cleanup_required: false`). #86587 checks this on Postgres; #86797 (MySQL/MariaDB), #86798 (Redshift),
+            #86799 (ClickHouse) and #86801 (SQL Server) add the same check, refusing before any DDL. On master
+            every engine adopts the existing user (see `output_namespace`).
           x-status: hardening
-          x-pr: [86587, 86601]
+          x-pr: [86587, 86601, 86797, 86798, 86799, 86801]
           headers:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
@@ -497,7 +498,7 @@ components:
             also on a database that has not synced any table; hardening #86612 refuses the latter.
 
             master: MySQL creates succeed but are unusable, because an empty list grants no read access; hardening
-            #86589 makes MySQL ineligible.
+            #86797 also grants read access on the bound database.
         output_namespace:
           type: string
           description: |
@@ -506,8 +507,8 @@ components:
 
             Unique per site UUID only: two parents with one site UUID (a staging parent restored from production's
             app DB) make the same names. master adopts an existing user on every engine and resets its password,
-            and a later DELETE drops the other parent's schema and user. hardening #86587 refuses an existing
-            role (409), on Postgres only.
+            and a later DELETE drops the other parent's schema and user. hardening refuses an existing user,
+            database or schema (409): #86587 on Postgres, #86797, #86798, #86799 and #86801 on the other engines.
         status: { $ref: "#/components/schemas/WorkspaceStatus" }
         database:
           type: [object, "null"]
