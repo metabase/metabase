@@ -419,6 +419,29 @@
                          :sqlite
                          (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))))))))))
 
+(deftest current-user-table-privileges-read-only-test
+  (do-with-registered-sample-path!
+   (fn [path]
+     (jdbc/execute! {:classname "org.sqlite.JDBC" :subprotocol "sqlite" :subname path}
+                    ["CREATE TABLE t (x INTEGER)"])
+     (let [privileges (fn [details connection?]
+                        (let [spec (sql-jdbc.conn/connection-details->spec :sqlite details)]
+                          (if connection?
+                            (sql-jdbc.execute/do-with-connection-with-options
+                             :sqlite spec nil
+                             (fn [conn]
+                               (sql-jdbc.sync/current-user-table-privileges :sqlite {:connection conn})))
+                            (sql-jdbc.sync/current-user-table-privileges :sqlite spec))))]
+       ;; sync passes an open connection, and a caller with a Database passes a spec
+       (doseq [connection? [true false]]
+         (testing (if connection? "open connection" "connection spec")
+           (testing "a read-only connection has select only"
+             (is (= [{:role nil, :schema nil, :table "t", :select true, :insert false, :update false, :delete false}]
+                    (privileges {:db path :read-only? true} connection?))))
+           (testing "a writable connection to the same file keeps every privilege"
+             (is (= [{:role nil, :schema nil, :table "t", :select true, :insert true, :update true, :delete true}]
+                    (privileges {:db path} connection?))))))))))
+
 (deftest ^:parallel filter-by-date-test
   (testing "Make sure filtering against a LocalDate works correctly in SQLite"
     (mt/test-driver :sqlite

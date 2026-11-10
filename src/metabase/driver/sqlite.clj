@@ -314,18 +314,25 @@
                                   :limit  1}))
 
 (defmethod sql-jdbc.sync/current-user-table-privileges :sqlite
-  [_driver conn-spec & _options]
-  ;; SQLite has no per-user privileges; allow SELECT on all tables and views
-  (let [rows (jdbc/query conn-spec ["SELECT name AS \"table\" FROM sqlite_master WHERE type IN ('table','view')"])]
-    (map (fn [{:keys [table]}]
-           {:role   nil
-            :schema nil
-            :table  table
-            :select true
-            :insert true
-            :update true
-            :delete true})
-         rows)))
+  [driver conn-spec & _options]
+  ;; SQLite has no per-user privileges. Every table and view is readable, and a write works or fails for the whole
+  ;; file, by the mode the connection was opened in.
+  (letfn [(privileges [^Connection conn]
+            (let [writable? (not (.isReadOnly conn))]
+              (mapv (fn [{:keys [table]}]
+                      {:role   nil
+                       :schema nil
+                       :table  table
+                       :select true
+                       :insert writable?
+                       :update writable?
+                       :delete writable?})
+                    (jdbc/query {:connection conn}
+                                ["SELECT name AS \"table\" FROM sqlite_master WHERE type IN ('table','view')"]))))]
+    ;; `do-with-connection-with-options` refuses a spec that wraps an open connection
+    (if-let [conn (:connection conn-spec)]
+      (privileges conn)
+      (sql-jdbc.execute/do-with-connection-with-options driver conn-spec nil privileges))))
 
 (defn- ->date [& args]
   (-> (into [:date] args)
