@@ -3,14 +3,17 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [malli.util :as mut]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.recoverable.common :as recoverable]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.sql :as sql]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.sql.create :as sql.create]
@@ -36,11 +39,11 @@
       ((get-in entries [tool-name :fn])
        (merge {:title "Birds"}
               (case tool-name
-                "create_sql_query" (merge {:sql_query "SELECT 1"} (select-keys args [:sql_query :database_id :title]))
+                "create_sql_query" (merge {:sql_query "SELECT 1"} (select-keys args [:sql_query :database_id :title :show_chart]))
                 (merge {:query_id "q1" :checklist "Checked"}
                        (select-keys args (if (= tool-name "edit_sql_query")
-                                           [:query_id :edits :title :checklist]
-                                           [:query_id :new_query :title :checklist])))))))))
+                                           [:query_id :edits :title :checklist :show_chart]
+                                           [:query_id :new_query :title :checklist :show_chart])))))))))
 
 (deftest create-sql-query-output-test
   (testing "create_sql_query output includes preamble, query XML, and query-ID-aware instructions"
@@ -63,7 +66,9 @@
               (is (str/includes? output "type=\"sql\""))
               (is (str/includes? output (str "database_id=\"" db-id "\""))))
             (testing "instructions contain actual query ID link"
-              (is (str/includes? output (str "metabase://query/" query-id))))))))))
+              (is (str/includes? output (str "metabase://query/" query-id))))
+            (testing "instructions say that the query is not saved"
+              (is (str/includes? output instructions/not-saved-instruction)))))))))
 
 (deftest create-sql-query-says-whether-its-results-can-be-read-test
   (mt/test-drivers #{:h2}
@@ -119,6 +124,8 @@
                 (is (str/includes? output (str "database_id=\"" db-id "\""))))
               (testing "instructions reference the query ID"
                 (is (str/includes? output (str "metabase://query/" query-id))))
+              (testing "instructions say that the query is not saved"
+                (is (str/includes? output instructions/not-saved-instruction)))
               (testing "instructions mention error-analysis flow"
                 (is (str/includes? output "If the returned SQL query is NOT correct"))
                 (is (str/includes? output "Make further refinements using this tool again"))))))))))
@@ -147,6 +154,8 @@
                 (is (str/includes? output (str "database_id=\"" db-id "\""))))
               (testing "instructions reference the query ID"
                 (is (str/includes? output (str "metabase://query/" query-id))))
+              (testing "instructions say that the query is not saved"
+                (is (str/includes? output instructions/not-saved-instruction)))
               (testing "instructions mention edit_sql_query as alternative"
                 (is (str/includes? output "this tool or edit_sql_query again"))))))))))
 
@@ -179,10 +188,93 @@
                       (is (= "card" (:type entity)))
                       (is (= :native (get-in entity [:query :query :type])))))
                   (testing "an open code-editor buffer receives a code_edit part"
-                    (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
-                                                                      :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}))]
+                    (let [result (run {:user_is_viewing [{:type    "code_editor"
+                                                          :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]})
+                          parts  (:data-parts result)]
                       (is (= 1 (count parts)))
-                      (is (= "code_edit" (:data-type (first parts)))))))))))))))
+                      (is (= "code_edit" (:data-type (first parts))))
+                      (testing "and the instructions do not say that the query is not saved"
+                        (is (not (str/includes? (:output result) instructions/not-saved-instruction)))))))))))))))
+
+(deftest sql-tools-show-chart-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}
+                     :model/MetabotConversation {own :id} {:user_id (mt/user->id :crowberto)}]
+        (mt/with-db db
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
+                                             metabot-sql-execution-enabled?   true]
+            (let [query-id "test-show-chart-q"
+                  query    (-> (lib/native-query (mt/metadata-provider) "SELECT * FROM t") lib/->legacy-MBQL)
+                  run      (fn [tool-name tool-names context args & {:keys [client-ids]}]
+                             (binding [shared/*memory-atom*                     (atom {:tool-names      tool-names
+                                                                                       :conversation-id own
+                                                                                       :context         context
+                                                                                       :client-ids      client-ids
+                                                                                       :state           {:queries {query-id query}}})
+                                       scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                                       scope/*current-user-scope*               (scope/user-metabot-perms->scopes
+                                                                                 scope/all-yes-permissions)]
+                               (let [result (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) tool-name
+                                                             (merge {:database_id db-id
+                                                                     :sql_query   "SELECT 1"
+                                                                     :query_id    query-id
+                                                                     :checklist   "- [x] checked"
+                                                                     :edits       [{:old_string "SELECT *" :new_string "SELECT id"}]
+                                                                     :new_query   "SELECT id FROM t"
+                                                                     :title       "Results"}
+                                                                    args))
+                                     shown-id (get-in result [:structured-output :query-id])]
+                                 {:parts         (mapv :data-type (:data-parts result))
+                                  :run-it?       (str/includes? (:output result)
+                                                                (str "call `run_query` with `query_id` `" shown-id "`"))
+                                  :link?         (str/includes? (:output result)
+                                                                (str "(metabase://query/" shown-id ")"))
+                                  :unsaved?      (str/includes? (:output result) instructions/not-saved-instruction)
+                                  :shown-anyway? (str/includes? (:output result)
+                                                                instructions/client-query-shown-instruction)
+                                  :variant?      (str/includes? (:output result)
+                                                                instructions/client-query-variant-instruction)})))
+                  readable #{"create_sql_query" "edit_sql_query" "replace_sql_query" "run_query"}
+                  editor   {:user_is_viewing [{:type    "code_editor"
+                                               :buffers [{:id     "buf-1"
+                                                          :source {:language "sql" :database_id nil}
+                                                          :cursor {:line 0 :column 0}}]}]}]
+              (doseq [tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+                (testing tool-name
+                  (testing "with run_query offered, show_chart false shows the user nothing and points at run_query"
+                    (is (=? {:parts [], :run-it? true, :link? true, :unsaved? true, :shown-anyway? false}
+                            (run tool-name readable {} {:show_chart false}))))
+                  (testing "with run_query offered and the argument left out, the chart is shown"
+                    (is (=? {:parts ["generated_entity"], :run-it? false}
+                            (run tool-name readable {} {}))))
+                  (testing "without run_query the chart is shown whatever the argument says"
+                    (is (=? {:parts ["generated_entity"], :run-it? false}
+                            (run tool-name (disj readable "run_query") {} {:show_chart false}))))
+                  (when-not (= tool-name "create_sql_query")
+                    (testing "in an open SQL editor, a query built only to be read is not proposed there"
+                      (is (=? {:parts [], :run-it? true}
+                              (run tool-name readable editor {:show_chart false}))))
+                    (testing "in an open SQL editor, a query left to show is proposed there"
+                      (is (=? {:parts ["code_edit"], :run-it? false}
+                              (run tool-name readable editor {}))))
+                    (testing "the user's own query is shown even when show_chart is false, and the model is told why"
+                      (testing "as a proposal in their open SQL editor"
+                        (is (=? {:parts ["code_edit"], :run-it? false, :shown-anyway? true, :variant? true}
+                                (run tool-name readable editor {:show_chart false} :client-ids #{query-id}))))
+                      (testing "as a chart without an editor"
+                        (is (=? {:parts ["generated_entity"], :run-it? false, :shown-anyway? true, :variant? true}
+                                (run tool-name readable {} {:show_chart false} :client-ids #{query-id}))))
+                      (testing "without the advice to read a variant when run_query cannot read SQL results"
+                        (is (=? {:parts ["generated_entity"], :shown-anyway? true, :variant? false}
+                                (run tool-name (disj readable "run_query") {} {:show_chart false}
+                                     :client-ids #{query-id})))))
+                    (testing "the user's own query shown because they asked carries no explanation"
+                      (is (=? {:parts ["code_edit"], :shown-anyway? false}
+                              (run tool-name readable editor {} :client-ids #{query-id}))))))))))))))
+
+(deftest ^:parallel create-sql-query-editor-variant-has-no-show-chart-test
+  (is (nil? (mut/get (:args (tools.core/declaration sql/create-sql-query-code-edit-tool)) :show_chart))))
 
 (deftest edit-and-replace-sql-query-unexpected-error-test
   (mt/with-dynamic-fn-redefs [sql.edit/edit-sql-query (fn [_] (throw (ex-info "boom" {})))

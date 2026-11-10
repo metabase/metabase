@@ -4,212 +4,172 @@ import { jt, t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { Box, Button, Code } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import type { DatabaseId, TemplateTag } from "metabase-types/api";
 
-const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
+type QueryExample = {
+  query: string;
+  templateTags: TemplateTag[];
+};
+
+const SQL_EXAMPLES: Record<string, QueryExample> = {
   variable: {
-    database: null,
-    type: "native",
-    native: {
-      query: "SELECT count(*)\nFROM products\nWHERE category = {{category}}",
-      "template-tags": {
-        category: {
-          id: uuid(),
-          name: "category",
-          "display-name": "Category",
-          type: "text",
-          required: true,
-          default: "Widget",
-        },
+    query: "SELECT count(*)\nFROM products\nWHERE category = {{category}}",
+    templateTags: [
+      {
+        id: uuid(),
+        name: "category",
+        "display-name": "Category",
+        type: "text",
+        required: true,
+        default: "Widget",
       },
-    },
+    ],
   },
   dimension: {
-    database: null,
-    type: "native",
-    native: {
-      query: "SELECT count(*)\nFROM products\nWHERE {{created_at}}",
-      "template-tags": {
-        created_at: {
-          id: uuid(),
-          name: "created_at",
-          "display-name": "Created At",
-          type: "dimension",
-          required: false,
-        },
+    query: "SELECT count(*)\nFROM products\nWHERE {{created_at}}",
+    templateTags: [
+      {
+        id: uuid(),
+        name: "created_at",
+        "display-name": "Created At",
+        type: "dimension",
+        required: false,
       },
-    },
+    ],
   },
   optional: {
-    database: null,
-    type: "native",
-    native: {
-      query:
-        "SELECT count(*)\nFROM products\n[[WHERE category = {{category}}]]",
-      "template-tags": {
-        category: {
-          id: uuid(),
-          name: "category",
-          "display-name": "Category",
-          type: "text",
-          required: false,
-        },
+    query: "SELECT count(*)\nFROM products\n[[WHERE category = {{category}}]]",
+    templateTags: [
+      {
+        id: uuid(),
+        name: "category",
+        "display-name": "Category",
+        type: "text",
+        required: false,
       },
-    },
+    ],
   },
   multipleOptional: {
-    database: null,
-    type: "native",
-    native: {
-      query:
-        "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND id = {{id}}]]\n  [[AND category = {{category}}]]",
-      "template-tags": {
-        id: {
-          id: uuid(),
-          name: "id",
-          "display-name": "ID",
-          type: "number",
-          required: false,
-        },
-        category: {
-          id: uuid(),
-          name: "category",
-          "display-name": "Category",
-          type: "text",
-          required: false,
-        },
+    query:
+      "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND id = {{id}}]]\n  [[AND category = {{category}}]]",
+    templateTags: [
+      {
+        id: uuid(),
+        name: "id",
+        "display-name": "ID",
+        type: "number",
+        required: false,
       },
-    },
+      {
+        id: uuid(),
+        name: "category",
+        "display-name": "Category",
+        type: "text",
+        required: false,
+      },
+    ],
   },
   optionalDimension: {
-    database: null,
-    type: "native",
-    native: {
-      query:
-        "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND {{category}}]]",
-      "template-tags": {
-        category: {
-          id: uuid(),
-          name: "category",
-          "display-name": "Category",
-          type: "dimension",
-          required: false,
-        },
+    query: "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND {{category}}]]",
+    templateTags: [
+      {
+        id: uuid(),
+        name: "category",
+        "display-name": "Category",
+        type: "dimension",
+        required: false,
       },
-    },
+    ],
   },
 };
 
-const MONGO_EXAMPLES: Record<string, NativeDatasetQuery> = {
+const MONGO_EXAMPLES: Record<string, QueryExample> = {
   variable: {
-    database: null,
-    type: "native",
-    native: {
-      query: "[{ $match: { price: {{price}} } }]",
-      "template-tags": {
-        category: {
-          id: uuid(),
-          name: "price",
-          "display-name": "Price",
-          type: "number",
-          required: true,
-          default: "2",
-        },
+    query: "[{ $match: { price: {{price}} } }]",
+    templateTags: [
+      {
+        id: uuid(),
+        name: "price",
+        "display-name": "Price",
+        type: "number",
+        required: true,
+        default: "2",
       },
-    },
+    ],
   },
   dimension: {
-    database: null,
-    type: "native",
-    native: {
-      query: "[{ $match: {{created_at}} }]",
-      "template-tags": {
-        created_at: {
-          id: uuid(),
-          name: "created_at",
-          "display-name": "Created At",
-          type: "dimension",
-          required: false,
-        },
+    query: "[{ $match: {{created_at}} }]",
+    templateTags: [
+      {
+        id: uuid(),
+        name: "created_at",
+        "display-name": "Created At",
+        type: "dimension",
+        required: false,
       },
-    },
+    ],
   },
   optional: {
-    database: null,
-    type: "native",
-    native: {
-      query: "[{ $match: { [[ _id: {{id}} ]] } }]",
-      "template-tags": {
-        category: {
-          id: uuid(),
-          name: "id",
-          "display-name": "ID",
-          type: "text",
-          required: false,
-        },
+    query: "[{ $match: { [[ _id: {{id}} ]] } }]",
+    templateTags: [
+      {
+        id: uuid(),
+        name: "id",
+        "display-name": "ID",
+        type: "text",
+        required: false,
       },
-    },
+    ],
   },
   multipleOptional: {
-    database: null,
-    type: "native",
-    native: {
-      query:
-        "[{ $match: { [[ _id: {{id}} [[, category: {{category}} ]]  ]] } }]",
-      "template-tags": {
-        id: {
-          id: uuid(),
-          name: "id",
-          "display-name": "ID",
-          type: "number",
-          required: false,
-        },
-        category: {
-          id: uuid(),
-          name: "category",
-          "display-name": "Category",
-          type: "text",
-          required: false,
-        },
+    query: "[{ $match: { [[ _id: {{id}} [[, category: {{category}} ]]  ]] } }]",
+    templateTags: [
+      {
+        id: uuid(),
+        name: "id",
+        "display-name": "ID",
+        type: "number",
+        required: false,
       },
-    },
+      {
+        id: uuid(),
+        name: "category",
+        "display-name": "Category",
+        type: "text",
+        required: false,
+      },
+    ],
   },
   optionalDimension: {
-    database: null,
-    type: "native",
-    native: {
-      query: "[{ $match: { $and: [ { _id: 1 } [[, {{category}} ]] ] } }]",
-      "template-tags": {
-        category: {
-          id: uuid(),
-          name: "category",
-          "display-name": "Category",
-          type: "dimension",
-          required: false,
-        },
+    query: "[{ $match: { $and: [ { _id: 1 } [[, {{category}} ]] ] } }]",
+    templateTags: [
+      {
+        id: uuid(),
+        name: "category",
+        "display-name": "Category",
+        type: "dimension",
+        required: false,
       },
-    },
+    ],
   },
 };
 
 interface TagExampleProps {
-  datasetQuery: NativeDatasetQuery;
-  setDatasetQuery?: (datasetQuery: NativeDatasetQuery, run?: boolean) => void;
+  example: QueryExample;
+  onTry?: (example: QueryExample) => void;
 }
 
-const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
+const TagExample = ({ example, onTry }: TagExampleProps) => (
   <div>
     <h5>{t`Example:`}</h5>
     <Box py="sm">
-      <Code block>{datasetQuery.native.query}</Code>
-      {setDatasetQuery && (
-        <Button
-          className={CS.mt1}
-          onClick={() => setDatasetQuery(datasetQuery, true)}
-        >
+      <Code block>{example.query}</Code>
+      {onTry && (
+        <Button className={CS.mt1} onClick={() => onTry(example)}>
           {t`Try it`}
         </Button>
       )}
@@ -218,39 +178,36 @@ const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
 );
 
 interface TagEditorHelpProps {
-  database?: Database | null;
+  databaseId: DatabaseId | null;
+  databaseEngine: string | null | undefined;
   sampleDatabaseId?: DatabaseId;
-  setDatasetQuery: (datasetQuery: NativeDatasetQuery, run?: boolean) => void;
+  setQuery: (query: Lib.Query) => void;
   switchToSettings: () => void;
 }
 
 export const TagEditorHelp = ({
-  database,
+  databaseId,
+  databaseEngine,
   sampleDatabaseId,
-  setDatasetQuery,
+  setQuery,
   switchToSettings,
 }: TagEditorHelpProps) => {
-  const engine = database?.engine;
-  const examples = engine === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
-  const datasetId = engine === "mongo" ? database?.id : sampleDatabaseId;
+  const examples = databaseEngine === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
+  const datasetId = databaseEngine === "mongo" ? databaseId : sampleDatabaseId;
 
-  let setQueryWithDatasetId;
+  const metadataProvider = useMetadataProvider(datasetId ?? null);
 
-  if (datasetId != null) {
-    setQueryWithDatasetId = (
-      dataset_query: NativeDatasetQuery,
-      run?: boolean,
-    ) => {
-      setDatasetQuery(
-        {
-          ...dataset_query,
-          database: datasetId,
-        },
-        run,
-      );
-      switchToSettings();
-    };
-  }
+  const handleTryExample =
+    datasetId != null
+      ? (example: QueryExample) => {
+          const query = Lib.withTemplateTags(
+            Lib.nativeQuery(datasetId, metadataProvider, example.query),
+            example.templateTags,
+          );
+          setQuery(query);
+          switchToSettings();
+        }
+      : undefined;
 
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
     "questions/native-editor/sql-parameters",
@@ -269,10 +226,7 @@ export const TagEditorHelp = ({
           <Code key="code">{"{{variable_name}}"}</Code>
         )} creates a variable in this query template called "variable_name". Variables can be given types in the side panel, which changes their behavior. All variable types other than "Field Filter" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template.`}
       </p>
-      <TagExample
-        datasetQuery={examples.variable}
-        setDatasetQuery={setQueryWithDatasetId}
-      />
+      <TagExample example={examples.variable} onTry={handleTryExample} />
 
       <h4 className={CS.pt2}>{t`Field Filters`}</h4>
       <p>
@@ -281,10 +235,7 @@ export const TagEditorHelp = ({
       <p>
         {t`When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a "WHERE" clause.`}
       </p>
-      <TagExample
-        datasetQuery={examples.dimension}
-        setDatasetQuery={setQueryWithDatasetId}
-      />
+      <TagExample example={examples.dimension} onTry={handleTryExample} />
 
       <h4 className={CS.pt2}>{t`Optional Clauses`}</h4>
       <p>
@@ -292,23 +243,20 @@ export const TagEditorHelp = ({
           <Code key="code">{"[[{{variable}}]]"}</Code>
         )} create an optional clause in the template. If "variable" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored.`}
       </p>
-      <TagExample
-        datasetQuery={examples.optional}
-        setDatasetQuery={setQueryWithDatasetId}
-      />
+      <TagExample example={examples.optional} onTry={handleTryExample} />
 
       <p>
         {t`To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with "AND".`}
       </p>
       <TagExample
-        datasetQuery={examples.multipleOptional}
-        setDatasetQuery={setQueryWithDatasetId}
+        example={examples.multipleOptional}
+        onTry={handleTryExample}
       />
 
       <p>{t`When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel.`}</p>
       <TagExample
-        datasetQuery={examples.optionalDimension}
-        setDatasetQuery={setQueryWithDatasetId}
+        example={examples.optionalDimension}
+        onTry={handleTryExample}
       />
 
       {showMetabaseLinks && (

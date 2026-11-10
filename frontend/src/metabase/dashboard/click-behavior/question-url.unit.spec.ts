@@ -71,12 +71,8 @@ describe("getStructuredQuestionUrlWithParameters", () => {
   const card = {
     id: 1,
     dataset_query: Lib.toJsQuery(
-      Lib.fromJsQuery(metadataProvider, {
-        type: "query",
-        query: {
-          "source-table": PRODUCTS_ID,
-        },
-        database: SAMPLE_DB_ID,
+      Lib.createTestQuery(metadataProvider, {
+        stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
       }),
     ),
   };
@@ -169,7 +165,7 @@ describe("getStructuredQuestionUrlWithParameters", () => {
   });
 
   describe("with structured question & no permissions", () => {
-    const question = new Question(card);
+    const question = new Question(card, createMockMetadata());
     const originalQuestion = question;
 
     it("should return a card with attached parameters and parameter values as query params", () => {

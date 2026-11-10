@@ -1,11 +1,9 @@
 import { extractRemappedColumns } from "metabase/viz-core";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
   Dataset,
   DatasetColumn,
   RowValues,
-  Table,
   TableColumnOrderSetting,
 } from "metabase-types/api";
 
@@ -31,10 +29,4 @@ export function extractData(
     : undefined;
 
   return { columns, row };
-}
-
-export function getModelId(table: Table | undefined) {
-  return table?.type === "model"
-    ? getQuestionIdFromVirtualTableId(table.id)
-    : undefined;
 }

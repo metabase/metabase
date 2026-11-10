@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.core :as collections]
    [metabase.documents.db :as documents.db]
    [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -65,7 +64,6 @@
           updates  (cond-> (select-keys updated [:document])
                      (:is_placeholder document) (assoc :is_placeholder false))]
       (documents.db/update-document! document-id updates)
-      (collections/check-for-remote-sync-update document)
       (merge document updates))))
 
 (defn add-card-to-document!
@@ -146,11 +144,7 @@
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
     (m.document/update-document! existing-document body)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:document-id"
+(api.macros/defendpoint :delete "/:document-id" :- ::api/generic-204-no-content
   "Permanently deletes an archived Document."
   [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]]
   (let [document (api/check-404 (documents.db/document document-id))]
@@ -228,9 +222,7 @@
                                                            {:document (:document existing-document)
                                                             :content_type (:content_type existing-document)}
                                                            card-id-map)))
-                         (u/prog1 (m.document/get-document new-document-id)
-                           (when (collections/remote-synced-collection? collection_id)
-                             (collections/check-non-remote-synced-dependencies <>)))))]
+                         (m.document/get-document new-document-id)))]
     (events/publish-event! :event/document-create
                            {:object new-document
                             :user-id api/*current-user-id*})
@@ -278,11 +270,7 @@
         ;; Always select after update to ensure we return what's actually stored
         {:uuid (documents.db/document-public-uuid document-id)}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:document-id/public-link"
+(api.macros/defendpoint :delete "/:document-id/public-link" :- ::api/generic-204-no-content
   "Remove the public link for a Document.
 
   Deletes the public UUID from the Document, making it no longer accessible via the public sharing endpoint.

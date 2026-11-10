@@ -4,13 +4,9 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import type { Database } from "metabase-types/api";
-import {
-  createMockDatabase,
-  createMockNativeDatasetQuery,
-} from "metabase-types/api/mocks";
+import { createMockDatabase } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { DataSourceSelectors } from "./DataSourceSelectors";
@@ -29,16 +25,13 @@ function setup({ databases }: SetupOpts) {
   const metadata = createMockMetadata({ databases });
   const question = Question.create({
     metadata,
-    dataset_query: createMockNativeDatasetQuery({
-      database: null,
-      native: { query: "" },
-    }),
+    DEPRECATED_RAW_MBQL_type: "native",
   });
 
   renderWithProviders(
     <DataSourceSelectors
       isNativeEditorOpen
-      query={checkNotNull(question.legacyNativeQuery())}
+      query={question.query()}
       question={question}
       setDatabaseId={jest.fn()}
       setTableId={jest.fn()}

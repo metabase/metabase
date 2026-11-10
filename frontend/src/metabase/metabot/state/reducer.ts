@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import {
   type PayloadAction,
   type UnknownAction,
@@ -540,7 +541,7 @@ export const metabot = createSlice({
         )?.params.convoId;
         if (convoId) {
           attachAgent(state, "ask", convoId);
-        } else if (matchPath(Urls.newQuestion({ mode: "ask" }), pathname)) {
+        } else if (matchPath(Urls.askQuestion(), pathname)) {
           startNewConversationForAgent(state, "ask");
         }
       });

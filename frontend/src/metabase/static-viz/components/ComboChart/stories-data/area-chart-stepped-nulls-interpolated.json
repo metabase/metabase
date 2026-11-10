@@ -31,7 +31,6 @@
         "graph.dimensions": ["X"],
         "graph.metrics": ["Y1"]
       },
-      "collection_preview": true,
       "entity_id": "fQUCA_K7HdwBoxNwU4srv",
       "archived_directly": false,
       "display": "area",

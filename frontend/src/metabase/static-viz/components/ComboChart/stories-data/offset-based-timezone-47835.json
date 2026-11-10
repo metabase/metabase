@@ -21,7 +21,6 @@
         "graph.dimensions": ["DatetimeHour"],
         "graph.metrics": ["HourNumber"]
       },
-      "collection_preview": true,
       "entity_id": "wIneCe559aa9P1B8sxlfD",
       "archived_directly": false,
       "display": "bar",

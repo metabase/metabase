@@ -1,0 +1,7 @@
+.main {
+  overflow: auto;
+}
+
+.resizing {
+  user-select: none;
+}

@@ -14,24 +14,19 @@ import {
   waitFor,
 } from "__support__/ui";
 import { formatNumber } from "metabase/utils/formatting";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
+  createMockCard,
   createMockDataset,
-  createMockStructuredDatasetQuery,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
-  createAdHocCard,
-  createAdHocNativeCard,
   createSampleDatabase,
-  createSavedNativeCard,
-  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import { QuestionRowCount } from "./QuestionRowCount";
@@ -51,9 +46,9 @@ function patchQuestion(question: Question) {
     const nextQuery = Lib.orderBy(query, 0, sampleColumn);
     return question.setQuery(nextQuery);
   } else {
-    // Unjustified type cast. FIXME
-    const query = question.legacyNativeQuery() as NativeQuery;
-    return query.setQueryText("SELECT * FROM __ORDERS__").question();
+    return question.setQuery(
+      Lib.withNativeQuery(query, "SELECT * FROM __ORDERS__"),
+    );
   }
 }
 
@@ -68,10 +63,7 @@ async function setup({
     databases,
     questions: "id" in card ? [card] : [],
   });
-  const question =
-    "id" in card
-      ? checkNotNull(metadata.question(card.id))
-      : new Question(card, metadata);
+  const question = new Question(card, metadata);
 
   if (isReadOnly) {
     setupUnauthorizedDatabasesEndpoints(databases);
@@ -105,17 +97,51 @@ async function setup({
   return { rowCount };
 }
 
-function getDatasetQueryWithLimit(limit: number) {
-  return createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: { "source-table": ORDERS_ID, limit },
+function getDatasetQueryWithLimit(limit?: number) {
+  return Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID }, limit }],
+    }),
+  );
+}
+
+function createAdHocStructuredCard(opts?: Partial<UnsavedCard>) {
+  return createMockUnsavedCard({
+    dataset_query: getDatasetQueryWithLimit(),
+    ...opts,
+  });
+}
+
+function createSavedStructuredCard(opts?: Partial<Card>) {
+  return createMockCard({
+    dataset_query: getDatasetQueryWithLimit(),
+    ...opts,
+  });
+}
+
+function createAdHocNativeCard(opts?: Partial<UnsavedCard>) {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
+  });
+}
+
+function createSavedNativeCard(opts?: Partial<Card>) {
+  return createMockCard({
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
   });
 }
 
 describe("QuestionRowCount", () => {
   describe("structured query", () => {
     [
-      { getCard: createAdHocCard, type: "ad-hoc" },
+      { getCard: createAdHocStructuredCard, type: "ad-hoc" },
       { getCard: createSavedStructuredCard, type: "saved" },
     ].forEach(({ getCard, type }) => {
       describe(type, () => {

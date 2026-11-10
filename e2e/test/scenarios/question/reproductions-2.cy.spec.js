@@ -398,7 +398,7 @@ describe("Custom columns visualization settings", () => {
     goToExpressionSidebarVisualizationSettings();
 
     H.popover().within(() => {
-      cy.findByLabelText("Display as").click();
+      cy.findByLabelText("Display as text, link, or image").click();
     });
 
     cy.findAllByRole("option", { name: "Email link" }).click();

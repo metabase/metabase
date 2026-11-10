@@ -3,7 +3,10 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.js.metadata :as lib.js.metadata]
-   [metabase.lib.metadata :as lib.metadata]))
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.test-runner.assert-exprs.approximately-equal]))
+
+(comment metabase.test-runner.assert-exprs.approximately-equal/keep-me)
 
 (deftest ^:parallel parse-fields-test
   (let [metadata-fragment #js {:fields #js {"card__1234:5678" #js {:id 0}
@@ -21,11 +24,11 @@
   #js {"id"               36
        "name"             "CATEGORY_ID"
        "has_field_values" "none"
-       "dimensions"       #js [{"id"                      72
-                                "field_id"                36
-                                "name"                    "Category ID [external remap]"
-                                "type"                    "external"
-                                "human_readable_field_id" 67}]})
+       "dimensions"       #js [#js {"id"                      72
+                                    "field_id"                36
+                                    "name"                    "Category ID [external remap]"
+                                    "type"                    "external"
+                                    "human_readable_field_id" 67}]})
 
 (deftest ^:parallel parse-field-with-external-remap-test
   (let [metadata          #js {:fields #js {"36" mock-field-metadata-with-external-remap}}
@@ -40,15 +43,33 @@
                                  :field-id 67}}
            (lib.metadata/field metadata-provider 36)))))
 
+(deftest ^:parallel parse-card-result-metadata-with-external-remap-test
+  (let [metadata          #js {:questions #js {"1" #js {"id"              1
+                                                        "name"            "Model"
+                                                        "type"            "model"
+                                                        "result_metadata" #js [#js {"name"               "CATEGORY_ID"
+                                                                                    "base_type"          "type/Integer"
+                                                                                    "lib/external-remap" #js {"lib/type" "metadata.column.remapping/external"
+                                                                                                              "id"       72
+                                                                                                              "name"     "Category ID"
+                                                                                                              "field-id" 67}}]}}}
+        metadata-provider (lib.js.metadata/metadata-provider 1 metadata)]
+    (is (=? [{:name               "CATEGORY_ID"
+              :lib/external-remap {:lib/type :metadata.column.remapping/external
+                                   :id       72
+                                   :name     "Category ID"
+                                   :field-id 67}}]
+            (:result-metadata (lib.metadata/card metadata-provider 1))))))
+
 (def ^:private mock-field-metadata-with-internal-remap
   #js {"id"               33
        "name"             "ID"
        "has_field_values" "none"
-       "dimensions"       #js [{"id"                      66
-                                "field_id"                33
-                                "name"                    "ID [internal remap]"
-                                "type"                    "internal"
-                                "human_readable_field_id" nil}]})
+       "dimensions"       #js [#js {"id"                      66
+                                    "field_id"                33
+                                    "name"                    "ID [internal remap]"
+                                    "type"                    "internal"
+                                    "human_readable_field_id" nil}]})
 
 (deftest ^:parallel parse-field-with-internal-remap-test
   (let [metadata          #js {:fields #js {"33" mock-field-metadata-with-internal-remap}}
@@ -100,3 +121,16 @@
           mp (lib.js.metadata/metadata-provider 1 metadata)]
       (is (= 1234
              (lib.metadata/setting mp :unaggregated-query-row-limit))))))
+
+(deftest ^:parallel parse-table-schema-name-test
+  (testing "table schema is the schema name, not the store's schema ID"
+    (let [metadata-fragment #js {:tables #js {"1" #js {:id          1
+                                                       :schema      "2:PUBLIC"
+                                                       :schema_name "PUBLIC"}
+                                              "2" #js {:id     2
+                                                       :schema "PUBLIC"}}}
+          parsed-fragment   (lib.js.metadata/parse-objects :table metadata-fragment)]
+      (is (=? {1 {:schema "PUBLIC"}
+               2 {:schema "PUBLIC"}}
+              (update-vals parsed-fragment deref)))
+      (is (not (contains? @(get parsed-fragment 1) :schema-name))))))

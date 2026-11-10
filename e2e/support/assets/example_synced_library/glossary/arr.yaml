@@ -1,8 +1,6 @@
-created_at: '2026-09-11T00:00:00Z'
 creator_id: admin@metabase.test
 definition: Annual recurring revenue
 entity_id: glossaryfixturearr001
 term: ARR
 serdes/meta:
-- id: glossaryfixturearr001
-  model: Glossary
+- model: Glossary

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { c, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";

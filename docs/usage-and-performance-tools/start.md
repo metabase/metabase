@@ -1,5 +1,6 @@
 ---
 title: "Tools overview"
+summary: Admin tools for seeing how people use your Metabase and for tracking down problems.
 redirect_from:
   - /docs/latest/usage-and-performance-tools
 ---

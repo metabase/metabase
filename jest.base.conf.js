@@ -75,7 +75,9 @@ const baseConfig = {
      */
     "sdk-iframe-embedding-ee-plugins":
       "<rootDir>/frontend/src/metabase/utils/noop.ts",
-    "ee-plugins": "<rootDir>/frontend/src/metabase/utils/noop.ts",
+    "^sdk-iframe-embedding-script-ee-plugins$":
+      "<rootDir>/frontend/src/metabase/utils/noop.ts",
+    "^ee-plugins$": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     "ee-overrides": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     /**
      * Docs snippets are loaded as raw text (asset/source) in rspack.
@@ -110,6 +112,9 @@ const baseConfig = {
     "<rootDir>/.*/__mocks__",
     "<rootDir>/enterprise/frontend/src/custom-viz",
   ],
+  // The node:test runner keeps its caches and each worker's files there, and
+  // in watch mode a change there would start the next run.
+  watchPathIgnorePatterns: ["<rootDir>/node_modules/\\.cache/"],
   setupFiles: [
     "<rootDir>/frontend/test/jest-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js",

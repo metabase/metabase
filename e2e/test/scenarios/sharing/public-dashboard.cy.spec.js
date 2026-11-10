@@ -13,7 +13,7 @@ const questionDetails = {
         name: "c",
         "display-name": "Category",
         type: "dimension",
-        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "field-id": PRODUCTS.CATEGORY,
         default: null,
         "widget-type": "category",
       },

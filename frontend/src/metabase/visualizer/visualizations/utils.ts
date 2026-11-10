@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 
 /**

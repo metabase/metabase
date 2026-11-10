@@ -8,6 +8,8 @@ import {
   computeTrend as _computeTrend,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import { computeChange } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   DatasetColumn,
   RowValue,
@@ -19,7 +21,6 @@ import type {
 import type { Insight } from "metabase-types/api/insight";
 import {
   createMockColumn,
-  createMockNativeDatasetQuery,
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
@@ -71,7 +72,12 @@ describe("SmartScalar > compute", () => {
       if (queryType === "native") {
         return [
           createMockSingleSeries(
-            { dataset_query: createMockNativeDatasetQuery() },
+            {
+              dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+                query: "",
+              }),
+              query_type: "native",
+            },
             {
               data: {
                 rows,

@@ -1,18 +1,21 @@
 import type { ReactNode } from "react";
 
-import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
+import type {
+  DataSource,
+  DataSourceSelectorProps,
+} from "metabase/embedding-sdk/types/components/data-picker";
 import type { State } from "metabase/redux/store";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
-import type { TableId } from "metabase-types/api";
 
 import { definePluginSlot } from "../slot";
 
 export interface SimpleDataPickerProps {
   filterByDatabaseId: number | null;
-  selectedEntity?: TableId;
+  isJoinStep: boolean;
+  selectedSource?: DataSource;
   isInitiallyOpen: boolean;
   triggerElement: ReactNode;
-  setSourceTableFn: (tableId: TableId) => void;
+  setSourceFn: (source: DataSource) => void;
   entityTypes: EmbeddingEntityType[];
 }
 

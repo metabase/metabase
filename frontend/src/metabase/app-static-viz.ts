@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import "metabase/static-viz/polyfill";
 import { getCellBackgroundColors, renderChart } from "metabase/static-viz";
 

@@ -1,5 +1,6 @@
 ---
 title: Encrypting your database connection
+summary: Encrypt your saved database credentials with AES256 and SHA512, including how to create, rotate, and disable the encryption key.
 redirect_from:
   - /docs/latest/operations-guide/encrypting-database-details-at-rest
 ---

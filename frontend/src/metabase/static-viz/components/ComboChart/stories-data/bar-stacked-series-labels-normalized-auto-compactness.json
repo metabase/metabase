@@ -14,7 +14,6 @@
         "graph.dimensions": ["CREATED_AT", "CATEGORY"],
         "graph.metrics": ["sum"]
       },
-      "collection_preview": true,
       "entity_id": "DusS70-gDaJOlPJp4M2L7",
       "display": "bar",
       "parameter_mappings": [],

@@ -29,7 +29,7 @@ describe("issue 35954", () => {
             id: "017b9185-c7cc-41ec-ba17-b8b21af879cc",
             "display-name": "Field-mapped Rating",
             default: null,
-            dimension: ["field", REVIEWS.RATING, null],
+            "field-id": REVIEWS.RATING,
             "widget-type": "number/=",
             options: null,
           },

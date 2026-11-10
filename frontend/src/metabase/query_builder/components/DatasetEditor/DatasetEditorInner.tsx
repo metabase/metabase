@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { merge } from "icepick";
@@ -41,7 +42,6 @@ import {
   checkCanBeModel,
   getSortedModelFields,
 } from "metabase-lib/v1/metadata/utils/models";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CollectionId,
   Dataset,
@@ -253,12 +253,7 @@ function getSidebar(
   if (isShowingTemplateTagsEditor) {
     return (
       // @ts-expect-error Multiple types missing, but handled inside TagEditorSidebar
-      <TagEditorSidebar
-        {...props}
-        // Unjustified type cast. FIXME
-        query={question.legacyNativeQuery() as NativeQuery}
-        onClose={toggleTemplateTagsEditor}
-      />
+      <TagEditorSidebar {...props} onClose={toggleTemplateTagsEditor} />
     );
   }
   if (isShowingDataReference) {
@@ -338,8 +333,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const fields = useMemo(
     () =>
       getSortedModelFields(
-        // Unjustified type cast. FIXME
-        (resultsMetadata?.columns as unknown as Field[]) ?? [],
+        resultsMetadata?.columns ?? [],
         visualizationSettings ?? {},
       ),
     [resultsMetadata, visualizationSettings],
@@ -391,7 +385,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
     return getInitialEditorHeight({
-      query: question.legacyNativeQuery(),
+      query: question.query(),
       availableHeight: height ?? "full",
     });
   }, [question, height]);
@@ -412,7 +406,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
     if (!focusedFieldName) {
       return -1;
     }
-    return fields.findIndex((field: Field) => field.name === focusedFieldName);
+    return fields.findIndex((field) => field.name === focusedFieldName);
   }, [focusedFieldName, fields]);
 
   const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);

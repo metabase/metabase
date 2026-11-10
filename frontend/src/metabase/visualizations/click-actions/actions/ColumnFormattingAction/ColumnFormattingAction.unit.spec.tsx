@@ -4,15 +4,15 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { isPopoverClickAction } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
+  createMockCard,
   createMockColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
-import {
-  createAdHocCard,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import {
   ColumnFormattingAction,
@@ -21,8 +21,8 @@ import {
 
 registerVisualizations();
 
-// A text column with no semantic type gets 5 "Display as" options, which makes
-// the widget a Select rather than a radio group.
+// A text column with no semantic type gets 5 "Display as text, link, or image"
+// options, which makes the widget a Select rather than a radio group.
 const column = createMockColumn({
   name: "PASSWORD",
   display_name: "Password",
@@ -33,7 +33,9 @@ const column = createMockColumn({
 
 const setup = () => {
   const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
-  const card = createAdHocCard();
+  const card = createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  });
   const question = new Question(card, metadata);
 
   const [action] = ColumnFormattingAction({ question, clicked: { column } });
@@ -70,7 +72,9 @@ describe("ColumnFormattingAction", () => {
     setup();
 
     const scrollContainer = await screen.findByTestId(POPOVER_TEST_ID);
-    await userEvent.click(screen.getByLabelText("Display as"));
+    await userEvent.click(
+      screen.getByLabelText("Display as text, link, or image"),
+    );
 
     const option = await screen.findByRole("option", { name: "Email link" });
     expect(scrollContainer).not.toContainElement(option);

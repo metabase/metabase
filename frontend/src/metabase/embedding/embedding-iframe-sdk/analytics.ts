@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { merge } from "icepick";
 import { P, match } from "ts-pattern";
 import _ from "underscore";

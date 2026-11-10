@@ -1,4 +1,5 @@
 import { type ComponentType, useEffect, useState } from "react";
+import { t } from "ttag";
 
 import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data-apps/sandbox/types";
 
@@ -17,32 +18,41 @@ export interface LoadedApp {
 }
 
 /**
- * Loads a data-app bundle by name and supervises it: fetches the bundle code,
- * instantiates it inside the Near-Membrane sandbox, and watches for uncaught
- * crashes. Any failure is reported up to the host `AppView` (which owns the
- * themed failure screen); the returned `failed` flag only gates what the iframe
- * renders in the meantime (the bundle vs. a neutral loader).
+ * Loads a data-app bundle in the near-membrane sandbox and watches for crashes.
+ * Embedded apps install CSP before creating the sandbox and return errors for
+ * display inside the iframe. Internal apps report errors to the host's DataAppView.
  */
 export const useDataAppBundle = (
   name: string,
+  { embedded = false }: { embedded?: boolean } = {},
 ): {
   data: LoadedApp | null;
   failed: boolean;
+  error?: string | null;
 } => {
   const [data, setData] = useState<LoadedApp | null>(null);
   const [failed, setFailed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     setData(null);
     setFailed(false);
+    setError(null);
 
     const load = async () => {
-      const { code, allowedHosts } = await fetchDataAppBundleCode(name);
+      const { code, allowedHosts, contentSecurityPolicy } =
+        await fetchDataAppBundleCode(name, { embedded });
 
       if (cancelled) {
         return;
+      }
+
+      // Ensure CSP is installed *before* the bundle code evaluates.
+      // If CSP were to be installed after, it won't apply to already evaluated bundle.
+      if (embedded) {
+        installContentSecurityPolicy(contentSecurityPolicy);
       }
 
       const { component, providerProps } = await instantiateDataAppBundle(
@@ -67,14 +77,21 @@ export const useDataAppBundle = (
         // any other failure carries the real error so it can be shown.
         const detail = notReady ? undefined : describeError(error);
         setFailed(true);
-        reportErrorToParent(notReady, detail);
+
+        if (embedded) {
+          // Embedded data apps shows their own error screen
+          setError(describeError(error).message);
+        } else {
+          // Internal data apps reports the error to the parent
+          reportErrorToParent(notReady, detail);
+        }
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [name]);
+  }, [name, embedded]);
 
   useEffect(() => {
     // The bundle runs in a Near-Membrane sandbox that can throw errors which
@@ -93,14 +110,53 @@ export const useDataAppBundle = (
           detail.stack ?? "",
         );
         setFailed(true);
-        reportErrorToParent(false, detail);
+
+        if (embedded) {
+          setError(detail.message);
+        } else {
+          reportErrorToParent(false, detail);
+        }
       }
     };
 
     window.addEventListener("error", onError);
 
     return () => window.removeEventListener("error", onError);
-  }, []);
+  }, [embedded]);
 
-  return { data, failed };
+  return { data, failed, error };
 };
+
+/**
+ * CSP contains allowed hosts which we don't want to expose without auth.
+ * We do client-side auth first, then fetch and inject the CSP next.
+ */
+function installContentSecurityPolicy(policy: string | null | undefined) {
+  const cspErrorMessage = t`Something went wrong while loading this app. Try refreshing the page.`;
+
+  if (!policy?.trim()) {
+    console.error("CSP is missing from the data app bundle's response.");
+
+    throw new Error(cspErrorMessage);
+  }
+
+  const installedPolicy = document.querySelector<HTMLMetaElement>(
+    'meta[http-equiv="Content-Security-Policy"]',
+  );
+
+  if (installedPolicy) {
+    if (installedPolicy.content !== policy) {
+      console.error("A different CSP is already installed for this data app.");
+
+      throw new Error(cspErrorMessage);
+    }
+
+    return;
+  }
+
+  const meta = document.createElement("meta");
+  meta.httpEquiv = "Content-Security-Policy";
+  meta.content = policy;
+
+  document.head.appendChild(meta);
+}

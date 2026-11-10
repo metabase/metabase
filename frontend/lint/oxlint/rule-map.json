@@ -212,6 +212,11 @@
   "@typescript-eslint/no-explicit-any": "typescript/no-explicit-any",
   "@typescript-eslint/no-this-alias": "typescript/no-this-alias",
   "@typescript-eslint/no-unsafe-declaration-merging": "typescript/no-unsafe-declaration-merging",
+  "@typescript-eslint/no-unsafe-argument": "typescript/no-unsafe-argument",
+  "@typescript-eslint/no-unsafe-assignment": "typescript/no-unsafe-assignment",
+  "@typescript-eslint/no-unsafe-call": "typescript/no-unsafe-call",
+  "@typescript-eslint/no-unsafe-member-access": "typescript/no-unsafe-member-access",
+  "@typescript-eslint/no-unsafe-return": "typescript/no-unsafe-return",
   "storybook/no-renderer-packages": "storybook/no-renderer-packages",
   "storybook/no-uninstalled-addons": "storybook/no-uninstalled-addons"
 }

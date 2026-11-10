@@ -224,7 +224,7 @@
                    :errors          {:user {:password "password is too common."}}}
                   (setup! m/dissoc-in [:user :password]))))
         (testing "invalid"
-          (is (=? {:specific-errors {:user {:password ["valid password that is not too common, received: \"anything\""]}}}
+          (is (=? {:specific-errors {:user {:password ["valid password that is not too common, received: \"<< REDACTED SECRET >>\""]}}}
                   (setup! assoc-in [:user :password] "anything"))))))))
 
 (deftest setup-with-empty-cache-test

@@ -1,5 +1,6 @@
 ---
 title: Setting up Metabase
+summary: Walk through first-time setup. Create your admin account, connect a database, activate your license, and set your usage preferences.
 redirect_from:
   - /docs/latest/setting-up-metabase
 ---

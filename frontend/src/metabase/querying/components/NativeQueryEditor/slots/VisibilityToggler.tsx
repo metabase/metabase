@@ -1,3 +1,5 @@
+import * as Lib from "metabase-lib";
+
 import { VisibilityToggler as VisibilityTogglerControl } from "../VisibilityToggler/VisibilityToggler";
 import { useNativeQueryEditorContext } from "../context/NativeQueryEditorContext";
 
@@ -17,7 +19,7 @@ export function VisibilityToggler() {
   } = useNativeQueryEditorContext();
 
   if (
-    !query.hasWritePermission() ||
+    !Lib.hasWritePermission(query) ||
     question.isArchived() ||
     !setIsNativeEditorOpen
   ) {

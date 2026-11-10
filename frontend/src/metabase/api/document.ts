@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { Api } from "metabase/api/api";
 import { idTag, listTag } from "metabase/api/tags";
 import type {

@@ -5,6 +5,7 @@ import {
   useGetCardQuery,
   useGetCollectionQuery,
 } from "metabase/api";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { NavbarPromoSlot } from "metabase/nav/components/NavbarPromoSlot";
 import { connect } from "metabase/redux";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
@@ -12,7 +13,7 @@ import type { State } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
 
 import S from "./MainNavbar.module.css";
@@ -98,9 +99,8 @@ function MainNavbarInner({
     };
   }, [isOpen, openNavbar, closeNavbar]);
 
+  const question = useQuestionFromCard(card);
   const selectedItems = useMemo<SelectedItem[]>(() => {
-    const question = card && new Question(card);
-
     return getSelectedItems({
       pathname: location.pathname,
       params,
@@ -108,7 +108,7 @@ function MainNavbarInner({
       collection,
       dashboard,
     });
-  }, [location, params, card, dashboard, collection]);
+  }, [location, params, question, dashboard, collection]);
 
   return (
     <Sidebar
