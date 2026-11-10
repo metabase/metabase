@@ -48,7 +48,7 @@ Add acronyms, product names, and terms with a company-specific meaning to the [g
 - Metabot only gets the 100 most recently updated terms.
 - Keep definitions short, since they're sent with every message.
 
-For example, if you define "MRR" as "Monthly Recurring Revenue", Metabot knows what people mean when they ask "What's our MRR for Q4?"
+For example, if you define "active customer" as "logged in during a quarter", Metabot knows what people mean when they ask "How many active customers did we have over the last four quarters?"
 
 ## Mark foreign keys so Metabot can join tables
 
@@ -66,9 +66,9 @@ When Metabot looks at a table, it sees the table's measures and segments and is 
 
 When more than one source could answer a question, Metabot picks the most curated one: [Metrics](../data-modeling/semantic-layer/metrics.md)** are preferred for calculations. [Models](../data-modeling/models/models.md)** serve as a fallback when no matching metric is found. Build a metric if you want Metabot to reuse a calculation.
 
-Metabot will respond with an existing **questions** if it directly answers the question. **Tables** rank higher if they're [published](../data-modeling/semantic-layer/published-tables.md) or their visibility layer is **Final** rather than **Internal**. **[Verified](../exploration-and-organization/content-verification.md)** items and items in [official collections](../exploration-and-organization/collections.md#official-collections) also count as endorsed.
+Metabot will respond with an existing **question** if it directly answers the question. **Tables** rank higher if they're [published](../data-modeling/semantic-layer/published-tables.md) or their visibility layer is **Final** rather than **Internal**. **[Verified](../exploration-and-organization/content-verification.md)** items and items in [official collections](../exploration-and-organization/collections.md#official-collections) also count as endorsed.
 
-If a source is named or is open, Metabot uses that source, even if a more curated one exists.
+Old and abandoned content also competes in Metabot's search results. To find items to clean up, check the [Content with cobwebs](../usage-and-performance-tools/usage-analytics-reference.md#content-with-cobwebs) dashboard in Usage analytics and **Content diagnostics** in [Monitor](../monitor/start.md). Then [clear out unused items](../exploration-and-organization/collections.md#cleaning-up-collections) from your collections.
 
 ## Hide tables and columns nobody should query
 
