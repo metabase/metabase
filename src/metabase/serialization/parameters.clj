@@ -2,6 +2,8 @@
   "Export and import of the `:parameters` and `:parameter_mappings` of Cards, Dashboards and DashboardCards, in bulk."
   (:require
    [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.serialization.mbql :as mbql]
    [metabase.serialization.resolve :as resolve]))
 
@@ -9,18 +11,18 @@
 
 (defn walk-export-parameter-mappings
   "The :parameter_mappings field of a `Card` or `DashboardCard`, as a vector of maps, with its ids replaced by what
-  `visit` returns for their references, sorted by :parameter_id for stable serialization output."
+  `visit` returns for their references, in their stored order; nil for none."
   [visit mappings]
-  (->> mappings
-       (sort-by :parameter_id)
-       (mapv #(mbql/walk-export visit %))))
+  (some->> mappings (mapv #(mbql/walk-export visit %))))
 
 (defn walk-import-parameter-mappings
-  "The exported :parameter_mappings field with its references replaced by what `visit` returns for them."
+  "The exported :parameter_mappings field with its references replaced by what `visit` returns for them, normalized
+  like the stored column; nil for none."
   [visit mappings]
-  (mapv #(-> (mbql/walk-import visit %)
-             (m/update-existing :card_id (fn [eid] (resolve/visit-some :model/Card eid visit))))
-        mappings))
+  (some->> mappings
+           (mapv #(cond-> (-> (mbql/walk-import visit %)
+                              (m/update-existing :card_id (fn [eid] (resolve/visit-some :model/Card eid visit))))
+                    (not (resolve/collecting? visit)) (->> (lib/normalize ::parameters.schema/parameter-mapping))))))
 
 (defn- walk-export-parameter
   "A single parameter with its ids replaced by what `visit` returns for their references. A values source pointing at
@@ -34,24 +36,23 @@
 
 (defn walk-export-parameters
   "The :parameters field of a `Card` or `Dashboard` with its ids replaced by what `visit` returns for their
-  references, sorted by `:id` (a nil `:id` first) with a `:position` added to preserve display order."
+  references, in their stored order; nil for none."
   [visit parameters]
-  (->> parameters
-       (map-indexed (fn [i p] (assoc p :position i)))
-       (sort-by :id)
-       (mapv #(walk-export-parameter visit %))))
+  (some->> parameters (mapv #(walk-export-parameter visit %))))
 
 (defn walk-import-parameters
-  "The exported :parameters field with its references replaced by what `visit` returns for them, sorted by
-  `:position` when every parameter has one."
+  "The exported :parameters field with its references replaced by what `visit` returns for them, normalized like the
+  stored column, in the order of the `:position`s that older exports give every parameter, without them; nil for none."
   [visit parameters]
-  (let [params (mapv #(-> (mbql/walk-import visit %)
-                          (m/update-existing-in [:values_source_config :card_id]
-                                                (fn [eid] (resolve/visit-some :model/Card eid visit))))
-                     parameters)]
-    (if (every? :position params)
-      (sort-by :position params)
-      params)))
+  (when parameters
+    (let [params (mapv #(cond-> (-> (mbql/walk-import visit %)
+                                    (m/update-existing-in [:values_source_config :card_id]
+                                                          (fn [eid] (resolve/visit-some :model/Card eid visit))))
+                          (not (resolve/collecting? visit)) (->> (lib/normalize ::parameters.schema/parameter)))
+                       parameters)]
+      (mapv #(dissoc % :position)
+            (cond->> params
+              (every? :position params) (sort-by :position))))))
 
 (defn export-parameter-mappings
   "Each of the `:parameter_mappings` lists of `xs` exported by [[walk-export-parameter-mappings]], with the database

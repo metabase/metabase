@@ -2668,6 +2668,7 @@
            lib.metadata
            lib.schema
            models
+           parameters.schema
            util
            util.config}
    :model-imports #{:model/Card

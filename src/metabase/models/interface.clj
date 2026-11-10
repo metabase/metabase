@@ -559,6 +559,11 @@
   {:in  (comp json-in migrate-viz-settings)
    :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
 
+(defn stored-visualization-settings
+  "The `viz-settings` as a visualization settings column stores them and reads them back."
+  [viz-settings]
+  ((:out transform-visualization-settings) ((:in transform-visualization-settings) viz-settings)))
+
 (def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mr/validator u.cron/CronScheduleString)]
     (partial mu/validate-throw validator)))

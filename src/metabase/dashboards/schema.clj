@@ -92,7 +92,7 @@
 
 (mr/def ::dashboard-card.visualization-settings
   "The `:visualization_settings` column of a DashboardCard, decoded."
-  ms/VisualizationSettings)
+  ::models.schema/visualization-settings)
 
 (mr/def ::dashboard-card
   "A DashboardCard as selected from the app DB: every column of `:report_dashboardcard`, plus the keys some callers

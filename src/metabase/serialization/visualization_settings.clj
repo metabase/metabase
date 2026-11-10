@@ -4,6 +4,8 @@
   tables, timelines, and visualizer column mappings."
   (:require
    [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.models.schema :as models.schema]
    [metabase.serialization.mbql :as mbql]
    [metabase.serialization.resolve :as resolve]
    [metabase.util :as u]
@@ -305,7 +307,8 @@
     (dissoc settings :column_settings)))
 
 (defn walk-import-visualization-settings
-  "The exported `:visualization_settings` map with its references replaced by what `visit` returns for them."
+  "The exported `:visualization_settings` map with its references replaced by what `visit` returns for them, in the
+  shape the stored column reads back as."
   [visit settings]
   (when settings
     (as-> settings $
@@ -315,7 +318,10 @@
       (walk-import-visualizer-settings visit $)
       (walk-import-pivot-table visit $)
       (walk-import-timeline-events visit $)
-      (walk-import-viz-column-settings visit $))))
+      (walk-import-viz-column-settings visit $)
+      (cond->> $
+        (not (resolve/collecting? visit))
+        (lib/normalize ::models.schema/visualization-settings)))))
 
 (defn export-visualization-settings
   "Each of the `:visualization_settings` of `xs` exported by [[walk-export-visualization-settings]], with the database

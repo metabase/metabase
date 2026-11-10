@@ -5,6 +5,7 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.schema :as models.schema]
@@ -153,7 +154,7 @@
 
 (mr/def ::card.visualization-settings
   "The `:visualization_settings` column of a Card, decoded."
-  ms/VisualizationSettings)
+  ::models.schema/visualization-settings)
 
 (mr/def ::card.parameter
   "One entry of the `:parameters` column of a Card, decoded."
@@ -178,7 +179,7 @@
    [:updated_at                                {:optional true} [:maybe [:or ms/TemporalInstant [:= :updated_at]]]]
    [:name                                      {:optional true} [:maybe :string]]
    [:description                               {:optional true} [:maybe :string]]
-   [:display                                   {:optional true} [:maybe [:or :keyword :string]]]
+   [:display                                   {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:dataset_query                             {:optional true} [:maybe ::card.dataset-query]]
    [:visualization_settings                    {:optional true} [:maybe ::card.visualization-settings]]
    [:creator_id                                {:optional true} [:maybe ::lib.schema.id/user]]
@@ -380,7 +381,7 @@
    [:merge
     [:select-keys ::card [:archived :archived_directly :collection_position :description :display
                           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
-                          :card_schema :result_metadata :database_id :collection_id :dimensions :creator_id
+                          :card_schema :result_metadata :collection_id :dimensions :creator_id
                           :dataset_query :dimension_mappings :parameter_mappings :visualization_settings :parameters
                           :dashboard_id :made_public_by_id :document_id]]
     [:map {:closed true}
