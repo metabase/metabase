@@ -101,11 +101,15 @@ export function useColumnFormulaBar({
     }
   }, [isOpen, shouldRestoreFocus]);
 
-  const query = useMemo(
-    () =>
-      isEnabled ? Lib.ensureFilterStage(question.query()) : question.query(),
-    [question, isEnabled],
-  );
+  const query = useMemo(() => {
+    const query = question.query();
+    if (!isEnabled) {
+      return query;
+    }
+    return Lib.aggregations(query, -1).length > 0
+      ? Lib.appendStage(query)
+      : Lib.ensureFilterStage(query);
+  }, [question, isEnabled]);
   const databaseId = Lib.databaseID(query);
   const { data: database } = useGetDatabaseQuery(
     isOpen && databaseId != null ? { id: databaseId } : skipToken,

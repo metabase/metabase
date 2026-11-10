@@ -214,7 +214,6 @@ describe("column formula bar", () => {
             {
               source: { type: "table", id: ORDERS_ID },
               aggregations: [{ type: "operator", operator: "count" }],
-              breakouts: [{ type: "column", name: "PRODUCT_ID" }],
             },
           ],
         }),
@@ -237,6 +236,11 @@ describe("column formula bar", () => {
     expect(Lib.aggregations(query, 0)).toHaveLength(1);
     expect(Lib.expressions(query, 0)).toHaveLength(0);
     expect(Lib.expressions(query, -1)).toHaveLength(1);
+    expect(
+      Lib.returnedColumns(query, -1).map(
+        (column) => Lib.displayInfo(query, -1, column).displayName,
+      ),
+    ).toEqual(["Count", "Count + 1"]);
     await expectClosed();
   });
 
