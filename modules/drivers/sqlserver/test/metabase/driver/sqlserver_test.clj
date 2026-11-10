@@ -1506,3 +1506,29 @@
              (is (= "scopeTempTablesToConnection"
                     (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection sqlserver-conn))))))
         (is (= "prepexec" (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection @physical)))))))
+
+(deftest destroy-workspace-isolation-quotes-table-names-test
+  (testing "Teardown builds each DROP TABLE with QUOTENAME, so a warehouse table name containing `]` cannot break out of the identifier"
+    (let [batch (atom [])
+          stmt  (reify java.sql.Statement
+                  (addBatch [_ sql] (swap! batch conj sql))
+                  (executeBatch [_] (int-array (count @batch)))
+                  (close [_]))
+          conn  (reify java.sql.Connection
+                  (createStatement [_] stmt))]
+      (with-redefs [driver.u/ensure-lib-database                         identity
+                    sql-jdbc.execute/do-with-connection-with-options (fn [_driver _db _opts f] (f conn))]
+        (driver/destroy-workspace-isolation! :sqlserver {} {:schema           "ws_schema"
+                                                            :database_details {:user "ws_user"}}))
+      (is (= [(str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+                   "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
+                   "FROM sys.tables WHERE schema_id = SCHEMA_ID('ws_schema'); "
+                   "EXEC sp_executesql @drop_tables_sql")
+              "IF EXISTS (SELECT * FROM sys.schemas WHERE name = 'ws_schema') DROP SCHEMA \"ws_schema\""
+              "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = 'ws_user') DROP USER \"ws_user\""
+              (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
+                   "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                   "FROM sys.dm_exec_sessions WHERE login_name = 'ws_user'; "
+                   "EXEC sp_executesql @kill_sessions_sql")
+              "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = 'ws_user') DROP LOGIN \"ws_user\""]
+             @batch)))))
