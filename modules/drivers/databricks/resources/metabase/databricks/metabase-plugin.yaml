@@ -41,6 +41,12 @@ driver:
           - {name: "Google Cloud",         value: "GCP",   hidden-when-hosted: true}
         visible-if:
           auth-mode: wif
+      - name: wif-client-id
+        display-name: Service principal client ID
+        placeholder: e26ce240-0a12-454f-934f-4c646603cb61
+        helper-text: The application ID (UUID) of the Databricks service principal whose federation policy will verify the token. Leave blank for account-wide federation.
+        visible-if:
+          auth-mode: wif
       - merge:
         - password
         - name: token
