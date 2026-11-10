@@ -27,7 +27,8 @@
                     :output_namespace "mb_isolation_github"
                     :input_schemas    ["raw_github"]
                     :status           :provisioned}]
-      (let [cfg (config/build-workspace-config ws-id)]
+      (let [cfg (mt/with-temporary-setting-values [site-url "https://parent.example.com"]
+                  (config/build-workspace-config ws-id))]
         (testing "outer shape matches config.yml (version + config block)"
           (is (= 1 (:version cfg)))
           (is (= #{:databases :workspace} (set (keys (:config cfg))))))
@@ -47,6 +48,9 @@
                       :schema-filters-patterns     "raw_github"
                       :let-user-control-scheduling false}
                      (:details db))))))
+        (testing "workspace entry names the parent workspace: its id and the parent's site-url"
+          (is (= ws-id (-> cfg :config :workspace :id)))
+          (is (= "https://parent.example.com" (-> cfg :config :workspace :parent_url))))
         (testing "workspace entry uses flat input_schemas + expanded :output map"
           (is (= "github" (-> cfg :config :workspace :name)))
           (is (= {"Analytics Data Warehouse"

@@ -4793,6 +4793,7 @@
            sample-data
            settings
            sql-tools
+           system
            util}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database

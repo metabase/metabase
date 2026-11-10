@@ -108,15 +108,18 @@
       schema)))
 
 (defn instance-workspace
-  "The workspace this instance is, as `{:databases {<db-id> <schema>}}`, or nil when
-   the `workspaces-enabled` setting is off."
+  "The workspace this instance is, as `{:workspace-id <id> :parent-url <url> :databases
+   {<db-id> <schema>}}`, or nil when the `workspaces-enabled` setting is off. The
+   parent's workspace id and site URL are nil when nothing set them."
   []
   (when (ws.settings/workspaces-enabled)
-    {:databases (into {}
-                      (keep (fn [database]
-                              (when-let [schema (database-workspace-schema database)]
-                                [(:id database) schema])))
-                      (ws.db/all-databases))}))
+    {:workspace-id (ws.settings/workspace-id)
+     :parent-url   (ws.settings/workspace-parent-url)
+     :databases    (into {}
+                         (keep (fn [database]
+                                 (when-let [schema (database-workspace-schema database)]
+                                   [(:id database) schema])))
+                         (ws.db/all-databases))}))
 
 (defn- check-not-set-by-env-var!
   "Throw a 400 when `MB_WORKSPACES_ENABLED` holds a value other than `wanted`: the env
@@ -152,6 +155,16 @@
       (ws.settings/workspaces-enabled! true)))
   nil)
 
+(mu/defn set-instance-identity! :- :nil
+  "Record which parent workspace this instance serves: the parent's workspace id and
+   its site URL. Either may be nil, which clears it. Informational: no workspace
+   behavior reads them."
+  [workspace-id :- [:maybe ms/PositiveInt]
+   parent-url   :- [:maybe ms/NonBlankString]]
+  (ws.settings/workspace-id! workspace-id)
+  (ws.settings/workspace-parent-url! parent-url)
+  nil)
+
 (defn delete-stale-table-remappings!
   "Delete the remap rows of `database` when its trimmed `database-workspace-schema`
    differs from that of `previous-database`, the same row before the write. Those rows
@@ -164,13 +177,15 @@
   nil)
 
 (defn clear-instance-workspace!
-  "Turn `workspaces-enabled` off and delete every `:model/TableRemapping` row.
+  "Turn `workspaces-enabled` off, clear the parent identity (see
+   [[set-instance-identity!]]), and delete every `:model/TableRemapping` row.
    Leaves each database's `database-workspace-schema` in place; it has no effect
    while the instance is not a workspace. Throws a 400 when `MB_WORKSPACES_ENABLED=true`,
    since that value wins over the stored one."
   []
   (check-not-set-by-env-var! false)
   (ws.settings/workspaces-enabled! false)
+  (set-instance-identity! nil nil)
   ;; The setting's :on-change deletes them only when the value changes; delete them
   ;; here too so stale rows from an earlier run go regardless.
   (ws.db/delete-all-table-remappings!)

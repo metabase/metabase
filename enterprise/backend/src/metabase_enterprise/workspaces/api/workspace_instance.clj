@@ -12,17 +12,22 @@
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
 (def ^:private WorkspaceInstance
-  "Each database with a `database-workspace-schema`. A vector of closed maps, not a
-  `:map-of`: request decoding silently drops `:map-of` entries that fail validation,
-  which would turn a malformed body into a workspace with no databases."
+  "The parent workspace this instance serves (its id and the parent's site URL), and
+  each database with a `database-workspace-schema`. The databases are a vector of
+  closed maps, not a `:map-of`: request decoding silently drops `:map-of` entries that
+  fail validation, which would turn a malformed body into a workspace with no databases."
   [:map {:closed true}
-   [:databases [:sequential [:map {:closed true}
-                             [:database_id ::lib.schema.id/database]
-                             [:schema      ms/NonBlankString]]]]])
+   [:workspace_id {:optional true} [:maybe ms/PositiveInt]]
+   [:parent_url   {:optional true} [:maybe ms/NonBlankString]]
+   [:databases    [:sequential [:map {:closed true}
+                                [:database_id ::lib.schema.id/database]
+                                [:schema      ms/NonBlankString]]]]])
 
-(defn- present-workspace-instance [{:keys [databases]}]
-  {:databases (vec (for [[database-id schema] (sort databases)]
-                     {:database_id database-id :schema schema}))})
+(defn- present-workspace-instance [{:keys [workspace-id parent-url databases]}]
+  {:workspace_id workspace-id
+   :parent_url   parent-url
+   :databases    (vec (for [[database-id schema] (sort databases)]
+                        {:database_id database-id :schema schema}))})
 
 (def ^:private TableRemapping
   [:map
@@ -47,9 +52,11 @@
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 
 (api.macros/defendpoint :get "/current" :- [:map [:data [:maybe WorkspaceInstance]]]
-  "The workspace this instance is, wrapped in a `{:data ...}` envelope: `{:databases
-  [{:database_id :schema}]}`, each database that has a `database-workspace-schema`. `:data`
-  is `null` when the `workspaces-enabled` setting is off. The envelope avoids an empty
+  "The workspace this instance is, wrapped in a `{:data ...}` envelope: `{:workspace_id
+  :parent_url :databases [{:database_id :schema}]}`. `:workspace_id` and `:parent_url`
+  name the parent workspace this instance serves, `null` when nothing set them;
+  `:databases` lists each database that has a `database-workspace-schema`. `:data` is
+  `null` when the `workspaces-enabled` setting is off. The envelope avoids an empty
   JSON body for the `nil` case."
   []
   (api/check-superuser)
@@ -57,13 +64,15 @@
 
 (api.macros/defendpoint :post "/current" :- WorkspaceInstance
   "Make this instance a workspace: turn `workspaces-enabled` on and set each listed
-  database's `database-workspace-schema`, clearing it on every other database. The
-  same settings can be set through the settings API, env vars, or `config.yml`."
+  database's `database-workspace-schema`, clearing it on every other database. Sets the
+  parent identity from `:workspace_id` and `:parent_url`, clearing whichever is absent.
+  The same settings can be set through the settings API, env vars, or `config.yml`."
   [_route-params
    _query-params
    body :- WorkspaceInstance]
   (api/check-superuser)
   (ws/set-instance-workspace! (into {} (map (juxt :database_id :schema)) (:databases body)))
+  (ws/set-instance-identity! (:workspace_id body) (:parent_url body))
   (present-workspace-instance (ws/instance-workspace)))
 
 (api.macros/defendpoint :delete "/current" :- :nil

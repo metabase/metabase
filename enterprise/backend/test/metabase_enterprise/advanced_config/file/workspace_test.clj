@@ -85,8 +85,29 @@
           (is (= "New workspace" workspace-name))
           (is (= 1 database-count))
           (testing "the settings hold the translated config; :name and :input_schemas are dropped"
-            (is (= {:databases {db-id "mb__isolation_44490_1933"}}
+            (is (= {:workspace-id nil
+                    :parent-url   nil
+                    :databases    {db-id "mb__isolation_44490_1933"}}
                    (ws/instance-workspace)))))))))
+
+(deftest apply-workspace-section-sets-parent-identity-test
+  (testing "the section's :id and :parent_url become the parent identity, and a later boot without them clears it"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
+        (let [section (workspace-section "ws-test-db")]
+          (is (s/valid? ::advanced-config.file.workspace/config-file-spec
+                        (assoc section :id 42 :parent_url "https://parent.example.com")))
+          (advanced-config.file.workspace/apply-workspace-section!
+           (assoc section :id 42 :parent_url "https://parent.example.com"))
+          (is (= {:workspace-id 42
+                  :parent-url   "https://parent.example.com"
+                  :databases    {db-id "mb__isolation_44490_1933"}}
+                 (ws/instance-workspace)))
+          (advanced-config.file.workspace/apply-workspace-section! section)
+          (is (= {:workspace-id nil
+                  :parent-url   nil
+                  :databases    {db-id "mb__isolation_44490_1933"}}
+                 (ws/instance-workspace))))))))
 
 (deftest re-apply-replaces-atom-test
   (testing "re-applying with a different config replaces the setting — no mismatch detection, file is the truth"
@@ -100,7 +121,9 @@
                                                           :output        {:schema "different_schema"}}})]
           (advanced-config.file.workspace/apply-workspace-section! section-1)
           (advanced-config.file.workspace/apply-workspace-section! section-2)
-          (is (= {:databases {db-2-id "different_schema"}}
+          (is (= {:workspace-id nil
+                  :parent-url   nil
+                  :databases    {db-2-id "different_schema"}}
                  (ws/instance-workspace))
               "settings reflect the new config, and the first database's schema is cleared"))))))
 
