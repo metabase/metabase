@@ -123,14 +123,13 @@
   `jwt-data` holds the verified claims.
   Throw `ex-info` carrying `invalid_scope` when the claim allows none of `scopes`."
   [scopes jwt-data]
-  (if-let [[_ claim] (find jwt-data :scope)]
-    (let [allowed (api-scope/parse-scopes claim)]
-      (or (not-empty (filterv #(api-scope/scope-matches? allowed %) scopes))
-          (throw (ex-info "the JWT's scope claim allows none of the requested scopes"
-                          {:error             "invalid_scope"
-                           :error-description (str "The JWT's scope claim must allow at least one of these scopes: "
-                                                   (str/join " " scopes))
-                           ::verified?        true}))))
+  (if-let [allowed (api-scope/jwt-claim-scopes jwt-data)]
+    (or (not-empty (filterv #(api-scope/scope-matches? allowed %) scopes))
+        (throw (ex-info "the JWT's scope claim allows none of the requested scopes"
+                        {:error             "invalid_scope"
+                         :error-description (str "The JWT's scope claim must allow at least one of these scopes: "
+                                                 (str/join " " scopes))
+                         ::verified?        true})))
     scopes))
 
 (defn- check-mcp-access!

@@ -9,6 +9,7 @@
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.ai-tracing.core :as ait]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
@@ -1734,10 +1735,9 @@
         ;; The provider uses jwt-attribute-email setting to extract the email from claims
         (if-let [user (when-let [email (get-in result [:user-data :email])]
                         (agent-api.db/active-user-by-email email))]
-          (let [scope-entry (-> result :jwt-data (find :scope))]
+          (let [scopes (api-scope/jwt-claim-scopes (:jwt-data result))]
             (cond-> {:user user}
-              scope-entry
-              (assoc :scopes (or (scope/parse-scopes (val scope-entry)) #{}))))
+              scopes (assoc :scopes scopes)))
           ;; Don't reveal whether the user exists or not - use same error as invalid JWT
           {:error   "invalid_jwt"
            :message "Invalid or expired JWT token."})

@@ -1,15 +1,21 @@
 (ns metabase-enterprise.agent-api.api-test
-  "Integration tests for CLI usage recording via the `wrap-record-cli-usage` middleware in
-  `metabase.metabot.agent-api.usage`. Drives the middleware directly so recording fires on the same
-  synchronous thread, where identity, status, duration, and PII are all in scope. Recording
-  runs on every EE instance (`:feature :none`); PII is gated by `analytics-pii-retention-enabled`
-  (itself `:audit-app`-gated)."
+  "Integration tests cover CLI usage recording and JWT scope claims in the agent API.
+
+  CLI usage recording tests drive the `wrap-record-cli-usage` middleware in
+  `metabase.metabot.agent-api.usage` directly so recording fires on the same synchronous thread, where
+  identity, status, duration, and PII are all in scope. Recording runs on every EE instance (`:feature :none`);
+  PII is gated by `analytics-pii-retention-enabled` (itself `:audit-app`-gated)."
   (:require
+   [buddy.sign.jwt :as jwt]
+   [buddy.sign.util :as buddy-util]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.api.common :as api]
    [metabase.metabot.agent-api.usage :as agent-api.usage]
+   [metabase.metabot.tools.search :as metabot-search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -131,3 +137,24 @@
               (let [row (t2/select-one :model/AgentApiCallLog {:order-by [[:id :desc]]})]
                 (is (nil? (:ip_address row)) "ip_address is nil when PII is off")
                 (is (nil? (:error_message row)) "error_message is nil when PII is off")))))))))
+
+(deftest jwt-scope-claim-test
+  (sso.test-setup/with-jwt-default-setup!
+    (mt/with-dynamic-fn-redefs [metabot-search/search (constantly [])]
+      (doseq [[claims status] [[{} 200]
+                               [{:aud "https://another-service.example.com"} 200]
+                               [{:scope "agent:search"} 200]
+                               [{:scope "agent:*"} 200]
+                               [{:scope "agent:query"} 403]
+                               [{:scope ""} 403]]]
+        (testing (pr-str claims)
+          (let [token (jwt/sign (merge {:email (:username (mt/user->credentials :rasta))
+                                        :iat (buddy-util/now)}
+                                       claims)
+                                sso.test-setup/default-jwt-secret)]
+            (is (= (if (= 200 status)
+                     {:data [] :total_count 0}
+                     {:error "unsupported_scope" :message "Insufficient scope for this operation."})
+                   (client/client :post status "agent/v1/search"
+                                  {:request-options {:headers {"authorization" (str "Bearer " token)}}}
+                                  {:term_queries ["toucan"]})))))))))

@@ -1629,6 +1629,7 @@
    :uses    #{ai-tracing
               analytics.interface
               api
+              api-scope
               channel
               collections
               dashboards
