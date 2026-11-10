@@ -39,7 +39,8 @@
      otherwise leak through and restrict sync to the canonical DB the
      workspace user has no GRANTs on. CH reads these as a comma-separated
      list of trimmed names (with `-` read as `_`), not as regex, so they stay
-     unescaped.
+     unescaped. A name holding `,`, `-` or edge whitespace therefore does not
+     select exactly itself.
    - BigQuery emits `:dataset-filters-*` — its `list-datasets` reads these
      instead, through the same pattern syntax, so names are escaped the same way.
    - No-schema engines (MySQL) emit `{}` — JDBC reports `TABLE_SCHEM` as null

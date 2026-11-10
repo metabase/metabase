@@ -95,7 +95,8 @@
                (-> cfg :config :databases first :details :schema-filters-patterns)))))))
 
 (def ^:private schema-name->near-misses
-  "Schema names that sync-filter pattern syntax would misread, each with names its pattern must not match."
+  "Schema names that need escaping in a sync-filter pattern (pattern syntax, or characters outside `[A-Za-z0-9_]`),
+  each with names its pattern must not match."
   {"a+b"       ["ab" "aab"]
    "a,b"       ["a" "b"]
    "a|b"       ["a" "b"]
@@ -138,7 +139,7 @@
           (doseq [other (cons "mb__isolation_slug_7" near-misses)]
             (is (not (pattern-matches? patterns other))
                 (str "should not match " (pr-str other))))))))
-  (testing "joined into one filter, the input schemas match each other and no near-miss"
+  (testing "joined into one filter, the filter matches every input schema and no near-miss"
     (let [patterns (built-schema-filter-patterns (vec (keys schema-name->near-misses)))]
       (doseq [schema-name (keys schema-name->near-misses)]
         (is (pattern-matches? patterns schema-name) (pr-str schema-name)))
@@ -147,7 +148,9 @@
                                   (mapcat val schema-name->near-misses)))]
         (is (not (pattern-matches? patterns other)) (str "should not match " (pr-str other)))))))
 
-(deftest build-workspace-config-clickhouse-db-filters-stay-raw-test
+;; Tagged so the driver jobs, which have the ClickHouse driver on the classpath, run it; the Enterprise Tests job
+;; doesn't, so there it would pass with no assertions. It needs no ClickHouse server.
+(deftest ^:mb/driver-tests build-workspace-config-clickhouse-db-filters-stay-raw-test
   (when (workspaces.tu/driver-loadable? :clickhouse)
     (testing "ClickHouse reads :db-filters-patterns as a list of names, not regex, so they are emitted unescaped"
       (mt/with-temp [:model/Database {db-id :id} {:name "CH" :engine :clickhouse :details {:db "default"}}
