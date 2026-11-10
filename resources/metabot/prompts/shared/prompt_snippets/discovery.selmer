@@ -52,7 +52,7 @@ Lead with a natural noun phrase or short question and let the meaning-match do t
 
 ## What is and isn't searched
 
-Search only looks at each entity's **name and description** (plus a table's display name) — **not** its column/field names, and **not** the SQL text of native queries. Collections match on **name only**. So search by the concept's *title*, then use `read_resource` on a hit's `uri` to inspect its fields, columns, or contents. To find a table by a column it contains, navigate the database with `read_resource` rather than searching.
+Search only looks at each entity's **name and description** (plus a table's display name) — **not** its column/field names, and **not** the SQL text of native queries. Collections match on **name only**. A document is the exception: its body is also matched by keyword, though not by meaning. So search by the concept's *title*, then use `read_resource` on a hit's `uri` to inspect its fields, columns, or contents. To find a table by a column it contains, navigate the database with `read_resource` rather than searching.
 
 ## Filtering & scoping
 
