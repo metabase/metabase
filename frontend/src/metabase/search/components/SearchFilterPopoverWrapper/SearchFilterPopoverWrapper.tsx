@@ -48,7 +48,10 @@ export const SearchFilterPopoverWrapper = ({
   return (
     <FocusTrap active>
       <Stack className={CS.overflowHidden} w="100%" gap={0} {...stackProps}>
-        {children}
+        {/* A flex column, so the user picker can shrink and keep its search box at the top */}
+        <Stack className={CS.overflowYAuto} gap={0}>
+          {children}
+        </Stack>
         <Box component="hr" className={S.divider} w="100%" />
         <Group justify="flex-end" align="center" px="sm" pb="sm">
           <SearchFilterApplyButton onApply={onApply} />
