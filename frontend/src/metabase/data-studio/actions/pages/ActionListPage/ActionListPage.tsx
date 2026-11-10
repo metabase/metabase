@@ -23,6 +23,7 @@ import { useNavigate } from "metabase/router";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import { ActionTemplateModal } from "../../components/ActionTemplateModal";
 import { ActionsTabs } from "../../components/ActionsTabs";
 import { ImplicitActionTablePickerModal } from "../../components/ImplicitActionTablePickerModal";
 import {
@@ -114,6 +115,10 @@ function ActionsCreateMenu() {
   const navigate = useNavigate();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
+  const [
+    isTemplatePickerOpened,
+    { open: openTemplatePicker, close: closeTemplatePicker },
+  ] = useDisclosure();
 
   const handleNewCollectionClick = useCallback(() => {
     dispatch(
@@ -161,6 +166,12 @@ function ActionsCreateMenu() {
           >
             {t`HTTP request`}
           </Menu.Item>
+          <Menu.Item
+            leftSection={<FixedSizeIcon name="copy" />}
+            onClick={openTemplatePicker}
+          >
+            {t`Template`}
+          </Menu.Item>
           <Menu.Divider />
           <Menu.Item
             leftSection={<FixedSizeIcon name="folder" />}
@@ -170,6 +181,9 @@ function ActionsCreateMenu() {
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
+      {isTemplatePickerOpened && (
+        <ActionTemplateModal onClose={closeTemplatePicker} />
+      )}
       {isPickerOpened && (
         <ImplicitActionTablePickerModal
           onChange={handleTableChange}

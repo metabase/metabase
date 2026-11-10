@@ -188,6 +188,33 @@ export interface UpdateActionSecretRequest {
   allowed_hosts?: string[];
 }
 
+export interface ActionSecretTemplate {
+  id: string;
+  name: string;
+  description: string;
+  secret_name: string;
+  allowed_hosts: string[];
+}
+
+export interface ActionTemplate {
+  id: string;
+  name: string;
+  description: string;
+  required_secrets: string[];
+  method: HttpActionMethod;
+  url: string;
+  query_params?: Record<string, HttpActionTemplate> | null;
+  headers?: Record<string, HttpActionTemplate> | null;
+  body?: Record<string, HttpActionBodyValue> | null;
+}
+
+export interface ActionTemplateCategory {
+  id: string;
+  name: string;
+  secrets: ActionSecretTemplate[];
+  actions: ActionTemplate[];
+}
+
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 
 export type ParametersForActionExecution = {

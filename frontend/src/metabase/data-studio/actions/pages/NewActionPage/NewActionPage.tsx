@@ -3,7 +3,10 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useGetTableQueryMetadataQuery } from "metabase/api";
+import {
+  useGetTableQueryMetadataQuery,
+  useListActionTemplateCategoriesQuery,
+} from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -21,6 +24,7 @@ import { type Location, useNavigate, useSearchParams } from "metabase/router";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
+  ActionTemplate,
   Database,
   ImplicitActionKind,
   TableId,
@@ -57,7 +61,17 @@ export function NewActionPage() {
         </Center>
       ),
     )
-    .with("http", () => <NewHttpActionPage />)
+    .with("http", () => {
+      const templateId = searchParams.get("template");
+      return templateId != null ? (
+        <NewHttpActionFromTemplatePage
+          key={templateId}
+          templateId={templateId}
+        />
+      ) : (
+        <NewHttpActionPage />
+      );
+    })
     .otherwise(() => <NewQueryActionPage />);
 }
 
@@ -263,10 +277,47 @@ function NewImplicitActionPage({ initialTableId }: NewImplicitActionPageProps) {
   );
 }
 
-function NewHttpActionPage() {
-  const initialRequest = useMemo(() => getHttpActionRequest(), []);
+type NewHttpActionFromTemplatePageProps = {
+  templateId: string;
+};
+
+function NewHttpActionFromTemplatePage({
+  templateId,
+}: NewHttpActionFromTemplatePageProps) {
+  const {
+    data: categories,
+    isLoading,
+    error,
+  } = useListActionTemplateCategoriesQuery();
+  const template = categories
+    ?.flatMap(({ actions }) => actions)
+    .find(({ id }) => id === templateId);
+
+  if (isLoading || error != null || template == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper
+          loading={isLoading}
+          error={error ?? t`Template not found.`}
+        />
+      </Center>
+    );
+  }
+
+  return <NewHttpActionPage template={template} />;
+}
+
+type NewHttpActionPageProps = {
+  template?: ActionTemplate;
+};
+
+function NewHttpActionPage({ template }: NewHttpActionPageProps) {
+  const initialRequest = useMemo(
+    () => getHttpActionRequest(template),
+    [template],
+  );
   const draft = useHttpActionDraft({ initialRequest });
-  const [name, setName] = useState("");
+  const [name, setName] = useState(template?.name ?? "");
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const navigate = useNavigate();

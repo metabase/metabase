@@ -24,14 +24,16 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { ActionSecret } from "metabase-types/api";
+import type { ActionSecret, ActionSecretTemplate } from "metabase-types/api";
 
 import { ActionSecretModal } from "../../components/ActionSecretModal";
+import { ActionSecretTemplateModal } from "../../components/ActionSecretTemplateModal";
 import { ActionsTabs } from "../../components/ActionsTabs";
 import { DeleteActionSecretModal } from "../../components/DeleteActionSecretModal";
 
 type ActionSecretModalState =
-  | { type: "create" }
+  | { type: "pick" }
+  | { type: "create"; template: ActionSecretTemplate | undefined }
   | { type: "edit"; secret: ActionSecret }
   | { type: "delete"; secret: ActionSecret };
 
@@ -118,7 +120,7 @@ export function SecretListPage() {
           <Button
             size="lg"
             leftSection={<Icon name="add" />}
-            onClick={() => setModal({ type: "create" })}
+            onClick={() => setModal({ type: "pick" })}
           >{t`New`}</Button>
         </Flex>
         <Flex direction="column" flex={1} mih={0}>
@@ -138,8 +140,17 @@ export function SecretListPage() {
           </Card>
         </Flex>
       </Stack>
+      {modal?.type === "pick" && (
+        <ActionSecretTemplateModal
+          onSelect={(template) => setModal({ type: "create", template })}
+          onClose={() => setModal(undefined)}
+        />
+      )}
       {modal?.type === "create" && (
-        <ActionSecretModal onClose={() => setModal(undefined)} />
+        <ActionSecretModal
+          template={modal.template}
+          onClose={() => setModal(undefined)}
+        />
       )}
       {modal?.type === "edit" && (
         <ActionSecretModal

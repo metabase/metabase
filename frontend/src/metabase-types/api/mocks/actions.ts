@@ -1,6 +1,9 @@
 import type {
   ActionFormSettings,
   ActionSecret,
+  ActionSecretTemplate,
+  ActionTemplate,
+  ActionTemplateCategory,
   CardId,
   FieldSettings,
   PublicWritebackAction,
@@ -144,6 +147,41 @@ export const createMockActionSecret = (
   creator_id: null,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
+  ...opts,
+});
+
+export const createMockActionSecretTemplate = (
+  opts?: Partial<ActionSecretTemplate>,
+): ActionSecretTemplate => ({
+  id: "github-token",
+  name: "GitHub token",
+  description: "A personal access token.",
+  secret_name: "github_token",
+  allowed_hosts: ["api.github.com"],
+  ...opts,
+});
+
+export const createMockActionTemplate = (
+  opts?: Partial<ActionTemplate>,
+): ActionTemplate => ({
+  id: "github-create-issue",
+  name: "Create an issue",
+  description: "Open an issue in a repository.",
+  required_secrets: ["github-token"],
+  method: "POST",
+  url: "https://api.github.com/repos/{{owner}}/{{repo}}/issues",
+  headers: { Authorization: "Bearer {{secrets.github_token}}" },
+  body: { title: "{{title}}" },
+  ...opts,
+});
+
+export const createMockActionTemplateCategory = (
+  opts?: Partial<ActionTemplateCategory>,
+): ActionTemplateCategory => ({
+  id: "github",
+  name: "GitHub",
+  secrets: [createMockActionSecretTemplate()],
+  actions: [createMockActionTemplate()],
   ...opts,
 });
 

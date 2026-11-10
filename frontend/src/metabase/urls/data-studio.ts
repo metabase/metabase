@@ -396,6 +396,10 @@ export function newDataStudioAction(type: WritebackActionType) {
   return `${dataStudioActions()}/new?type=${type}`;
 }
 
+export function newDataStudioActionFromTemplate(templateId: string) {
+  return `${newDataStudioAction("http")}&template=${encodeURIComponent(templateId)}`;
+}
+
 export function newDataStudioImplicitAction(tableId: TableId) {
   return `${newDataStudioAction("implicit")}&table=${tableId}`;
 }

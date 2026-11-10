@@ -32,7 +32,6 @@ import type {
   TemplateTag,
   TemplateTagType,
   WritebackAction,
-  WritebackHttpAction,
   WritebackParameter,
 } from "metabase-types/api";
 import { isHttpActionBody } from "metabase-types/guards";
@@ -437,8 +436,16 @@ function getTemplates(
   );
 }
 
+type HttpActionRequestSource = {
+  method: HttpActionMethod;
+  url: string;
+  query_params?: Record<string, HttpActionTemplate> | null;
+  headers?: Record<string, HttpActionTemplate> | null;
+  body?: Record<string, HttpActionBodyValue> | null;
+};
+
 export function getHttpActionRequest(
-  action?: WritebackHttpAction,
+  action?: HttpActionRequestSource,
 ): HttpActionRequest {
   return {
     method: action?.method ?? "POST",

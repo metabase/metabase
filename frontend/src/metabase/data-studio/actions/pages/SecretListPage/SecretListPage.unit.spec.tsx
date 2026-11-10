@@ -2,12 +2,16 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ReactNode } from "react";
 
-import { setupActionSecretsEndpoints } from "__support__/server-mocks";
+import {
+  setupActionSecretsEndpoints,
+  setupActionTemplateCategoriesEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { ActionSecret } from "metabase-types/api";
 import {
   createMockActionSecret,
+  createMockActionTemplateCategory,
   createMockUserInfo,
 } from "metabase-types/api/mocks";
 
@@ -76,6 +80,7 @@ type SetupOpts = {
 
 function setup({ secrets = [CRM_TOKEN, SLACK_URL] }: SetupOpts = {}) {
   setupActionSecretsEndpoints(secrets);
+  setupActionTemplateCategoriesEndpoint([createMockActionTemplateCategory()]);
   renderWithProviders(
     <Route path="/data-studio/actions/secrets" element={<SecretListPage />} />,
     { withRouter: true, initialRoute: "/data-studio/actions/secrets" },
@@ -90,7 +95,34 @@ async function getRequestBody(name: string) {
   return body;
 }
 
+async function openNewSecretForm(templateName: string) {
+  await userEvent.click(await screen.findByRole("button", { name: /New/ }));
+  if (templateName !== "Custom secret") {
+    await userEvent.click(await screen.findByRole("tab", { name: "GitHub" }));
+  }
+  await userEvent.click(await screen.findByText(templateName));
+}
+
 describe("SecretListPage", () => {
+  it("creates secret from template with its name and allowed hosts", async () => {
+    setup();
+
+    await openNewSecretForm("GitHub token");
+    const dialog = await screen.findByRole("dialog", { name: "New secret" });
+    expect(within(dialog).getByLabelText(/Name/)).toHaveValue("github_token");
+    expect(within(dialog).getByLabelText(/Allowed hosts/)).toHaveValue(
+      "api.github.com",
+    );
+    await userEvent.type(within(dialog).getByLabelText(/Value/), "abc");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(await getRequestBody("action-secret-post")).toEqual({
+      name: "github_token",
+      value: "abc",
+      allowed_hosts: ["api.github.com"],
+    });
+  });
+
   it("lists secrets with their creators and filters them by search", async () => {
     setup();
 
@@ -113,7 +145,7 @@ describe("SecretListPage", () => {
   it("creates secret with one allowed host per line", async () => {
     setup();
 
-    await userEvent.click(await screen.findByRole("button", { name: /New/ }));
+    await openNewSecretForm("Custom secret");
     const dialog = await screen.findByRole("dialog", { name: "New secret" });
     await userEvent.type(within(dialog).getByLabelText(/Name/), "stripe_key");
     await userEvent.type(within(dialog).getByLabelText(/Value/), "abc");
@@ -133,7 +165,7 @@ describe("SecretListPage", () => {
   it("does not create secret without allowed host or with invalid name", async () => {
     setup();
 
-    await userEvent.click(await screen.findByRole("button", { name: /New/ }));
+    await openNewSecretForm("Custom secret");
     const dialog = await screen.findByRole("dialog", { name: "New secret" });
     await userEvent.type(within(dialog).getByLabelText(/Name/), "not.valid");
     await userEvent.type(within(dialog).getByLabelText(/Value/), "abc");

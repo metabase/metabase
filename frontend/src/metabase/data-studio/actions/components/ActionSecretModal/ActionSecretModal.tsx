@@ -17,7 +17,7 @@ import {
 } from "metabase/forms";
 import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { ActionSecret } from "metabase-types/api";
+import type { ActionSecret, ActionSecretTemplate } from "metabase-types/api";
 
 import {
   ACTION_NAME_MAX_LENGTH,
@@ -54,19 +54,28 @@ type ActionSecretValues = Yup.InferType<ReturnType<typeof getValidationSchema>>;
 
 type ActionSecretModalProps = {
   secret?: ActionSecret;
+  template?: ActionSecretTemplate;
   onClose: () => void;
 };
 
-export function ActionSecretModal({ secret, onClose }: ActionSecretModalProps) {
+export function ActionSecretModal({
+  secret,
+  template,
+  onClose,
+}: ActionSecretModalProps) {
   const [createSecret] = useCreateActionSecretMutation();
   const [updateSecret] = useUpdateActionSecretMutation();
   const { sendSuccessToast } = useMetadataToasts();
   const isNew = secret == null;
   const validationSchema = useMemo(() => getValidationSchema(isNew), [isNew]);
   const initialValues: ActionSecretValues = {
-    name: secret?.name ?? "",
+    name: secret?.name ?? template?.secret_name ?? "",
     value: "",
-    allowed_hosts: secret?.allowed_hosts.join("\n") ?? "",
+    allowed_hosts: (
+      secret?.allowed_hosts ??
+      template?.allowed_hosts ??
+      []
+    ).join("\n"),
   };
 
   const handleSubmit = async ({

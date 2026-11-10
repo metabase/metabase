@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupActionTemplateCategoriesEndpoint,
   setupActionsEndpoints,
   setupCollectionsEndpoints,
   setupDatabaseListEndpoint,
@@ -13,6 +14,7 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
 import type { Table } from "metabase-types/api";
 import {
+  createMockActionTemplateCategory,
   createMockCollection,
   createMockDatabase,
   createMockField,
@@ -46,12 +48,14 @@ const TABLE = createMockTable({
 
 type SetupOpts = {
   type?: "implicit" | "http";
+  templateId?: string;
   table?: Table;
   tableError?: string;
 };
 
 function setup({
   type = "implicit",
+  templateId,
   table = TABLE,
   tableError,
 }: SetupOpts = {}) {
@@ -61,6 +65,7 @@ function setup({
     setupTableQueryMetadataEndpoint(table);
   }
   setupDatabaseListEndpoint([DATABASE]);
+  setupActionTemplateCategoriesEndpoint([createMockActionTemplateCategory()]);
   setupActionsEndpoints([]);
   setupCollectionsEndpoints({
     collections: [],
@@ -79,7 +84,7 @@ function setup({
       withRouter: true,
       initialRoute:
         type === "http"
-          ? "/data-studio/actions/new?type=http"
+          ? `/data-studio/actions/new?type=http${templateId != null ? `&template=${templateId}` : ""}`
           : `/data-studio/actions/new?type=implicit&table=${table.id}`,
     },
   );
@@ -189,5 +194,23 @@ describe("NewActionPage", () => {
       await screen.findByText("The body needs to be a JSON object."),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("starts HTTP action from template", async () => {
+    setup({ type: "http", templateId: "github-create-issue" });
+
+    expect(await screen.findByRole("textbox", { name: "URL" })).toHaveValue(
+      "https://api.github.com/repos/{{owner}}/{{repo}}/issues",
+    );
+    expect(screen.getByDisplayValue("Create an issue")).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("Bearer {{secrets.github_token}}"),
+    ).toBeInTheDocument();
+  });
+
+  it("says when template does not exist", async () => {
+    setup({ type: "http", templateId: "missing" });
+
+    expect(await screen.findByText("Template not found.")).toBeInTheDocument();
   });
 });
