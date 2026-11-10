@@ -132,11 +132,14 @@
    `schemas`, a map of database id to schema, then turn `workspaces-enabled` on. Clears
    the schema, and the remap rows, of every database not in `schemas`. One transaction,
    flag last, so no transform sees workspace mode with a schema missing. Throws a 400
-   for an unknown database id, on a parent, or when `MB_WORKSPACES_ENABLED=false`."
+   for an unknown database id, on a parent, or when `MB_WORKSPACES_ENABLED=false`.
+   Trims each schema, so a repeat call with `\" ws \"` matches the stored `\"ws\"`
+   and keeps the remap rows."
   [schemas :- [:map-of ::lib.schema.id/database ms/NonBlankString]]
   (check-not-set-by-env-var! true)
   (t2/with-transaction [_conn]
-    (let [databases (ws.db/all-databases)]
+    (let [schemas   (update-vals schemas str/trim)
+          databases (ws.db/all-databases)]
       (when-let [unknown (seq (remove (set (map :id databases)) (keys schemas)))]
         (throw (ex-info (str "Unknown database ids: " (pr-str (vec unknown)))
                         {:status-code 400 :database_ids (vec unknown)})))
