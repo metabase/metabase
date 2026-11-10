@@ -1,4 +1,9 @@
-import { type ChangeEvent, type KeyboardEvent, useCallback } from "react";
+import {
+  type ChangeEvent,
+  type KeyboardEvent,
+  type Ref,
+  useCallback,
+} from "react";
 
 import { TextInput } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -12,12 +17,14 @@ export function NameInput({
   onSubmit,
   expressionMode,
   readOnly,
+  inputRef,
 }: {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   expressionMode: Lib.ExpressionMode;
   readOnly?: boolean;
+  inputRef?: Ref<HTMLInputElement>;
 }) {
   const handleChange = useCallback(
     (evt: ChangeEvent<HTMLInputElement>) => {
@@ -40,6 +47,7 @@ export function NameInput({
 
   return (
     <TextInput
+      ref={inputRef}
       id="expression-name"
       data-testid="expression-name"
       type="text"

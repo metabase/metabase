@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import type { ExpressionError } from "metabase/querying/expressions";
-import { Box, Button, Flex } from "metabase/ui";
+import { Box, Button, Flex, KeyboardShortcut } from "metabase/ui";
+import { isMac } from "metabase/utils/browser";
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 
@@ -19,6 +20,7 @@ import { Layout, LayoutFooter, LayoutHeader } from "../Layout";
 import { NameInput } from "../NameInput";
 
 const WIDGET_WIDTH = 472;
+const SUBMIT_ARIA_SHORTCUT = isMac() ? "Meta+Enter" : "Control+Enter";
 
 export type ExpressionWidgetProps = {
   expressionMode?: Lib.ExpressionMode;
@@ -94,6 +96,24 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
   const handleSubmit = useCallback(() => {
     handleCommit(clause);
   }, [clause, handleCommit]);
+
+  // Cmd/Ctrl+Enter in the editor. Errors already show in the editor; a missing
+  // name sends you to the name field, where Enter saves.
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const handleEditorSubmit = useCallback(
+    (clause: Lib.ExpressionClause | null, error: ExpressionError | null) => {
+      if (error || clause == null) {
+        return;
+      }
+      if (!isValidName) {
+        nameInputRef.current?.focus();
+        return;
+      }
+      onChangeClause?.(name, clause);
+      onClose?.();
+    },
+    [name, isValidName, onChangeClause, onClose],
+  );
 
   const handleExpressionChange = useCallback(
     (
@@ -216,6 +236,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         // The inline editor offers these in its side panel instead
         shortcuts={isInline ? undefined : shortcuts}
         onSuggestName={handleSuggestName}
+        onSubmit={readOnly ? undefined : handleEditorSubmit}
         error={error}
         hasHeader={Boolean(header)}
         inline={isInline}
@@ -231,6 +252,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
               value={name}
               onChange={setName}
               onSubmit={handleSubmit}
+              inputRef={nameInputRef}
               expressionMode={expressionMode}
               readOnly={readOnly}
             />
@@ -243,7 +265,20 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
                 color="neutral"
               >{t`Cancel`}</Button>
             )}
-            <Button variant="filled" disabled={!isValid} onClick={handleSubmit}>
+            <Button
+              variant="filled"
+              disabled={!isValid}
+              onClick={handleSubmit}
+              aria-keyshortcuts={readOnly ? undefined : SUBMIT_ARIA_SHORTCUT}
+              rightSection={
+                !readOnly && (
+                  // Announced through aria-keyshortcuts instead
+                  <span aria-hidden>
+                    <KeyboardShortcut shortcut="$mod+Enter" />
+                  </span>
+                )
+              }
+            >
               {(initialName || initialClause) && !readOnly
                 ? t`Update`
                 : t`Done`}

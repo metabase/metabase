@@ -1,9 +1,10 @@
-import { EditorSelection, type EditorState } from "@codemirror/state";
+import { EditorSelection, type EditorState, Prec } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 import { useDisclosure } from "@mantine/hooks";
 import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMount } from "react-use";
+import { useLatest, useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -65,12 +66,24 @@ export type EditorProps = {
   initialExpressionClause?: Lib.DefinedClauseName | null;
   /** Called with a name for an expression a side panel tool built. */
   onSuggestName?: (name: string) => void;
+  /** Cmd/Ctrl+Enter: called with the expression as typed, checked right away. */
+  onSubmit?: (
+    clause: Lib.ExpressionClause | null,
+    error: ExpressionError | null,
+  ) => void;
 
   onChange: (
     clause: Lib.ExpressionClause | null,
     error: ExpressionError | null,
   ) => void;
   shortcuts?: Shortcut[];
+};
+
+// The notebook editor has no line numbers or code folding.
+const INLINE_BASIC_SETUP = {
+  lineNumbers: false,
+  foldGutter: false,
+  highlightActiveLineGutter: false,
 };
 
 const EDITOR_WIDGET_HEIGHT = 220;
@@ -94,6 +107,7 @@ export function Editor(props: EditorProps) {
     onCloseEditor,
     initialExpressionClause,
     onSuggestName,
+    onSubmit,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -112,6 +126,7 @@ export function Editor(props: EditorProps) {
     formatExpression,
     isFormatting,
     isValidated,
+    validateNow,
   } = useExpression({
     ...props,
     database,
@@ -136,6 +151,31 @@ export function Editor(props: EditorProps) {
     ),
   });
 
+  // Cmd/Ctrl+Enter submits what's typed now, without waiting for the
+  // check that runs after typing pauses.
+  const latestSubmit = useLatest((source: string) => {
+    if (!onSubmit || readOnly || isFormatting) {
+      return;
+    }
+    const { clause, error } = validateNow(source);
+    onSubmit(clause, error);
+  });
+  const submitShortcut = useMemo(
+    () =>
+      Prec.highest(
+        keymap.of([
+          {
+            key: "Mod-Enter",
+            run: (view) => {
+              latestSubmit.current(view.state.doc.toString());
+              return true;
+            },
+          },
+        ]),
+      ),
+    [latestSubmit],
+  );
+
   const extensions = useExtensions({
     expressionMode,
     query,
@@ -143,7 +183,7 @@ export function Editor(props: EditorProps) {
     availableColumns,
     availableMetrics,
     database,
-    extensions: [customTooltip],
+    extensions: [customTooltip, submitShortcut],
   });
 
   const handleFunctionBrowserClauseClick = useCallback((name: string) => {
@@ -205,19 +245,47 @@ export function Editor(props: EditorProps) {
     setIsSnippetActive(hasActiveSnippet(update.state));
   }, []);
 
+  // CodeMirror reloads its settings whenever these handlers change, and a
+  // reload ends a template being filled in. Keep them stable, and read the
+  // latest values when they run.
+  const latest = useLatest({
+    canFormat: error === null && isValidated && !isSnippetActive,
+    formatExpression,
+    onSourceChange,
+  });
+  const handleFormat = useCallback(() => {
+    if (latest.current.canFormat) {
+      latest.current.formatExpression();
+    }
+  }, [latest]);
+  const handleSourceChange = useCallback(
+    (value: string) => latest.current.onSourceChange(value),
+    [latest],
+  );
+
   return (
     <>
-      <LayoutMain className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
+      <LayoutMain
+        className={cx(S.wrapper, {
+          [S.formatting]: isFormatting,
+          [S.inline]: inline,
+        })}
+      >
         <CodeMirror
           id={id}
           ref={ref}
           data-testid="custom-expression-query-editor"
-          placeholder={t`Type your expression, press '[' for columns…`}
-          className={S.editor}
+          placeholder={
+            inline
+              ? t`Start typing or ask AI for help...`
+              : t`Type your expression, press '[' for columns…`
+          }
+          className={cx(S.editor, { [S.inline]: inline })}
+          basicSetup={inline ? INLINE_BASIC_SETUP : undefined}
           extensions={extensions}
           readOnly={readOnly || isFormatting}
           value={source}
-          onChange={onSourceChange}
+          onChange={handleSourceChange}
           onBlur={onBlur}
           height="100%"
           width="100%"
@@ -227,11 +295,7 @@ export function Editor(props: EditorProps) {
           onUpdate={handleUpdate}
           autoCorrect="off"
           tabIndex={0}
-          onFormat={
-            error === null && isValidated && !isSnippetActive
-              ? formatExpression
-              : undefined
-          }
+          onFormat={handleFormat}
         />
         <Errors error={isSnippetActive ? null : error} />
 
@@ -367,6 +431,43 @@ function useExpression({
     [handleChange],
   );
 
+  const compile = useCallback(
+    (source: string) =>
+      diagnoseAndCompile({
+        source,
+        expressionMode,
+        query,
+        stageIndex,
+        expressionIndex,
+        database,
+        availableColumns,
+        availableMetrics,
+      }),
+    [
+      query,
+      stageIndex,
+      expressionMode,
+      expressionIndex,
+      database,
+      availableColumns,
+      availableMetrics,
+    ],
+  );
+
+  const validateNow = useCallback(
+    (source: string) => {
+      debouncedOnChange.cancel();
+      if (source.trim() === "") {
+        handleChange(null, null);
+        return { clause: null, error: null };
+      }
+      const { error, expressionClause: clause } = compile(source);
+      handleChange(clause, error);
+      return { clause, error };
+    },
+    [compile, debouncedOnChange, handleChange],
+  );
+
   const handleUpdate = useCallback(
     (source: string, immediate: boolean = false) => {
       setSource(source);
@@ -378,16 +479,7 @@ function useExpression({
         return;
       }
 
-      const { error, expressionClause: clause } = diagnoseAndCompile({
-        source,
-        expressionMode,
-        query,
-        stageIndex,
-        expressionIndex,
-        database,
-        availableColumns,
-        availableMetrics,
-      });
+      const { error, expressionClause: clause } = compile(source);
       if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
         handleChange(clause, error);
@@ -395,17 +487,7 @@ function useExpression({
         debouncedOnChange(clause, error);
       }
     },
-    [
-      query,
-      stageIndex,
-      expressionMode,
-      expressionIndex,
-      database,
-      handleChange,
-      debouncedOnChange,
-      availableColumns,
-      availableMetrics,
-    ],
+    [compile, handleChange, debouncedOnChange],
   );
 
   useMount(() => {
@@ -477,6 +559,7 @@ function useExpression({
     formatExpression: handleFormatExpression,
     isFormatting,
     isValidated,
+    validateNow,
   };
 }
 

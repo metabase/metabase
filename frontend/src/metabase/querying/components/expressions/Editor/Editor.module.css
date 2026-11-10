@@ -37,6 +37,34 @@
   }
 }
 
+/* The editor in the notebook: the area you type in */
+.wrapper.inline {
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+/* The code in the notebook editor. Doubled to beat CodeMirror's own theme,
+   which sets 12px text. */
+.editor.inline.inline {
+  /* No room kept for the toolbar: the 48px padding below leaves enough */
+  margin-right: 0;
+
+  :global(.cm-editor),
+  :global(.cm-content) {
+    font-size: 13.5px;
+    line-height: 1.22;
+  }
+
+  /* 48px around the code, like Figma. On the content rather than the editor,
+     so clicking anywhere in that space still puts the cursor in. */
+  :global(.cm-content) {
+    padding: 48px;
+  }
+
+  :global(.cm-line) {
+    padding: 0;
+  }
+}
+
 /* While a template is being filled in. Doubled to beat the shared CodeMirror styles. */
 .templateActive.templateActive {
   /* The blanks. An underline, not a background: a background would hide the
