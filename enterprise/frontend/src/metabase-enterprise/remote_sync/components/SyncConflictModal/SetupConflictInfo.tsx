@@ -11,7 +11,7 @@ export const SetupConflictInfo = () => {
   return (
     <>
       <Text component="p">
-        {t`We detected your instance has unsynced items that will be overwritten by setting up Remote Sync.`}
+        {t`We detected your instance has unsynced items that will be overwritten by setting up Git integration.`}
       </Text>
       <Text component="p">
         {t`What will be overwritten: `}

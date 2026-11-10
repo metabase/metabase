@@ -74,7 +74,7 @@ export function TransformTestList({ tests, readOnly }: TransformTestListProps) {
                 label={t`No tests yet`}
                 description={jt`Create tests with the ${(
                   <Code key="mb">{MB_CLI_NAME}</Code>
-                )} CLI or with remote sync.`}
+                )} CLI or with Git integration.`}
               />
             )
           }

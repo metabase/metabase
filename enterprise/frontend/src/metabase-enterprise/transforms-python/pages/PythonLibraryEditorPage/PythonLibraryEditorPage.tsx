@@ -109,7 +109,7 @@ function PythonLibraryEditor({ path }: PythonLibraryEditorProps) {
               size="compact"
               className={S.flexStart}
               color="warning"
-              title={t`The Python library is not editable because Remote Sync is in read-only mode.`}
+              title={t`The Python library is not editable because Git integration is in read-only mode.`}
               w="auto"
             />
           )}

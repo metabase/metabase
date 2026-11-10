@@ -17,8 +17,8 @@ export const useDisableRemoteSync = () => {
 
   const handleDisable = useCallback(async () => {
     showDisableConfirmation({
-      title: t`Disable Remote Sync?`,
-      message: t`This will clear all remote sync settings. Any changes made to the Library collection after disabling can be overwritten if you enable sync again.`,
+      title: t`Disable Git integration?`,
+      message: t`This will clear all Git integration settings. Any changes made to the Library collection after disabling can be overwritten if you set up Git integration again.`,
       confirmButtonText: t`Disable`,
       confirmButtonProps: {
         variant: "filled",
@@ -28,11 +28,11 @@ export const useDisableRemoteSync = () => {
         try {
           await updateRemoteSyncSettings({ [URL_KEY]: "" }).unwrap();
           trackRemoteSyncDeactivated();
-          sendToast({ message: t`Remote Sync disabled`, icon: "check" });
+          sendToast({ message: t`Git integration disabled`, icon: "check" });
         } catch (error) {
           console.error(error);
           sendToast({
-            message: t`Failed to disable Remote Sync`,
+            message: t`Failed to disable Git integration`,
             variant: "negative",
           });
         }

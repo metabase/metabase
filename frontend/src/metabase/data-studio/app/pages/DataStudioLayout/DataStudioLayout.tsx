@@ -216,7 +216,7 @@ export function DataStudioLayout() {
         </>
       ) : (
         <AreaTab
-          label={t`Remote sync`}
+          label={t`Git integration`}
           icon="git_branch"
           to={Urls.dataStudioGitSync()}
           isSelected={currentTab === "git-sync"}

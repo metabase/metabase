@@ -82,7 +82,7 @@ export const SegmentForm = ({
             color="warning"
             display="inline-flex"
             mb="lg"
-            title={t`This segment can't be edited because this table is published and Remote Sync is in read-only mode.`}
+            title={t`This segment can't be edited because this table is published and Git integration is in read-only mode.`}
             w="auto"
           />
         )}

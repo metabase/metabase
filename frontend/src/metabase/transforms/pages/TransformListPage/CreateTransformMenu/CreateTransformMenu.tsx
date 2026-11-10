@@ -49,7 +49,7 @@ export const CreateTransformMenu = () => {
   if (remoteSyncReadOnly) {
     return (
       <Tooltip
-        label={t`Transforms can't be created when Remote Sync is in read-only mode`}
+        label={t`Transforms can't be created when Git integration is in read-only mode`}
       >
         <Button
           aria-label={t`Create a transform`}

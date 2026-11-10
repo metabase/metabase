@@ -20,20 +20,20 @@ export const GitSyncSetupMenuItem = (props: GitSyncSetupMenuItemProps) => {
   if (isVisible) {
     return (
       <Tooltip
-        label={t`Set up remote sync`}
+        label={t`Set up Git integration`}
         position="right"
         openDelay={TOOLTIP_OPEN_DELAY}
         disabled={isNavbarOpened}
       >
         <UnstyledButton
-          aria-label={t`Set up remote sync`}
+          aria-label={t`Set up Git integration`}
           bdrs="sm"
           className={S.tab}
           onClick={onClick}
           p="0.5rem"
         >
           <FixedSizeIcon name="git_branch" className={S.icon} />
-          {isNavbarOpened && <Text lh="sm">{t`Set up remote sync`}</Text>}
+          {isNavbarOpened && <Text lh="sm">{t`Set up Git integration`}</Text>}
         </UnstyledButton>
       </Tooltip>
     );

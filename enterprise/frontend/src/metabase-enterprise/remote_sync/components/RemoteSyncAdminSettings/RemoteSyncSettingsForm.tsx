@@ -141,7 +141,7 @@ export const RemoteSyncSettingsForm = ({
                     mr="auto"
                     onClick={handleDisable}
                   >
-                    {t`Disable remote sync`}
+                    {t`Disable Git integration`}
                   </Button>
                 )}
                 <FormErrorMessage />
@@ -155,7 +155,7 @@ export const RemoteSyncSettingsForm = ({
                   label={
                     isRemoteSyncEnabled
                       ? t`Save changes`
-                      : t`Set up remote sync`
+                      : t`Set up Git integration`
                   }
                   variant="filled"
                   disabled={isRemoteSyncEnabled ? !dirty : !values?.[URL_KEY]}

@@ -5,7 +5,7 @@ import { RemoteSyncUpsellPage } from "metabase/data-studio/upsells/pages/RemoteS
 import { usePageTitle } from "metabase/hooks/use-page-title";
 
 export function GitSyncSectionLayout() {
-  usePageTitle(t`Git sync`);
+  usePageTitle(t`Git integration`);
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
 
   if (!hasRemoteSyncFeature) {

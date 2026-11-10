@@ -6,7 +6,7 @@ export function DataAppListEmptyState() {
   return (
     <FeatureEmptyState
       title={t`Apps built on your semantic layer`}
-      description={t`Use the mb CLI to create a data app. Deploy it to your production instance with Remote Sync.`}
+      description={t`Use the mb CLI to create a data app. Deploy it to your production instance with Git integration.`}
       actions={null}
       features={[
         {

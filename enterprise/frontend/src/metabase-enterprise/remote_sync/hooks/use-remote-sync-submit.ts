@@ -161,8 +161,8 @@ export const useRemoteSyncSubmit = ({
       if (!isRemoteSyncEnabled) {
         showConfirmation({
           title: t`Replace this instance's Library and transforms?`,
-          message: t`Setting up remote sync will replace this instance's Library and transforms with the contents of the repository. Any Library content or transforms that aren't in the repository will be removed.`,
-          confirmButtonText: t`Set up remote sync`,
+          message: t`Setting up Git integration will replace this instance's Library and transforms with the contents of the repository. Any Library content or transforms that aren't in the repository will be removed.`,
+          confirmButtonText: t`Set up Git integration`,
           confirmButtonProps: {
             variant: "filled",
             color: "negative",

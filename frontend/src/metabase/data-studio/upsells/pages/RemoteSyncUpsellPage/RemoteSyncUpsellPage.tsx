@@ -27,7 +27,7 @@ export function RemoteSyncUpsellPage() {
     <DottedBackground px="3.5rem" pb="2rem">
       <PaneHeader
         breadcrumbs={
-          <DataStudioBreadcrumbs>{t`Remote sync`}</DataStudioBreadcrumbs>
+          <DataStudioBreadcrumbs>{t`Git integration`}</DataStudioBreadcrumbs>
         }
       />
       <Stack align="center" p={40}>

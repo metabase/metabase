@@ -17,7 +17,7 @@ export const RemoteSyncAdminSettings = () => {
 
   return (
     <SettingsPageWrapper
-      title={t`Remote sync`}
+      title={t`Git integration`}
       description={jt`Keep your content and transforms safely backed up in Git. Check out our ${(
         <ExternalLink key="link" href={docsUrl}>
           {t`setup guide`}

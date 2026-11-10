@@ -4,6 +4,10 @@ import { SettingsNavItem } from "metabase/admin/settings/components/SettingsNav"
 
 export const LibraryNav = () => {
   return (
-    <SettingsNavItem path="remote-sync" label={t`Remote sync`} icon="sync" />
+    <SettingsNavItem
+      path="remote-sync"
+      label={t`Git integration`}
+      icon="sync"
+    />
   );
 };

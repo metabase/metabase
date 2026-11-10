@@ -112,7 +112,7 @@ export const IncrementalTransformSettings = ({
     if (remoteSyncReadOnly) {
       return (
         <Tooltip
-          label={t`You can't edit this setting since Remote Sync is currently in read-only mode.`}
+          label={t`You can't edit this setting since Git integration is currently in read-only mode.`}
           withArrow={false}
         >
           <span>{switchContent}</span>

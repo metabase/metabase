@@ -128,7 +128,7 @@ export function EditSnippetPage() {
             title={
               snippet?.archived
                 ? t`This snippet is archived and cannot be edited. Unarchive it to edit.`
-                : t`This snippet is not editable because Remote Sync is in read-only mode.`
+                : t`This snippet is not editable because Git integration is in read-only mode.`
             }
             w="auto"
           />
