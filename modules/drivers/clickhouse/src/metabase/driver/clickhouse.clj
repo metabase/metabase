@@ -713,9 +713,13 @@
     (catch SQLException e
       (when-not (already-exists-error-codes (.getErrorCode e))
         (throw e))
-      (doseq [^String undo undo-sqls]
-        (.execute stmt undo))
-      (throw (workspace-object-exists-exception kind object-name e)))))
+      (let [refusal (workspace-object-exists-exception kind object-name e)]
+        ;; a failed undo must still surface as the 409 (cleanup? false): otherwise the caller's
+        ;; compensating destroy would drop the object init refused to adopt
+        (doseq [^String undo undo-sqls]
+          (try (.execute stmt undo)
+               (catch Throwable undo-error (.addSuppressed refusal undo-error))))
+        (throw refusal)))))
 
 (defn- init-workspace-sqls
   "The statements that create the workspace database and user, and grant the user what it needs. Plain CREATEs: a
