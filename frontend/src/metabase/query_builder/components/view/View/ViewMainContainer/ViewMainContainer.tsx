@@ -12,6 +12,8 @@ import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
+import { useDispatch } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
 import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -91,6 +93,7 @@ interface ViewMainContainerProps {
 }
 
 export const ViewMainContainer = (props: ViewMainContainerProps) => {
+  const dispatch = useDispatch();
   const {
     queryBuilderMode,
     question,
@@ -112,8 +115,10 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     question,
     readOnly: props.readOnly,
     isActive: queryBuilderMode === "view",
-    onQuestionChange: (nextQuestion) =>
-      updateQuestion(nextQuestion, { run: true }),
+    onQuestionChange: (nextQuestion) => {
+      dispatch(setUIControls({ scrollToLastColumn: true }));
+      updateQuestion(nextQuestion, { run: true });
+    },
   });
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const onAddColumn = columnFormula.open;
@@ -161,6 +166,11 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         <QueryVisualization
           {...props}
           {...visualizationResultProps}
+          scrollToLastColumn={
+            visualizationResultProps.scrollToLastColumn &&
+            !props.isRunning &&
+            !props.isResultDirty
+          }
           noHeader
           className={CS.spread}
           mode={clickActionMode}
