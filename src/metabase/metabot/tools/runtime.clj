@@ -29,6 +29,7 @@
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -157,7 +158,7 @@
   (reduce (fn [text k]
             (if (int? k)
               (str text "[" k "]")
-              (str text (when (seq text) ".") (name k))))
+              (str text (when (seq text) ".") (u/qualified-name k))))
           ""
           in))
 

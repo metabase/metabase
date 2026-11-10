@@ -1041,6 +1041,14 @@
       (is (re-find #"`ops\[3\]` " error))
       (is (not (re-find #"`ops` |`ops\[0\]`" error))))))
 
+(deftest ^:parallel qualified-tool-argument-validation-test
+  (testing "a qualified key is named with its namespace, so the model can find the key it sent"
+    (is (= (str "Invalid tool arguments: `destination.lib/type` is not a supported argument."
+                " `lib/type` is not a supported argument.")
+           (validation-error [:map {:closed true}
+                              [:destination [:map {:closed true} [:type :string]]]]
+                             {:destination {:type "x" :lib/type "y"} :lib/type "z"})))))
+
 (deftest ^:parallel tool-unparseable-arguments-test
   (testing "arguments the provider streamed as invalid JSON are reported as such"
     (let [tools  (metabot.tools/->entries
