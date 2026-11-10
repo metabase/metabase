@@ -960,3 +960,12 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+;;; ------------------------------------------------ Actions support ------------------------------------------------
+
+;; Issue #71693: Databricks should support Actions (implicit row create/update/delete and custom query actions).
+;; The driver inherits the generic sql-jdbc action implementations; it just needs to declare the features.
+(deftest ^:synchronized databricks-supports-actions-test
+  (doseq [feature [:actions :actions/custom :actions/data-editing]]
+    (testing (format "driver feature %s" (pr-str feature))
+      (is (driver/database-supports? :databricks feature nil)))))
