@@ -106,6 +106,8 @@
 
 ;; Named here because no one module can see both sides: the web server's requests run queries on warehouse pools and
 ;; record traces.
+;; For now the explicit steps in [[destroy!]] stop the server and tracing before this halt runs, so these edges take
+;; effect as those steps move into the halt.
 (def ^:private system-dependencies
   "Component key -> the keys of the components it uses, each of which [[global-system/halt!]] stops after it."
   {:metabase.server.instance/server #{:metabase.driver.sql-jdbc.connection/pools
