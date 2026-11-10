@@ -25,6 +25,7 @@ import {
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
   createMockDashboardTab,
+  createMockDataset,
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
@@ -625,6 +626,120 @@ describe("fetchDashboardCardData", () => {
     // Before the fix, the batch cancellation loop would cancel Tab 1's
     // in-flight request, causing a re-execution on return.
     expect(tab1QueryCount).toBe(1);
+  });
+});
+
+function setupDashboardWithCards({
+  dashboardId,
+  cardCount,
+  loadingIds = [],
+}: {
+  dashboardId: number;
+  cardCount: number;
+  loadingIds?: number[];
+}) {
+  const dashcards = Array.from({ length: cardCount }, (_, i) =>
+    createMockDashboardCard({
+      id: i + 1,
+      card_id: i + 1,
+      dashboard_id: dashboardId,
+      card: createMockCard({ id: i + 1 }),
+    }),
+  );
+  const dashboard = createMockDashboard({ id: dashboardId, dashcards });
+
+  const store = setup({
+    dashboard: createMockDashboardState({
+      dashboardId,
+      dashboards: {
+        [dashboardId]: createMockStoreDashboard({
+          ...dashboard,
+          dashcards: dashcards.map((dashcard) => dashcard.id),
+        }),
+      },
+      dashcards: Object.fromEntries(
+        dashcards.map((dashcard) => [dashcard.id, dashcard]),
+      ),
+      loadingDashCards: {
+        loadingIds,
+        loadingStatus: loadingIds.length > 0 ? "running" : "idle",
+        startTime: null,
+        endTime: null,
+      },
+    }),
+  });
+
+  const getQueryUrl = (dashcardId: number) =>
+    `path:/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${dashcardId}/query`;
+
+  return { store, dashcards, getQueryUrl };
+}
+
+describe("fetchDashboardCardData > dashcard queries", () => {
+  it("should pass the same dashboard_load_id to every query to enable metadata cache sharing", async () => {
+    const { store, dashcards, getQueryUrl } = setupDashboardWithCards({
+      dashboardId: 400,
+      cardCount: 2,
+    });
+    dashcards.forEach((dashcard) =>
+      fetchMock.post(getQueryUrl(dashcard.id), createMockDataset()),
+    );
+
+    await store.dispatch(fetchDashboardCardData());
+
+    const loadIds = dashcards.map((dashcard) => {
+      const body: unknown = JSON.parse(
+        String(
+          fetchMock.callHistory.lastCall(getQueryUrl(dashcard.id))?.options
+            .body,
+        ),
+      );
+      return body != null &&
+        typeof body === "object" &&
+        "dashboard_load_id" in body
+        ? body.dashboard_load_id
+        : undefined;
+    });
+
+    expect(loadIds[0]).toHaveLength(36); // uuid length
+    expect(loadIds[1]).toBe(loadIds[0]);
+  });
+
+  it("should not refetch cards that are still loading when refreshing (metabase#12578, metabase#62170)", async () => {
+    const { store, dashcards, getQueryUrl } = setupDashboardWithCards({
+      dashboardId: 500,
+      cardCount: 2,
+      loadingIds: [1],
+    });
+    dashcards.forEach((dashcard) =>
+      fetchMock.post(getQueryUrl(dashcard.id), createMockDataset()),
+    );
+
+    await store.dispatch(
+      fetchDashboardCardData({ isRefreshing: true, reload: true }),
+    );
+
+    expect(fetchMock.callHistory.calls(getQueryUrl(1))).toHaveLength(0);
+    expect(fetchMock.callHistory.calls(getQueryUrl(2))).toHaveLength(1);
+  });
+
+  it("should load the other cards when some cards are broken (metabase#13736)", async () => {
+    const { store, getQueryUrl } = setupDashboardWithCards({
+      dashboardId: 600,
+      cardCount: 2,
+    });
+    fetchMock.post(getQueryUrl(1), {
+      status: 500,
+      body: { cause: "some error", data: {}, message: "some error" },
+    });
+    const successfulDataset = createMockDataset();
+    fetchMock.post(getQueryUrl(2), successfulDataset);
+
+    await store.dispatch(fetchDashboardCardData());
+
+    const { dashcardData } = store.getState().dashboard;
+    expect(dashcardData[1][1]).toHaveProperty("error");
+    expect(dashcardData[2][2]).toEqual(successfulDataset);
   });
 });
 
