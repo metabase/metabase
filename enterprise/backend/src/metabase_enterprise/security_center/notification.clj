@@ -183,8 +183,8 @@
              ;; a partial delivery counts as notified, so the next sync does not send the delivered channels again;
              ;; the failed channel waits for the repeat cadence
              (do
-               (log/warnf "Advisory %s was not delivered to %s" (:advisory_id advisory)
-                          (str/join ", " (map (comp u/qualified-name :channel_type) failed)))
+               (log/errorf "Advisory %s was not delivered to %s" (:advisory_id advisory)
+                           (str/join ", " (map (comp u/qualified-name :channel_type) failed)))
                (track-notification-sent! (assoc notif :handlers delivered) triggered-from "success")
                (track-notification-sent! (assoc notif :handlers failed) triggered-from "failure")
                (security-center.db/record-advisory-notification! (:id advisory)))
