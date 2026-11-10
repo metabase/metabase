@@ -323,18 +323,20 @@
     [:client     (ms/InstanceOfClass Object)]
     [:session-id :string]]])
 
-(mr/def ::external-transform-test
-  "A TransformTest as serialization writes it, with references in place of ids."
+(defn- external-test
+  "A saved test of schema `saved-test-schema` as serialization writes it, with references in place of ids: its subject
+  under `subject-key`."
+  [saved-test-schema subject-key]
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
-    [:select-keys ::transform-test [:entity_id :name :description :inputs :expectations :transform_id :creator_id]]
+    [:select-keys saved-test-schema [:entity_id :name :description :inputs :expectations subject-key :creator_id]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
+(mr/def ::external-transform-test
+  "A TransformTest as serialization writes it, with references in place of ids."
+  (external-test ::transform-test :transform_id))
+
 (mr/def ::external-card-test
   "A CardTest as serialization writes it, with references in place of ids."
-  [:schema {:registry lib.schema.id/external-registry}
-   [:merge
-    [:select-keys ::card-test [:entity_id :name :description :inputs :expectations :card_id :creator_id]]
-    [:map {:closed true}
-     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+  (external-test ::card-test :card_id))
