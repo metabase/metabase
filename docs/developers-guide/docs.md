@@ -45,11 +45,11 @@ To preview a worktree or another checkout, pass its path. If `metabase-dot-com` 
 
 People with write access to Metabase can add the `Docrunner` label to an open issue.
 
-Docrunner reads the issue, its comments, and the PRs that the issue links to (only PRs from people with write access). It reads only what was there when you added the label: it ignores later comments, and it stops if someone edits the issue body after that. Docrunner changes only Markdown files in `docs/`. If a change belongs in a generated page, Docrunner tells you where the page's source is.
+Docrunner reads the issue, its comments, and the PRs that the issue links to (only PRs from people with write access). Docrunner reads only what was there when you added the label: it ignores later comments, and it stops if someone edits the issue body after that.
 
 When Docrunner finishes, it removes the label and comments on the issue. If it made a change, the comment links to a draft PR that's assigned to you. The PR description lists what changed and the facts to check against the code. If Docrunner didn't make a change, the comment says why and asks questions. Answer them in the issue, then add the label again.
 
-If the change needs images, a second job takes the screenshots in a Metabase Enterprise Edition built from `master`, with the Sample Database and a license token, so it can take screenshots of paid features. The job pushes the images to the PR in a second commit, and comments on the PR with a note for each image. Check the state and the crop of each image.
+If the change needs images, a second job takes the screenshots in a Metabase Enterprise Edition built from `master`, with the Sample Database. The job pushes the images to the PR in a second commit, and comments on the PR with a note for each image. Check the state and the crop of each image.
 
 GitHub doesn't ask the tech writers to review a draft PR, so mark the PR ready for review when you're done with it. Docrunner adds the `single-backport` label. For a feature that's only on `master`, change it to `no-backport`.
 
