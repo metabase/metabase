@@ -9,6 +9,10 @@ redirect_from:
 
 Get up and running with Metabase in 30 minutes with video tutorials. Learn to ask questions, build charts, create dashboards, and use the core tools effectively.
 
+## [Setting up Metabase](./setting-up-metabase.md)
+
+Walk through first-time setup. Create your admin account, connect a database, activate your license, and set your usage preferences.
+
 ## [Metabase concepts](./concepts.md)
 
 A quick overview of the core concepts in Metabase.

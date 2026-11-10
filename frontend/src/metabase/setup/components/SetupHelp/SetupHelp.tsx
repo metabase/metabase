@@ -10,7 +10,7 @@ import S from "./SetupHelp.module.css";
 
 export const SetupHelp = (): JSX.Element => {
   const { url: docsUrl } = useDocsUrl(
-    "configuring-metabase/setting-up-metabase",
+    "getting-started/setting-up-metabase",
   );
   return (
     <Box
