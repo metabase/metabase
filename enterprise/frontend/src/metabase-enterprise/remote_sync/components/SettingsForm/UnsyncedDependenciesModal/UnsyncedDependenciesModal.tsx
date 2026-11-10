@@ -1,7 +1,10 @@
 import { useFormikContext } from "formik";
-import { t } from "ttag";
+import { Fragment } from "react";
+import { jt, t } from "ttag";
 
+import { Link } from "metabase/router";
 import {
+  Anchor,
   Button,
   FocusTrap,
   Group,
@@ -13,7 +16,9 @@ import {
 import type { RemoteSyncUnsyncedDependency } from "metabase-types/api";
 
 import type { SettingsFormValues } from "../../../types";
+import { type RemoteSyncEntityLinkTarget, getEntityUrl } from "../../../utils";
 
+import S from "./UnsyncedDependenciesModal.module.css";
 import {
   type DependencyGroup,
   type DependencyGroupCollection,
@@ -63,21 +68,66 @@ type DependencyGroupItemProps = {
 const DependencyGroupItem = ({ group }: DependencyGroupItemProps) => (
   <Stack gap="sm">
     <Group justify="space-between">
-      <Text fw="bold">{group.collection?.name ?? t`Not in a collection`}</Text>
+      <Text fw="bold">
+        {group.collection ? (
+          <EntityLink entity={getCollectionLinkTarget(group.collection)} />
+        ) : (
+          t`Not in a collection`
+        )}
+      </Text>
       {group.collection ? (
         <CollectionSyncSwitch collection={group.collection} />
       ) : null}
     </Group>
     {group.dependencies.map((dependency) => (
       <Stack key={`${dependency.model}-${dependency.id}`} gap={0}>
-        <Text>{dependency.name}</Text>
+        <Text>
+          <EntityLink entity={dependency} />
+        </Text>
         <Text c="text-secondary" fz="sm">
-          {t`Used by ${dependency.used_by.map((entity) => entity.name).join(", ")}`}
+          {jt`Used by ${dependency.used_by.map((entity, index) => (
+            <Fragment key={`${entity.model}-${entity.id}`}>
+              {index > 0 && ", "}
+              <EntityLink entity={entity} />
+            </Fragment>
+          ))}`}
         </Text>
       </Stack>
     ))}
   </Stack>
 );
+
+const getCollectionLinkTarget = ({
+  id,
+  name,
+}: DependencyGroupCollection): RemoteSyncEntityLinkTarget => ({
+  id,
+  name,
+  model: "collection",
+});
+
+type EntityLinkProps = {
+  entity: RemoteSyncEntityLinkTarget;
+};
+
+const EntityLink = ({ entity }: EntityLinkProps) => {
+  const url = getEntityUrl(entity);
+
+  return url != null ? (
+    <Anchor
+      component={Link}
+      to={url}
+      target="_blank"
+      className={S.link}
+      fz="inherit"
+      fw="inherit"
+    >
+      {entity.name}
+    </Anchor>
+  ) : (
+    entity.name
+  );
+};
 
 type CollectionSyncSwitchProps = {
   collection: DependencyGroupCollection;
