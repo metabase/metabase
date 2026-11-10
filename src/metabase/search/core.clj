@@ -81,7 +81,7 @@
   [_]
   (for [engine (map name (search.engine/known-engines))
         event  [:acquired :busy :taken-over :heartbeat-error :lost :coordinate-obsolete :release-error
-                :refused-in-transaction]]
+                :refused-in-transaction :timeout :worker-stuck]]
     {:engine engine, :event event}))
 
 (defmethod analytics.core/known-labels :metabase-search/engine-default
