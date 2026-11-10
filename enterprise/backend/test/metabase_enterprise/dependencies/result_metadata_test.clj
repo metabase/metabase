@@ -652,6 +652,25 @@
         (is (= "Changed" (:display_name (column card-id "NAME"))))
         (is (not (pending? card-id)))))))
 
+(deftest unreadable-card-fails-alone-in-batch-test
+  (testing "a card the job cannot read counts one failure, and the rest of its batch is re-derived"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {bad-id :id}  {:dataset_query (table-query :venues)}
+                     :model/Card {good-id :id} {:dataset_query (table-query :venues)}]
+        (run-jobs!)
+        (reprocess! bad-id good-id)
+        (let [cards-by-id (mt/original-fn #'dependencies.db/cards-by-id)]
+          (mt/with-dynamic-fn-redefs [dependencies.db/cards-by-id (fn [card-ids]
+                                                                    (when (some #{bad-id} card-ids)
+                                                                      (throw (ex-info "Unreadable row" {})))
+                                                                    (cards-by-id card-ids))]
+            (do-with-inference (fn [infer query card] (rename-column (infer query card) "NAME" "Changed")) rederive!)))
+        (is (= "Changed" (:display_name (column good-id "NAME"))))
+        (is (not (pending? good-id)))
+        (is (not= "Changed" (:display_name (column bad-id "NAME"))))
+        (is (=? {:fail_count 1}
+                (t2/select-one :model/ResultMetadataStatus :entity_type :card :entity_id bad-id)))))))
+
 (deftest write-during-rederive-keeps-card-pending-test
   (testing "a write counted on a card while it is re-derived keeps it pending after the job clears what it read"
     (with-dependencies-feature
@@ -672,8 +691,9 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
         (run-jobs!)
         (reprocess! card-id)
-        (let [card (mt/original-fn #'dependencies.db/card)]
-          (mt/with-dynamic-fn-redefs [dependencies.db/card (fn [id] (assoc (card id) :result_metadata nil))]
+        (let [cards-by-id (mt/original-fn #'dependencies.db/cards-by-id)]
+          (mt/with-dynamic-fn-redefs [dependencies.db/cards-by-id (fn [ids] (update-vals (cards-by-id ids)
+                                                                                         #(assoc % :result_metadata nil)))]
             (do-with-inference (fn [infer query card] (rename-column (infer query card) "NAME" "Changed"))
                                rederive!)))
         (is (= "Changed" (:display_name (column card-id "NAME"))))
