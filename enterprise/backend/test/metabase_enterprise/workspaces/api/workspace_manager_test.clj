@@ -72,7 +72,8 @@
   (testing "DELETE while a create is still provisioning answers 409 at once, and the create still succeeds"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
-                                                :settings {:database-enable-workspaces true}}]
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
       (mt/with-model-cleanup [:model/Workspace]
         (let [started  (promise)
               release  (promise)
