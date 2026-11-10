@@ -15,6 +15,7 @@
    [metabase.metabot.tools.autogen-dashboard :as autogen]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.create-alert :as create-alert]
+   [metabase.metabot.tools.create-dashboard-subscription :as create-dashboard-subscription]
    [metabase.metabot.tools.explorations :as explorations-tools]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.metadata :as metadata-tools]
@@ -724,7 +725,15 @@
                         (is (refused? (fn [] (call subscriptions/create-dashboard-subscription-tool
                                                    {:dashboard_id  plain-dash
                                                     :slack_channel "#general"
-                                                    :schedule      {:frequency "daily" :hour 9}})))))))))))
+                                                    :schedule      {:frequency "daily" :hour 9}})))))))
+        ;; v64's Slack profile has its own copy of the subscription tool; v65 shares one
+        (as-metabot metabot :slackbot
+                    (fn []
+                      (testing "create_dashboard_subscription, Slack profile"
+                        (is (refused? (fn [] (call create-dashboard-subscription/slackbot-create-dashboard-subscription-tool
+                                                   {:dashboard_id plain-dash
+                                                    :schedule     {:frequency "daily" :hour 9}}
+                                                   (slack-ctx))))))))))))
 
 (deftest read-resource-curated-check-ordering-test
   (testing "the curation check runs after the entity's existence and read checks, but before its handler"
