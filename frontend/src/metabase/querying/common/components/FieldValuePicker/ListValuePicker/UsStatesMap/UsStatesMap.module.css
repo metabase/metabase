@@ -1,0 +1,38 @@
+.map {
+  display: block;
+  width: 256px;
+  margin-inline: auto;
+}
+
+.state {
+  fill: var(--mb-color-background_surface-secondary);
+  stroke: var(--mb-color-background_page-primary);
+  stroke-width: 0.75;
+
+  /* Prototype: the design uses palm shades, which have no semantic tokens. */
+  &[data-available="true"] {
+    cursor: pointer;
+    fill: color-mix(
+      in srgb,
+      var(--mb-color-core-summarize) 25%,
+      var(--mb-color-background_page-primary)
+    );
+
+    &:hover {
+      fill: color-mix(
+        in srgb,
+        var(--mb-color-core-summarize) 45%,
+        var(--mb-color-background_page-primary)
+      );
+    }
+  }
+
+  &[data-selected="true"],
+  &[data-selected="true"]:hover {
+    fill: color-mix(
+      in srgb,
+      var(--mb-color-core-summarize) 80%,
+      var(--mb-color-background_page-primary)
+    );
+  }
+}

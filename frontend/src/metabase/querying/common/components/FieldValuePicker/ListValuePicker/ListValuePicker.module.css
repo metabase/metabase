@@ -1,0 +1,50 @@
+.tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 3rem;
+  padding: 0 var(--mantine-spacing-md);
+  border: 1px solid transparent;
+  border-radius: var(--mantine-radius-xs);
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: var(--mantine-shadow-xs_outline);
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.25rem;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-primary-hover);
+  }
+
+  &[aria-pressed="true"] {
+    border-color: var(--mb-color-border-highlight);
+    background-color: var(--mb-color-background_surface-primary);
+  }
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flag {
+  flex-shrink: 0;
+  width: 21px;
+  height: 16px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+/* List rows stay on one line. A long label ends with an ellipsis. */
+.checkboxRoot,
+.checkboxBody,
+.checkboxLabelWrapper {
+  min-width: 0;
+}
+
+.checkboxLabel {
+  overflow: hidden;
+  white-space: nowrap;
+}

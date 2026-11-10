@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import type { FilterOperatorOption } from "metabase/querying/filters/types";
-import { Button, Icon, Menu } from "metabase/ui";
+import { Select } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import S from "./FilterOperatorPicker.module.css";
@@ -17,26 +17,22 @@ export function FilterOperatorPicker<T extends Lib.FilterOperator>({
   options,
   onChange,
 }: FilterOperatorPickerProps<T>) {
-  const selectedOption = options.find((option) => option.operator === value);
+  const data = options.map((option) => ({
+    value: option.operator,
+    label: option.displayName,
+  }));
 
   return (
-    <Menu>
-      <Menu.Target>
-        <Button
-          rightSection={<Icon name="chevrondown" />}
-          aria-label={t`Filter operator`}
-          className={S.root}
-        >
-          {selectedOption?.displayName ?? t`Select operator`}
-        </Button>
-      </Menu.Target>
-      <Menu.Dropdown>
-        {options.map((option, index) => (
-          <Menu.Item key={index} onClick={() => onChange(option.operator)}>
-            {option.displayName}
-          </Menu.Item>
-        ))}
-      </Menu.Dropdown>
-    </Menu>
+    <Select
+      data={data}
+      value={value}
+      size="xs"
+      aria-label={t`Filter operator`}
+      classNames={{ input: S.input }}
+      // Same as DateOperatorPicker: a portaled dropdown is outside the filter
+      // popover, so a click on an option would close the popover.
+      comboboxProps={{ withinPortal: false, floatingStrategy: "fixed" }}
+      onChange={onChange}
+    />
   );
 }
