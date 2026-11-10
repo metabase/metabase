@@ -1641,6 +1641,11 @@
   [_]
   (conj collection/default-allowed-namespaces collection/data-apps-ns))
 
+(defn- model-override-keys
+  "The keys of a model's result metadata columns that a user can override, which export keeps for models."
+  []
+  (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false)))
+
 (defn- walk-export-result-metadata
   "The exported `result_metadata` of `card`, its ids replaced by what `visit` resolves them to. Native cards, models
   included, keep the keys of their columns, which can't be derived from the query without running it; other models
@@ -1664,7 +1669,7 @@
 
       (model? card)
       (mapv (fn [column]
-              (-> (select-keys column (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false)))
+              (-> (select-keys column (model-override-keys))
                   (m/update-existing :fk_target_field_id field)
                   (m/update-existing :id field)))
             result_metadata)
@@ -1673,16 +1678,19 @@
       nil)))
 
 (defn- walk-import-result-metadata
-  "The `result_metadata` of an exported card with its references replaced by what `visit` resolves them to."
+  "The `result_metadata` of an exported card with its references replaced by what `visit` resolves them to, normalized
+  like the stored column."
   [visit result-metadata]
-  (some->> result-metadata
-           (mapv (fn [column]
-                   (-> column
-                       (m/update-existing :table_id #(serialization/visit-some :model/Table % visit))
-                       (m/update-existing :id #(serialization/visit-some :model/Field % visit))
-                       (m/update-existing :field_ref #(serialization/walk-import-refs visit %))
-                       (m/update-existing :fk_target_field_id
-                                          #(if (number? %) % (serialization/visit-some :model/Field % visit))))))))
+  (cond->> (some->> result-metadata
+                    (mapv (fn [column]
+                            (-> column
+                                (m/update-existing :table_id #(serialization/visit-some :model/Table % visit))
+                                (m/update-existing :id #(serialization/visit-some :model/Field % visit))
+                                (m/update-existing :field_ref #(serialization/walk-import-refs visit %))
+                                (m/update-existing :fk_target_field_id
+                                                   #(if (number? %) % (serialization/visit-some :model/Field % visit)))))))
+    (and (some? result-metadata) (not (serialization/collecting? visit)))
+    (lib/normalize ::queries.schema/card.result-metadata)))
 
 (defmethod serialization/spec :model/Card [_]
   {:schema    ::queries.schema/external-card
@@ -1882,11 +1890,14 @@
 
 (defn- overrides-stored?
   "Whether each column of `metadata`, the exported overrides of a model, matches the column of `stored` metadata at
-  its position."
+  its position in the keys a user can override."
   [metadata stored]
-  (and (= (count metadata) (count stored))
-       (every? true? (map (fn [column stored-column] (= column (select-keys stored-column (keys column))))
-                          metadata stored))))
+  (let [ks (model-override-keys)]
+    (and (= (count metadata) (count stored))
+         (every? true? (map (fn [column stored-column]
+                              (let [column (select-keys column ks)]
+                                (= column (select-keys stored-column (keys column)))))
+                            metadata stored)))))
 
 (defn- with-model-metadata
   "The load `item` of a Card that updates a model, without the exported overrides of its metadata when the local row
@@ -1901,8 +1912,10 @@
       (update item :row dissoc :result_metadata)
 
       :else
-      (assoc-in item [:row :result_metadata]
-                (or (card.metadata/infer-metadata-with-model-overrides query row) metadata)))))
+      (let [overrides (mapv #(select-keys % (model-override-keys)) metadata)]
+        (assoc-in item [:row :result_metadata]
+                  (or (card.metadata/infer-metadata-with-model-overrides query (assoc row :result_metadata overrides))
+                      overrides))))))
 
 (defn- keep-local-metadata
   "The load `item` of a Card without a `:result_metadata` to import keeping the local one, which export leaves out of

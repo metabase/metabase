@@ -49,10 +49,10 @@
    [:id                      {:optional true} [:maybe ::lib.schema.id/field]]
    [:description             {:optional true} [:maybe :string]]
    [:display_name            {:optional true} [:maybe :string]]
-   [:semantic_type           {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
+   [:semantic_type           {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:fk_target_field_id      {:optional true} [:maybe ::lib.schema.id/field]]
    [:settings                {:optional true} [:maybe ms/VisualizationSettings]]
-   [:visibility_type         {:optional true} [:maybe [:or :keyword :string]]]
+   [:visibility_type         {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:lib/source_display_name {:optional true} [:maybe :string]]])
 
 (mr/def ::card
