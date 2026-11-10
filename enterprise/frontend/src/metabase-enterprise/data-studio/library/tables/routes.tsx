@@ -3,6 +3,16 @@ import type { ComponentType } from "react";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route } from "metabase/router";
 
+const publishedDataPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "../pages/LibraryPage"
+  ).then(({ PublishedDataPage }) => ({ Component: PublishedDataPage }));
+
+const suggestedTablesPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "../pages/SuggestedTablesPage"
+  ).then(({ SuggestedTablesPage }) => ({ Component: SuggestedTablesPage }));
+
 /**
  * The Data Studio library table pages, in one chunk. Every loader names it, so
  * moving between a table's overview, fields, segments and measures tabs does
@@ -99,6 +109,8 @@ const measureDependenciesPage = () =>
 export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
   return (
     <Route path="tables">
+      <Route index lazy={publishedDataPage} />
+      <Route path="suggested" lazy={suggestedTablesPage} />
       <Route path=":tableId" lazy={tableOverviewPage} />
       <Route path=":tableId/fields" lazy={tableFieldsPage} />
       <Route path=":tableId/fields/:fieldId" lazy={tableFieldsPage} />

@@ -10,7 +10,6 @@ import {
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useListUsersQuery } from "metabase/api";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import {
   DATA_LAYER_VISIBILITY_ICONS,
@@ -34,7 +33,7 @@ import {
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { Table, UserId } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 import { useSelection } from "../../contexts/SelectionContext";
 import {
@@ -66,14 +65,12 @@ import {
   transformToTreeTableFormat,
 } from "../utils";
 
-import { TableSubjectCell } from "./TableSubjectCell";
-
 const NUMBER_FORMAT_OPTIONS = { maximumFractionDigits: 0 };
 
-// The fixed columns (Role, Subject, Owner, Data layer) take about 790px; past
-// them, names keep about 240px before Published, then Rows, give way
-const MIN_WIDTH_WITH_PUBLISHED = 1280;
-const MIN_WIDTH_WITH_ROWS = 1160;
+// The fixed columns (Role, Data layer) take about 430px; past them, names
+// keep about 240px before Published, then Rows, give way
+const MIN_WIDTH_WITH_PUBLISHED = 920;
+const MIN_WIDTH_WITH_ROWS = 800;
 
 interface Props {
   tree: RootNode;
@@ -111,13 +108,6 @@ export function TablePickerTreeTable({
   > | null>(null);
 
   const { getTableDataLayer } = useDataLayers();
-  const { data: usersData } = useListUsersQuery();
-  const ownerNameById = useMemo(() => {
-    const users = usersData?.data ?? [];
-    return new Map<UserId, string>(
-      users.map((user) => [user.id, user.common_name]),
-    );
-  }, [usersData]);
 
   const flatTreeData = useMemo(() => transformToTreeTableFormat(tree), [tree]);
   const customPropertyParents = useCustomPropertyParents(
@@ -267,33 +257,6 @@ export function TablePickerTreeTable({
           ) : null,
       },
       {
-        id: "subject",
-        header: t`Subject`,
-        width: 220,
-        cell: ({ row }) =>
-          row.original.type === "table" && row.original.table ? (
-            <TableSubjectCell table={row.original.table} />
-          ) : null,
-      },
-      {
-        id: "owner",
-        header: t`Owner`,
-        width: 140,
-        cell: ({ row }) => {
-          if (row.original.type !== "table" || !row.original.table) {
-            return null;
-          }
-          const ownerId = row.original.table.owner_user_id;
-          const ownerName =
-            ownerId != null && ownerNameById.has(ownerId)
-              ? ownerNameById.get(ownerId)
-              : (row.original.table.owner_email ?? null);
-          return ownerName ? (
-            <Box data-testid="table-owner">{ownerName}</Box>
-          ) : null;
-        },
-      },
-      {
         id: "data-layer",
         header: t`Data layer`,
         width: 150,
@@ -369,7 +332,6 @@ export function TablePickerTreeTable({
     return columnDefs;
   }, [
     isLibraryEnabled,
-    ownerNameById,
     formatNumber,
     getTableDataLayer,
     showRows,

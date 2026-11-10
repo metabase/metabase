@@ -1,10 +1,6 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback } from "react";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/common/components/EmptyState";
-import { FieldOrderPicker } from "metabase/metadata/components";
-import { TableFieldList } from "metabase/metadata/components/TableFieldList";
-import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useTableUpdateHandlers } from "metabase/metadata/hooks";
 import {
   isRoleA,
@@ -12,30 +8,22 @@ import {
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { useNavigate } from "metabase/router";
-import { Box, Button, Icon, Loader, Stack, Tabs } from "metabase/ui";
+import { Box, Stack, Tabs } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
-import type {
-  Field,
-  FieldId,
-  Table,
-  TableFieldOrder,
-} from "metabase-types/api";
+import type { FieldId, Table } from "metabase-types/api";
 
-import {
-  ListSearchBar,
-  ListSearchEmptyState,
-  matchesListSearch,
-} from "./ListSearchBar";
+import { SemanticReviewButton } from "../SemanticReview";
+
 import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
+import { TableFieldsTab } from "./TableFieldsTab";
 import { TableFiltering } from "./TableFiltering";
 import { TableMetadata, TableStats } from "./TableMetadata";
 import { TableProcess, useHasProcess } from "./TableProcess";
 import { TablePropertyList } from "./TablePropertyList";
-import S from "./TableSection.module.css";
 import { TableHistorySection, TableStructure } from "./TableStructure";
 
 interface Props {
@@ -51,13 +39,10 @@ const TableSectionBase = ({
   activeTab,
   onUpdate,
 }: Props) => {
-  const {
-    handleNameChange,
-    handleDescriptionChange,
-    handleFieldOrderTypeChange,
-    handleCustomFieldOrderChange,
-    isUpdatingSorting,
-  } = useTableUpdateHandlers({ table, onNameUpdated: onUpdate });
+  const { handleNameChange, handleDescriptionChange } = useTableUpdateHandlers({
+    table,
+    onNameUpdated: onUpdate,
+  });
   const readOnly = !table.can_write;
   const structure = useTableStructures().getTableStructure(table);
   const isCustomPropertyTable =
@@ -143,14 +128,11 @@ const TableSectionBase = ({
           </Tabs.Panel>
 
           <Tabs.Panel value="field">
-            <FieldsTab
+            <TableFieldsTab
               table={table}
               activeFieldId={activeFieldId}
-              readOnly={readOnly}
-              isUpdatingSorting={isUpdatingSorting}
               getFieldHref={getFieldHref}
-              onFieldOrderTypeChange={handleFieldOrderTypeChange}
-              onCustomFieldOrderChange={handleCustomFieldOrderChange}
+              actions={!readOnly && <SemanticReviewButton table={table} />}
             />
           </Tabs.Panel>
 
@@ -191,106 +173,6 @@ const TableSectionBase = ({
 function KeepPropertyRegistryLoaded({ table }: { table: Table }) {
   usePropertyRegistry(table);
   return null;
-}
-
-interface FieldsTabProps {
-  table: Table;
-  activeFieldId?: FieldId;
-  readOnly: boolean;
-  isUpdatingSorting: boolean;
-  getFieldHref: (fieldId: FieldId) => string;
-  onFieldOrderTypeChange: (fieldOrder: TableFieldOrder) => void;
-  onCustomFieldOrderChange: (fieldOrder: FieldId[]) => void;
-}
-
-/** The table's fields, searchable, with sorting beside the search */
-function FieldsTab({
-  table,
-  activeFieldId,
-  readOnly,
-  isUpdatingSorting,
-  getFieldHref,
-  onFieldOrderTypeChange,
-  onCustomFieldOrderChange,
-}: FieldsTabProps) {
-  const [isSorting, setIsSorting] = useState(false);
-  const [query, setQuery] = useState("");
-  const fields = table.fields ?? [];
-
-  const filterField = useCallback(
-    (field: Field) => matchesListSearch(query, field.display_name, field.name),
-    [query],
-  );
-  const hasMatches = fields.some(filterField);
-
-  if (fields.length === 0) {
-    return (
-      <EmptyState
-        className={S.EmptyState}
-        message={t`This table has no fields`}
-        spacing="sm"
-      />
-    );
-  }
-
-  return (
-    <Stack gap="lg">
-      {/* Sorting drags the full list, so search waits until it's done */}
-      <ListSearchBar
-        value={query}
-        placeholder={t`Search fields`}
-        disabled={isSorting}
-        onChange={setQuery}
-      >
-        {!isSorting && !readOnly && (
-          <Button
-            leftSection={<Icon name="sort_arrows" />}
-            onClick={() => setIsSorting(true)}
-          >{t`Sorting`}</Button>
-        )}
-        {isSorting && (
-          <FieldOrderPicker
-            value={table.field_order}
-            onChange={onFieldOrderTypeChange}
-          />
-        )}
-        {isSorting && (
-          <Button
-            leftSection={<Icon name="check" />}
-            onClick={() => setIsSorting(false)}
-          >{t`Done`}</Button>
-        )}
-        {isUpdatingSorting && <Loader size="xs" />}
-      </ListSearchBar>
-
-      <Box
-        style={{ display: isSorting ? "block" : "none" }}
-        aria-hidden={!isSorting}
-      >
-        <TableSortableFieldList
-          activeFieldId={activeFieldId}
-          table={table}
-          onChange={onCustomFieldOrderChange}
-        />
-      </Box>
-
-      <Box
-        style={{ display: isSorting ? "none" : "block" }}
-        aria-hidden={isSorting}
-      >
-        {hasMatches ? (
-          <TableFieldList
-            table={table}
-            activeFieldId={activeFieldId}
-            filterField={filterField}
-            getFieldHref={getFieldHref}
-          />
-        ) : (
-          <ListSearchEmptyState>{t`No fields match "${query}"`}</ListSearchEmptyState>
-        )}
-      </Box>
-    </Stack>
-  );
 }
 
 export const TableSection = memo(TableSectionBase);

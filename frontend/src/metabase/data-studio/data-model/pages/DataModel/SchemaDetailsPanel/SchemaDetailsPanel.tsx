@@ -47,6 +47,7 @@ import {
   SchemaDetailsSkeleton,
 } from "../DetailPanel";
 import { SegmentSettingsSection } from "../SegmentSettingsSection";
+import { SemanticReviewSection } from "../SemanticReview";
 import {
   getLastSyncedAt,
   getLastSyncedValue,
@@ -254,6 +255,10 @@ function SchemaDetails({
           <DetailsRow label={t`Database`} value={database.name} />
         </DetailsTable>
       </SidebarSection>
+
+      <SemanticReviewSection
+        schema={{ db_id: database.id, schema: schemaName }}
+      />
 
       <SidebarSection
         title={t`Data layer`}

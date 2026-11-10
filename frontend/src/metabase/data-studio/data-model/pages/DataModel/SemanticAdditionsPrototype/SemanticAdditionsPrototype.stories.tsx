@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { mockSettings } from "__support__/settings";
 import { getTestStoreAndWrapper } from "__support__/ui";
@@ -19,6 +19,7 @@ import {
   seedPrototypeStorage,
   setupMockApi,
 } from "../CustomPropertiesPrototype/mock-api.setup.spec";
+import { SemanticReviewModal } from "../SemanticReview";
 
 import {
   WAREHOUSE_ID,
@@ -86,6 +87,11 @@ function DataStudioPage({ initialRoute }: { initialRoute: string }) {
       </Wrapper>
     </div>
   );
+}
+
+function StandalonePage({ children }: { children: ReactNode }) {
+  const Wrapper = useMockedStore({ withRouter: false, initialRoute: "/" });
+  return <Wrapper>{children}</Wrapper>;
 }
 
 const schemaRoute = (schemaName: string) =>
@@ -160,5 +166,18 @@ export const FieldTenantKey = {
     <DataStudioPage
       initialRoute={tableRoute("zendesk", "ticket", "field", "organization_id")}
     />
+  ),
+};
+
+export const BatchReview = {
+  beforeEach: seedStorage,
+  render: () => (
+    <StandalonePage>
+      <SemanticReviewModal
+        schema={{ db_id: WAREHOUSE_ID, schema: "stripe" }}
+        opened
+        onClose={() => undefined}
+      />
+    </StandalonePage>
   ),
 };
