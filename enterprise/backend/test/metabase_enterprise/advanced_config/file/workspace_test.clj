@@ -85,8 +85,50 @@
           (is (= "New workspace" workspace-name))
           (is (= 1 database-count))
           (testing "the settings hold the translated config; :name and :input_schemas are dropped"
-            (is (= {:databases {db-id "mb__isolation_44490_1933"}}
+            (is (= {:workspace-id nil
+                    :parent-url   nil
+                    :databases    {db-id "mb__isolation_44490_1933"}}
                    (ws/instance-workspace)))))))))
+
+(deftest apply-workspace-section-sets-parent-identity-test
+  (testing "the section's :id and :parent_url become the parent identity, a later boot with only :id clears :parent_url"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
+        (let [section (workspace-section "ws-test-db")]
+          (is (s/valid? ::advanced-config.file.workspace/config-file-spec
+                        (assoc section :id 42 :parent_url "https://parent.example.com")))
+          (advanced-config.file.workspace/apply-workspace-section!
+           (assoc section :id 42 :parent_url "https://parent.example.com"))
+          (is (= {:workspace-id 42
+                  :parent-url   "https://parent.example.com"
+                  :databases    {db-id "mb__isolation_44490_1933"}}
+                 (ws/instance-workspace)))
+          (advanced-config.file.workspace/apply-workspace-section! (assoc section :id 7))
+          (is (= {:workspace-id 7
+                  :parent-url   nil
+                  :databases    {db-id "mb__isolation_44490_1933"}}
+                 (ws/instance-workspace))))))))
+
+(deftest apply-workspace-section-without-identity-keeps-settings-identity-test
+  (testing "a section without :id or :parent_url keeps the identity the settings section set (review follow-up)"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
+        (ws/set-instance-identity! 42 "https://parent.example.com")
+        (advanced-config.file.workspace/apply-workspace-section! (workspace-section "ws-test-db"))
+        (is (= {:workspace-id 42
+                :parent-url   "https://parent.example.com"
+                :databases    {db-id "mb__isolation_44490_1933"}}
+               (ws/instance-workspace)))))))
+
+(deftest apply-workspace-section-identity-env-var-conflict-writes-nothing-test
+  (testing "a section whose :id an env var contradicts throws before the workspace is written (review follow-up)"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
+        (mt/with-temp-env-var-value! [:mb-workspace-id "7"]
+          (is (thrown-with-msg? ExceptionInfo #"MB_WORKSPACE_ID"
+                                (advanced-config.file.workspace/apply-workspace-section!
+                                 (assoc (workspace-section "ws-test-db") :id 42))))
+          (is (nil? (ws/instance-workspace))))))))
 
 (deftest re-apply-replaces-atom-test
   (testing "re-applying with a different config replaces the setting — no mismatch detection, file is the truth"
@@ -100,7 +142,9 @@
                                                           :output        {:schema "different_schema"}}})]
           (advanced-config.file.workspace/apply-workspace-section! section-1)
           (advanced-config.file.workspace/apply-workspace-section! section-2)
-          (is (= {:databases {db-2-id "different_schema"}}
+          (is (= {:workspace-id nil
+                  :parent-url   nil
+                  :databases    {db-2-id "different_schema"}}
                  (ws/instance-workspace))
               "settings reflect the new config, and the first database's schema is cleared"))))))
 

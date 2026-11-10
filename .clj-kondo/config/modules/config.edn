@@ -4814,6 +4814,7 @@
            sample-data
            settings
            sql-tools
+           system
            util
            warehouses.secrets
            workspaces}

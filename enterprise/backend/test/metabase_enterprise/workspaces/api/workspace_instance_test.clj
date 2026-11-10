@@ -36,13 +36,15 @@
   (testing "GET /ee/workspace-instance/current returns {:data {:databases {<id> <schema>}}} from the settings"
     (ws.tu/with-workspace-db! (mt/id) "ws_alice"
       (fn []
-        (is (= {:data {:databases [{:database_id (mt/id) :schema "ws_alice"}]}}
+        (is (= {:data {:workspace_id nil
+                       :parent_url   nil
+                       :databases    [{:database_id (mt/id) :schema "ws_alice"}]}}
                (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")))))))
 
 (deftest current-enabled-without-schemas-test
   (testing "workspaces-enabled with no database-workspace-schema anywhere is a workspace with no databases, not null"
     (ws.settings/workspaces-enabled! true)
-    (is (= {:data {:databases []}}
+    (is (= {:data {:workspace_id nil :parent_url nil :databases []}}
            (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")))))
 
 (deftest post-current-superuser-only-test
@@ -54,16 +56,35 @@
 (deftest post-current-round-trip-test
   (testing "POST /ee/workspace-instance/current sets the settings and is readable via GET"
     (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {}}
-      (let [expected {:databases [{:database_id (mt/id) :schema "ws_api_install"}]}]
+      (let [expected {:workspace_id nil
+                      :parent_url   nil
+                      :databases    [{:database_id (mt/id) :schema "ws_api_install"}]}]
         (is (= expected
                (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current"
-                                     expected)))
+                                     (select-keys expected [:databases]))))
         (testing "the settings hold it"
           (is (true? (ws.settings/workspaces-enabled)))
           (is (= {:schema "ws_api_install"} (ws/db-workspace-namespace (mt/id)))))
         (testing "GET reflects the workspace just installed"
           (is (= {:data expected}
                  (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))))))))
+
+(deftest post-current-parent-identity-test
+  (testing "POST /ee/workspace-instance/current sets the parent identity, GET returns it, a POST without it clears it"
+    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {}}
+      (let [databases [{:database_id (mt/id) :schema "ws_api_install"}]
+            expected  {:workspace_id 42
+                       :parent_url   "https://parent.example.com"
+                       :databases    databases}]
+        (is (= expected
+               (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current" expected)))
+        (is (= {:data expected}
+               (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")))
+        (is (= 42 (ws.settings/workspace-id)))
+        (is (= "https://parent.example.com" (ws.settings/workspace-parent-url)))
+        (is (= {:workspace_id nil :parent_url nil :databases databases}
+               (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current"
+                                     {:databases databases})))))))
 
 (deftest post-current-rejects-unknown-database-test
   (testing "POST /ee/workspace-instance/current returns 400 for a database id this instance doesn't have"
@@ -95,6 +116,35 @@
       (is (re-find #"MB_WORKSPACES_ENABLED"
                    (mt/user-http-request :crowberto :delete 400 "ee/workspace-instance/current"))))))
 
+(deftest post-current-rejects-identity-env-var-mismatch-test
+  (testing "POST /ee/workspace-instance/current returns 400, and writes nothing, when MB_WORKSPACE_ID sets another id (review follow-up)"
+    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {}}
+      (mt/with-temp-env-var-value! [:mb-workspace-id "7"]
+        (is (re-find #"MB_WORKSPACE_ID"
+                     (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
+                                           {:workspace_id 42
+                                            :databases    [{:database_id (mt/id) :schema "ws_api_install"}]})))
+        (is (false? (ws.settings/workspaces-enabled)))
+        (testing "the same id as the env var is accepted"
+          (is (= 7 (:workspace_id (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current"
+                                                        {:workspace_id 7 :databases []})))))))
+    (testing "the id is compared as a number, so MB_WORKSPACE_ID=07 accepts 7"
+      (mt/with-temp-env-var-value! [:mb-workspace-id "07"]
+        (is (= 7 (:workspace_id (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current"
+                                                      {:workspace_id 7 :databases []}))))))
+    (mt/with-temp-env-var-value! [:mb-workspace-parent-url "https://env.example.com"]
+      (is (re-find #"MB_WORKSPACE_PARENT_URL"
+                   (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
+                                         {:parent_url "https://parent.example.com" :databases []}))))))
+
+(deftest delete-current-rejects-when-identity-env-var-set-test
+  (testing "DELETE /ee/workspace-instance/current returns 400, and leaves the workspace on, when MB_WORKSPACE_ID is set (review follow-up)"
+    (mt/with-temp-env-var-value! [:mb-workspace-id "7"]
+      (ws/set-instance-workspace! {})
+      (is (re-find #"MB_WORKSPACE_ID"
+                   (mt/user-http-request :crowberto :delete 400 "ee/workspace-instance/current")))
+      (is (true? (ws.settings/workspaces-enabled))))))
+
 (deftest delete-current-superuser-only-test
   (testing "DELETE /ee/workspace-instance/current requires data analyst or superuser"
     (is (= "You don't have permissions to do that."
@@ -106,6 +156,14 @@
     (is (some? (ws/instance-workspace)))
     (mt/user-http-request :crowberto :delete 204 "ee/workspace-instance/current")
     (is (nil? (ws/instance-workspace)))))
+
+(deftest delete-current-clears-parent-identity-test
+  (testing "DELETE /ee/workspace-instance/current clears the parent identity"
+    (ws/set-instance-workspace! {})
+    (ws/set-instance-identity! 42 "https://parent.example.com")
+    (mt/user-http-request :crowberto :delete 204 "ee/workspace-instance/current")
+    (is (nil? (ws.settings/workspace-id)))
+    (is (nil? (ws.settings/workspace-parent-url)))))
 
 (deftest delete-current-drops-table-remappings-test
   (testing "DELETE /ee/workspace-instance/current drops any TableRemapping rows"
