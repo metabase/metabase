@@ -139,7 +139,7 @@ describe("TransformTestOverviewPage", () => {
     expect(
       await screen.findByRole("link", { name: "See all runs" }),
     ).toHaveAttribute("href", Urls.transformTestRuns(1, 2));
-    expect(screen.getByRole("link", { name: "Runs" })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: "Runs" })).toHaveAttribute(
       "href",
       Urls.transformTestRuns(1, 2),
     );

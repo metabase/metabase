@@ -93,7 +93,7 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
 
     cy.log("The seeded tool calls show up in the Events table");
     interceptEventsQuery("toolCalls");
-    H.main().findByRole("link", { name: "Tool calls" }).click();
+    H.main().findByRole("tab", { name: "Tool calls" }).click();
     cy.wait("@toolCalls");
     H.main().within(() => {
       cy.findByText(SEED_TOOL_NAME).scrollIntoView().should("be.visible");

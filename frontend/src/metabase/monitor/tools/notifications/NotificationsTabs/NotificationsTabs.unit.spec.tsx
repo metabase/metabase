@@ -45,7 +45,7 @@ function setup({
 describe("NotificationsTabs", () => {
   it("defaults Failing to last_check descending and clears the send-status filter", async () => {
     const { onChange } = setup();
-    await userEvent.click(screen.getByRole("button", { name: "Failing" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Failing" }));
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith({
       tab: "failing",
@@ -59,34 +59,35 @@ describe("NotificationsTabs", () => {
 
   it("clears the creator-active filter when switching to Ownerless", async () => {
     const { onChange } = setup();
-    await userEvent.click(screen.getByRole("button", { name: "Ownerless" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Ownerless" }));
     expect(onChange).toHaveBeenCalledWith({
       tab: "ownerless",
       creator_active: null,
     });
   });
 
-  it("marks the selected tab as the current page", () => {
+  it("marks the selected tab", () => {
     setup({ tab: "ownerless" });
-    expect(screen.getByRole("button", { name: "Ownerless" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    expect(screen.getByRole("tab", { name: "Ownerless" })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
-    expect(
-      screen.getByRole("button", { name: "All alerts" }),
-    ).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("tab", { name: "All alerts" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
   });
 
   it("maps each dataset count to its tab", () => {
     setup();
     expect(
-      within(screen.getByRole("button", { name: "All alerts" })).getByText("5"),
+      within(screen.getByRole("tab", { name: "All alerts" })).getByText("5"),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole("button", { name: "Failing" })).getByText("2"),
+      within(screen.getByRole("tab", { name: "Failing" })).getByText("2"),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole("button", { name: "Ownerless" })).getByText("0"),
+      within(screen.getByRole("tab", { name: "Ownerless" })).getByText("0"),
     ).toBeInTheDocument();
   });
 });

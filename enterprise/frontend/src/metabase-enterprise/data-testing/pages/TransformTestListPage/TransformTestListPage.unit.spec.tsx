@@ -134,9 +134,9 @@ describe("TransformTestListPage", () => {
   it("shows the Tests tab as selected", async () => {
     setup();
 
-    expect(await screen.findByRole("link", { name: "Tests" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    expect(await screen.findByRole("tab", { name: "Tests" })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
   });
 

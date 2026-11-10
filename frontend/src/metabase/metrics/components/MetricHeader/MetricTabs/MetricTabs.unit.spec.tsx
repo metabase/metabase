@@ -97,7 +97,7 @@ describe("MetricTabs", () => {
   }
 
   function getTabLabels() {
-    return screen.queryAllByRole("link").map((link) => link.textContent);
+    return screen.queryAllByRole("tab").map((link) => link.textContent);
   }
 
   it("does not show the caching tab in the tabs row regardless of write access", async () => {
@@ -168,14 +168,14 @@ describe("MetricTabs", () => {
     async (label, initialRoute) => {
       setup({ card: { id: 9 }, initialRoute, role: "admin" });
 
-      expect(await screen.findByRole("link", { name: label })).toHaveAttribute(
-        "aria-current",
-        "page",
+      expect(await screen.findByRole("tab", { name: label })).toHaveAttribute(
+        "aria-selected",
+        "true",
       );
       expect(
         screen
-          .getAllByRole("link")
-          .filter((link) => link.getAttribute("aria-current") === "page"),
+          .getAllByRole("tab")
+          .filter((link) => link.getAttribute("aria-selected") === "true"),
       ).toHaveLength(1);
     },
   );
@@ -185,9 +185,10 @@ describe("MetricTabs", () => {
     async (initialRoute) => {
       setup({ card: { id: 9 }, initialRoute });
 
-      expect(
-        await screen.findByRole("link", { name: "About" }),
-      ).not.toHaveAttribute("aria-current");
+      expect(await screen.findByRole("tab", { name: "About" })).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
     },
   );
 

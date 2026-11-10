@@ -69,10 +69,10 @@ function setup({
 
 const getCountCalls = () =>
   fetchMock.callHistory.calls("path:/api/task/counts");
-const getTasksTab = () => screen.getByRole("link", { name: "Tasks" });
+const getTasksTab = () => screen.getByRole("tab", { name: "Tasks" });
 
 async function switchToRuns() {
-  await userEvent.click(screen.getByRole("link", { name: "Runs" }));
+  await userEvent.click(screen.getByRole("tab", { name: "Runs" }));
   expect(await screen.findByTestId("task-run")).toBeVisible();
 }
 
@@ -87,7 +87,7 @@ describe("task section counts", () => {
     expect(await screen.findByTestId("task-run")).toBeVisible();
     expect(await within(getTasksTab()).findByText("137")).toBeVisible();
     expect(
-      within(screen.getByRole("link", { name: "Runs" })).getByText("1"),
+      within(screen.getByRole("tab", { name: "Runs" })).getByText("1"),
     ).toBeVisible();
     const calls = getCountCalls();
     expect(calls).toHaveLength(1);
