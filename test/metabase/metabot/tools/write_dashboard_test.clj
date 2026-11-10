@@ -374,6 +374,43 @@
          (is (=? {:action "updated"}
                  (event (call {:dashboard_id dash-id, :archived false, :name "Renamed"})))))))))
 
+(deftest trashed-collection-test
+  (mt/with-model-cleanup [:model/Dashboard]
+    (mt/with-temp [:model/Collection {trashed-id :id} {:name "Old", :archived true}
+                   :model/Collection {live-id :id}    {:name "Live"}
+                   :model/Dashboard  {dash-id :id}    {:name              "Old overview"
+                                                       :collection_id     trashed-id
+                                                       :archived          true
+                                                       :archived_directly false}
+                   :model/Dashboard  {other-id :id}   {:name "Live overview", :collection_id live-id}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "a dashboard trashed with its collection can't be restored in place"
+          (is (= {:class :recoverable
+                  :code  ::write-dashboard/dashboard-not-restorable
+                  :text  (str "Dashboard " dash-id " can't be restored to its old collection, because that"
+                              " collection is in the trash or the user can't save to it. Nothing was saved.\n"
+                              "To restore it into another collection, call `write_dashboard` with `archived: false`"
+                              " and that collection's `collection_id`.\n"
+                              "Or ask the user whether to restore its collection from the trash first, or which"
+                              " collection to restore the dashboard to.")}
+                 (failure {:dashboard_id dash-id, :archived false})))
+          (is (=? {:archived true, :collection_id trashed-id} (t2/select-one :model/Dashboard :id dash-id))))
+        (testing "a create or move into a trashed collection is refused"
+          (is (=? {:class :recoverable
+                   :code  ::write-dashboard/collection-trashed
+                   :text  #"(?s)Collection \d+ is in the trash, so the dashboard can't be saved there\..*"}
+                  (failure {:name "New", :collection_id trashed-id})))
+          (is (=? {:code ::write-dashboard/collection-trashed}
+                  (failure {:dashboard_id other-id, :collection_id trashed-id})))
+          (is (=? {:code ::write-dashboard/collection-trashed}
+                  (failure {:dashboard_id dash-id, :archived false, :collection_id trashed-id})))
+          (is (not (t2/exists? :model/Dashboard :name "New")))
+          (is (= live-id (t2/select-one-fn :collection_id :model/Dashboard :id other-id))))
+        (testing "a restore that moves the dashboard to a live collection works"
+          (is (=? {:action "restored", :collection_id live-id}
+                  (event (call {:dashboard_id dash-id, :archived false, :collection_id live-id}))))
+          (is (=? {:archived false, :collection_id live-id} (t2/select-one :model/Dashboard :id dash-id))))))))
+
 ;;; ------------------------------------------------ Refusals ------------------------------------------------------
 
 (deftest read-only-dashboard-test

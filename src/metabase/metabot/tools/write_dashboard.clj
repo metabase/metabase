@@ -146,6 +146,34 @@
                :text (str "If they want, use `write_dashboard` to create a dashboard in their personal collection"
                           " instead.")}]})
 
+(tools/defrecoverable collection-trashed!
+  "The collection the dashboard would be created in or moved to is in the trash."
+  {:payload     [:map {:closed true} [:collection-id :int]]
+   :status-code 404}
+  [{:keys [collection-id]}]
+  {:message  (str "Collection " collection-id " is in the trash, so the dashboard can't be saved there. Nothing was"
+                  " saved.")
+   :recovery [{:uses #{"read_resource"}
+               :text (str "To use another collection, read `metabase://collections?tree=true` with `read_resource`"
+                          " and pass the id of one with `can_write=true` as `collection_id`.")}
+              {:uses #{}
+               :text (str "Or ask the user whether to restore the collection from the trash first, or which"
+                          " collection to use.")}]})
+
+(tools/defrecoverable dashboard-not-restorable!
+  "The dashboard can't be restored to the collection it was trashed from: it went to the trash with that collection,
+  or that collection is gone, trashed, or not writable."
+  {:payload [:map {:closed true} [:dashboard-id :int]]}
+  [{:keys [dashboard-id]}]
+  {:message  (str "Dashboard " dashboard-id " can't be restored to its old collection, because that collection is in"
+                  " the trash or the user can't save to it. Nothing was saved.")
+   :recovery [{:uses #{"write_dashboard"}
+               :text (str "To restore it into another collection, call `write_dashboard` with `archived: false` and"
+                          " that collection's `collection_id`.")}
+              {:uses #{}
+               :text (str "Or ask the user whether to restore its collection from the trash first, or which"
+                          " collection to restore the dashboard to.")}]})
+
 (defn- ids-text
   "The ids in `ids`, joined for a sentence."
   [ids]
@@ -337,29 +365,40 @@
 ;;; -------------------------------------------------- Checks ------------------------------------------------------
 
 (defn- check-not-trashed!
-  "Throws when `dashboard` is in the trash and `archived`, the requested state, doesn't restore it."
-  [dashboard archived]
-  (when (and (:archived dashboard) (not (false? archived)))
-    (save-entity/destination-archived! {:kind :dashboard, :id (:id dashboard)})))
+  "Throws when `dashboard` is in the trash and `changes`, the arguments or attributes saved to it, don't restore it.
+  A restore that keeps the dashboard's collection must pass the trash's own check, `can_restore`, so the dashboard
+  doesn't stay in a trashed collection. A restore that also moves it is checked as a move."
+  [dashboard {:keys [archived] :as changes}]
+  (when (:archived dashboard)
+    (cond
+      (not (false? archived))
+      (save-entity/destination-archived! {:kind :dashboard, :id (:id dashboard)})
+
+      (and (not (contains? changes :collection_id))
+           (not (:can_restore (t2/hydrate dashboard :can_restore))))
+      (dashboard-not-restorable! {:dashboard-id (:id dashboard)}))))
 
 (defn- target-dashboard
   "The dashboard `args` edit, unhydrated, or nil on a create. [[save!]] rereads it to compile against.
   Throws unless the user can edit it, and when it is in the trash and `args` don't restore it."
-  [{:keys [dashboard_id archived]}]
+  [{:keys [dashboard_id] :as args}]
   (when dashboard_id
     (let [dashboard (tools/with-entity {:kind :dashboard, :id dashboard_id}
                       (api/read-check :model/Dashboard dashboard_id))]
       (when-not (mi/can-write? dashboard)
         (dashboard-not-writable! {:dashboard-id dashboard_id}))
-      (check-not-trashed! dashboard archived)
+      (check-not-trashed! dashboard args)
       dashboard)))
 
 (defn- check-collection-writable!
-  "Throws unless the user can save a dashboard to the collection with `collection-id`, nil for the root collection."
+  "Throws unless the user can save a dashboard to the collection with `collection-id`, nil for the root collection.
+  A collection in the trash is refused."
   [collection-id]
   (when collection-id
-    (tools/with-entity {:kind :collection, :id collection-id}
-      (api/read-check :model/Collection collection-id)))
+    (let [collection (tools/with-entity {:kind :collection, :id collection-id}
+                       (api/read-check :model/Collection collection-id))]
+      (when (:archived collection)
+        (collection-trashed! {:collection-id collection-id}))))
   (save-entity/check-writable! (cond-> {:kind :collection} collection-id (assoc :id collection-id))
                                #(api/create-check :model/Dashboard {:collection_id collection-id})))
 
@@ -507,7 +546,7 @@
                                  (recoverable.common/not-found! {:kind :dashboard, :id (:id dashboard)}))
                              (t2/hydrate [:dashcards :series :card] :tabs)))
           ;; A parallel call may have trashed it since the first read.
-          _            (some-> current (check-not-trashed! (:archived attrs)))
+          _            (some-> current (check-not-trashed! attrs))
           ;; A dashboard question needs its dashboard, so a create with charts saves the dashboard first.
           created      (when (and (nil? current) (seq charts))
                          (dashboard-write/write! {:attrs attrs}))
