@@ -2662,6 +2662,7 @@
   {:team "Data Apps"
    :api  #{metabase.serialization.core metabase.serialization.protocol.mp metabase.serialization.resolve}
    :uses #{app-db
+           dependencies
            lib
            lib.legacy-mbql
            lib.metadata
