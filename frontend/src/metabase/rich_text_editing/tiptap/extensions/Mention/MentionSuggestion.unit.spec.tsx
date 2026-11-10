@@ -15,7 +15,6 @@ import type { MentionableUser } from "metabase-types/api";
 import {
   createMockRecentCollectionItem,
   createMockSearchResult,
-  createMockUser,
 } from "metabase-types/api/mocks";
 
 import type { MentionSuggestionProps } from "./MentionSuggestion";
@@ -45,12 +44,12 @@ const RECENT_ITEMS = [
   }),
 ];
 
-const CURRENT_USER = createMockUser({
+const NAMED_USER: MentionableUser = {
   id: 1,
   first_name: "Bobby",
   last_name: "Tables",
   common_name: "Bobby Tables",
-});
+};
 
 // The backend falls back to the email for the common name of a user without
 // a first and last name
@@ -61,15 +60,7 @@ const NO_NAME_USER: MentionableUser = {
   common_name: "no-name@metabase.test",
 };
 
-const MENTIONABLE_USERS: MentionableUser[] = [
-  {
-    id: CURRENT_USER.id,
-    first_name: CURRENT_USER.first_name,
-    last_name: CURRENT_USER.last_name,
-    common_name: CURRENT_USER.common_name,
-  },
-  NO_NAME_USER,
-];
+const MENTIONABLE_USERS: MentionableUser[] = [NAMED_USER, NO_NAME_USER];
 
 interface SetupProps extends Partial<MentionSuggestionProps> {
   query?: string;
@@ -113,7 +104,7 @@ const setup = (props: SetupProps = {}) => {
   };
 
   renderWithProviders(<MentionSuggestion {...defaultProps} />, {
-    storeInitialState: createMockState({ currentUser: CURRENT_USER }),
+    storeInitialState: createMockState({}),
   });
 
   return { command, editor };
@@ -264,7 +255,7 @@ describe("MentionSuggestion", () => {
   describe("users", () => {
     const USER_SEARCH_MODELS: SetupProps["searchModels"] = ["card", "user"];
 
-    it("lists the current user, matching the query case-insensitively", async () => {
+    it("matches users case-insensitively", async () => {
       setup({
         query: "tAbLe",
         searchModels: USER_SEARCH_MODELS,

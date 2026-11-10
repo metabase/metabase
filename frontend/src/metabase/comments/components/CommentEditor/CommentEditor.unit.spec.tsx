@@ -58,14 +58,10 @@ describe("CommentEditor", () => {
     expect(await findFormattingButton("text_strike")).toBeInTheDocument();
     expect(await findFormattingButton("format_code")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /H1/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /^list/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /ordered_list/ }),
-    ).not.toBeInTheDocument();
+      within(screen.getByTestId("document-formatting-menu")).getAllByRole(
+        "button",
+      ),
+    ).toHaveLength(4);
 
     await userEvent.click(boldButton);
 
