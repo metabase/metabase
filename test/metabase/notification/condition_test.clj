@@ -150,3 +150,11 @@
           card  {:display :line, :visualization_settings {:graph.goal_value 10}}
           card-part {:card card, :result (qp/process-query query)}]
       (is (boolean? (#'payload.card/goal-met? {:send_condition :goal_above} card-part))))))
+
+(deftest ^:parallel goal-condition-error-message-test
+  (testing "goal evaluation fails with a readable message when the card has no goal (metabase#85218)"
+    (let [card-part {:card   {:display :line, :visualization_settings {}}
+                     :result {:data {:cols [], :rows []}}}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"^Unable to compare results to goal$"
+                            (#'payload.card/goal-met? {:send_condition :goal_above} card-part))))))
