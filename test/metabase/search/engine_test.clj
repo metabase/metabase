@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [environ.core :as env]
+   [metabase.app-db.core :as mdb]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    ;; Loaded for side effects: registers the engine implementations.
@@ -225,3 +226,24 @@
             ;; Deterministic negative: call the trigger check directly with the current engines as the baseline.
             (task.search-index/trigger-init-for-newly-active-engines! (set (search.engine/active-engines)))
             (is (empty? @triggered))))))))
+
+(deftest tsquery-operators-supported-test
+  (testing "the semantic engine always parses operators — its keyword half runs to_tsquery in pgvector"
+    (with-engines {:supported all-engines}
+      (doseq [db-type [:postgres :h2 :mysql]]
+        (mt/with-dynamic-fn-redefs [mdb/db-type (constantly db-type)]
+          (is (true? (search.engine/tsquery-operators-supported?))
+              (str "semantic engine on a " db-type " app db"))))))
+  (testing "appdb parses operators only on a Postgres app db"
+    (with-engines {:supported #{:search.engine/appdb :search.engine/in-place}}
+      (mt/with-dynamic-fn-redefs [mdb/db-type (constantly :postgres)]
+        (is (true? (search.engine/tsquery-operators-supported?))))
+      (testing "on H2/MySQL the tokens are ANDed LIKE patterns, so `or` would only narrow"
+        (doseq [db-type [:h2 :mysql]]
+          (mt/with-dynamic-fn-redefs [mdb/db-type (constantly db-type)]
+            (is (false? (search.engine/tsquery-operators-supported?))
+                (str "appdb engine on a " db-type " app db")))))))
+  (testing "in-place matches with LIKE patterns and never parses operators"
+    (with-engines {:supported #{:search.engine/in-place}}
+      (mt/with-dynamic-fn-redefs [mdb/db-type (constantly :postgres)]
+        (is (false? (search.engine/tsquery-operators-supported?)))))))
