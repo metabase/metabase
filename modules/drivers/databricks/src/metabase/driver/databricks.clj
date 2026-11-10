@@ -322,7 +322,8 @@
                              (not (str/blank? wif-token))
                              wif-token)
                     "GCP"  (driver.u/wif-ambient-token-http wif-provider wif-audience)
-                    (driver.u/wif-ambient-token-file wif-provider))
+                    (throw (ex-info (format "Unsupported WIF provider: %s" (pr-str wif-provider))
+                                    {:wif-provider wif-provider})))
         expiry-ms (u/ignore-exceptions (some-> token driver.u/jwt-expiry-ms))]
     (cond-> {:AuthMech         11
              :Auth_Flow        0
