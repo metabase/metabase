@@ -690,6 +690,39 @@ jobs:
         heap-per-jvm: '4g'
         artifact-suffix: runner-${{ matrix.runner-index }}
 
+  be-tests-motherduck-transforms-python-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.motherduck-should-run == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      DRIVERS: motherduck
+      MB_MOTHERDUCK_TEST_TOKEN: ${{ secrets.MB_MOTHERDUCK_TEST_TOKEN }}
+    name: MotherDuck Transforms Python Tests
+    steps:
+    - uses: actions/checkout@v7
+    - name: Setup python-runner
+      uses: ./.github/actions/setup-python-runner
+      with:
+        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+    - name: Test MotherDuck driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        # The same junit-name as the job above, to share quarantine history in ci-conductor.
+        junit-name: 'be-tests-motherduck-ee'
+        test-args: >-
+          :only-tags [:mb/transforms-python-test]
+        artifact-suffix: transforms-python
+    - name: Cleanup python-runner
+      if: ${{ always() }}
+      uses: ./.github/actions/cleanup-python-runner
+      with:
+        upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
+        # Driver-qualified so it can't collide with the BigQuery or Snowflake transforms-python logs.
+        logs-artifact-suffix: motherduck-transforms-python
+
   be-tests-oracle:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.oracle-should-run == 'true' }}
@@ -1386,6 +1419,7 @@ jobs:
       - be-tests-mongo-sharded-cluster-ee
       - be-tests-mongo-ssl
       - be-tests-motherduck-ee
+      - be-tests-motherduck-transforms-python-ee
       - be-tests-mysql-mariadb
       - be-tests-oracle
       - be-tests-postgres

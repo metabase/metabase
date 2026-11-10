@@ -295,6 +295,27 @@
          (driver/compile-transform :motherduck {:query        {:query "SELECT x FROM src WHERE y = ?", :params [5]}
                                                 :output-table :main/out}))))
 
+(deftest ^:parallel type->database-type-test
+  (testing "the Postgres names that mean something else on the endpoint, or don't exist there"
+    (are [base-type database-type] (= database-type (driver/type->database-type :motherduck base-type))
+      :type/Float          [:double-precision]
+      :type/JSON           [:json]
+      :type/SerializedJSON [:json]
+      :type/IPAddress      [:text]))
+  (testing "the rest is inherited from Postgres"
+    (are [base-type database-type] (= database-type (driver/type->database-type :motherduck base-type))
+      :type/Decimal        [:decimal]
+      :type/Integer        [:int]
+      :type/BigInteger     [:bigint]
+      :type/Number         [:bigint]
+      :type/Text           [:text]
+      :type/Boolean        [:boolean]
+      :type/Date           [:date]
+      :type/DateTime       [:timestamp]
+      :type/DateTimeWithTZ [:timestamp-with-time-zone]
+      :type/Instant        [:timestamp-with-time-zone]
+      :type/UUID           [:uuid])))
+
 (deftest ^:parallel compile-create-temp-table-test
   (testing "transform tests use an ordinary table, since the endpoint refuses temp tables"
     (is (= ["CREATE TABLE \"mb_test_abc\" AS SELECT 1 AS x" []]

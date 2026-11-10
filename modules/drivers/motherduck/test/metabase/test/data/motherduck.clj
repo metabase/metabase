@@ -137,8 +137,29 @@
     [_driver _type]
     db-type))
 
-;; DuckDB has no SERIAL type. Use INTEGER and let row-xform generate the IDs.
+;; DuckDB has no SERIAL type. Use INTEGER; `create-table-sql` below gives the column a sequence default.
 (defmethod sql.tx/pk-sql-type :motherduck [_] "INTEGER")
+
+(def ^:private pk-sequence-start
+  "The first id a primary-key sequence hands out. The loader inserts explicit ids, which don't advance the sequence,
+  so it starts above any id a test dataset holds, and above any integer checkpoint a transform test records."
+  1000000)
+
+(defn- pk-sequence-default
+  "Rewrite the primary-key column of `create-table-sql` to default to a sequence, as MotherDuck recommends in place
+  of SERIAL, and return `[create-sequence-sql create-table-sql]`. Tests written for Postgres insert rows without an
+  id and expect the database to fill it in; without this, the NOT NULL constraint rejects them. The multi-statement
+  string runs in one `Statement.execute`, which the endpoint accepts. Returns `sql` unchanged when the table has no
+  plain `id` column of the primary-key type."
+  [driver database-name table-name sql]
+  (let [pk-column (str (sql.tx/format-and-quote-field-name driver (sql.tx/pk-field-name driver))
+                       " " (sql.tx/pk-sql-type driver))
+        sequence  (sql.tx/qualify-and-quote driver database-name (str table-name "_id_seq"))]
+    (if-not (str/includes? sql pk-column)
+      sql
+      (str (format "CREATE SEQUENCE IF NOT EXISTS %s START %d; " sequence pk-sequence-start)
+           (str/replace-first sql pk-column
+                              (format "%s DEFAULT nextval('%s')" pk-column (str/replace sequence "'" "''")))))))
 
 ;; Qualify test tables with DuckDB's default schema rather than Postgres public.
 (defmethod sql.tx/session-schema :motherduck [_driver] "main")
@@ -185,7 +206,8 @@
 (defmethod sql.tx/create-table-sql :motherduck
   [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions], :as tabledef}]
   (let [fks (keep #(inline-fk-sql driver dbdef table-name %) field-definitions)
-        sql ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)]
+        sql (->> ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)
+                 (pk-sequence-default driver database-name table-name))]
     (if (empty? fks)
       sql
       ;; The inherited statement ends its column list with the PRIMARY KEY clause.

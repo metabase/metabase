@@ -193,12 +193,9 @@
                  ;; strategies are never needed. Only transforms read these flags.
                  :atomic-renames
                  :rename
-                 ;; Python transforms create the target from Metabase types through the inherited Postgres type map,
-                 ;; where `float` is double precision but DuckDB's FLOAT is 4 bytes. Map the types before enabling.
-                 :transforms/python
-                 :transforms/index-ddl
                  ;; The inherited fetch-table-indexes reads pg_index, which is empty on the endpoint, and calls
                  ;; a pg_get_indexdef arity it doesn't provide. Only transform index management uses these.
+                 :transforms/index-ddl
                  :index/fetch
                  :index/standalone-create
                  ;; Workspace isolation creates Postgres users and schema grants (pg_user, CREATE USER, GRANT).
@@ -643,6 +640,21 @@
   (let [{sql-query :query sql-params :params} query
         table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
     [(str "CREATE OR REPLACE TABLE " table-name " AS " sql-query) sql-params]))
+
+;; Python transforms create their target table from Metabase types. Three of the inherited Postgres type names mean
+;; something else on the endpoint, or don't exist there: Postgres's `float` is double precision, but DuckDB's FLOAT
+;; is 4 bytes; `jsonb` doesn't exist; and `inet` needs an extension the endpoint doesn't load. Everything else maps
+;; as it does on Postgres, including `decimal`, which becomes DECIMAL(18,3), as the other drivers' bare `decimal`
+;; does. `:type/Decimal` derives from `:type/Float`, so it's checked first to keep the inherited `decimal`.
+(defmethod driver/type->database-type :motherduck
+  [driver base-type]
+  (condp #(isa? %2 %1) base-type
+    :type/Decimal        ((get-method driver/type->database-type :postgres) driver base-type)
+    :type/Float          [:double-precision]
+    :type/JSON           [:json]
+    :type/SerializedJSON [:json]
+    :type/IPAddress      [:text]
+    ((get-method driver/type->database-type :postgres) driver base-type)))
 
 ;; The endpoint refuses `CREATE TEMPORARY TABLE` ("Creating temp tables is not allowed"), and MotherDuck has said temp
 ;; tables aren't coming. Transform tests run on one connection inside a transaction that is always rolled back, and
