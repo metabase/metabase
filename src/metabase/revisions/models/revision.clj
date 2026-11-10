@@ -87,8 +87,8 @@
   true)
 
 (defmulti check-revisions-available
-  "Throw a 402 unless this instance's token has the premium feature that the revisions of `model` need, to list them
-  or revert to one. The default throws nothing."
+  "Throw a 402 unless the token has the premium feature that the revisions of `model` need, to list them or revert to
+  one. The default throws nothing."
   {:arglists '([model])}
   mi/dispatch-on-model)
 

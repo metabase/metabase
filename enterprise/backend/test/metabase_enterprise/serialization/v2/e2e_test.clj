@@ -1508,7 +1508,7 @@
      :tested (eids "CardTest" :card_id)}))
 
 (deftest selective-export-takes-the-tests-of-exported-cards-test
-  (testing "An export of one collection takes the tests of its cards, and no others"
+  (testing "An export takes the tests of the cards it exports, and no others"
     (ts/with-dbs [source-db]
       (ts/with-db source-db
         (let [db       (ts/create! :model/Database :name "my-db")

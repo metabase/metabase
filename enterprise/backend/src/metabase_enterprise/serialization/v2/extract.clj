@@ -186,8 +186,8 @@
 (defn extract
   "A reducible of the exported entities an export of `opts` takes: the content of the Collections it selects (see
   [[selection]]) with the content it depends on, the published Tables of those Collections with their data model
-  when it has `:targets`, the CardTests of its Cards, and every row of the other models it takes. Reduce it within [[metabase.serialization.core/with-export-transaction]] for a
-  consistent snapshot."
+  when it has `:targets`, the CardTests of its Cards, and every row of the other models it takes. Reduce it within
+  [[metabase.serialization.core/with-export-transaction]] for a consistent snapshot."
   [{:keys [targets] :as opts}]
   (log/tracef "Extracting with options: %s" (pr-str opts))
   (let [models     (model-set opts)
