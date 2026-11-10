@@ -338,3 +338,51 @@
                        :parent      {:model "card" :id (:id moved) :name "Moved card"}
                        :collection  {:id (:id unsynced) :name "Unsynced"}}
                       (by-name "Test of moved card"))))))))))
+
+(defn- push-through-api!
+  "Pushes the synced content through the API and waits for the push to end."
+  []
+  (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
+                                                {:branch "main" :message "Push"})]
+    (is (=? {:status "successful"} (remote-sync.tu/wait-for-task! task_id)))))
+
+(defn- dirty-list-call-count
+  "The number of app-DB calls of `GET /api/ee/remote-sync/dirty`, once its caches are warm."
+  []
+  (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+  (t2/with-call-count [call-count]
+    (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+    (call-count)))
+
+(deftest dirty-list-reads-no-collection-per-card-test-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Card       card-1 {:name "First card" :collection_id (:id synced)}
+                       :model/Card       card-2 {:name "Second card" :collection_id (:id synced)}
+                       :model/Card       card-3 {:name "Third card" :collection_id (:id synced)}
+                       :model/CardTest   t-1    {:card_id (:id card-1) :name "First test"}
+                       :model/CardTest   t-2    {:card_id (:id card-2) :name "Second test"}
+                       :model/CardTest   t-3    {:card_id (:id card-3) :name "Third test"}]
+          (push-through-api!)
+          (t2/update! :model/CardTest :id (:id t-1) {:description "changed"})
+          (let [one-changed (dirty-list-call-count)]
+            (t2/update! :model/CardTest :id [:in [(:id t-2) (:id t-3)]] {:description "changed"})
+            (testing "each further changed card test costs one call, the read of its own row"
+              (is (= (+ one-changed 2) (dirty-list-call-count))))))))))
+
+(deftest dirty-list-keeps-transform-tests-out-of-collections-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection    folder    {:name "Transform folder" :namespace "transforms" :location "/"}
+                       :model/Transform     transform {:name "Synced transform" :collection_id (:id folder)}
+                       :model/TransformTest t         {:transform_id (:id transform) :name "Transform test"}]
+          (push-through-api!)
+          (t2/update! :model/TransformTest :id (:id t) {:description "changed"})
+          (let [item (some #(when (= [(:model %) (:id %)] ["transformtest" (:id t)]) %)
+                           (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))]
+            (testing "a changed transform test is listed with its transform as parent, under no collection, though its transform has one"
+              (is (=? {:sync_status "update" :parent {:model "transform" :id (:id transform)}} item))
+              (is (not (contains? item :collection))))))))))
