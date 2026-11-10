@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";

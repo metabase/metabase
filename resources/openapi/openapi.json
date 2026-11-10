@@ -2963,6 +2963,114 @@
         } ],
         "description" : "What an `equals` expectation found.\n\n  Unless `:status` is `error`, every key is present on a pass as well as a failure:\n  `:extra-rows`, `:missing-rows` and `:cell-mismatches` come back empty rather than missing.\n  `:row-counts` sets the output's row count against the number of rows the expectation declared.\n  `:cell-mismatches` is filled only when exactly one row is missing and exactly one is extra.\n  `:extra-rows` and `:missing-rows` are capped; `:truncated` is how many rows that cap dropped."
       },
+      "metabase-enterprise.data-testing.schema..card-test.create" : {
+        "additionalProperties" : false,
+        "description" : "What a client sends to create a card test.",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "card_id", "name", "inputs", "expectations" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..card-test.response" : {
+        "additionalProperties" : false,
+        "description" : "A card test as the read endpoints return it, with its newest run.",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "last_run" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.data-test-run"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "inputs", "expectations", "id", "entity_id", "card_id", "creator_id", "created_at", "updated_at", "last_run" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..card-test.update" : {
+        "additionalProperties" : false,
+        "description" : "What a client sends to update a card test. Omitted fields are left unchanged.",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "type" : "object"
+      },
       "metabase-enterprise.data-testing.schema..data-test-run.response" : {
         "additionalProperties" : false,
         "description" : "A test run as the API returns it, with the user who started it.",
@@ -3086,7 +3194,7 @@
       },
       "metabase-enterprise.data-testing.schema..expectation.empty" : {
         "additionalProperties" : false,
-        "description" : "A check that a SQL query over the transform output returns no rows.",
+        "description" : "A check that a SQL query over the output of the query under test returns no rows.",
         "properties" : {
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -3104,7 +3212,7 @@
       "metabase-enterprise.data-testing.schema..expectation.equals" : {
         "anyOf" : [ {
           "additionalProperties" : false,
-          "description" : "Test data returned by a SQL query run against the transform's source database.",
+          "description" : "Test data returned by a SQL query run against the Database of the query under test.",
           "properties" : {
             "format" : {
               "const" : "sql"
@@ -3151,7 +3259,31 @@
           "required" : [ "type", "name", "format", "columns", "rows" ],
           "type" : "object"
         } ],
-        "description" : "A check that the transform output holds exactly the declared rows, over exactly the declared columns."
+        "description" : "A check that the output of the query under test holds exactly the declared rows, over exactly the declared columns."
+      },
+      "metabase-enterprise.data-testing.schema..test.definition" : {
+        "additionalProperties" : false,
+        "description" : "A test as a client writes it, without the subject it covers.",
+        "properties" : {
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "name", "inputs", "expectations" ],
+        "type" : "object"
       },
       "metabase-enterprise.data-testing.schema..transform-test.create" : {
         "additionalProperties" : false,
@@ -3178,30 +3310,6 @@
           }
         },
         "required" : [ "transform_id", "name", "inputs", "expectations" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.data-testing.schema..transform-test.definition" : {
-        "additionalProperties" : false,
-        "description" : "A transform test as a client writes it, without the transform it covers.",
-        "properties" : {
-          "description" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "expectations" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
-          },
-          "inputs" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          }
-        },
-        "required" : [ "name", "inputs", "expectations" ],
         "type" : "object"
       },
       "metabase-enterprise.data-testing.schema..transform-test.response" : {
@@ -3285,6 +3393,54 @@
         },
         "type" : "object"
       },
+      "metabase-enterprise.data-testing.schema.card-test" : {
+        "additionalProperties" : false,
+        "description" : "A saved card test.",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "inputs", "expectations", "id", "entity_id", "card_id", "creator_id", "created_at", "updated_at" ],
+        "type" : "object"
+      },
       "metabase-enterprise.data-testing.schema.column" : {
         "additionalProperties" : false,
         "description" : "A column of inline test data, with the type its cells are cast to.\n\n  A cast target, which on some engines is not a type name the warehouse ever reports: MySQL takes\n  `SIGNED` and reports `BIGINT`.",
@@ -3301,7 +3457,7 @@
       },
       "metabase-enterprise.data-testing.schema.data-test-run" : {
         "additionalProperties" : false,
-        "description" : "A persisted execution of a test of any type. Deleting the test through its model sets `:test_id` to nil. A delete\n  that skips model hooks (raw SQL, a database cascade) leaves a `:test_id` that names no test.",
+        "description" : "A persisted execution of a test of any type. Deleting the test through its model sets `:test_id` to nil. A delete\n  that skips model hooks (raw SQL, a database cascade) leaves a `:test_id` that names no test; such a run is never\n  listed or shown as `last_run`.",
         "properties" : {
           "end_time" : {
             "anyOf" : [ {
@@ -3359,7 +3515,7 @@
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..expectation.empty"
         } ],
-        "description" : "A check on the output of the transform under test."
+        "description" : "A check on the output of the query under test."
       },
       "metabase-enterprise.data-testing.schema.expectation-result" : {
         "anyOf" : [ {
@@ -3370,7 +3526,7 @@
         "description" : "What one expectation found. Each type owns the schema of its own result, registered under the key\n  named here."
       },
       "metabase-enterprise.data-testing.schema.expectations" : {
-        "description" : "The checks run against the transform's output. Names must be unique within a test,\n  case-sensitively.",
+        "description" : "The checks run against the output of the query under test. Names must be unique within a test,\n  case-sensitively.",
         "items" : {
           "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectation"
         },
@@ -3379,7 +3535,7 @@
       "metabase-enterprise.data-testing.schema.input" : {
         "anyOf" : [ {
           "additionalProperties" : false,
-          "description" : "Test data returned by a SQL query run against the transform's source database.",
+          "description" : "Test data returned by a SQL query run against the Database of the query under test.",
           "properties" : {
             "format" : {
               "const" : "sql"
@@ -3420,10 +3576,10 @@
           "required" : [ "table", "format", "columns", "rows" ],
           "type" : "object"
         } ],
-        "description" : "An input table of the transform under test, replaced with test data."
+        "description" : "An input table of the query under test, replaced with test data."
       },
       "metabase-enterprise.data-testing.schema.inputs" : {
-        "description" : "Test data for the tables the transform reads. Every table it reads needs one, and an input for\n  a table it does not read is refused.",
+        "description" : "Test data for the tables the query under test reads. Every table it reads needs one, and an input for\n  a table it does not read is refused.",
         "items" : {
           "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.input"
         },
@@ -3486,7 +3642,7 @@
       },
       "metabase-enterprise.data-testing.schema.run-result" : {
         "additionalProperties" : false,
-        "description" : "The outcome of a transform test run.\n\n  `:tables` maps each temp table the run created to the table it stood in for.",
+        "description" : "The outcome of a test run.\n\n  `:tables` maps each temp table the run created to the table it stood in for.",
         "properties" : {
           "expectations" : {
             "items" : {
@@ -3514,7 +3670,7 @@
       },
       "metabase-enterprise.data-testing.schema.sql-data" : {
         "additionalProperties" : false,
-        "description" : "Test data returned by a SQL query run against the transform's source database.",
+        "description" : "Test data returned by a SQL query run against the Database of the query under test.",
         "properties" : {
           "format" : {
             "const" : "sql"
@@ -3527,13 +3683,13 @@
         "type" : "object"
       },
       "metabase-enterprise.data-testing.schema.status" : {
-        "description" : "The outcome of a transform test run, or of one of its expectations.\n\n  `:error` is an expectation outcome only: that expectation's own query could not be run, while\n  the rest of the run completed and still reported.",
+        "description" : "The outcome of a test run, or of one of its expectations.\n\n  `:error` is an expectation outcome only: that expectation's own query could not be run, while\n  the rest of the run completed and still reported.",
         "enum" : [ "passed", "failed", "error" ],
         "type" : "string"
       },
       "metabase-enterprise.data-testing.schema.table" : {
         "additionalProperties" : false,
-        "description" : "A table read by the transform under test, by schema and name.",
+        "description" : "A table read by the query under test, by schema and name.",
         "properties" : {
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -3551,12 +3707,12 @@
       },
       "metabase-enterprise.data-testing.schema.test-type" : {
         "description" : "The kind of test a run ran. It selects the table that `test_id` points into.",
-        "enum" : [ "transform" ],
+        "enum" : [ "transform", "card" ],
         "type" : "string"
       },
       "metabase-enterprise.data-testing.schema.transform-test" : {
         "additionalProperties" : false,
-        "description" : "A saved transform test: the transform it covers, the inputs that stand in for its source\n  tables, and the expectations checked against its output.",
+        "description" : "A saved transform test.",
         "properties" : {
           "created_at" : {
             "description" : "value must be a valid date/time/datetime",
@@ -14947,9 +15103,8 @@
           "metabase-enterprise.sandbox.query-processor.middleware.sandboxing/sandbox?" : {
             "type" : "boolean"
           },
-          "metabase.driver.sql.query-processor/cte-level" : {
-            "minimum" : 0,
-            "type" : "integer"
+          "metabase.driver.sql.query-processor/cte-name" : {
+            "type" : "string"
           },
           "metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases" : {
             "items" : {
@@ -15054,9 +15209,8 @@
           "metabase-enterprise.sandbox.query-processor.middleware.sandboxing/sandbox?" : {
             "type" : "boolean"
           },
-          "metabase.driver.sql.query-processor/cte-level" : {
-            "minimum" : 0,
-            "type" : "integer"
+          "metabase.driver.sql.query-processor/cte-name" : {
+            "type" : "string"
           },
           "metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases" : {
             "items" : {
@@ -15164,9 +15318,8 @@
           "metabase-enterprise.sandbox.query-processor.middleware.sandboxing/sandbox?" : {
             "type" : "boolean"
           },
-          "metabase.driver.sql.query-processor/cte-level" : {
-            "minimum" : 0,
-            "type" : "integer"
+          "metabase.driver.sql.query-processor/cte-name" : {
+            "type" : "string"
           },
           "metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases" : {
             "items" : {
@@ -20089,6 +20242,10 @@
             } ],
             "description" : "Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,\n  although the functions that ultimately power most API endpoints tend to set this to `true`. See\n  `add-constraints` middleware for more details."
           },
+          "card-reference?" : {
+            "description" : "Whether this query is a card that a native query references, e.g. with `{{#123}}`. The compiled query goes inside\n  the native query, so SQL drivers without the `:stage-ctes/nested` feature compile it without stage CTEs.",
+            "type" : "boolean"
+          },
           "csv-include-bom?" : {
             "anyOf" : [ {
               "type" : "boolean"
@@ -20112,6 +20269,14 @@
               "type" : "null"
             } ],
             "description" : "Whether to skip the remapped (human-readable) columns that `metabase.query-processor.middleware.add-remaps`\n  normally splices in. Set by callers that want the query's own columns and nothing else -- calculating a Card's\n  result metadata, or fetching field values for a filter widget; default `false`."
+          },
+          "display" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ],
+            "description" : "The `:display` of the Card or unsaved question whose results are being exported, e.g. `:table`. Used by\n     `metabase.query-processor.streaming` to leave the columns the table visualization hides out of exports."
           },
           "format-rows?" : {
             "description" : "Should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing\n     results? Used by `metabase.query-processor.middleware.format-rows`default `false`.",
@@ -32954,6 +33119,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -33171,6 +33343,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -34098,6 +34277,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -34349,6 +34535,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -35197,6 +35390,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -35234,6 +35434,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -35853,6 +36060,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -35940,6 +36161,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -36092,6 +36320,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -36307,6 +36542,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -36888,6 +37130,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -39167,6 +39423,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -39512,6 +39775,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -40231,6 +40501,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -40462,6 +40739,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -40602,6 +40886,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -42077,6 +42368,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -42427,6 +42725,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -42456,6 +42768,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -42686,6 +43012,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -43007,6 +43347,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -43508,6 +43862,18 @@
                     "description" : "value must be a valid boolean string ('true' or 'false').",
                     "type" : "boolean"
                   },
+                  "display" : {
+                    "anyOf" : [ {
+                      "anyOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "string"
+                      } ],
+                      "description" : "value must be a keyword or string."
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "format_rows" : {
                     "default" : false,
                     "description" : "value must be a valid boolean string ('true' or 'false').",
@@ -43785,6 +44151,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -44082,6 +44455,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -44524,6 +44904,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -46543,6 +46930,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -46574,6 +46968,232 @@
         },
         "summary" : "GET /api/ee/billing",
         "tags" : [ "/api/ee/billing" ]
+      }
+    },
+    "/api/ee/card-test" : {
+      "get" : {
+        "description" : "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio\n  access.\n\n  A card test, with its inputs and expectations, is readable by every user who can read its card.",
+        "operationId" : "get-api-ee-card-test",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "card-id",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.response"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/card-test",
+        "tags" : [ "/api/ee/card-test" ]
+      },
+      "post" : {
+        "description" : "Create a card test. Its expectations read the result of the card's query without remapped columns and without the\n  default row limit. Expectation SQL names that result `{{output}}`, spaces inside the braces allowed; any other\n  `{{...}}` is refused.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.",
+        "operationId" : "post-api-ee-card-test",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.create"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.card-test"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/card-test",
+        "tags" : [ "/api/ee/card-test" ]
+      }
+    },
+    "/api/ee/card-test/{id}" : {
+      "delete" : {
+        "description" : "Delete a card test.",
+        "operationId" : "delete-api-ee-card-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "DELETE /api/ee/card-test/{id}",
+        "tags" : [ "/api/ee/card-test" ]
+      },
+      "get" : {
+        "description" : "Get a card test with its newest run.\n\n  A card test, with its inputs and expectations, is readable by every user who can read its card.",
+        "operationId" : "get-api-ee-card-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.response"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/card-test/{id}",
+        "tags" : [ "/api/ee/card-test" ]
+      },
+      "put" : {
+        "description" : "Update a card test.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.",
+        "operationId" : "put-api-ee-card-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.update"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.card-test"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/ee/card-test/{id}",
+        "tags" : [ "/api/ee/card-test" ]
+      }
+    },
+    "/api/ee/card-test/{id}/run" : {
+      "post" : {
+        "description" : "Run a card test. Needs read access to the test, permission to run its card's query, and native query access to the\n  database of that query.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the\n  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)\n  carries none.",
+        "operationId" : "post-api-ee-card-test-id-run",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-result"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/card-test/{id}/run",
+        "tags" : [ "/api/ee/card-test" ]
       }
     },
     "/api/ee/cloud-add-ons/addons" : {
@@ -48418,6 +49038,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -50818,6 +51452,13 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -50930,6 +51571,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "not-connected"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -56679,6 +57334,13 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -56939,16 +57601,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "properties" : {
-                    "body" : {
-                      "type" : "null"
-                    },
-                    "status" : {
-                      "const" : 204
-                    }
-                  },
-                  "required" : [ "status", "body" ],
-                  "type" : "object"
+                  "type" : "null"
                 }
               }
             },
@@ -59257,6 +59910,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -59344,6 +60004,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -59449,6 +60123,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -59652,6 +60340,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -59688,6 +60390,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -59858,6 +60567,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -60281,6 +60997,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -62811,16 +63534,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "properties" : {
-                    "body" : {
-                      "type" : "null"
-                    },
-                    "status" : {
-                      "const" : 204
-                    }
-                  },
-                  "required" : [ "status", "body" ],
-                  "type" : "object"
+                  "type" : "null"
                 }
               }
             },
@@ -62949,6 +63663,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -63104,6 +63825,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -63408,6 +64136,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -63543,16 +64278,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "properties" : {
-                    "body" : {
-                      "type" : "null"
-                    },
-                    "status" : {
-                      "const" : 204
-                    }
-                  },
-                  "required" : [ "status", "body" ],
-                  "type" : "object"
+                  "type" : "null"
                 }
               }
             },
@@ -64818,6 +65544,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -65833,6 +66566,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -65891,6 +66631,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -65965,6 +66719,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -66246,6 +67014,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -66603,6 +67378,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -66824,6 +67606,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -66853,6 +67642,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -66974,6 +67770,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -67003,6 +67806,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -67032,6 +67842,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -67090,6 +67907,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -67110,6 +67934,13 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -67130,6 +67961,13 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -67168,6 +68006,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -70221,6 +71066,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "ok" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "ok" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -70836,6 +71695,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -71655,6 +72521,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "message" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "message" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -71844,6 +72724,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -72105,6 +72992,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -72428,6 +73322,20 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "valid" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "valid" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -73828,6 +74736,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -74115,6 +75037,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -74144,6 +75080,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -75838,6 +76788,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -76090,6 +77047,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -81872,6 +82836,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -82061,6 +83039,20 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -82217,17 +83209,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "additionalProperties" : false,
-                  "properties" : {
-                    "body" : {
-                      "type" : "null"
-                    },
-                    "status" : {
-                      "const" : 204
-                    }
-                  },
-                  "required" : [ "status", "body" ],
-                  "type" : "object"
+                  "type" : "null"
                 }
               }
             },

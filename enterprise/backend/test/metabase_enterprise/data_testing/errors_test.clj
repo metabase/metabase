@@ -39,10 +39,12 @@
    ::errors/unparseable-source         400
    ::errors/unremapped-reference       400
    ::errors/no-expectations            400
+   ::errors/unknown-placeholder        400
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
    ::errors/uncompilable-subject       422
-   ::errors/transform-failed           422
+   ::errors/query-failed               422
+   ::errors/duplicate-output-columns   422
    ::errors/setup-failed               422
    ::errors/expectation-failed         422
    ::errors/unsupported-format         501})
@@ -68,13 +70,15 @@
              ::errors/duplicate-input-table
              ::errors/unparseable-source
              ::errors/unremapped-reference
-             ::errors/no-expectations}
+             ::errors/no-expectations
+             ::errors/unknown-placeholder}
            (types-with-status 400))))
   (testing "environment errors — the subject or its database prevents a run here — are 422"
     (is (= #{::errors/unsupported-transform
              ::errors/unsupported-driver
              ::errors/uncompilable-subject
-             ::errors/transform-failed
+             ::errors/query-failed
+             ::errors/duplicate-output-columns
              ::errors/setup-failed
              ::errors/expectation-failed}
            (types-with-status 422))))
@@ -106,10 +110,12 @@
    ::errors/unparseable-source         "transform-test.unparseable-source"
    ::errors/unremapped-reference       "transform-test.unremapped-reference"
    ::errors/no-expectations            "transform-test.no-expectations"
+   ::errors/unknown-placeholder        "transform-test.unknown-placeholder"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"
    ::errors/unsupported-driver         "transform-test.unsupported-driver"
    ::errors/uncompilable-subject       "transform-test.uncompilable-subject"
-   ::errors/transform-failed           "transform-test.transform-failed"
+   ::errors/query-failed               "transform-test.query-failed"
+   ::errors/duplicate-output-columns   "transform-test.duplicate-output-columns"
    ::errors/setup-failed               "transform-test.setup-failed"
    ::errors/expectation-failed         "transform-test.expectation-failed"
    ::errors/unsupported-format         "transform-test.unsupported-format"})
@@ -124,7 +130,10 @@
 (deftest code-takes-the-endpoint-prefix-test
   (testing "the same error type is published under the prefix of the endpoint that refused"
     (is (= "card-test.missing-inputs" (errors/code "card-test" ::errors/missing-inputs)))
-    (is (= "transform-test.missing-inputs" (errors/code "transform-test" ::errors/missing-inputs)))))
+    (is (= "transform-test.missing-inputs" (errors/code "transform-test" ::errors/missing-inputs))))
+  (testing "a query under test that fails to run is `query-failed` for every test type"
+    (is (= "card-test.query-failed" (errors/code "card-test" ::errors/query-failed)))
+    (is (= "transform-test.query-failed" (errors/code "transform-test" ::errors/query-failed)))))
 
 (deftest code-carries-no-clojure-namespace-test
   (testing "a code is the published vocabulary, not a var's source location"
@@ -175,9 +184,9 @@
 
 (deftest ex-attaches-cause-test
   (let [cause (Exception. "underlying")
-        e     (errors/ex ::errors/transform-failed "boom" {} cause)]
+        e     (errors/ex ::errors/query-failed "boom" {} cause)]
     (is (identical? cause (ex-cause e)))
-    (is (= ::errors/transform-failed (:error-type (ex-data e))))))
+    (is (= ::errors/query-failed (:error-type (ex-data e))))))
 
 (deftest ex-checks-computed-type-at-runtime-test
   (testing "a non-literal error type compiles, and is checked when the form runs"

@@ -13,6 +13,13 @@ export function setupDeleteBookmarkEndpoint({
   fetchMock.delete(`path:/api/bookmark/${type}/${item_id}`, 204);
 }
 
+export function setupCreateBookmarkEndpoint({
+  item_id,
+  type,
+}: Pick<Bookmark, "item_id" | "type">) {
+  fetchMock.post(`path:/api/bookmark/${type}/${item_id}`, {});
+}
+
 export function setupBookmarksEndpointsWithError({
   error,
   status = 500,

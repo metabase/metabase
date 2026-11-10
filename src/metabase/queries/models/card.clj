@@ -1140,10 +1140,20 @@
   (u/prog1 card
     (queries.db/move-actions-of-model! (:id card) (:collection_id card))))
 
+(defenterprise delete-card-tests!
+  "Delete the tests of the card `card-id` through Toucan, so that each test's delete hook runs. No-op in OSS."
+  metabase-enterprise.data-testing.models.card-test
+  [_card-id]
+  nil)
+
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
   [{:keys [id] :as card}]
   (pre-delete-check-sandbox-constraints card)
+  ;; The `card_test.card_id` FK is ON DELETE CASCADE, but a cascade runs no hook, and the CardTest hook is what sets the
+  ;; test id of the test's runs to null. A delete of cards that skips this hook leaves those runs' test id naming no
+  ;; test.
+  (delete-card-tests! id)
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card

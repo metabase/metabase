@@ -26,7 +26,7 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(mu/defn- json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
+(mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
   "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
   way out."
   [schema :- :keyword]
@@ -41,16 +41,21 @@
   {:inputs       (json-column ::data-testing.schema/inputs)
    :expectations (json-column ::data-testing.schema/expectations)})
 
+(defn with-last-runs
+  "`tests`, saved tests of `test-type`, each with its newest run, or nil, under `:last_run`."
+  [test-type tests]
+  (if-not (seq tests)
+    tests
+    (let [id->run (into {}
+                        (map (juxt :test_id identity))
+                        (data-testing.db/latest-test-runs test-type (into #{} (map :id) tests)))]
+      (for [saved-test tests]
+        (assoc saved-test :last_run (get id->run (:id saved-test)))))))
+
 (methodical/defmethod t2/batched-hydrate [:model/TransformTest :last_run]
   "Add the newest run, or nil, to each transform test."
   [_model _k transform-tests]
-  (if-not (seq transform-tests)
-    transform-tests
-    (let [id->run (into {}
-                        (map (juxt :test_id identity))
-                        (data-testing.db/latest-test-runs :transform (into #{} (map :id) transform-tests)))]
-      (for [transform-test transform-tests]
-        (assoc transform-test :last_run (get id->run (:id transform-test)))))))
+  (with-last-runs :transform transform-tests))
 
 (defmethod audit-app/model-details :model/TransformTest
   [transform-test _event-type]
@@ -58,8 +63,9 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
-(defn- can-run-native-query?
-  "Whether the current user may run native SQL against the Database with `db-id`."
+(defn can-run-native-query?
+  "Whether the current user may run native SQL against the Database with `db-id`, as the input and expectation SQL of a
+  test does."
   [db-id]
   (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))
 

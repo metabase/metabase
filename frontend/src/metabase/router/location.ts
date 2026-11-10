@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { Location as ReactRouterLocation } from "react-router";
 
 import type { Location as HistoryLocation } from "./types";

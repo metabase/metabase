@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.schema
-  "The shapes a transform test is written in, and the only gate they pass: each schema explains its own
+  "The shapes a data test is written in, and the only gate they pass: each schema explains its own
   refusals, so a caller reads what to fix from the explanation rather than from a hand-written check."
   (:require
    [clojure.string :as str]
@@ -41,7 +41,7 @@
          (when (seq extra) (str "; not declared: " (str/join ", " (map pr-str extra)))))))
 
 (mr/def ::table
-  "A table read by the transform under test, by schema and name."
+  "A table read by the query under test, by schema and name."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:schema {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:name   ::lib.schema.common/non-blank-string]])
@@ -66,7 +66,7 @@
   (ms/string-keyed-map [:maybe [:or :string :boolean number?]]))
 
 (mr/def ::sql-data
-  "Test data returned by a SQL query run against the transform's source database."
+  "Test data returned by a SQL query run against the Database of the query under test."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:format {:decode/normalize lib.schema.common/normalize-keyword} [:= :sql]]
    [:sql    ::lib.schema.common/non-blank-string]])
@@ -85,7 +85,7 @@
    [:fn {:error/fn rows-match-columns-message} rows-match-columns?]])
 
 (mr/def ::input
-  "An input table of the transform under test, replaced with test data."
+  "An input table of the query under test, replaced with test data."
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :format)
            :error/fn         (unknown-dispatch :format)}
@@ -93,12 +93,12 @@
    [:rows [:merge [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case} [:table ::table]] ::rows-data]]])
 
 (mr/def ::inputs
-  "Test data for the tables the transform reads. Every table it reads needs one, and an input for
+  "Test data for the tables the query under test reads. Every table it reads needs one, and an input for
   a table it does not read is refused."
   [:sequential ::input])
 
 (mr/def ::expectation.equals
-  "A check that the transform output holds exactly the declared rows, over exactly the declared columns."
+  "A check that the output of the query under test holds exactly the declared rows, over exactly the declared columns."
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :format)
            :error/fn         (unknown-dispatch :format)}
@@ -114,14 +114,14 @@
            ::rows-data]]])
 
 (mr/def ::expectation.empty
-  "A check that a SQL query over the transform output returns no rows."
+  "A check that a SQL query over the output of the query under test returns no rows."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :empty]]
    [:name ::lib.schema.common/non-blank-string]
    [:sql  ::lib.schema.common/non-blank-string]])
 
 (mr/def ::expectation
-  "A check on the output of the transform under test."
+  "A check on the output of the query under test."
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :type)
            :error/fn         (unknown-dispatch :type)}
@@ -129,7 +129,7 @@
    [:empty  ::expectation.empty]])
 
 (mr/def ::expectations
-  "The checks run against the transform's output. Names must be unique within a test,
+  "The checks run against the output of the query under test. Names must be unique within a test,
   case-sensitively."
   [:and
    [:sequential ::expectation]
@@ -138,43 +138,75 @@
       (let [names (map :name expectations)]
         (or (empty? names) (apply distinct? names))))]])
 
-(mr/def ::transform-test.definition
-  "A transform test as a client writes it, without the transform it covers."
+(mr/def ::test.definition
+  "A test as a client writes it, without the subject it covers."
   [:map {:closed true}
    [:name         ::lib.schema.common/non-blank-string]
    [:description  {:optional true} [:maybe :string]]
    [:inputs       ::inputs]
    [:expectations ::expectations]])
 
-(mr/def ::transform-test.create
-  "What a client sends to create a transform test."
+(defn- test-create
+  "What a client sends to create a test: the id of its subject under `subject-key`, of schema `subject-id-schema`."
+  [subject-key subject-id-schema]
   [:merge
    [:map {:closed true}
-    [:transform_id ::lib.schema.id/transform]]
-   ::transform-test.definition])
+    [subject-key subject-id-schema]]
+   ::test.definition])
 
-(mr/def ::transform-test
-  "A saved transform test: the transform it covers, the inputs that stand in for its source
-  tables, and the expectations checked against its output."
+(defn- saved-test
+  "A saved test: the id of its subject under `subject-key`, of schema `subject-id-schema`, the inputs that stand in for
+  the tables the subject reads, and the expectations checked against its output."
+  [subject-key subject-id-schema]
   [:merge
-   ::transform-test.definition
+   ::test.definition
    [:map {:closed true}
-    [:id           ms/PositiveInt]
-    [:entity_id    :string]
-    [:transform_id ::lib.schema.id/transform]
-    [:creator_id   ::lib.schema.id/user]
-    [:description  {:optional true} [:maybe :string]]
-    [:created_at   ms/TemporalInstant]
-    [:updated_at   ms/TemporalInstant]]])
+    [:id          ms/PositiveInt]
+    [:entity_id   :string]
+    [subject-key  subject-id-schema]
+    [:creator_id  ::lib.schema.id/user]
+    [:description {:optional true} [:maybe :string]]
+    [:created_at  ms/TemporalInstant]
+    [:updated_at  ms/TemporalInstant]]])
 
-(mr/def ::transform-test.update
-  "What a client sends to update a transform test. Omitted fields are left unchanged."
+(defn- test-update
+  "What a client sends to update a test: any of its fields, with the id of its subject under `subject-key`, of schema
+  `subject-id-schema`. Omitted fields are left unchanged."
+  [subject-key subject-id-schema]
   [:map {:closed true}
-   [:transform_id {:optional true} ::lib.schema.id/transform]
+   [subject-key   {:optional true} subject-id-schema]
    [:name         {:optional true} ::lib.schema.common/non-blank-string]
    [:description  {:optional true} [:maybe :string]]
    [:inputs       {:optional true} ::inputs]
    [:expectations {:optional true} ::expectations]])
+
+(mr/def ::transform-test.create
+  "What a client sends to create a transform test."
+  (test-create :transform_id ::lib.schema.id/transform))
+
+(mr/def ::transform-test
+  "A saved transform test."
+  (saved-test :transform_id ::lib.schema.id/transform))
+
+(mr/def ::transform-test.update
+  "What a client sends to update a transform test. Omitted fields are left unchanged."
+  (test-update :transform_id ::lib.schema.id/transform))
+
+(mr/def ::card-test.create
+  "What a client sends to create a card test."
+  (test-create :card_id ::lib.schema.id/card))
+
+(mr/def ::card-test
+  "A saved card test."
+  (saved-test :card_id ::lib.schema.id/card))
+
+(mr/def ::card-test.update
+  "What a client sends to update a card test. Omitted fields are left unchanged."
+  (test-update :card_id ::lib.schema.id/card))
+
+(mr/def ::saved-test
+  "A saved test of any subject type."
+  [:or ::transform-test ::card-test])
 
 (mr/def ::run-status
   "The persisted lifecycle state of a test run."
@@ -184,11 +216,12 @@
 (mr/def ::test-type
   "The kind of test a run ran. It selects the table that `test_id` points into."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword}
-   :transform])
+   :transform :card])
 
 (mr/def ::data-test-run
   "A persisted execution of a test of any type. Deleting the test through its model sets `:test_id` to nil. A delete
-  that skips model hooks (raw SQL, a database cascade) leaves a `:test_id` that names no test."
+  that skips model hooks (raw SQL, a database cascade) leaves a `:test_id` that names no test; such a run is never
+  listed or shown as `last_run`."
   [:map {:closed true}
    [:id             ms/PositiveInt]
    [:test_type      ::test-type]
@@ -237,8 +270,15 @@
    [:map {:closed true}
     [:last_run [:maybe ::data-test-run]]]])
 
+(mr/def ::card-test.response
+  "A card test as the read endpoints return it, with its newest run."
+  [:merge
+   ::card-test
+   [:map {:closed true}
+    [:last_run [:maybe ::data-test-run]]]])
+
 (mr/def ::status
-  "The outcome of a transform test run, or of one of its expectations.
+  "The outcome of a test run, or of one of its expectations.
 
   `:error` is an expectation outcome only: that expectation's own query could not be run, while
   the rest of the run completed and still reported."
@@ -266,7 +306,7 @@
    [:empty  :metabase-enterprise.data-testing.expectations.empty/result]])
 
 (mr/def ::run-result
-  "The outcome of a transform test run.
+  "The outcome of a test run.
 
   `:tables` maps each temp table the run created to the table it stood in for."
   [:map {:closed true}

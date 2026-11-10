@@ -47,6 +47,8 @@
     :model/BookmarkOrdering
     :model/CacheConfig
     :model/CardBookmark
+    ;; TODO remove once card tests are serialized
+    :model/CardTest
     :model/ChannelTemplate
     :model/CollectionBookmark
     ;; Content Diagnostics findings are scan-snapshot runtime data (its `entity_id` column is a

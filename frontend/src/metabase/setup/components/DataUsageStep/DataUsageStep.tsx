@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { getIn } from "icepick";
 import { type JSX, useState } from "react";
 import { jt, t } from "ttag";

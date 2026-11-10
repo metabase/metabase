@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import Color from "color";
 
 const FUNCTIONAL_COLOR_ATTRIBUTE_REGEX = /="((?:hsla?|rgba?)\([^")]*\))"/g;

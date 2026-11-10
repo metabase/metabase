@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 

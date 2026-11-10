@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { exploration } from "metabase/urls/explorations";
 import type {
   CardId,

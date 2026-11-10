@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.expectations.equals
-  "The `equals` expectation: the transform output holds exactly the declared rows, over exactly the
+  "The `equals` expectation: the output of the query under test holds exactly the declared rows, over exactly the
   declared columns.
 
   Only the declared columns are compared, so a column the expectation does not name — a `NOW()`
@@ -91,7 +91,7 @@
 (mu/defn- resolve-column :- :string
   "The output table's own spelling of `declared-name`.
 
-  The author writes the name as it appears in the transform's SQL; the warehouse stores whatever its
+  The author writes the name as it appears in the SQL of the query under test; the warehouse stores whatever its
   folding rules produced, which for the same unquoted identifier is upper case on H2 and Snowflake
   and lower on Postgres. Resolving against the materialized table means the comparison names a
   column the table actually has — and, since the result is always one of the output's own names, no

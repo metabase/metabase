@@ -4828,3 +4828,60 @@
           (is (= synced? (synced?* library-id)))
           (is (= synced? (synced?* child-id)))
           (is (false? (synced?* other-id))))))))
+
+(deftest card-test-table-test
+  (testing "t1jz0k..c65vs3: card_test holds the tests of a card, and the rollback drops it"
+    (impl/test-migrations ["t1jz0k" "c65vs3"] [migrate!]
+      (let [user-id   (t2/insert-returning-pk! :core_user {:first_name    "Test"
+                                                           :last_name     "Owner"
+                                                           :email         "card-test-owner@test.com"
+                                                           :entity_id     (u/generate-nano-id)
+                                                           :date_joined   :%now
+                                                           :password      "password"
+                                                           :password_salt "salt"})
+            db-id     (t2/insert-returning-pk! :metabase_database {:name       "DB"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+            card-id   (t2/insert-returning-pk! :report_card {:name                   "Card"
+                                                             :entity_id              (u/generate-nano-id)
+                                                             :display                "table"
+                                                             :dataset_query          "{}"
+                                                             :visualization_settings "{}"
+                                                             :creator_id             user-id
+                                                             :database_id            db-id
+                                                             :created_at             :%now
+                                                             :updated_at             :%now})
+            boundary  (with-open [conn (.getConnection (mdb/data-source))]
+                        (liquibase/with-liquibase [liquibase conn]
+                          (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))
+            card-test (fn [entity-id]
+                        {:entity_id    entity-id
+                         :card_id      card-id
+                         :creator_id   user-id
+                         :name         "Revenue ignores refunds"
+                         :inputs       "[]"
+                         :expectations "[]"})]
+        (migrate!)
+        (let [entity-id (u/generate-nano-id)
+              test-id   (t2/insert-returning-pk! :card_test (card-test entity-id))]
+          (testing "a card test is stored with its timestamps"
+            (is (=? {:card_id card-id :creator_id user-id :entity_id entity-id :created_at some? :updated_at some?}
+                    (t2/select-one :card_test :id test-id))))
+          (testing "entity_id is unique"
+            (is (thrown? Exception (t2/insert! :card_test (card-test entity-id)))))
+          (testing "a card test must name a card that exists"
+            (is (thrown? Exception (t2/insert! :card_test (assoc (card-test (u/generate-nano-id)) :card_id Integer/MAX_VALUE)))))
+          (when (= :postgres (mdb/db-type))
+            (testing "entity_id compares byte by byte"
+              (is (= "C" (:collation_name (t2/query-one ["SELECT collation_name FROM information_schema.columns
+                                                          WHERE table_name = 'card_test' AND column_name = 'entity_id'"]))))))
+          (testing "deleting the card deletes its tests"
+            (t2/delete! :report_card :id card-id)
+            (is (nil? (t2/select-one :card_test :id test-id)))))
+        (with-open [conn (.getConnection (mdb/data-source))]
+          (liquibase/with-liquibase [liquibase conn]
+            (rollback/rollback-to-deployment! conn liquibase boundary)))
+        (testing "rollback drops card_test"
+          (is (thrown? Exception (t2/select :card_test))))))))

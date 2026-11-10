@@ -273,7 +273,7 @@
                  :model/DataTestRun {transform-run :id} {:test_type      :transform
                                                          :test_id        transform-test-id
                                                          :last_heartbeat (minutes-ago 10)}
-                 :model/DataTestRun {card-run :id}      {:test_type      :card
+                 :model/DataTestRun {unknown-run :id}   {:test_type      :type-from-a-newer-version
                                                          :test_id        transform-test-id
                                                          :last_heartbeat (minutes-ago 10)}]
     (let [reaped    (atom nil)
@@ -281,16 +281,16 @@
       (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
                                                           (swap! published conj [topic (-> event :object :id)])
                                                           event)]
-        (testing "a sweep over a stale run of a type other than transform does not throw"
+        (testing "a sweep over a stale run of a type this version does not know does not throw"
           (is (nil? (caught #(reset! reaped (data-testing.run-tracking/reap-orphaned-runs! 5)))))))
       (testing "the stale transform run is timed out, returned, and its timeout event published"
         (is (= :timeout (t2/select-one-fn :status :model/DataTestRun :id transform-run)))
         (is (contains? (into #{} (map :id) @reaped) transform-run))
         (is (some #{[:event/transform-test-run-timeout transform-run]} @published)))
-      (testing "the stale run of the other type is timed out and returned, with no event"
-        (is (= :timeout (t2/select-one-fn :status :model/DataTestRun :id card-run)))
-        (is (contains? (into #{} (map :id) @reaped) card-run))
-        (is (not-any? (fn [[_topic id]] (= card-run id)) @published))))))
+      (testing "the stale run of the unknown type is timed out and returned, with no event"
+        (is (= :timeout (t2/select-one-fn :status :model/DataTestRun :id unknown-run)))
+        (is (contains? (into #{} (map :id) @reaped) unknown-run))
+        (is (not-any? (fn [[_topic id]] (= unknown-run id)) @published))))))
 
 (deftest deleting-transform-test-preserves-runs-test
   (mt/with-temp [:model/Transform     {transform-id :id} {}

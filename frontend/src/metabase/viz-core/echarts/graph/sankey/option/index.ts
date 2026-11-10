@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { SankeySeriesOption } from "echarts/charts";
 import type { EChartsCoreOption } from "echarts/core";
 

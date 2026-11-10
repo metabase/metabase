@@ -19,7 +19,7 @@ import {
 } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
-import { getDataAppSourceLocation, isDataAppOpenable } from "../../../utils";
+import { getDataAppSourceLocation, isDataAppOpenable } from "../../../../utils";
 
 type DataAppAboutSidebarProps = {
   app: DataApp;
@@ -54,6 +54,21 @@ export function DataAppAboutSidebar({ app }: DataAppAboutSidebarProps) {
               appUrl
             )}
           </MetadataRow>
+        </MetadataCard>
+      </AboutSubSection>
+      <AboutSubSection title={t`External hosts`} mt="xxl">
+        <MetadataCard withConnector={false}>
+          {app.allowed_hosts.length > 0 ? (
+            app.allowed_hosts.map((host) => (
+              <MetadataRow key={host} icon="globe">
+                <span className={CS.textBreakAll}>{host}</span>
+              </MetadataRow>
+            ))
+          ) : (
+            <MetadataRow icon="globe" muted>
+              {t`No external hosts`}
+            </MetadataRow>
+          )}
         </MetadataCard>
       </AboutSubSection>
       <DataAppRepositorySection slug={app.name} />
