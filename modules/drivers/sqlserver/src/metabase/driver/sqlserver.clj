@@ -1440,7 +1440,8 @@
            (.executeBatch stmt))
          (.commit conn)
          (catch Throwable t
-           (.rollback conn)
+           ;; a failed rollback must not replace the error that caused it
+           (try (.rollback conn) (catch Throwable rollback-error (.addSuppressed t rollback-error)))
            (let [t        (driver.u/batch-exception t)
                  scrubbed (driver.u/scrub-exceptions t [password escaped-password])]
              (if (and (instance? java.sql.SQLException t)
