@@ -17,7 +17,7 @@ export const GitSettingsSection = () => {
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
 
   return (
-    <RemoteSyncSettingsSection title={t`Git settings`}>
+    <RemoteSyncSettingsSection title={t`Repository settings`}>
       <FormTextInput
         name={URL_KEY}
         label={t`Repository URL`}
