@@ -173,12 +173,12 @@
    :error  message})
 
 (defn- refusals
-  "`check-entities`'s refusals for `specs`. If the check throws an exception, every spec is refused: an unchecked
+  "`check-entities`'s refusals for `specs`. If the check throws, every spec is refused: an unchecked
   reference must not run, and a failed check must not fail the main query."
   [check-entities specs]
   (try
     (check-entities specs)
-    (catch Exception e
+    (catch Throwable e
       (log/error e "Failed to check referenced entities; refusing them all")
       (let [message (tru "Could not check whether this reference may be used.")]
         (into {} (map (fn [{entity-type :type, :keys [id]}] [[entity-type id] message])) specs)))))
