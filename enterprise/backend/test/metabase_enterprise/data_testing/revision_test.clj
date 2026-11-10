@@ -332,6 +332,32 @@
                                        :revision_id (:id creation)})
                 (is (= old-card (t2/select-one-fn :card_id :model/CardTest :id card-test-id)))))))))))
 
+(defn- check-revisions-require-the-feature
+  "Check that the three revision endpoints refuse the saved test `test-id` of `model`, the revision entity `entity`,
+  with 402 under the premium features `without`, and serve it under `with`. The test's name must be \"Renamed\", its
+  oldest revision \"Original\"."
+  [model entity test-id without with]
+  (let [creation-id (:id (last (revisions/revisions model test-id)))
+        requests    [[:get "revision" :entity entity :id test-id]
+                     [:get (str "revision/" entity "/" test-id)]
+                     [:post "revision/revert" {:entity entity :id test-id :revision_id creation-id}]]]
+    (testing (str "without :transforms-testing, every revision endpoint refuses a " entity)
+      (mt/with-premium-features without
+        (doseq [[method & args] requests]
+          (testing (str method " " (first args))
+            (mt/assert-has-premium-feature-error
+             "Transforms Testing"
+             (apply mt/user-http-request :crowberto method 402 args)))))
+      (is (= "Renamed" (t2/select-one-fn :name model :id test-id))))
+    (testing (str "with :transforms-testing, every revision endpoint serves a " entity)
+      (mt/with-premium-features with
+        (is (=? [{:is_creation false} {:is_creation true}]
+                (mt/user-http-request :crowberto :get 200 "revision" :entity entity :id test-id)))
+        (is (=? [{:is_creation false} {:is_creation true}]
+                (mt/user-http-request :crowberto :get 200 (str "revision/" entity "/" test-id))))
+        (mt/user-http-request :crowberto :post 200 "revision/revert" {:entity entity :id test-id :revision_id creation-id})
+        (is (= "Original" (t2/select-one-fn :name model :id test-id)))))))
+
 (deftest transform-test-revisions-require-feature-test
   (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
     (mt/with-current-user (mt/user->id :crowberto)
@@ -339,31 +365,8 @@
                      :model/TransformTest {transform-test-id :id} {:transform_id transform-id
                                                                    :name         "Original"}]
         (t2/update! :model/TransformTest :id transform-test-id {:name "Renamed"})
-        (let [creation-id (:id (last (revisions/revisions :model/TransformTest transform-test-id)))
-              requests    [[:get "revision" :entity "transform-test" :id transform-test-id]
-                           [:get (str "revision/transform-test/" transform-test-id)]
-                           [:post "revision/revert" {:entity      "transform-test"
-                                                     :id          transform-test-id
-                                                     :revision_id creation-id}]]]
-          (testing "without :transforms-testing, every revision endpoint refuses a transform test"
-            (mt/with-premium-features #{:transforms-basic}
-              (doseq [[method & args] requests]
-                (testing (str method " " (first args))
-                  (mt/assert-has-premium-feature-error
-                   "Transforms Testing"
-                   (apply mt/user-http-request :crowberto method 402 args)))))
-            (is (= "Renamed" (t2/select-one-fn :name :model/TransformTest :id transform-test-id))))
-          (testing "with :transforms-testing, every revision endpoint serves a transform test"
-            (mt/with-premium-features #{:transforms-basic :transforms-testing}
-              (is (=? [{:is_creation false} {:is_creation true}]
-                      (mt/user-http-request :crowberto :get 200 "revision"
-                                            :entity "transform-test" :id transform-test-id)))
-              (is (=? [{:is_creation false} {:is_creation true}]
-                      (mt/user-http-request :crowberto :get 200 (str "revision/transform-test/" transform-test-id))))
-              (mt/user-http-request :crowberto :post 200 "revision/revert" {:entity      "transform-test"
-                                                                            :id          transform-test-id
-                                                                            :revision_id creation-id})
-              (is (= "Original" (t2/select-one-fn :name :model/TransformTest :id transform-test-id))))))))))
+        (check-revisions-require-the-feature :model/TransformTest "transform-test" transform-test-id
+                                             #{:transforms-basic} #{:transforms-basic :transforms-testing})))))
 
 (deftest card-test-revisions-require-feature-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -371,30 +374,7 @@
                    :model/CardTest {card-test-id :id} {:card_id card-id
                                                        :name    "Original"}]
       (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
-      (let [creation-id (:id (last (revisions/revisions :model/CardTest card-test-id)))
-            requests    [[:get "revision" :entity "card-test" :id card-test-id]
-                         [:get (str "revision/card-test/" card-test-id)]
-                         [:post "revision/revert" {:entity      "card-test"
-                                                   :id          card-test-id
-                                                   :revision_id creation-id}]]]
-        (testing "without :transforms-testing, every revision endpoint refuses a card test"
-          (mt/with-premium-features #{}
-            (doseq [[method & args] requests]
-              (testing (str method " " (first args))
-                (mt/assert-has-premium-feature-error
-                 "Transforms Testing"
-                 (apply mt/user-http-request :crowberto method 402 args)))))
-          (is (= "Renamed" (t2/select-one-fn :name :model/CardTest :id card-test-id))))
-        (testing "with :transforms-testing, every revision endpoint serves a card test"
-          (mt/with-premium-features #{:transforms-testing}
-            (is (=? [{:is_creation false} {:is_creation true}]
-                    (mt/user-http-request :crowberto :get 200 "revision" :entity "card-test" :id card-test-id)))
-            (is (=? [{:is_creation false} {:is_creation true}]
-                    (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" card-test-id))))
-            (mt/user-http-request :crowberto :post 200 "revision/revert" {:entity      "card-test"
-                                                                          :id          card-test-id
-                                                                          :revision_id creation-id})
-            (is (= "Original" (t2/select-one-fn :name :model/CardTest :id card-test-id)))))))))
+      (check-revisions-require-the-feature :model/CardTest "card-test" card-test-id #{} #{:transforms-testing}))))
 
 (deftest card-test-revert-of-a-test-of-a-card-with-no-query-test
   (mt/with-premium-features #{:transforms-testing}
