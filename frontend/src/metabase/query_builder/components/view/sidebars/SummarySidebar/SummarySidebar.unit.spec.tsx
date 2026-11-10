@@ -480,6 +480,33 @@ describe("SummarySidebar", () => {
 
       expect(onQueryChange).not.toHaveBeenCalled();
     });
+
+    it("leaves an empty summary alone when a metric is dropped on Group by", () => {
+      const query = createQueryWithMetric();
+      const { onQueryChange } = setup({ query });
+
+      drop(getFieldDrag(query, "Metrics", "Revenue"), "columns");
+
+      expect(onQueryChange).not.toHaveBeenCalled();
+      expect(getChipLabels("values")).toEqual([]);
+    });
+
+    it("doesn't count the rows when a grouping chip is dropped back on Group by", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+          },
+        ],
+      });
+      const { onQueryChange } = setup({ query });
+      const [item] = getDimensionItems(query, STAGE_INDEX);
+
+      drop({ kind: "dimension", item }, "columns");
+
+      expect(onQueryChange).not.toHaveBeenCalled();
+    });
   });
 
   it("hides and shows the field list from the footer button", async () => {

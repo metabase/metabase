@@ -115,8 +115,12 @@ export function SummarySidebar({
     setDraggedItem(null);
     const drag = getDragItem(active.data.current);
     const wellId = getDropWellId(over?.data.current);
-    if (drag != null && wellId != null) {
-      handleWellAdd(dropOnWell(query, stageIndex, drag, wellId), wellId);
+    if (drag == null || wellId == null) {
+      return;
+    }
+    const nextQuery = dropOnWell(query, stageIndex, drag, wellId);
+    if (nextQuery !== query) {
+      handleWellAdd(nextQuery, wellId);
     }
   };
 
