@@ -5,6 +5,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.warehouse-schema.ai-proposals :as ai-proposals]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.core :as warehouses]
@@ -63,8 +64,12 @@
 
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
-  `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
-  [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
+  `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings.
+  `preview-ai-proposals?` needs `include-editable-data-model?`: for a superuser, the fields read their pending AI
+  proposals as if accepted, see [[ai-proposals/with-ai-proposal-previews]]. Other users get the normal read."
+  [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model? preview-ai-proposals?]}]
+  (api/check-400 (or (not preview-ai-proposals?) include-editable-data-model?)
+                 "preview_ai_proposals requires include_editable_data_model")
   (api/check-404 table)
   (if include-editable-data-model?
     (check-data-model-perms table)
@@ -77,6 +82,7 @@
     (-> table
         (update :collection nil-if-unreadable)
         (#(apply t2/hydrate % hydration-keys))
+        (cond-> (and preview-ai-proposals? api/*is-superuser?*) (update :fields ai-proposals/with-ai-proposal-previews))
         (m/dissoc-in [:db :details])
         format-fields-for-response
         present-table

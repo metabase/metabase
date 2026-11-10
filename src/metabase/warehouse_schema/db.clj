@@ -195,7 +195,8 @@
 
 (def ^:private field-user-settings-update-keys
   "The columns an insert or update of a FieldUserSettings accepts."
-  [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position :description_set :semantic_type_set :fk_target_field_id_set])
+  [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position :description_set :semantic_type_set :fk_target_field_id_set
+   :data_sensitivity_set :ai_semantic_type :ai_description :ai_data_sensitivity])
 
 (mu/defn field-ids-with-user-settings-for-table :- [:set ::lib.schema.id/field]
   "The ids of the Fields of the ::warehouse-schema.schema/table with `table-id` that have a FieldUserSettings row."
@@ -204,6 +205,13 @@
                          {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
                           :join  [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
                           :where [:= :f.table_id table-id]})))
+
+(mu/defn field-user-settings-for-fields :- [:sequential ::warehouse-schema.schema/field-user-settings]
+  "The FieldUserSettings of the Fields in `field-ids` that have one."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (if (seq field-ids)
+    (t2/select :model/FieldUserSettings :field_id [:in field-ids])
+    []))
 
 (mu/defn insert-field-user-settings!
   "Insert one FieldUserSettings map or a sequence of them, returning the number inserted."

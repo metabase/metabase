@@ -7,6 +7,7 @@
    [metabase.sync.interface :as i]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel fields-to-classify-test
@@ -291,3 +292,62 @@
       (classify/classify-fields! table)
       (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name))]
         (is (= :type/Name (:semantic_type updated-field)))))))
+
+(deftest classifiers-keep-ai-and-human-semantic-types-test
+  (testing "the classifiers do not overwrite an AI or a human semantic type"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:name "users" :db_id (u/the-id db)}
+                   :model/Field ai-field {:name "lastName" :base_type :type/Text :table_id (u/the-id table)
+                                          :semantic_type       nil
+                                          :fingerprint_version i/*latest-fingerprint-version*
+                                          :last_analyzed       nil}
+                   :model/Table other-table {:name "contacts" :db_id (u/the-id db)}
+                   :model/Field human-field {:name "lastName" :base_type :type/Text :table_id (u/the-id other-table)
+                                             :semantic_type       nil
+                                             :fingerprint_version i/*latest-fingerprint-version*
+                                             :last_analyzed       nil}]
+      (field-user-settings/set-ai-values! ai-field {:semantic_type :type/Category})
+      (field-user-settings/upsert-field-user-settings! human-field {:semantic_type :type/Category})
+      (classify/classify-fields! table)
+      (classify/classify-fields! other-table)
+      (doseq [field [ai-field human-field]]
+        (is (= :type/Category (t2/select-one-fn :semantic_type :model/Field :id (u/the-id field))))))))
+
+(deftest preview-display-follows-the-semantic-type-readers-see-test
+  (testing "a long text field whose human or AI semantic type is type/URL keeps preview_display"
+    (let [fingerprint {:global {:distinct-count 5000 :nil% 0.0}
+                       :type   {:type/Text {:percent-json 0.0 :percent-url 0.0 :percent-email 0.0 :percent-state 0.0
+                                            :average-length 120.0}}}]
+      (mt/with-temp [:model/Database db {}
+                     :model/Table table {:name "pages" :db_id (u/the-id db)}
+                     :model/Field human-field {:name "page_link" :base_type :type/Text :table_id (u/the-id table)
+                                               :semantic_type       nil
+                                               :preview_display     true
+                                               :fingerprint         fingerprint
+                                               :fingerprint_version i/*latest-fingerprint-version*
+                                               :last_analyzed       nil}
+                     :model/Field ai-field {:name "other_link" :base_type :type/Text :table_id (u/the-id table)
+                                            :semantic_type       nil
+                                            :preview_display     true
+                                            :fingerprint         fingerprint
+                                            :fingerprint_version i/*latest-fingerprint-version*
+                                            :last_analyzed       nil}]
+        (field-user-settings/upsert-field-user-settings! human-field {:semantic_type :type/URL})
+        (field-user-settings/set-ai-values! ai-field {:semantic_type :type/URL})
+        (classify/classify-fields! table)
+        (doseq [field [human-field ai-field]]
+          (is (true? (t2/select-one-fn :preview_display :model/Field :id (u/the-id field)))))))))
+
+(deftest classifier-view-of-user-settings-test
+  (mt/with-temp [:model/Database db {}
+                 :model/Table table {:name "users" :db_id (u/the-id db)}
+                 :model/Field field {:name "created" :base_type :type/Integer :table_id (u/the-id table)
+                                     :semantic_type       nil
+                                     :has_field_values    nil
+                                     :fingerprint_version i/*latest-fingerprint-version*
+                                     :last_analyzed       nil}]
+    (field-user-settings/upsert-field-user-settings! field {:semantic_type    :type/Category
+                                                            :has_field_values :list})
+    (testing "the classifiers see the user's settings in metabase_field"
+      (is (=? [{:semantic_type :type/Category :has_field_values :list}]
+              (#'classify/fields-to-classify table))))))

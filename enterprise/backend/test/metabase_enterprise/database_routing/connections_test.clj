@@ -3,7 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.database-routing.common :as database-routing.common]
-   [metabase-enterprise.database-routing.e2e-test :as e2e]
+   [metabase-enterprise.database-routing.test-util :as routing.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
@@ -47,12 +47,12 @@
   (mt/with-premium-features #{:database-routing}
     (binding [driver.settings/*allow-testing-h2-connections* true]
       (met/with-user-attributes! :rasta {"db_name" "destination-db-1"}
-        (e2e/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
+        (routing.tu/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
           (doseq [db [router-db dest-1]]
-            (e2e/execute-statement! db "CREATE TABLE \"acct\" (\"id\" INT PRIMARY KEY, \"owner\" TEXT NOT NULL)")
-            (e2e/execute-statement! db "GRANT ALL ON \"acct\" TO GUEST"))
-          (e2e/execute-statement! router-db "INSERT INTO \"acct\" VALUES (1, 'tenant-b')")
-          (e2e/execute-statement! dest-1 "INSERT INTO \"acct\" VALUES (1, 'tenant-a')")
+            (routing.tu/execute-statement! db "CREATE TABLE \"acct\" (\"id\" INT PRIMARY KEY, \"owner\" TEXT NOT NULL)")
+            (routing.tu/execute-statement! db "GRANT ALL ON \"acct\" TO GUEST"))
+          (routing.tu/execute-statement! router-db "INSERT INTO \"acct\" VALUES (1, 'tenant-b')")
+          (routing.tu/execute-statement! dest-1 "INSERT INTO \"acct\" VALUES (1, 'tenant-a')")
           (let [router-id (u/the-id router-db)]
             (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}]
               (mt/with-current-user (mt/user->id :rasta)
@@ -78,11 +78,11 @@
   (mt/with-premium-features #{:database-routing}
     (binding [driver.settings/*allow-testing-h2-connections* true]
       (met/with-user-attributes! :rasta {"db_name" "destination-db-1"}
-        (e2e/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
+        (routing.tu/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
           (doseq [[db owner] [[router-db "router"] [dest-1 "destination"]]]
-            (e2e/execute-statement! db "CREATE TABLE \"acct\" (\"id\" INT PRIMARY KEY, \"owner\" TEXT NOT NULL)")
-            (e2e/execute-statement! db "GRANT ALL ON \"acct\" TO GUEST")
-            (e2e/execute-statement! db (format "INSERT INTO \"acct\" VALUES (1, '%s')" owner)))
+            (routing.tu/execute-statement! db "CREATE TABLE \"acct\" (\"id\" INT PRIMARY KEY, \"owner\" TEXT NOT NULL)")
+            (routing.tu/execute-statement! db "GRANT ALL ON \"acct\" TO GUEST")
+            (routing.tu/execute-statement! db (format "INSERT INTO \"acct\" VALUES (1, '%s')" owner)))
           (let [router-id (u/the-id router-db)]
             (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}]
               (testing "a routed user's connection to the router goes to their destination"
@@ -129,11 +129,11 @@
     (mt/with-premium-features #{:database-routing}
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (met/with-user-attributes! :rasta {"db_name" "destination-db-1"}
-          (e2e/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
-            (e2e/execute-statement! router-db "CREATE TABLE \"acct\" (\"id\" INT PRIMARY KEY, \"owner\" TEXT)")
-            (e2e/execute-statement! router-db "INSERT INTO \"acct\" VALUES (1, 'router-owner')")
-            (e2e/execute-statement! dest-1 "CREATE TABLE \"acct\" (\"id\" INT PRIMARY KEY, \"owner\" TEXT, \"tenant_secret\" TEXT)")
-            (e2e/execute-statement! dest-1 "INSERT INTO \"acct\" VALUES (1, 'tenant-owner', 'secret')")
+          (routing.tu/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
+            (routing.tu/execute-statement! router-db "CREATE TABLE \"acct\" (\"id\" INT PRIMARY KEY, \"owner\" TEXT)")
+            (routing.tu/execute-statement! router-db "INSERT INTO \"acct\" VALUES (1, 'router-owner')")
+            (routing.tu/execute-statement! dest-1 "CREATE TABLE \"acct\" (\"id\" INT PRIMARY KEY, \"owner\" TEXT, \"tenant_secret\" TEXT)")
+            (routing.tu/execute-statement! dest-1 "INSERT INTO \"acct\" VALUES (1, 'tenant-owner', 'secret')")
             (sync/sync-database! (:id router-db) {:scan :schema})
             (let [router-id (u/the-id router-db)
                   table     (t2/select-one :model/Table :db_id router-id :name "acct")
@@ -158,11 +158,11 @@
     (mt/with-premium-features #{:database-routing}
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (met/with-user-attributes! :rasta {"db_name" "destination-db-1"}
-          (e2e/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
+          (routing.tu/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
             (doseq [[db owner] [[router-db "router-owner"] [dest-1 "tenant-owner"]]]
-              (e2e/execute-statement! db "CREATE TABLE \"acct\" (\"id\" INT PRIMARY KEY, \"owner\" TEXT)")
-              (e2e/execute-statement! db "GRANT ALL ON \"acct\" TO GUEST")
-              (e2e/execute-statement! db (format "INSERT INTO \"acct\" VALUES (1, '%s')" owner)))
+              (routing.tu/execute-statement! db "CREATE TABLE \"acct\" (\"id\" INT PRIMARY KEY, \"owner\" TEXT)")
+              (routing.tu/execute-statement! db "GRANT ALL ON \"acct\" TO GUEST")
+              (routing.tu/execute-statement! db (format "INSERT INTO \"acct\" VALUES (1, '%s')" owner)))
             (sync/sync-database! (:id router-db) {:scan :schema})
             (let [router-id (u/the-id router-db)
                   table     (t2/select-one :model/Table :db_id router-id :name "acct")

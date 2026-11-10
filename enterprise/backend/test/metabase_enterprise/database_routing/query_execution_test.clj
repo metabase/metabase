@@ -5,7 +5,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.database-routing.query-execution-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.database-routing.e2e-test :as e2e]
+   [metabase-enterprise.database-routing.test-util :as routing.tu]
    [metabase-enterprise.test :as met]
    [metabase.driver.settings :as driver.settings]
    [metabase.query-processor :as qp]
@@ -22,10 +22,10 @@
     (binding [driver.settings/*allow-testing-h2-connections* true
               qp.util/*execute-async?* false]
       (met/with-user-attributes! :rasta {"db_name" "destination-db"}
-        (e2e/with-routing-setup! [router-db [[destination-db "destination-db"]]]
+        (routing.tu/with-routing-setup! [router-db [[destination-db "destination-db"]]]
           (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
                                                   :user_attribute "db_name"}]
-            (e2e/execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('hi')")
+            (routing.tu/execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('hi')")
             (mt/with-model-cleanup [:model/QueryExecution]
               (mt/with-test-user :rasta
                 (qp/process-query

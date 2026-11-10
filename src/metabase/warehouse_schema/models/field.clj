@@ -19,6 +19,7 @@
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.user-settings :as user-settings]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -400,6 +401,20 @@
    fields k
    #(warehouse-schema.db/fields-by-id (map :parent_id fields))
    :parent_id))
+
+(methodical/defmethod t2/batched-hydrate [:model/Field :data_sensitivity_source]
+  "The layer the Field's stored `:data_sensitivity` comes from: `:human` (also when a person cleared it), `:ai`,
+  `:deterministic`, or nil when no layer has a value; see [[user-settings/field-value-source]]."
+  [_model k fields]
+  (mi/instances-with-hydrated-data
+   fields k
+   #(let [field-ids (vec (keep :id fields))
+          settings  (m/index-by :field_id (warehouse-schema.db/field-user-settings-for-fields field-ids))]
+      (into {}
+            (map (fn [[id {:keys [data_sensitivity]}]]
+                   [id (user-settings/field-value-source (settings id) :data_sensitivity data_sensitivity)]))
+            (when (seq field-ids) (warehouse-schema.db/fields-by-id field-ids))))
+   :id))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

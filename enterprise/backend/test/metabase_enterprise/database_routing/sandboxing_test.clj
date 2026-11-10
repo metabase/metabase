@@ -1,7 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.database-routing.sandboxing-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.database-routing.e2e-test :as e2e]
+   [metabase-enterprise.database-routing.test-util :as routing.tu]
    [metabase-enterprise.test :as met]
    [metabase.driver.settings :as driver.settings]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -18,10 +18,10 @@
     (mt/with-premium-features #{:database-routing :sandboxes :advanced-permissions}
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (met/with-user-attributes! :rasta {"db_name" "destination-db" "filter_val" "keep"}
-          (e2e/with-routing-setup! [router-db [[destination-db "destination-db"]]]
-            (e2e/execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('keep')")
-            (e2e/execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('drop')")
-            (e2e/execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router-only')")
+          (routing.tu/with-routing-setup! [router-db [[destination-db "destination-db"]]]
+            (routing.tu/execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('keep')")
+            (routing.tu/execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('drop')")
+            (routing.tu/execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router-only')")
             (let [router-table (t2/select-one :model/Table :db_id (u/the-id router-db))
                   str-field    (t2/select-one :model/Field :table_id (u/the-id router-table))
                   all-users    (perms/all-users-group)]

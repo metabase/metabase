@@ -119,6 +119,8 @@
    :model/McpQueryHandle
    :model/McpSessionLog
    :model/McpToolCallLog
+   :model/MetadataGenerationProposal
+   :model/MetadataGenerationRun
    :model/MetabotConversation
    :model/MetabotFeedback
    :model/MetabotGroupLimit

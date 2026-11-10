@@ -28,6 +28,7 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.json :as json]
    [metabase.util.yaml :as yaml]
+   [metabase.warehouse-schema.user-settings :as user-settings]
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
 
@@ -211,6 +212,71 @@
             (is (= "edited" (t2/select-one-fn :description :model/FieldUserSettings :field_id (:id age))))
             (testing "the imported Dimension replaces the Field's local one"
               (is (= ["Email"] (t2/select-fn-vec :name :model/Dimension :field_id (:id email)))))))))))
+
+(deftest field-user-settings-ai-values-round-trip-test
+  (testing "a FieldUserSettings row that holds only AI values round-trips and is not dropped as empty"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "my-db")
+                table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                age   (ts/create! :model/Field :name "age" :table_id (:id table))]
+            (t2/insert! :model/FieldUserSettings {:field_id            (:id age)
+                                                  :ai_semantic_type    :type/Quantity
+                                                  :ai_description      "ai description"
+                                                  :ai_data_sensitivity :PII})
+            (reset! serialized
+                    (-> [(ts/extract-one "Database" (:id db))
+                         (ts/extract-one "Table" (:id table))
+                         (ts/extract-one "Field" (:id age))]
+                        (into (extract-where "FieldUserSettings" :field_id [(:id age)]))))))
+        (is (=? [{:ai_semantic_type :type/Quantity :ai_description "ai description" :ai_data_sensitivity :PII}]
+                (by-model @serialized "FieldUserSettings")))
+        (ts/with-db dest-db
+          (let [db    (ts/create! :model/Database :name "my-db")
+                table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                age   (ts/create! :model/Field :name "age" :table_id (:id table))]
+            (t2/insert! :model/FieldUserSettings {:field_id (:id age) :ai_description "local" :description "local"})
+            (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+            (is (=? {:ai_semantic_type :type/Quantity :ai_description "ai description" :ai_data_sensitivity :PII
+                     :description nil}
+                    (t2/select-one :model/FieldUserSettings :field_id (:id age))))
+            (testing "the imported AI values reach the Field"
+              (is (=? {:semantic_type :type/Quantity :description "ai description" :data_sensitivity :PII}
+                      (t2/select-one :model/Field :id (:id age)))))))))))
+
+(deftest field-user-settings-data-sensitivity-flag-import-test
+  (let [serialized (atom nil)]
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [db    (ts/create! :model/Database :name "my-db")
+              table (ts/create! :model/Table :name "customers" :db_id (:id db))
+              age   (ts/create! :model/Field :name "age" :table_id (:id table))
+              email (ts/create! :model/Field :name "email" :table_id (:id table))]
+          (t2/insert! :model/FieldUserSettings {:field_id (:id age) :data_sensitivity :PII})
+          (t2/insert! :model/FieldUserSettings {:field_id (:id email) :data_sensitivity nil :data_sensitivity_set true})
+          (reset! serialized
+                  (-> [(ts/extract-one "Database" (:id db))
+                       (ts/extract-one "Table" (:id table))
+                       (ts/extract-one "Field" (:id age))
+                       (ts/extract-one "Field" (:id email))]
+                      (into (map (fn [entity]
+                                   (cond-> entity
+                                     (= "PII" (some-> (:data_sensitivity entity) name)) (dissoc :data_sensitivity_set))))
+                            (extract-where "FieldUserSettings" :field_id [(:id age) (:id email)]))))))
+      (ts/with-db dest-db
+        (let [db    (ts/create! :model/Database :name "my-db")
+              table (ts/create! :model/Table :name "customers" :db_id (:id db))
+              age   (ts/create! :model/Field :name "age" :table_id (:id table))
+              email (ts/create! :model/Field :name "email" :table_id (:id table))]
+          (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+          (testing "a label exported with no flag imports as set by a person"
+            (let [settings (t2/select-one :model/FieldUserSettings :field_id (:id age))]
+              (is (=? {:data_sensitivity :PII} settings))
+              (is (contains? (user-settings/user-set-field-columns settings) :data_sensitivity))))
+          (testing "an exported flag imports as it is"
+            (is (=? {:data_sensitivity nil :data_sensitivity_set true}
+                    (t2/select-one :model/FieldUserSettings :field_id (:id email))))))))))
 
 (deftest user-settings-import-on-missing-database-test
   (testing "Table settings, Field settings and Dimensions alone create a stub database when theirs is missing"

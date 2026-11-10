@@ -3967,6 +3967,31 @@
                     :model/User}
    :model-exports #{:model/DataApp}}
 
+  enterprise/data-sensitivity
+  {:team "Graphy"
+   :api  #{metabase-enterprise.data-sensitivity.api metabase-enterprise.data-sensitivity.init}
+   :uses #{api
+           database-routing
+           driver
+           events
+           lib.schema
+           metabot
+           models
+           permissions
+           premium-features
+           query-processor
+           request
+           run-tracking
+           task
+           util
+           util.config
+           warehouses.schema}
+   :model-imports #{:model/Database
+                    :model/Dimension
+                    :model/Field
+                    :model/FieldUserSettings
+                    :model/Table}}
+
   enterprise/data-studio
   {:team "UX West"
    :api  #{metabase-enterprise.data-studio.api}

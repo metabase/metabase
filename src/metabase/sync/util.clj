@@ -809,14 +809,21 @@
        (can-be-list? base-type semantic-type)))
 
 (mu/defn update-field-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
-  "Apply to the Field with `field-id` the `changes` to columns no user set, returning the number updated."
+  "Apply to the Field with `field-id` the `changes` to columns no user set and with no accepted AI value, returning
+  the number updated."
   [field-id :- ::lib.schema.id/field
    changes  :- ::warehouse-schema.schema/field.update]
-  (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-field-columns
+  (let [changes (apply dissoc changes (warehouse-schema.user-settings/protected-field-columns
                                        (sync.db/field-user-settings field-id)))]
     (if (seq changes)
       (sync.db/update-field! field-id changes)
       0)))
+
+(mu/defn ai-semantic-type? :- :boolean
+  "Whether the semantic type of the Field with `field-id` is an accepted AI value."
+  [field-id :- ::lib.schema.id/field]
+  (contains? (warehouse-schema.user-settings/ai-set-field-columns (sync.db/field-user-settings field-id))
+             :semantic_type))
 
 (mu/defn update-table-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to the Table with `table-id` the `changes` to columns no user set, returning the number updated."

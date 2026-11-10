@@ -307,12 +307,29 @@
       (field-user-settings/upsert-field-user-settings! field {:data_sensitivity :PUBLIC})
       (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
       (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id)))))
-  (testing "upserting nil unsets label, clearing it on Field and dropping emptied settings"
+  (testing "upserting nil records an explicit NULL label, also on the Field"
     (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
       (field-user-settings/upsert-field-user-settings! field {:data_sensitivity :PUBLIC})
       (field-user-settings/upsert-field-user-settings! field {:data_sensitivity nil})
-      (is (nil? (t2/select-one :model/FieldUserSettings :field_id field-id)))
-      (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id field-id))))))
+      (is (=? {:data_sensitivity nil :data_sensitivity_set true}
+              (t2/select-one :model/FieldUserSettings :field_id field-id)))
+      (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))
+      (testing "and reset-field-user-settings! drops the user value and leaves the Field for the scan"
+        (field-user-settings/reset-field-user-settings! field [:data_sensitivity])
+        (is (nil? (t2/select-one :model/FieldUserSettings :field_id field-id)))
+        (is (nil? (t2/select-one-fn :data_sensitivity :model/Field :id field-id))))))
+  (testing "a user label with data_sensitivity_set false, as an older node writes it, is the human value"
+    (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PII}]
+      (t2/insert! :model/FieldUserSettings {:field_id             field-id
+                                            :data_sensitivity     :PII
+                                            :data_sensitivity_set false
+                                            :ai_data_sensitivity  :PHI})
+      (is (=? {:data_sensitivity :PII :data_sensitivity_set false}
+              (t2/select-one :model/FieldUserSettings :field_id field-id)))
+      (is (= :human (:data_sensitivity_source (t2/hydrate field :data_sensitivity_source))))))
+  (testing "the Field's own label alone is the deterministic source"
+    (mt/with-temp [:model/Field field {:data_sensitivity :PUBLIC}]
+      (is (= :deterministic (:data_sensitivity_source (t2/hydrate field :data_sensitivity_source)))))))
 
 (deftest field-user-settings-write-field-row-test
   (mt/with-temp [:model/Field {edited-id :id :as edited} {:name              "sync_name"

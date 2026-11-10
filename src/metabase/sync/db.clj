@@ -382,6 +382,23 @@
              :fingerprint_version fingerprint-version
              :last_analyzed nil))
 
+(mu/defn layered-semantic-types-for-table :- [:map-of ::lib.schema.id/field [:maybe :keyword]]
+  "The semantic type of each Field of the Table with `table-id` whose semantic type a user set or an accepted AI value
+  gave. The classifiers do not change those."
+  [table-id :- ::lib.schema.id/table]
+  (let [field-ids (into []
+                        (comp (filter #(contains? (warehouse-schema.user-settings/protected-field-columns %)
+                                                  :semantic_type))
+                              (map :field_id))
+                        (t2/select :model/FieldUserSettings
+                                   {:select [:u.*]
+                                    :from   [[(t2/table-name :model/FieldUserSettings) :u]]
+                                    :join   [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
+                                    :where  [:= :f.table_id table-id]}))]
+    (if (seq field-ids)
+      (t2/select-pk->fn :semantic_type :model/Field :id [:in field-ids])
+      {})))
+
 (mu/defn name-field-count-for-table
   "The number of active, visible Fields of the Table with `table-id` whose semantic type is `:type/Name`."
   [table-id :- ::lib.schema.id/table]
@@ -572,7 +589,7 @@
 (mu/defn mark-fk!
   "Set the `fk_target_field_id` of the Field at `[fk-table-schema fk-table-name fk-column-name]` in the Database with
   `db-id` to the id of the Field at `[pk-table-schema pk-table-name pk-column-name]`, unless it already points there.
-  Returns 1 if a Field was updated, 0 otherwise."
+  Returns the id of the updated Field, or nil."
   [db-id            :- ::lib.schema.id/database
    fk-table-schema  :- [:maybe :string]
    fk-table-name    :- :string
@@ -582,17 +599,17 @@
    pk-column-name   :- :string]
   (let [fk-id (:id (t2/query-one (fk-field-id-subquery db-id fk-table-schema fk-table-name fk-column-name true)))
         pk-id (:id (t2/query-one (fk-field-id-subquery db-id pk-table-schema pk-table-name pk-column-name false)))]
-    (if (and fk-id pk-id)
+    (when (and fk-id pk-id)
       (let [field    (t2/select-one [:model/Field :id :fk_target_field_id :has_field_values] :id fk-id)
             user-set (warehouse-schema.user-settings/user-set-field-columns (field-user-settings fk-id))]
-        (if (and (not (user-set :fk_target_field_id)) (not= pk-id (:fk_target_field_id field)))
-          (update-field!
-           fk-id (apply dissoc
-                        (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
-                          (= :auto-list (:has_field_values field)) (assoc :has_field_values nil))
-                        user-set))
-          0))
-      0)))
+        (when (and (not (user-set :fk_target_field_id))
+                   (not= pk-id (:fk_target_field_id field))
+                   (pos? (update-field!
+                          fk-id (apply dissoc
+                                       (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
+                                         (= :auto-list (:has_field_values field)) (assoc :has_field_values nil))
+                                       user-set))))
+          fk-id)))))
 
 (defn- data-sensitivity-to-scan-clause
   "Honey SQL clause matching Fields the data-sensitivity classifier still has to scan: unlabeled ones, plus those it
@@ -602,18 +619,22 @@
     [:or [:= :data_sensitivity nil] [:= :data_sensitivity "PUBLIC"]]
     [:= :data_sensitivity nil]))
 
-(defn- user-set-data-sensitivity-clause
-  "Honey SQL clause matching Fields whose `data_sensitivity` a user set."
+(defn- protected-data-sensitivity-clause
+  "Honey SQL clause matching Fields whose `data_sensitivity` a user set, a cleared value included, or an accepted AI
+  value gave."
   []
   [:exists ^:allow-subquery {:select [1]
                              :from   [[(t2/table-name :model/FieldUserSettings) :s]]
                              :where  [:and
                                       [:= :s.field_id :metabase_field.id]
-                                      [:not= :s.data_sensitivity nil]]}])
+                                      [:or
+                                       [:= :s.data_sensitivity_set true]
+                                       [:not= :s.data_sensitivity nil]
+                                       [:not= :s.ai_data_sensitivity nil]]]}])
 
 (mu/defn fields-to-scan-for-data-sensitivity
   "The active, non-retired Fields of the Table with `table-id` the data-sensitivity classifier still has to scan,
-  without a label a user set, ordered by ID."
+  without a label a user set or an accepted AI value gave, ordered by ID."
   [table-id       :- ::lib.schema.id/table
    rescan-public? :- [:maybe :boolean]]
   (t2/select :model/Field
@@ -622,7 +643,7 @@
                          [:= :active true]
                          [:not= :visibility_type "retired"]
                          (data-sensitivity-to-scan-clause rescan-public?)
-                         [:not (user-set-data-sensitivity-clause)]]
+                         [:not (protected-data-sensitivity-clause)]]
               :order-by [[:id :asc]]}))
 
 (mu/defn table-ids-with-fields-to-scan-for-data-sensitivity
@@ -652,7 +673,7 @@
   []
   [:and
    [:not= :data_sensitivity nil]
-   [:not (user-set-data-sensitivity-clause)]])
+   [:not (protected-data-sensitivity-clause)]])
 
 (mu/defn reset-classifier-data-sensitivity-for-table!
   "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of the
