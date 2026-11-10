@@ -301,7 +301,17 @@
                          (search.ingestion/bulk-ingest! [["card" [:= id :this.id]]
                                                          (search.ingestion/tombstone "card" [id])]))
                 "the error still reaches the caller"))
-          (is (false? (indexed?))))))))
+          (is (false? (indexed?)))))))
+  (testing "any other Error is fatal, and stops the batch before the tombstone"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {:name "Fatalerrorprobe"}]
+        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+          (is (true? (indexed?)))
+          (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages] (throw (LinkageError. "fatal")))]
+            (is (thrown? LinkageError
+                         (search.ingestion/bulk-ingest! [["card" [:= id :this.id]]
+                                                         (search.ingestion/tombstone "card" [id])]))))
+          (is (true? (indexed?))))))))
 
 (deftest curation-signals-surfaced-in-results-test
   (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,

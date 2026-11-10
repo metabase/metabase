@@ -375,14 +375,13 @@
                                   first-error
                                   (catch InterruptedException e
                                     (throw e))
-                                  ;; The JVM itself is in trouble; the later runs would only make it worse.
-                                  (catch VirtualMachineError e
-                                    (throw e))
-                                  ;; Throwable, so that an AssertionError from an `assert` or `:pre` check fails only
-                                  ;; its own run.
+                                  ;; A failed `assert` or `:pre` check is the run's own failure, like an exception.
+                                  ;; Any other Error is fatal, so it stops the batch at once.
                                   (catch Throwable e
-                                    (log/errorf e "Failed to ingest %d search index messages" (count messages))
-                                    (or first-error e))))
+                                    (if (or (instance? Exception e) (instance? AssertionError e))
+                                      (do (log/errorf e "Failed to ingest %d search index messages" (count messages))
+                                          (or first-error e))
+                                      (throw e)))))
                               nil
                               (partition-by tombstone? updates))]
           (throw e))))))
