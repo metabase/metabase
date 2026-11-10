@@ -2,33 +2,28 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer/PageContainer";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import { DetailPanelHeader } from "metabase/data-studio/data-model/pages/DataModel/DetailPanel";
+import {
+  FieldActionsMenu,
+  FieldDetails,
+} from "metabase/data-studio/data-model/pages/DataModel/FieldDetailsPanel";
+import { TableFieldsTab } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableFieldsTab";
 import {
   FieldEmptyState,
-  FieldSection,
-  FieldValuesModal,
   PreviewSection,
   type PreviewType,
   SyncOptionsModal,
-  TableSection,
 } from "metabase/metadata/components";
-import { useParams } from "metabase/router";
-import {
-  ActionIcon,
-  Box,
-  Center,
-  Flex,
-  Group,
-  Icon,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { useNavigate, useParams } from "metabase/router";
+import { Box, Button, Center, Flex, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
 
-import { trackMetadataChange } from "../../analytics";
 import { TableHeader } from "../../components/TableHeader";
 
 import S from "./TableFieldsPage.module.css";
@@ -40,6 +35,7 @@ type TableFieldsPageParams = {
 
 export function TableFieldsPage() {
   const params = useParams<TableFieldsPageParams>();
+  const navigate = useNavigate();
   const tableId = Urls.extractEntityId(params.tableId);
   const fieldId = Urls.extractEntityId(params.fieldId);
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
@@ -49,10 +45,6 @@ export function TableFieldsPage() {
     useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
     useDisclosure();
-  const [
-    isFieldValuesModalOpen,
-    { close: closeFieldValuesModal, open: openFieldValuesModal },
-  ] = useDisclosure();
 
   if (isLoading || error != null || table == null || tableId == null) {
     return (
@@ -68,23 +60,39 @@ export function TableFieldsPage() {
       <Flex
         className={S.body}
         flex={1}
+        bg="background_page-primary"
         style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
       >
-        <Stack className={S.column} flex="8 1 0" miw={320} maw={640} mih={0}>
-          <TableSection
+        <Stack
+          className={S.column}
+          flex="8 1 0"
+          miw={320}
+          maw={640}
+          mih={0}
+          pt="xl"
+          pb="xl"
+          pl="3.5rem"
+          pr="xl"
+        >
+          <TableFieldsTab
             /**
              * Make sure internal component state is reset when changing tables.
              * This is to avoid state mix-up with optimistic updates.
              */
             key={tableId}
             table={table}
-            fieldId={fieldId}
+            activeFieldId={fieldId}
             getFieldHref={(fieldId) =>
               Urls.dataStudioTableFields(tableId, fieldId)
             }
-            onSyncOptionsClick={openSyncModal}
-            pl="3.5rem"
-            pr="xl"
+            actions={
+              !table.db?.is_attached_dwh && (
+                <Button
+                  leftSection={<Icon name="gear_settings_filled" />}
+                  onClick={openSyncModal}
+                >{t`Sync options`}</Button>
+              )
+            }
           />
         </Stack>
         {field != null && (
@@ -95,34 +103,37 @@ export function TableFieldsPage() {
             maw={680}
             mih={0}
             px="xl"
-            gap="0"
+            gap="xl"
             pos="relative"
           >
-            <Group
-              justify="space-between"
+            <Box
               pt="xl"
-              pb="lg"
-              data-testid="field-section-header"
               pos="sticky"
               top={0}
               className={S.header}
-              bg="background_page-secondary"
+              bg="background_page-primary"
             >
-              <Text fw="bold">{t`Field Details`}</Text>
-              <ActionIcon
-                variant="subtle"
-                size="sm"
-                component={ForwardRefLink}
-                to={Urls.dataStudioTableFields(table.id)}
-                onClick={closePreview}
-                aria-label={t`Close`}
-              >
-                <Icon name="close" />
-              </ActionIcon>
-            </Group>
-            <FieldSection
+              <DetailPanelHeader
+                icon={getColumnIcon(Lib.legacyColumnTypeInfo(field))}
+                label={t`Field`}
+                title={field.display_name}
+                isLoading={false}
+                actions={
+                  <FieldActionsMenu
+                    fieldId={getRawTableFieldId(field)}
+                    onPreviewClick={togglePreview}
+                  />
+                }
+                onClose={() => {
+                  closePreview();
+                  navigate(Urls.dataStudioTableFields(table.id));
+                }}
+                data-testid="field-section-header"
+              />
+            </Box>
+            <FieldDetails
               /**
-               * Make sure internal component state is reset when changing tables.
+               * Make sure internal component state is reset when changing fields.
                * This is to avoid state mix-up with optimistic updates.
                */
               key={fieldId}
@@ -131,9 +142,6 @@ export function TableFieldsPage() {
               getFieldHref={(fieldId) =>
                 Urls.dataStudioTableFields(tableId, fieldId)
               }
-              onPreviewClick={togglePreview}
-              onFieldValuesClick={openFieldValuesModal}
-              onTrackMetadataChange={trackMetadataChange}
             />
           </Stack>
         )}
@@ -160,14 +168,6 @@ export function TableFieldsPage() {
         tableId={table.id}
         onClose={closeSyncModal}
       />
-
-      {fieldId != null && (
-        <FieldValuesModal
-          fieldId={fieldId}
-          isOpen={isFieldValuesModalOpen}
-          onClose={closeFieldValuesModal}
-        />
-      )}
     </PageContainer>
   );
 }

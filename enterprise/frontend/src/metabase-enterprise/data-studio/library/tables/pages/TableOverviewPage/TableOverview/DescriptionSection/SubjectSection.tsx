@@ -23,30 +23,23 @@ export function SubjectSection({ table }: SubjectSectionProps) {
 
   return (
     <Stack gap="md" px="xl" py="lg" data-testid="table-subject-section">
-      <Stack gap="xs">
-        <Flex justify="space-between" align="center">
-          <Text size="md" c="text-secondary">
-            {t`Subject`}
-          </Text>
-          <SubjectSelect
-            value={subject.subject}
-            markedValue={
-              subject.subject !== inferredSubject ? inferredSubject : null
-            }
-            classNames={{
-              root: S.gridLabelInput,
-              input: S.input,
-              section: subject.subject != null ? S.sectionLabel : undefined,
-            }}
-            onChange={(value) => setTableSubject(table, value)}
-          />
-        </Flex>
-        {!subject.isOverridden && inferredSubject != null && (
-          <Text size="sm" c="text-secondary" ta="right">
-            {t`Inferred: ${subject.inference.signal}`}
-          </Text>
-        )}
-      </Stack>
+      <Flex justify="space-between" align="center">
+        <Text size="md" c="text-secondary">
+          {t`Subject`}
+        </Text>
+        <SubjectSelect
+          value={subject.subject}
+          markedValue={
+            subject.subject !== inferredSubject ? inferredSubject : null
+          }
+          classNames={{
+            root: S.gridLabelInput,
+            input: S.input,
+            section: subject.subject != null ? S.sectionLabel : undefined,
+          }}
+          onChange={(value) => setTableSubject(table, value)}
+        />
+      </Flex>
       <RowNounRow
         label={t`One row is called`}
         value={subject.rowNouns.singular}
