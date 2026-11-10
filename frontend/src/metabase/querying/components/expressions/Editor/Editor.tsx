@@ -1,4 +1,5 @@
-import { EditorSelection, type EditorState, Prec } from "@codemirror/state";
+import { snippet } from "@codemirror/autocomplete";
+import { type EditorState, Prec } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 import { useDisclosure } from "@mantine/hooks";
 import type { ViewUpdate } from "@uiw/react-codemirror";
@@ -16,6 +17,7 @@ import {
 import {
   type ExpressionError,
   diagnoseAndCompile,
+  expressionClauseSnippet,
   format,
   getClauseDefinition,
   insertExpressionTemplate,
@@ -186,26 +188,18 @@ export function Editor(props: EditorProps) {
     extensions: [customTooltip, submitShortcut],
   });
 
+  // Inserts the function with its argument placeholders, the same way the
+  // suggestions and typing `(` do, and selects the first one.
   const handleFunctionBrowserClauseClick = useCallback((name: string) => {
     const view = ref.current?.view;
-    if (!view) {
-      return;
-    }
     const clause = getClauseDefinition(name);
-    if (!clause) {
+    if (!view || !clause) {
       return;
     }
 
-    const text = `${clause.displayName}()`;
-    const len = clause.displayName.length + 1; // + 1 for the parenthesis
-
-    view?.focus();
-    view?.dispatch(
-      view.state.changeByRange((range) => ({
-        range: EditorSelection.cursor(range.from + len),
-        changes: [{ from: range.from, to: range.to, insert: text }],
-      })),
-    );
+    const { from, to } = view.state.selection.main;
+    view.focus();
+    snippet(expressionClauseSnippet(clause))(view, null, from, to);
   }, []);
 
   const handleTemplateClick = useCallback((code: string) => {
