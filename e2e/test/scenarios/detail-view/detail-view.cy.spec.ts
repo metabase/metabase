@@ -86,7 +86,7 @@ describe("detail view", () => {
   });
 
   describe("value rendering", () => {
-    it("applies datamodel remapping and field settings", () => {
+    it("applies datamodel remapping, field settings, and model column settings", () => {
       H.remapDisplayValueToFK({
         display_value: ORDERS.USER_ID,
         name: "User",
@@ -100,8 +100,24 @@ describe("detail view", () => {
       });
 
       createOrdersJoinProductsModel().then(({ body: card }) => {
+        cy.request("PUT", `/api/card/${card.id}`, {
+          result_metadata: card.result_metadata.map((column) =>
+            column.name === "Order image"
+              ? {
+                  ...column,
+                  semantic_type: "type/ImageURL",
+                  settings: { view_as: "image" },
+                }
+              : column,
+          ),
+        });
+
         DetailView.visitModel(card.id, 1);
       });
+
+      DetailView.getHeader()
+        .findByRole("img")
+        .should("have.attr", "src", "https://example.com/order/1.jpg");
 
       DetailView.getDetailsRowColumnName({ index: 1, rowsCount: 18 }).should(
         "have.text",
