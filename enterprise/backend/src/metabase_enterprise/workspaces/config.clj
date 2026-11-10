@@ -48,17 +48,107 @@
       :else
       {})))
 
+(def ^:private parent-login-keys
+  "Connection properties of the eligible engines that pick or carry the parent's own warehouse login. The workspace
+  user logs in with the `:user`/`:password` in `:database_details`, so the config must carry none of these: each one
+  either makes the child connect with something other than that login or leaks a parent credential. Logins written
+  into `:additional-options` are refused instead (`check-additional-options!`). Engines that can't be a workspace
+  database, such as Snowflake and BigQuery, have credentials this list does not name.
+
+  - Auth provider (`metabase.driver.common/auth-provider-options`): with `:use-auth-provider` still set, the
+    child replaces the password with a token from the provider: for OAuth, fetched with the parent's client
+    settings (`:oauth-token-headers` can carry a client secret); for Azure managed identity, from the child's host
+    with the parent's client ID; for AWS IAM, with the child host's credentials.
+  - `:auth-mode` selects the login on SQL Server and Snowflake. Without it, SQL Server falls back to SQL login
+    (`:user`/`:password`).
+  - SQL Server's Azure AD logins (`ad-*`): the service-principal client ID/secret, the certificate and key
+    secrets (every secret sub-key), and the managed-identity client ID."
+  [:use-auth-provider :auth-provider :azure-managed-identity-client-id :oauth-token-url :oauth-token-headers
+   :auth-mode
+   :ad-client-id :ad-client-secret :ad-managed-identity-client-id
+   :ad-client-certificate :ad-client-certificate-value :ad-client-certificate-path :ad-client-certificate-options
+   :ad-client-certificate-id :ad-client-certificate-source :ad-client-certificate-kind
+   :ad-client-certificate-creator-id :ad-client-certificate-created-at
+   :ad-client-certificate-password :ad-client-certificate-password-value :ad-client-certificate-password-path
+   :ad-client-certificate-password-options :ad-client-certificate-password-id
+   :ad-client-certificate-password-source :ad-client-certificate-password-kind
+   :ad-client-certificate-password-creator-id :ad-client-certificate-password-created-at
+   :ad-client-key :ad-client-key-value :ad-client-key-path :ad-client-key-options
+   :ad-client-key-id :ad-client-key-source :ad-client-key-kind
+   :ad-client-key-creator-id :ad-client-key-created-at
+   :ad-client-key-password :ad-client-key-password-value :ad-client-key-password-path
+   :ad-client-key-password-options :ad-client-key-password-id
+   :ad-client-key-password-source :ad-client-key-password-kind
+   :ad-client-key-password-creator-id :ad-client-key-password-created-at])
+
+(def ^:private tunnel-secret-keys-by-auth-option
+  "The tunnel credentials each `:tunnel-auth-option` uses."
+  {"password" #{:tunnel-pass}
+   "ssh-key"  #{:tunnel-private-key :tunnel-private-key-passphrase}})
+
+(defn- drop-unused-tunnel-secrets
+  "Remove the SSH-tunnel credentials the child has no use for, so leftovers don't ship to its config.yml. They are
+   plain `:password`/`:string` connection properties, so unlike `:secret` properties (stored in the Secret table,
+   only their `-id` in `:details`) they sit in `:details` verbatim.
+
+   - `:tunnel-enabled` falsey: all of them; the driver only opens the tunnel when it is set.
+   - `:tunnel-auth-option` set: those of the other option. The driver offers every credential present, so this
+     follows what the admin chose rather than what the driver would try. `:tunnel-auth-option` is a UI flag that
+     the driver never reads, so this trusts it to match the credentials the tunnel uses. Without the option
+     (details created through the API) both stay, since nothing says which one is in use."
+  [details]
+  (let [all-keys (reduce into #{} (vals tunnel-secret-keys-by-auth-option))]
+    (cond
+      (not (:tunnel-enabled details))
+      (apply dissoc details all-keys)
+
+      (contains? tunnel-secret-keys-by-auth-option (:tunnel-auth-option details))
+      (apply dissoc details (remove (tunnel-secret-keys-by-auth-option (:tunnel-auth-option details)) all-keys))
+
+      :else
+      details)))
+
+(def ^:private login-option-name
+  "Names of JDBC options that set a login or carry a credential, matched case-insensitively against the option names
+   in `:additional-options`."
+  #"(?i)user|username|uid|sslkey|accesskeyid|aadsecureprincipalid|.*(?:password|pwd|secret|token)")
+
+(defn- additional-option-names
+  "The option names in an `:additional-options` string: `name=value` pairs separated by `&` (Postgres, MySQL,
+   Redshift, ClickHouse) or `;` (SQL Server), with an optional leading `?`."
+  [additional-options]
+  (for [part  (str/split (str additional-options) #"[&;]")
+        :let  [option-name (-> part (str/split #"=" 2) first str/trim (str/replace #"^\?" ""))]
+        :when (seq option-name)]
+    option-name))
+
+(defn- check-additional-options!
+  "Throw a 422 when the parent's `:additional-options` set a login or carry a credential. The string ships to the
+   config as is, and drivers such as pgjdbc let URL options override the workspace's `:user`/`:password`, so the child
+   would connect as the parent and the config's holder would read the parent's password."
+  [db]
+  (when-let [option-name (some #(when (re-matches login-option-name %) %)
+                               (additional-option-names (:additional-options (:details db))))]
+    (throw (ex-info (format (str "Database %s sets %s in its additional JDBC connection options, which would give the "
+                                 "workspace the parent's login. Remove it from the database's connection settings, or "
+                                 "remove the database from the workspace.")
+                            (pr-str (:name db)) option-name)
+                    {:status-code 422
+                     :database_id (:id db)}))))
+
 (defn- database-entry [wsd db]
+  (check-additional-options! db)
   {:name    (:name db)
    :engine  (:engine db)
    ;; Force :let-user-control-scheduling false. The YAML only carries :details — not the
    ;; cache_field_values_schedule / metadata_sync_schedule columns — and infer-db-schedules
    ;; asserts those columns are present whenever user-control scheduling is on. Without
    ;; this override the round-trip blows up for any DB whose source details opted in.
-   :details (merge (:details db)
-                   (:database_details wsd)
-                   (schema-filter-entries db wsd)
-                   {:let-user-control-scheduling false})})
+   :details (drop-unused-tunnel-secrets
+             (merge (apply dissoc (:details db) parent-login-keys)
+                    (:database_details wsd)
+                    (schema-filter-entries db wsd)
+                    {:let-user-control-scheduling false}))})
 
 (defn- expand-output
   "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`
@@ -118,13 +208,16 @@
                            :databases {<db-name> {:input_schemas [<schema-name> ...]
                                                   :output        {:db ? :schema ?}}}}}
 
-  Each database entry merges the underlying `metabase_database.details` with the
-  WorkspaceDatabase's override credentials and adds `schema-filters-*` keys
+  Each database entry merges the underlying `metabase_database.details`, minus the
+  parent's login properties (`parent-login-keys`), with the WorkspaceDatabase's
+  override credentials, drops SSH-tunnel secrets the tunnel does not use
+  (`drop-unused-tunnel-secrets`), and adds `schema-filters-*` keys
   derived from `:input_schemas`. Per-database workspace entries carry the
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
   `instance-workspace` setting stores. Returns nil when the workspace does not
-  exist. Throws a 409 `ex-info` if any of the workspace's databases is not
-  `:provisioned`."
+  exist. Throws a 409 `ex-info` when a workspace database is not `:provisioned`
+  (waiting clears it), and a 422 when its `:additional-options` set a login
+  (`check-additional-options!`; only an admin can clear it)."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
