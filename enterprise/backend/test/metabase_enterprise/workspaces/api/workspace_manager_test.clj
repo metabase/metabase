@@ -67,26 +67,32 @@
 
 (deftest delete-workspace-teardown-failure-test
   (testing "DELETE returns a 500 with the database's error and keeps the workspace when a teardown fails"
-    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
-                                                :details  {}
-                                                :settings {:database-enable-workspaces true}}]
-      (mt/with-model-cleanup [:model/Workspace]
-        (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-                            (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
-                                                  {:name "Unreachable" :database_ids [db-id]}))
-              boom        (reify provisioning/Provisioner
-                            (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
-                            (init!    [_ _ _ _]   nil)
-                            (grant!   [_ _ _ _ _] nil)
-                            (destroy! [_ _ _ _]   (throw (ex-info "Connection refused" {}))))]
-          (with-redefs [provisioning/dispatching-provisioner boom]
-            (is (=? {:message "Connection refused"}
-                    (mt/user-http-request :crowberto :delete 500 (str "ee/workspace-manager/" ws-id)))))
-          (testing "the workspace survives and a retry deletes it"
-            (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))
-            (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-              (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))
-            (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))))))))
+    ;; Committed `with-temp`: the teardown-failure bookkeeping writes on a fresh autocommit connection, which
+    ;; cannot see rows inside the default rollback-only `with-temp` transaction.
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                  :details  {}
+                                                  :settings {:database-enable-workspaces true}}]
+        (mt/with-model-cleanup [:model/Workspace]
+          (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                              (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                    {:name "Unreachable" :database_ids [db-id]}))
+                boom        (reify provisioning/Provisioner
+                              (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                              (init!    [_ _ _ _]   nil)
+                              (grant!   [_ _ _ _ _] nil)
+                              (destroy! [_ _ _ _]   (throw (ex-info "Connection refused" {}))))]
+            (with-redefs [provisioning/dispatching-provisioner boom]
+              (is (=? {:message "Connection refused"}
+                      (mt/user-http-request :crowberto :delete 500 (str "ee/workspace-manager/" ws-id)))))
+            (testing "the workspace survives, its database shown as teardown_failed, and a retry deletes it"
+              (is (=? {:databases [{:database_id      db-id
+                                    :output_namespace "mb_iso_stub"
+                                    :status           "teardown_failed"}]}
+                      (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))
+              (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))
+              (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id)))))))))
 
 (deftest create-workspace-with-database-ids-test
   (testing "POST / attaches and provisions the given databases (each must be eligible) with their schemas"

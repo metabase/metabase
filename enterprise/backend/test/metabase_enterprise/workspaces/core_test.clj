@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
@@ -104,29 +105,6 @@
                 "the failed create must not leave a Workspace row behind")
             (is (not (t2/exists? :model/WorkspaceDatabase :database_id db-id))
                 "the failed create must not leave WorkspaceDatabase rows behind")))
-        (testing "provisioning failure whose cleanup also fails keeps the workspace and returns it for retry"
-          (let [wedged (reify provisioning/Provisioner
-                         (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
-                         (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
-                         (grant!   [_ _ _ _ _] nil)
-                         (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
-            (with-redefs [provisioning/dispatching-provisioner wedged]
-              (is (=? {:name      "Wedged"
-                       :databases [{:status :unprovisioned}]}
-                      (ws/create-workspace! {:name         "Wedged"
-                                             :creator_id   (mt/user->id :crowberto)
-                                             :database_ids [db-id]}))
-                  "the created workspace is returned even though provisioning failed and cleanup could not finish"))
-            (let [ws (t2/select-one :model/Workspace :name "Wedged")]
-              (is (some? ws)
-                  "the workspace must be kept while any database row remains")
-              (is (=? [{:status :unprovisioned}]
-                      (t2/select :model/WorkspaceDatabase :workspace_id (:id ws)))
-                  "the row whose teardown failed is kept, forced :unprovisioned")
-              ;; retry the teardown via delete once the warehouse is back
-              (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-                (is (nil? (ws/delete-workspace! (:id ws)))))
-              (is (nil? (ws/get-workspace (:id ws)))))))
         (testing "success: the attached database comes back :provisioned"
           (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
             (let [ws (ws/create-workspace! {:name         "Provisioned"
@@ -136,6 +114,38 @@
                         :input_schemas ["public"]
                         :status        :provisioned}]
                       (:databases ws))))))))))
+
+(deftest create-workspace-cleanup-failure-test
+  ;; Committed `with-temp`: the teardown-failure bookkeeping writes on a fresh autocommit connection, which cannot
+  ;; see rows inside the default rollback-only `with-temp` transaction.
+  (mt/test-helpers-set-global-values!
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (testing "provisioning failure whose cleanup also fails keeps the workspace and returns it for retry"
+          (let [wedged (reify provisioning/Provisioner
+                         (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                         (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
+                         (grant!   [_ _ _ _ _] nil)
+                         (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
+            (with-redefs [provisioning/dispatching-provisioner wedged]
+              (is (=? {:name      "Wedged"
+                       :databases [{:status :teardown_failed}]}
+                      (ws/create-workspace! {:name         "Wedged"
+                                             :creator_id   (mt/user->id :crowberto)
+                                             :database_ids [db-id]}))
+                  "the created workspace is returned even though provisioning failed and cleanup could not finish"))
+            (let [ws (t2/select-one :model/Workspace :name "Wedged")]
+              (is (some? ws)
+                  "the workspace must be kept while any database row remains")
+              (is (=? [{:status :teardown_failed}]
+                      (t2/select :model/WorkspaceDatabase :workspace_id (:id ws)))
+                  "the row whose teardown failed is kept as :teardown_failed")
+              ;; retry the teardown via delete once the warehouse is back
+              (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                (is (nil? (ws/delete-workspace! (:id ws)))))
+              (is (nil? (ws/get-workspace (:id ws)))))))))))
 
 (defn- add-database!
   "Test helper: insert a WorkspaceDatabase row for `workspace-id` and provision it
@@ -214,9 +224,13 @@
               "the combined teardown failure is thrown, carrying what the database returned"))
         (is (some? (ws/get-workspace (:id ws)))
             "the workspace must be kept when any teardown fails")
-        (is (=? {:status :unprovisioned}
+        (is (=? {:status           :teardown_failed
+                 :output_namespace "mb_iso_stub"}
                 (t2/select-one :model/WorkspaceDatabase :id wsd-id))
-            "the failed row is kept, forced :unprovisioned")
+            "the failed row is kept as :teardown_failed, with the identifiers of what may remain")
+        (is (thrown-with-msg? ExceptionInfo #"active workspace_database rows"
+                              (workspace-database/reconcile-workspace-database-refs-before-delete! (mt/id)))
+            "a :teardown_failed row blocks deleting its Database, so the record of leftovers survives")
         (testing "retrying the delete once the warehouse is reachable finishes the job"
           (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
             (is (nil? (ws/delete-workspace! (:id ws)))))

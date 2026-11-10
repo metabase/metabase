@@ -234,9 +234,10 @@
   remappings would rewrite queries to a dropped schema and 500 the QP.
 
   Throws on failure. When the destroy itself fails, the row bookkeeping runs
-  first: the row is kept, forced `:unprovisioned`, and the remapping cleanup
-  still runs. Failures before the destroy — lock timeout, identifier
-  computation — throw without touching the row. Either way the teardown can be
+  first: the row is kept as `:teardown_failed` with its identifiers, since
+  warehouse objects may remain, and the remapping cleanup still runs. Failures
+  before the destroy — lock timeout, identifier computation — throw without
+  touching the row. Either way the teardown can be
   retried. Returns nil."
   [wsd provisioner]
   (with-workspace-database-lock (:id wsd)
@@ -258,8 +259,7 @@
             ;; postgres/mysql app DBs, so the keep-row bookkeeping needs its own
             ;; autocommit connection to survive it.
             (binding [t2.connection/*current-connectable* nil]
-              (ws.db/update-workspace-database! (:id wsd)
-                                                {:output_namespace "" :database_details {} :status :unprovisioned}))
+              (ws.db/update-workspace-database! (:id wsd) {:status :teardown_failed}))
             (throw t))
           (finally
             ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale

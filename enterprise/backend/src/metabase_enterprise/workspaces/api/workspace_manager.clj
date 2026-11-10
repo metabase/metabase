@@ -18,7 +18,7 @@
 
 (def ^:private WorkspaceStatus
   [:enum {:decode/api keyword}
-   :unprovisioned :provisioning :provisioned :deprovisioning])
+   :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed])
 
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}

@@ -29,7 +29,12 @@
          │                                                │
          │                                       failure  │
          │                                                ▼
-         └──────────────────────────────────────── provisioned"
+         └──────────────────────────────────────── provisioned
+
+   Deleting a workspace tears down each database from any state. A teardown that
+   fails leaves the row `teardown_failed`: warehouse objects may remain, the row
+   keeps blocking deletion of its Database, and a retried delete tears it down
+   again."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.workspaces.db :as ws.db]
@@ -267,7 +272,7 @@
    every database is torn down; when the cleanup removes everything, the Workspace
    row is deleted and the provisioning error is rethrown; when the cleanup itself
    fails, the workspace is kept — and returned like a successful create — with the
-   failed rows (`:unprovisioned`) so the leak stays visible and the teardown can
+   failed rows (`:teardown_failed`) so the leak stays visible and the teardown can
    be retried via delete. Callers detect that case from the databases' statuses."
   [{:keys [name creator_id database_ids]}]
   (let [databases (mapv (fn [db-id]
