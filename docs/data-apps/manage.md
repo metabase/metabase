@@ -82,3 +82,21 @@ Data Studio doesn't have an option to delete apps. To delete an app, ask your ag
 Then merge the branch into the branch that your production Metabase pulls from, and [pull the changes](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-from-git) into each Metabase that has the app.
 
 Deleting an app also deletes its collection (with its questions and actions), its bundle, and its group access. To take an app offline without deleting it, [make it a draft](#make-an-app-live-or-a-draft).
+
+## Serve apps from a separate address
+
+On a self-hosted Metabase, you can serve apps from a second address to keep app code away from people's sessions. Browsers don't send the session cookie to that address, so an app can reach Metabase only through the page that shows it. People still open apps at your [Site URL](../configuring-metabase/settings.md#site-url).
+
+1. Pick a host name on a separate domain. For a Metabase at `metabase.example.com`, use something like `example-isolated.com`.
+
+   Avoid subdomains like `apps.example.com`. Browsers treat subdomains as one site, so app code could plant cookies and send requests with the session cookie. A separate domain stops those requests only if [`MB_SESSION_COOKIE_SAMESITE`](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite) is `lax` (the default) or `strict`.
+
+2. Point the host name at the same Metabase. Your reverse proxy must pass on the host name in the `Host` or `X-Forwarded-Host` header, or apps won't load. If Metabase runs under a path, use the same path on both addresses.
+
+3. Set the environment variable to the second address, then restart Metabase:
+
+   ```
+   MB_ISOLATED_ORIGIN=https://example-isolated.com
+   ```
+
+The value can have only a scheme, host name, and port. The host name must differ from the Site URL's, and the value must use `https` if the Site URL does. If the value breaks these rules, or you haven't set a Site URL, Metabase turns data apps off. The app page says **Data apps are unavailable**, and the [server logs](../monitor/application-logs.md) say why.
