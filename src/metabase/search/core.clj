@@ -262,7 +262,8 @@
 
 (defn after-commit!
   "Run each of `steps` in order once the enclosing transaction commits; a rollback discards them.
-  They run off the committing thread unless ingestion is forced synchronous.
+  They run off the committing thread unless ingestion is forced synchronous, and count as pending index work until
+  they finish, see [[search.ingestion/await-pending-updates!]].
   A step that throws is logged, naming the work by `description`, and the steps after it still run."
   [description & steps]
   (mdb/do-after-commit
@@ -273,8 +274,10 @@
                     (catch Throwable e
                       (log/errorf e "Failed search-index handoff: %s" description))))]
        (if search.ingestion/*force-sync*
+         ;; This is synchronous DB I/O inside the after-commit thunk, which `mdb/do-after-commit` warns against;
+         ;; only tests bind `*force-sync*`.
          (run)
-         (future (run)))))))
+         (search.ingestion/future-counted run))))))
 
 ;; Ingestion re-derives what these messages name, and purges a document named by its own id once its row is gone.
 (defn bulk-update!

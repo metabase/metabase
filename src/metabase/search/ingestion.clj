@@ -388,6 +388,22 @@
 (defn- index-worker-exists? []
   (queue/listener-exists? listener-name))
 
+(defn future-counted
+  "Run `f` in a future that counts as a pending update until it finishes, so [[await-pending-updates!]] and
+  [[wait-for-idle!]] wait for work that queues its messages only later, such as an after-commit handoff."
+  [f]
+  (swap! pending-updates inc)
+  (try
+    (future
+      (try
+        (f)
+        (finally
+          (swap! pending-updates dec))))
+    ;; A future that never starts would leave the count raised for good.
+    (catch Throwable e
+      (swap! pending-updates dec)
+      (throw e))))
+
 (mu/defn await-pending-updates! :- :boolean
   "Wait up to `timeout-ms` for queued and running index updates to finish. Return whether none remain."
   [timeout-ms :- nat-int?]

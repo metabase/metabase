@@ -378,6 +378,27 @@
           (finally
             (queue/stop-listening! listener-name)))))))
 
+(deftest await-pending-updates-waits-for-after-commit-handoff-test
+  (testing "an after-commit handoff counts as pending until it finishes, though it queues nothing until then"
+    (let [running (promise)
+          release (promise)]
+      (with-redefs [search.ingestion/pending-updates (atom 0)]
+        (binding [search.ingestion/*force-sync* false]
+          (try
+            (t2/with-transaction [_conn]
+              (search/after-commit! "slow handoff"
+                                    (fn []
+                                      (deliver running true)
+                                      (deref release 5000 ::timeout)))
+              (is (true? (search.ingestion/await-pending-updates! 0))
+                  "nothing is pending before the commit"))
+            (is (true? (deref running 2000 ::timeout)))
+            (is (false? (search.ingestion/await-pending-updates! 10)))
+            (deliver release true)
+            (is (true? (search.ingestion/await-pending-updates! 2000)))
+            (finally
+              (deliver release true))))))))
+
 (deftest ingest-maybe-async!-queues-after-commit-test
   ;; The worker reads each updated row back from the app DB. If an update reaches the queue before its transaction
   ;; commits, and the transaction takes longer than the queue delay, the worker finds no row and the entity is
