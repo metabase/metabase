@@ -126,7 +126,7 @@
            :data   (-> data
                        (perf/select-keys [:cols :rows])
                        (project-columns columns))}))
-      (catch Throwable e
+      (catch Exception e
         (log/warnf e "Failed to run referenced %s %s" entity-type id)
         {:status "failed"
          :error  (or (ex-message e) (tru "Failed to run referenced query"))}))))
@@ -145,17 +145,41 @@
                             (apply max ms))})
              (group-by (juxt :type :id) specs)))
 
+(defn- refused-entity
+  [entity-type id message]
+  (log/warnf "Refused referenced %s %s: %s" entity-type id message)
+  {:status "failed"
+   :error  message})
+
+(defn- refusals
+  "`check-entities`'s refusals for `specs`. If the check throws an exception, every spec is refused: an unchecked
+  reference must not run, and a failed check must not fail the main query."
+  [check-entities specs]
+  (try
+    (check-entities specs)
+    (catch Exception e
+      (log/error e "Failed to check referenced entities; refusing them all")
+      (let [message (tru "Could not check whether this reference may be used.")]
+        (into {} (map (fn [{entity-type :type, :keys [id]}] [[entity-type id] message])) specs)))))
+
 (defn- referenced-entities-result
-  "Run each spec and return `{type-string {id-string result}}`, nil when there are none."
-  [specs max-rows]
+  "Run each spec and return `{type-string {id-string result}}`, nil when there are none. `check-entities`, when given,
+  returns `{[type id] message}` for the deduped specs that may not run; those fail with that message instead of
+  running."
+  [specs max-rows check-entities]
   (when (seq specs)
-    (perf/not-empty
-     (reduce (fn [acc {entity-type :type, :keys [id] :as spec}]
-               ;; string keys so the map serializes to JSON as `{"card": {"1": {...}}}`
-               (assoc-in acc [entity-type (str id)] (run-referenced-entity spec max-rows)))
-             {}
-             ;; don't start the next one if the client already hung up
-             (take-while (fn [_] (not (qp.pipeline/canceled?))) (dedupe-specs specs))))))
+    (let [specs   (dedupe-specs specs)
+          refused (if check-entities (refusals check-entities specs) {})]
+      (perf/not-empty
+       (reduce (fn [acc {entity-type :type, :keys [id] :as spec}]
+                 ;; string keys so the map serializes to JSON as `{"card": {"1": {...}}}`
+                 (assoc-in acc [entity-type (str id)]
+                           (if-let [message (get refused [entity-type id])]
+                             (refused-entity entity-type id message)
+                             (run-referenced-entity spec max-rows))))
+               {}
+               ;; don't start the next one if the client already hung up
+               (take-while (fn [_] (not (qp.pipeline/canceled?))) specs))))))
 
 (defn- inject-referenced-entities
   [rff result]
@@ -169,7 +193,7 @@
   [qp specs max-rows]
   (if (seq specs)
     (fn [query rff]
-      (if-let [result (referenced-entities-result specs max-rows)]
+      (if-let [result (referenced-entities-result specs max-rows nil)]
         (qp query (inject-referenced-entities rff result))
         (qp query rff)))
     qp))
@@ -184,9 +208,10 @@
   1)
 
 (defn maybe-wrap-rff-for-goals
-  "Run `specs` eagerly and decorate `rff` to inject their values under `data.referenced_entities`."
-  [rff specs]
-  (if-let [result (referenced-entities-result specs goal-max-rows)]
+  "Run `specs` eagerly and decorate `rff` to inject their values under `data.referenced_entities`.
+  `check-entities`, when given, refuses specs before they run (see [[referenced-entities-result]])."
+  [rff specs check-entities]
+  (if-let [result (referenced-entities-result specs goal-max-rows check-entities)]
     (inject-referenced-entities rff result)
     rff))
 
