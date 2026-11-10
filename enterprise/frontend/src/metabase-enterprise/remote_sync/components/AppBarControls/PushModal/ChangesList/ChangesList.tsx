@@ -15,12 +15,11 @@ import {
 } from "metabase/ui";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
-import { getEntityUrl } from "../../../../utils";
+import { getEntityUrl, getModelIcon } from "../../../../utils";
 
 import {
   type ChangesGroup,
   type ChangesItem,
-  getModelIcon,
   getStatusColor,
   getStatusIcon,
   groupChanges,

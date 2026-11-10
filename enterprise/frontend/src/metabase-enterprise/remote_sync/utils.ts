@@ -1,5 +1,6 @@
 import * as Urls from "metabase/urls";
 import type {
+  IconName,
   RemoteSyncEntityCollection,
   RemoteSyncEntityId,
   RemoteSyncEntityModel,
@@ -13,6 +14,29 @@ export type RemoteSyncEntityLinkTarget = {
   collection?: RemoteSyncEntityCollection;
   parent?: RemoteSyncEntityParent;
 };
+
+const MODEL_ICONS: Record<RemoteSyncEntityModel, IconName> = {
+  action: "bolt",
+  card: "table2",
+  collection: "folder",
+  dashboard: "dashboard",
+  dataapp: "app",
+  document: "document",
+  fieldusersettings: "field",
+  glossary: "glossary",
+  measure: "sum",
+  nativequerysnippet: "snippet",
+  pythonlibrary: "code_block",
+  segment: "segment",
+  tableusersettings: "table",
+  timeline: "calendar",
+  transform: "insight",
+  transformtag: "label",
+  transformtest: "list",
+};
+
+export const getModelIcon = (model: RemoteSyncEntityModel): IconName =>
+  MODEL_ICONS[model];
 
 export const getEntityUrl = ({
   id,

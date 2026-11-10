@@ -8,6 +8,7 @@ import {
   Button,
   FocusTrap,
   Group,
+  Icon,
   Modal,
   Stack,
   Switch,
@@ -16,7 +17,11 @@ import {
 import type { RemoteSyncUnsyncedDependency } from "metabase-types/api";
 
 import type { SettingsFormValues } from "../../../types";
-import { type RemoteSyncEntityLinkTarget, getEntityUrl } from "../../../utils";
+import {
+  type RemoteSyncEntityLinkTarget,
+  getEntityUrl,
+  getModelIcon,
+} from "../../../utils";
 
 import S from "./UnsyncedDependenciesModal.module.css";
 import {
@@ -81,9 +86,12 @@ const DependencyGroupItem = ({ group }: DependencyGroupItemProps) => (
     </Group>
     {group.dependencies.map((dependency) => (
       <Stack key={`${dependency.model}-${dependency.id}`} gap={0}>
-        <Text>
-          <EntityLink entity={dependency} />
-        </Text>
+        <Group gap="sm" wrap="nowrap">
+          <Icon name={getModelIcon(dependency.model)} c="text-secondary" />
+          <Text>
+            <EntityLink entity={dependency} />
+          </Text>
+        </Group>
         <Text c="text-secondary" fz="sm">
           {jt`Used by ${dependency.used_by.map((entity, index) => (
             <Fragment key={`${entity.model}-${entity.id}`}>
