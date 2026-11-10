@@ -9,8 +9,8 @@ export interface DataApp {
   /** Stable identifier shared by the app's copies across instances. */
   entity_id: string;
   /** The app's slug. */
+  slug: string;
   name: string;
-  display_name: string;
   /** Optional one-line summary of what the app does. */
   description: string | null;
   /** Data app contract version the app was built for; 1 when the manifest declares none. */

@@ -155,7 +155,7 @@
   the app afterwards deletes what it holds."
   [f]
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:name "birds"}]
+    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:slug "birds"}]
       (f collection-id))))
 
 (defn do-with-library!

@@ -96,7 +96,7 @@
     (if-let [collection-id (:resource_collection_id row)]
       (do (check-resource-collection collection-id nil)
           row)
-      (assoc row :resource_collection_id (data-apps.db/insert-resource-collection! (:name row))))))
+      (assoc row :resource_collection_id (data-apps.db/insert-resource-collection! (:slug row))))))
 
 (t2/define-before-update :model/DataApp
   [data-app]
@@ -149,9 +149,9 @@
                   :collection-id false
                   :created-at    true
                   :updated-at    true}
-   :search-terms [:name :display_name :description]
+   :search-terms [:slug :name :description]
    ;; A result's `name` can be its display name, and the app's URL needs its slug.
-   :render-terms {:data-app-slug :name}})
+   :render-terms {:data-app-slug :slug}})
 
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."
@@ -175,15 +175,9 @@
 
 (defmethod serialization/spec :model/DataApp [_]
   {:schema    ::data-apps.schema/external-data-app
-   :copy      [:entity_id :description :version :allowed_hosts]
+   :copy      [:entity_id :slug :name :description :version :allowed_hosts]
    :skip      [:enabled :bundle_hash]
    :transform {:resource_collection_id (assoc (serialization/fk-transform :model/Collection) :as :collection)
-               :name                   {:as     :slug
-                                        :export serialization/export-unchanged
-                                        :import serialization/import-unchanged}
-               :display_name           {:as     :name
-                                        :export serialization/export-unchanged
-                                        :import serialization/import-unchanged}
                :bundle_path            {:as     :path
                                         :export serialization/export-unchanged
                                         :import serialization/import-unchanged}

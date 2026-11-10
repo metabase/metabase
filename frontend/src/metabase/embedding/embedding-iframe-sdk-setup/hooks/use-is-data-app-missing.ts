@@ -19,7 +19,7 @@ export const useIsDataAppMissing = (
   }
 
   const appName = getEmbeddedAppNameFromPath(settings.path);
-  const selectedApp = apps?.find((app) => app.name === appName);
+  const selectedApp = apps?.find((app) => app.slug === appName);
 
   return (
     isLoading || !!appListError || !selectedApp?.enabled || selectedApp.outdated

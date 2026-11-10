@@ -13,7 +13,7 @@
 
 (def non-blob-columns
   "Every DataApp column except the raw bundle blob."
-  [:id :entity_id :name :display_name :description :version :bundle_path :enabled :allowed_hosts
+  [:id :entity_id :slug :name :description :version :bundle_path :enabled :allowed_hosts
    :resource_collection_id :bundle_hash :created_at :updated_at])
 
 (def ^:private non-blob-model
@@ -27,7 +27,7 @@
 (mu/defn data-app-by-slug
   "The DataApp named `slug` without its bundle, or nil."
   [slug :- :string]
-  (t2/select-one non-blob-model :name slug))
+  (t2/select-one non-blob-model :slug slug))
 
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
@@ -48,7 +48,7 @@
 (mu/defn data-app-exists?
   "Whether a DataApp named `slug` exists."
   [slug :- :string]
-  (t2/exists? :model/DataApp :name slug))
+  (t2/exists? :model/DataApp :slug slug))
 
 (mu/defn collection-owned-by-data-app?
   "Whether the Collection with `collection-id` is the resource collection of a DataApp."
@@ -147,12 +147,12 @@
                                       [:in :id (readable-data-app-ids-select user-id false)]]}))
 
 (mu/defn readable-data-apps
-  "The DataApps that the User with `user-id` can read, without their bundles, ordered by display name."
+  "The DataApps that the User with `user-id` can read, without their bundles, ordered by name."
   [user-id    :- ms/PositiveInt
    superuser? :- :boolean]
   (t2/select non-blob-model
              {:where    [:in :id (readable-data-app-ids-select user-id superuser?)]
-              :order-by [[:display_name :asc]]}))
+              :order-by [[:name :asc]]}))
 
 (defn permissions-for-warnings
   "View-data permission rows for the warning tables and their databases."

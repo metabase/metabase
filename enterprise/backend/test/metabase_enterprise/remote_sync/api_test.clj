@@ -136,7 +136,7 @@
     (remote-sync.tu/with-remote-sync [url :read-write]
       (mt/with-additional-premium-features #{:data-apps}
         (mt/with-model-cleanup [:model/RemoteSyncTask]
-          (mt/with-temp [:model/DataApp _ {:name        "bundled-app"
+          (mt/with-temp [:model/DataApp _ {:slug        "bundled-app"
                                            :bundle_path "dist/index.js"
                                            :bundle      (.getBytes "console.log(1);" "UTF-8")}]
             (testing "a push writes the bundle of a data app, after which the app isn't changed"

@@ -34,14 +34,14 @@ export function DataAppsNavbarSection({
       >
         {dataApps.map((dataApp) => (
           <SidebarLink
-            key={dataApp.name}
+            key={dataApp.slug}
             icon="app"
             onClick={onItemSelect}
             rel="noopener noreferrer"
             target="_blank"
-            url={Urls.dataApp(dataApp.name)}
+            url={Urls.dataApp(dataApp.slug)}
           >
-            {dataApp.display_name}
+            {dataApp.name}
           </SidebarLink>
         ))}
       </CollapseSection>

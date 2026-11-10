@@ -61,8 +61,8 @@
 (def ^:private DataAppResponse
   [:map
    [:id              ms/PositiveInt]
+   [:slug            ms/NonBlankString]
    [:name            ms/NonBlankString]
-   [:display_name    ms/NonBlankString]
    [:description     [:maybe :string]]
    [:version         ms/PositiveInt]
    [:outdated        :boolean]
@@ -81,8 +81,8 @@
 (def ^:private PublicDataAppResponse
   [:map {:closed true}
    [:id           ms/PositiveInt]
+   [:slug         ms/NonBlankString]
    [:name         ms/NonBlankString]
-   [:display_name ms/NonBlankString]
    [:enabled      :boolean]
    [:outdated     :boolean]])
 
@@ -152,7 +152,7 @@
    navigational fields to other users."
   [app]
   (cond-> (assoc app :outdated (data-app.config/outdated? app))
-    (not api/*is-superuser?*) (select-keys [:id :name :display_name :enabled :outdated])))
+    (not api/*is-superuser?*) (select-keys [:id :slug :name :enabled :outdated])))
 
 (defn- check-not-outdated
   "Refuse an app built for an older contract than this Metabase serves with a 409 carrying

@@ -139,7 +139,7 @@ describe("DataAppView", () => {
   });
 
   it("renders the app inside an iframe once metadata resolves", () => {
-    setup({ data: createMockDataApp({ display_name: "Sales" }) });
+    setup({ data: createMockDataApp({ name: "Sales" }) });
 
     const iframe = screen.getByTitle("Sales");
     expect(iframe).toBeInTheDocument();
@@ -160,7 +160,7 @@ describe("DataAppView", () => {
   }
 
   function setupIframe() {
-    setup({ data: createMockDataApp({ display_name: "Sales" }) });
+    setup({ data: createMockDataApp({ name: "Sales" }) });
     return screen.getByTitle<HTMLIFrameElement>("Sales");
   }
 

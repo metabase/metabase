@@ -18,7 +18,7 @@ export function setupListDataAppsEndpoint(
 }
 
 export function setupDataAppEndpoint(app: DataApp) {
-  fetchMock.get(`path:/api/ee/apps/${app.name}`, app);
+  fetchMock.get(`path:/api/ee/apps/${app.slug}`, app);
 }
 
 export function setupDataAppRepoStatusEndpoint(status: DataAppRepoStatus) {

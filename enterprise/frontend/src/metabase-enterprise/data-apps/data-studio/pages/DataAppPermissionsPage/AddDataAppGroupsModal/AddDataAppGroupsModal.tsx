@@ -73,11 +73,7 @@ export function AddDataAppGroupsModal({
   };
 
   return (
-    <Modal
-      title={t`Add groups to ${app.display_name}`}
-      opened
-      onClose={onClose}
-    >
+    <Modal title={t`Add groups to ${app.name}`} opened onClose={onClose}>
       <Stack gap="lg" mt="sm">
         <Text>{t`People in these groups will be able to open the app.`}</Text>
         <AddDataAppsGroupsCombobox

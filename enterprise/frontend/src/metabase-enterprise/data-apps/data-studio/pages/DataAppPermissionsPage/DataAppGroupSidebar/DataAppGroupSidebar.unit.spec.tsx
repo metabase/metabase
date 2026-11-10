@@ -21,7 +21,8 @@ type SetupOpts = {
 };
 
 function setup({ group, warnings = [] }: SetupOpts) {
-  setupDataAppGroupPermissionWarningsEndpoint("sales", warnings);
+  const app = createMockDataApp({ slug: "sales" });
+  setupDataAppGroupPermissionWarningsEndpoint(app.slug, warnings);
   const onClose = jest.fn<void, []>();
   renderWithProviders(
     <DataAppGroupSidebar

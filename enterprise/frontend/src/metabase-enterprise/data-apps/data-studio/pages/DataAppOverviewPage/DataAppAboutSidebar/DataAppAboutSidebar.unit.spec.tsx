@@ -21,8 +21,8 @@ function setup({
   repoStatus = { configured: false, url: null },
   isRepoStatusUnavailable = false,
 }: SetupOpts) {
-  const app = createMockDataApp({ name: "sales" });
-  setupDataAppGroupsEndpoint(app.name, []);
+  const app = createMockDataApp({ slug: "sales" });
+  setupDataAppGroupsEndpoint(app.slug, []);
   if (isRepoStatusUnavailable) {
     setupDataAppRepoStatusEndpointWithError("Server error");
   } else {

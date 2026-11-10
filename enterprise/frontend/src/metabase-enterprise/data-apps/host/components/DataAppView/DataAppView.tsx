@@ -380,7 +380,7 @@ export function DataAppView({
       */}
       <iframe
         ref={setIframeEl}
-        title={meta.display_name}
+        title={meta.name}
         src={src}
         sandbox="allow-scripts allow-same-origin allow-downloads allow-forms allow-modals allow-popups"
         style={{
