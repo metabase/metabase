@@ -83,6 +83,18 @@
           (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
                  (capture-enqueues! #(t2/delete! :model/ModerationReview :id mr-id)))))))))
 
+(deftest delete-of-the-latest-revision-enqueues-its-card-test
+  (testing "deleting a card's most recent revision enqueues re-derivation of the card it fed"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card     {card-id :id} {}
+                     :model/Revision {rev-id :id}  {:model    "Card"
+                                                    :model_id card-id
+                                                    :user_id  (mt/user->id :crowberto)
+                                                    :object   {}}]
+        (let [where [:and [:= card-id :this.id] [:= true true] [:= "Card" "Card"]]]
+          (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
+                 (capture-enqueues! #(t2/delete! :model/Revision :id rev-id)))))))))
+
 ;;; Purges
 
 (deftest purge-one-on-delete-test
@@ -118,6 +130,24 @@
                                                             :most_recent         false}]
         (is (= 1 (indexed-count "card" card-id)))
         (t2/delete! :model/ModerationReview :id mr-id)
+        (is (= 1 (indexed-count "card" card-id)))))))
+
+(deftest superseded-revision-delete-keeps-the-card-test
+  (testing "deleting a revision that a newer one superseded, as the revision prune does, leaves its card in the index"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      ;; Each insert is marked most recent and unmarks the card's earlier revisions, so the first one is superseded.
+      (mt/with-temp [:model/Card     {card-id :id} {:name "Revised Card"}
+                     :model/Revision {old-id :id}  {:model    "Card"
+                                                    :model_id card-id
+                                                    :user_id  (mt/user->id :crowberto)
+                                                    :object   {}}
+                     :model/Revision _             {:model    "Card"
+                                                    :model_id card-id
+                                                    :user_id  (mt/user->id :crowberto)
+                                                    :object   {}}]
+        (is (false? (t2/select-one-fn :most_recent :model/Revision :id old-id)))
+        (is (= 1 (indexed-count "card" card-id)))
+        (t2/delete! :model/Revision :id old-id)
         (is (= 1 (indexed-count "card" card-id)))))))
 
 ;;; Failure handling
