@@ -32,11 +32,13 @@
          └──────────────────────────────────────── provisioned"
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.driver.sql :as driver.sql]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
@@ -185,6 +187,23 @@
     (throw (ex-info "Workspace not found"
                     {:status-code 404 :workspace_id workspace-id}))))
 
+(def ^:private in-flight-stale-after
+  "How long after its last status change a `:provisioning` or `:deprovisioning`
+  row still counts as in flight. An older one is treated as left behind by a
+  crashed instance."
+  (t/minutes 15))
+
+(defn- assert-workspace-not-busy
+  "Refuse (409, error code `workspace_busy`) while a create or deprovision is still
+  running on any of the workspace's databases."
+  [workspace-id]
+  (when (ws.db/workspace-has-in-flight-databases? workspace-id
+                                                  (t/minus (t/offset-date-time) in-flight-stale-after))
+    (throw (ex-info "Workspace is busy: a create or deprovision is still running on one of its databases. Retry once it finishes."
+                    {:status-code  409
+                     :error-code   "workspace_busy"
+                     :workspace_id workspace-id}))))
+
 (defn- assert-database-exists [database-id]
   (or (ws.db/database database-id)
       (throw (ex-info "Database not found"
@@ -252,6 +271,30 @@
     (when (seq failures)
       (throw (combined-exception failures)))))
 
+(defn- insert-workspace-or-find-retried!
+  "Insert the Workspace and its WorkspaceDatabase rows. Returns `{:created ws}`, or
+  `{:retried ws-id}` when the creator already has a Workspace with `idempotency_key`.
+  The unique index on (idempotency_key, creator_id) decides which of two concurrent
+  requests inserts; the other inserts nothing. Any other duplicate key, and a key
+  whose workspace a failed create deleted in the meantime, is rethrown as before."
+  [{:keys [creator_id idempotency_key] :as params}]
+  (try
+    {:created (workspace/create-workspace! params)}
+    (catch Throwable t
+      (if-let [ws-id (and idempotency_key
+                          (= :duplicate-key (sql-errors/error-kind t))
+                          (ws.db/workspace-id-by-idempotency-key creator_id idempotency_key))]
+        {:retried ws-id}
+        (throw t)))))
+
+(defn- retried-workspace
+  "The workspace `ws-id` that an earlier create with the same idempotency key made,
+  hydrated, for a retry of that create. Refuses (409, `workspace_busy`) while that
+  create is still provisioning."
+  [ws-id]
+  (assert-workspace-not-busy ws-id)
+  (workspace/get-workspace ws-id))
+
 (defn create-workspace!
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
    exist (404) and be eligible for workspaces (400, see
@@ -268,37 +311,49 @@
    row is deleted and the provisioning error is rethrown; when the cleanup itself
    fails, the workspace is kept — and returned like a successful create — with the
    failed rows (`:unprovisioned`) so the leak stays visible and the teardown can
-   be retried via delete. Callers detect that case from the databases' statuses."
-  [{:keys [name creator_id database_ids]}]
+   be retried via delete. Callers detect that case from the databases' statuses.
+
+   An optional `idempotency_key` makes the create safe to retry. It is stored on the
+   Workspace row, unique per creator. When the creator already has a workspace with
+   that key, nothing is provisioned: the call returns that workspace, or refuses with
+   409 (`workspace_busy`) while it is still provisioning. The rest of a retry's params
+   are not compared with the original's. A failed create whose cleanup deleted its
+   workspace frees the key."
+  [{:keys [name creator_id database_ids idempotency_key]}]
   (let [databases (mapv (fn [db-id]
                           (let [database (assert-database-exists db-id)]
                             (assert-database-eligible-for-workspaces database)
                             {:database_id   db-id
                              :input_schemas (workspace-database/database-input-schemas database)}))
                         database_ids)
-        ws        (workspace/create-workspace! {:name       name
-                                                :creator_id creator_id
-                                                :databases  databases})]
-    (try
-      (provision-workspace-databases! ws)
-      (catch Throwable t
-        (let [cleaned-up? (try
-                            (teardown-workspace-databases! (:id ws))
-                            true
-                            ;; Cleanup failed: the workspace and the failed rows are
-                            ;; kept — and returned — so the teardown can be retried
-                            ;; via delete. Both errors are deliberately swallowed,
-                            ;; not logged (raw warehouse errors are sensitive);
-                            ;; callers see the failure in the databases' statuses,
-                            ;; and a delete retry surfaces the teardown errors.
-                            (catch Throwable _ false))]
-          (when cleaned-up?
-            (try
-              (workspace/delete-workspace! (:id ws))
-              (catch Throwable delete-t
-                (.addSuppressed t delete-t)))
-            (throw (combined-exception [t]))))))
-    (workspace/get-workspace (:id ws))))
+        {ws :created retried-id :retried}
+        (insert-workspace-or-find-retried! {:name            name
+                                            :creator_id      creator_id
+                                            :idempotency_key idempotency_key
+                                            :databases       databases})]
+    (if retried-id
+      (retried-workspace retried-id)
+      (do
+        (try
+          (provision-workspace-databases! ws)
+          (catch Throwable t
+            (let [cleaned-up? (try
+                                (teardown-workspace-databases! (:id ws))
+                                true
+                                ;; Cleanup failed: the workspace and the failed rows are
+                                ;; kept — and returned — so the teardown can be retried
+                                ;; via delete. Both errors are deliberately swallowed,
+                                ;; not logged (raw warehouse errors are sensitive);
+                                ;; callers see the failure in the databases' statuses,
+                                ;; and a delete retry surfaces the teardown errors.
+                                (catch Throwable _ false))]
+              (when cleaned-up?
+                (try
+                  (workspace/delete-workspace! (:id ws))
+                  (catch Throwable delete-t
+                    (.addSuppressed t delete-t)))
+                (throw (combined-exception [t]))))))
+        (workspace/get-workspace (:id ws))))))
 
 (defn delete-workspace!
   "Tear down every database's warehouse isolation (any state, blocking), then

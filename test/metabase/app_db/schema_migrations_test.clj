@@ -4885,3 +4885,41 @@
             (rollback/rollback-to-deployment! conn liquibase boundary)))
         (testing "rollback drops card_test"
           (is (thrown? Exception (t2/select :card_test))))))))
+
+(deftest workspace-idempotency-key-test
+  (testing "wk6itt..pagsu9: workspace.idempotency_key is unique per creator, and the rollback drops it"
+    (impl/test-migrations ["wk6itt" "pagsu9"] [migrate!]
+      (let [new-user! (fn [email]
+                        (t2/insert-returning-pk! :core_user {:first_name    "Workspace"
+                                                             :last_name     "Creator"
+                                                             :email         email
+                                                             :entity_id     (u/generate-nano-id)
+                                                             :date_joined   :%now
+                                                             :password      "password"
+                                                             :password_salt "salt"}))
+            alice     (new-user! "ws-idempotency-alice@test.com")
+            bob       (new-user! "ws-idempotency-bob@test.com")
+            ws!       (fn [creator-id idempotency-key]
+                        (t2/insert-returning-pk! :workspace {:name            "WS"
+                                                             :creator_id      creator-id
+                                                             :idempotency_key idempotency-key}))
+            existing  (t2/insert-returning-pk! :workspace {:name "Before" :creator_id alice})
+            boundary  (with-open [conn (.getConnection (mdb/data-source))]
+                        (liquibase/with-liquibase [liquibase conn]
+                          (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
+        (migrate!)
+        (testing "existing workspaces get no key"
+          (is (=? {:idempotency_key nil} (t2/select-one :workspace :id existing))))
+        (testing "a key is unique per creator"
+          (ws! alice "k1")
+          (is (thrown? Exception (ws! alice "k1")))
+          (is (pos-int? (ws! bob "k1")) "another creator may use the same key"))
+        (testing "workspaces without a key never conflict"
+          (is (pos-int? (ws! alice nil)))
+          (is (pos-int? (ws! alice nil))))
+        (with-open [conn (.getConnection (mdb/data-source))]
+          (liquibase/with-liquibase [liquibase conn]
+            (rollback/rollback-to-deployment! conn liquibase boundary)))
+        (testing "rollback drops the column and keeps the workspaces"
+          (is (not (contains? (t2/select-one :workspace :id existing) :idempotency_key)))
+          (is (= 5 (t2/count :workspace))))))))
