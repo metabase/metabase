@@ -292,13 +292,16 @@
                               ;; Cleanup failed: the workspace and the failed rows are
                               ;; kept so the teardown can be retried via delete. The
                               ;; errors are not logged (raw warehouse errors are
-                              ;; sensitive); the caller gets them in the response.
+                              ;; sensitive), but the caller gets them in the
+                              ;; response, as it does from a failed delete.
                               (catch Throwable cleanup-t cleanup-t))
               delete-error  (when-not cleanup-error
                               (try
                                 (workspace/delete-workspace! (:id ws))
                                 nil
-                                (catch Throwable delete-t delete-t)))
+                                ;; a fixed message: a raw app-DB error can name tables
+                                (catch Throwable delete-t
+                                  (ex-info "Could not delete the workspace row." {} delete-t))))
               ;; either way the Workspace row survives, and only a delete removes it
               kept-error    (or cleanup-error delete-error)]
           ;; a single failure keeps its status, like a driver's 409 for a role it refuses

@@ -139,7 +139,7 @@
                         (destroy! [_ _ _ _]   nil))]
           (with-redefs [provisioning/dispatching-provisioner failing
                         workspace/delete-workspace!          (fn [_id] (throw (ex-info "app db down" {})))]
-            (is (=? {:message "refused; app db down" :cleanup_required true}
+            (is (=? {:message "refused; Could not delete the workspace row." :cleanup_required true}
                     (mt/user-http-request :crowberto :post 500 "ee/workspace-manager/"
                                           {:name "Row kept" :database_ids [db-id]}))))
           (let [ws-id (t2/select-one-pk :model/Workspace :name "Row kept")]
