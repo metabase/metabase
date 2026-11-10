@@ -171,7 +171,7 @@
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
   `instance-workspace` setting stores. Returns nil when the workspace does not
   exist. Throws a 409 `ex-info` if any of the workspace's databases is not
-  `:provisioned`, or if any emitted string contains a `{{` template form."
+  `:provisioned`, or if any emitted string contains a template form (`{{` or `[[`)."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
