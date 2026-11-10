@@ -23,7 +23,6 @@ import {
   PRODUCTS_ID,
   REVIEWS,
   REVIEWS_ID,
-  SAMPLE_DB_ID,
   createOrdersCreatedAtDatasetColumn,
   createOrdersIdDatasetColumn,
   createOrdersTable,
@@ -321,43 +320,53 @@ describe("parameters/utils/mapping-options", () => {
         ).map((option) => option.name);
       }
 
-      it("should offer a custom column for a number parameter (metabase#18747)", () => {
-        const card = createMockCard({
-          dataset_query: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              "source-table": ORDERS_ID,
-              expressions: {
-                Quantity_2: ["field", ORDERS.QUANTITY, null],
-              },
-            },
+      const aggregatedStage: TestQuerySpec["stages"][0] = {
+        source: { type: "table", id: PRODUCTS_ID },
+        aggregations: [
+          { type: "operator", operator: "count", args: [] },
+          {
+            type: "operator",
+            operator: "sum",
+            args: [{ type: "column", name: "PRICE" }],
           },
+        ],
+        breakouts: [{ type: "column", name: "CATEGORY" }],
+      };
+
+      const mathExpression = {
+        type: "operator",
+        operator: "+",
+        args: [
+          { type: "literal", value: 1 },
+          { type: "literal", value: 1 },
+        ],
+      } as const;
+
+      it("should offer a custom column for a number parameter (metabase#18747)", () => {
+        const card = structured({
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              expressions: [
+                {
+                  name: "Quantity_2",
+                  value: { type: "column", name: "QUANTITY" },
+                },
+              ],
+            },
+          ],
         });
         const parameter = createMockParameter({ type: "number/=" });
 
         expect(getOptionNames(card, parameter)).toContain("Quantity_2");
       });
 
-      const aggregatedQuery = {
-        "source-table": PRODUCTS_ID,
-        aggregation: [
-          ["count"],
-          ["sum", ["field", PRODUCTS.PRICE, { "base-type": "type/Float" }]],
-        ],
-        breakout: [["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }]],
-      } as const;
-
       it("should offer the source table's date columns when a custom column follows an aggregation (metabase#19744)", () => {
-        const card = createMockCard({
-          dataset_query: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              "source-query": aggregatedQuery,
-              expressions: { Math: ["+", 1, 1] },
-            },
-          },
+        const card = structured({
+          stages: [
+            aggregatedStage,
+            { expressions: [{ name: "Math", value: mathExpression }] },
+          ],
         });
         const parameter = createMockParameter({ type: "date/all-options" });
 
@@ -365,18 +374,18 @@ describe("parameters/utils/mapping-options", () => {
       });
 
       it("should offer the source table's date columns once the custom columns after an aggregation are removed (metabase#19745)", () => {
-        const query = Lib.fromJsQuery(provider, {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-query": aggregatedQuery,
-            fields: [
-              ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
-              ["field", "sum", { "base-type": "type/Float" }],
-              ["expression", "Custom Column"],
-            ],
-            expressions: { "Custom Column": ["+", 1, 1] },
-          },
+        const query = Lib.createTestQuery(provider, {
+          stages: [
+            aggregatedStage,
+            {
+              expressions: [{ name: "Custom Column", value: mathExpression }],
+              fields: [
+                { type: "column", name: "CATEGORY" },
+                { type: "column", name: "sum" },
+                { type: "column", name: "Custom Column" },
+              ],
+            },
+          ],
         });
         const queryWithoutExpressions = Lib.expressions(query, 1).reduce(
           (query, expression) => Lib.removeClause(query, 1, expression),

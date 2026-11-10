@@ -20,9 +20,7 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  PRODUCTS,
   PRODUCTS_ID,
-  SAMPLE_DB_ID,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
@@ -281,19 +279,48 @@ describe("AggregationPicker", () => {
     });
 
     it("should only list numeric custom columns for Sum (metabase#18069)", async () => {
-      const query = Lib.fromJsQuery(SAMPLE_PROVIDER, {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": PRODUCTS_ID,
-          expressions: {
-            CC_Category: ["field", PRODUCTS.CATEGORY, null],
-            CC_LowerVendor: ["lower", ["field", PRODUCTS.VENDOR, null]],
-            CC_UpperTitle: ["upper", ["field", PRODUCTS.TITLE, null]],
-            CC_HalfPrice: ["/", ["field", PRODUCTS.PRICE, null], 2],
-            CC_ScaledRating: ["*", 1.5, ["field", PRODUCTS.RATING, null]],
+      const column = (name: string) => ({ type: "column", name }) as const;
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            expressions: [
+              { name: "CC_Category", value: column("CATEGORY") },
+              {
+                name: "CC_LowerVendor",
+                value: {
+                  type: "operator",
+                  operator: "lower",
+                  args: [column("VENDOR")],
+                },
+              },
+              {
+                name: "CC_UpperTitle",
+                value: {
+                  type: "operator",
+                  operator: "upper",
+                  args: [column("TITLE")],
+                },
+              },
+              {
+                name: "CC_HalfPrice",
+                value: {
+                  type: "operator",
+                  operator: "/",
+                  args: [column("PRICE"), { type: "literal", value: 2 }],
+                },
+              },
+              {
+                name: "CC_ScaledRating",
+                value: {
+                  type: "operator",
+                  operator: "*",
+                  args: [{ type: "literal", value: 1.5 }, column("RATING")],
+                },
+              },
+            ],
           },
-        },
+        ],
       });
       const { getRecentClauseInfo } = setup({ query });
 

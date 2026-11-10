@@ -6,11 +6,9 @@ import { screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
-  ORDERS,
   ORDERS_ID,
   PRODUCTS_ID,
   REVIEWS_ID,
-  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 
 import {
@@ -99,16 +97,26 @@ describe("ExpressionWidget > completion", () => {
   });
 
   it("should suggest a custom column that renames another custom column", async () => {
-    const query = Lib.fromJsQuery(SAMPLE_PROVIDER, {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": ORDERS_ID,
-        expressions: {
-          Foo: ["+", 1, 1],
-          Bar: ["expression", "Foo", { "base-type": "type/Integer" }],
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          expressions: [
+            {
+              name: "Foo",
+              value: {
+                type: "operator",
+                operator: "+",
+                args: [
+                  { type: "literal", value: 1 },
+                  { type: "literal", value: 1 },
+                ],
+              },
+            },
+            { name: "Bar", value: { type: "column", name: "Foo" } },
+          ],
         },
-      },
+      ],
     });
     await setup({ query });
 
@@ -117,24 +125,23 @@ describe("ExpressionWidget > completion", () => {
   });
 
   it("should suggest an aggregation that renames another aggregation", async () => {
-    const query = Lib.fromJsQuery(SAMPLE_PROVIDER, {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [
-          [
-            "aggregation-options",
-            ["sum", ["field", ORDERS.TOTAL, null]],
-            { name: "Foo", "display-name": "Foo" },
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            {
+              name: "Foo",
+              value: {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL" }],
+              },
+            },
+            { name: "Bar", value: { type: "column", name: "Foo" } },
           ],
-          [
-            "aggregation-options",
-            ["aggregation", 0],
-            { name: "Bar", "display-name": "Bar" },
-          ],
-        ],
-      },
+        },
+      ],
     });
     await setup({ query, expressionMode: "aggregation" });
 

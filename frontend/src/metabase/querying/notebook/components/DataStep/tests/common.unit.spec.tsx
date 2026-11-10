@@ -24,7 +24,6 @@ import {
   createMockSearchResult,
 } from "metabase-types/api/mocks";
 import {
-  ORDERS,
   ORDERS_ID,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
@@ -349,20 +348,24 @@ describe("DataStep", () => {
     });
 
     it("should keep a custom column when de-selecting a table column (metabase#20229)", async () => {
-      const query = Lib.fromJsQuery(SAMPLE_PROVIDER, {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: {
-            Adjective: [
-              "case",
-              [[[">", ["field", ORDERS.TOTAL, null], 100], "expensive"]],
-              { default: "cheap" },
-            ],
-          },
-        },
-      });
+      const baseQuery = Lib.createTestQuery(
+        SAMPLE_PROVIDER,
+        DEFAULT_TEST_QUERY,
+      );
+      const total = columnFinder(
+        baseQuery,
+        Lib.expressionableColumns(baseQuery, 0),
+      )("ORDERS", "TOTAL");
+      const query = Lib.expression(
+        baseQuery,
+        0,
+        "Adjective",
+        Lib.expressionClause("case", [
+          Lib.expressionClause(">", [total, 100]),
+          "expensive",
+          "cheap",
+        ]),
+      );
       const step = createMockNotebookStep({ query });
       const { getNextQuery } = await setup({ step });
 
