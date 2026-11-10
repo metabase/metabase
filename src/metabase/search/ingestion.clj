@@ -217,7 +217,7 @@
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *disable-updates*
   "Used by tests to disable updates, for example when testing migrations, where the schema is wrong."
-  false)
+  true)
 
 (defn update!
   "Update all active engines' existing indexes with the given documents. Passed remove-documents will be deleted from the index."
