@@ -3572,8 +3572,7 @@
   {:team "Graphy"
    :api #{metabase.workspaces.core
           metabase.workspaces.table-remapping}
-   :uses #{premium-features
-           util}}
+   :uses #{premium-features}}
 
   xrays
   {:team "Graphy"
@@ -4793,8 +4792,7 @@
            sample-data
            settings
            sql-tools
-           util
-           workspaces}
+           util}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
                     :model/Table

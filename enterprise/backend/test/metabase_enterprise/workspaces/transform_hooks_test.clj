@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
+   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase-enterprise.workspaces.transform-hooks :as ws.transform-hooks]
    [metabase.test :as mt]
    [metabase.transforms.execute :as transforms.execute]
@@ -52,17 +53,10 @@
             "add-transform-target-mapping! receives the db-id and the canonical target map verbatim")))))
 
 (defn- with-instance-workspace-for-db!
-  "Set the `instance-workspace` setting so that `db-workspace-namespace` returns
-   `{:schema output-schema}` for the test database, run `body-fn`, clear it on
-   the way out."
+  "Make the test database write to `output-schema`, so `db-workspace-namespace`
+   returns `{:schema output-schema}` for it, run `body-fn`, undo it on the way out."
   [output-schema body-fn]
-  (try
-    (ws/set-instance-workspace! {:name "test-ws"
-                                 :databases {(mt/id) {:input_schemas ["_"]
-                                                      :output        {:schema output-schema}}}})
-    (body-fn)
-    (finally
-      (ws/clear-instance-workspace!))))
+  (workspaces.tu/with-workspace-db! (mt/id) output-schema body-fn))
 
 (deftest resolve-transform-target-end-to-end-test
   (testing "end-to-end against the test app DB: a remapping row appears after the hook fires"

@@ -5,6 +5,7 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -32,103 +33,67 @@
              (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))))))
 
 (deftest current-with-workspace-test
-  (testing "GET /ee/workspace-instance/current returns the workspace wrapped in {:data ...}"
-    (mt/with-dynamic-fn-redefs [ws/instance-workspace (constantly {:name      "Current Test"
-                                                                   :databases {(mt/id) {:input_schemas ["PUBLIC"]
-                                                                                        :output        {:schema "ws_alice"}}}})]
-      (let [result (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")
-            data   (:data result)]
-        (is (= "Current Test" (:name data)))
-        (testing "can_write is true when the workspace is not locked by config"
-          (is (true? (:can_write data))))
-        (testing "databases is a map keyed by database id with input_schemas + output"
-          (is (= 1 (count (:databases data))))
-          (let [databases (:databases data)
-                db        (or (get databases (mt/id))
-                              (get databases (keyword (str (mt/id))))
-                              (get databases (str (mt/id))))]
-            (is (= ["PUBLIC"] (:input_schemas db)))
-            (is (= {:schema "ws_alice"} (:output db)))))))))
-
-(deftest current-with-workspace-locked-returns-can-write-false-test
-  (testing "GET /ee/workspace-instance/current returns can_write false when locked by config"
-    (ws.tu/with-workspace-locked-by-config
+  (testing "GET /ee/workspace-instance/current returns {:data {:databases {<id> <schema>}}} from the settings"
+    (ws.tu/with-workspace-db! (mt/id) "ws_alice"
       (fn []
-        (mt/with-dynamic-fn-redefs [ws/instance-workspace (constantly {:name "Locked Test" :databases {}})]
-          (let [data (:data (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))]
-            (is (= "Locked Test" (:name data)))
-            (is (false? (:can_write data)))))))))
+        (is (= {:data {:databases [{:database_id (mt/id) :schema "ws_alice"}]}}
+               (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")))))))
 
-(deftest current-with-workspace-locked-by-env-var-returns-can-write-false-test
-  (testing "GET /ee/workspace-instance/current returns can_write false when MB_INSTANCE_WORKSPACE is set"
-    (mt/with-temp-env-var-value! [:mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
-      (mt/with-dynamic-fn-redefs [ws/instance-workspace (constantly {:name "Env Locked Test" :databases {}})]
-        (let [data (:data (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))]
-          (is (= "Env Locked Test" (:name data)))
-          (is (false? (:can_write data))))))))
+(deftest current-enabled-without-schemas-test
+  (testing "workspaces-enabled with no database-workspace-schema anywhere is a workspace with no databases, not null"
+    (ws.settings/workspaces-enabled! true)
+    (is (= {:data {:databases []}}
+           (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")))))
 
 (deftest post-current-superuser-only-test
   (testing "POST /ee/workspace-instance/current requires data analyst or superuser"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 "ee/workspace-instance/current"
-                                 {:name "x" :databases {}})))))
+                                 {:databases []})))))
 
 (deftest post-current-round-trip-test
-  (testing "POST /ee/workspace-instance/current installs the workspace and is readable via GET"
-    (let [payload {:name      "Installed via API"
-                   :databases {(mt/id) {:input_schemas ["PUBLIC"]
-                                        :output        {:schema "ws_api_install"}}}}
-          posted  (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current" payload)]
-      (is (= "Installed via API" (:name posted)))
-      (testing "the POST response reports can_write true while unlocked"
-        (is (true? (:can_write posted))))
-      (testing "GET reflects the workspace just installed"
-        (let [fetched (:data (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))]
-          (is (= "Installed via API" (:name fetched)))
-          (is (= 1 (count (:databases fetched)))))))))
+  (testing "POST /ee/workspace-instance/current sets the settings and is readable via GET"
+    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {}}
+      (let [expected {:databases [{:database_id (mt/id) :schema "ws_api_install"}]}]
+        (is (= expected
+               (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current"
+                                     expected)))
+        (testing "the settings hold it"
+          (is (true? (ws.settings/workspaces-enabled)))
+          (is (= {:schema "ws_api_install"} (ws/db-workspace-namespace (mt/id)))))
+        (testing "GET reflects the workspace just installed"
+          (is (= {:data expected}
+                 (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))))))))
 
-(deftest post-current-rejects-when-locked-test
-  (testing "POST /ee/workspace-instance/current returns 400 when locked by config"
-    (ws.tu/with-workspace-locked-by-config
-      (fn []
-        (let [resp (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
-                                         {:name "x" :databases {}})]
-          (is (re-find #"config\.yml" resp)))))))
+(deftest post-current-rejects-unknown-database-test
+  (testing "POST /ee/workspace-instance/current returns 400 for a database id this instance doesn't have"
+    (is (re-find #"Unknown database ids"
+                 (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
+                                       {:databases [{:database_id Integer/MAX_VALUE :schema "ws"}]})))
+    (is (false? (ws.settings/workspaces-enabled)))))
 
-(deftest post-current-rejects-when-env-var-set-test
-  (testing "POST /ee/workspace-instance/current returns 400 when MB_INSTANCE_WORKSPACE is set"
-    (mt/with-temp-env-var-value! [:mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
-      (let [resp (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
-                                       {:name "x" :databases {}})]
-        (is (re-find #"config\.yml" resp))))))
+(deftest post-current-rejects-old-shape-test
+  (testing "POST /ee/workspace-instance/current rejects (not strips) the pre-settings body with name and input_schemas"
+    (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
+                          {:name      "old"
+                           :databases {(mt/id) {:input_schemas ["PUBLIC"] :output {:schema "ws"}}}})
+    (testing "and a list entry with the old keys instead of :schema"
+      (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
+                            {:databases [{:database_id (mt/id) :output {:schema "ws"}}]}))
+    (is (false? (ws.settings/workspaces-enabled)))))
 
-(deftest delete-current-rejects-when-locked-test
-  (testing "DELETE /ee/workspace-instance/current returns 400 when locked by config"
-    (ws.tu/with-workspace-locked-by-config
-      (fn []
-        (let [resp (mt/user-http-request :crowberto :delete 400 "ee/workspace-instance/current")]
-          (is (re-find #"config\.yml" resp)))))))
+(deftest post-current-refused-on-a-parent-test
+  (testing "POST /ee/workspace-instance/current returns 400 on an instance with workspaces of its own"
+    (mt/with-temp [:model/Workspace _ {:name "parent-ws"}]
+      (is (re-find #"workspaces of its own"
+                   (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
+                                         {:databases []}))))))
 
 (deftest delete-current-rejects-when-env-var-set-test
-  (testing "DELETE /ee/workspace-instance/current returns 400 when MB_INSTANCE_WORKSPACE is set"
-    (mt/with-temp-env-var-value! [:mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
-      (let [resp (mt/user-http-request :crowberto :delete 400 "ee/workspace-instance/current")]
-        (is (re-find #"config\.yml" resp))))))
-
-(deftest post-current-rejects-non-superuser-before-lock-test
-  (testing "POST /ee/workspace-instance/current returns 403 (not 400) for a non-superuser even when locked"
-    (ws.tu/with-workspace-locked-by-config
-      (fn []
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403 "ee/workspace-instance/current"
-                                     {:name "x" :databases {}})))))))
-
-(deftest delete-current-rejects-non-superuser-before-lock-test
-  (testing "DELETE /ee/workspace-instance/current returns 403 (not 400) for a non-superuser even when locked"
-    (ws.tu/with-workspace-locked-by-config
-      (fn []
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :delete 403 "ee/workspace-instance/current")))))))
+  (testing "DELETE /ee/workspace-instance/current returns 400 when MB_WORKSPACES_ENABLED sets the setting"
+    (mt/with-temp-env-var-value! [:mb-workspaces-enabled "true"]
+      (is (re-find #"MB_WORKSPACES_ENABLED"
+                   (mt/user-http-request :crowberto :delete 400 "ee/workspace-instance/current"))))))
 
 (deftest delete-current-superuser-only-test
   (testing "DELETE /ee/workspace-instance/current requires data analyst or superuser"
@@ -137,7 +102,7 @@
 
 (deftest delete-current-clears-workspace-test
   (testing "DELETE /ee/workspace-instance/current clears any installed workspace"
-    (ws/set-instance-workspace! {:name "to-clear" :databases {}})
+    (ws/set-instance-workspace! {})
     (is (some? (ws/instance-workspace)))
     (mt/user-http-request :crowberto :delete 204 "ee/workspace-instance/current")
     (is (nil? (ws/instance-workspace)))))
@@ -145,7 +110,7 @@
 (deftest delete-current-drops-table-remappings-test
   (testing "DELETE /ee/workspace-instance/current drops any TableRemapping rows"
     (mt/with-model-cleanup [:model/TableRemapping]
-      (ws/set-instance-workspace! {:name "to-clear" :databases {}})
+      (ws/set-instance-workspace! {})
       (t2/insert! :model/TableRemapping {:database_id     (mt/id)
                                          :from_schema     "public"
                                          :from_table_name "orders"

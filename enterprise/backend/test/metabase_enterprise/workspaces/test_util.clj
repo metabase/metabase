@@ -2,7 +2,9 @@
   "Shared test helpers for the workspaces module."
   (:require
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase.driver :as driver]))
+   [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.driver :as driver]
+   [metabase.test :as mt]))
 
 (defn driver-loadable?
   "True iff `engine`'s driver class is on the test classpath. Wraps
@@ -15,13 +17,12 @@
   (try (driver/the-initialized-driver engine) true
        (catch Throwable _ false)))
 
-(defn with-workspace-locked-by-config
-  "Flip the workspace-instance lock for the duration of `thunk`, restoring the
-   prior value on exit. Reaches into the private atom via `#'` so the ws/core
-   surface stays clean of test-only setters."
-  [thunk]
-  (let [a     @#'ws/locked-by-config?*
-        prior @a]
-    (reset! a true)
+(defn with-workspace-db!
+  "Make this instance a workspace in which the Database `db-id` writes to `schema`
+   (its `database-workspace-schema`), run `thunk`, then turn workspace mode off and
+   restore the database's settings."
+  [db-id schema thunk]
+  (mt/with-temp-vals-in-db :model/Database db-id {:settings {:database-workspace-schema schema}}
+    (ws.settings/workspaces-enabled! true)
     (try (thunk)
-         (finally (reset! a prior)))))
+         (finally (ws/clear-instance-workspace!)))))

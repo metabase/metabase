@@ -8,15 +8,13 @@
      [[create-workspace!]] and [[delete-workspace!]]. Provisioning operations are
      synchronous — the caller waits until the warehouse work completes.
 
-   - **Instance-side state.** When a Metabase boots in workspace mode, the
-     `:workspace` section loader (`metabase-enterprise.advanced-config.file.workspace`)
-     parses `config.yml` and stores the resulting workspace map in the
-     `instance-workspace` setting. Workspace-aware code (transform target
-     rewriting, table-remapping QP middleware) reads from the setting via
-     [[workspace-mode?]] / [[db-workspace-namespace]]. The setting lives in the
-     instance's own application database — child instances have their own app DB,
-     so storing it there persists the workspace across restarts without leaking
-     between parent and child.
+   - **Instance-side state.** An instance is a workspace when its `workspaces-enabled`
+     setting is on. Each database's database-local `database-workspace-schema` setting
+     names the schema its transforms write to. Both are ordinary settings: the settings
+     API, env vars, or `config.yml` set them (the `:workspace` section loader,
+     `metabase-enterprise.advanced-config.file.workspace`, translates the older form).
+     Workspace-aware code (transform target rewriting, table-remapping QP middleware)
+     reads them via [[workspace-mode?]] / [[db-workspace-namespace]].
 
    Per-database lifecycle for the manager-side rows:
 
@@ -37,11 +35,13 @@
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
-   [metabase.workspaces.core :as ws]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -77,83 +77,90 @@
      {:db (driver.sql/db-slot-value (:engine database) database)
       :schema (:schema table)})))
 
-(defn- coerce-database-id-key
-  "JSON round-trips through the `instance-workspace` setting return integer
-   `Database.id` keys as keywords (e.g. `:1`). Coerce them back to ints."
-  [k]
-  (cond
-    (int? k)     k
-    (keyword? k) (parse-long (name k))
-    (string? k)  (parse-long k)))
+(defn expand-output-namespace
+  "Expand a driver-opaque `output-namespace` string into the `{:db ?, :schema ?}`
+   namespace map QP middleware, transform_hooks, and table_remapping consume.
 
-(defn- normalize-database-keys
-  "Coerce the `:databases` map keys to ints. See [[coerce-database-id-key]]."
-  [config]
-  (some-> config
-          (update :databases #(update-keys % coerce-database-id-key))))
+   For 3-slot drivers (SQL Server, BigQuery) the `:db` slot is filled from
+   `Database.details`. For 2-slot drivers the namespace string lands in the
+   schema slot. For no-schema drivers (MySQL) it lands in the db slot.
 
-(mu/defn set-instance-workspace! :- :any
-  "Store the workspace config in the `instance-workspace` setting. Replaces any
-   prior value. The shape is validated against `::ws/workspace-instance-config`."
-  [config :- ::ws/workspace-instance-config]
-  (ws.settings/instance-workspace! config)
-  nil)
+   `output-namespace` blank → `:schema` is `nil`: the workspace database isn't
+   provisioned yet and QP/transform consumers treat it as having no output
+   mapping."
+  [db output-namespace]
+  (let [components (set (driver/qualified-name-components (:engine db)))
+        positions  (engine-namespace-positions db)
+        schema     (when-not (str/blank? output-namespace) output-namespace)]
+    (cond-> {}
+      (:db components)     (assoc :db (:db positions))
+      (:schema components) (assoc :schema schema)
+      (and (:db components) (not (:schema components)))
+      (assoc :db schema))))
+
+(defn- database-workspace-schema
+  "The non-blank `database-workspace-schema` database-local setting of `database`, or nil."
+  [database]
+  (let [schema (get-in database [:settings :database-workspace-schema])]
+    (when-not (str/blank? schema)
+      schema)))
+
+(defn instance-workspace
+  "The workspace this instance is, as `{:databases {<db-id> <schema>}}`, or nil when
+   the `workspaces-enabled` setting is off."
+  []
+  (when (ws.settings/workspaces-enabled)
+    {:databases (into {}
+                      (keep (fn [database]
+                              (when-let [schema (database-workspace-schema database)]
+                                [(:id database) schema])))
+                      (ws.db/all-databases))}))
+
+(mu/defn set-instance-workspace! :- :nil
+  "Make this instance a workspace: turn `workspaces-enabled` on and set each database's
+   `database-workspace-schema` from `schemas`, a map of database id to schema. Clears the
+   schema of every database not in `schemas`. Throws a 400 for an unknown database id."
+  [schemas :- [:map-of ::lib.schema.id/database ms/NonBlankString]]
+  (let [databases (ws.db/all-databases)]
+    (when-let [unknown (seq (remove (set (map :id databases)) (keys schemas)))]
+      (throw (ex-info (str "Unknown database ids: " (pr-str (vec unknown)))
+                      {:status-code 400 :database_ids (vec unknown)})))
+    (ws.settings/workspaces-enabled! true)
+    (doseq [{:keys [id settings] :as database} databases
+            :let [schema (get schemas id)]
+            :when (not= schema (database-workspace-schema database))]
+      (ws.db/update-database-settings! id (if schema
+                                            (assoc settings :database-workspace-schema schema)
+                                            (dissoc settings :database-workspace-schema))))
+    nil))
 
 (defn clear-instance-workspace!
-  "Clear the `instance-workspace` setting."
+  "Turn `workspaces-enabled` off and delete every `:model/TableRemapping` row.
+   Leaves each database's `database-workspace-schema` in place; it has no effect
+   while the instance is not a workspace. Throws a 400 when `MB_WORKSPACES_ENABLED`
+   sets it, since that value wins over the stored one."
   []
-  (ws.settings/instance-workspace! nil)
-  nil)
-
-;;; ------------------------------- Instance-workspace lock -------------------------------
-
-(defonce ^:private locked-by-config?* (atom false))
-
-(defn workspace-locked-by-config?
-  "True iff this instance's workspace was set by out-of-band deployment config —
-  a `:workspace` section in `config.yml` at boot, or the `MB_INSTANCE_WORKSPACE`
-  env var — and so must not be mutated through the workspace-instance API. The
-  lock is per-boot and not persisted: removing the config and restarting clears it.
-
-  Read at the HTTP boundary only. Do NOT consult it from `set-instance-workspace!`
-  or `clear-instance-workspace!` — internal callers and test fixtures rely on
-  those setters staying unconditional."
-  []
-  (or @locked-by-config?*
-      ;; Checked inline rather than captured at boot like the atom: nothing reads
-      ;; this env var at startup, and the lookup is cheap.
-      (some? (setting/env-var-value :instance-workspace))))
-
-(defn mark-locked-by-config!
-  "Called by the boot loader only; runtime code paths never flip the lock."
-  []
-  (reset! locked-by-config?* true))
-
-(defn clear-all-remappings!
-  "Delete every `:model/TableRemapping` row across all databases."
-  []
+  (when (some? (setting/env-var-value :workspaces-enabled))
+    (throw (ex-info "workspaces-enabled is set by the MB_WORKSPACES_ENABLED env var and can't be changed at runtime."
+                    {:status-code 400})))
+  (ws.settings/workspaces-enabled! false)
+  ;; The setting's :on-change deletes them only when the value changes; delete them
+  ;; here too so stale rows from an earlier run go regardless.
   (ws.db/delete-all-table-remappings!)
   nil)
 
-(defn instance-workspace
-  "Return the workspace loaded on this instance, or nil if none."
-  []
-  (normalize-database-keys (ws.settings/instance-workspace)))
-
 (defenterprise workspace-mode?
-  "EE impl: true iff this instance is running in workspace mode (the
-   `instance-workspace` setting is populated — either from a `:workspace` section
-   of `config.yml` at boot or by a `POST /api/ee/advanced-config`). Single
-   source of truth for gating features that conflict with workspace remapping
-   (DB routing, impersonation, writeback, CSV upload, model persistence). Use
-   [[db-workspace-namespace]] when you need per-database scoping.
+  "EE impl: true iff this instance is a workspace (the `workspaces-enabled` setting
+   is on). Single source of truth for gating features that conflict with workspace
+   remapping (DB routing, impersonation, writeback, CSV upload, model persistence).
+   Use [[db-workspace-namespace]] when you need per-database scoping.
 
-   Deliberately ungated on premium features: a workspace child instance bootstraps
-   from `config.yml` *before* its token is installed; if the workspace map is
-   loaded, we refuse incompatible features regardless of token state."
+   Deliberately ungated on premium features: a workspace instance may boot from
+   `config.yml` or env vars *before* its token is installed; if it is a workspace,
+   we refuse incompatible features regardless of token state."
   :feature :none
   []
-  (some? (ws.settings/instance-workspace)))
+  (ws.settings/workspaces-enabled))
 
 (defenterprise workspace-database-exists?
   "EE impl: whether any WorkspaceDatabase row references the Database with `database-id`.
@@ -164,14 +171,15 @@
   (ws.db/database-has-workspace-databases? database-id))
 
 (defn db-workspace-namespace
-  "Return the workspace-isolated output namespace map for `db-id` on this
-   instance, or `nil` when this instance is not running a workspace or the
-   workspace has no entry for `db-id`. The namespace map is
-   `{:db ?, :schema ?}` - either or both keys may be absent depending on
-   the driver's `qualified-name-components`. Reads from the `workspace-instance`
-   setting."
+  "Return the workspace output namespace map `{:db ?, :schema ?}` for `db-id`, or
+   `nil` when this instance is not a workspace or the database has no
+   `database-workspace-schema`. Either key may be absent depending on the driver's
+   `qualified-name-components`."
   [db-id]
-  (get-in (instance-workspace) [:databases db-id :output]))
+  (when (ws.settings/workspaces-enabled)
+    (when-let [database (ws.db/database db-id)]
+      (some->> (database-workspace-schema database)
+               (expand-output-namespace database)))))
 
 (defn list-remappings
   "Return all TableRemapping rows, ordered by id."
