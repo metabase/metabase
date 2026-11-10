@@ -25,7 +25,7 @@ export function getDefaultOperator(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
 ): Lib.NumberFilterOperator {
-  const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
+  const fieldValuesInfo = Lib.fieldSearchInfo(query, column);
 
   return Lib.isPrimaryKey(column) ||
     Lib.isForeignKey(column) ||

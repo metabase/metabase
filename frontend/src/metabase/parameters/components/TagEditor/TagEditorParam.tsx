@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { Component } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { fieldApi, skipToken, useGetFieldQuery } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -12,7 +11,6 @@ import { type DispatchFn, connect } from "metabase/redux";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   getDefaultParameterOptions,
@@ -20,7 +18,7 @@ import {
   getParameterOptionsForField,
 } from "metabase-lib/v1/parameters/utils/template-tag-options";
 import type {
-  DimensionReference,
+  DatabaseId,
   EmbeddingParameterVisibility,
   Field,
   FieldId,
@@ -73,8 +71,7 @@ interface OwnProps {
    */
   parameter: Parameter | undefined;
   embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
-  database?: Database | null;
-  databases: Database[];
+  databaseId: DatabaseId | null;
   /**
    * The originally saved question, used to restore a tag's value-source config
    * when its type is switched back to the original. Optional: contexts without a
@@ -127,8 +124,8 @@ class TagEditorParamInner extends Component<
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
-    if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
-      const fieldId = tag.dimension[1];
+    const fieldId = tag["field-id"];
+    if (tag.type === "dimension" && fieldId != null) {
       // Field values might already have been loaded so force the load of other field information too
       fetchField(fieldId, true);
     }
@@ -158,7 +155,9 @@ class TagEditorParamInner extends Component<
       return newConfig;
     }
 
-    const originalTag = Lib.templateTags(originalQuery)[tag.name];
+    const originalTag = Lib.templateTags(originalQuery).find(
+      ({ name }) => name === tag.name,
+    );
     const originalParameter = originalQuestion
       .parameters()
       .find(({ id }) => id === parameter.id);
@@ -183,7 +182,7 @@ class TagEditorParamInner extends Component<
         ...tag,
         type: type,
         default: undefined,
-        dimension: undefined,
+        "field-id": undefined,
         alias: undefined,
         "emit-alias": type === "table" ? true : undefined,
         "widget-type": type === "dimension" ? "none" : undefined,
@@ -269,10 +268,7 @@ class TagEditorParamInner extends Component<
   setDimension = async (fieldId: FieldId) => {
     const { tag, setTemplateTag, fetchField } = this.props;
 
-    // TODO Fix raw MBQL usage
-    const dimension: DimensionReference = ["field", fieldId, null];
-
-    if (!_.isEqual(tag.dimension, dimension)) {
+    if (tag["field-id"] !== fieldId) {
       const field = await fetchField(fieldId);
       if (!field) {
         return;
@@ -280,7 +276,7 @@ class TagEditorParamInner extends Component<
 
       const newTag: TemplateTag = {
         ...tag,
-        dimension,
+        "field-id": fieldId,
         alias: undefined,
         ...(tag.type === "dimension"
           ? { "widget-type": getDefaultParameterWidgetType(tag, field) }
@@ -335,8 +331,7 @@ class TagEditorParamInner extends Component<
   render() {
     const {
       tag,
-      database,
-      databases,
+      databaseId,
       field,
       parameter,
       embeddedParameterVisibility,
@@ -365,8 +360,7 @@ class TagEditorParamInner extends Component<
           <FieldMappingSelect
             tag={tag}
             field={field}
-            database={database}
-            databases={databases}
+            databaseId={databaseId}
             setFieldFn={this.setDimension}
           />
         )}
@@ -374,8 +368,7 @@ class TagEditorParamInner extends Component<
         {isTable && (
           <TableMappingSelect
             tag={tag}
-            database={database}
-            databases={databases}
+            databaseId={databaseId}
             onChange={this.setTableId}
             onChangeEmitAlias={this.setEmitAlias}
           />
@@ -480,9 +473,7 @@ const ConnectedTagEditorParam = connect(
 )(TagEditorParamInner);
 
 export const TagEditorParam = (props: OwnProps) => {
-  const fieldId = Array.isArray(props.tag.dimension)
-    ? props.tag.dimension[1]
-    : undefined;
+  const fieldId = props.tag["field-id"];
   const { data: field } = useGetFieldQuery(
     fieldId != null ? { id: fieldId } : skipToken,
   );

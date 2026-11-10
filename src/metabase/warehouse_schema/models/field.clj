@@ -200,14 +200,13 @@
    (mi/can-query? (warehouse-schema.db/field pk))))
 
 (defenterprise current-user-can-write-field?
-  "OSS implementation. Returns a boolean whether the current user can write the given field.
-   Checks both that the user is a superuser and that the parent table is editable (not in a
-   remote-synced collection in read-only mode)."
+  "OSS implementation: whether the current user, a superuser, can write the field `instance`, which nobody can when a
+  read-only instance syncs its table."
   metabase-enterprise.advanced-permissions.common
   [instance]
   (let [table (or (:table instance)
                   (warehouse-schema.db/table (:table_id instance)))]
-    (and (remote-sync/table-editable? table)
+    (and (remote-sync/can-write? :model/TableUserSettings (:id table))
          (mi/superuser?))))
 
 (defmethod mi/can-write? :model/Field
@@ -217,35 +216,13 @@
    (mi/can-write? (warehouse-schema.db/field pk))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Field :can_write]
-  "Batched hydration for :can_write on fields. First hydrates :table for all fields,
-   then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
-   on each field. This avoids N+1 queries when checking permissions for multiple fields."
+  "Batched hydration for :can_write on fields, hydrating their tables first."
   [_model k fields]
-  (let [fields-with-tables (t2/hydrate (remove nil? fields) :table)
-        ;; Get all unique collection IDs from the hydrated tables
-        collection-ids (->> fields-with-tables
-                            (keep (comp :collection_id :table))
-                            distinct)
-        ;; Batch fetch is_remote_synced for all collections
-        collection-synced-map (if (seq collection-ids)
-                                (into {}
-                                      (map (juxt :id :is_remote_synced))
-                                      (warehouse-schema.db/collections collection-ids))
-                                {})
-        ;; Associate collection info with each field's table
-        fields-with-collection (for [field fields-with-tables
-                                     :let [table (:table field)
-                                           coll-id (:collection_id table)]]
-                                 (if (and table coll-id)
-                                   (assoc-in field [:table :collection]
-                                             {:id coll-id
-                                              :is_remote_synced (get collection-synced-map coll-id false)})
-                                   field))]
-    (mi/instances-with-hydrated-data
-     fields k
-     #(u/index-by :id mi/can-write? fields-with-collection)
-     :id
-     {:default false})))
+  (mi/instances-with-hydrated-data
+   fields k
+   #(u/index-by :id mi/can-write? (t2/hydrate (remove nil? fields) :table))
+   :id
+   {:default false}))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 

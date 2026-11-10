@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
@@ -124,10 +125,8 @@
   ([_model pk]
    (and (premium-features/has-feature? :data-apps)
         (or api/*is-superuser?*
-            (let [{:keys [enabled resource_collection_id]} (data-apps.db/data-app pk)]
-              (and (true? enabled)
-                   (some? resource_collection_id)
-                   (mi/can-read? :model/Collection resource_collection_id)))))))
+            (and api/*current-user-id*
+                 (data-apps.db/data-app-readable? api/*current-user-id* pk))))))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)
@@ -233,3 +232,7 @@
           (when-let [collection-entity-id (or collection resource_collection_id)]
             [[:model/Collection collection-entity-id]]))
         entities))
+
+(defmethod remote-sync/spec :model/DataApp
+  [_model]
+  {})

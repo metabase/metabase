@@ -7,7 +7,10 @@ import _ from "underscore";
 
 import { DeleteObjectModal } from "metabase/actions/components/DeleteObjectModal";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import { getActionItems } from "metabase/actions/utils";
+import {
+  getActionItems,
+  supportsImplicitActions,
+} from "metabase/actions/utils";
 import {
   actionApi,
   datasetApi,
@@ -21,11 +24,10 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import { Box, Center, Flex, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
-  ConcreteTableId,
   DatasetColumn,
   DatasetData,
+  TableId,
   WritebackActionId,
 } from "metabase-types/api";
 
@@ -146,14 +148,9 @@ export function ObjectDetailPanel({
       return;
     }
 
-    if (
-      isDrillThroughDetail &&
-      table &&
-      _.isEmpty(table.fks) &&
-      !isVirtualCardId(table.id)
-    ) {
+    if (isDrillThroughDetail && table && _.isEmpty(table.fks)) {
       // Unjustified type cast. FIXME
-      fetchTableFks?.(table.id as ConcreteTableId);
+      fetchTableFks?.(table.id as TableId);
     }
   });
 
@@ -246,7 +243,7 @@ export function ObjectDetailPanel({
     question &&
     question.canWrite() &&
     question.type() === "model" &&
-    question.supportsImplicitActions(),
+    supportsImplicitActions(question.query()),
   );
 
   const modelId = question?.type() === "model" ? question.id() : undefined;
@@ -310,7 +307,7 @@ export function ObjectDetailPanel({
   const displayId = getDisplayId({
     cols: data.cols,
     zoomedRow,
-    tableId: table?.id,
+    tableId: typeof table?.id === "number" ? table.id : undefined,
     settings,
   });
 

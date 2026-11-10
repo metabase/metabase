@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { createMockNativeQuerySnippet } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
@@ -19,15 +20,13 @@ interface SetupOpts {
 }
 
 function setup({ queryText }: SetupOpts) {
-  const emptyQuery = new NativeQuery(
-    Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata: METADATA }),
-    {
-      type: "native",
-      database: SAMPLE_DB_ID,
-      native: { query: "", "template-tags": {} },
-    },
+  const provider = createMetadataProvider({
+    databaseId: SAMPLE_DB_ID,
+    metadata: METADATA,
+  });
+  return Question.create({ metadata: METADATA }).setQuery(
+    Lib.createTestNativeQuery(provider, { query: queryText }),
   );
-  return emptyQuery.setQueryText(queryText).question();
 }
 
 describe("PreviewQueryButton.shouldRender", () => {

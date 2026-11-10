@@ -123,10 +123,8 @@
     ::mbql.s/Reference))
 
 (deftest ^:parallel native-query-test
-  (let [parameter-dimension    [:dimension [:template-tag "date_range"]]
-        template-tag-dimension [:field 2 nil]]
+  (let [parameter-dimension [:dimension [:template-tag "date_range"]]]
     (is (nil? (me/humanize (mr/explain ::mbql.s/dimension parameter-dimension))))
-    (is (nil? (me/humanize (mr/explain ::mbql.s/field template-tag-dimension))))
     (let [parameter    {:type   :date/range
                         :name   "created_at"
                         :target parameter-dimension
@@ -135,7 +133,7 @@
                         :display-name "Date Range"
                         :type         :dimension
                         :widget-type  :date/all-options
-                        :dimension    template-tag-dimension}]
+                        :field-id     2}]
       (is (nil? (me/humanize (mr/explain ::lib.schema.parameter/parameter parameter))))
       (is (nil? (me/humanize (mr/explain ::mbql.s/TemplateTag template-tag))))
       (let [query {:database 1
@@ -343,7 +341,7 @@
           :name         "device_category"
           :display-name "Device category"
           :type         :dimension
-          :dimension    [:field 298221 nil]
+          :field-id     298221
           :default      nil}
          (lib/normalize
           ::mbql.s/TemplateTag
@@ -351,7 +349,7 @@
            "name"         "device_category"
            "display-name" "Device category"
            "type"         "dimension"
-           "dimension"    ["field" 298221 nil]
+           "field-id"     298221
            "widget-type"  "category/="
            "default"      nil}))))
 
@@ -448,11 +446,11 @@
                        "id"           "d14f7964-4de7-4d0a-905c-2d2799e87db7"
                        "display-name" "Owner Name"
                        "default"      nil
-                       "dimension"    ["field" 28486 nil]
+                       "field-id"     28486
                        "widget-type"  "string/contains"
                        "options"      {"case-sensitive" false}})]
       (is (= {:default      nil
-              :dimension    [:field 28486 nil]
+              :field-id     28486
               :display-name "Owner Name"
               :id           "d14f7964-4de7-4d0a-905c-2d2799e87db7"
               :name         "owner_name"

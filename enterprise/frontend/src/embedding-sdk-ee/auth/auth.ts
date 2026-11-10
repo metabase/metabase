@@ -260,6 +260,9 @@ export const getOrRefreshSession = createAsyncThunk(
   },
 );
 
+PLUGIN_EMBEDDING_SDK_AUTH.getOrRefreshSession = (config, store) =>
+  store.dispatch(getOrRefreshSession(config)).unwrap();
+
 const getRefreshToken = async ({
   metabaseInstanceUrl,
   preferredAuthMethod,

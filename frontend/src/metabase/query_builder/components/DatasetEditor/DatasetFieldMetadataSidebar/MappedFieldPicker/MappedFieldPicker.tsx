@@ -9,7 +9,6 @@ import { SelectButton } from "metabase/common/components/SelectButton";
 import CS from "metabase/css/core/index.css";
 import { SchemaTableAndFieldDataSelector } from "metabase/querying/common/components/DataSelector";
 import { Text } from "metabase/ui";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { FieldId } from "metabase-types/api";
 
 import MappedFieldPickerS from "./MappedFieldPicker.module.css";
@@ -87,15 +86,7 @@ export function MappedFieldPicker({
     );
   }, [className, selectedField, onChange, tabIndex]);
 
-  // DataSelector doesn't handle selectedTableId change prop nicely.
-  // During the initial load, the field might have `table_id` set to `card__$ID` (retrieved from metadata)
-  // But at some point, we fetch  the field object by ID to get the real table ID and pass it to the selector
-  // Until it's fetched, we need to pass `null` as `selectedTableId` to avoid invalid selector state
-  // This should be removed once DataSelector handles prop changes better
-  const selectedTableId =
-    !selectedField || isVirtualCardId(selectedField.table?.id)
-      ? null
-      : selectedField?.table?.id;
+  const selectedTableId = selectedField?.table?.id ?? null;
 
   return (
     <>

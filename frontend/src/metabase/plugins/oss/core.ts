@@ -157,7 +157,6 @@ const getDefaultReducers = () => ({
   sandboxingPlugin: () => null,
   shared: () => null,
   documents: () => null,
-  remoteSyncPlugin: () => null,
 });
 
 export const PLUGIN_REDUCERS: {
@@ -166,7 +165,6 @@ export const PLUGIN_REDUCERS: {
   sandboxingPlugin: any;
   shared: any;
   documents: any;
-  remoteSyncPlugin: any;
 } = definePluginSlot(getDefaultReducers);
 
 const getDefaultIsEeBuild = () => ({

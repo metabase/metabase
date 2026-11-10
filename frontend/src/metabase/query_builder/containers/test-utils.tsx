@@ -27,6 +27,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
@@ -36,8 +37,11 @@ import {
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
+import type { State } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Card,
   Database,
@@ -53,11 +57,7 @@ import {
   createMockDataset,
   createMockFieldValues,
   createMockModelIndex,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
   createMockSettings,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
   createMockUnsavedCard,
   createMockUser,
   createMockUserPermissions,
@@ -69,6 +69,8 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import { getIsRunning } from "../store/selectors";
+
 import { QueryBuilder } from "./QueryBuilder";
 
 export const TEST_DB = createSampleDatabase();
@@ -77,59 +79,64 @@ export const TEST_CARD = createMockCard({
   id: 1,
   name: "Test card",
   type: "model",
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  ),
 });
 
 export const TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD = createMockCard({
   ...TEST_CARD,
   type: "question",
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [["field", ORDERS.CREATED_AT, null]],
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [{ type: "column", name: "CREATED_AT" }],
+        },
+      ],
+    }),
+  ),
 });
 
 export const TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD = createMockCard({
   ...TEST_CARD,
   type: "question",
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [["expression", "Custom Created At"]],
-      expressions: {
-        "Custom Created At": ["field", ORDERS.CREATED_AT, null],
-      },
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          expressions: [
+            {
+              name: "Custom Created At",
+              value: { type: "column", name: "CREATED_AT" },
+            },
+          ],
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [{ type: "column", name: "Custom Created At" }],
+        },
+      ],
+    }),
+  ),
 });
 
 export const TEST_CARD_VISUALIZATION = createMockCard({
   ...TEST_CARD,
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    }),
+  ),
 });
 
 export const TEST_MODEL_CARD = createMockCard({
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-      limit: 1,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID }, limit: 1 }],
+    }),
+  ),
   type: "model",
   display: "table",
   description: "Test description",
@@ -140,23 +147,17 @@ export const TEST_MODEL_CARD_SLUG = [
   TEST_MODEL_CARD.name.toLowerCase(),
 ].join("-");
 
+const TEST_NATIVE_QUERY = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+  query: "SELECT 1",
+});
+
 export const TEST_NATIVE_CARD = createMockCard({
-  dataset_query: createMockNativeDatasetQuery({
-    database: SAMPLE_DB_ID,
-    native: createMockNativeQuery({
-      query: "SELECT 1",
-    }),
-  }),
+  query_type: "native",
+  dataset_query: Lib.toJsQuery(TEST_NATIVE_QUERY),
 });
 
 export const TEST_NATIVE_CARD_DATASET = createMockDataset({
-  json_query: {
-    database: SAMPLE_DB_ID,
-    type: "native",
-    native: {
-      query: "SELECT 1",
-    },
-  },
+  json_query: Lib.toLegacyQuery(TEST_NATIVE_QUERY),
   database_id: SAMPLE_DB_ID,
   status: "completed",
   row_count: 1,
@@ -164,29 +165,24 @@ export const TEST_NATIVE_CARD_DATASET = createMockDataset({
 });
 
 export const TEST_UNSAVED_NATIVE_CARD = createMockUnsavedCard({
-  dataset_query: createMockNativeDatasetQuery({
-    database: SAMPLE_DB_ID,
-  }),
+  dataset_query: Lib.toJsQuery(TEST_NATIVE_QUERY),
 });
 
 export const TEST_STRUCTURED_CARD = createMockCard({
   name: "Orders question",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: createMockStructuredQuery({
-      "source-table": ORDERS_ID,
-      limit: 1,
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID }, limit: 1 }],
     }),
-  }),
+  ),
 });
 
 export const TEST_UNSAVED_STRUCTURED_CARD = createMockUnsavedCard({
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: createMockStructuredQuery({
-      "source-table": ORDERS_ID,
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
     }),
-  }),
+  ),
 });
 
 export const TEST_MODEL_DATASET_COLUMN = createMockColumn({
@@ -334,6 +330,15 @@ export const setup = async ({
   );
 
   await waitForLoaderToBeRemoved();
+  const opensSavedQuestion =
+    isSavedCard(card) &&
+    /^\/(question|model)\//.test(initialRoute) &&
+    !initialRoute.includes("/notebook");
+  if (opensSavedQuestion) {
+    await waitForQueryToFinish(store);
+  } else {
+    await waitForQueryToStart();
+  }
 
   return {
     container,
@@ -341,6 +346,33 @@ export const setup = async ({
     mockEventListener,
     store,
   };
+};
+
+/**
+ * QueryBuilder starts running a question from a timer, after its loader is gone.
+ * The timer fires here inside act(), so the start of the run cannot update the
+ * page after the test.
+ */
+export const waitForQueryToStart = async () => {
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+};
+
+const QUERY_RUN_PATH = /^\/api\/(card\/\d+\/query|dataset)$/;
+
+/**
+ * A saved question runs its query as it opens. The loader can be gone before
+ * the question is even loaded, so this waits for the run's request and then for
+ * the run to end, and the result cannot update the page after the test.
+ */
+const waitForQueryToFinish = async (store: { getState: () => State }) => {
+  await waitFor(() =>
+    expect(
+      fetchMock.callHistory
+        .calls()
+        .some((call) => QUERY_RUN_PATH.test(new URL(call.url).pathname)),
+    ).toBe(true),
+  );
+  await waitFor(() => expect(getIsRunning(store.getState())).toBe(false));
 };
 
 export const triggerNativeQueryChange = async () => {

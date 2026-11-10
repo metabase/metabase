@@ -128,7 +128,7 @@
                                                           :effective-type  "type/Integer"
                                                           :lib/source-name "count"}
                                             (fake-uuid 0)]]]}]}
-        import (partial import-one {:database (constantly 1) :table (constantly 2) :field (constantly 3)})]
+        import-query (partial import-one {:database (constantly 1) :table (constantly 2) :field (constantly 3)})]
     (is (=? {:lib/type :mbql/query
              :database 1
              :stages   [{:lib/type     :mbql.stage/mbql
@@ -149,10 +149,10 @@
                                            :effective-type  :type/Integer
                                            :lib/source-name "count"}
                                           (fake-uuid 0)]]]}]}
-            (import query)))))
+            (import-query query)))))
 
 (deftest ^:parallel import-mbql-legacy-query-test
-  (let [import (partial import-one {:database (constantly 1) :table (constantly 2) :field (constantly 3)})]
+  (let [import-query (partial import-one {:database (constantly 1) :table (constantly 2) :field (constantly 3)})]
     (testing "legacy MBQL query is converted to MBQL 5, keeping integer literals in comparisons and aggregations"
       (is (=? {:lib/type :mbql/query
                :database 1
@@ -163,7 +163,7 @@
                            :aggregation  [[:sum-where {} [:field {} 3] [:= {} 6 6]]]
                            :joins        [{:alias      "J"
                                            :conditions [[:= {} 1 1]]}]}]}
-              (import
+              (import-query
                {:database "DB"
                 :type     "query"
                 :query    {:source-table ["DB" "SCHEMA" "TABLE"]
@@ -179,12 +179,12 @@
       (is (=? {:database 1
                :type     "native"
                :native   {:query "SELECT 1"}}
-              (import {:database "DB", :type "native", :native {:query "SELECT 1"}}))))))
+              (import-query {:database "DB", :type "native", :native {:query "SELECT 1"}}))))))
 
 (deftest ^:parallel hydrate-mbql-5-uuids-on-import-test-2
-  (let [import (partial import-one {:field (constantly 3)})]
+  (let [import-query (partial import-one {:field (constantly 3)})]
     (are [x expected] (=? expected
-                          (import x))
+                          (import-query x))
       ["field" {} ["DB" "SCHEMA" "TABLE" "FIELD"]]
       [:field {:lib/uuid string?} 3]
 

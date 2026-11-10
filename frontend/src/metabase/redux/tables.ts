@@ -9,7 +9,7 @@ import {
 } from "metabase/metadata-store";
 import type { Dispatch, GetState, State } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
-import type { FieldId, TableId } from "metabase-types/api";
+import type { FieldId, NormalizedField, TableId } from "metabase-types/api";
 
 // Matches `getMetadataUnfiltered`, which this module read before: a table is
 // worth loading whether or not it is hidden.
@@ -95,7 +95,7 @@ export const fetchTableMetadataAndForeignKeys =
 // Structural views rather than the API types, which keeps this module's
 // inference under TypeScript's instantiation-depth limit.
 type FkSourceField = { fk_target_field_id?: FieldId | null };
-type FieldsById = Record<string, { table_id?: TableId } | undefined>;
+type FieldsById = Record<string, NormalizedField | undefined>;
 
 /**
  * A table's fields come either inline as `original_fields` or as ids into the
@@ -117,8 +117,9 @@ function getForeignKeyTableIds(
   storeFields: FieldsById,
 ): TableId[] {
   const tableIds = fields
-    .map((field) => targetField(field, storeFields)?.table_id)
-    .filter(isNotNull);
+    .map((field) => targetField(field, storeFields))
+    .filter(isNotNull)
+    .map((field) => field.table_id);
   return Array.from(new Set(tableIds));
 }
 

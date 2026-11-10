@@ -19,6 +19,8 @@ import {
 } from "__support__/ui";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   ActionDashboardCard,
   Database,
@@ -33,7 +35,6 @@ import {
   createMockFieldSettings,
   createMockImplicitQueryAction,
   createMockQueryAction,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
 import type { ActionProps } from "./Action";
@@ -49,6 +50,9 @@ const DATABASE_ID = 1;
 const ACTION = createMockQueryAction({
   name: "My Awesome Action",
   database_id: DATABASE_ID,
+  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: "SELECT 1",
+  }),
   model_id: ACTION_MODEL_ID,
   can_write: true,
   parameters: [
@@ -88,9 +92,9 @@ const DATABASE = createMockDatabase({
 const CARD = createMockCard({
   id: ACTION_MODEL_ID,
   database_id: DATABASE_ID,
-  dataset_query: createMockStructuredDatasetQuery({
-    database: DATABASE_ID,
-  }),
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  ),
   display: "action",
   can_write: true,
   type: "model",

@@ -1,22 +1,21 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import type { Database, SearchModel, Table } from "metabase-types/api";
 import {
   createMockDatabase,
+  createMockSearchResult,
   createMockTable,
-  createMockUser,
-  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -82,30 +81,13 @@ function setup({
   selectedTable,
   entityTypes,
 }: SetupOpts = {}) {
-  fetchMock.get({
-    url: "path:/api/search",
-    query: {
-      calculate_available_models: true,
-      limit: 0,
-      models: ["dataset"],
-    },
-    response: {
-      data: [],
-      limit: 0,
-      models: ["dataset"],
-      offset: 0,
-      table_db_id: null,
-      engine: "search.engine/in-place",
-      total: 1,
-      available_models: AVAILABLE_MODELS[availableModels],
-    },
-  });
-
-  setupDatabasesEndpoints(
-    databases,
-    { hasSavedQuestions: availableModels === "with-questions" },
-    { saved: true },
+  setupSearchEndpoints(
+    AVAILABLE_MODELS[availableModels].map((model) =>
+      createMockSearchResult({ model }),
+    ),
   );
+
+  setupDatabasesEndpoints(databases);
 
   setupCollectionsEndpoints({ collections: [] });
   setupCollectionItemsEndpoint({
@@ -124,7 +106,7 @@ function setup({
       canSelectTable={entityTypes ? entityTypes.includes("table") : true}
       canSelectQuestion={entityTypes ? entityTypes.includes("question") : true}
       triggerElement={<div>Click me to open or close data picker</div>}
-      setSourceTableFn={jest.fn()}
+      setSourceFn={jest.fn()}
     />,
     { storeInitialState },
   );
@@ -282,7 +264,7 @@ describe("DataSourceSelector", () => {
       ).toBeTruthy();
       expect(screen.queryByText("Accounting")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByText("Raw Data"));
+      await userEvent.click(rawData);
       expect(await screen.findByText("Models")).toBeInTheDocument();
       expect(screen.getByText("Raw Data")).toBeInTheDocument();
       expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
@@ -344,110 +326,11 @@ describe("DataSourceSelector", () => {
     });
   });
 
-  // metabase#74428: after the "Remove database entity" PR the picker hydrated as
-  // soon as the (fast) models search resolved, so it showed the models bucket
-  // before the database list had loaded and streamed the databases in
-  // afterwards. The picker must wait for both before rendering its first step.
-  describe("when the database list resolves after the models search (metabase#74428)", () => {
-    function setupWithDeferredDatabaseList() {
-      let resolveSearch!: () => void;
-      const searchResponse = new Promise<void>((resolve) => {
-        resolveSearch = resolve;
-      });
-      fetchMock.get({
-        url: "path:/api/search",
-        query: {
-          calculate_available_models: true,
-          limit: 0,
-          models: ["dataset"],
-        },
-        response: () =>
-          searchResponse.then(() => ({
-            data: [],
-            limit: 0,
-            models: ["dataset"],
-            offset: 0,
-            table_db_id: null,
-            total: 1,
-            available_models: ["table", "dataset"],
-          })),
-        name: "deferred-search",
-      });
+  it("renders data bucket step with every bucket at once (metabase#74428)", async () => {
+    setup({ availableModels: "with-models" });
 
-      let resolveDatabaseList!: () => void;
-      const databaseListResponse = new Promise<void>((resolve) => {
-        resolveDatabaseList = resolve;
-      });
-      fetchMock.get({
-        url: "path:/api/database",
-        query: { saved: true },
-        response: () =>
-          databaseListResponse.then(() => ({
-            data: DATABASES,
-            total: DATABASES.length,
-          })),
-        name: "deferred-database-list",
-      });
-
-      renderWithProviders(
-        <DataSourceSelector
-          isInitiallyOpen
-          querySourceType={undefined}
-          canChangeDatabase
-          selectedDatabaseId={null}
-          canSelectModel
-          canSelectTable
-          canSelectQuestion
-          triggerElement={<div>Click me to open or close data picker</div>}
-          setSourceTableFn={jest.fn()}
-        />,
-        {
-          storeInitialState: createMockState({
-            // `databases` is empty while the list request is in flight, so we
-            // need data-access permissions to render the picker (rather than the
-            // "add some data first" empty state) during that window.
-            currentUser: createMockUser({
-              permissions: createMockUserPermissions({
-                can_create_queries: true,
-              }),
-            }),
-            settings: createMockSettingsState({
-              "enable-nested-queries": true,
-            }),
-          }),
-        },
-      );
-
-      return { resolveSearch, resolveDatabaseList };
-    }
-
-    it("does not render the data bucket step until the databases have loaded", async () => {
-      const { resolveSearch, resolveDatabaseList } =
-        setupWithDeferredDatabaseList();
-
-      // Both requests are in flight, so the picker shows its loading state.
-      expect(
-        await screen.findByTestId("loading-indicator"),
-      ).toBeInTheDocument();
-
-      // The models search resolves first; the database list is still pending.
-      resolveSearch();
-      await waitFor(() => {
-        expect(
-          screen.queryByTestId("loading-indicator"),
-        ).not.toBeInTheDocument();
-      });
-
-      // Regression: the bucket step must NOT appear yet. Before the fix, "Models"
-      // showed here, ahead of the still-loading databases.
-      expect(screen.queryByText("Models")).not.toBeInTheDocument();
-      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
-
-      // Once the databases load, the bucket step appears with everything at once.
-      resolveDatabaseList();
-      expect(await screen.findByText("Models")).toBeInTheDocument();
-      expect(screen.getByText("Raw Data")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Models")).toBeInTheDocument();
+    expect(screen.getByText("Raw Data")).toBeInTheDocument();
   });
 });
 

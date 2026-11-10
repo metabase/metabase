@@ -597,7 +597,7 @@ describe("scenarios > dashboard > title drill", () => {
               name: "filter",
               "display-name": "Filter",
               type: "dimension",
-              dimension: ["field", PRODUCTS.TITLE, null],
+              "field-id": PRODUCTS.TITLE,
               "widget-type": "string/contains",
               default: null,
             },

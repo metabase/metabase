@@ -7,9 +7,9 @@ import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteMod
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import CS from "metabase/css/core/index.css";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { ActionIcon, Box, Flex, Icon, Menu, Text, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 
 import S from "./ModelActionListItem.module.css";
@@ -40,7 +40,8 @@ interface QueryActionCardContentProps {
 }
 
 function QueryActionCardContent({ action }: QueryActionCardContentProps) {
-  const question = Question.create({ dataset_query: action.dataset_query });
+  const buildQuestion = useQuestionFromOptsBuilder();
+  const question = buildQuestion({ dataset_query: action.dataset_query });
   if (!question.isNative()) {
     return (
       <CodeBlock>

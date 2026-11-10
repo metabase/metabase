@@ -12,7 +12,6 @@
         "graph.series_order_dimension": "B",
         "graph.metrics": ["Y"]
       },
-      "collection_preview": true,
       "entity_id": "PcgIsfWiqQzQ-l6sTi-7P",
       "display": "bar",
       "parameter_mappings": [],

@@ -2,43 +2,22 @@
 import { cardApi, dashboardApi, datasetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
-import type { Dispatch, GetState } from "metabase/redux/store";
-import type { ParameterField } from "metabase-lib/v1/parameters/types";
+import type { Dispatch } from "metabase/redux/store";
+import type * as Lib from "metabase-lib";
 import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   CardId,
   DashboardId,
-  FieldId,
   FieldValue,
   Parameter,
   RowValue,
 } from "metabase-types/api";
 
-import { fieldRemappingsUpdated } from "./actions";
-import { getFieldRemappings, getRemappedFieldValue } from "./selectors";
-
-export const addRemappings =
-  (fieldId: FieldId, remappings: FieldValue[]) =>
-  (dispatch: Dispatch, getState: GetState) => {
-    const existing = getFieldRemappings(getState(), fieldId);
-    const merged = Array.from(
-      new Map(
-        existing
-          .concat(remappings)
-          .map((remapping): [RowValue, FieldValue] => [
-            remapping[0],
-            remapping,
-          ]),
-      ).values(),
-    );
-    return dispatch(fieldRemappingsUpdated(fieldId, merged));
-  };
-
 type FetchRemappingOptions = {
   parameter?: Parameter | null;
   value: RowValue;
-  field?: ParameterField | null;
+  field?: Lib.ParameterFieldInfo | null;
   cardId?: CardId | null;
   dashboardId?: DashboardId | null;
   uuid?: string | null;
@@ -57,14 +36,7 @@ export const fetchRemapping = createThunkAction(
     uuid,
     token,
   }: FetchRemappingOptions) =>
-    async (dispatch: Dispatch, getState: GetState) => {
-      if (
-        field != null &&
-        getRemappedFieldValue(getState(), field, value) !== undefined
-      ) {
-        return;
-      }
-
+    async (dispatch: Dispatch) => {
       if (
         parameter == null ||
         !hasRemappedParameterValues(parameter, field ? [field] : [])
@@ -111,15 +83,6 @@ export const fetchRemapping = createThunkAction(
           datasetApi.endpoints.getRemappedParameterValue,
           { forceRefetch: false },
         );
-      }
-
-      if (remapping == null) {
-        return;
-      }
-
-      const fieldId = field?.id;
-      if (typeof fieldId === "number") {
-        dispatch(addRemappings(fieldId, [remapping]));
       }
 
       return remapping;

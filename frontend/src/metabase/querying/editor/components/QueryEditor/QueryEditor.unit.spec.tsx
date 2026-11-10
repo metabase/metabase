@@ -9,6 +9,8 @@ import {
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockEntitiesState } from "metabase/metadata-store";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {
@@ -17,7 +19,6 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -26,19 +27,20 @@ import type { QueryEditorUiState } from "../../types";
 import { QueryEditor, type QueryEditorProps } from "./QueryEditor";
 
 const TEST_CARD = createMockCard({
-  dataset_query: {
-    type: "query",
-    query: { "source-table": ORDERS_ID },
-    database: SAMPLE_DB_ID,
-  },
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  }),
 });
 
 const TEST_CARD_WITH_AGGREGATION = createMockCard({
-  dataset_query: {
-    type: "query",
-    query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
-    database: SAMPLE_DB_ID,
-  },
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+      },
+    ],
+  }),
 });
 
 function TestableQueryEditor({

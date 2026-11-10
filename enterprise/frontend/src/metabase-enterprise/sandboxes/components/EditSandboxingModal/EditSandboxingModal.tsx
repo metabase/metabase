@@ -38,11 +38,11 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getName } from "metabase/utils/name";
+import { useTableCard } from "metabase-enterprise/sandboxes/hooks/use-table-card";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
 } from "metabase-enterprise/sandboxes/types";
-import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
 import type {
   GroupId,
@@ -440,6 +440,7 @@ interface TargetNameProps {
 }
 
 const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
+  const tableCard = useTableCard(policyTable);
   if (Array.isArray(target)) {
     if (
       (target[0] === "variable" || target[0] === "dimension") &&
@@ -459,11 +460,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
         <QuestionLoader
           questionHash={undefined}
           questionId={policy.card_id}
-          questionObject={
-            policy.card_id == null && policyTable
-              ? getRawDataQuestionForTable(policyTable)
-              : null
-          }
+          questionObject={policy.card_id == null ? tableCard : null}
           includeSensitiveFields
         >
           {({ question }) => {

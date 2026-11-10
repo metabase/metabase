@@ -2,6 +2,7 @@
   "Advisory matching engine. Evaluates HoneySQL queries against the appdb
    and combines with version checks to determine match status."
   (:require
+   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase-enterprise.security-center.db :as security-center.db]
    [metabase.app-db.core :as mdb]
@@ -24,12 +25,13 @@
   [:or :boolean [:= :error]])
 
 (mu/defn parse-version :- [:maybe [:fn #(instance? Semver %)]]
-  "Parse a version string into a Semver instance. Returns nil on failure.
-   Handles Metabase version strings like \"v0.55.3\", \"0.55.17.5\", \"v1.2.3-RC1\"."
+  "Parse a version string like \"v1.55.3\" or \"1.63.21.1\" into a Semver instance.
+   Drops the leading 0/1 edition, and pads a missing patch segment.
+   Returns nil on failure."
   [version-string :- [:maybe :string]]
-  (when version-string
+  (when-let [[_ version] (some->> version-string (re-matches #"^v?[01]\.(.*)$"))]
     (try
-      (Semver/coerce version-string)
+      (Semver/coerce (str/replace version #"^(\d+\.\d+)([^.]*)$" "$1.0$2"))
       (catch Exception _
         nil))))
 
@@ -57,8 +59,7 @@
   (or (get matching-query (mdb/db-type))
       (get matching-query :default)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:private ^:dynamic *query-timeout-seconds*
+(def ^:private query-timeout-seconds
   "Maximum execution time in seconds for advisory matching queries."
   120)
 
@@ -67,7 +68,7 @@
    1. setReadOnly(true) — driver-level write rejection
    2. Explicit transaction with unconditional rollback — guarantees no writes persist
       even if the driver doesn't enforce read-only
-   3. setQueryTimeout — kills the query if it exceeds [[*query-timeout-seconds*]]"
+   3. setQueryTimeout — kills the query if it exceeds [[query-timeout-seconds]]"
   [hsql-query]
   (let [[sql & params] (sql/format hsql-query {:quoted       true
                                                :dialect      :metabase.app-db.setup/application-db
@@ -78,7 +79,7 @@
       (.setAutoCommit conn false)
       (try
         (with-open [stmt (doto (sql-jdbc.execute/prepared-statement driver conn sql params)
-                           (u.connection/set-query-timeout! *query-timeout-seconds*))
+                           (u.connection/set-query-timeout! query-timeout-seconds))
                     rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
           (rs/datafiable-result-set rs conn {}))
         (finally

@@ -3,15 +3,10 @@ import {
   NativeQueryEditorContextProvider,
   type NativeQueryEditorContextValue,
 } from "metabase/querying/components/NativeQueryEditor/context/NativeQueryEditorContext";
-import { checkNotNull } from "metabase/utils/types";
-import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
+import * as Lib from "metabase-lib";
+import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import {
-  createMockCard,
-  createMockTemplateTag,
-} from "metabase-types/api/mocks";
-import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import { createMockCard } from "metabase-types/api/mocks";
 
 import { NativeQueryParametersList } from "./NativeQueryParametersList";
 
@@ -20,33 +15,31 @@ const DEFAULT_VALUE = "Gizmo";
 
 function setup() {
   const card = createMockCard({
-    dataset_query: {
-      type: "native",
-      database: SAMPLE_DB_ID,
-      native: {
+    query_type: "native",
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
         query: "select * from products where category = {{category}}",
-        "template-tags": {
-          category: createMockTemplateTag({
+        templateTags: {
+          category: {
             id: TAG_ID,
-            name: "category",
             "display-name": "Category",
             type: "text",
             required: true,
             default: DEFAULT_VALUE,
-          }),
+          },
         },
-      },
-    },
+      }),
+    ),
   });
   const question = new Question(card, SAMPLE_METADATA).setParameterValues({
     [TAG_ID]: DEFAULT_VALUE,
   });
-  const query: NativeQuery = checkNotNull(question.legacyNativeQuery());
+  const query = question.query();
 
   const context: NativeQueryEditorContextValue = {
     question,
     query,
-    setDatasetQuery: jest.fn(),
+    setQuery: jest.fn(),
     focusEditor: jest.fn(),
     onFormatQuery: jest.fn(),
     isNativeEditorOpen: true,

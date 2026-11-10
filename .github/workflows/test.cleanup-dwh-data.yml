@@ -8,7 +8,7 @@ on:
       drivers:
         description: 'Drivers to sweep (comma-separated)'
         required: false
-        default: 'snowflake,bigquery-cloud-sdk,redshift'
+        default: 'snowflake,bigquery-cloud-sdk,redshift,motherduck'
         type: string
       hours:
         description: 'TTL in hours for per-run garbage (minimum 4)'
@@ -19,7 +19,7 @@ on:
 # `inputs.*` is empty on the scheduled run, so each falls back to the nightly value.
 env:
   GC_HOURS: ${{ inputs.hours || 12 }} # for temp data
-  GC_DRIVERS: ${{ inputs.drivers || 'snowflake,bigquery-cloud-sdk,redshift' }}
+  GC_DRIVERS: ${{ inputs.drivers || 'snowflake,bigquery-cloud-sdk,redshift,motherduck' }}
 
 concurrency:
   group: test-cleanup-dwh-data
@@ -53,6 +53,8 @@ jobs:
       MB_REDSHIFT_TEST_HOSTS: ${{ secrets.MB_REDSHIFT_TEST_HOSTS }}
       MB_REDSHIFT_TEST_HOST: ${{ secrets.MB_REDSHIFT_TEST_HOST }}
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
+      # MotherDuck
+      MB_MOTHERDUCK_TEST_TOKEN: ${{ secrets.MB_MOTHERDUCK_TEST_TOKEN }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/prepare-backend

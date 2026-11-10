@@ -90,7 +90,7 @@ export const DataModel = {
     getDisplayValuesInput: getFieldDisplayValuesInput,
     getDisplayValuesFkTargetInput: getFieldDisplayValuesFkTargetInput,
     getUnfoldJsonInput: getFieldUnfoldJsonInput,
-    getStyleInput: getFieldStyleInput,
+    getFormatControl: getFieldFormatControl,
     getMiniBarChartToggle: getFieldMiniBarChartToggle,
     getMultiplyByNumberInput: getFieldMultiplyByNumberInput,
     getPrefixInput: getFieldPrefixInput,
@@ -584,8 +584,8 @@ function getFieldMultiplyByNumberInput() {
   return getFieldSection().findByLabelText("Multiply by a number");
 }
 
-function getFieldStyleInput() {
-  return getFieldSection().findByLabelText("Style");
+function getFieldFormatControl() {
+  return getFieldSection().findByTestId("chart-settings-widget-number_style");
 }
 
 function getFieldPrefixInput() {

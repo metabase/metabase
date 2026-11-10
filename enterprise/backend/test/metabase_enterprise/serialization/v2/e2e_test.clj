@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.serialization.cmd :as cmd]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.test-util :as ts]
@@ -13,7 +14,6 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
-   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1266,6 +1266,32 @@
                      :table_id    (:id table)}
                     (t2/select-one :model/Card :name "Customers")))))))))
 
+(deftest card-collection-preview-yaml-round-trip-test
+  (testing "Cards export without collection_preview, and older exports that still carry it load"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "my-db" :engine :h2)
+                table (ts/create! :model/Table :name "customers" :schema "PUBLIC" :db_id (:id db))
+                coll  (ts/create! :model/Collection :name "coll")
+                mp    (lib-be/application-database-metadata-provider (:id db))]
+            (ts/create! :model/Card
+                        :name          "Preview Card"
+                        :collection_id (:id coll)
+                        :database_id   (:id db)
+                        :table_id      (:id table)
+                        :dataset_query (lib/query mp (lib.metadata/table mp (:id table))))
+            (storage/store! (into [] (extract/extract {:include-h2? true :no-settings true}))
+                            (storage.files/file-writer dump-dir))))
+        (let [^File file (m/find-first #(str/ends-with? (.getName ^File %) "preview_card.yaml") (file-seq (io/file dump-dir)))
+              exported   (yaml/from-file file)]
+          (is (=? {:name "Preview Card"} exported))
+          (is (not (contains? exported :collection_preview)))
+          (dump/spit-yaml! file (assoc exported :collection_preview false)))
+        (ts/with-db dest-db
+          (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+          (is (t2/exists? :model/Card :name "Preview Card")))))))
+
 (deftest transform-test-round-trip-test
   (testing "A transform test is exported under its transform's path and imported with its transform"
     (mt/with-premium-features #{:transforms-basic}
@@ -1373,7 +1399,7 @@
                   (is (= (t2/select-one-pk :model/Transform :name "Revenue Report")
                          (:transform_id imported))))
                 (testing "serdes import gets the same validation as a POST: what it stored satisfies the schema"
-                  (is (mr/validate ::transform-testing.schema/expectations expectations))
+                  (is (mr/validate ::data-testing.schema/expectations expectations))
                   (testing "and normalization ran, so a type arrives as a keyword rather than the YAML's string"
                     (is (= [:equals :empty] (mapv :type expectations)))))
                 (testing "the payload is unchanged, row keys still strings"

@@ -1,5 +1,6 @@
 ---
 title: Frontend
+summary: Conventions for Metabase's frontend code, covering TypeScript, Redux, data fetching, styling, and testing.
 ---
 
 # Frontend

@@ -6,6 +6,7 @@
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -15,6 +16,20 @@
 (def field-order-rule
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
+
+(mu/defn synced-field-user-settings-clause :- [:fn vector?]
+  "The clause over the FieldUserSettings table aliased `alias` selecting the settings of synced tables' fields."
+  [alias :- :keyword]
+  [:in (u/qualified-key alias :field_id) ^:allow-subquery {:select [:f.id]
+                                                           :from   [[(t2/table-name :model/Field) :f]]
+                                                           :where  (remote-sync/synced-fk-clause :f :table_id :model/TableUserSettings)}])
+
+(mu/defn synced-table-user-settings-clause :- [:fn vector?]
+  "The clause over the TableUserSettings table aliased `alias` selecting the published tables remote sync syncs."
+  [alias :- :keyword]
+  [:and
+   [:= (u/qualified-key alias :is_published) true]
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection)])
 
 (mu/defn field
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
@@ -531,11 +546,6 @@
   (t2/select-one-fn :name :model/Database :id database-id))
 
 ;;; ---------------------------------------------- Other models ----------------------------------------------
-
-(mu/defn collections
-  "The Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Collection :id [:in collection-ids]))
 
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."

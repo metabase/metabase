@@ -230,6 +230,24 @@
           (action/update! {:id action-id, :database_id Integer/MAX_VALUE} existing)
           (is (= model-db-id (:database_id (action/select-action :id action-id)))))))))
 
+(deftest query-action-query-must-be-native-test
+  (mt/with-actions-enabled
+    (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query categories)}]
+      (let [mp      (mt/metadata-provider)
+            mbql    (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+            insert! (fn [query]
+                      (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                     {:type :query, :name "Checked", :model_id model-id, :dataset_query query})))]
+        (testing "MBQL query is rejected, on load too"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has to be a native query" (insert! mbql)))
+          (binding [mi/*deserializing?* true]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has to be a native query" (insert! mbql)))))
+        (testing "MBQL query is rejected on query update"
+          (let [action-id (insert! (lib/native-query mp "UPDATE categories SET name = 'x' WHERE id = 1"))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has to be a native query"
+                                  (action/update! {:id action-id, :dataset_query mbql}
+                                                  (action/select-action :id action-id))))))))))
+
 (deftest query-action-without-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (testing "a query action can be inserted and updated without a model, and keeps its own collection"

@@ -746,9 +746,9 @@ describe("scenarios > visualizations > table column settings", () => {
       };
 
       const testData2 = {
-        column: "Ean",
-        columnName: "Product → Ean",
-        table: "product",
+        column: "Email",
+        columnName: "User → Email",
+        table: "user",
         scrollTimes: 3,
       };
 

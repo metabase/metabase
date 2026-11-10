@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting database connections
+summary: Figure out whether a failed database connection is coming from Metabase or your database server, and fix the common connection errors.
 redirect_from:
   - /docs/latest/troubleshooting-guide/datawarehouse
 ---

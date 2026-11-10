@@ -374,12 +374,11 @@
    (mi/can-query? (warehouse-schema.db/table pk))))
 
 (defenterprise current-user-can-write-table?
-  "OSS implementation. Returns a boolean whether the current user can write the given table.
-   Checks both that the user is a superuser and that the table is editable (not in a remote-synced
-   collection in read-only mode)."
+  "OSS implementation: whether the current user, a superuser, can write the table `instance`, which nobody can when a
+  read-only instance syncs it."
   metabase-enterprise.advanced-permissions.common
   [instance]
-  (and (remote-sync/table-editable? instance)
+  (and (remote-sync/can-write? :model/TableUserSettings (:id instance))
        (mi/superuser?)))
 
 (defmethod mi/can-write? :model/Table
@@ -391,30 +390,9 @@
    (mi/can-write? (warehouse-schema.db/table pk))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :can_write]
-  "Batched hydration for :can_write on tables. Pre-fetches collection is_remote_synced values
-   to avoid N+1 queries when checking remote-sync permissions for multiple tables."
+  "Batched hydration for :can_write on tables."
   [_model k tables]
-  (let [;; Get all unique collection IDs (excluding nil)
-        collection-ids (->> tables
-                            (keep :collection_id)
-                            distinct)
-        ;; Batch fetch is_remote_synced for all collections
-        collection-synced-map (if (seq collection-ids)
-                                (into {}
-                                      (map (juxt :id :is_remote_synced))
-                                      (warehouse-schema.db/collections collection-ids))
-                                {})
-        ;; Associate collection info with each table so table-editable? doesn't need to query
-        tables-with-collection (for [table tables]
-                                 (if-let [coll-id (:collection_id table)]
-                                   (assoc table :collection {:id coll-id
-                                                             :is_remote_synced (get collection-synced-map coll-id false)})
-                                   table))]
-    (mi/instances-with-hydrated-data
-     tables k
-     #(u/index-by :id mi/can-write? tables-with-collection)
-     :id
-     {:default false})))
+  (mi/instances-with-hydrated-data tables k #(u/index-by :id mi/can-write? tables) :id {:default false}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :owner]
   "Add owner (user) to a table. If owner_user_id is set, fetches the user.

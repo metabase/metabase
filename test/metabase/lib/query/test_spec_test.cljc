@@ -1108,14 +1108,14 @@
                   :template-tags  {"category_filter" {:type         :dimension
                                                       :name         "category_filter"
                                                       :display-name "Category Filter"
-                                                      :dimension    (meta/id :venues :category-id)
+                                                      :field-id     (meta/id :venues :category-id)
                                                       :widget-type  :text}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM venues WHERE {{category_filter}}"))
       (is (=? [{:type         :dimension
                 :name         "category_filter"
                 :display-name "Category Filter"
-                :dimension    [:field {} (meta/id :venues :category-id)]
+                :field-id     (meta/id :venues :category-id)
                 :widget-type  :text}]
               (lib/template-tags query))))))
 
@@ -1128,13 +1128,13 @@
                   :template-tags  {"date_unit" {:type         :temporal-unit
                                                 :name         "date_unit"
                                                 :display-name "Date Unit"
-                                                :dimension    (meta/id :orders :created-at)}}})]
+                                                :field-id     (meta/id :orders :created-at)}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM orders WHERE {{date_unit}}"))
       (is (=? [{:type         :temporal-unit
                 :name         "date_unit"
                 :display-name "Date Unit"
-                :dimension    [:field {} (meta/id :orders :created-at)]}]
+                :field-id     (meta/id :orders :created-at)}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-snippet-tag-test
@@ -1173,6 +1173,22 @@
                 :card-id      1}]
               (lib/template-tags query))))))
 
+(deftest ^:parallel test-native-query-with-table-tag-test
+  (testing "test-native-query creates a native query with table template tag"
+    (let [query (lib.query.test-spec/test-native-query
+                 meta/metadata-provider
+                 {:database-id    (meta/id)
+                  :query          "SELECT * FROM {{my_table}}"
+                  :template-tags  {"my_table" {:type         :table
+                                               :name         "my_table"
+                                               :display-name "My Table"
+                                               :table-id     (meta/id :orders)}}})]
+      (is (=? [{:type         :table
+                :name         "my_table"
+                :display-name "My Table"
+                :table-id     (meta/id :orders)}]
+              (lib/template-tags query))))))
+
 (deftest ^:parallel test-native-query-with-multiple-tags-test
   (testing "test-native-query creates a native query with multiple template tags"
     (let [query (lib.query.test-spec/test-native-query
@@ -1188,7 +1204,7 @@
                                    "category_filter" {:type         :dimension
                                                       :name         "category_filter"
                                                       :display-name "Category Filter"
-                                                      :dimension    (meta/id :venues :category-id)
+                                                      :field-id     (meta/id :venues :category-id)
                                                       :widget-type  :text}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM venues WHERE name = {{name}} AND price > {{min_price}} AND {{category_filter}}"))
@@ -1201,7 +1217,7 @@
                {:type         :dimension
                 :name         "category_filter"
                 :display-name "Category Filter"
-                :dimension    [:field {} (meta/id :venues :category-id)]
+                :field-id     (meta/id :venues :category-id)
                 :widget-type  :text}]
               (lib/template-tags query))))))
 

@@ -11,7 +11,7 @@ import {
   getVisualizationTransformed,
   isCartesianChart,
 } from "metabase/viz-core";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/templates";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 
 import {

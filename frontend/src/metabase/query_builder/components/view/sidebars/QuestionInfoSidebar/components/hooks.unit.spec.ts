@@ -2,10 +2,17 @@ import { renderHook } from "@testing-library/react";
 
 import { createMockMetadata } from "__support__/metadata";
 import type { IconModel } from "metabase/common/utils/icon";
+import * as Lib from "metabase-lib";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
-  SAMPLE_DB_ID,
+  ORDERS_ID,
+  PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -23,6 +30,9 @@ jest.mock("metabase/hooks/use-icon", () => {
 
 const joinedCard = createMockCard({
   name: "Joined Card",
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+  }),
 });
 
 const metadata = createMockMetadata({
@@ -30,41 +40,36 @@ const metadata = createMockMetadata({
   questions: [joinedCard],
 });
 
-const cardWithoutJoins = createMockCard();
+const cardWithoutJoins = createMockCard({
+  dataset_query: Lib.createTestJsQuery(
+    createMetadataProvider({ metadata }),
+    DEFAULT_TEST_QUERY,
+  ),
+});
 
 const cardWithJoins = createMockCard({
-  dataset_query: {
-    type: "query",
-    query: {
-      joins: [
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(createMetadataProvider({ metadata }), {
+      stages: [
         {
-          fields: "all",
-          strategy: "left-join",
-          alias: "joined table",
-          condition: [
-            "=",
-            [
-              "field",
-              "Field A",
-              {
-                "base-type": "type/Text",
-              },
-            ],
-            [
-              "field",
-              99,
-              {
-                "base-type": "type/Text",
-                "join-alias": "Field A - Field B",
-              },
-            ],
+          source: { type: "table", id: ORDERS_ID },
+          joins: [
+            {
+              source: { type: "card", id: joinedCard.id },
+              strategy: "left-join",
+              conditions: [
+                {
+                  operator: "=",
+                  left: { type: "column", name: "ID" },
+                  right: { type: "column", name: "ID" },
+                },
+              ],
+            },
           ],
-          "source-table": `card__${joinedCard.id}`,
         },
       ],
-    },
-    database: SAMPLE_DB_ID,
-  },
+    }),
+  ),
 });
 
 const questionWithJoins = new Question(cardWithJoins, metadata);

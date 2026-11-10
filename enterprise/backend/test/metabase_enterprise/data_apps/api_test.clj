@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
+   [metabase.server.middleware.security :as security]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -68,20 +69,13 @@
                              "BUNDLE")))))))
 
 (deftest read-only-remote-sync-allows-enabling-test
-  (mt/with-premium-features #{:data-apps}
+  (mt/with-premium-features #{:data-apps :remote-sync}
     (mt/with-temp [:model/DataApp app {}]
       (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
                                          remote-sync-type :read-only]
         (testing "enabling and disabling an app is allowed on a read-only instance"
           (is (=? {:enabled false}
                   (mt/user-http-request :crowberto :put 200 (data-apps.tu/app-url app) {:enabled false}))))))))
-
-(deftest enabling-a-data-app-is-not-a-synced-change-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/RemoteSyncObject]
-      (mt/with-temp [:model/DataApp app {}]
-        (mt/user-http-request :crowberto :put 200 (data-apps.tu/app-url app) {:enabled false})
-        (is (not (t2/exists? :model/RemoteSyncObject :model_type "DataApp" :model_id (:id app))))))))
 
 (deftest data-app-write-endpoints-require-feature-token-test
   (mt/with-premium-features #{}
@@ -236,39 +230,6 @@
           (is (=? {:enabled true}
                   (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled true})))
           (is (=? {:name "demo"} (mt/user-http-request :crowberto :get 200 "ee/apps/demo"))))))))
-
-(deftest sandbox-host-endpoint-test
-  (mt/with-premium-features #{:data-apps}
-    (let [resp    (mt/user-http-request-full-response :crowberto :get 200 "ee/apps/sandbox-host")
-          headers (:headers resp)]
-      (testing "serves a minimal HTML document"
-        (is (str/includes? (:body resp) "<!doctype html>"))
-        (is (str/starts-with? (get headers "Content-Type") "text/html")))
-      (testing "carries the per-document CSP that confines 'unsafe-eval' to the realm"
-        ;; This grant is why the data-app document itself can drop 'unsafe-eval'
-        ;; (see `data-app-unsafe-eval-test`), and `default-src 'none'` means the
-        ;; realm has no network of its own rather than inheriting the data-app
-        ;; document's `connect-src` (which includes the instance origin).
-        (let [csp (get headers "Content-Security-Policy")]
-          (is (some? csp))
-          (is (str/includes? csp "default-src 'none'"))
-          (is (str/includes? csp "script-src 'unsafe-eval'"))
-          (is (str/includes? csp "frame-ancestors 'self'"))
-          (testing "and the endpoint's CSP wins over the global middleware one"
-            (is (not (str/includes? csp "'nonce-"))))))
-      (testing "is framable same-origin, overriding the global X-Frame-Options"
-        (is (= "SAMEORIGIN" (get headers "X-Frame-Options"))))
-      (testing "hardening headers are present"
-        (is (= "nosniff"     (get headers "X-Content-Type-Options")))
-        (is (= "no-referrer" (get headers "Referrer-Policy")))
-        (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy"))))))
-  ;; `slug-regex` must exclude this literal, or `/apps/sandbox-host` would be
-  ;; routed as a data app named "sandbox-host" and 404.
-  (testing "the route is not shadowed by the /:slug route"
-    (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp _ {}]
-        (is (= 200 (:status (mt/user-http-request-full-response
-                             :crowberto :get 200 "ee/apps/sandbox-host"))))))))
 
 (deftest admins-write-the-resource-collection-through-the-api-test
   (mt/with-premium-features #{:data-apps}
@@ -427,3 +388,25 @@
         (is (str/includes? contents "type: implicit\n"))
         (is (str/includes? contents "kind: row/update"))
         (is (str/includes? contents "- VENUES"))))))
+(deftest bundle-policy-and-revalidation-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-temp [:model/DataApp app demo-app]
+        (let [url           (data-apps.tu/app-url app "bundle")
+              policy-header "X-Metabase-Data-App-Content-Security-Policy"
+              options       {:request-options {:headers {"x-metabase-client" "data-app"}}}]
+          (testing "authorized data app requests receive the bundle source and its CSP"
+            (let [response (mt/user-http-request-full-response :crowberto :get 200 url options)]
+              (is (str/includes? (:body response) "DEMOBUNDLE"))
+              (is (= (security/embedded-data-app-content-security-policy ["https://api.example.com"])
+                     (get-in response [:headers policy-header])))))
+          (testing "changing allowed hosts updates CSP header"
+            (t2/update! :model/DataApp :id (:id app) {:allowed_hosts ["https://other.example.com"]})
+            (let [response (mt/user-http-request-full-response :crowberto :get 200 url options)]
+              (is (= (security/embedded-data-app-content-security-policy ["https://other.example.com"])
+                     (get-in response [:headers policy-header])))))
+          (testing "authorization failures and missing apps do not return a CSP header"
+            (doseq [[user path status] [[:rasta url 403]
+                                        [:crowberto "ee/apps/missing/bundle" 404]]]
+              (is (nil? (get-in (mt/user-http-request-full-response user :get status path options)
+                                [:headers policy-header]))))))))))

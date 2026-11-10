@@ -1,17 +1,16 @@
 import fetchMock from "fetch-mock";
 
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Card,
   CardId,
   CardQueryMetadata,
-  ConcreteTableId,
   DashboardId,
   Dataset,
   FieldValue,
   GetPublicCard,
   ParameterId,
   ParameterValues,
+  TableId,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -87,7 +86,7 @@ export function setupCardsUsingModelEndpoint(card: Card, usedBy: Card[] = []) {
 }
 
 export function setupCardsForTableEndpoint(
-  tableId: ConcreteTableId,
+  tableId: TableId,
   cards: Card[] = [],
 ) {
   fetchMock.get({
@@ -113,9 +112,7 @@ export function setupUnauthorizedCardEndpoints(card: Card) {
     status: 403,
     body: PERMISSION_ERROR,
   });
-
-  const virtualTableId = getQuestionVirtualTableId(card.id);
-  fetchMock.get(`path:/api/table/${virtualTableId}/query_metadata`, {
+  fetchMock.get(`path:/api/card/${card.id}/query_metadata`, {
     status: 403,
     body: PERMISSION_ERROR,
   });
@@ -141,6 +138,25 @@ export function setupForbiddenCardEndpoints(cardId: CardId) {
   fetchMock.post(`path:/api/card/${cardId}/query`, {
     status: 403,
     body: PERMISSION_ERROR,
+  });
+}
+
+/**
+ * Makes the card's own endpoints return 404, i.e. a card that was permanently
+ * deleted.
+ */
+export function setupNotFoundCardEndpoints(cardId: CardId) {
+  fetchMock.get(`path:/api/card/${cardId}`, {
+    status: 404,
+    body: "Not found.",
+  });
+  fetchMock.get(`path:/api/card/${cardId}/query_metadata`, {
+    status: 404,
+    body: "Not found.",
+  });
+  fetchMock.post(`path:/api/card/${cardId}/query`, {
+    status: 404,
+    body: "Not found.",
   });
 }
 

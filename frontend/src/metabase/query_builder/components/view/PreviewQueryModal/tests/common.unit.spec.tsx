@@ -1,9 +1,9 @@
 import { findRequests } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
-  createMockNativeCard,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
+  createMockCard,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 
@@ -46,13 +46,16 @@ describe("PreviewQueryModal (OSS)", () => {
       "display-name": "Category",
       type: "text",
     });
-    const card = createMockNativeCard({
-      dataset_query: createMockNativeDatasetQuery({
-        native: createMockNativeQuery({
-          query: "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}}",
-          "template-tags": { category: tag },
-        }),
-      }),
+    const card = createMockCard({
+      query_type: "native",
+      dataset_query: Lib.toJsQuery(
+        Lib.withTemplateTags(
+          Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+            query: "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}}",
+          }),
+          [tag],
+        ),
+      ),
     });
     const compiledQuery = "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'";
 

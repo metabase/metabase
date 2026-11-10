@@ -47,6 +47,8 @@
     :model/BookmarkOrdering
     :model/CacheConfig
     :model/CardBookmark
+    ;; TODO remove once card tests are serialized
+    :model/CardTest
     :model/ChannelTemplate
     :model/CollectionBookmark
     ;; Content Diagnostics findings are scan-snapshot runtime data (its `entity_id` column is a
@@ -119,12 +121,15 @@
     :model/QueryTable
     :model/RecentViews
     :model/ReplacementRun
-    :model/RemoteSyncObject
     :model/RemoteSyncTask
     :model/ResultMetadataStatus
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
+    ;; Workspace remappings are runtime-only; they redirect QP queries against canonical
+    ;; tables to workspace-isolated copies. They aren't portable across instances and
+    ;; aren't included in serdes export/import.
+    :model/TableRemapping
     :model/Secret
     :model/Session
     :model/SourceDimensionDaily
@@ -140,7 +145,7 @@
     :model/Tenant
     :model/TimelineEvent
     ;; Run history is intentionally not serialized.
-    :model/TransformTestRun
+    :model/DataTestRun
     ;; TODO we should remove these models from here once serialization is supported
     :model/TransformRun
     :model/TransformRunCancelation
@@ -159,7 +164,12 @@
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction})
+    :model/CommentReaction
+    ;; Workspace and WorkspaceDatabase are runtime-only -- per-instance workspace
+    ;; provisioning state, not portable content. Same rationale as TableRemapping above.
+    :model/Workspace
+    :model/WorkspaceDatabase
+    :model/WorkspaceInstance})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (keys models.resolution/model->namespace)

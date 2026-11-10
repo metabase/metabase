@@ -28,6 +28,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
+   [metabase.util.secret :as u.secret]
    [throttle.core :as throttle]))
 
 (set! *warn-on-reflection* true)
@@ -357,12 +358,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/forgot_password"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/forgot_password" :- ::api/generic-204-no-content
   "Send a reset email when user has forgotten their password."
   [_route-params
    _query-params
@@ -410,7 +407,9 @@
    request]
   (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
-  (let [credentials  (select-keys request-body [:token :password])
+  (let [credentials  (-> request-body
+                         (select-keys [:token :password])
+                         (update :password u.secret/expose))
         grant-result (auth-identity/with-fallback auth-identity/login!
                        [:provider/support-access-grant]
                        credentials)
@@ -546,11 +545,7 @@
       (call-with-failure-throttling [[(login-throttlers :ip-address) (request/ip-address request)]]
                                     do-login))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/password-check"
+(api.macros/defendpoint :post "/password-check" :- [:map {:closed true} [:valid [:= true]]]
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
   [_route-params
    _query-params

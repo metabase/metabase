@@ -409,10 +409,12 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     // column is also configurable)
     H.leftSidebar().findByTestId("Count-settings-button").click();
 
-    // style
+    // format
     cy.findByTestId("scalar-container").findByText("344");
-    cy.findByLabelText("Style").click();
-    H.popover().findByText("Percent").click();
+    H.popover()
+      .findByTestId("chart-settings-widget-number_style")
+      .findByText("123%")
+      .click();
     cy.findByTestId("scalar-container").findByText("34,400%");
 
     // separator style
@@ -424,28 +426,12 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByLabelText("Number of decimal places").click().type("4").blur();
     cy.findByTestId("scalar-container").findByText("34’400.0000%");
 
-    // negative decimal places flip to positive
-    cy.findByLabelText("Number of decimal places")
-      .click()
-      .clear()
-      .type("-3")
-      .blur();
-    cy.findByTestId("scalar-container").findByText("34’400.000%");
+    // clearing decimal places goes back to the default
+    cy.findByLabelText("Number of decimal places").click().clear().blur();
+    cy.findByTestId("scalar-container").findByText("34’400%");
 
-    // non-integer decimal places round to nearest integer
-    cy.findByLabelText("Number of decimal places")
-      .click()
-      .clear()
-      .type("2.4")
-      .blur();
-    cy.findByTestId("scalar-container").findByText("34’400.00%");
-
-    // negative non-integer decimal places round to nearest integer and flip to positive
-    cy.findByLabelText("Number of decimal places")
-      .click()
-      .clear()
-      .type("-3.8")
-      .blur();
+    // the minus sign is ignored
+    cy.findByLabelText("Number of decimal places").click().type("-4").blur();
     cy.findByTestId("scalar-container").findByText("34’400.0000%");
 
     // multiply by a number

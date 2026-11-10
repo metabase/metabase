@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { isa as cljs_isa } from "cljs/metabase.types.core";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   BOOLEAN,
   COORDINATE,
@@ -18,7 +17,7 @@ import {
   TYPE,
   TYPE_HIERARCHIES,
 } from "metabase-lib/v1/types/constants";
-import type { DatasetColumn, TableId } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 
 /**
  * A minimal field-like shape shared by both Field and DatasetColumn,
@@ -271,15 +270,3 @@ export function hasLatitudeAndLongitudeColumns(cols: FieldTypeInfo[]) {
   }
   return hasLatitude && hasLongitude;
 }
-
-export const getIsPKFromTablePredicate =
-  (tableId: TableId | null | undefined) =>
-  (column: FieldTypeInfo & { table_id?: TableId }): boolean => {
-    const isPrimaryKey = isPK(column);
-
-    // FIXME: columns of nested questions at this moment miss table_id value
-    // which makes it impossible to match them with their tables that are nested cards
-    return isVirtualCardId(tableId)
-      ? isPrimaryKey
-      : isPrimaryKey && column.table_id === tableId;
-  };

@@ -4,7 +4,7 @@ import type { DashCardId, DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
 import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
-import type { NativeDatasetQuery, OpaqueDatasetQuery } from "./query";
+import type { DatasetQuery } from "./query";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 
@@ -28,7 +28,7 @@ interface BaseCreateActionRequest {
 
 export interface CreateQueryActionRequest extends BaseCreateActionRequest {
   type: "query";
-  dataset_query: NativeDatasetQuery | OpaqueDatasetQuery;
+  dataset_query: DatasetQuery;
 }
 
 export interface CreateImplicitActionRequest extends BaseCreateActionRequest {
@@ -54,7 +54,7 @@ interface BaseUpdateActionRequest {
 }
 
 export interface UpdateQueryActionRequest extends BaseUpdateActionRequest {
-  dataset_query?: NativeDatasetQuery | OpaqueDatasetQuery;
+  dataset_query?: DatasetQuery;
   kind?: never;
   table_id?: never;
 }
@@ -104,7 +104,7 @@ export type PublicWritebackAction = Pick<
 
 export interface QueryAction {
   type: "query";
-  dataset_query: NativeDatasetQuery;
+  dataset_query: DatasetQuery;
 }
 
 export interface ImplicitQueryAction {

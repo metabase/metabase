@@ -12,15 +12,14 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import { columnFinder } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER, columnFinder } from "metabase-lib/test-helpers";
 import type { FieldFingerprint, FieldReference } from "metabase-types/api";
 import {
   createMockCard,
+  createMockColumn,
   createMockDateTimeFieldFingerprint,
-  createMockField,
   createMockFingerprint,
   createMockGlobalFieldFingerprint,
-  createMockNativeDatasetQuery,
   createMockNumberFieldFingerprint,
 } from "metabase-types/api/mocks";
 import {
@@ -141,12 +140,11 @@ const setupNativeModel = ({ mappedToField }: SetupNativeModelOpts) => {
   const card = createMockCard({
     id: MODEL_ID,
     type: "model",
-    dataset_query: createMockNativeDatasetQuery({
-      database: SAMPLE_DB_ID,
-      native: { query: "select * from products limit 5" },
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from products limit 5",
     }),
     result_metadata: [
-      createMockField({
+      createMockColumn({
         name: "CATEGORY",
         display_name: "Category",
         base_type: "type/Text",
@@ -158,7 +156,7 @@ const setupNativeModel = ({ mappedToField }: SetupNativeModelOpts) => {
         }),
         ...(mappedToField
           ? { id: PRODUCTS.CATEGORY, table_id: PRODUCTS_ID }
-          : { id: UNMAPPED_FIELD_REF }),
+          : { id: undefined, table_id: undefined }),
         field_ref: mappedToField
           ? ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }]
           : UNMAPPED_FIELD_REF,
@@ -171,9 +169,7 @@ const setupNativeModel = ({ mappedToField }: SetupNativeModelOpts) => {
     questions: [card],
   });
   const provider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
-  const cardMetadata = checkNotNull(
-    Lib.tableOrCardMetadata(provider, `card__${MODEL_ID}`),
-  );
+  const cardMetadata = checkNotNull(Lib.cardMetadata(provider, MODEL_ID));
   const query = Lib.queryFromTableOrCardMetadata(provider, cardMetadata);
   const findColumn = columnFinder(
     query,

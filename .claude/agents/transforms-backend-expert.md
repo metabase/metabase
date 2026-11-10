@@ -47,7 +47,7 @@ Enterprise (`enterprise/backend/src/metabase_enterprise/`):
   - `execute`, `base`, `models.python-library`.
   - Settings for runner URL, S3 and timeouts.
 - `transforms-inspector` - lens discovery and computation (`lens.*`, `context`, `query-analysis`).
-- `transform-testing` - test runs for a transform against temp tables: `runner`, `compile`, `validator`, `executor`, `expectations.*`.
+- `data-testing` - test runs for a transform against temp tables: `runner`, `compile`, `validator`, `executor`, `expectations.*`.
 
 Every module above has its own `db.clj`.
 
@@ -80,7 +80,7 @@ Every module above has its own `db.clj`.
 2. For transforms, separate base execution (`transforms-base`, no run rows) from tracked execution (`transforms.execute`, `transforms.jobs`). Bugs in run status, cancelation or failure notifications live in the tracked layer.
 3. When the failure depends on the warehouse, read the driver's `run-transform!`, `insert-into!`, `create-table!` or `ddl.i/refresh!` method and its feature flags before you change shared code. Hand driver DDL changes to drivers-and-sync-backend-expert.
 4. Reproduce at the REPL with the test macros: `metabase.transforms.test-util` (`with-transform-cleanup!`, `with-transforms-api-users!`), `metabase.actions.test-util` (`with-actions-test-data`, `with-actions-enabled`, `with-actions`), `metabase.model-persistence.test-util/with-persistence-enabled!`.
-5. Test namespaces: `test/metabase/{actions,actions_rest,upload,transforms,transforms_base,transforms_rest,model_persistence}`, `test/metabase/driver/sql_jdbc/actions_test.clj`, and `enterprise/backend/test/metabase_enterprise/{action_v2,transforms,transforms_python,transform_testing,transforms_inspector,upload_management}`. Warehouse-dependent behavior needs a run with `--drivers=` for the drivers involved.
+5. Test namespaces: `test/metabase/{actions,actions_rest,upload,transforms,transforms_base,transforms_rest,model_persistence}`, `test/metabase/driver/sql_jdbc/actions_test.clj`, and `enterprise/backend/test/metabase_enterprise/{action_v2,transforms,transforms_python,data_testing,transforms_inspector,upload_management}`. Warehouse-dependent behavior needs a run with `--drivers=` for the drivers involved.
 
 ## Return
 

@@ -10,7 +10,6 @@ import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { DatabaseId, Table } from "metabase-types/api";
 
 import { RELOAD_INTERVAL } from "../../constants";
@@ -34,7 +33,6 @@ const EMPTY_TABLES: Table[] = [];
 
 const getDatabaseId = (
   props: TableBrowserContainerProps,
-  { includeVirtual = false }: { includeVirtual?: boolean } = {},
 ): DatabaseId | undefined => {
   const { params } = props;
   const dbId =
@@ -43,8 +41,6 @@ const getDatabaseId = (
     Urls.extractEntityId(params?.slug);
 
   if (!Number.isSafeInteger(dbId)) {
-    return undefined;
-  } else if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID && !includeVirtual) {
     return undefined;
   } else {
     return dbId;
@@ -55,7 +51,7 @@ const getSchemaName = (props: TableBrowserContainerProps): string | undefined =>
   props.schemaName || props.params?.schemaName || undefined;
 
 export const TableBrowser = (props: TableBrowserContainerProps) => {
-  const dbId = getDatabaseId(props, { includeVirtual: true });
+  const dbId = getDatabaseId(props);
   const schemaName = getSchemaName(props);
   const { showSchemaInHeader } = props;
   const xraysEnabled = useSelector((state) =>

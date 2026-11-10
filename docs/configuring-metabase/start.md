@@ -1,5 +1,6 @@
 ---
 title: "Configuration overview"
+summary: Everything you can configure in Metabase, from first-time setup to email, Slack, appearance, environment variables, and config files.
 redirect_from:
   - /docs/latest/configuring-metabase
 ---

@@ -98,14 +98,17 @@ describe("SavedQuestionHeaderButton", () => {
   });
 
   describe("when the question has a latest moderation review", () => {
-    const question = new Question({
-      name: "foo",
-      moderation_reviews: [
-        { status: null },
-        { most_recent: true, status: "verified" },
-      ],
-      collection: createMockCollection(),
-    });
+    const question = new Question(
+      {
+        name: "foo",
+        moderation_reviews: [
+          { status: null },
+          { most_recent: true, status: "verified" },
+        ],
+        collection: createMockCollection(),
+      },
+      createMockMetadata(),
+    );
 
     it("should have an additional icon to signify the question's moderation status", () => {
       setup({

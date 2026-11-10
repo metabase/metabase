@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { parseParameterValue } from "metabase/parameters/utils/parameter-parsing";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
-import { checkNotNull } from "metabase/utils/types";
 import type { ValueAndColumnForColumnNameDate } from "metabase/value-formatting";
 import {
   formatDateTimeForParameter,
@@ -11,11 +10,10 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
   columnFilterForParameter,
-  dimensionFilterForParameter,
-  variableFilterForParameter,
+  dimensionTagFilterForParameter,
+  variableTagFilterForParameter,
 } from "metabase-lib/v1/parameters/utils/filters";
 import { getParameterColumns } from "metabase-lib/v1/parameters/utils/targets";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   isDate,
@@ -33,6 +31,7 @@ import type {
   DatetimeUnit,
   Parameter,
   QuestionDashboardCard,
+  TemplateTag,
 } from "metabase-types/api";
 import { clickBehaviorIsValid } from "metabase-types/guards";
 
@@ -104,87 +103,88 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
 }
 
 function getTargetsForNativeQuestion(question: Question): Target[] {
-  // Unjustified type cast. FIXME
-  const legacyNativeQuery = question.legacyNativeQuery() as NativeQuery;
+  const query = question.query();
+  const tags = Lib.templateTags(query);
 
   return [
-    ...getTargetsForDimensionOptions(legacyNativeQuery),
-    ...getTargetsForVariables(legacyNativeQuery),
+    ...tags
+      .filter((tag) => tag.type === "dimension")
+      .map((tag) => getTargetForDimensionTag(query, tag)),
+    ...tags
+      .filter((tag) => tag.type !== "dimension")
+      .map(getTargetForVariableTag),
   ];
 }
 
-function getTargetsForDimensionOptions(
-  legacyNativeQuery: NativeQuery,
-): Target[] {
-  return legacyNativeQuery
-    .dimensionOptions()
-    .all()
-    .map((templateTagDimension) => {
-      const { name, id } = templateTagDimension.tag();
-      const target: ClickBehaviorTarget = { type: "variable", id: name };
-
-      const field = templateTagDimension.field();
-      const effectiveType = field?.effective_type;
-
-      const parentType =
-        [TYPE.Temporal, TYPE.Number, TYPE.Text, TYPE.Boolean].find(
-          (t) => typeof effectiveType === "string" && isa(effectiveType, t),
-        ) || effectiveType;
-
-      return {
-        id,
-        target,
-        name: templateTagDimension.displayName(),
-        sourceFilters: {
-          column: (column: DatasetColumn) =>
-            Boolean(
-              column.effective_type &&
-              parentType &&
-              isa(column.effective_type, parentType),
-            ),
-          parameter: (parameter) =>
-            dimensionFilterForParameter(parameter)(templateTagDimension),
-          userAttribute: () => parentType === TYPE.Text,
-        },
-      };
-    });
+function getColumnParentType(column: Lib.ColumnMetadata) {
+  if (Lib.isTemporal(column)) {
+    return TYPE.Temporal;
+  }
+  if (Lib.isNumeric(column)) {
+    return TYPE.Number;
+  }
+  if (Lib.isStringOrStringLike(column)) {
+    return TYPE.Text;
+  }
+  if (Lib.isBoolean(column)) {
+    return TYPE.Boolean;
+  }
+  return undefined;
 }
 
-function getTargetsForVariables(legacyNativeQuery: NativeQuery): Target[] {
-  return legacyNativeQuery.variables().map((templateTagVariable) => {
-    const { name, id, type } = checkNotNull(templateTagVariable.tag());
-    const target: ClickBehaviorTarget = { type: "variable", id: name };
-    const parentType = type
-      ? {
-          card: undefined,
-          dimension: undefined,
-          snippet: undefined,
-          "temporal-unit": undefined,
-          table: undefined,
-          text: TYPE.Text,
-          number: TYPE.Number,
-          date: TYPE.Temporal,
-          boolean: TYPE.Boolean,
-        }[type]
-      : undefined;
+function getTargetForDimensionTag(query: Lib.Query, tag: TemplateTag): Target {
+  const fieldId = tag["field-id"];
+  const column = fieldId != null ? Lib.fieldMetadata(query, fieldId) : null;
+  const parentType = column != null ? getColumnParentType(column) : undefined;
 
-    return {
-      id,
-      target,
-      name: templateTagVariable.displayName(),
-      sourceFilters: {
-        column: (column: DatasetColumn) =>
-          Boolean(
-            column.effective_type &&
-            parentType &&
-            isa(column.effective_type, parentType),
-          ),
-        parameter: (parameter) =>
-          variableFilterForParameter(parameter)(templateTagVariable),
-        userAttribute: () => parentType === TYPE.Text,
-      },
-    };
-  });
+  return {
+    id: tag.id,
+    target: { type: "variable", id: tag.name },
+    name:
+      tag["display-name"] ??
+      (column != null ? Lib.displayInfo(query, -1, column).displayName : ""),
+    sourceFilters: {
+      column: (column: DatasetColumn) =>
+        Boolean(
+          column.effective_type &&
+          parentType &&
+          isa(column.effective_type, parentType),
+        ),
+      parameter: (parameter) =>
+        dimensionTagFilterForParameter(query, parameter)(tag),
+      userAttribute: () => parentType === TYPE.Text,
+    },
+  };
+}
+
+function getTargetForVariableTag(tag: TemplateTag): Target {
+  const parentType = {
+    card: undefined,
+    dimension: undefined,
+    snippet: undefined,
+    "temporal-unit": undefined,
+    table: undefined,
+    text: TYPE.Text,
+    number: TYPE.Number,
+    date: TYPE.Temporal,
+    boolean: TYPE.Boolean,
+  }[tag.type];
+
+  return {
+    id: tag.id,
+    target: { type: "variable", id: tag.name },
+    name: tag["display-name"] || tag.name,
+    sourceFilters: {
+      column: (column: DatasetColumn) =>
+        Boolean(
+          column.effective_type &&
+          parentType &&
+          isa(column.effective_type, parentType),
+        ),
+      parameter: (parameter) => variableTagFilterForParameter(parameter)(tag),
+      userAttribute: () => parentType === TYPE.Text,
+    },
+  };
 }
 
 export function getTargetsForDashboard(

@@ -1,5 +1,6 @@
 ---
 title: Presto
+summary: Connect Metabase to Presto, with every connection setting explained.
 ---
 
 # Presto

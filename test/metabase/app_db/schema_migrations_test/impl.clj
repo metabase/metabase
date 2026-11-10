@@ -69,6 +69,16 @@
   (let [data-source (mdb.data-source/raw-connection-string->DataSource (str "jdbc:h2:mem:" (random-schema-migrations-test-db-name)))]
     (f data-source)))
 
+(defn do-with-app-db-bindings
+  "Call `f` with the app DB bound to `data-source`, a DB of type `driver`, and with the bindings migrating a throwaway
+  app DB needs: no work handed to Quartz, and no test dataset prewarmed into it."
+  [driver ^javax.sql.DataSource data-source f]
+  ;; Quartz would outlive the throwaway DB, and the DB must hold only what the test loads.
+  (binding [mdb.connection/*application-db*                (mdb.connection/application-db driver data-source)
+            custom-migrations.util/*allow-temp-scheduling* false
+            data.impl/*skip-dataset-prewarm?*              true]
+    (f)))
+
 (defn do-with-temp-empty-app-db
   "The function invoked by [[with-temp-empty-app-db]] to execute function `f` in a temporary, empty app DB. Use the
   macro instead: [[with-temp-empty-app-db]]."
@@ -80,12 +90,7 @@
      ;; it should be ok to open multiple connections to this `data-source`; it should stay open as long as `conn` is
      ;; open
      (with-open [conn (.getConnection data-source)]
-       (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)
-                 custom-migrations.util/*allow-temp-scheduling* false
-                 ;; This app DB must remain empty, or contain only what the test loads. Prevent `with-temp` from
-                 ;; prewarming the test-data Database within it.
-                 data.impl/*skip-dataset-prewarm?* true]
-         (f conn))))))
+       (do-with-app-db-bindings driver data-source #(f conn))))))
 
 (defmacro with-temp-empty-app-db
   "Create a new temporary application DB of `db-type` and execute `body` with `conn-binding` bound to a

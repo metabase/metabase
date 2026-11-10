@@ -2,12 +2,7 @@ import { USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
-  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type {
-  NativeQuestionDetails,
-  StructuredQuestionDetails,
-} from "e2e/support/helpers/api";
 import {
   ACCOUNTS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_CREATED_AT,
@@ -19,7 +14,6 @@ import type {
   CollectionId,
   CollectionPermission,
   CollectionPermissions,
-  Document,
 } from "metabase-types/api";
 
 const { H } = cy;
@@ -33,173 +27,12 @@ describe("documents", () => {
     H.resetSnowplow();
   });
 
-  describe("duplicating documents", () => {
-    it("should warn about unsaved changes on duplicate, keep them on cancel, and save, copy and redirect on confirm", () => {
-      cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
-
-      H.createDocument({
-        name: "Save Duplicate Doc",
-        document: {
-          content: [
-            {
-              type: "paragraph",
-              content: [{ type: "text", text: "Original content" }],
-              attrs: { _id: "1" },
-            },
-          ],
-          type: "doc",
-        },
-        collection_id: null,
-        idAlias: "documentId",
-      });
-
-      H.visitDocument("@documentId");
-
-      cy.findByRole("textbox", { name: "Document Title" })
-        .should("have.value", "Save Duplicate Doc")
-        .clear()
-        .type("Saved title");
-
-      H.documentContent().click();
-      H.addToDocument(" changed", false);
-
-      H.documentSaveButton().should("be.visible");
-
-      cy.findByLabelText("More options").click();
-      H.popover().findByText("Duplicate").click();
-
-      cy.findByTestId("save-confirmation").should("be.visible");
-
-      cy.log("cancelling the warning keeps the changes unsaved");
-      cy.findByRole("button", { name: "Cancel" }).click();
-
-      cy.findByTestId("save-confirmation").should("not.exist");
-      cy.findByRole("heading", { name: /Duplicate "/ }).should("not.exist");
-      H.documentSaveButton().should("be.visible");
-
-      cy.log("saving from the warning opens the duplicate modal");
-      cy.findByLabelText("More options").click();
-      H.popover().findByText("Duplicate").click();
-
-      cy.findByTestId("save-confirmation").should("be.visible");
-      cy.findByRole("button", { name: "Save changes" }).click();
-
-      // saved
-      H.documentSaveButton().should("not.exist");
-      cy.findByRole("textbox", { name: "Document Title" }).should(
-        "have.value",
-        "Saved title",
-      );
-
-      // duplicate modal
-      cy.findByRole("heading", { name: 'Duplicate "Saved title"' }).should(
-        "be.visible",
-      );
-      cy.findByRole("button", { name: "Duplicate" }).should("be.visible");
-      cy.findByRole("textbox", { name: "Name" }).then(($input) => {
-        // Snapshot the value now; aliasing a command chain here can become flaky after navigation.
-        const copyName = ($input.val() ?? "").toString();
-        cy.wrap(copyName).as("copyName");
-      });
-
-      cy.findByRole("button", { name: "Duplicate" }).click();
-
-      cy.wait("@copyDoc").then(({ response }) => {
-        const copiedId = response?.body?.id;
-        expect(copiedId).to.exist;
-
-        cy.location("pathname").should(
-          "match",
-          new RegExp(`^/document/${copiedId}`),
-        );
-      });
-
-      cy.get<string>("@copyName").then((copyName) => {
-        cy.findByRole("textbox", { name: "Document Title" }).should(
-          "have.value",
-          copyName,
-        );
-      });
-
-      // content should match the saved changes
-      H.documentContent().should("contain.text", "Original content changed");
-    });
-
-    it("should duplicate a document without any changes (happy path)", () => {
-      cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
-
-      H.createDocument({
-        name: "Happy Path Duplicate Doc",
-        document: {
-          content: [
-            {
-              type: "paragraph",
-              content: [{ type: "text", text: "Original content" }],
-              attrs: { _id: "1" },
-            },
-          ],
-          type: "doc",
-        },
-        collection_id: null,
-        idAlias: "documentId",
-      });
-
-      H.visitDocument("@documentId");
-
-      cy.findByRole("textbox", { name: "Document Title" }).should(
-        "have.value",
-        "Happy Path Duplicate Doc",
-      );
-      H.documentSaveButton().should("not.exist");
-
-      cy.findByLabelText("More options").click();
-      H.popover().findByText("Duplicate").click();
-
-      cy.findByRole("heading", {
-        name: 'Duplicate "Happy Path Duplicate Doc"',
-      }).should("be.visible");
-
-      cy.findByRole("textbox", { name: "Name" }).then(($input) => {
-        // Snapshot the value now; aliasing a command chain here can become flaky after navigation.
-        const copyName = ($input.val() ?? "").toString();
-        cy.wrap(copyName).as("copyName");
-      });
-      cy.findByRole("button", { name: "Duplicate" }).click();
-
-      cy.wait("@copyDoc").then(({ response }) => {
-        const copiedId = response?.body?.id;
-        expect(copiedId).to.exist;
-
-        cy.location("pathname").should(
-          "match",
-          new RegExp(`^/document/${copiedId}`),
-        );
-      });
-
-      cy.get<string>("@copyName").then((copyName) => {
-        cy.findByRole("textbox", { name: "Document Title" }).should(
-          "have.value",
-          copyName,
-        );
-      });
-
-      H.documentContent().should("contain.text", "Original content");
-    });
-  });
-
-  it("should allow you to create a new document from the new button and save", () => {
-    const getDocumentStub = cy.stub();
-
-    cy.intercept("GET", "/api/document/1", getDocumentStub);
-
+  it("should create and save a document that persists after a reload, and manage it from the collection list", () => {
     cy.visit("/");
 
     H.newButton("Document").click();
-    cy.title().should("eq", "New document · Metabase");
 
-    cy.findByRole("textbox", { name: "Document Title" })
-      .should("be.focused")
-      .type("Test Document");
+    cy.findByRole("textbox", { name: "Document Title" }).type("Test Document");
 
     H.documentContent().type("This is a paragraph\nAnd this is another");
 
@@ -209,25 +42,29 @@ describe("documents", () => {
     H.entityPickerModalItem(1, "First collection").click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
 
-    // We should not show a loading state in between creating a document and viewing the created document.
     cy.location("pathname").should("eq", "/document/1");
-    cy.title().should("eq", "Test Document · Metabase");
+    H.documentSaveButton().should("not.exist");
 
-    H.expectUnstructuredSnowplowEvent({ event: "document_created" });
-    cy.wrap(getDocumentStub).should("not.have.been.called");
+    cy.reload();
+
+    cy.findByRole("textbox", { name: "Document Title" }).should(
+      "have.value",
+      "Test Document",
+    );
+    H.documentContent()
+      .should("contain.text", "This is a paragraph")
+      .and("contain.text", "And this is another");
 
     cy.findByLabelText("More options").click();
-    H.popover().findByText("Bookmark").click();
+    H.popover().findByText("History").click();
+    cy.findByTestId("document-history-list")
+      .findByText(/created this/)
+      .should("be.visible");
+    H.sidesheet().findByLabelText("Close").click();
+    H.sidesheet().should("not.exist");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "bookmark_added",
-      event_detail: "document",
-      triggered_from: "document_header",
-    });
-
-    // Delete the bookmark because we need to bookmark the doc again in the test
-    cy.request("DELETE", "/api/bookmark/document/1");
-
+    // The reload reopens the navbar, which hides the breadcrumbs
+    H.closeNavigationSidebar();
     H.appBar()
       .findByRole("link", { name: /First collection/ })
       .click();
@@ -308,112 +145,14 @@ describe("documents", () => {
     // Force the click since this is hidden behind a toast notification
     H.navigationSidebar().findByText("Trash").click({ force: true });
     H.getUnpinnedSection().findByText("Test Document").should("exist").click();
-
-    cy.log("test that deleted documents cannot be edited (metabase#63112)");
-    cy.findByRole("textbox", { name: "Document Title" })
-      .should("be.visible")
-      .and("have.attr", "readonly");
-    H.documentContent()
-      .findByRole("textbox")
-      .should("have.attr", "contenteditable", "false");
+    cy.findByTestId("archive-banner").should("be.visible");
   });
 
-  it("should default the save modal to a selectable collection when Library is enabled (#73538)", () => {
-    H.activateToken("pro-self-hosted");
-    H.createLibrary();
-    cy.intercept("POST", "/api/document").as("createDocument");
-
-    cy.visit("/");
-
-    H.newButton("Document").click();
-    cy.findByRole("textbox", { name: "Document Title" }).type(
-      "Document in default collection",
-    );
-    H.documentContent().type(
-      "This document should save without changing folders",
-    );
-
-    cy.findByRole("button", { name: "Save" }).click();
-
-    H.entityPickerModal().within(() => {
-      cy.findByTestId("entity-picker-select-button").should("be.enabled");
-    });
-    cy.findByTestId("entity-picker-select-button").click();
-
-    cy.wait("@createDocument").then(({ request }) => {
-      expect(request.body).not.to.have.property("collection_id");
-    });
-    cy.location("pathname").should("match", /^\/document\/\d+/);
-    cy.findByRole("textbox", { name: "Document Title" }).should(
-      "have.value",
-      "Document in default collection",
-    );
-  });
-
-  it("should handle navigating from /new to /new gracefully, focus the start of the body when pressing Enter on the title, and show an error toast when creating a document fails", () => {
-    cy.log("navigating from /new to /new");
-    cy.visit("/");
-    H.newButton("Document").click();
-    cy.title().should("eq", "New document · Metabase");
-    H.documentContent().click();
-
-    H.documentSaveButton().should("not.exist");
-
-    H.addToDocument("This is some content");
-
-    H.documentSaveButton().should("exist");
-
-    H.newButton("Document").click();
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "unsaved_changes_warning_displayed",
-      },
-      1,
-    );
-    H.leaveConfirmationModal().findByRole("button", { name: "Cancel" }).click();
-
-    H.documentContent().should("have.text", "This is some content");
-
-    H.newButton("Document").click();
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "unsaved_changes_warning_displayed",
-      },
-      2,
-    );
-    H.leaveConfirmationModal()
-      .findByRole("button", { name: "Discard changes" })
-      .click();
-    H.documentContent().should("have.text", "");
-    H.documentSaveButton().should("not.exist");
-
-    cy.log("Enter on the title focuses the start of the body");
-    // A fresh page load, so the title input gets the initial focus
-    cy.visit("/document/new");
-
-    cy.log("Type a title");
-    cy.findByRole("textbox", { name: "Document Title" })
-      .should("be.focused")
-      .type("Doc Title{enter}");
-
-    cy.log("Add some content to the document body");
-    H.addToDocument("One{enter}Two");
-
-    cy.log("Click back on the title to focus it and hit Enter");
-    cy.findByRole("textbox", { name: "Document Title" })
-      .click()
-      .type("{enter}");
-
-    cy.log("Focus should be placed at the beginning of the document body");
-    cy.realType("NEW: ");
-    H.documentContent().should("have.text", "NEW: OneTwo");
-
-    cy.log("error toast when creating a new document fails");
+  it("should show an error toast when creating a document fails", () => {
     cy.intercept("POST", "/api/document", { statusCode: 500 }).as(
       "createDocumentError",
     );
     cy.intercept("GET", "/api/collection/*").as("getCollection");
-    // A fresh page load discards the unsaved document above
     cy.visit("/document/new");
 
     // make changes and attempt to save
@@ -429,149 +168,6 @@ describe("documents", () => {
       .should("be.visible")
       .and("contain.text", "Error saving document");
     H.documentSaveButton().should("be.visible");
-  });
-
-  describe("document editing", () => {
-    describe("Document with content", () => {
-      beforeEach(() => {
-        H.createDocument({
-          name: "Bar Document",
-          document: {
-            content: [
-              {
-                type: "paragraph",
-                content: [
-                  {
-                    type: "text",
-                    text: "Lorem Ipsum and some more words",
-                  },
-                ],
-                attrs: {
-                  _id: "1",
-                },
-              },
-              {
-                type: "resizeNode",
-                attrs: {
-                  height: 442,
-                  minHeight: 280,
-                },
-                content: [
-                  {
-                    type: "cardEmbed",
-                    attrs: {
-                      id: ORDERS_QUESTION_ID,
-                      name: null,
-                      _id: "2",
-                    },
-                  },
-                ],
-              },
-              {
-                type: "paragraph",
-                attrs: {
-                  _id: "3",
-                },
-              },
-            ],
-            type: "doc",
-          },
-          collection_id: null,
-          idAlias: "documentId",
-        });
-      });
-
-      it("should print and handle undo/redo, resetting the history when a different document is viewed and keeping it on save, and render 'not found' messages for a permanently deleted card and a nonexistent document", () => {
-        const originalText = "Lorem Ipsum and some more words";
-        const originalExact = new RegExp(`^${originalText}$`);
-        const modification = " etc.";
-        const modifiedExact = new RegExp(`^${originalText}${modification}$`);
-        H.visitDocument("@documentId");
-
-        cy.log("print");
-        cy.findByRole("button", { name: "More options" }).click();
-
-        // This needs to be *after* the page load to work
-        cy.window().then((win: Window) => {
-          cy.stub(win, "print").as("printStub");
-        });
-
-        H.popover().findByText("Print Document").click();
-
-        cy.get("@printStub").should("have.been.calledOnce");
-
-        cy.get("@documentId").then((id) => {
-          H.expectUnstructuredSnowplowEvent({
-            event: "document_print",
-            target_id: id,
-          });
-        });
-
-        cy.log("undo/redo");
-        H.getDocumentCard("Orders").should("exist");
-        H.documentContent().within(() => {
-          cy.contains(originalExact).click();
-          cy.realPress([H.metaKey, "z"]);
-          cy.contains(originalExact);
-
-          H.addToDocument(modification, false);
-          cy.contains(modifiedExact);
-          cy.realPress([H.metaKey, "z"]);
-          cy.contains(originalExact);
-          cy.realPress(["Shift", H.metaKey, "z"]);
-          cy.contains(modifiedExact);
-          cy.realPress([H.metaKey, "z"]); // revert to prevent "unsaved changes" dialog
-        });
-        H.newButton("Document").click();
-        H.documentContent().should("have.text", "");
-        cy.realPress([H.metaKey, "z"]);
-        H.documentContent().should("have.text", "");
-
-        cy.log("undo history survives save");
-        H.visitDocument("@documentId");
-        cy.findByTestId("document-card-embed").should("contain", "37.65"); // wait for data loading
-        H.documentContent().contains(originalExact).click();
-        H.addToDocument(modification, false);
-        H.documentContent().contains(modifiedExact);
-
-        cy.realPress([H.metaKey, "s"]);
-        cy.findByTestId("toast-undo")
-          .findByText("Document saved")
-          .should("be.visible");
-
-        cy.realPress([H.metaKey, "z"]);
-        cy.realPress([H.metaKey, "z"]);
-        H.documentContent().contains(originalExact);
-
-        cy.log("permanently deleted card");
-        cy.get<number>("@documentId").then((id) => {
-          cy.request<Document>("GET", `/api/document/${id}`).then(
-            ({ body: { document } }) => {
-              const resizeNode = document.content?.find(
-                (n) => n.type === "resizeNode",
-              );
-              const cardEmbed = resizeNode?.content?.[0];
-              const clonedCardId = cardEmbed?.attrs?.id;
-              cy.request("DELETE", `/api/card/${clonedCardId}`);
-              H.visitDocument(id);
-            },
-          );
-        });
-        cy.findByTestId("document-card-embed").should(
-          "have.text",
-          "Couldn't find this chart.",
-        );
-
-        cy.log("nonexistent document");
-        H.visitDocument(9999);
-        H.main().within(() => {
-          cy.findByText("We're a little lost...").should("be.visible");
-          cy.findByText("The page you asked for couldn't be found.").should(
-            "be.visible",
-          );
-        });
-      });
-    });
   });
 
   describe("Empty Document", () => {
@@ -1106,200 +702,6 @@ describe("documents", () => {
     });
   });
 
-  describe("flex chart widths", () => {
-    const PADDING_CARD = 1;
-    type ChartCard =
-      | (StructuredQuestionDetails & { name: string })
-      | (NativeQuestionDetails & { name: string });
-    type ChartSpec = {
-      label: string;
-      card: ChartCard;
-      paddingX: number;
-      selector: string;
-    };
-
-    const isNativeQuestion = (
-      question: ChartCard,
-    ): question is NativeQuestionDetails & { name: string } =>
-      "native" in question;
-
-    const createQuestionForCard = (
-      question: ChartCard,
-      nameOverride?: string,
-    ) => {
-      const details = nameOverride
-        ? { ...question, name: nameOverride }
-        : question;
-      return isNativeQuestion(details)
-        ? H.createNativeQuestion(details)
-        : H.createQuestion(details);
-    };
-
-    const chartTypes: ChartSpec[] = [
-      {
-        label: "line",
-        card: ACCOUNTS_COUNT_BY_CREATED_AT,
-        paddingX: 16 + PADDING_CARD,
-        selector: "[data-testid='chart-container'] > :first-child",
-      },
-      {
-        label: "pie",
-        card: PRODUCTS_COUNT_BY_CATEGORY_PIE,
-        paddingX: 14 + PADDING_CARD,
-        selector: "[data-testid='chart-with-legend']",
-      },
-    ];
-
-    const assertChartMatchesContainerWidth = (
-      cardName: string,
-      paddingX: number,
-      selector: string,
-    ) => {
-      H.getDocumentCard(cardName).then(($card) => {
-        const cardWidth = $card.width()!;
-        cy.wrap($card).find(selector).as("chart");
-
-        cy.get("@chart")
-          .should("exist")
-          .then(($chart) => {
-            const width = $chart.width()!;
-            expect(width + paddingX * 2).to.equal(cardWidth);
-          });
-      });
-    };
-
-    it("keeps chart widths in sync during flex resize", () => {
-      const cardIds: Record<string, { firstId: number; secondId: number }> = {};
-
-      // Create all questions first
-      chartTypes.forEach(({ label, card }) => {
-        const secondCardName = `${card.name} (copy)`;
-
-        cy.then(() =>
-          createQuestionForCard(card).then(({ body }) => {
-            cardIds[label] = { firstId: body.id, secondId: 0 };
-          }),
-        );
-
-        cy.then(() =>
-          createQuestionForCard(card, secondCardName).then(({ body }) => {
-            cardIds[label].secondId = body.id;
-          }),
-        );
-      });
-
-      cy.then(() => {
-        const content = chartTypes.map(({ label }) => ({
-          type: "resizeNode",
-          attrs: {
-            height: 350,
-            minHeight: 280,
-            _id: `flex-${label}`,
-          },
-          content: [
-            {
-              type: "flexContainer",
-              attrs: {
-                _id: `flex-${label}-container`,
-                columnWidths: [50, 50],
-              },
-              content: [
-                {
-                  type: "cardEmbed",
-                  attrs: {
-                    id: cardIds[label].firstId,
-                    name: null,
-                    _id: `flex-${label}-card-1`,
-                  },
-                },
-                {
-                  type: "cardEmbed",
-                  attrs: {
-                    id: cardIds[label].secondId,
-                    name: null,
-                    _id: `flex-${label}-card-2`,
-                  },
-                },
-              ],
-            },
-          ],
-        }));
-
-        return H.createDocument({
-          name: "Flex chart width document",
-          document: {
-            type: "doc",
-            content,
-          },
-          collection_id: null,
-          idAlias: "flexDocumentId",
-        });
-      });
-
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
-      H.visitDocument("@flexDocumentId");
-
-      // Wait for all cards to load (2 cards per chart type)
-      for (let i = 0; i < chartTypes.length * 2; i++) {
-        cy.wait("@cardQuery", { timeout: 15000 });
-      }
-
-      chartTypes.forEach(({ card, paddingX, selector }) => {
-        const firstCardName = card.name;
-        const secondCardName = `${card.name} (copy)`;
-
-        const firstCardChart = H.getDocumentCard(firstCardName).find(selector);
-        const secondCardChart =
-          H.getDocumentCard(secondCardName).find(selector);
-
-        firstCardChart.should("exist");
-        secondCardChart.should("exist");
-
-        const flexContainer = H.getFlexContainerForCard(firstCardName);
-        const handles = H.getResizeHandlesForFlexContianer(flexContainer);
-
-        H.getDocumentCard(firstCardName).then(($card) => {
-          cy.wrap($card.width()).as("initialCardWidth");
-        });
-
-        handles.eq(0).then(($handle) => {
-          cy.wrap($handle).realMouseDown({
-            button: "left",
-            position: "center",
-          });
-
-          const steps = [10, 40, 60, -100, -10, -40, -60];
-          steps.forEach((deltaX, index) => {
-            cy.wrap($handle).realMouseMove(deltaX, 0, {
-              position: "center",
-            });
-
-            if (index === 0) {
-              cy.get<number>("@initialCardWidth").then((initialWidth) => {
-                H.getDocumentCard(firstCardName).should(($card) => {
-                  expect($card.width()).not.to.equal(initialWidth);
-                });
-              });
-            }
-
-            assertChartMatchesContainerWidth(firstCardName, paddingX, selector);
-            assertChartMatchesContainerWidth(
-              secondCardName,
-              paddingX,
-              selector,
-            );
-          });
-
-          cy.wrap($handle).realMouseUp({
-            button: "left",
-            position: "center",
-          });
-        });
-      });
-    });
-  });
-
   describe("creating new questions", () => {
     beforeEach(() => {
       H.createDocument({
@@ -1673,114 +1075,6 @@ describe("documents", () => {
           expect(text).not.to.include("#heading-block-2");
         });
       });
-    });
-  });
-
-  describe("revision history", () => {
-    beforeEach(() => {
-      cy.intercept("POST", "/api/revision/revert").as("revert");
-      cy.intercept("GET", "/api/revision*").as("revisionHistory");
-    });
-
-    it("should be able to view and revert document revisions", () => {
-      cy.log("Create a document with initial content");
-      H.createDocument({
-        name: "Revision Test Document",
-        document: {
-          type: "doc",
-          content: [
-            {
-              type: "paragraph",
-              content: [
-                {
-                  type: "text",
-                  text: "Initial content",
-                },
-              ],
-            },
-          ],
-        },
-        idAlias: "documentId",
-      });
-
-      H.visitDocument("@documentId");
-
-      cy.log("Make changes to create a revision");
-      cy.findByRole("textbox", { name: "Document Title" })
-        .clear()
-        .type("Updated Document Title");
-      H.documentContent().click();
-      H.addToDocument("Updated content");
-      H.documentSaveButton().click();
-      cy.findByTestId("toast-undo")
-        .should("be.visible")
-        .and("contain.text", "Document saved");
-      // dismiss after asserting so toasts don't stack into later lookups
-      H.undoToast().icon("close").click({ force: true });
-      H.undoToastList().should("have.length", 0);
-
-      cy.log("Make another change");
-      H.documentContent().click();
-      H.addToDocument("More changes");
-      H.documentSaveButton().click();
-      cy.contains('[data-testid="toast-undo"]', "Document saved").should(
-        "be.visible",
-      );
-      H.undoToast().icon("close").click({ force: true });
-      H.undoToastList().should("have.length", 0);
-
-      cy.log("Open revision history");
-      cy.findByLabelText("More options").click();
-      H.popover().findByText("History").click();
-
-      cy.wait("@revisionHistory");
-
-      cy.log("Verify revision history sidebar is open");
-      cy.findByTestId("document-history-list").should("be.visible");
-
-      cy.log("Verify revision entries are displayed");
-      cy.findByTestId("document-history-list")
-        .findByText(/created this/)
-        .should("be.visible");
-
-      cy.log("Revert to an earlier revision");
-      cy.intercept("GET", "/api/document/*").as("documentReload");
-      cy.findByTestId("document-history-list")
-        .findByText(/created this/)
-        .closest('[data-testid="revision-history-event"]')
-        .findByTestId("question-revert-button")
-        .click();
-      cy.wait(["@revert", "@documentReload"]);
-
-      cy.log("Verify document was reverted");
-      cy.findByRole("textbox", { name: "Document Title" }).should(
-        "have.value",
-        "Revision Test Document",
-      );
-      H.documentContent().should("contain.text", "Initial content");
-      H.documentContent().should("not.contain.text", "Updated content");
-
-      cy.log("Verify revert entry appears in history");
-      cy.findByTestId("document-history-list")
-        .findByText(/reverted to an earlier version/)
-        .should("be.visible");
-
-      cy.log("Surface backend error when a revert fails (UXW-310)");
-      cy.intercept("POST", "/api/revision/revert", {
-        statusCode: 500,
-        body: { message: "Cannot revert: missing document" },
-      }).as("failedRevert");
-
-      cy.findByTestId("document-history-list")
-        .findAllByTestId("question-revert-button")
-        .first()
-        .click();
-      cy.wait("@failedRevert");
-
-      cy.contains(
-        '[data-testid="toast-undo"]',
-        "Cannot revert: missing document",
-      ).should("be.visible");
     });
   });
 

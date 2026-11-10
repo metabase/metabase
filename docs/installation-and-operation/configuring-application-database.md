@@ -1,5 +1,6 @@
 ---
 title: Configuring the Metabase application database
+summary: Point Metabase at a PostgreSQL, MySQL, or MariaDB application database instead of the built-in H2, including SSL certificate validation.
 redirect_from:
   - /docs/latest/operations-guide/configuring-application-database
 ---

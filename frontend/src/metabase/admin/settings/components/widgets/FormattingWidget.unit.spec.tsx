@@ -8,7 +8,7 @@ import {
 import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import type { SettingKey } from "metabase-types/api";
+import type { FormattingSettings, SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -16,8 +16,8 @@ import {
 
 import { FormattingWidget } from "./FormattingWidget";
 
-const setup = async () => {
-  const settings = createMockSettings();
+const setup = async (formatting: FormattingSettings = {}) => {
+  const settings = createMockSettings({ "custom-formatting": formatting });
 
   // Stateful mock: the widget saves one key then reads the refreshed settings
   // (session-properties is refetched on every save via tag invalidation), so
@@ -58,6 +58,7 @@ describe("FormattingWidget", () => {
       "Separator style",
       "Unit of currency",
       "Currency label style",
+      "Currency label position",
     ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
@@ -104,6 +105,72 @@ describe("FormattingWidget", () => {
 
     expect(
       within(currencyStyleWidget).queryByLabelText(/Local symbol/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should save the instance currency position", async () => {
+    await setup();
+
+    expect(screen.getByRole("radio", { name: "Before amount" })).toBeChecked();
+    await userEvent.click(screen.getByRole("radio", { name: "After amount" }));
+
+    await waitFor(async () => {
+      expect(await findRequests("PUT")).toEqual([
+        expect.objectContaining({
+          url: expect.stringContaining("/api/setting/custom-formatting"),
+          body: {
+            value: expect.objectContaining({
+              "type/Currency": {
+                currency: "USD",
+                currency_style: "symbol",
+                currency_position: "after",
+              },
+            }),
+          },
+        }),
+      ]);
+    });
+  });
+
+  it("should display names after the amount and restore the saved position for symbols", async () => {
+    await setup({
+      "type/Currency": {
+        currency: "USD",
+        currency_style: "symbol",
+        currency_position: "before",
+      },
+    });
+
+    await userEvent.click(screen.getByRole("radio", { name: /Name/ }));
+
+    expect(screen.getByRole("radio", { name: "After amount" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "After amount" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Before amount" })).toBeDisabled();
+    expect(
+      screen.getByText("Currency names always appear after the amount."),
+    ).toBeInTheDocument();
+    await waitFor(async () => {
+      expect(await findRequests("PUT")).toEqual([
+        expect.objectContaining({
+          body: {
+            value: expect.objectContaining({
+              "type/Currency": {
+                currency: "USD",
+                currency_style: "name",
+                currency_position: "before",
+              },
+            }),
+          },
+        }),
+      ]);
+    });
+
+    await userEvent.click(screen.getByRole("radio", { name: /Symbol/ }));
+
+    expect(screen.getByRole("radio", { name: "Before amount" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Before amount" })).toBeEnabled();
+    expect(
+      screen.queryByText("Currency names always appear after the amount."),
     ).not.toBeInTheDocument();
   });
 

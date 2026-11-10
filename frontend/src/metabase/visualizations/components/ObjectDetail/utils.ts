@@ -4,15 +4,12 @@ import { t } from "ttag";
 import * as Urls from "metabase/urls";
 import { singularize } from "metabase/utils/formatting";
 import { formatValue } from "metabase/value-formatting";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
-import {
-  getIsPKFromTablePredicate,
-  isEntityName,
-  isPK,
-} from "metabase-lib/v1/types/utils/isa";
+import { isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Table as ApiTable,
+  CardId,
   DatasetColumn,
   DatasetData,
   NormalizedTable,
@@ -23,7 +20,7 @@ import type {
 import type { ObjectId } from "./types";
 
 export interface GetObjectNameArgs {
-  table?: Table | null;
+  table?: ApiTable | null;
   question?: Question;
   cols: DatasetColumn[];
   zoomedRow: unknown[] | undefined;
@@ -42,7 +39,7 @@ export const getObjectName = ({
     return zoomedRow[entityNameColumn] as string;
   }
 
-  const tableObjectName = table && table.objectName();
+  const tableObjectName = table && singularize(table.display_name);
   if (tableObjectName) {
     return tableObjectName;
   }
@@ -52,6 +49,12 @@ export const getObjectName = ({
   }
   return t`Item Detail`;
 };
+
+export const getIsPKFromSourcePredicate =
+  ({ tableId, cardId }: { tableId?: TableId | null; cardId?: CardId | null }) =>
+  (column: DatasetColumn): boolean =>
+    Lib.isPrimaryKey(Lib.legacyColumnTypeInfo(column)) &&
+    (cardId != null || column.table_id === tableId);
 
 export interface GetDisplayIdArgs {
   cols: DatasetColumn[];
@@ -66,15 +69,15 @@ export const getDisplayId = ({
   tableId,
   settings,
 }: GetDisplayIdArgs): ObjectId | null => {
-  const hasSinglePk =
-    cols.filter(getIsPKFromTablePredicate(tableId)).length === 1;
+  const isPKFromSource = getIsPKFromSourcePredicate({ tableId });
+  const hasSinglePk = cols.filter(isPKFromSource).length === 1;
 
   if (!zoomedRow) {
     return null;
   }
 
   if (hasSinglePk) {
-    const pkColumnIndex = cols.findIndex(getIsPKFromTablePredicate(tableId));
+    const pkColumnIndex = cols.findIndex(isPKFromSource);
     const pkColumn = cols[pkColumnIndex];
     const columnSetting = settings?.column?.(pkColumn) ?? {};
 
@@ -105,18 +108,22 @@ export const getDisplayId = ({
 export interface GetIdValueArgs {
   data: DatasetData;
   tableId?: TableId;
+  cardId?: CardId | null;
 }
 
 export const getIdValue = ({
   data,
   tableId,
+  cardId,
 }: GetIdValueArgs): ObjectId | null => {
   if (!data) {
     return null;
   }
 
   const { cols, rows } = data;
-  const columnIndex = cols.findIndex(getIsPKFromTablePredicate(tableId));
+  const columnIndex = cols.findIndex(
+    getIsPKFromSourcePredicate({ tableId, cardId }),
+  );
   // Unjustified type cast. FIXME
   return rows[0][columnIndex] as number;
 };

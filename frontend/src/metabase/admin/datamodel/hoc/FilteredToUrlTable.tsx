@@ -10,14 +10,14 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/querying/common/com
 import type { Location } from "metabase/router";
 import { queryToSearch, useNavigate } from "metabase/router";
 import { Icon } from "metabase/ui";
-import type { ConcreteTableId, Segment } from "metabase-types/api";
+import type { Segment, TableId } from "metabase-types/api";
 
 type FilteredToUrlTableInnerProps = {
   location: Location;
   segments: Segment[];
 };
 
-function getTableIdFromLocation(location: Location): ConcreteTableId | null {
+function getTableIdFromLocation(location: Location): TableId | null {
   const tableId = new URLSearchParams(location.search).get("table");
   return tableId != null ? parseInt(tableId, 10) : null;
 }
@@ -37,11 +37,11 @@ export function FilteredToUrlTable(
     ...props
   }: FilteredToUrlTableInnerProps) => {
     const navigate = useNavigate();
-    const [tableId, setTableIdState] = useState<ConcreteTableId | null>(() =>
+    const [tableId, setTableIdState] = useState<TableId | null>(() =>
       getTableIdFromLocation(location),
     );
 
-    const setTableId = (newTableId: ConcreteTableId | null) => {
+    const setTableId = (newTableId: TableId | null) => {
       setTableIdState(newTableId);
       navigate(
         {
@@ -74,8 +74,8 @@ export function FilteredToUrlTable(
 }
 
 type TableSelectorProps = {
-  tableId: ConcreteTableId | null;
-  setTableId: (tableId: ConcreteTableId | null) => void;
+  tableId: TableId | null;
+  setTableId: (tableId: TableId | null) => void;
 };
 
 function TableSelector({ tableId, setTableId }: TableSelectorProps) {

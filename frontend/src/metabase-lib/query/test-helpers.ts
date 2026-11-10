@@ -8,7 +8,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import type { Metadata } from "./metadata";
+import type { JsMetadata } from "./metadata";
 
 const SAMPLE_DATABASE = createSampleDatabase();
 
@@ -20,7 +20,7 @@ export { SAMPLE_DATABASE, SAMPLE_METADATA, SAMPLE_PROVIDER };
 
 type MetadataProviderOpts = {
   databaseId?: DatabaseId;
-  metadata?: Metadata;
+  metadata?: JsMetadata;
 };
 
 export function createMetadataProvider({

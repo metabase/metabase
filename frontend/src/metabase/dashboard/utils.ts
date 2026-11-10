@@ -16,7 +16,6 @@ import {
   getDatasetPermissionError,
   getGenericErrorMessage,
 } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   areParameterValuesIdentical,
@@ -185,12 +184,7 @@ export function getInlineParameterTabMap(dashboard: Dashboard) {
 }
 
 export function isNativeDashCard(dashcard: QuestionDashboardCard) {
-  // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
-  if (dashcard.card.dataset_query == null) {
-    return false;
-  }
-  const question = new Question(dashcard.card);
-  return question.isNative();
+  return dashcard.card.query_type === "native";
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
@@ -578,10 +572,7 @@ export function hasActionsMenu(dashcard: DashboardCard) {
 
   // This seems to work, but it isn't the right logic.
   // The right thing to do would be to check for any drills. However, we'd need a "clicked" object for that.
-  const question = Question.create({
-    dataset_query: dashcard.card.dataset_query,
-  });
-  return !question.isNative();
+  return dashcard.card.query_type !== "native";
 }
 
 export function hasColumnLevelClickBehavior(dashcard: DashboardCard) {

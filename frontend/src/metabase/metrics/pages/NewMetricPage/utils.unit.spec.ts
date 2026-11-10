@@ -1,9 +1,9 @@
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -13,10 +13,11 @@ describe("NewMetricPage query selectors", () => {
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [createSampleDatabase()] }),
   });
-  const datasetQuery = createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: { "source-table": ORDERS_ID },
-  });
+  const datasetQuery = Lib.toLegacyQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    }),
+  );
 
   // Each call builds a fresh Question, so without memoisation these would
   // hand `useSelector` a new query on every store action.

@@ -12,22 +12,19 @@ import {
 } from "metabase/utils/dashboard";
 import { getAllowedIframeAttributes } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
-import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";
 import type Question from "metabase-lib/v1/Question";
 import {
-  dimensionFilterForParameter,
-  variableFilterForParameter,
+  dimensionTagFilterForParameter,
+  variableTagFilterForParameter,
 } from "metabase-lib/v1/parameters/utils/filters";
 import {
   buildColumnTarget,
-  buildDimensionTarget,
+  buildTemplateTagDimensionTarget,
   buildTemplateTagVariableTarget,
   buildTextTagTarget,
   getParameterColumns,
 } from "metabase-lib/v1/parameters/utils/targets";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
-import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
   BaseDashboardCard,
   Card,
@@ -38,6 +35,7 @@ import type {
   ParameterTarget,
   ParameterVariableTarget,
   StructuredParameterDimensionTarget,
+  TemplateTag,
   TemplateTagType,
   VirtualCard,
   WritebackParameter,
@@ -85,31 +83,31 @@ function buildStructuredQuerySectionOptions(
   });
 }
 
-function buildNativeQuerySectionOptions(
-  section: DimensionOptionsSection,
+function buildDimensionTagOption(
+  query: Lib.Query,
+  tag: TemplateTag,
   stageIndex: number,
-): NativeParameterMappingOption[] {
-  return section.items
-    .flatMap(({ dimension }) =>
-      dimension instanceof TemplateTagDimension ? [dimension] : [],
-    )
-    .map((dimension) => ({
-      name: dimension.displayName(),
-      icon: dimension.icon() ?? "",
-      isForeign: false,
-      target: buildDimensionTarget(dimension, stageIndex),
-    }));
+): NativeParameterMappingOption {
+  const fieldId = tag["field-id"];
+  const column = fieldId != null ? Lib.fieldMetadata(query, fieldId) : null;
+  return {
+    name:
+      tag["display-name"] ??
+      (column != null ? Lib.displayInfo(query, -1, column).displayName : ""),
+    icon: column != null ? getColumnIcon(column) : "",
+    isForeign: false,
+    target: buildTemplateTagDimensionTarget(tag, stageIndex),
+  };
 }
 
-function buildVariableOption(
-  variable: TemplateTagVariable,
+function buildVariableTagOption(
+  tag: TemplateTag,
 ): NativeParameterMappingOption {
-  const tag = variable.tag();
   return {
-    name: variable.displayName() ?? "",
-    icon: (tag && VARIABLE_ICONS[tag.type]) ?? "",
+    name: tag["display-name"] || tag.name,
+    icon: VARIABLE_ICONS[tag.type] ?? "",
     isForeign: false,
-    target: buildTemplateTagVariableTarget(variable),
+    target: buildTemplateTagVariableTarget(tag),
   };
 }
 
@@ -250,31 +248,24 @@ export function getParameterMappingOptions(
     return options;
   }
 
-  const legacyNativeQuery = question.legacyNativeQuery();
-  const options: NativeParameterMappingOption[] = [];
-  const stageIndex = Lib.stageCount(question.query()) - 1;
+  const query = question.query();
+  const stageIndex = Lib.stageCount(query) - 1;
+  const tags = Lib.templateTags(query);
+  const variableTagFilter = parameter
+    ? variableTagFilterForParameter(parameter)
+    : () => true;
+  const dimensionTagFilter = parameter
+    ? dimensionTagFilterForParameter(query, parameter)
+    : () => true;
 
-  if (!legacyNativeQuery) {
-    return options;
-  }
-
-  options.push(
-    ...legacyNativeQuery
-      .variables(parameter ? variableFilterForParameter(parameter) : undefined)
-      .map(buildVariableOption),
-  );
-  options.push(
-    ...legacyNativeQuery
-      .dimensionOptions(
-        parameter ? dimensionFilterForParameter(parameter) : undefined,
-      )
-      .sections()
-      .flatMap((section) =>
-        buildNativeQuerySectionOptions(section, stageIndex),
-      ),
-  );
-
-  return options;
+  return [
+    ...tags
+      .filter((tag) => tag.type !== "dimension" && variableTagFilter(tag))
+      .map(buildVariableTagOption),
+    ...tags
+      .filter((tag) => tag.type === "dimension" && dimensionTagFilter(tag))
+      .map((tag) => buildDimensionTagOption(query, tag, stageIndex)),
+  ];
 }
 
 export function getMappingOptionByTarget(

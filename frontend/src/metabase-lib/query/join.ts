@@ -1,11 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import * as ML from "cljs/metabase.lib.js";
-import type {
-  CardId,
-  ConcreteTableId,
-  DatabaseId,
-  VirtualTableId,
-} from "metabase-types/api";
 
 import type {
   Bucket,
@@ -224,32 +218,6 @@ export function removeJoin(
 
 export function joinedThing(query: Query, join: Join): Joinable {
   return ML.joined_thing(query, join);
-}
-
-type CardPickerInfo = {
-  databaseId: DatabaseId;
-  tableId: VirtualTableId;
-  cardId: CardId;
-  isModel: boolean;
-};
-
-type TablePickerInfo = {
-  databaseId: DatabaseId;
-  tableId: ConcreteTableId;
-  cardId?: never;
-  isModel?: never;
-};
-
-export type PickerInfo = TablePickerInfo | CardPickerInfo;
-
-/**
- * Returns `null` when the joined table/card isn't available, e.g. due to sandboxing.
- */
-export function pickerInfo(
-  query: Query,
-  metadata: Joinable,
-): PickerInfo | null {
-  return ML.picker_info(query, metadata);
 }
 
 export function joinableColumns(

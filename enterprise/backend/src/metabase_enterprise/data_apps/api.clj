@@ -17,6 +17,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.data-apps.schema :as data-apps.schema]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -28,8 +29,8 @@
 
 ;;; ------------------------------------------------ Constants ------------------------------------------------
 
-;; Slug must not collide with the literal `repo-status`/`sandbox-host`/`generate` sub-routes.
-(def ^:private slug-regex #"(?!repo-status$|sandbox-host$|generate$)[^/]+")
+;; Slug must not collide with the literal `repo-status`/`generate` sub-routes.
+(def ^:private slug-regex #"(?!repo-status$|generate$)[^/]+")
 
 (def ^:private bundle-response-headers
   ;; `no-cache` so the browser may cache but must revalidate via
@@ -144,41 +145,6 @@
   (api/check-superuser)
   (repo-status))
 
-;;; --------------------------------------------- Sandbox host ---------------------------------------------
-
-(def ^:private sandbox-host-html
-  "Empty document loaded as the Near-Membrane realm iframe. It only needs to exist and carry the
-   CSP below; the membrane populates the realm itself."
-  "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>")
-
-(def ^:private sandbox-host-csp
-  "CSP for the sandbox realm document ONLY.
-
-   `'unsafe-eval'` is what Near-Membrane needs to evaluate the app bundle inside the realm.
-   Serving the realm from its own document is what lets the data-app document drop that grant:
-   an `about:blank` realm would instead inherit the data-app document's CSP, forcing
-   `'unsafe-eval'` there and handing an attacker `eval`/`Function` in the host realm.
-
-   `default-src 'none'` gives the realm no network of its own — unlike the inherited case, where
-   it would pick up the data-app document's `connect-src` (which includes the instance origin)."
-  (str "default-src 'none'; "
-       "script-src 'unsafe-eval'; "
-       "frame-ancestors 'self';"))
-
-(api.macros/defendpoint :get "/sandbox-host" :- :any
-  "Serve the document used as the `src` of the Near-Membrane realm iframe, carrying a
-   per-document CSP that confines `'unsafe-eval'` to that realm. See [[sandbox-host-csp]]."
-  []
-  {:status  200
-   :headers {"Content-Type"                 "text/html; charset=utf-8"
-             "Content-Security-Policy"      sandbox-host-csp
-             "X-Frame-Options"              "SAMEORIGIN"
-             "X-Content-Type-Options"       "nosniff"
-             "Cross-Origin-Resource-Policy" "same-origin"
-             "Referrer-Policy"              "no-referrer"
-             "Cache-Control"                "public, max-age=60"}
-   :body    sandbox-host-html})
-
 ;;; ------------------------------------------------ Apps ------------------------------------------------
 
 (defn- data-app-response
@@ -210,8 +176,7 @@
        (mapv data-app-response)))
 
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows slashes inside a segment, so `/:slug`
-;; would otherwise swallow `/x/bundle`. The regex also excludes the literal `repo-status`, `sandbox-host` and
-;; `generate` routes.
+;; would otherwise swallow `/x/bundle`. The regex also excludes the literal `repo-status` and `generate` routes.
 (api.macros/defendpoint :put ["/:slug" :slug slug-regex] :- DataAppResponse
   "Enable or disable a data app. A disabled app is served to superusers only. Superusers only; anything else about an
   app changes only through a repository import."
@@ -275,7 +240,8 @@
   [:map
    [:id ms/PositiveInt]
    [:name :string]
-   [:member_count ms/IntGreaterThanOrEqualToZero]])
+   [:member_count ms/IntGreaterThanOrEqualToZero]
+   [:is_tenant_group :boolean]])
 
 (api.macros/defendpoint :get ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
   "List the groups other than Administrators that can read a data app's resource collection."
@@ -284,7 +250,7 @@
   (data-app.group-access/assigned-groups (api/check-404 (data-apps.db/data-app-by-slug slug))))
 
 (api.macros/defendpoint :post ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
-  "Grant a batch of internal groups read access to a data app's resource collection atomically."
+  "Grant a batch of internal or tenant groups read access to a data app's resource collection atomically."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    {group-ids :group_ids} :- AddGroupsRequest]
@@ -308,8 +274,8 @@
     (data-app-response (cond-> app (not api/*is-superuser?*) check-not-outdated))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
-  "Serve the cached JS bundle for a single data app by slug, disabled ones to superusers only. Honors
-   `If-None-Match` against the content-hash ETag with a 304."
+  "Serve the cached JS bundle and its CSP for a single data app by slug, disabled ones to superusers only.
+   Honors `If-None-Match` against the content-hash ETag with a 304."
   {:scope api-scope/data-app}
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
@@ -333,7 +299,9 @@
             (respond {:status  200
                       :headers (-> bundle-response-headers
                                    (assoc "X-Metabase-Data-App-Allowed-Hosts"
-                                          (json/encode (:allowed_hosts row)))
+                                          (json/encode (:allowed_hosts row))
+                                          "X-Metabase-Data-App-Content-Security-Policy"
+                                          (mw.security/embedded-data-app-content-security-policy (:allowed_hosts row)))
                                    (cond-> etag (assoc "ETag" etag)))
                       :body    (ByteArrayInputStream. bundle)})
             (respond {:status  404

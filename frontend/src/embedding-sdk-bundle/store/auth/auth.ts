@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import type { Dispatch } from "@reduxjs/toolkit";
 
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { createAsyncThunk } from "metabase/redux/utils";
@@ -17,6 +18,10 @@ export const PLUGIN_EMBEDDING_SDK_AUTH = {
   ): Promise<any | null> => {
     return null;
   },
+  getOrRefreshSession: async (
+    _config: MetabaseAuthConfig,
+    _store: SdkStore,
+  ): Promise<MetabaseEmbeddingSessionToken | null> => null,
 };
 
 export const initAuth = createAsyncThunk(

@@ -3,11 +3,11 @@ import { useField } from "formik";
 
 import { useListDatabaseIdFieldsQuery } from "metabase/api";
 import { FkTargetPicker } from "metabase/metadata/components";
-import type { DatabaseId, Field, FieldId } from "metabase-types/api";
+import type { DatabaseId, DatasetColumn, FieldId } from "metabase-types/api";
 
 interface Props {
   databaseId: DatabaseId;
-  field: Field;
+  field: DatasetColumn;
   onChange: (value: FieldId | null) => void;
 }
 

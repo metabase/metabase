@@ -10,12 +10,21 @@
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.schema]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ Cards ------------------------------------------------
+
+(mu/defn synced-cards-clause :- [:fn vector?]
+  "The clause over the Card table aliased `alias` selecting the Cards remote sync syncs."
+  [alias :- :keyword]
+  [:and
+   [:= (u/qualified-key alias :archived) false]
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection)])
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -227,10 +236,10 @@
                          [:= :field.table_id :table.id]]
              :where     [:in :field.id field-ids]}))
 
-(mu/defn field-table-ids
-  "The set of Table IDs of the Fields with `field-ids`."
+(mu/defn field-id->table-id :- [:map-of ::lib.schema.id/field ::lib.schema.id/table]
+  "Map of the ID of each Field with `field-ids` to its Table ID."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
+  (t2/select-pk->fn :table_id :model/Field :id [:in field-ids]))
 
 (mu/defn snippets
   "The NativeQuerySnippets with `snippet-ids`."

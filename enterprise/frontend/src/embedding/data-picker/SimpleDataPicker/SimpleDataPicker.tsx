@@ -4,20 +4,20 @@ import { useMemo } from "react";
 
 import { useSearchQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import type { SimpleDataPickerProps } from "metabase/plugins";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { Box, Popover } from "metabase/ui";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
+import type { SearchModel, SearchResult } from "metabase-types/api";
 import type { SortingOptions } from "metabase-types/api/sorting";
 
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
 
 export function SimpleDataPicker({
   filterByDatabaseId,
-  selectedEntity,
+  selectedSource,
   isInitiallyOpen,
-  setSourceTableFn,
+  setSourceFn,
   triggerElement,
   entityTypes,
 }: SimpleDataPickerProps) {
@@ -34,18 +34,13 @@ export function SimpleDataPicker({
       return [];
     }
 
-    return sortEntities(
-      data.data.map((entity) => {
-        return {
-          ...entity,
-          id:
-            entity.model === "dataset"
-              ? getQuestionVirtualTableId(entity.id)
-              : entity.id,
-        };
-      }),
-      { sort_column: "name", sort_direction: "asc" },
-    );
+    return sortEntities(data.data, {
+      sort_column: "name",
+      sort_direction: "asc",
+    }).flatMap((entity) => {
+      const source = getEntitySource(entity);
+      return source != null ? [{ name: entity.name, source }] : [];
+    });
   }, [data]);
 
   return (
@@ -70,10 +65,10 @@ export function SimpleDataPicker({
       <Popover.Dropdown>
         <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
           <SimpleDataPickerView
-            selectedEntity={selectedEntity}
-            onClick={(tableId) => {
+            selectedSource={selectedSource}
+            onClick={(source) => {
               close();
-              setSourceTableFn(tableId);
+              setSourceFn(source);
             }}
             options={options}
           />
@@ -85,8 +80,16 @@ export function SimpleDataPicker({
 
 type SortColumn = keyof SearchResult;
 
+function getEntitySource(entity: SearchResult): DataSource | undefined {
+  const { id, model } = entity;
+  if (typeof id !== "number") {
+    return undefined;
+  }
+  return model === "dataset" ? { type: "card", id } : { type: "table", id };
+}
+
 function sortEntities(
-  entities: SearchResult<TableId>[],
+  entities: SearchResult[],
   sort: SortingOptions<SortColumn>,
 ) {
   const { sort_column, sort_direction } = sort;
