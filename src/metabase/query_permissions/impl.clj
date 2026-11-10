@@ -93,7 +93,7 @@
 (defn- source-ids*
   "Recursive walk backing [[query->source-ids]], over legacy or MBQL 5 queries and the nested-query maps it dissocs its way into."
   [query parent-source-card-id in-sandbox?]
-  (if (:lib/type query)
+  (if (:lib/type query) ; <- locked query violation
     ;; convert MBQL 5 to legacy
     ;;
     ;; legacy usage -- don't do things like this going forward
@@ -361,7 +361,7 @@
   "For MBQL 5 queries: for now, just convert it to legacy then hand off to the
   legacy implementation(s) of [[required-perms]]."
   [query perms-opts]
-  (let [mp (when (lib/metadata-provider? (:lib/metadata query))
+  (let [mp (when (lib/metadata-provider? (:lib/metadata query)) ; <- locked query violation
              (:lib/metadata query))]
     (-> query
         lib/normalize
@@ -376,7 +376,7 @@
 
   `:resolved-source-ids` stands in for preprocessing."
   [query & {:as perms-opts}]
-  (if (empty? query)
+  (if (empty? query) ; <- locked-query violation
     {}
     (let [query-type (lib/normalized-query-type query)]
       (case query-type
