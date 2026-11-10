@@ -183,10 +183,17 @@
              :entity_local_id [:in [:auto/param (vec local-ids)]]))
 
 (mu/defn insert-rows! :- [:sequential ::row]
-  "Insert `rows` of `model`, running its hooks, and return the inserted instances in no particular order."
+  "Insert `rows` of `model`, running its hooks, and return the inserted instances in the order of `rows`: matched by the
+  primary key `rows` hold, or else by the generated one, which grows in the order of `rows`."
   [model :- :keyword
    rows  :- [:sequential ::row]]
-  (t2/insert-returning-instances! model rows))
+  (let [pks       (t2/primary-keys model)
+        pk-of     (apply juxt pks)
+        instances (t2/insert-returning-instances! model rows)]
+    (if (every? #(contains? (first rows) %) pks)
+      (let [by-pk (into {} (map (juxt pk-of identity)) instances)]
+        (mapv (comp by-pk pk-of) rows))
+      (vec (sort-by pk-of instances)))))
 
 (mu/defn update-row!
   "Update the `model` row whose primary key `pk` is `id` with `changes`, running the model's hooks."

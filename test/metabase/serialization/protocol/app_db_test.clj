@@ -1,11 +1,11 @@
 (ns metabase.serialization.protocol.app-db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.serialization.db :as serialization.db]
    [metabase.serialization.protocol :as protocol]
    [metabase.serialization.protocol.app-db :as protocol.app-db]
    [metabase.serialization.resolve :as resolve]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- query-count [thunk]
@@ -118,14 +118,24 @@
   (testing "returns the inserted instances in the order of the rows, whatever order the insert returns them in"
     (mt/with-temp [:model/Database {db-id :id}    {:name "serdes-db"}
                    :model/Table    {table-id :id} {:db_id db-id :name "events" :schema "public"}]
-      (let [insert-rows! (mt/original-fn #'serialization.db/insert-rows!)
-            rows         (mapv (fn [field-name] {:table_id      table-id
-                                                 :name          field-name
-                                                 :base_type     :type/Text
-                                                 :database_type "TEXT"})
-                               ["a" "b" "c"])]
-        (mt/with-dynamic-fn-redefs [serialization.db/insert-rows! (fn [model rows] (reverse (insert-rows! model rows)))]
-          (is (= ["a" "b" "c"] (map :name (protocol/insert-rows! store :model/Field rows)))))))))
+      (let [insert-returning-instances! (mt/original-fn #'t2/insert-returning-instances!)
+            field-rows                  (mapv (fn [field-name] {:table_id      table-id
+                                                                :name          field-name
+                                                                :base_type     :type/Text
+                                                                :database_type "TEXT"})
+                                              ["a" "b" "c"])]
+        (mt/with-dynamic-fn-redefs [t2/insert-returning-instances! (fn [model rows]
+                                                                    (reverse (insert-returning-instances! model rows)))]
+          (let [fields (protocol/insert-rows! store :model/Field field-rows)]
+            (testing "with generated primary keys"
+              (is (= ["a" "b" "c"] (map :name fields))))
+            (testing "with the primary keys the rows hold"
+              (is (= ["A" "B" "C"]
+                     (map :display_name
+                          (protocol/insert-rows! store :model/FieldUserSettings
+                                                 (mapv (fn [{:keys [id name]}]
+                                                         {:field_id id :display_name (u/upper-case-en name)})
+                                                       fields))))))))))))
 
 (deftest select-by-refs-test
   (testing "selects the oldest row of each ref"
