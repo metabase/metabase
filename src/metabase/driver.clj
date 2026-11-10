@@ -2269,8 +2269,7 @@
    when the failed init left nothing behind, or when it refused a user that was
    already there, which may belong to another parent. The caller must not run
    [[destroy-workspace-isolation!]] for this workspace after that error. The
-   `:status-code` in the error is the driver's: the workspace API reports every
-   provisioning failure as a 500.
+   `:status-code` in the error is the driver's.
 
    This is an enterprise feature. Drivers must also return true for
    (database-supports? driver :workspace database) to indicate support.
