@@ -285,9 +285,11 @@
   (with-workspace-database-lock (:id wsd)
     (when-let [wsd (ws.db/workspace-database (:id wsd))]
       (when (= :teardown_failed (:status wsd))
-        (log/warnf "Abandoning WorkspaceDatabase %s without warehouse teardown; clean up by hand: database %s, output namespace %s, database user %s"
+        ;; Log only identifiers, never the whole details map: it can hold passwords.
+        (log/warnf "Abandoning WorkspaceDatabase %s without warehouse teardown; clean up by hand: database %s, output namespace %s, database user %s, database role %s"
                    (:id wsd) (:database_id wsd) (pr-str (:output_namespace wsd))
-                   (pr-str (get-in wsd [:database_details :user])))
+                   (pr-str (get-in wsd [:database_details :user]))
+                   (pr-str (get-in wsd [:database_details :role])))
         (ws.db/delete-workspace-database! (:id wsd))))
     nil))
 
