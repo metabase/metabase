@@ -1708,8 +1708,9 @@
     (raise-unmemberable-default-priv-owners! (current-login conn) schema-name missing)))
 
 (defn- table-creators
-  "The roles that own a relation in `schema`, own `schema`, or hold CREATE on it: the roles whose database-wide default
-  privileges apply to tables created there."
+  "The roles that own a relation in `schema`, own `schema`, or hold CREATE on it directly. Their database-wide default
+  privileges apply to tables they create there. Members of these roles can create tables there too, and are not
+  included."
   [conn schema]
   (map :owner (jdbc/query conn [(str "WITH n AS (SELECT oid, nspowner, nspacl FROM pg_catalog.pg_namespace "
                                      "           WHERE nspname = ?::text), "
@@ -1951,8 +1952,8 @@
   before Postgres 15, or upgraded from one by pg_upgrade or a dump and restore, `public` grants it in every database."
   [database conn]
   ;; the warehouse's own database too, even when CONNECT comes from a grant to the workspace user rather than PUBLIC
-  (let [findings     (doall (public-create-findings database conn (distinct (cons (current-database conn)
-                                                                                  (connectable-databases conn)))))
+  (let [current      (current-database conn)
+        findings     (doall (public-create-findings database conn (distinct (cons current (connectable-databases conn)))))
         schemas      (for [[db found] findings :when (sequential? found), schema found] [db schema])
         unverifiable (for [[db found] findings :when (= :unverifiable found)] db)]
     (when (or (seq schemas) (seq unverifiable))
@@ -1968,9 +1969,11 @@
                      (format " The admin connection's login cannot connect to check these databases: %s."
                              (str/join ", " unverifiable)))
                    (format (str " Run %s"
-                                (when (seq schemas)
-                                  (str ", or keep the workspace user out of a database with "
-                                       "`REVOKE CONNECT ON DATABASE <db> FROM PUBLIC;`"))
+                                ;; init checks this database whatever its CONNECT grants, so only another database
+                                ;; can be fixed by keeping the workspace user out
+                                (when (some (fn [[db _schema]] (not= db current)) schemas)
+                                  (str ", or keep the workspace user out of a database other than "
+                                       (quote-field current) " with `REVOKE CONNECT ON DATABASE <db> FROM PUBLIC;`"))
                                 ", and retry.")
                            (str/join ", " (concat
                                            (for [[db schema] schemas]

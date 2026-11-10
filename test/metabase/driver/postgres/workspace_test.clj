@@ -522,6 +522,8 @@
            (is (= {:status-code 412, :workspace/cleanup? false, :schemas [(str db-name ".loose")], :unverifiable []} (ex-data e)))
            (is (str/includes? (ex-message e) (format "`REVOKE CREATE ON SCHEMA \"loose\" FROM PUBLIC;` in database \"%s\""
                                                      db-name)))
+           (testing "does not offer REVOKE CONNECT, which cannot exempt this database"
+             (is (not (str/includes? (ex-message e) "keep the workspace user out"))))
            (is (not (role-exists? spec user)))
            (is (nil? (schema-owner spec (:schema workspace))))))
        (testing "after the REVOKE, init succeeds"
@@ -565,6 +567,8 @@
              (is (str/includes? (ex-message e) (format "`REVOKE CREATE ON SCHEMA \"loose2\" FROM PUBLIC;` in database \"%s\""
                                                        other-db-name)))
              (is (str/includes? (ex-message e) (format "`REVOKE CONNECT ON DATABASE \"%s\" FROM PUBLIC;`" closed)))
+             (is (str/includes? (ex-message e) (format "keep the workspace user out of a database other than \"%s\""
+                                                       db-name)))
              (is (not (role-exists? spec (-> workspace :database_details :user))))))
          (testing "after the fixes, init succeeds"
            (exec! other-spec ["REVOKE CREATE ON SCHEMA loose2 FROM PUBLIC"])
