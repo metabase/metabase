@@ -109,6 +109,46 @@
       :details   {}
       :is_sample true}]))
 
+(defn- template-paths
+  "Paths to every string in `x`, map keys included, that contains `{{`."
+  [path x]
+  (cond
+    (map? x)        (mapcat (fn [[k v]]
+                              (concat (when (and (string? k) (str/includes? k "{{"))
+                                        [(conj path k)])
+                                      (template-paths (conj path k) v)))
+                            x)
+    (sequential? x) (mapcat (fn [i v] (template-paths (conj path i) v)) (range) x)
+    (string? x)     (when (str/includes? x "{{") [path])
+    :else           nil))
+
+(defn- path->str [path]
+  (str/join "." (map #(if (keyword? %) (name %) (str %)) path)))
+
+(defn- template-locations
+  "Describe where `config` carries a `{{` template form, by database and field path. Never includes
+   the value itself: it can be a secret."
+  [config]
+  (concat
+   (for [db   (-> config :config :databases)
+         path (template-paths [] db)]
+     (format "database %s field %s" (pr-str (:name db)) (path->str path)))
+   (for [path (template-paths [] (-> config :config :workspace))]
+     (str "workspace field " (path->str path)))))
+
+(defn- check-no-template-forms
+  "Throw a 409 if any string in `config` contains `{{`. The sidecar expands `{{env X}}` templates in
+   every string of config.yml at boot, so a template the parent emits would read the developer's
+   environment. Templating is for sections the caller adds."
+  [workspace-id config]
+  (when-let [locations (seq (template-locations config))]
+    (throw (ex-info (str "Cannot build config: values contain a template form ({{), which the sidecar would expand at boot: "
+                         (str/join "; " locations))
+                    {:status-code  409
+                     :workspace_id workspace-id
+                     :locations    (vec locations)})))
+  config)
+
 (defn build-workspace-config
   "Return a downloadable config.yml-shaped map for `workspace-id`:
 
@@ -124,7 +164,7 @@
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
   `instance-workspace` setting stores. Returns nil when the workspace does not
   exist. Throws a 409 `ex-info` if any of the workspace's databases is not
-  `:provisioned`."
+  `:provisioned`, or if any emitted string contains a `{{` template form."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
@@ -143,12 +183,14 @@
             ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
             stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
             sample-entries   (sample-database-entries)]
-        {:version 1
-         :config  {:databases (-> ws-entries
-                                  (into stub-entries)
-                                  (into sample-entries))
-                   :workspace {:name      (:name ws)
-                               :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
+        (check-no-template-forms
+         workspace-id
+         {:version 1
+          :config  {:databases (-> ws-entries
+                                   (into stub-entries)
+                                   (into sample-entries))
+                    :workspace {:name      (:name ws)
+                                :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}})))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

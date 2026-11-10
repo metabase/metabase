@@ -137,6 +137,34 @@
            #"not :provisioned"
            (config/build-workspace-config ws-id))))))
 
+(deftest build-workspace-config-emits-no-template-forms-test
+  (testing "The sidecar expands `{{env X}}` in every config.yml string at boot, so the parent refuses (409)
+            to emit a config carrying `{{`. The error names the database and field path, never the value."
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "Templated DW"
+                    :engine  :postgres
+                    :details {:host "{{env MB_WS_TEST_SECRET}}.attacker.example" :port 5432}}
+                   :model/Workspace {ws-id :id} {:name       "templated"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "{{env MB_WS_TEST_PASSWORD}}"}
+                    :output_namespace "ws_templated"
+                    :input_schemas    ["public"]
+                    :status           :provisioned}]
+      (let [e (try
+                (config/build-workspace-config ws-id)
+                nil
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? e))
+        (is (= 409 (:status-code (ex-data e))))
+        (is (= #{"database \"Templated DW\" field details.host"
+                 "database \"Templated DW\" field details.password"}
+               (set (:locations (ex-data e)))))
+        (is (not (re-find #"MB_WS_TEST" (ex-message e)))
+            "the message must not echo the template value")))))
+
 (deftest build-workspace-config-empty-workspace-test
   (testing "A workspace with no databases still produces the version+config outer shape"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name       "Empty"
