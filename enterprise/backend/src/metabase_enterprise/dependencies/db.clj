@@ -1145,7 +1145,7 @@
 
 (mu/defn failed-analysis-entities :- [:sequential [:map
                                                    [:id            ms/PositiveInt]
-                                                   [:entity_id     [:maybe :string]]
+                                                   [:entity_id     :string]
                                                    [:name          :string]
                                                    [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   "The `id`, `entity_id`, `name` and, when `collection?`, `collection_id` of the entities of `entity-type` whose

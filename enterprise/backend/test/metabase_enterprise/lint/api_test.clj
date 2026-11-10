@@ -30,6 +30,19 @@
                         :visualization_settings {}}
                        user)))
 
+(defn- create-model-of-card!
+  "A model of everything `source-card` returns."
+  [user source-card card-name]
+  (let [mp (mt/metadata-provider)]
+    (card/create-card! {:name                   card-name
+                        :database_id            (mt/id)
+                        :display                :table
+                        :query_type             :query
+                        :type                   :model
+                        :dataset_query          (lib/query mp (lib.metadata/card mp (:id source-card)))
+                        :visualization_settings {}}
+                       user)))
+
 (defn- create-card-filtering-model-total!
   "A question on `model-card` that filters on its TOTAL column, which only the orders table has."
   [user model-card card-name]
@@ -153,3 +166,36 @@
               (card/update-card! {:card-before-update (t2/select-one :model/Card :id (:id model-card))
                                   :card-updates       {:dataset_query (:dataset_query model-card)}}))
             (is (= [] (entity-results (lint-report) (:entity_id dependent-card))))))))))
+
+(deftest ^:synchronized broken-through-intermediate-card-test
+  (testing "GET /api/ee/lint reports an entity broken through a card whose result metadata has to be re-derived first"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "lint@test.com"}]
+        (mt/with-model-cleanup cleanup-models
+          (let [[model-card dependent-card]
+                (lib-be/with-metadata-provider-cache
+                  (let [model-card        (create-model-card! user "Lint model")
+                        intermediate-card (create-model-of-card! user model-card "Lint intermediate")]
+                    [model-card (create-card-filtering-model-total! user intermediate-card "Lint dependent")]))]
+            (lib-be/with-metadata-provider-cache
+              (break-model-card! model-card))
+            (let [report (lint-report)]
+              (is (= ["missing-column"] (map :ruleId (entity-results report (:entity_id dependent-card))))))))))))
+
+(deftest ^:synchronized fails-when-analysis-cannot-run-test
+  (mt/with-premium-features #{:dependencies}
+    (mt/with-model-cleanup cleanup-models
+      (mt/with-temp [:model/Card native-card {:name          "Lint native"
+                                              :dataset_query (mt/native-query {:query "SELECT * FROM orderz"})}]
+        (testing "GET /api/ee/lint fails rather than answer from stale findings when a job is disabled"
+          (mt/with-temporary-setting-values [dependency-entity-check-batch-size 0]
+            (is (= "The analysis cannot run while one of its jobs is disabled by its batch size."
+                   (mt/user-http-request :crowberto :get 503 "ee/lint")))))
+        (testing "GET /api/ee/lint fails when the app DB is read-only"
+          (mt/with-temporary-setting-values [read-only-mode true]
+            (is (= "The analysis cannot run while Metabase is in read-only mode."
+                   (mt/user-http-request :crowberto :get 503 "ee/lint")))))
+        (testing "GET /api/ee/lint runs the analysis once it can"
+          (let [report (lint-report)]
+            (is (= "failed" (:status report)))
+            (is (= 1 (count (entity-results report (:entity_id native-card)))))))))))

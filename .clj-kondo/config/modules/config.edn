@@ -4047,6 +4047,7 @@
            api
            app-db
            batch-processing
+           cloud-migration
            collections
            data-apps
            database-routing

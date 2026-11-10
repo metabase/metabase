@@ -149,7 +149,7 @@
                                        (premium-handler :etl-connections))
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
    "/lint"                         (premium-handler metabase-enterprise.lint.api/routes :dependencies)
-   "/logs"                        (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
+   "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot"                      (premium-handler 'metabase-enterprise.metabot.api :metabot-v3)
    "/metabot-analytics"            (premium-handler metabase-enterprise.metabot-analytics.api/routes :audit-app)
    ;; Deliberately NOT premium-handler-gated: managing an existing enrollment (disable/status/recover)

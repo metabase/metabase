@@ -43,6 +43,11 @@
    :variance-minutes deps.settings/dependency-entity-check-variance-minutes
    :run-batch!       #'run-batch!})
 
+(mu/defn run-batch-in-place! :- ::task.util/batch-outcome
+  "Run a batch of the UpdateAnalysisFindings job now rather than on its schedule."
+  []
+  (task.util/run-batch-in-place! job))
+
 (defmethod task/init! ::UpdateAnalysisFindings [_]
   (task.util/init-job! job))
 

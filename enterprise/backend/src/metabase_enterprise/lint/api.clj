@@ -42,15 +42,6 @@
    :validation-exception-error {:severity    :warning
                                 :description "The analysis of the query failed."}})
 
-(mr/def ::cause
-  "The entity an error is traced to. `entity_id` is null for a table, which has none, and `name` is null when the
-  entity no longer exists."
-  [:map {:closed true}
-   [:type      ::lib.schema.validate/source-entity-type]
-   [:id        ms/PositiveInt]
-   [:entity_id [:maybe :string]]
-   [:name      [:maybe :string]]])
-
 (mr/def ::result
   "One error, on the entity `entity_id` names in `entities`."
   [:map {:closed true}
@@ -58,13 +49,13 @@
    [:entity_id :string]
    [:message   :string]
    [:detail    [:maybe :string]]
-   [:cause     [:maybe ::cause]]])
+   [:cause     [:maybe ::deps.findings/cause]]])
 
 (mr/def ::entity
   "An entity a result names, keyed by its serialization `entity_id`."
   [:map {:closed true}
    [:id   ms/PositiveInt]
-   [:type [:enum :card :transform :segment]]
+   [:type ::deps.findings/analyzed-type]
    [:data [:map {:closed true}
            [:name          :string]
            [:collection_id [:maybe ms/PositiveInt]]]]])
@@ -82,7 +73,7 @@
 
 (mu/defn- cause-text :- :string
   "How a message names `cause`: by name, or by id when the entity no longer exists."
-  [{:keys [type id], entity-name :name} :- ::cause]
+  [{:keys [type id], entity-name :name} :- ::deps.findings/cause]
   (if entity-name
     (str (name type) " \"" entity-name "\"")
     (str (name type) " " id " (deleted)")))
@@ -157,7 +148,8 @@
   "The lint report of the instance's content, for superusers: every card, transform and segment whose query analysis
   found an error, with each error as a `result` naming the entity, the rule it breaks and the entity that caused it
   when the analysis traced one. The analysis the background jobs owe is run first, so the report reflects every write
-  committed before the request and `passed` means nothing is broken."
+  committed before the request and `passed` means nothing is broken. When that analysis cannot run, because one of its
+  jobs is disabled or the instance is read-only, the request fails with a 503 rather than answer from stale findings."
   [_route-params _query-params]
   (api/check-superuser)
   (deps.findings/drain-pending!)
