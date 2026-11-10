@@ -156,7 +156,7 @@
    driver database nil
    (fn [^Connection conn]
      (with-open [stmt (.prepareStatement conn "SELECT current_setting('TimeZone')")
-                 rset (.executeQuery stmt)]
+                 ^ResultSet rset (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
        (when (.next rset)
          (.getString rset 1))))))
 
@@ -242,7 +242,7 @@
   [driver ^Connection conn _metadata inclusion-patterns exclusion-patterns]
   (with-open [stmt (sql-jdbc.sync.common/prepare-statement
                     driver conn "SELECT schema_name FROM duckdb_schemas() WHERE database_name = current_database()" [])
-              rs   (.executeQuery stmt)]
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
     (loop [schemas (transient [])]
       (if (.next rs)
         (let [schema (.getString rs 1)]
@@ -348,8 +348,8 @@
 
 (defmethod sql-jdbc.describe-table/get-table-pks :motherduck
   [driver ^Connection conn _db-name-or-nil table]
-  (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn table-pks-sql [(:schema table) (:name table)])
-              rs   (.executeQuery stmt)]
+  (with-open [stmt          (sql-jdbc.sync.common/prepare-statement driver conn table-pks-sql [(:schema table) (:name table)])
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
     (loop [pks (transient [])]
       (if (.next rs)
         (recur (conj! pks (.getString rs 1)))
@@ -525,23 +525,29 @@
 ;;; "Catalog Error: Remote catalog has changed. Please rerun query.", and the endpoint refreshes the snapshot for the
 ;;; next query on the connection. So the same statement succeeds when it's run again, as the message says to do.
 ;;;
+;;; Catalog changes also cause a vaguer error: "IO Error: You've encountered an internal MotherDuck error. ... error
+;;; ID: ...". In CI, `duckdb_constraints()` raised it while another session was loading a database. A connection sees
+;;; every database in the account, and that function reads them all before filtering on `current_database()`. That
+;;; error doesn't say whether a rerun will succeed, but rerunning a read is harmless.
+;;;
 ;;; Only the two read-side execute methods retry. Write queries, actions and uploads use `executeUpdate` directly, so
-;;; a retry can never apply a write twice, and the sync helpers for fields, keys and foreign keys run their statements
-;;; directly, so they don't retry either.
+;;; a retry can never apply a write twice. Sync reads go through `execute-prepared-statement!`, so they retry too,
+;;; except where they read JDBC's `DatabaseMetaData`.
 
-(def ^:private stale-catalog-message
+(def ^:private retryable-error-message
   ;; The endpoint reports every error with SQLState `XXUUU` and no error code, so the message is the only way to tell
-  ;; this one from the rest.
-  #"Remote catalog has changed")
+  ;; these from the rest.
+  #"Remote catalog has changed|internal MotherDuck error")
 
-(def ^:private max-stale-catalog-retries
-  "How many times to rerun a statement that keeps failing because the catalog changed. Each rerun plans against a fresh
-  snapshot, so one is normally enough; the rest cover a catalog that is changing continuously, as it does in CI."
+(def ^:private max-retries
+  "How many times to rerun a statement that keeps failing with a [[retryable-error-message]]. Each rerun plans against
+  a fresh snapshot, so one is normally enough; the rest cover a catalog that is changing continuously, as it does in
+  CI."
   2)
 
 (defn- roll-back-aborted-transaction!
-  "Roll back the transaction a stale-catalog error aborted, so that the rerun isn't rejected with \"current transaction
-  is aborted\" instead. With autoCommit on there is no transaction to roll back. Reads turn autoCommit off to stream
+  "Roll back the transaction a retryable error aborted, so that the rerun isn't rejected with \"current transaction is
+  aborted\" instead. With autoCommit on there is no transaction to roll back. Reads turn autoCommit off to stream
   their results through a cursor: downloads, `:table-rows-sample` and `describe-database-tables` do. Those transactions
   only read, so rolling one back loses nothing that wasn't lost with the error. Should the rollback itself fail, the
   original error is thrown, with the rollback's attached."
@@ -554,36 +560,36 @@
       (.addSuppressed e rollback-error)
       (throw e))))
 
-(defn- execute-with-stale-catalog-retry
-  "Call `execute!`, a thunk that runs `stmt`, and return its result. If the endpoint rejects the statement because its
-  catalog snapshot is stale, roll back the transaction that aborted, if any, and call `execute!` again, up to
-  [[max-stale-catalog-retries]] times. Any other `SQLException`, and the last stale-catalog error, are thrown as they
-  are."
+(defn- execute-with-retry
+  "Call `execute!`, a thunk that runs `stmt`, and return its result. If the endpoint rejects the statement with a
+  [[retryable-error-message]], roll back the transaction that aborted, if any, and call `execute!` again, up to
+  [[max-retries]] times. Any other `SQLException`, and the last retryable error, are thrown as they are."
   [^Statement stmt execute!]
-  (loop [retries-left max-stale-catalog-retries]
+  (loop [retries-left max-retries]
     (let [result (try
                    (execute!)
                    (catch SQLException e
                      (if (and (pos? retries-left)
-                              (some->> (ex-message e) (re-find stale-catalog-message)))
-                       (do (log/debugf "MotherDuck's catalog changed under a statement, rerunning it (%d retries left)"
-                                       (dec retries-left))
+                              (some->> (ex-message e) (re-find retryable-error-message)))
+                       (do (log/debugf "MotherDuck rejected a statement with a retryable error, rerunning it (%d retries left): %s"
+                                       (dec retries-left)
+                                       (ex-message e))
                            (roll-back-aborted-transaction! stmt e)
-                           ::stale-catalog)
+                           ::retry)
                        (throw e))))]
-      (if (= result ::stale-catalog)
+      (if (= result ::retry)
         (recur (dec retries-left))
         result))))
 
 (defmethod sql-jdbc.execute/execute-prepared-statement! :motherduck
   [driver stmt]
   (let [postgres-method (get-method sql-jdbc.execute/execute-prepared-statement! :postgres)]
-    (execute-with-stale-catalog-retry stmt #(postgres-method driver stmt))))
+    (execute-with-retry stmt #(postgres-method driver stmt))))
 
 (defmethod sql-jdbc.execute/execute-statement! :motherduck
   [driver stmt sql]
   (let [postgres-method (get-method sql-jdbc.execute/execute-statement! :postgres)]
-    (execute-with-stale-catalog-retry stmt #(postgres-method driver stmt sql))))
+    (execute-with-retry stmt #(postgres-method driver stmt sql))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Reading results                                                 |

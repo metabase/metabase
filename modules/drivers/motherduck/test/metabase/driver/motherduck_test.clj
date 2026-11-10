@@ -161,6 +161,15 @@
     (getAutoCommit [_] auto-commit?)
     (rollback [_] (swap! rollbacks inc))))
 
+(defn- internal-error-exception
+  "The vaguer error the endpoint raises, among other times, when a function reads a database another session is
+  creating."
+  []
+  (PSQLException. (str "ERROR: IO Error: You've encountered an internal MotherDuck error. You can help us diagnose and"
+                       " fix the issue by contacting support via slack, in-app chat, or support@motherduck.com and"
+                       " referencing error ID: 5da7b031.")
+                  PSQLState/UNKNOWN_STATE))
+
 (defn- failing-statement
   "A stand-in `PreparedStatement` on `conn` whose `executeQuery` throws each of `exceptions` in turn, then returns `rs`.
   Counts every call in the `attempts` atom."
@@ -179,12 +188,17 @@
              rs)))))))
 
 ;; Not ^:parallel: kondo counts `execute-statement!` as destructive, though these statements are stand-ins.
-(deftest execute-reruns-on-stale-catalog-test
+(deftest execute-reruns-on-retryable-error-test
   (let [rs (reify ResultSet)]
     (testing "a statement rejected because the catalog changed runs again, and the rerun's result is returned"
       (let [attempts (atom 0)]
         (is (identical? rs (sql-jdbc.execute/execute-prepared-statement!
                             :motherduck (failing-statement [(stale-catalog-exception)] rs attempts))))
+        (is (= 2 @attempts))))
+    (testing "an internal MotherDuck error runs again too"
+      (let [attempts (atom 0)]
+        (is (identical? rs (sql-jdbc.execute/execute-prepared-statement!
+                            :motherduck (failing-statement [(internal-error-exception)] rs attempts))))
         (is (= 2 @attempts))))
     (testing "it keeps retrying while the catalog keeps changing, up to the limit"
       (let [attempts (atom 0)]
