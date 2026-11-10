@@ -5,7 +5,6 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
-   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secrets]
@@ -276,30 +275,9 @@
                                        (schema-filter-entries db wsd)
                                        {:let-user-control-scheduling false})))})
 
-(defn- expand-output
-  "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`
-   namespace map QP middleware, transform_hooks, and table_remapping consume.
-
-   For 3-slot drivers (SQL Server, BigQuery) the `:db` slot is filled from
-   `Database.details`. For 2-slot drivers the namespace string lands in the
-   schema slot. For no-schema drivers (MySQL) it lands in the db slot.
-
-   `output_namespace` blank → `:schema` is `nil`: the workspace database isn't
-   provisioned yet and QP/transform consumers treat it as having no output
-   mapping."
-  [db output-namespace]
-  (let [components (set (driver/qualified-name-components (:engine db)))
-        positions  (ws/engine-namespace-positions db)
-        schema     (when-not (str/blank? output-namespace) output-namespace)]
-    (cond-> {}
-      (:db components)     (assoc :db (:db positions))
-      (:schema components) (assoc :schema schema)
-      (and (:db components) (not (:schema components)))
-      (assoc :db schema))))
-
 (defn- workspace-database-entry [wsd db]
   [(:name db) {:input_schemas (vec (:input_schemas wsd))
-               :output        (expand-output db (:output_namespace wsd))}])
+               :output        (ws/expand-output-namespace db (:output_namespace wsd))}])
 
 (defn- stub-database-entry [db]
   {:name    (:name db)
@@ -387,8 +365,8 @@
   (`drop-unused-tunnel-secrets`), replaces every Secret id with the value of the
   inlined secrets in use (`inline-secrets`), and adds `schema-filters-*` keys
   derived from `:input_schemas`. Per-database workspace entries carry the
-  expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
-  `instance-workspace` setting stores. Returns nil when the workspace does not
+  expanded `{:db ?, :schema ?}` namespace map directly — the shape
+  the sidecar's `workspace:` section loader translates into settings. Returns nil when the workspace does not
   exist. Throws a 409 `ex-info` when a workspace database is not `:provisioned`
   (waiting clears it), and a 422 when only an admin can clear the cause: its
   `:additional-options` set a login (`check-additional-options!`), it uses SSL
