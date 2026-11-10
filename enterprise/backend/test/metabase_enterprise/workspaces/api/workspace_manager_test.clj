@@ -144,8 +144,11 @@
           (testing "a failed cleanup is a 500 that says the kept workspace needs a delete"
             (with-redefs [provisioning/dispatching-provisioner
                           (provisioner (ex-info "refused" {:status-code 409}) (ex-info "warehouse down" {}))]
-              (is (=? {:message "refused; warehouse down" :cleanup_required true}
-                      (create! 500))))
+              (let [response (create! 500)
+                    kept-id  (t2/select-one-pk :model/Workspace :name "Failing")]
+                (is (=? {:message "refused; warehouse down" :cleanup_required true} response))
+                (is (= kept-id (:workspace_id response))
+                    "the 500 names the kept workspace, so the client can delete it")))
             (let [ws-id (t2/select-one-pk :model/Workspace :name "Failing")]
               (is (some? ws-id))
               (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]

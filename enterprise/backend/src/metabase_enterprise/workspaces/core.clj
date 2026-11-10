@@ -326,12 +326,15 @@
             ;; either way the Workspace row survives, and only a delete removes it
             kept-error    (or cleanup-error delete-error)]
         ;; a single failure keeps its status, like a driver's 409 for a role it refuses
+        ;; a kept workspace's id goes to the client, which must delete it
         (throw (combined-exception (cond-> [t] kept-error (conj kept-error))
-                                   {:status-code      (if kept-error
-                                                        500
-                                                        (or (:status-code (ex-data t)) 500))
-                                    :cleanup_required (some? kept-error)
-                                    :response/keys    #{:cleanup_required}}))))
+                                   (cond-> {:status-code      (if kept-error
+                                                                500
+                                                                (or (:status-code (ex-data t)) 500))
+                                            :cleanup_required (some? kept-error)
+                                            :response/keys    #{:cleanup_required}}
+                                     kept-error (-> (assoc :workspace_id (:id ws))
+                                                    (update :response/keys conj :workspace_id)))))))
     (workspace/get-workspace (:id ws))))
 
 (defn delete-workspace!
