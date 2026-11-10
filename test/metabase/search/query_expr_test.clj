@@ -38,7 +38,10 @@
   (testing "a backend's schema only accepts the operators it runs"
     (is (valid? #{"or"} {:op "or" :args ["revenue" "income"]}))
     (is (not (valid? #{"or"} {:op "and" :args ["revenue" "income"]})))
-    (is (not (valid? #{"and"} {:op "phrase" :text "gross margin"})))))
+    (is (not (valid? #{"and"} {:op "phrase" :text "gross margin"}))))
+  (testing "an operator the backend lacks gets an error naming the ones it has"
+    (is (= ["must be a single term or a node whose `op` is one of: or (operators nest at most 3 levels)"]
+           (me/humanize (mr/explain (query-expr/schema #{"or"}) {:op "and" :args ["revenue" "income"]}))))))
 
 (defn- offered-ops
   "Every `op` value a rendered schema lets a model pick."
@@ -63,11 +66,12 @@
         (is (= (set ops) (offered-ops js)))
         (is (= query-expr/max-depth (node-depth js))))))
   (testing "leaves keep the constraints malli checks"
-    (let [leaf-text (fn [op] (some #(when (= {:const op} (get-in % [:properties "op"]))
+    (let [leaf-text-schema (fn [op]
+                             (some #(when (= {:const op} (get-in % [:properties "op"]))
                                       (get-in % [:properties "text"]))
                                    (:anyOf (mjs/transform (query-expr/schema query-expr/all-ops)))))]
-      (is (= {:type "string" :minLength 1} (leaf-text "phrase")))
-      (is (= {:type "string" :pattern "^\\S+$"} (leaf-text "prefix")))))
+      (is (= {:type "string", :minLength 1} (leaf-text-schema "phrase")))
+      (is (= {:type "string", :pattern "^\\S+$"} (leaf-text-schema "prefix")))))
   (testing "levels share one node shape, so the size grows linearly with depth rather than 3^depth"
     (is (< (count (pr-str (mjs/transform (query-expr/schema query-expr/all-ops)))) 4000))))
 
@@ -103,8 +107,10 @@
       (is (matches? "monthly revenue report" {:op "and" :args ["monthly" "revenue"]}))
       (is (not (matches? "monthly report" {:op "and" :args ["monthly" "revenue"]})))
       (is (matches? "income statement" {:op "or" :args ["revenue" "income"]}))
-      (is (not (matches? "gross margin by region" {:op "and" :args ["region" {:op "not" :args [{:op "phrase" :text "gross margin"}]}]})))
-      (is (matches? "margin gross by region" {:op "and" :args ["region" {:op "not" :args [{:op "phrase" :text "gross margin"}]}]}))
+      (let [region-not-gross-margin {:op   "and"
+                                     :args ["region" {:op "not" :args [{:op "phrase" :text "gross margin"}]}]}]
+        (is (not (matches? "gross margin by region" region-not-gross-margin)))
+        (is (matches? "margin gross by region" region-not-gross-margin)))
       (is (matches? "quarterly totals" {:op "prefix" :text "quart"}))
       (is (not (matches? "quarterly totals" "quart"))))
     (testing "a leaf is literal: operator syntax inside it is just text"
@@ -118,7 +124,10 @@
              (search.impl/query-expr-problems revenue-query "english"))))
     (testing "a leaf that is only stopwords normalizes to nothing"
       (is (= ["the and"]
-             (:empty-leaves (search.impl/query-expr-problems {:op "and" :args ["revenue" {:op "not" :args [{:op "phrase" :text "the and"}]}]}
-                                                             "english")))))
+             (:empty-leaves (search.impl/query-expr-problems
+                             {:op "and" :args ["revenue" {:op "not" :args [{:op "phrase" :text "the and"}]}]}
+                             "english")))))
     (testing "a query that can't restrict the index"
-      (is (:unrestricted? (search.impl/query-expr-problems {:op "or" :args ["revenue" {:op "not" :args ["archive"]}]} "english"))))))
+      (is (:unrestricted? (search.impl/query-expr-problems
+                           {:op "or" :args ["revenue" {:op "not" :args ["archive"]}]}
+                           "english"))))))
