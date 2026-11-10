@@ -416,9 +416,10 @@
                       (grant!   [_ _ _ _ _] nil)
                       (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
          (with-redefs [provisioning/dispatching-provisioner wedged]
-           ;; master keeps the workspace and answers 200; with #86601 this first create is the 500 too
-           (let [{ws-id :id} (create-with-key 200 "retry-after-failed-cleanup" "Wedged" db-id)]
-             (is (=? {:databases [{:status "unprovisioned"}]}
+           ;; #86601: the first create is a 500 that names the kept workspace; #86788: its row is teardown_failed
+           (let [{ws-id :workspace_id} (create-with-key 500 "retry-after-failed-cleanup" "Wedged" db-id)]
+             (is (pos-int? ws-id))
+             (is (=? {:databases [{:status "teardown_failed"}]}
                      (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))
              (is (=? {:workspace_id ws-id :cleanup_required true}
                      (create-with-key 500 "retry-after-failed-cleanup" "Wedged" db-id)))
