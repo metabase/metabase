@@ -73,6 +73,11 @@
   - During a rollout that sets `MB_INSTANCE_WORKSPACE`, nodes that don't have it yet are outside workspace mode until
     they restart with it.
 
+  One window is unbounded: a rolling restart that removes `MB_INSTANCE_WORKSPACE`. A node that restarts without it
+  leaves workspace mode and fills its cache, while nodes that still have it keep inserting rows. The restarted node
+  never sees those rows until it writes a remapping itself or restarts again. Remove the env var with a full restart
+  of every node, not a rolling one.
+
   Rows outlive workspace mode when `MB_INSTANCE_WORKSPACE` was the only source of the workspace and a restart drops
   it, since the env var is never stored in the app DB. Removing the `config.yml` section and restarting keeps
   workspace mode, because boot never clears the stored setting, and `DELETE /current` on the workspace-instance API

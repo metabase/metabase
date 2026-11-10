@@ -370,7 +370,8 @@
    if rows exist they must be respected, regardless of current token state."
   :feature :none
   [db-id]
-  (boolean (seq (all-mappings-for-db db-id))))
+  ;; The store's `exists?` check, not [[ws.remapping/enabled-for-db?]]: sync must not honour `*skip-remapping?*`.
+  (boolean (ws.remapping/enabled-for-db?* ws.remapping/*remapping-store* db-id)))
 
 (defenterprise filter-workspace-side-tables
   "Enterprise impl of the table-list filter. Drops tuples whose `(schema, name)`
