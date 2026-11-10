@@ -105,7 +105,12 @@
                                            :input_schemas    input-schemas
                                            :database_details {}
                                            :output_namespace ""})]
-      (provisioning/provision-single! wsd-id))))
+      (if (= :redshift driver/*driver*)
+        ;; Redshift init refuses a cluster where PUBLIC can create in any schema, the default for `public`, and the
+        ;; shared test cluster is not this test's to change: metabase.driver.redshift-test covers that check
+        (with-redefs-fn {(requiring-resolve 'metabase.driver.redshift/check-no-public-create-anywhere!) (constantly nil)}
+          #(provisioning/provision-single! wsd-id))
+        (provisioning/provision-single! wsd-id)))))
 
 ;;; -------------------- driver-branched helpers --------------------
 ;;;

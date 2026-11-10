@@ -35,6 +35,16 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- init!
+  "[[driver/init-workspace-isolation!]]. Redshift init refuses a cluster where PUBLIC can create in any schema, the
+  default for `public`, and the shared test cluster is not these tests' to change: metabase.driver.redshift-test covers
+  that check."
+  [driver database workspace]
+  (if (= :redshift driver)
+    (with-redefs-fn {(requiring-resolve 'metabase.driver.redshift/check-no-public-create-anywhere!) (constantly nil)}
+      #(driver/init-workspace-isolation! driver database workspace))
+    (driver/init-workspace-isolation! driver database workspace)))
+
 (defn- find-sql-exception
   "Find a `java.sql.SQLException` reachable from `t`, or nil. Walks the cause
    chain and also peeks into each level's `ex-data` for Throwable values:
@@ -357,7 +367,7 @@
           (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src " VALUES (1, 'a')")])
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (let [user-spec       (workspace-user-spec driver details workspace)
                 out-schema      (:schema workspace)
                 out             (qualify driver out-schema out-name)]
@@ -528,8 +538,8 @@
                                           " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " (qualify driver in-schema-b src-b-name)
                                           " VALUES (1, 'b')")])
-          (driver/init-workspace-isolation! driver database ws-a)
-          (driver/init-workspace-isolation! driver database ws-b)
+          (init! driver database ws-a)
+          (init! driver database ws-b)
           (let [user-a-spec  (workspace-user-spec driver details ws-a)
                 user-b-spec  (workspace-user-spec driver details ws-b)
                 out-a-schema (:schema ws-a)
@@ -623,7 +633,10 @@
   ;; with data before init runs, the workspace user inherits read access to that
   ;; data. Whether to refuse-on-collision or clear-on-collision is a design
   ;; decision tracked separately; this test does not assert one way or the other.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
+  ;; Redshift refuses the existing namespace with a 409: metabase.driver.redshift-test covers that.
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :workspace)
+                        (filter #(isa? driver/hierarchy % :sql-jdbc))
+                        (remove #{:redshift}))
     (testing "init-workspace-isolation! is robust when its target output namespace already exists"
       (let [driver       driver/*driver*
             database     (mt/db)
@@ -709,7 +722,7 @@
           (jdbc/execute! admin-spec [(str "INSERT INTO " src-a " VALUES (1, 'a')")])
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src-b " (id INT, v VARCHAR(8))" (create-table-tail driver))])
           (jdbc/execute! admin-spec [(str "INSERT INTO " src-b " VALUES (1, 'b')")])
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (let [user-spec       (workspace-user-spec driver details workspace)]
             ;; First grant: only A.
             (driver/grant-workspace-read-access! driver database workspace
@@ -821,7 +834,7 @@
           (reset! second-db-created? true)
           (doseq [sql (create-table-in-second-db-sqls driver other-db secret-tbl)]
             (jdbc/execute! admin-spec [sql]))
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (let [user-spec       (workspace-user-spec driver details workspace)]
             (driver/grant-workspace-read-access! driver database workspace
                                                  [in-schema])
@@ -912,7 +925,7 @@
         (try
           (maybe-create-input-namespace! admin-spec driver database in-schema)
           (jdbc/execute! admin-spec [(str "CREATE TABLE " src " (id INT, v VARCHAR(8))" (create-table-tail driver))])
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (driver/grant-workspace-read-access! driver database workspace
                                                [in-schema])
           (testing "no leakage to default principal after init+grant"
@@ -1008,7 +1021,7 @@
             ;; with even if init never ran or only partially succeeded.
             ws-a       (with-isolation-details driver database ws-a)]
         (try
-          (driver/init-workspace-isolation! driver database ws-a)
+          (init! driver database ws-a)
           ;; MySQL: the workspace user's JDBC handshake needs access to the
           ;; bound DB (see [[reuse-bound-db-as-input?]]), which comes from a
           ;; read grant.
@@ -1041,7 +1054,7 @@
                                                          (swap! generated conj pw)
                                                          pw))]
                            (try
-                             (driver/init-workspace-isolation!
+                             (init!
                               driver low-priv-db
                               (with-isolation-details driver low-priv-db ws-b))
                              nil
@@ -1102,8 +1115,10 @@
   ;; per provisioning attempt, so init must reset the surviving user's password
   ;; — engines whose `CREATE USER IF NOT EXISTS` silently no-ops need an
   ;; explicit ALTER, or the persisted password stops matching the warehouse.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
-                           (mt/normal-drivers-with-feature :workspace))
+  ;; Redshift refuses the surviving user with a 409: metabase.driver.redshift-test covers that.
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :workspace)
+                        (filter #(isa? driver/hierarchy % :sql-jdbc))
+                        (remove #{:redshift}))
     (testing "re-running init for the same workspace id resets the user's password"
       (let [driver    driver/*driver*
             database  (mt/db)
