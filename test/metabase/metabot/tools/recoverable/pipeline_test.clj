@@ -170,6 +170,12 @@
       (is (some #(str/includes? % fragment) texts)
           (str surface "'s text for " code " never mentions " fragment)))))
 
+(deftest ^:parallel uncurated-source-recovery-is-agent-loop-only-test
+  (testing "only the agent loop's search tools are named, since the Agent API renders this error through its hints"
+    (let [{:keys [build-fn]} (get (tools.error/recoverables) (keyword declaration-ns "uncurated-source"))]
+      (is (= [#{"semantic_search"} #{"fulltext_search"} #{"substring_search"}]
+             (mapv :uses (:recovery (build-fn {:message "Query failed."}))))))))
+
 (deftest ^:parallel the-vocabulary-check-finds-only-mcp-advice-test
   (testing "MCP v2's own hints trip it, so the test above can't pass vacuously"
     (doseq [data (concat [{:error :ambiguous-fk} {:error :missing-source-in-first-stage}]

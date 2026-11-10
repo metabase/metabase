@@ -252,7 +252,13 @@
             (is (offered? confined :internal) "the internal profile isn't confined")
             ;; the Library index carries its own scope, so curated-only content doesn't rule it out
             (is (offered? curated :internal) "limited to curated content")
-            (is (offered? open :nlq))))))))
+            (is (offered? open :nlq))
+            (testing "the prompt says why a confined metabot has no library retrieval"
+              (let [unavailable (:unavailable-tools (profiles/resolve-tools (profiles/get-profile :nlq) []
+                                                                            {:metabot confined :profile-id :nlq}))]
+                (is (=? [{:name   "retrieve_library_entities"
+                          :reason "library search can't yet be limited to what this metabot may show"}]
+                        (filter #(= "retrieve_library_entities" (:name %)) unavailable)))))))))))
 
 (deftest terminal-tools-test
   (testing "the :sql profile marks its SQL write tools AND clarification terminal"
@@ -327,6 +333,11 @@
                   :purpose    string?
                   :reason     "semantic search isn't set up on this instance"
                   :workaround string?}]
+                (filter #(= "semantic_search" (:name %))
+                        (:unavailable-tools (profiles/resolve-tools (profiles/get-profile :internal) [] {})))))))
+    (testing "an instance that can't run semantic search at all says so, rather than that it isn't set up"
+      (mt/with-dynamic-fn-redefs [search.engine/engine-status (constantly :unsupported)]
+        (is (=? [{:name "semantic_search", :reason "semantic search isn't available on this instance"}]
                 (filter #(= "semantic_search" (:name %))
                         (:unavailable-tools (profiles/resolve-tools (profiles/get-profile :internal) [] {})))))))
     (testing "an available tool, or a keyword variant whose sibling serves, is not listed"
