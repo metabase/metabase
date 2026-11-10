@@ -1797,21 +1797,28 @@
            {:status-code 409, :workspace/cleanup? false, :user user}
            cause))
 
+(defn- concurrent-init-error [user schema-name cause]
+  (ex-info (format (str "Another session created a role named %s or a schema named %s at the same time. It may "
+                        "belong to another workspace, so it was left unchanged.")
+                   (quote-field user) (quote-schema schema-name))
+           {:status-code 409, :workspace/cleanup? false, :user user}
+           cause))
+
 (defn- connection-failure?
   "Whether `t`, or a cause of it, is the connection failing. When that happens during COMMIT, the server may have
-  committed."
+  committed. The check reads SQLStates only: [[workspace-error]] has already scrubbed any other cause to a plain
+  `Exception`, and pgjdbc reports an I/O error as `08006`."
   [t]
-  (some (fn [cause]
-          (or (instance? java.io.IOException cause)
-              (some-> (sql-state cause) (str/starts-with? "08"))))
+  (some #(some-> (sql-state %) (str/starts-with? "08"))
         (take-while some? (iterate ex-cause t))))
 
 (defn- init-error
   "`t`, from a failed init, marked so the caller does not tear the workspace down: init runs in one transaction, so
   it leaves nothing behind, and a role of the workspace user's name may be one another session has just committed. A
-  connection failure stays unmarked: the transaction may have committed, and its objects then need the teardown."
-  [t]
-  (if (or (contains? (ex-data t) :workspace/cleanup?) (connection-failure? t))
+  connection failure once the transaction is `committing?` stays unmarked: the transaction may have committed, and its
+  objects then need the teardown. A connection failure before that point committed nothing."
+  [t committing?]
+  (if (or (contains? (ex-data t) :workspace/cleanup?) (and committing? (connection-failure? t)))
     t
     (ex-info (ex-message t) (assoc (ex-data t) :workspace/cleanup? false) t)))
 
@@ -1820,7 +1827,9 @@
   (let [schema-name   (:schema workspace)
         {:keys [user password]} (:database_details workspace)
         quoted-schema (quote-schema schema-name)
-        quoted-user   (quote-field user)]
+        quoted-user   (quote-field user)
+        ;; set once the transaction's last statement has run, so that the only step left is COMMIT
+        committing?   (volatile! false)]
     (try
       (run-workspace-ddl!
        database [password]
@@ -1839,15 +1848,17 @@
           (format "GRANT USAGE, CREATE ON SCHEMA %s TO %s" quoted-schema quoted-user)])
        (fn [conn]
          (set-password! conn user password)
-         (jdbc/execute! conn [(grant-membership-statement conn user)])))
+         (jdbc/execute! conn [(grant-membership-statement conn user)])
+         (vreset! committing? true)))
       (catch java.sql.SQLException e
         ;; a concurrent init of the same workspace created the role between the check and CREATE USER: a duplicate
-        ;; role, or a duplicate key in pg_authid when both inserted at once
-        (if (#{"42710" "23505"} (sql-state e))
-          (throw (role-exists-error user e))
-          (throw (init-error e))))
+        ;; role, or a duplicate key in pg_authid or pg_namespace when both inserted the role or the schema at once
+        (case (sql-state e)
+          "42710" (throw (role-exists-error user e))
+          "23505" (throw (concurrent-init-error user schema-name e))
+          (throw (init-error e @committing?))))
       (catch Throwable t
-        (throw (init-error t))))))
+        (throw (init-error t @committing?))))))
 
 (defn- grants-to-role
   "Every privilege `role` holds on a relation, a schema or this database, or through a schema's default privileges, as
@@ -1964,9 +1975,9 @@
         (< waited session-exit-wait-ms) (do (Thread/sleep 250) (recur (+ waited 250)))
         :else
         (throw (ex-info (format (str "%d session(s) of workspace user %s are still open, and this login could not end "
-                                     "them. The user can no longer log in and has lost its grants. End them with "
-                                     "`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = '%s'`, "
-                                     "then retry.")
+                                     "them. The user can no longer log in and has lost its grants outside its output "
+                                     "schema. As a superuser, end them with `SELECT pg_terminate_backend(pid) FROM "
+                                     "pg_stat_activity WHERE usename = '%s'`, then retry.")
                                 sessions (quote-field user) user)
                         {:status-code 409, :user user, :sessions sessions}))))))
 
@@ -1996,15 +2007,22 @@
 (defn- current-database [conn]
   (:db (first (jdbc/query conn ["SELECT pg_catalog.current_database() AS db"]))))
 
+(def ^:private other-database-timeouts
+  "pgjdbc connection properties, in seconds, for a connection to another database of the cluster. The workspace methods
+  open one per database while the caller holds the workspace database's lock, and pgjdbc sets no socket timeout by
+  default, so a stalled connection would hold that lock with no bound. Longer than [[workspace-lock-timeout]], so a
+  statement that waits on a lock times out first."
+  {:connectTimeout 10, :socketTimeout 60})
+
 (defn- do-in-other-database
   "Calls `(f conn)` in a transaction on database `db` of the same cluster, as the login of the caller's connection
-  scope, and returns what it returns."
+  scope, and returns what it returns. The connection is bounded by [[other-database-timeouts]]."
   [database db f]
   (sql-jdbc.conn/do-with-connection-spec-for-testing-connection
    :postgres
    (assoc (driver.conn/effective-details (driver.u/lib-database (:id database))) :dbname db)
    (fn [spec]
-     (jdbc/with-db-transaction [conn spec]
+     (jdbc/with-db-transaction [conn (merge spec other-database-timeouts)]
        (start-workspace-transaction! conn)
        (f conn)))))
 
@@ -2012,20 +2030,22 @@
   "`DROP USER` failing on objects the user still owns or privileges it still holds, often in another database, as a 409
   naming them."
   [user ^Throwable e]
-  (let [e (driver.u/batch-exception e)]
-    (case (sql-state e)
-      "2BP01" (ex-info (format (str "Workspace user %s cannot be dropped yet: %s. It can no longer log in and holds no "
-                                    "grant from this login. Run `DROP OWNED BY %s` in each database named, then retry.")
-                               (quote-field user) (str/replace (str/trim (ex-message e)) #"\.$" "") (quote-field user))
-                       {:status-code 409, :user user}
-                       e)
-      "42501" (ex-info (format (str "This login may not drop workspace user %s: %s. It can no longer log in and holds "
-                                    "no grant from this login. This login needs the privileges of the workspace user: "
-                                    "make it a member (`GRANT %s TO <login>`) that inherits them (`ALTER ROLE <login> "
-                                    "INHERIT`), then retry.")
-                               (quote-field user) (str/replace (str/trim (ex-message e)) #"\.$" "") (quote-field user))
-                       {:status-code 409, :user user}
-                       e)
+  (let [e        (driver.u/batch-exception e)
+        template (case (sql-state e)
+                   "2BP01" (str "Workspace user %1$s cannot be dropped yet: %2$s. It can no longer log in and holds no "
+                                "grant from this login, which has run `DROP OWNED BY %1$s` in every database it may "
+                                "connect to. As a superuser, run `DROP OWNED BY %1$s` in each database named, then "
+                                "retry.")
+                   "42501" (str "This login may not drop workspace user %1$s: %2$s. It can no longer log in and holds "
+                                "no grant from this login. This login needs the privileges of the workspace user. As a "
+                                "superuser, make it a member that inherits them: from Postgres 16 `GRANT %1$s TO "
+                                "<login> WITH INHERIT TRUE`, before 16 `GRANT %1$s TO <login>` and `ALTER ROLE <login> "
+                                "INHERIT`. Then retry.")
+                   nil)]
+    (if template
+      (ex-info (format template (quote-field user) (str/replace (str/trim (ex-message e)) #"\.$" ""))
+               {:status-code 409, :user user}
+               e)
       e)))
 
 (defmethod driver/destroy-workspace-isolation! :postgres

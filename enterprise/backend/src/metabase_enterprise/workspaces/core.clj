@@ -241,7 +241,8 @@
   row gets its attempt: rows whose teardown succeeds are deleted immediately
   (progress is persisted per row, so an instance crash midway loses nothing);
   rows whose teardown fails are kept. Throws the combined failures when any
-  teardown failed."
+  teardown failed: with the failure's own `:status-code` when there is one
+  failure, else 500."
   [workspace-id]
   (let [failures (into []
                        (keep (fn [wsd]
@@ -251,7 +252,11 @@
                                  (catch Throwable t t))))
                        (ws.db/workspace-databases workspace-id))]
     (when (seq failures)
-      (throw (combined-exception failures {:status-code 500})))))
+      ;; a single failure keeps its status, such as a driver's 409 naming what must happen before a retry
+      (throw (combined-exception failures
+                                 {:status-code (or (when (= 1 (count failures))
+                                                     (:status-code (ex-data (first failures))))
+                                                   500)})))))
 
 (defn create-workspace!
   "Create a new Workspace, attach the databases with ids `database_ids` — each must

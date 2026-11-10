@@ -89,6 +89,30 @@
               (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))
             (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))))))))
 
+(deftest delete-workspace-teardown-conflict-test
+  (testing "DELETE passes a database's 409 from teardown through, so the caller can tell retry-later from broken"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                            (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                  {:name "Session open" :database_ids [db-id]}))
+              busy        (reify provisioning/Provisioner
+                            (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                            (init!    [_ _ _ _]   nil)
+                            (grant!   [_ _ _ _ _] nil)
+                            (destroy! [_ _ _ _]   (throw (ex-info "1 session(s) of the workspace user are still open"
+                                                                  {:status-code 409}))))]
+          (with-redefs [provisioning/dispatching-provisioner busy]
+            (is (=? {:message "1 session(s) of the workspace user are still open"}
+                    (mt/user-http-request :crowberto :delete 409 (str "ee/workspace-manager/" ws-id)))))
+          (testing "the workspace survives and a retry deletes it"
+            (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))
+            (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+              (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))))))))
+
 (deftest create-workspace-provisioning-failure-test
   (testing "POST / never returns 200 when provisioning fails"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
