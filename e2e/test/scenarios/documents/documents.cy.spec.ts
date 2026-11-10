@@ -59,6 +59,14 @@ describe("documents", () => {
       .should("contain.text", "This is a paragraph")
       .and("contain.text", "And this is another");
 
+    cy.findByLabelText("More options").click();
+    H.popover().findByText("History").click();
+    cy.findByTestId("document-history-list")
+      .findByText(/created this/)
+      .should("be.visible");
+    H.sidesheet().findByLabelText("Close").click();
+    H.sidesheet().should("not.exist");
+
     // The reload reopens the navbar, which hides the breadcrumbs
     H.closeNavigationSidebar();
     H.appBar()
@@ -140,7 +148,8 @@ describe("documents", () => {
 
     // Force the click since this is hidden behind a toast notification
     H.navigationSidebar().findByText("Trash").click({ force: true });
-    H.getUnpinnedSection().findByText("Test Document").should("exist");
+    H.getUnpinnedSection().findByText("Test Document").should("exist").click();
+    cy.findByTestId("archive-banner").should("be.visible");
   });
 
   it("should show an error toast when creating a document fails", () => {
