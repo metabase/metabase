@@ -749,6 +749,24 @@
   "Cap on a dashboard filter's name."
   100)
 
+(def ^:private max-dashboard-filter-default-values
+  "Cap on the values listed for a dashboard filter's default."
+  10)
+
+(def ^:private max-dashboard-filter-default-length
+  "Cap on a dashboard filter's default, as written in the prompt."
+  500)
+
+(defn- dashboard-filter-default
+  "The text of a dashboard filter's `default`, with at most [[max-dashboard-filter-default-values]] of its values and
+  [[max-dashboard-filter-default-length]] characters, and a note of how many values were left out.
+  A string default is written as it is, anything else as JSON."
+  [default]
+  (let [shown (cond-> default (sequential? default) (->> (take max-dashboard-filter-default-values) vec))
+        more  (when (sequential? default) (- (count default) (count shown)))]
+    (str (truncate (if (string? shown) shown (json/encode shown)) max-dashboard-filter-default-length)
+         (when (pos-int? more) (str " (+" more " more)")))))
+
 (defn- dashboard-filters->xml
   "The `<filters>` block for a dashboard's `parameters`, or nil when it has none.
   Each filter shows its default value and the ids of the dashcards it filters, when it has them.
@@ -762,9 +780,7 @@
                             "\" name=\"" (escape-xml (truncate (:name param) max-dashboard-filter-name-length))
                             "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\""
                             (when-some [default (:default param)]
-                              (str " default=\""
-                                   (escape-xml (if (string? default) default (json/encode default)))
-                                   "\""))
+                              (str " default=\"" (escape-xml (dashboard-filter-default default)) "\""))
                             (when-let [dashcard-ids (seq (:connected_dashcards param))]
                               (str " connected_dashcards=\"" (str/join ", " dashcard-ids) "\""))
                             "/>\n")))

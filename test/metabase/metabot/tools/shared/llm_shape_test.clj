@@ -597,6 +597,23 @@
                                                                               :type :string/=}]})]
       (is (str/includes? xml (str "name=\"" ascii "...\""))))))
 
+(deftest ^:parallel dashboard->xml-caps-filter-defaults-test
+  (let [default-attr (fn [default]
+                       (second (re-find #" default=\"([^\"]*)\""
+                                        (llm-shape/dashboard->xml {:id 52 :name "Defaults"
+                                                                   :parameters [{:id "p1" :name "Region"
+                                                                                 :type :string/= :default default}]}))))]
+    (testing "a short default is written in full"
+      (is (= "past30days" (default-attr "past30days")))
+      (is (= "[1,2]" (default-attr [1 2]))))
+    (testing "a default with many values lists the first 10 and says how many were left out"
+      (is (= "[0,1,2,3,4,5,6,7,8,9] (+4990 more)" (default-attr (range 5000)))))
+    (testing "a long default is cut"
+      (is (= (str (apply str (repeat 500 "x")) "...") (default-attr (apply str (repeat 5000 "x"))))))
+    (testing "a list of long values is cut as well as capped"
+      (is (= (str (subs (str "[&quot;" (apply str (repeat 600 "y"))) 0 505) "... (+1 more)")
+             (default-attr (repeat 11 (apply str (repeat 600 "y")))))))))
+
 (deftest ^:parallel user->xml-test
   (testing "formats user matching Python"
     (let [user {:id 1
