@@ -33,11 +33,19 @@
    [:enum {:api/regex (u.regex/re-or (keys entity->model))}]
    (keys entity->model)))
 
-(defn- model-and-instance [entity-name id]
+(defn- entity-model
+  "The model named by `entity-name`, with its namespace loaded. Throws a 402 when the token lacks the premium feature
+  that the model's revisions need."
+  [entity-name]
   (let [model (entity->model entity-name)]
     (assert (keyword? model))
-    ;; Ensure the model namespace is loaded before using it
+    ;; Load the model namespace first: it defines the model's revision methods.
     (t2.model/resolve-model model)
+    (revision/check-revisions-available model)
+    model))
+
+(defn- model-and-instance [entity-name id]
+  (let [model (entity-model entity-name)]
     [model (revisions.db/entity model id)]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -163,9 +171,6 @@
   [{:keys [id entity]} :- [:map {:closed true}
                            [:entity Entity]
                            [:id     ms/PositiveInt]]]
-  (let [model (entity->model entity)]
-    (assert (keyword? model))
-    ;; Ensure the model namespace is loaded before using it
-    (t2.model/resolve-model model)
+  (let [model (entity-model entity)]
     (api/read-check model id)
     (revision/revisions+details model id)))

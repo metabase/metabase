@@ -86,6 +86,16 @@
   [_model _object]
   true)
 
+(defmulti check-revisions-available
+  "Throw a 402 unless this instance's token has the premium feature that the revisions of `model` need, to list them
+  or revert to one. The default throws nothing."
+  {:arglists '([model])}
+  mi/dispatch-on-model)
+
+(defmethod check-revisions-available :default
+  [_model]
+  nil)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)

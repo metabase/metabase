@@ -55,7 +55,7 @@
           (is (= "Original" (get-in creation [:object :name]))))))))
 
 (deftest transform-test-revision-revert-test
-  (mt/with-premium-features #{:transforms-basic}
+  (mt/with-premium-features #{:transforms-basic :transforms-testing}
     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Transform     {transform-id :id} {}
@@ -322,3 +322,36 @@
                                      :id          card-test-id
                                      :revision_id (:id creation)})
               (is (= old-card (t2/select-one-fn :card_id :model/CardTest :id card-test-id))))))))))
+
+(deftest transform-test-revisions-require-feature-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Transform     {transform-id :id} {}
+                     :model/TransformTest {transform-test-id :id} {:transform_id transform-id
+                                                                   :name         "Original"}]
+        (t2/update! :model/TransformTest :id transform-test-id {:name "Renamed"})
+        (let [creation-id (:id (last (revisions/revisions :model/TransformTest transform-test-id)))
+              requests    [[:get "revision" :entity "transform-test" :id transform-test-id]
+                           [:get (str "revision/transform-test/" transform-test-id)]
+                           [:post "revision/revert" {:entity      "transform-test"
+                                                     :id          transform-test-id
+                                                     :revision_id creation-id}]]]
+          (testing "without :transforms-testing, every revision endpoint refuses a transform test"
+            (mt/with-premium-features #{:transforms-basic}
+              (doseq [[method & args] requests]
+                (testing (str method " " (first args))
+                  (mt/assert-has-premium-feature-error
+                   "Transforms Testing"
+                   (apply mt/user-http-request :crowberto method 402 args)))))
+            (is (= "Renamed" (t2/select-one-fn :name :model/TransformTest :id transform-test-id))))
+          (testing "with :transforms-testing, every revision endpoint serves a transform test"
+            (mt/with-premium-features #{:transforms-basic :transforms-testing}
+              (is (=? [{:is_creation false} {:is_creation true}]
+                      (mt/user-http-request :crowberto :get 200 "revision"
+                                            :entity "transform-test" :id transform-test-id)))
+              (is (=? [{:is_creation false} {:is_creation true}]
+                      (mt/user-http-request :crowberto :get 200 (str "revision/transform-test/" transform-test-id))))
+              (mt/user-http-request :crowberto :post 200 "revision/revert" {:entity      "transform-test"
+                                                                            :id          transform-test-id
+                                                                            :revision_id creation-id})
+              (is (= "Original" (t2/select-one-fn :name :model/TransformTest :id transform-test-id))))))))))

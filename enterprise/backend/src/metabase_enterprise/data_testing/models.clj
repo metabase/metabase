@@ -8,13 +8,14 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -153,6 +154,10 @@
 (defmethod revision/revision-readable? :model/TransformTest
   [_model object]
   (mi/can-read? (t2/instance :model/TransformTest object)))
+
+(defmethod revision/check-revisions-available :model/TransformTest
+  [_model]
+  (premium-features/assert-has-feature :transforms-testing (tru "Transforms Testing")))
 
 (defmethod revision/revert-to-revision! :model/TransformTest
   [_model id _user-id serialized-instance]
