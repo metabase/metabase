@@ -165,6 +165,33 @@
         (is (not (re-find #"MB_WS_TEST" (ex-message e)))
             "the message must not echo the template value")))))
 
+(deftest build-workspace-config-emits-no-optional-forms-test
+  (testing "The sidecar parses `[[...]]` in every config.yml string at boot and throws when one holds no
+            `{{`, so the parent refuses (409) to emit a config carrying `[[` as well."
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "Bracketed DW"
+                    :engine  :postgres
+                    :details {:host "db.example" :port 5432}}
+                   :model/Workspace {ws-id :id} {:name       "bracketed"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "p[[w]]d"}
+                    :output_namespace "ws_bracketed"
+                    :input_schemas    ["public"]
+                    :status           :provisioned}]
+      (let [e (try
+                (config/build-workspace-config ws-id)
+                nil
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? e))
+        (is (= 409 (:status-code (ex-data e))))
+        (is (= ["database \"Bracketed DW\" field details.password"]
+               (:locations (ex-data e))))
+        (is (not (re-find #"p\[\[w" (ex-message e)))
+            "the message must not echo the value")))))
+
 (deftest build-workspace-config-empty-workspace-test
   (testing "A workspace with no databases still produces the version+config outer shape"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name       "Empty"

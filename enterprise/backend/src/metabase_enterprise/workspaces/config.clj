@@ -109,24 +109,30 @@
       :details   {}
       :is_sample true}]))
 
+(defn- template-form?
+  "True if `s` contains `{{` or `[[`. The sidecar parses every config.yml string for both forms at
+   boot: `{{` reads the environment, and a `[[` it cannot parse makes boot throw."
+  [s]
+  (boolean (re-find #"\{\{|\[\[" s)))
+
 (defn- template-paths
-  "Paths to every string in `x`, map keys included, that contains `{{`."
+  "Paths to every string in `x`, map keys included, that contains a template form (`{{` or `[[`)."
   [path x]
   (cond
     (map? x)        (mapcat (fn [[k v]]
-                              (concat (when (and (string? k) (str/includes? k "{{"))
+                              (concat (when (and (string? k) (template-form? k))
                                         [(conj path k)])
                                       (template-paths (conj path k) v)))
                             x)
     (sequential? x) (mapcat (fn [i v] (template-paths (conj path i) v)) (range) x)
-    (string? x)     (when (str/includes? x "{{") [path])
+    (string? x)     (when (template-form? x) [path])
     :else           nil))
 
 (defn- path->str [path]
   (str/join "." (map #(if (keyword? %) (name %) (str %)) path)))
 
 (defn- template-locations
-  "Describe where `config` carries a `{{` template form, by database and field path. Never includes
+  "Describe where `config` carries a template form (`{{` or `[[`), by database and field path. Never includes
    the value itself: it can be a secret."
   [config]
   (concat
@@ -137,12 +143,13 @@
      (str "workspace field " (path->str path)))))
 
 (defn- check-no-template-forms
-  "Throw a 409 if any string in `config` contains `{{`. The sidecar expands `{{env X}}` templates in
-   every string of config.yml at boot, so a template the parent emits would read the developer's
-   environment. Templating is for sections the caller adds."
+  "Throw a 409 if any string in `config` contains `{{` or `[[`. The sidecar expands `{{env X}}`
+   templates in every string of config.yml at boot, so a template the parent emits would read the
+   developer's environment, and a `[[` without a `{{` inside makes the sidecar's boot throw.
+   Templating is for sections the caller adds."
   [workspace-id config]
   (when-let [locations (seq (template-locations config))]
-    (throw (ex-info (str "Cannot build config: values contain a template form ({{), which the sidecar would expand at boot: "
+    (throw (ex-info (str "Cannot build config: values contain a template form ({{ or [[), which the sidecar would parse at boot: "
                          (str/join "; " locations))
                     {:status-code  409
                      :workspace_id workspace-id
