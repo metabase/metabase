@@ -47,8 +47,9 @@
            (search-expr "[ops monitoring] -- available")))
     (is (= "'[ops' & 'monitoring]' & 'not-available':*"
            (search-expr "[ops monitoring] not-available"))))
-  (is (= "'a' & 'b' & 'c' <-> 'd' & 'e' | 'b' & 'e':*"
-         (search-expr "a b \" c d\" e or b e")))
+  (is (= "'a' & 'b' & 'c' <-> 'd' & 'e' | 'b' & 'e'"
+         (search-expr "a b \" c d\" e or b e"))
+      "the final `e` repeats one from the other branch, so it was typed in full")
   (is  (= "'ab' <-> 'and' <-> 'cde' <-> 'f' | !'abc' & 'def' & 'ghi' | 'jkl' <-> 'mno' <-> 'or' <-> 'pqr'"
           (search-expr "\"ab and cde f\" or -abc def AND ghi OR \"jkl mno OR pqr\"")))
   (is (= "'big' & 'data' | 'business' <-> 'intelligence' | 'data' & 'wrangling':*"
@@ -67,7 +68,37 @@
     (is (= "'test\\\\':*" (search-expr "test\\"))))
   (testing "single quotes"
     (is (= "'you''re':*"
-           (search-expr "you're")))))
+           (search-expr "you're"))))
+  (testing "a final word that already appeared earlier was typed in full, so it is not a prefix"
+    (is (= "'revenue' & 'revenue'"
+           (search-expr "revenue revenue")))
+    (is (= "'revenue' & 'dogs' & 'revenue'"
+           (search-expr "Revenue dogs revenue")))
+    (is (= "'revenue' | 'dogs' | 'revenue'"
+           (search-expr "revenue or dogs or revenue")))
+    (is (= "'monthly' <-> 'revenue' & 'revenue'"
+           (search-expr "\"monthly revenue\" revenue"))
+        "a word inside an earlier phrase counts")
+    (is (= "!'revenue' & 'revenue'"
+           (search-expr "-revenue revenue"))
+        "so does a negated word")
+    (is (= "'revenue' <-> 'revenue'"
+           (search-expr "\"revenue revenue"))
+        "within an unfinished phrase too")
+    (is (= "'revenue' & 'revenue'"
+           (search-expr "revenue revenue and"))
+        "a trailing connective is dropped, so the word before it is the final word")
+    (is (= "'revenue' & 'rev':*"
+           (search-expr "revenue rev"))
+        "a different final word still completes")
+    (is (= "'revenue' & 'rev':*"
+           (search-expr "revenue rev or"))
+        "including before a trailing connective"))
+  (testing "a closed phrase stays exact when a trailing connective follows it"
+    (is (= "'monthly' <-> 'revenue'"
+           (search-expr "\"monthly revenue\" and")))
+    (is (= "'monthly' <-> 'revenue'"
+           (search-expr "\"monthly revenue\" or")))))
 
 (deftest available-tsv-languages-test
   (when (= :postgres (mdb/db-type))
