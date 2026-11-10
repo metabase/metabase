@@ -1,0 +1,5 @@
+# A failed create
+// "A failed create" and "A failed create, with #86601". Only the success body is checked here:
+// selvage reads 2xx JSON responses, so cleanup_required (on 409/412/500) is not a step field.
+mbcode -> parent: createWorkspace {id, databases.database_id, databases.status}
+mbcode -> parent: deleteWorkspace

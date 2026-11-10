@@ -1,0 +1,7 @@
+# Widen a live workspace and shadow a table (proposed)
+// "Follow-ups for MB Code: backend". changeWorkspaceSchemas, shadowTable and unshadowTable are
+// x-status: proposed, so this flow only passes in a view that includes proposed.
+agent -> parent: changeWorkspaceSchemas {databases.input_schemas}
+agent -> parent: getWorkspaceConfig
+agent -> sidecar: shadowTable {id, to_schema, to_table_name}
+agent -> sidecar: unshadowTable
