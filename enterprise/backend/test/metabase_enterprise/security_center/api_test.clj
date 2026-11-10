@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.fetch :as fetch]
+   [metabase-enterprise.security-center.health-checks :as health-checks]
    [metabase-enterprise.security-center.matching :as matching]
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.settings :as settings]
@@ -9,6 +10,7 @@
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -255,3 +257,93 @@
                                       settings/security-center-slack-channel        (constantly nil)]
             (mt/user-http-request :crowberto :post 200 "ee/security-center/advisories/test-notification" {})
             (is (= saved-emails (:email-recipients @captured)))))))))
+
+;;; Health checks
+
+(defn- fake-health-check
+  "A registry entry for the tests, with `overrides` on top. Passes with one item unless told otherwise."
+  [& {:as overrides}]
+  (merge {:id                :https-redirect
+          :severity          :medium
+          :title             (deferred-tru "Requests are redirected to HTTPS")
+          :description       (deferred-tru "Plain HTTP exposes sessions.")
+          :remediation       (deferred-tru "Turn on the redirect in Admin settings.")
+          :docs-page         "configuring-metabase/settings"
+          :requires-restart? false
+          :applicable?       (constantly true)
+          :run               (constantly [{:status :pass, :message "Redirect to HTTPS is on"}])}
+         overrides))
+
+(def ^:private fake-health-checks
+  "Three checks: one that passes, one that does not apply, and one that throws."
+  {:https-redirect     (fake-health-check)
+   :sso-login          (fake-health-check :id :sso-login, :applicable? (constantly false))
+   :session-secret-key (fake-health-check :id                :session-secret-key
+                                          :severity          :high
+                                          :docs-anchor       "mb_session_secret_key"
+                                          :requires-restart? true
+                                          :run               #(throw (ex-info "the setting is unreadable" {})))})
+
+(def ^:private passing-health-check
+  "What the API returns for the passing check of [[fake-health-checks]]."
+  {:id               "https-redirect"
+   :severity         "medium"
+   :title            "Requests are redirected to HTTPS"
+   :description      "Plain HTTP exposes sessions."
+   :remediation      "Turn on the redirect in Admin settings."
+   :docs             {:page "configuring-metabase/settings"}
+   :requires_restart false
+   :status           "pass"
+   :checked_at       string?
+   :items            [{:status "pass", :message "Redirect to HTTPS is on"}]})
+
+(def ^:private throwing-health-check
+  "What the API returns for the throwing check of [[fake-health-checks]]: unknown, with the error's message."
+  {:id               "session-secret-key"
+   :severity         "high"
+   :docs             {:page "configuring-metabase/settings", :anchor "mb_session_secret_key"}
+   :requires_restart true
+   :status           "unknown"
+   :checked_at       string?
+   :items            [{:status "unknown", :message "Couldn't run this check. Check the server logs for the underlying error."}]})
+
+(deftest list-health-checks-test
+  (testing "GET /api/ee/security-center/health-checks"
+    (testing "requires premium feature"
+      (mt/with-premium-features #{}
+        (mt/assert-has-premium-feature-error
+         "Security Center"
+         (mt/user-http-request :crowberto :get 402 "ee/security-center/health-checks"))))
+    (mt/with-premium-features #{:admin-security-center}
+      (with-redefs [health-checks/checks fake-health-checks]
+        (testing "non-superuser gets 403"
+          (mt/user-http-request :rasta :get 403 "ee/security-center/health-checks"))
+        (testing "returns the checks that apply, with their results"
+          (let [{:keys [checks]} (mt/user-http-request :crowberto :get 200 "ee/security-center/health-checks")]
+            (is (= ["https-redirect" "session-secret-key"] (map :id checks))
+                "the check that does not apply is left out")
+            (is (=? passing-health-check (first checks)))
+            (testing "a check that throws is unknown with a message, and the other checks are unaffected"
+              (is (=? throwing-health-check (second checks))))))
+        (testing "sets the health-checks gauge"
+          (mt/with-prometheus-system! [_ system]
+            (mt/user-http-request :crowberto :get 200 "ee/security-center/health-checks")
+            (is (= 1.0 (mt/metric-value system :metabase-security-center/health-checks
+                                        {:check_id "https-redirect", :severity "medium", :status "pass"})))
+            (is (= 1.0 (mt/metric-value system :metabase-security-center/health-checks
+                                        {:check_id "session-secret-key", :severity "high", :status "unknown"})))))))))
+
+(deftest recheck-health-checks-test
+  (testing "POST /api/ee/security-center/health-checks/recheck"
+    (testing "requires premium feature"
+      (mt/with-premium-features #{}
+        (mt/assert-has-premium-feature-error
+         "Security Center"
+         (mt/user-http-request :crowberto :post 402 "ee/security-center/health-checks/recheck"))))
+    (mt/with-premium-features #{:admin-security-center}
+      (with-redefs [health-checks/checks fake-health-checks]
+        (testing "non-superuser gets 403"
+          (mt/user-http-request :rasta :post 403 "ee/security-center/health-checks/recheck"))
+        (testing "runs every check that applies again and returns them"
+          (let [{:keys [checks]} (mt/user-http-request :crowberto :post 200 "ee/security-center/health-checks/recheck")]
+            (is (=? [passing-health-check throwing-health-check] checks))))))))

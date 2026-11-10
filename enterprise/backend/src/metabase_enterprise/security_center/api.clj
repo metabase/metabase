@@ -3,6 +3,8 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.security-center.db :as security-center.db]
+   [metabase-enterprise.security-center.health-checks :as health-checks]
+   [metabase-enterprise.security-center.metrics :as metrics]
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.settings :as settings]
@@ -135,6 +137,18 @@
                         (:slack_channel body)
                         (settings/security-center-slack-channel))})
   {:success true})
+
+(api.macros/defendpoint :get "/health-checks" :- [:map [:checks [:sequential ::security-center.schema/health-check]]]
+  "The health checks that apply to this instance, each with its current result."
+  []
+  (api/check-superuser)
+  {:checks (doto (health-checks/run-checks) metrics/set-health-check-gauges!)})
+
+(api.macros/defendpoint :post "/health-checks/recheck" :- [:map [:checks [:sequential ::security-center.schema/health-check]]]
+  "Run every health check that applies to this instance again."
+  []
+  (api/check-superuser)
+  {:checks (doto (health-checks/run-checks) metrics/set-health-check-gauges!)})
 
 (def +check-security-center-enabled
   "Middleware that returns 402 if Security Center is not available on this instance."
