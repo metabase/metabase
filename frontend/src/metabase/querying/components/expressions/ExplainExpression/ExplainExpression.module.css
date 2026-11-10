@@ -1,0 +1,17 @@
+.container {
+  padding: 0.75rem 1rem 0.5rem;
+}
+
+.explanation {
+  max-height: 20rem;
+  overflow-y: auto;
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.5;
+}
+
+.details {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--mb-color-border-neutral);
+  color: var(--mb-color-text-secondary);
+}

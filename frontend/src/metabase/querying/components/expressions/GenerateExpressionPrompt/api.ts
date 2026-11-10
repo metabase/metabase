@@ -25,6 +25,13 @@ type CompleteExpressionRequest = {
   name?: string;
 };
 
+type ExplainExpressionRequest = {
+  source: string;
+  expression_mode: Lib.ExpressionMode;
+  columns: string[];
+  name?: string;
+};
+
 const generateExpressionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     generateExpression: builder.mutation<
@@ -34,6 +41,16 @@ const generateExpressionApi = Api.injectEndpoints({
       query: (body) => ({
         method: "POST",
         url: "/api/prototype/expression/generate",
+        body,
+      }),
+    }),
+    explainExpression: builder.mutation<
+      { summary: string; details?: string },
+      ExplainExpressionRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/prototype/expression/explain",
         body,
       }),
     }),
@@ -50,5 +67,8 @@ const generateExpressionApi = Api.injectEndpoints({
   }),
 });
 
-export const { useGenerateExpressionMutation, useCompleteExpressionMutation } =
-  generateExpressionApi;
+export const {
+  useGenerateExpressionMutation,
+  useCompleteExpressionMutation,
+  useExplainExpressionMutation,
+} = generateExpressionApi;
