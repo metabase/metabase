@@ -1,0 +1,6 @@
+# Recover a workspace the parent kept
+// "Keeping a workspace the parent kept": after a lost or failed create, find the workspace by its
+// unique name and delete it.
+mbcode -> parent: createWorkspace {id}
+mbcode -> parent: listWorkspaces {id, name}
+mbcode -> parent: deleteWorkspace
