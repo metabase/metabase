@@ -4,6 +4,7 @@
    [honey.sql.pg-ops]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.db :as search.db]
+   [metabase.search.query-expr :as query-expr]
    [metabase.search.util :as search.util]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -35,8 +36,11 @@
    ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
    ;; the text-search config name is a `regconfig`, not a value: as a `?` parameter Postgres cannot resolve the
    ;; overload, so it has to be a real SQL literal
-   :join   [[[:to_tsquery (h2x/literal (search.util/tsv-language))
-              [:lift (search.util/to-tsquery-expr search-term)]]
+   :join   [[(if-let [expr (:search-expr search-ctx)]
+               ;; a structured query compiles straight to a tsquery; the string language is only for plain strings
+               (query-expr/->tsquery expr (search.util/tsv-language))
+               [:to_tsquery (h2x/literal (search.util/tsv-language))
+                [:lift (search.util/to-tsquery-expr search-term)]])
              :query] [:= 1 1]]
    :where  (if (str/blank? search-term)
              [:= [:inline 1] [:inline 1]]
