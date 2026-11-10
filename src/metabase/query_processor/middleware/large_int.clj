@@ -2,9 +2,7 @@
   "Middleware for handling conversion of integers to strings for proper display of large numbers"
   (:refer-clojure :exclude [mapv])
   (:require
-   ;; still passes state via the store's miscellaneous-value slot; general-cached-value migration pending
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.util.performance :refer [mapv]])
+   [metabase.util.performance :refer [mapv-maybe-unchanged]])
   (:import
    (clojure.lang BigInt)
    (java.math BigDecimal BigInteger)))
@@ -46,10 +44,11 @@
 (defn- large-integer?
   "Checks if `n` is a large integer outside the JS number range."
   [n]
-  (or (and (instance? Long n) (large-long? n))
-      (and (instance? BigInt n) (large-bigint? n))
-      (and (instance? BigInteger n) (large-biginteger? n))
-      (and (instance? BigDecimal n) (large-bigdecimal? n))))
+  (when (instance? Number n)
+    (cond (instance? Long n) (large-long? n)
+          (instance? BigInt n) (large-bigint? n)
+          (instance? BigInteger n) (large-biginteger? n)
+          (instance? BigDecimal n) (large-bigdecimal? n))))
 
 (defn maybe-large-int->string
   "Converts large integer values to strings and leaves other values unchanged."
@@ -60,22 +59,10 @@
 
 (defn- result-large-int->string
   "Converts all large integer row values to strings."
-  [column-index-mask rf]
+  [rf]
   ((map (fn [row]
-          (mapv #(if %2 (maybe-large-int->string %1) %1) row column-index-mask)))
+          (mapv-maybe-unchanged maybe-large-int->string row)))
    rf))
-
-(defn- maybe-integer-column?
-  "Checks if the column might have large integer values."
-  [{:keys [base_type] :as _column-metadata}]
-  (or (isa? base_type :type/Integer)
-      (isa? base_type :type/Decimal)))
-
-(defn- column-index-mask
-  "Returns a mask of booleans for each column. If the mask for the column is true, it might be converted to string. Done
-  for performance reasons to avoid checking every row value."
-  [cols]
-  (mapv maybe-integer-column? cols))
 
 (defn convert-large-int-to-string
   "Converts any large integer in a result to a string to handle a number > 2^51 or < -2^51, the JavaScript float
@@ -83,9 +70,5 @@
   [{{:keys [js-int-to-string?] :or {js-int-to-string? false}} :middleware, :as _query} rff]
   (let [rff' (when js-int-to-string?
                (fn [metadata]
-                 (let [mask (column-index-mask (:cols metadata))]
-                   ;; existing usage -- don't use going forward
-                   #_{:clj-kondo/ignore [:deprecated-var]}
-                   (qp.store/store-miscellaneous-value! [::column-index-mask] mask)
-                   (result-large-int->string mask (rff metadata)))))]
+                 (result-large-int->string (rff metadata))))]
     (or rff' rff)))
