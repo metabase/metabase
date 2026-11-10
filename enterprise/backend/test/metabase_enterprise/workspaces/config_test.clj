@@ -180,9 +180,10 @@
         {:host "h" :port 5432 :tunnel-enabled false :tunnel-known-hosts-id Integer/MAX_VALUE}
         (fn [ws-id]
           (is (= {} (select-keys (details-of ws-id) kh-keys))))))
-    (testing "tunnel off: a leftover -options key doesn't ship"
+    (testing "tunnel off: leftover -options and -value keys don't ship"
       (with-cert-workspace
-        {:host "h" :port 5432 :tunnel-enabled false :tunnel-known-hosts-options "uploaded"}
+        {:host "h" :port 5432 :tunnel-enabled false
+         :tunnel-known-hosts-options "uploaded" :tunnel-known-hosts-value known-hosts}
         (fn [ws-id]
           (is (= {} (select-keys (details-of ws-id) kh-keys))))))
     (testing "tunnel on with a known-hosts id that doesn't resolve: a 409, since dropping it would skip host-key checks"

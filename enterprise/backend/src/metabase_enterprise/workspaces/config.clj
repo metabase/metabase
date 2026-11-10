@@ -158,8 +158,9 @@
 (defn- inline-secrets
   "Replace the `:secret` connection properties' Secret ids with what the child can use. `:secret` properties keep only
    the id of their Secret row in `:details`, and the parent's ids don't resolve in the child's app DB: there they could
-   name an unrelated Secret the child's own import created. So every `-id` and `-options` is dropped, and the values in
-   `inlined-secrets` ship instead, for the child's config-file import to store as Secrets of its own.
+   name an unrelated Secret the child's own import created. So every `-id` and `-options`, and the `-value` of each of
+   `inlined-secrets`, is dropped. The values of the `inlined-secrets` whose feature is on ship instead, for the child's
+   config-file import to store as Secrets of its own.
 
    The client certificate and key are not inlined (MBC10-87), so a connection that authenticates with them is a 409:
    the child would otherwise fail only when it connects."
@@ -174,9 +175,12 @@
         ;; `tunnel-known-hosts`.
         secret-names (into (set (map :name inlined-secrets))
                            (keys (secrets/secret-conn-props-by-name (:engine db))))
-        drop-keys    (mapcat (fn [secret-name]
-                               [(keyword (str secret-name "-id")) (keyword (str secret-name "-options"))])
-                             secret-names)]
+        ;; an inlined secret's `-value` is dropped too: `inlined-secret-entries` adds it back only when its feature
+        ;; is on, so a leftover plain value of a disabled feature doesn't ship.
+        drop-keys    (concat (mapcat (fn [secret-name]
+                                       [(keyword (str secret-name "-id")) (keyword (str secret-name "-options"))])
+                                     secret-names)
+                             (map :value inlined-secrets))]
     (into (apply dissoc details drop-keys)
           (map #(inlined-secret-entries db details %))
           inlined-secrets)))
