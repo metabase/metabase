@@ -20,6 +20,8 @@
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;; `with-appdb-search-if-available-without-fallback` reads search tables before any `with-temp` has set up the app
 ;; database.
 (use-fixtures :once (fixtures/initialize :db))
@@ -288,6 +290,17 @@
                        (search.ingestion/bulk-ingest! [["card" [:= 1 :this.no_such_column]]
                                                        (search.ingestion/tombstone "card" [id])]))
               "the failure still reaches the caller")
+          (is (false? (indexed?)))))))
+  (testing "an AssertionError in a re-index run does not cost the tombstone after it either"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {:name "Failingassertprobe"}]
+        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+          (is (true? (indexed?)))
+          (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages] (throw (AssertionError. "boom")))]
+            (is (thrown? AssertionError
+                         (search.ingestion/bulk-ingest! [["card" [:= id :this.id]]
+                                                         (search.ingestion/tombstone "card" [id])]))
+                "the error still reaches the caller"))
           (is (false? (indexed?))))))))
 
 (deftest curation-signals-surfaced-in-results-test
