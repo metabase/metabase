@@ -1253,6 +1253,72 @@
                   (is (= new-sql (get-in result [:structured-output :query-content])))
                   (is (true? (:non-terminal? result))))))))))))
 
+(deftest hidden-sql-query-reference-warnings-test
+  (testing "with show_chart false, the reference warnings and :non-terminal? reach the model on every delivery path"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/MetabotConversation {own :id} {:user_id (mt/user->id :crowberto)}]
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
+                                             metabot-sql-execution-enabled?   true]
+            (let [query-id  "test-hidden-warning-q"
+                  join      " JOIN no_such_account a ON a.id = v.id"
+                  stored    (-> (lib/native-query (mt/metadata-provider) "SELECT v.name FROM venues v")
+                                lib/->legacy-MBQL)
+                  ;; A fresh memory per call: a warning already shown in this turn would not keep the turn open.
+                  run       (fn [tool-name context & {:keys [client-ids]}]
+                              (binding [shared/*memory-atom*                     (atom {:tool-names      #{"create_sql_query"
+                                                                                                           "edit_sql_query"
+                                                                                                           "replace_sql_query"
+                                                                                                           "run_query"}
+                                                                                        :conversation-id own
+                                                                                        :context         context
+                                                                                        :client-ids      client-ids
+                                                                                        :state           {:queries {query-id stored}}})
+                                        scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                                        scope/*current-user-scope*               (scope/user-metabot-perms->scopes
+                                                                                  scope/all-yes-permissions)]
+                                (let [result   (invoke-sql-tool :internal (some-> shared/*memory-atom* deref) tool-name
+                                                                {:database_id (mt/id)
+                                                                 :sql_query   (str "SELECT v.name FROM venues v" join)
+                                                                 :query_id    query-id
+                                                                 :edits       [{:old_string "FROM venues v"
+                                                                                :new_string (str "FROM venues v" join)}]
+                                                                 :new_query   (str "SELECT v.name FROM venues v" join)
+                                                                 :show_chart  false})
+                                      shown-id (get-in result [:structured-output :query-id])]
+                                  {:parts         (mapv :data-type (:data-parts result))
+                                   :run-it?       (str/includes? (:output result)
+                                                                 (str "call `run_query` with `query_id` `" shown-id "`"))
+                                   :shown-anyway? (str/includes? (:output result)
+                                                                 instructions/client-query-shown-instruction)
+                                   :variant?      (str/includes? (:output result)
+                                                                 instructions/client-query-variant-instruction)
+                                   :warned?       (warns-about? "no_such_account" result)
+                                   :non-terminal? (:non-terminal? result)})))
+                  editor    {:user_is_viewing [{:type    "code_editor"
+                                                :buffers [{:id     "buf-1"
+                                                           :source {:language "sql" :database_id nil}
+                                                           :cursor {:line 0 :column 0}}]}]}
+                  hidden    {:parts [], :run-it? true, :warned? true, :non-terminal? true}]
+              (doseq [tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
+                (testing tool-name
+                  (testing "a hidden query"
+                    (is (=? hidden (run tool-name {}))))
+                  (when-not (= tool-name "create_sql_query")
+                    (testing "a hidden query in an open SQL editor"
+                      (is (=? hidden (run tool-name editor))))
+                    (testing "the user's own query, which is shown, with the client-query instructions"
+                      (doseq [[delivery context part] [["in their open SQL editor" editor "code_edit"]
+                                                       ["as a chart without an editor" {} "generated_entity"]]]
+                        (testing delivery
+                          (is (=? {:parts         [part]
+                                   :run-it?       false
+                                   :shown-anyway? true
+                                   :variant?      true
+                                   :warned?       true
+                                   :non-terminal? true}
+                                  (run tool-name context :client-ids #{query-id}))))))))))))))))
+
 (deftest resolved-sql-unchanged-test
   (testing "SQL whose references resolve gets the same output as before, with no warning"
     (mt/test-drivers #{:postgres}
