@@ -7,6 +7,7 @@
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.quoting :as quoting]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -456,6 +457,16 @@
                                                                          [[1 true] [2 false]] false))]
           (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
           (is (= [1 true 2 false] params)))))))
+
+(deftest current-user-table-privileges-with-details-test
+  (mt/test-drivers (into #{}
+                         (filter #(get-method sql-jdbc.sync/current-user-table-privileges %))
+                         (sql-jdbc-drivers))
+    (testing "a connection opened from the details returns the rows that the pooled connection returns"
+      (let [rows (driver.sql-jdbc/current-user-table-privileges-with-details driver/*driver* (:details (mt/db)))]
+        (is (seq rows))
+        (is (= (set (driver/current-user-table-privileges driver/*driver* (lib.metadata/database (mt/metadata-provider))))
+               (set rows)))))))
 
 (deftest ^:parallel dot-qualified-test
   (testing "the whole dotted path lands in the keyword's name, which HoneySQL leaves alone"

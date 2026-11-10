@@ -382,6 +382,19 @@
    (sql-jdbc.conn/db->pooled-connection-spec database)
    args))
 
+(defn current-user-table-privileges-with-details
+  "The rows of [[sql-jdbc.sync/current-user-table-privileges]] for the user in the connection `details`. Opens its own
+  connection from `details`, as a connection test does, so it needs no Database and uses no connection pool."
+  [driver details]
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     jdbc-spec
+     nil
+     (fn [^Connection conn]
+       ;; realized here: the rows may be lazy, and the connection closes when this function returns
+       (vec (sql-jdbc.sync/current-user-table-privileges driver {:connection conn}))))))
+
 (defmethod driver/query-result-metadata :sql-jdbc
   [driver query]
   (sql-jdbc.metadata/query-result-metadata driver query))
