@@ -1387,7 +1387,8 @@
   workspace, so the caller must not tear this one down: see `:workspace/cleanup?` in
   [[driver/init-workspace-isolation!]]."
   [found cause]
-  (ex-info (str found " It may belong to another workspace, so it was left unchanged.")
+  (ex-info (str found " It may belong to another workspace, so it was left unchanged. Drop it by hand, or deprovision the"
+                " workspace that owns it, then provision again.")
            {:status-code 409, :workspace/cleanup? false}
            cause))
 

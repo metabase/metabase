@@ -1627,6 +1627,8 @@
         database {:lib/type :metadata/database, :id 1, :engine :sqlserver}
         init!    (fn [calls rollback-error]
                    (with-redefs [sqlserver/existing-workspace-principals (constantly [])
+                                 ;; the real one ignores non-c3p0 connections, so record the call instead
+                                 sql-jdbc.conn/discard-pooled-connection! (fn [_conn] (swap! calls conj ["discard"]))
                                  sql-jdbc.execute/do-with-connection-with-options
                                  (fn [_driver _db _options f]
                                    (f (recording-connection calls
@@ -1637,14 +1639,14 @@
       (let [calls (atom [])]
         (is (thrown? clojure.lang.ExceptionInfo (init! calls nil)))
         (is (= [["rollback"] ["setAutoCommit" true]]
-               (filterv (comp #{"rollback" "setAutoCommit" "commit"} first) (drop 1 @calls))))))
-    (testing "after a failed rollback, autocommit stays off (turning it on commits the partial batch) and the original error is kept"
+               (filterv (comp #{"rollback" "setAutoCommit" "commit" "discard"} first) (drop 1 @calls))))))
+    (testing "after a failed rollback, autocommit stays off (turning it on commits the partial batch), the connection is discarded and the original error is kept"
       (let [calls (atom [])
             e     (is (thrown? clojure.lang.ExceptionInfo (init! calls (java.sql.SQLException. "connection reset"))))]
         (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e)))
         (is (str/includes? (ex-message e) "batch failed"))
-        (is (= [["rollback"]]
-               (filterv (comp #{"rollback" "setAutoCommit" "commit"} first) (drop 1 @calls))))))))
+        (is (= [["rollback"] ["discard"]]
+               (filterv (comp #{"rollback" "setAutoCommit" "commit" "discard"} first) (drop 1 @calls))))))))
 
 (deftest ^:synchronized destroy-workspace-isolation-ends-sessions-first-test
   (mt/test-driver :sqlserver
