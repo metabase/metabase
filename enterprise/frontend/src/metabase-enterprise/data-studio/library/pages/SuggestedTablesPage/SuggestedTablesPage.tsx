@@ -357,13 +357,7 @@ function SuggestedTablesPageContent() {
                     />
                   }
                   onRowClick={(row) =>
-                    navigate(
-                      Urls.dataStudioData({
-                        databaseId: row.original.table.db_id,
-                        schemaName: row.original.table.schema,
-                        tableId: row.original.id,
-                      }),
-                    )
+                    navigate(Urls.dataStudioTable(row.original.id))
                   }
                 />
               )}
