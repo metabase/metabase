@@ -180,6 +180,7 @@ async function brokeredFetch(request: Request): Promise<Response> {
     headers: Object.fromEntries(request.headers.entries()),
     body,
     redirect: request.redirect,
+    cache: request.cache,
   };
   const answer = defer<BrokerResponseMessage>();
   pending.set(id, answer.resolve);

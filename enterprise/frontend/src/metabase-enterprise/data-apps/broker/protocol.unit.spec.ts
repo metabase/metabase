@@ -116,12 +116,14 @@ describe("isBrokerPortMessage", () => {
     headers: { accept: "application/json" },
     body: null,
     redirect: "follow",
+    cache: "default",
   };
 
   it("accepts the requests and cancellations the iframe sends", () => {
     expect(isBrokerPortMessage(request)).toBe(true);
     expect(isBrokerPortMessage({ ...request, redirect: "error" })).toBe(true);
     expect(isBrokerPortMessage({ ...request, redirect: "manual" })).toBe(true);
+    expect(isBrokerPortMessage({ ...request, cache: "no-store" })).toBe(true);
     expect(isBrokerPortMessage({ ...request, body: new ArrayBuffer(1) })).toBe(
       true,
     );
@@ -139,6 +141,7 @@ describe("isBrokerPortMessage", () => {
     expect(isBrokerPortMessage({ ...request, redirect: "sideways" })).toBe(
       false,
     );
+    expect(isBrokerPortMessage({ ...request, cache: "forever" })).toBe(false);
     expect(isBrokerPortMessage({ ...request, type: "other" })).toBe(false);
   });
 });

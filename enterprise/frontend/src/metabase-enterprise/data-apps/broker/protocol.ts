@@ -34,6 +34,8 @@ export interface BrokerRequestMessage {
   body: ArrayBuffer | null;
   /** The app's `redirect` mode. The top page follows redirects only within the instance API. */
   redirect: RequestRedirect;
+  /** The app's `cache` mode. The top page relays only the modes that ask the server. */
+  cache: RequestCache;
 }
 
 /** iframe to top page: the app aborted request `id`. */
@@ -74,6 +76,14 @@ export type BrokerResponseMessage =
 const isRedirectMode = (value: unknown): value is RequestRedirect =>
   value === "follow" || value === "error" || value === "manual";
 
+const isCacheMode = (value: unknown): value is RequestCache =>
+  value === "default" ||
+  value === "no-store" ||
+  value === "reload" ||
+  value === "no-cache" ||
+  value === "force-cache" ||
+  value === "only-if-cached";
+
 const isStringRecord = (value: unknown): value is Record<string, string> =>
   typeof value === "object" &&
   value !== null &&
@@ -109,7 +119,9 @@ export function isBrokerPortMessage(
     "body" in value &&
     (value.body === null || value.body instanceof ArrayBuffer) &&
     "redirect" in value &&
-    isRedirectMode(value.redirect)
+    isRedirectMode(value.redirect) &&
+    "cache" in value &&
+    isCacheMode(value.cache)
   );
 }
 

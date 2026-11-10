@@ -160,6 +160,34 @@ describe("iframe broker, served from a separate isolated origin", () => {
     expect(sentRequest().redirect).toBe("error");
   });
 
+  it("forwards the cache mode of the request it is handed, as the bundle's no-store", async () => {
+    // A browser's `Request` keeps its cache mode, and one built from another inherits it;
+    // cross-fetch's, which Jest runs on, drops it.
+    const PolyfilledRequest = globalThis.Request;
+    const requestSpy = jest
+      .spyOn(globalThis, "Request")
+      .mockImplementation((input, init) =>
+        Object.assign(new PolyfilledRequest(input, init), {
+          cache:
+            init?.cache ??
+            (input instanceof PolyfilledRequest ? input.cache : "default"),
+        }),
+      );
+
+    try {
+      void window.fetch(
+        new Request("/api/ee/apps/sales/bundle", { cache: "no-store" }),
+      );
+
+      await waitFor(() =>
+        expect(hostPort.postMessage).toHaveBeenCalledTimes(1),
+      );
+      expect(sentRequest().cache).toBe("no-store");
+    } finally {
+      requestSpy.mockRestore();
+    }
+  });
+
   it("answers an opaque redirect, as fetch does for redirect: manual", async () => {
     const pendingResponse = window.fetch("/api/user/current", {
       redirect: "manual",

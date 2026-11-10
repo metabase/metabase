@@ -44,8 +44,22 @@ const request = (
   headers: {},
   body: null,
   redirect: "follow",
+  cache: "default",
   ...overrides,
 });
+
+/** A browser's `Request` keeps its cache mode; cross-fetch's, which Jest runs on, drops it. */
+function keepRequestCacheMode() {
+  const PolyfilledRequest = globalThis.Request;
+
+  return jest.spyOn(globalThis, "Request").mockImplementation((input, init) =>
+    Object.assign(new PolyfilledRequest(input, init), {
+      cache:
+        init?.cache ??
+        (input instanceof PolyfilledRequest ? input.cache : "default"),
+    }),
+  );
+}
 
 function httpResponse(message: BrokerResponseMessage): BrokerHttpResponse {
   if ("networkError" in message) {
@@ -243,6 +257,46 @@ describe("handleBrokerRequest", () => {
     const [call] = fetchMock.callHistory.calls();
 
     expect(call?.request?.redirect).toBe("error");
+  });
+
+  describe("cache mode", () => {
+    let requestSpy: ReturnType<typeof keepRequestCacheMode>;
+
+    beforeEach(() => {
+      requestSpy = keepRequestCacheMode();
+    });
+
+    afterEach(() => {
+      requestSpy.mockRestore();
+    });
+
+    it("forwards the app's no-store, so this page's cache doesn't answer for the server", async () => {
+      fetchMock.get("path:/api/ee/apps/sales/bundle", {
+        status: 200,
+        body: "",
+      });
+
+      await handleBrokerRequest(
+        request({ url: "/api/ee/apps/sales/bundle", cache: "no-store" }),
+      );
+
+      const [call] = fetchMock.callHistory.calls();
+
+      expect(call?.request?.cache).toBe("no-store");
+    });
+
+    it.each<RequestCache>(["force-cache", "only-if-cached"])(
+      "asks the server even when the app asked for %s, since this page's cache holds what the session fetched",
+      async (cache) => {
+        fetchMock.get("path:/api/user/current", { status: 200, body: {} });
+
+        await handleBrokerRequest(request({ url: "/api/user/current", cache }));
+
+        const [call] = fetchMock.callHistory.calls();
+
+        expect(call?.request?.cache).toBe("default");
+      },
+    );
   });
 
   it("follows a redirect within the instance API", async () => {

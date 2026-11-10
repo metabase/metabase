@@ -32,6 +32,17 @@ const FORWARDED_REQUEST_HEADERS = new Set([
 
 const ANTI_CSRF_HEADER = "x-metabase-anti-csrf-token";
 
+/**
+ * The others take a stored response without asking the server, even a stale one, and this
+ * page's cache holds responses fetched outside the `data-app` scope.
+ */
+const RELAYED_CACHE_MODES = new Set<RequestCache>([
+  "default",
+  "no-store",
+  "reload",
+  "no-cache",
+]);
+
 /** Matches `metabase.analytics.sdk/data-app-client`; typed off the SDK config so a typo can't compile. */
 const DATA_APP_CLIENT: (typeof EMBEDDING_SDK_CONFIG)["metabaseClientRequestHeader"] =
   "data-app";
@@ -63,7 +74,7 @@ export async function handleBrokerRequest(
   request: BrokerRequestMessage,
   signal?: AbortSignal,
 ): Promise<BrokerResponseMessage> {
-  const { id, method, url, headers, body, redirect } = request;
+  const { id, method, url, headers, body, redirect, cache } = request;
 
   let parsed: URL;
   try {
@@ -97,6 +108,7 @@ export async function handleBrokerRequest(
         body: body ?? undefined,
         credentials: "include",
         redirect,
+        cache: RELAYED_CACHE_MODES.has(cache) ? cache : "default",
         signal,
       },
     );
