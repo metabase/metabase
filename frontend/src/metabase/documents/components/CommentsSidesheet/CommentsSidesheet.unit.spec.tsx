@@ -385,6 +385,10 @@ describe("CommentsSidesheet", () => {
       ].forEach((text) =>
         expect(within(openPanel).queryByText(text)).not.toBeInTheDocument(),
       );
+      // the "Test 1" thread leaves a placeholder, the fully deleted "Test X" thread does not
+      expect(
+        within(openPanel).getAllByTestId("discussion-comment-deleted"),
+      ).toHaveLength(1);
 
       await userEvent.click(screen.getByRole("tab", { name: "Resolved (2)" }));
 
@@ -400,6 +404,10 @@ describe("CommentsSidesheet", () => {
             within(resolvedPanel).queryByText(text),
           ).not.toBeInTheDocument(),
       );
+      // the "Test I" thread leaves a placeholder, the fully deleted "Test D" thread does not
+      expect(
+        within(resolvedPanel).getAllByTestId("discussion-comment-deleted"),
+      ).toHaveLength(1);
     });
 
     it("shows comments of other users, but does not let edit or delete them", async () => {
