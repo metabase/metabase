@@ -1010,9 +1010,12 @@
 
 (defn- exists-error
   "The 409 init throws for an object, described by `what`, that is already in the warehouse. It may belong to another
-  workspace, so init leaves it unchanged, and the caller must not tear down after this error."
-  [what data]
-  (ex-info (format "The warehouse already has a %s. It may belong to another workspace, so it was left unchanged." what)
+  workspace, so init leaves it unchanged, and the caller must not tear down after this error. `drop-sql` is the
+  statement an admin runs to remove the object, when no workspace uses it, so that init can succeed."
+  [what drop-sql data]
+  (ex-info (format (str "The warehouse already has a %s. It may belong to another workspace, so it was left unchanged. "
+                        "If no workspace uses it, run `%s`, and retry.")
+                   what drop-sql)
            (merge {:status-code 409, :workspace/cleanup? false} data)))
 
 (defn- public-create-schemas
@@ -1041,9 +1044,13 @@
   PUBLIC can create in any schema."
   [conn user schema]
   (when (user-exists? conn user)
-    (throw (exists-error (str "user named " (quote-field user)) {:user user})))
+    (throw (exists-error (str "user named " (quote-field user))
+                         (format "DROP USER %s;" (quote-field user))
+                         {:user user})))
   (when (schema-exists? conn schema)
-    (throw (exists-error (str "schema named " (quote-schema schema)) {:schema schema})))
+    (throw (exists-error (str "schema named " (quote-schema schema))
+                         (format "DROP SCHEMA %s CASCADE;" (quote-schema schema))
+                         {:schema schema})))
   (check-no-public-create-anywhere! conn))
 
 (defn- init-workspace-sqls
@@ -1064,9 +1071,11 @@
 (defn- end-sessions!
   "Ends every open session of `user`, so that none holds a lock that the drops in teardown wait on. STV_SESSIONS shows
   a regular user only its own sessions, and only a superuser may end another user's session, so this ends nothing
-  unless the admin connection's login is a superuser."
+  unless the admin connection's login is a superuser. `pg_terminate_backend` runs only on the leader node, so Redshift
+  refuses it in a statement that reads a table: read the pids first, then end each one in a statement of its own."
   [conn user]
-  (jdbc/query conn ["SELECT pg_terminate_backend(process) AS ended FROM stv_sessions WHERE TRIM(user_name) = ?" user]))
+  (doseq [{:keys [process]} (jdbc/query conn ["SELECT process FROM stv_sessions WHERE TRIM(user_name) = ?" user])]
+    (jdbc/query conn ["SELECT pg_terminate_backend(?) AS ended" process])))
 
 (defn- assert-no-public-create-grant!
   [conn schema-name]

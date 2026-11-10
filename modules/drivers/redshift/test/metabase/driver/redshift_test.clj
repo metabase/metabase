@@ -1056,6 +1056,21 @@
           (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                  grantor))
           (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""            grantor)))))))
 
+(deftest ^:synchronized workspace-public-create-schemas-live-test
+  ;; every live init stubs out the PUBLIC CREATE check, because the shared cluster's `public` may grant CREATE to
+  ;; PUBLIC; this runs its catalog query on the cluster, with search_path pinned as init pins it
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          schema     (str "ws_public_create_" (u/lower-case-en (mt/random-name)))]
+      (try
+        (execute! "CREATE SCHEMA \"%s\"; GRANT CREATE ON SCHEMA \"%s\" TO PUBLIC;" schema schema)
+        (testing "the unfiltered svv_schema_privileges query runs under search_path pg_catalog and finds the grant"
+          (jdbc/with-db-transaction [conn admin-spec]
+            (#'redshift/start-workspace-transaction! conn)
+            (is (some #{schema} (#'redshift/public-create-schemas conn)))))
+        (finally
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema)))))))
+
 (deftest ^:synchronized workspace-destroy-revokes-schema-only-grants-test
   ;; `DROP USER` fails with `user ... cannot be dropped because the user has a
   ;; privilege on some object` when the iso-user holds a schema-level USAGE
@@ -1149,11 +1164,11 @@
           [["an existing user"
             {"FROM pg_user WHERE" [{:?column? 1}]}
             {:status-code 409, :workspace/cleanup? false, :user "mb__isolation_user_1"}
-            #"already has a user named \"mb__isolation_user_1\""]
+            #"already has a user named \"mb__isolation_user_1\".*run `DROP USER \"mb__isolation_user_1\";`"]
            ["an existing schema"
             {"FROM pg_namespace WHERE" [{:?column? 1}]}
             {:status-code 409, :workspace/cleanup? false, :schema "mb__isolation_ws_1"}
-            #"already has a schema named \"mb__isolation_ws_1\""]
+            #"already has a schema named \"mb__isolation_ws_1\".*run `DROP SCHEMA \"mb__isolation_ws_1\" CASCADE;`"]
            ["a schema, any schema, that grants CREATE to PUBLIC"
             {"svv_schema_privileges" [{:namespace_name "public"} {:namespace_name "other"}]}
             {:status-code 412, :workspace/cleanup? false, :schemas ["public" "other"]}
@@ -1191,13 +1206,15 @@
 (deftest workspace-destroy-ends-sessions-before-drops-test
   (testing "destroy pins search_path, then ends the workspace user's sessions, before any REVOKE or DROP"
     (let [{:keys [log error]} (run-with-fake-jdbc
-                               (answer-with {"FROM pg_user WHERE" [{:?column? 1}], "FROM pg_namespace WHERE" [{:?column? 1}]})
+                               (answer-with {"FROM pg_user WHERE"      [{:?column? 1}]
+                                             "FROM pg_namespace WHERE" [{:?column? 1}]
+                                             "FROM stv_sessions"       [{:process 41} {:process 42}]})
                                #(driver/destroy-workspace-isolation! :redshift {:id 1} unit-workspace))
-          end-sessions        [:query
-                               "SELECT pg_terminate_backend(process) AS ended FROM stv_sessions WHERE TRIM(user_name) = ?"
-                               ["mb__isolation_user_1"]]
           positions           (map #(.indexOf ^java.util.List log %)
-                                   [end-sessions
+                                   [[:query "SELECT process FROM stv_sessions WHERE TRIM(user_name) = ?"
+                                     ["mb__isolation_user_1"]]
+                                    [:query "SELECT pg_terminate_backend(?) AS ended" [41]]
+                                    [:query "SELECT pg_terminate_backend(?) AS ended" [42]]
                                     [:execute (str "ALTER DEFAULT PRIVILEGES IN SCHEMA \"mb__isolation_ws_1\" "
                                                    "REVOKE ALL ON TABLES FROM \"mb__isolation_user_1\"")]
                                     [:execute "DROP SCHEMA IF EXISTS \"mb__isolation_ws_1\" CASCADE"]
@@ -1206,6 +1223,12 @@
       (is (= [:execute "SET LOCAL search_path TO pg_catalog"] (first log)))
       (is (every? nat-int? positions))
       (is (apply < positions))))
+  (testing "pg_terminate_backend runs only in statements that read no table: Redshift refuses it on the leader node otherwise"
+    (let [{:keys [log]} (run-with-fake-jdbc
+                         (answer-with {"FROM pg_user WHERE" [{:?column? 1}], "FROM stv_sessions" [{:process 41}]})
+                         #(driver/destroy-workspace-isolation! :redshift {:id 1} unit-workspace))]
+      (is (= ["SELECT pg_terminate_backend(?) AS ended"]
+             (keep (fn [[_ sql]] (when (str/includes? sql "pg_terminate_backend") sql)) log)))))
   (testing "destroy ends no sessions when the workspace user is already gone"
     (let [{:keys [log]} (run-with-fake-jdbc
                          (answer-with {})
