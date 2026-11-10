@@ -54,6 +54,7 @@ import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
+import { useAiCompletion } from "./use-ai-completion";
 import { hasActiveSnippet, useInitialClause } from "./utils";
 
 export type EditorProps = {
@@ -82,6 +83,8 @@ export type EditorProps = {
 
   /** Rendered in the inline toolbar. */
   renderShortcutsMenu?: (helpers: ShortcutsMenuHelpers) => ReactNode;
+  /** The column name, which the AI completion uses as a hint. */
+  name?: string;
   /** Called with the column name of an accepted AI suggestion. */
   onAcceptName?: (name: string) => void;
   initialSource?: string;
@@ -136,6 +139,7 @@ export function Editor(props: EditorProps) {
     initialExpressionClause,
     inline = false,
     renderShortcutsMenu,
+    name,
     onAcceptName,
   } = props;
 
@@ -269,6 +273,15 @@ export function Editor(props: EditorProps) {
     onRejectProposed: handleRejectProposed,
   });
 
+  const aiCompletionExtensions = useAiCompletion({
+    query,
+    stageIndex,
+    expressionMode,
+    availableColumns,
+    name,
+    isEnabled: inline && !readOnly && !isProposing,
+  });
+
   const extensions = useMemo(
     () =>
       isProposing
@@ -277,8 +290,14 @@ export function Editor(props: EditorProps) {
             unifiedMergeView({ original: source, mergeControls: false }),
             ...diffControlsExtensions,
           ]
-        : baseExtensions,
-    [isProposing, baseExtensions, source, diffControlsExtensions],
+        : [...baseExtensions, ...aiCompletionExtensions],
+    [
+      isProposing,
+      baseExtensions,
+      source,
+      diffControlsExtensions,
+      aiCompletionExtensions,
+    ],
   );
 
   const handleSourceChange = useCallback(

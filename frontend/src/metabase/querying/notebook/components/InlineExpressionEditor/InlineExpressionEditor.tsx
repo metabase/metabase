@@ -161,6 +161,7 @@ export function InlineExpressionEditor({
                 />
               )
         }
+        name={name}
         onAcceptName={handleAcceptName}
         inline
       />

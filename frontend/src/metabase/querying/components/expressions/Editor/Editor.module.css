@@ -64,3 +64,8 @@
   right: 0;
   transition: opacity 300ms;
 }
+
+.ghost {
+  color: var(--mb-color-text-disabled);
+  pointer-events: none;
+}
