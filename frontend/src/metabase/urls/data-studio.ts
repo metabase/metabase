@@ -10,6 +10,7 @@ import type {
   SegmentId,
   TableId,
   WritebackActionId,
+  WritebackActionType,
 } from "metabase-types/api";
 
 const ROOT_URL = "/data-studio";
@@ -387,12 +388,12 @@ export function dataStudioActionSettings(actionId: WritebackActionId) {
   return `${dataStudioAction(actionId)}/settings`;
 }
 
-export function newDataStudioAction() {
-  return `${dataStudioActions()}/new`;
+export function newDataStudioAction(type: WritebackActionType) {
+  return `${dataStudioActions()}/new?type=${type}`;
 }
 
 export function newDataStudioImplicitAction(tableId: TableId) {
-  return `${newDataStudioAction()}?table=${tableId}`;
+  return `${newDataStudioAction("implicit")}&table=${tableId}`;
 }
 
 export function dataStudioArchivedActions() {

@@ -113,7 +113,7 @@ describe("ActionListPage", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Table", "SQL query", "Collection"]);
+    ).toEqual(["Table", "SQL query", "HTTP request", "Collection"]);
   });
 
   it("opens a table picker to create an action from a table", async () => {

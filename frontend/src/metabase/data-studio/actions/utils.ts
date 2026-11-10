@@ -10,6 +10,7 @@ import {
   hasActionsEnabled,
   hasNativeWritePermissions,
 } from "metabase/common/utils/database";
+import { titleize } from "metabase/utils/formatting/strings";
 import * as Lib from "metabase-lib";
 import { getTemplateTagParameters } from "metabase-lib/v1/parameters/utils/template-tags";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -20,14 +21,21 @@ import type {
   FieldSettings,
   FieldType,
   FieldValueOptions,
+  HttpActionBodyValue,
+  HttpActionMethod,
+  HttpActionTemplate,
   ImplicitActionKind,
+  InputSettingType,
+  ParameterType,
   Table,
   TableId,
   TemplateTag,
   TemplateTagType,
   WritebackAction,
+  WritebackHttpAction,
   WritebackParameter,
 } from "metabase-types/api";
+import { isHttpActionBody } from "metabase-types/guards";
 
 export type QueryActionDefinition = Required<
   Pick<
@@ -42,7 +50,34 @@ export type ImplicitActionDefinition = {
   table_id: TableId;
 };
 
-export type ActionDefinition = QueryActionDefinition | ImplicitActionDefinition;
+export type HttpActionDefinition = {
+  type: "http";
+  method: HttpActionMethod;
+  url: string;
+  query_params: Record<string, HttpActionTemplate>;
+  headers: Record<string, HttpActionTemplate>;
+  body: Record<string, HttpActionBodyValue> | null;
+  parameters: WritebackParameter[];
+  visualization_settings: ActionFormSettings;
+};
+
+export type ActionDefinition =
+  | QueryActionDefinition
+  | ImplicitActionDefinition
+  | HttpActionDefinition;
+
+export type HttpActionTemplateEntry = {
+  name: string;
+  value: string;
+};
+
+export type HttpActionRequest = {
+  method: HttpActionMethod;
+  url: string;
+  queryParams: HttpActionTemplateEntry[];
+  headers: HttpActionTemplateEntry[];
+  body: string;
+};
 
 export type ImplicitActionKindOption = {
   value: ImplicitActionKind;
@@ -98,26 +133,36 @@ export function getQueryParameters(query: Lib.Query): WritebackParameter[] {
   return getTemplateTagParameters(Lib.templateTags(query));
 }
 
-function getFieldTypes(
-  tag: TemplateTag | undefined,
-): Pick<FieldSettings, "fieldType" | "inputType"> {
+type FieldTypes = {
+  fieldType: FieldType;
+  inputType: InputSettingType;
+};
+
+function getFieldTypes(fieldType: FieldType): FieldTypes {
+  return match(fieldType)
+    .with("number", () => ({ fieldType, inputType: "number" as const }))
+    .with("date", () => ({ fieldType, inputType: "date" as const }))
+    .with("string", () => ({ fieldType, inputType: "string" as const }))
+    .exhaustive();
+}
+
+function getTagFieldType(tag: TemplateTag | undefined): FieldType {
   switch (tag?.type) {
     case "number":
-      return { fieldType: "number", inputType: "number" };
+      return "number";
     case "date":
-      return { fieldType: "date", inputType: "date" };
+      return "date";
     default:
-      return { fieldType: "string", inputType: "string" };
+      return "string";
   }
 }
 
 function getFieldSettings(
   parameter: WritebackParameter,
   index: number,
-  tag: TemplateTag | undefined,
+  fieldTypes: FieldTypes,
   existing: FieldSettings | undefined,
 ): FieldSettings {
-  const fieldTypes = getFieldTypes(tag);
   if (existing === undefined) {
     return getDefaultFieldSettings({
       id: parameter.id,
@@ -147,7 +192,9 @@ export function getFieldSettingsFromQuery(
       getFieldSettings(
         parameter,
         index,
-        tags.find((tag) => tag.id === parameter.id),
+        getFieldTypes(
+          getTagFieldType(tags.find((tag) => tag.id === parameter.id)),
+        ),
         formSettings.fields?.[parameter.id],
       ),
     ]),
@@ -260,4 +307,191 @@ export function getFieldSettingsForFieldType(
 
 export function hasSinglePrimaryKey(table: Table): boolean {
   return (table.fields ?? []).filter(isPK).length === 1;
+}
+
+export const TEMPLATE_VARIABLE_REGEX = /\{\{\s*([A-Za-z0-9_.]+)\s*\}\}/g;
+
+const PARAMETER_TYPE_BY_FIELD_TYPE: Record<FieldType, ParameterType> = {
+  string: "string/=",
+  number: "number/=",
+  date: "date/single",
+};
+
+export const HTTP_ACTION_METHODS: HttpActionMethod[] = [
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+];
+
+export function getTemplateVariableNames(template: string): string[] {
+  const names = Array.from(
+    template.matchAll(TEMPLATE_VARIABLE_REGEX),
+    ([, name]) => name,
+  );
+  return Array.from(new Set(names));
+}
+
+function getBodyStrings(value: HttpActionBodyValue): string[] {
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap(getBodyStrings);
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.values(value).flatMap(getBodyStrings);
+  }
+  return [];
+}
+
+function getRequestVariableNames(
+  url: string,
+  queryParams: Record<string, HttpActionTemplate>,
+  headers: Record<string, HttpActionTemplate>,
+  body: Record<string, HttpActionBodyValue> | null,
+): string[] {
+  const templates = [
+    url,
+    ...Object.values(queryParams),
+    ...Object.values(headers),
+    ...(body != null ? getBodyStrings(body) : []),
+  ];
+  return Array.from(new Set(templates.flatMap(getTemplateVariableNames)));
+}
+
+function getFieldTypeFromParameter(parameter: WritebackParameter): FieldType {
+  return match(parameter.type)
+    .with("number/=", () => "number" as const)
+    .with("date/single", () => "date" as const)
+    .otherwise(() => "string" as const);
+}
+
+function createHttpActionParameter(name: string): WritebackParameter {
+  return {
+    id: name,
+    slug: name,
+    name: titleize(name),
+    type: PARAMETER_TYPE_BY_FIELD_TYPE.string,
+    target: ["variable", ["template-tag", name]],
+    required: true,
+  };
+}
+
+export function getHttpActionParameters(
+  names: string[],
+  parameters: WritebackParameter[],
+): WritebackParameter[] {
+  return names.map(
+    (name) =>
+      parameters.find((parameter) => parameter.slug === name) ??
+      createHttpActionParameter(name),
+  );
+}
+
+export function getHttpActionFormSettings(
+  parameters: WritebackParameter[],
+  formSettings: ActionFormSettings,
+): ActionFormSettings {
+  const fields = Object.fromEntries(
+    parameters.map((parameter, index) => [
+      parameter.id,
+      getFieldSettings(
+        parameter,
+        index,
+        getFieldTypes(getFieldTypeFromParameter(parameter)),
+        formSettings.fields?.[parameter.id],
+      ),
+    ]),
+  );
+  return { ...formSettings, fields };
+}
+
+export function getHttpActionParameterForFieldType(
+  parameter: WritebackParameter,
+  fieldType: FieldType,
+): WritebackParameter {
+  return { ...parameter, type: PARAMETER_TYPE_BY_FIELD_TYPE[fieldType] };
+}
+
+function getTemplateEntries(
+  templates: Record<string, HttpActionTemplate> | null,
+): HttpActionTemplateEntry[] {
+  return Object.entries(templates ?? {}).map(([name, value]) => ({
+    name,
+    value,
+  }));
+}
+
+function getTemplates(
+  entries: HttpActionTemplateEntry[],
+): Record<string, HttpActionTemplate> {
+  return Object.fromEntries(
+    entries
+      .filter(({ name }) => name.trim().length > 0)
+      .map(({ name, value }) => [name.trim(), value]),
+  );
+}
+
+export function getHttpActionRequest(
+  action?: WritebackHttpAction,
+): HttpActionRequest {
+  return {
+    method: action?.method ?? "POST",
+    url: action?.url ?? "",
+    queryParams: getTemplateEntries(action?.query_params ?? null),
+    headers: getTemplateEntries(action?.headers ?? null),
+    body: action?.body != null ? JSON.stringify(action.body, null, 2) : "",
+  };
+}
+
+export type ParsedHttpActionBody =
+  | { isValid: true; body: Record<string, HttpActionBodyValue> | null }
+  | { isValid: false };
+
+export function parseHttpActionBody(text: string): ParsedHttpActionBody {
+  if (text.trim().length === 0) {
+    return { isValid: true, body: null };
+  }
+  try {
+    const value: unknown = JSON.parse(text);
+    return isHttpActionBody(value)
+      ? { isValid: true, body: value }
+      : { isValid: false };
+  } catch {
+    return { isValid: false };
+  }
+}
+
+export function getHttpActionDefinition(
+  request: HttpActionRequest,
+  parameters: WritebackParameter[],
+  formSettings: ActionFormSettings,
+): HttpActionDefinition | null {
+  const url = request.url.trim();
+  const parsedBody = parseHttpActionBody(request.body);
+  if (url.length === 0 || !parsedBody.isValid) {
+    return null;
+  }
+  const { body } = parsedBody;
+  const queryParams = getTemplates(request.queryParams);
+  const headers = getTemplates(request.headers);
+  const nextParameters = getHttpActionParameters(
+    getRequestVariableNames(url, queryParams, headers, body),
+    parameters,
+  );
+  return {
+    type: "http",
+    method: request.method,
+    url,
+    query_params: queryParams,
+    headers,
+    body,
+    parameters: nextParameters,
+    visualization_settings: getHttpActionFormSettings(
+      nextParameters,
+      formSettings,
+    ),
+  };
 }

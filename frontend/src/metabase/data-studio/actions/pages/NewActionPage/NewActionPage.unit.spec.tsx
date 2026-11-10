@@ -45,11 +45,16 @@ const TABLE = createMockTable({
 });
 
 type SetupOpts = {
+  type?: "implicit" | "http";
   table?: Table;
   tableError?: string;
 };
 
-function setup({ table = TABLE, tableError }: SetupOpts = {}) {
+function setup({
+  type = "implicit",
+  table = TABLE,
+  tableError,
+}: SetupOpts = {}) {
   if (tableError != null) {
     setupTableQueryMetadataEndpointError(table.id, tableError);
   } else {
@@ -72,7 +77,10 @@ function setup({ table = TABLE, tableError }: SetupOpts = {}) {
     </>,
     {
       withRouter: true,
-      initialRoute: `/data-studio/actions/new?table=${table.id}`,
+      initialRoute:
+        type === "http"
+          ? "/data-studio/actions/new?type=http"
+          : `/data-studio/actions/new?type=implicit&table=${table.id}`,
     },
   );
 }
@@ -131,6 +139,55 @@ describe("NewActionPage", () => {
     setup({ tableError: "Table not found" });
 
     expect(await screen.findByText("Table not found")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("creates HTTP action with field per request variable", async () => {
+    setup({ type: "http" });
+
+    await screen.findByRole("textbox", { name: "Body" });
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "URL" }),
+      "https://crm.example.com/deals/{{{{deal_id}}",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.type(await screen.findByLabelText("Name"), "Discount");
+    await userEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Save" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        JSON.parse(
+          String(fetchMock.callHistory.lastCall("action-post")?.options?.body),
+        ),
+      ).toMatchObject({
+        type: "http",
+        method: "POST",
+        url: "https://crm.example.com/deals/{{deal_id}}",
+        name: "Discount",
+        parameters: [{ id: "deal_id", slug: "deal_id", type: "string/=" }],
+        visualization_settings: {
+          fields: { deal_id: { fieldType: "string", required: true } },
+        },
+      }),
+    );
+  });
+
+  it("does not save HTTP action whose body is not JSON object", async () => {
+    setup({ type: "http" });
+
+    await screen.findByRole("textbox", { name: "Body" });
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "URL" }),
+      "https://crm.example.com",
+    );
+    await userEvent.type(screen.getByRole("textbox", { name: "Body" }), "[[1]");
+
+    expect(
+      await screen.findByText("The body needs to be a JSON object."),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 });

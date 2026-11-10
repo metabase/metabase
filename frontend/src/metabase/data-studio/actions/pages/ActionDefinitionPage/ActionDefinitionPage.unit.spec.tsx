@@ -10,11 +10,12 @@ import {
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
-import type { WritebackImplicitQueryAction } from "metabase-types/api";
+import type { WritebackAction } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
   createMockField,
+  createMockHttpAction,
   createMockImplicitQueryAction,
   createMockTable,
 } from "metabase-types/api/mocks";
@@ -54,7 +55,8 @@ const TABLE = createMockTable({
 });
 
 type SetupOpts = {
-  action: WritebackImplicitQueryAction;
+  action: WritebackAction;
+  isEditRoute?: boolean;
 };
 
 const OTHER_TABLE = createMockTable({
@@ -73,7 +75,7 @@ const OTHER_TABLE = createMockTable({
   ],
 });
 
-function setup({ action }: SetupOpts) {
+function setup({ action, isEditRoute = false }: SetupOpts) {
   setupActionEndpoints(action);
   setupTableQueryMetadataEndpoint(TABLE);
   setupTableQueryMetadataEndpoint(OTHER_TABLE);
@@ -83,14 +85,20 @@ function setup({ action }: SetupOpts) {
   });
 
   renderWithProviders(
-    <Route
-      path="/data-studio/data-actions/:actionId"
-      element={<ActionDefinitionPage />}
-    />,
+    <>
+      <Route
+        path="/data-studio/data-actions/:actionId"
+        element={<ActionDefinitionPage />}
+      />
+      <Route
+        path="/data-studio/data-actions/:actionId/edit"
+        element={<ActionDefinitionPage />}
+      />
+    </>,
     {
       withRouter: true,
       withUndos: true,
-      initialRoute: `/data-studio/data-actions/${action.id}`,
+      initialRoute: `/data-studio/data-actions/${action.id}${isEditRoute ? "/edit" : ""}`,
     },
   );
 }
@@ -215,5 +223,78 @@ describe("ActionDefinitionPage", () => {
     expect(
       screen.queryByRole("button", { name: "Change table" }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("HTTP actions", () => {
+    const HTTP_ACTION = createMockHttpAction({
+      id: 2,
+      method: "PUT",
+      url: "https://crm.example.com/deals/{{deal_id}}",
+      headers: { "X-Source": "metabase" },
+      body: { discount: "{{discount}}" },
+      parameters: [
+        {
+          id: "deal_id",
+          slug: "deal_id",
+          name: "Deal ID",
+          type: "number/=",
+          target: ["variable", ["template-tag", "deal_id"]],
+          required: true,
+        },
+      ],
+      can_write: true,
+    });
+
+    it("shows request read-only with link to edit it", async () => {
+      setup({ action: HTTP_ACTION });
+
+      expect(await screen.findByRole("textbox", { name: "URL" })).toHaveValue(
+        "https://crm.example.com/deals/{{deal_id}}",
+      );
+      expect(screen.getByRole("textbox", { name: "URL" })).toBeDisabled();
+      expect(screen.getByLabelText("Method")).toHaveValue("PUT");
+      expect(screen.getByDisplayValue("X-Source")).toBeInTheDocument();
+      expect(screen.getByText("No query parameters")).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Edit definition" }),
+      ).toHaveAttribute("href", "/data-studio/actions/2/edit");
+    });
+
+    it("does not offer to edit request without write access", async () => {
+      setup({ action: { ...HTTP_ACTION, can_write: false } });
+
+      expect(
+        await screen.findByRole("textbox", { name: "URL" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Edit definition" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("saves edited request with parameters of its variables", async () => {
+      setup({ action: HTTP_ACTION, isEditRoute: true });
+
+      await screen.findByRole("textbox", { name: "Body" });
+      await userEvent.type(
+        screen.getByRole("textbox", { name: "URL" }),
+        "?note={{{{note}}",
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() =>
+        expect(fetchMock.callHistory.called("action-2-put")).toBe(true),
+      );
+      expect(await getLastUpdate()).toMatchObject({
+        method: "PUT",
+        url: "https://crm.example.com/deals/{{deal_id}}?note={{note}}",
+        headers: { "X-Source": "metabase" },
+        body: { discount: "{{discount}}" },
+        parameters: [
+          { id: "deal_id", type: "number/=", name: "Deal ID" },
+          { id: "note", slug: "note", type: "string/=" },
+          { id: "discount", slug: "discount", type: "string/=" },
+        ],
+      });
+    });
   });
 });

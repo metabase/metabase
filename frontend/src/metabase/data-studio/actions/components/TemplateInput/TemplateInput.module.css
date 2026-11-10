@@ -1,0 +1,22 @@
+.input {
+  display: flex;
+  align-items: center;
+  font-family: var(--mb-default-monospace-font-family);
+
+  &:focus-within {
+    border-color: var(--mb-color-core-brand);
+  }
+
+  :global(.cm-editor) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  :global(.cm-content) {
+    padding: 0;
+  }
+}
+
+.variable {
+  color: var(--mb-color-core-brand);
+}

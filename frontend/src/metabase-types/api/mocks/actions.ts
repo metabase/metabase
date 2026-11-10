@@ -3,6 +3,7 @@ import type {
   CardId,
   FieldSettings,
   PublicWritebackAction,
+  WritebackHttpAction,
   WritebackImplicitQueryAction,
   WritebackParameter,
   WritebackQueryAction,
@@ -105,6 +106,33 @@ export const createMockImplicitCUDActions = (
     model_id: modelId,
   }),
 ];
+
+export const createMockHttpAction = ({
+  creator = createMockUserInfo(),
+  ...opts
+}: Partial<WritebackHttpAction> = {}): WritebackHttpAction => ({
+  id: 1,
+  entity_id: createMockEntityId(),
+  method: "POST",
+  url: "https://example.com/api",
+  query_params: null,
+  headers: null,
+  body: null,
+  name: "HTTP Action Mock",
+  description: null,
+  model_id: null,
+  collection_id: null,
+  parameters: undefined,
+  visualization_settings: undefined,
+  creator_id: creator.id,
+  creator,
+  archived: false,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+  public_uuid: null,
+  ...opts,
+  type: "http",
+});
 
 export const createMockPublicAction = (
   opts?: Partial<PublicWritebackAction>,

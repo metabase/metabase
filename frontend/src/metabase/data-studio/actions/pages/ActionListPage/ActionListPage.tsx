@@ -153,10 +153,17 @@ function ActionsCreateMenu() {
           </Menu.Item>
           <Menu.Item
             component={ForwardRefLink}
-            to={Urls.newDataStudioAction()}
+            to={Urls.newDataStudioAction("query")}
             leftSection={<FixedSizeIcon name="sql" />}
           >
             {t`SQL query`}
+          </Menu.Item>
+          <Menu.Item
+            component={ForwardRefLink}
+            to={Urls.newDataStudioAction("http")}
+            leftSection={<FixedSizeIcon name="globe" />}
+          >
+            {t`HTTP request`}
           </Menu.Item>
           <Menu.Divider />
           <Menu.Item

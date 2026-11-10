@@ -48,7 +48,7 @@ export const createEmptyStateItem = (
   } else if (sectionType === "snippets" && !hideAction) {
     actionUrl = Urls.newDataStudioSnippet();
   } else if (sectionType === "actions" && !hideAction) {
-    actionUrl = Urls.newDataStudioAction();
+    actionUrl = Urls.newDataStudioAction("query");
   }
   // The "data" section opens a modal, so no actionUrl
 

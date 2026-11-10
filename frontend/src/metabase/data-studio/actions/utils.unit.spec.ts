@@ -2,12 +2,18 @@ import * as Lib from "metabase-lib";
 import { SAMPLE_DATABASE, SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import type { TemplateTag } from "metabase-types/api";
 import {
+  createMockActionParameter,
   createMockDatabase,
   createMockFieldSettings,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
 
-import { canEditActionQuery, getFieldSettingsFromQuery } from "./utils";
+import {
+  type HttpActionRequest,
+  canEditActionQuery,
+  getFieldSettingsFromQuery,
+  getHttpActionDefinition,
+} from "./utils";
 
 const STATUS_TAG: TemplateTag = {
   id: "status-tag",
@@ -145,5 +151,84 @@ describe("canEditActionQuery", () => {
     expect(canEditActionQuery({ ...action, can_write: false }, databases)).toBe(
       false,
     );
+  });
+});
+
+describe("getHttpActionDefinition", () => {
+  const REQUEST: HttpActionRequest = {
+    method: "POST",
+    url: "https://crm.example.com/deals/{{deal_id}}",
+    queryParams: [{ name: "q", value: "{{ reason }}" }],
+    headers: [{ name: "X-Deal", value: "deal-{{deal_id}}" }],
+    body: JSON.stringify({ items: [{ amount: "{{amount}}" }], note: "fixed" }),
+  };
+
+  it("creates parameter per variable in url, query, headers and body", () => {
+    const definition = getHttpActionDefinition(REQUEST, [], {});
+
+    expect(definition?.parameters.map((parameter) => parameter.slug)).toEqual([
+      "deal_id",
+      "reason",
+      "amount",
+    ]);
+    expect(
+      Object.keys(definition?.visualization_settings.fields ?? {}),
+    ).toEqual(["deal_id", "reason", "amount"]);
+  });
+
+  it("keeps existing parameters of variables and drops unused ones", () => {
+    const dealId = createMockActionParameter({
+      id: "deal_id",
+      slug: "deal_id",
+      type: "number/=",
+    });
+    const unused = createMockActionParameter({ id: "old", slug: "old" });
+
+    const definition = getHttpActionDefinition(REQUEST, [dealId, unused], {});
+
+    expect(definition?.parameters[0]).toBe(dealId);
+    expect(definition?.parameters.map((parameter) => parameter.id)).toEqual([
+      "deal_id",
+      "reason",
+      "amount",
+    ]);
+    expect(definition?.visualization_settings.fields?.deal_id).toMatchObject({
+      fieldType: "number",
+      inputType: "number",
+    });
+  });
+
+  it("skips entries without name and parses body", () => {
+    const definition = getHttpActionDefinition(
+      { ...REQUEST, headers: [{ name: " ", value: "{{ignored}}" }] },
+      [],
+      {},
+    );
+
+    expect(definition).toMatchObject({
+      url: "https://crm.example.com/deals/{{deal_id}}",
+      query_params: { q: "{{ reason }}" },
+      headers: {},
+      body: { items: [{ amount: "{{amount}}" }], note: "fixed" },
+    });
+    expect(
+      definition?.parameters.map((parameter) => parameter.id),
+    ).not.toContain("ignored");
+  });
+
+  it("has no body for blank body text", () => {
+    expect(
+      getHttpActionDefinition({ ...REQUEST, body: " " }, [], {}),
+    ).toMatchObject({ body: null });
+  });
+
+  it.each([
+    ["blank url", { url: "  " }],
+    ["body that is not JSON", { body: "{" }],
+    ["body that is JSON array", { body: "[1]" }],
+  ])("has no definition for %s", (_name, change) => {
+    expect(
+      getHttpActionDefinition({ ...REQUEST, ...change }, [], {}),
+    ).toBeNull();
   });
 });

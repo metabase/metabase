@@ -37,9 +37,19 @@ export interface CreateImplicitActionRequest extends BaseCreateActionRequest {
   table_id?: TableId;
 }
 
+export interface CreateHttpActionRequest extends BaseCreateActionRequest {
+  type: "http";
+  method: HttpActionMethod;
+  url: string;
+  query_params?: Record<string, HttpActionTemplate> | null;
+  headers?: Record<string, HttpActionTemplate> | null;
+  body?: Record<string, HttpActionBodyValue> | null;
+}
+
 export type CreateActionRequest =
   | CreateQueryActionRequest
-  | CreateImplicitActionRequest;
+  | CreateImplicitActionRequest
+  | CreateHttpActionRequest;
 
 interface BaseUpdateActionRequest {
   id: WritebackActionId;
@@ -65,15 +75,27 @@ export interface UpdateImplicitActionRequest extends BaseUpdateActionRequest {
   dataset_query?: never;
 }
 
+export interface UpdateHttpActionRequest extends BaseUpdateActionRequest {
+  method?: HttpActionMethod;
+  url?: string;
+  query_params?: Record<string, HttpActionTemplate> | null;
+  headers?: Record<string, HttpActionTemplate> | null;
+  body?: Record<string, HttpActionBodyValue> | null;
+  dataset_query?: never;
+  kind?: never;
+  table_id?: never;
+}
+
 export type UpdateActionRequest =
   | UpdateQueryActionRequest
-  | UpdateImplicitActionRequest;
+  | UpdateImplicitActionRequest
+  | UpdateHttpActionRequest;
 
 export interface WritebackParameter extends Parameter {
   target: ParameterTarget;
 }
 
-export type WritebackActionType = "query" | "implicit";
+export type WritebackActionType = "query" | "implicit" | "http";
 
 export type WritebackActionId = number;
 
@@ -113,11 +135,33 @@ export interface ImplicitQueryAction {
   table_id: TableId | null;
 }
 
+export type HttpActionMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+export type HttpActionTemplate = string;
+
+export type HttpActionBodyValue =
+  | string
+  | number
+  | boolean
+  | null
+  | HttpActionBodyValue[]
+  | { [key: string]: HttpActionBodyValue };
+
+export interface HttpAction {
+  type: "http";
+  method: HttpActionMethod;
+  url: string;
+  query_params: Record<string, HttpActionTemplate> | null;
+  headers: Record<string, HttpActionTemplate> | null;
+  body: Record<string, HttpActionBodyValue> | null;
+}
+
 export type WritebackQueryAction = WritebackActionBase & QueryAction;
 export type WritebackImplicitQueryAction = WritebackActionBase &
   ImplicitQueryAction;
+export type WritebackHttpAction = WritebackActionBase & HttpAction;
 export type WritebackAction = WritebackActionBase &
-  (QueryAction | ImplicitQueryAction);
+  (QueryAction | ImplicitQueryAction | HttpAction);
 
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 

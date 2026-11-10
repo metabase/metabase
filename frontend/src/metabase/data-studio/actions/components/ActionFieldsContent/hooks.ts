@@ -12,6 +12,7 @@ import type {
   ActionFormSettings,
   FieldSettings,
   UpdateQueryActionRequest,
+  WritebackHttpAction,
   WritebackImplicitQueryAction,
   WritebackParameter,
   WritebackQueryAction,
@@ -19,6 +20,8 @@ import type {
 
 import {
   getFieldSettingsFromQuery,
+  getHttpActionFormSettings,
+  getHttpActionParameterForFieldType,
   getQueryParameters,
   setTemplateTagFieldType,
 } from "../../utils";
@@ -26,6 +29,7 @@ import { useActionQuery } from "../QueryActionEditor/hooks";
 
 export type ActionFieldSource =
   | { type: "variable"; name: string }
+  | { type: "request-variable"; name: string }
   | { type: "column"; name: string };
 
 export type ActionField = {
@@ -125,14 +129,113 @@ export function useQueryActionFields(
 
   const reorderFields = async (fieldIds: string[]) => {
     await save({
-      visualization_settings: withFields((fields) =>
-        Object.fromEntries(
-          Object.entries(fields).map(([id, field]) => [
-            id,
-            { ...field, order: fieldIds.indexOf(id) },
-          ]),
-        ),
+      visualization_settings: getReorderedFormSettings(formSettings, fieldIds),
+    });
+  };
+
+  return { fields, updateField, reorderFields };
+}
+
+function getReorderedFormSettings(
+  formSettings: ActionFormSettings,
+  fieldIds: string[],
+): ActionFormSettings {
+  return {
+    ...formSettings,
+    fields: Object.fromEntries(
+      Object.entries(formSettings.fields ?? {}).map(([id, field]) => [
+        id,
+        { ...field, order: fieldIds.indexOf(id) },
+      ]),
+    ),
+  };
+}
+
+type HttpActionFieldsUpdate = {
+  parameters?: WritebackParameter[];
+  visualization_settings: ActionFormSettings;
+};
+
+export function useHttpActionFields(
+  action: WritebackHttpAction,
+): ActionFieldsResult {
+  const [updateAction] = useUpdateActionMutation();
+  const { sendErrorToast } = useMetadataToasts();
+  const parameters = useMemo(
+    () => action.parameters ?? [],
+    [action.parameters],
+  );
+
+  const formSettings = useMemo(
+    () =>
+      getHttpActionFormSettings(
+        parameters,
+        getDefaultFormSettings(action.visualization_settings),
       ),
+    [parameters, action.visualization_settings],
+  );
+
+  const fields = useMemo(
+    () =>
+      [...parameters]
+        .sort(sortActionParams(formSettings))
+        .flatMap((parameter) => {
+          const settings = formSettings.fields?.[parameter.id];
+          return settings
+            ? [
+                {
+                  parameter,
+                  settings,
+                  source: {
+                    type: "request-variable" as const,
+                    name: parameter.slug,
+                  },
+                },
+              ]
+            : [];
+        }),
+    [parameters, formSettings],
+  );
+
+  const save = async (update: HttpActionFieldsUpdate) => {
+    const { error } = await updateAction({ id: action.id, ...update });
+    if (error) {
+      sendErrorToast(t`Failed to update action fields`);
+    }
+  };
+
+  const updateField = async (
+    fieldId: string,
+    patch: Partial<FieldSettings>,
+  ) => {
+    const field = formSettings.fields?.[fieldId];
+    if (field == null) {
+      return;
+    }
+    const nextField = { ...field, ...patch };
+    await save({
+      parameters: parameters.map((parameter) =>
+        parameter.id === fieldId
+          ? {
+              ...getHttpActionParameterForFieldType(
+                parameter,
+                nextField.fieldType,
+              ),
+              name: nextField.title,
+              required: nextField.required,
+            }
+          : parameter,
+      ),
+      visualization_settings: {
+        ...formSettings,
+        fields: { ...formSettings.fields, [fieldId]: nextField },
+      },
+    });
+  };
+
+  const reorderFields = async (fieldIds: string[]) => {
+    await save({
+      visualization_settings: getReorderedFormSettings(formSettings, fieldIds),
     });
   };
 
