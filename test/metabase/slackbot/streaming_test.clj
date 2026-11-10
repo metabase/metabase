@@ -6,6 +6,7 @@
    [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.settings :as metabot.settings]
@@ -498,6 +499,33 @@
                 (testing "the next turn in the same thread picks it up instead of {}"
                   (is (= {:queries {"q1" {:database 1}}}
                          (:state (last @ai-request-calls)))))))))))))
+
+(deftest ^:synchronized slackbot-turn-runs-as-the-internal-metabot-test
+  (testing "a Slack turn runs the agent loop as the internal Metabot, so its `use_verified_content` gates the Slack
+            tools (BOT-1649)"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [{:keys [ai-request-calls stop-stream-calls]}]
+            (mt/client :post 200 "metabot/slack/events"
+                       (tu/slack-request-options event-body)
+                       event-body)
+            (u/poll {:thunk      #(pos? (count @stop-stream-calls))
+                     :done?      true?
+                     :timeout-ms 5000})
+            (let [opts (last @ai-request-calls)]
+              (is (= metabot.config/internal-metabot-id (:metabot-id opts)))
+              (testing "the tools the loop builds from these options refuse an uncurated table when verified content is on"
+                (let [internal-id (metabot.config/normalize-metabot-id metabot.config/internal-metabot-id)]
+                  (mt/with-temp-vals-in-db :model/Metabot internal-id {:use_verified_content true}
+                    ;; the user and scope the Slack handler binds around the loop
+                    (mt/with-current-user (mt/user->id :crowberto)
+                      (binding [metabot.scope/*current-user-scope* #{"agent:metadata:read"}]
+                        (let [list-fields (get-in (#'agent/init-agent opts) [:tools "list_available_fields" :fn])]
+                          (is (some #(str/includes? % "only uses curated content")
+                                    (get-in (list-fields {:table_ids [(mt/id :orders)] :model_ids [] :metric_ids []})
+                                            [:structured-output :errors]))))))))))))))))
 
 (deftest ^:synchronized slackbot-streaming-records-streamed-error-test
   (testing "an :error part the agent loop emits instead of throwing is still recorded on the row,

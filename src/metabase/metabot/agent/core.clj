@@ -484,6 +484,7 @@
                          (seed-charts context))
         memory       (assoc (memory/initialize messages seeded context)
                             :conversation-id conversation-id
+                            :tool-names (set (keys base-tools))
                             :client-ids (client-content-ids context))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
