@@ -103,6 +103,7 @@ export function ClickMappings(props: ClickMappingsOwnProps) {
             targetName={getTargetName(props.object)}
             target={target}
             clickBehavior={props.clickBehavior}
+            parameters={sourceOptions.parameter}
             updateSettings={props.updateSettings}
           />
         ))}
