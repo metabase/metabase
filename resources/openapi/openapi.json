@@ -33204,6 +33204,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -36174,6 +36181,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -40600,6 +40614,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
