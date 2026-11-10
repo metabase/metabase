@@ -185,7 +185,13 @@
             ;; the open transaction holds a metadata lock on `t`, which DROP DATABASE waits for
             (.execute stmt (format "SELECT * FROM `%s`.t" db-name)))
           (testing "teardown ends the session instead of waiting for its lock"
-            (is (not= ::timed-out (deref (future (driver/destroy-workspace-isolation! :mysql database workspace)) 30000 ::timed-out)))
+            (let [teardown (future (driver/destroy-workspace-isolation! :mysql database workspace))
+                  result   (deref teardown 30000 ::timed-out)]
+              ;; on a regression, release the lock so the hung teardown and the one in `finally` can finish
+              (when (= ::timed-out result)
+                (.rollback conn)
+                @teardown)
+              (is (not= ::timed-out result)))
             (is (not (database-exists? database db-name)))
             (is (not (user-exists? database (-> workspace :database_details :user))))
             (is (thrown? java.sql.SQLException
@@ -194,7 +200,7 @@
         (finally
           (driver/destroy-workspace-isolation! :mysql database workspace))))))
 
-(deftest ^:synchronized kill-denied-does-not-stop-teardown-test
+(deftest ^:synchronized kill-denied-is-logged-not-thrown-test
   (mt/test-driver :mysql
     (let [database  (mt/db)
           workspace (new-workspace database)
@@ -210,7 +216,7 @@
         (with-open [_idle (open-session database workspace)
                     conn  (open-session database {:database_details {:user admin :password password}})
                     stmt  (.createStatement conn)]
-          (testing "an idle session the admin may not KILL is skipped, so teardown goes on to the drops"
+          (testing "an idle session the admin may not KILL is skipped instead of thrown"
             (is (nil? (#'mysql/kill-user-sessions! {:connection conn} stmt (-> workspace :database_details :user))))))
         (finally
           (driver/destroy-workspace-isolation! :mysql database workspace)
