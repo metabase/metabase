@@ -1440,16 +1440,23 @@
            (.executeBatch stmt))
          (.commit conn)
          (catch Throwable t
-           ;; a failed rollback must not replace the error that caused it
-           (try (.rollback conn) (catch Throwable rollback-error (.addSuppressed t rollback-error)))
+           ;; Restore autocommit only after a rollback that succeeded: JDBC commits an open transaction when autocommit
+           ;; is turned back on, which would keep whatever part of the batch succeeded. A failed rollback or reset
+           ;; must not replace the error that caused it, and leaves the connection in a state the pool cannot be
+           ;; trusted to reset, so it is discarded.
+           (try
+             (.rollback conn)
+             (.setAutoCommit conn true)
+             (catch Throwable reset-error
+               (.addSuppressed t reset-error)
+               (sql-jdbc.conn/discard-pooled-connection! conn)))
            (let [t        (driver.u/batch-exception t)
                  scrubbed (driver.u/scrub-exceptions t [password escaped-password])]
              (if (and (instance? java.sql.SQLException t)
                       (duplicate-object-error-codes (.getErrorCode ^java.sql.SQLException t)))
                (throw (workspace-exists-error (ex-message scrubbed) scrubbed))
-               (throw scrubbed))))
-         (finally
-           (.setAutoCommit conn true)))))
+               (throw scrubbed)))))
+       (.setAutoCommit conn true)))
     nil))
 
 (defmethod driver/destroy-workspace-isolation! :sqlserver

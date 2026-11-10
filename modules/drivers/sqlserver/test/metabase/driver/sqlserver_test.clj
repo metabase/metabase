@@ -1600,6 +1600,52 @@
           (finally
             (jdbc/execute! admin-spec [(format "DROP LOGIN [%s]" user)])))))))
 
+(defn- recording-connection
+  "A Connection whose batch fails with `batch-error` and whose rollback throws `rollback-error` when it is non-nil.
+  Each JDBC call it gets is appended to `calls` as `[method-name & args]`."
+  ^java.sql.Connection [calls ^Throwable batch-error ^Throwable rollback-error]
+  (letfn [(proxy-of [^Class iface handle]
+            (java.lang.reflect.Proxy/newProxyInstance
+             (.getClassLoader iface)
+             (into-array Class [iface])
+             (reify java.lang.reflect.InvocationHandler
+               (invoke [_ _ method args]
+                 (swap! calls conj (into [(.getName ^java.lang.reflect.Method method)] args))
+                 (handle (.getName ^java.lang.reflect.Method method))))))]
+    (proxy-of java.sql.Connection
+              (fn [method]
+                (case method
+                  "createStatement" (proxy-of java.sql.Statement
+                                              (fn [method]
+                                                (when (= "executeBatch" method)
+                                                  (throw batch-error))))
+                  "rollback"        (when rollback-error (throw rollback-error))
+                  nil)))))
+
+(deftest ^:synchronized init-workspace-isolation-rollback-failure-test
+  (let [ws       {:schema "ws_schema", :database_details {:user "ws_user", :password "s3cret"}}
+        database {:lib/type :metadata/database, :id 1, :engine :sqlserver}
+        init!    (fn [calls rollback-error]
+                   (with-redefs [sqlserver/existing-workspace-principals (constantly [])
+                                 sql-jdbc.execute/do-with-connection-with-options
+                                 (fn [_driver _db _options f]
+                                   (f (recording-connection calls
+                                                            (java.sql.SQLException. "batch failed" "S0001" 15025)
+                                                            rollback-error)))]
+                     (driver/init-workspace-isolation! :sqlserver database ws)))]
+    (testing "after a successful rollback, autocommit is restored"
+      (let [calls (atom [])]
+        (is (thrown? clojure.lang.ExceptionInfo (init! calls nil)))
+        (is (= [["rollback"] ["setAutoCommit" true]]
+               (filterv (comp #{"rollback" "setAutoCommit" "commit"} first) (drop 1 @calls))))))
+    (testing "after a failed rollback, autocommit stays off (turning it on commits the partial batch) and the original error is kept"
+      (let [calls (atom [])
+            e     (is (thrown? clojure.lang.ExceptionInfo (init! calls (java.sql.SQLException. "connection reset"))))]
+        (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e)))
+        (is (str/includes? (ex-message e) "batch failed"))
+        (is (= [["rollback"]]
+               (filterv (comp #{"rollback" "setAutoCommit" "commit"} first) (drop 1 @calls))))))))
+
 (deftest ^:synchronized destroy-workspace-isolation-ends-sessions-first-test
   (mt/test-driver :sqlserver
     (testing "teardown completes while a session of the workspace user holds a lock on one of its tables"
