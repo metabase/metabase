@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useCallback, useEffect } from "react";
 import { useAsyncFn, useMount } from "react-use";
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 // This is conditionally aliased in the webpack config.
@@ -24,6 +25,7 @@ import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
 import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading/DelayedLoading";
+import { ChunkLoadFailed } from "metabase/common/components/ErrorPages";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import { getUserId } from "metabase/current-user";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
@@ -141,6 +143,7 @@ async function _init(
                   routes={routes}
                   onLocationChange={mirrorLocation}
                   loadingFallback={<DelayedLoadingSpinner />}
+                  chunkErrorFallback={ChunkLoadFailed}
                 />
               </MetabotProvider>
             </AppThemeProvider>

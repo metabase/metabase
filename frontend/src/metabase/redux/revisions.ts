@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { assocIn } from "icepick";
 import _ from "underscore";

@@ -11,13 +11,6 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(defmacro ^:private with-transforms-enabled
-  "Body with `features` licensed and the transforms setting on."
-  [features & body]
-  `(mt/with-premium-features ~features
-     (mt/with-temporary-raw-setting-values [~'transforms-enabled "true"]
-       ~@body)))
-
 (defn- with-people-transform
   "Call `f` with the schema and name of the people table and the id of a transform selecting `id, name`
   from it into `people_summary`."
@@ -41,7 +34,7 @@
 (deftest transform-test-lifecycle-test
   (testing "author, read, run, edit, re-run and delete a transform test over the API"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-      (with-transforms-enabled #{:transforms-basic :transforms-testing}
+      (data-testing.test-util/with-transforms-enabled #{:transforms-basic :transforms-testing}
         (with-people-transform
           (fn [schema table transform-id]
             (let [input   {:table  {:schema schema :name table}
@@ -105,7 +98,7 @@
 (deftest run-refusal-test
   (testing "a non-200 from the run endpoint means nothing ran"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-      (with-transforms-enabled #{:transforms-basic :transforms-python :transforms-testing}
+      (data-testing.test-util/with-transforms-enabled #{:transforms-basic :transforms-python :transforms-testing}
         (testing "422 — the environment prevents a run: not a query transform"
           (mt/with-temp [:model/Transform     {transform-id :id}
                          {:source {:type            :python
@@ -140,7 +133,7 @@
                   (is (not (contains? response :trace))))))))))))
 
 (deftest run-is-gated-test
-  (with-transforms-enabled #{:transforms-basic :transforms-testing}
+  (data-testing.test-util/with-transforms-enabled #{:transforms-basic :transforms-testing}
     (mt/with-temp [:model/Transform     {transform-id :id} {}
                    :model/TransformTest {test-id :id}      {:transform_id transform-id}]
       (let [run-path (format "ee/transform-test/%d/run" test-id)]

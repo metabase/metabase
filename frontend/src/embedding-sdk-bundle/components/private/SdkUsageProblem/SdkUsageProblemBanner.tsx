@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 /* eslint-disable i18next/no-literal-string */
 import cx from "classnames";
 import { useState } from "react";

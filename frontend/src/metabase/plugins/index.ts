@@ -158,11 +158,13 @@ export {
   type SnippetSidebarMenuOption,
 } from "./oss/snippets";
 export {
+  PLUGIN_DATA_TESTING,
+  type DataTestingPlugin,
+} from "./oss/data-testing";
+export {
   PLUGIN_TRANSFORMS,
   PLUGIN_TRANSFORMS_PYTHON,
-  PLUGIN_TRANSFORMS_TESTING,
   type TransformsPlugin,
-  type TransformsTestingPlugin,
   type PythonTransformEditorProps,
   type PythonTransformSourceSectionProps,
   type PythonTransformSourceValidationResult,

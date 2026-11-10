@@ -45,26 +45,35 @@
    model  :- :keyword]
   [:in (u/qualified-key alias column) (synced-ids-clause model)])
 
-(defn- synced-or-built-in-filter-clause
-  "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows synced or on every
-  instance."
+(defn- read-only-filter-clause
+  "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting its read-only rows: those
+  synced, or on every instance, which a read-only instance can't write."
   [model alias]
   [:or (synced-filter-clause model alias) (built-in-filter-clause model alias)])
 
-(mu/defn synced-or-built-in-row? :- :boolean
-  "Whether the row of `model` with the primary key `pk` is synced or on every instance."
+(mu/defn read-only-pks :- [:set ::remote-sync.schema/pk]
+  "The primary keys of the read-only rows of `model` (see [[read-only-filter-clause]])."
+  [model :- :keyword]
+  (into #{}
+        (map :pk)
+        (t2/query {:select [[(u/qualified-key :row (first (t2/primary-keys model))) :pk]]
+                   :from   [[(t2/table-name model) :row]]
+                   :where  (read-only-filter-clause model :row)})))
+
+(mu/defn read-only-row? :- :boolean
+  "Whether the row of `model` with the primary key `pk` is read-only (see [[read-only-filter-clause]])."
   [model :- :keyword
    pk    :- ::remote-sync.schema/pk]
   (boolean (seq (t2/query {:select [[[:inline 1] :one]]
                            :from   [[(t2/table-name model) :row]]
                            :where  [:and
                                     [:= (u/qualified-key :row (first (t2/primary-keys model))) pk]
-                                    (synced-or-built-in-filter-clause model :row)]
+                                    (read-only-filter-clause model :row)]
                            :limit  1}))))
 
-(mu/defn not-synced-or-built-in-filter-clause :- [:fn vector?]
-  "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows neither synced nor
-  on every instance."
+(mu/defn writable-filter-clause :- [:fn vector?]
+  "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows that aren't
+  read-only (see [[read-only-filter-clause]])."
   [model :- :keyword
    alias :- :keyword]
   (let [pk (first (t2/primary-keys model))]
@@ -72,4 +81,4 @@
                                      :from   [[(t2/table-name model) :synced_row]]
                                      :where  [:and
                                               [:= (u/qualified-key :synced_row pk) (u/qualified-key alias pk)]
-                                              (synced-or-built-in-filter-clause model :synced_row)]}]]))
+                                              (read-only-filter-clause model :synced_row)]}]]))

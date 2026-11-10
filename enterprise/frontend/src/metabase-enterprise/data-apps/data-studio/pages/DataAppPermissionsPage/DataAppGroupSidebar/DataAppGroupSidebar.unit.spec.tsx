@@ -37,29 +37,44 @@ function setup({ group, warnings = [] }: SetupOpts) {
 }
 
 describe("DataAppGroupSidebar", () => {
-  it("shows the group with its members and a link to it", async () => {
-    setup({
-      group: createMockDataAppGroup({
-        id: 3,
-        name: "Support",
-        member_count: 12,
-      }),
-    });
+  it.each([
+    {
+      name: "internal",
+      isTenantGroup: false,
+      groupUrl: "/admin/people/groups/3",
+    },
+    {
+      name: "tenant",
+      isTenantGroup: true,
+      groupUrl: "/admin/people/tenants/groups/3",
+    },
+  ])(
+    "shows the $name group with its members and a link to it",
+    async ({ isTenantGroup, groupUrl }) => {
+      setup({
+        group: createMockDataAppGroup({
+          id: 3,
+          name: "Support",
+          member_count: 12,
+          is_tenant_group: isTenantGroup,
+        }),
+      });
 
-    expect(
-      await screen.findByRole("heading", { name: "Support" }),
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByRole("region", { name: "Info" })).getByText("12"),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View group" })).toHaveAttribute(
-      "href",
-      "/admin/people/groups/3",
-    );
-    expect(
-      screen.queryByRole("region", { name: "Missing tables" }),
-    ).not.toBeInTheDocument();
-  });
+      expect(
+        await screen.findByRole("heading", { name: "Support" }),
+      ).toBeInTheDocument();
+      expect(
+        within(screen.getByRole("region", { name: "Info" })).getByText("12"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "View group" })).toHaveAttribute(
+        "href",
+        groupUrl,
+      );
+      expect(
+        screen.queryByRole("region", { name: "Missing tables" }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("lists the tables the group can't view, each with a link to its permissions", async () => {
     setup({

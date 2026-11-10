@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.models]
-   [metabase-enterprise.data-testing.models.transform-test-run]
+   [metabase-enterprise.data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase.revisions.core :as revisions]
    [metabase.revisions.events]
@@ -79,12 +79,12 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Transform     {transform-id :id} {}
                    :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
-      (let [{run-id :id} (data-testing.run-tracking/start-run! transform-test-id (mt/user->id :crowberto))]
+      (let [{run-id :id} (data-testing.run-tracking/start-run! :transform transform-test-id (mt/user->id :crowberto))]
         (try
           (data-testing.run-tracking/finish-run! run-id :passed)
-          (is (zero? (t2/count :model/Revision :model "TransformTestRun" :model_id run-id)))
+          (is (zero? (t2/count :model/Revision :model "DataTestRun" :model_id run-id)))
           (finally
-            (t2/delete! :model/TransformTestRun :id run-id)))))))
+            (t2/delete! :model/DataTestRun :id run-id)))))))
 
 (deftest transform-test-revision-history-api-test
   (testing "GET /api/revision/transform-test/:id describes a rename"

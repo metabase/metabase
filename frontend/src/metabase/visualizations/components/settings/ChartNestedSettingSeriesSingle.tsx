@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import cx from "classnames";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";

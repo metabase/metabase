@@ -5,10 +5,26 @@
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
    [metabase.search.spec :as search.spec]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(defn hydrate-can-write-from-parents
+  "The `instances` with `k` set to whether the current user can write the row of `parent-model` that `parent-key` of
+  each references, which is what writing it takes, those rows loaded and their `:can_write` hydrated at once."
+  [k instances parent-key parent-model]
+  (mi/instances-with-hydrated-data
+   instances k
+   #(let [parents (u/index-by :id (t2/hydrate (explorations.db/rows parent-model
+                                                                    (into [] (comp (keep parent-key) (distinct)) instances))
+                                              :can_write))]
+      (into {}
+            (map (fn [instance] [(:id instance) (boolean (:can_write (get parents (parent-key instance))))]))
+            (remove nil? instances)))
+   :id
+   {:default false}))
 
 (def ExplorationName
   "Validations for the name of an exploration. Mirrors `DocumentName`: non-blank, capped at 254

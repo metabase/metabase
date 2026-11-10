@@ -3,10 +3,19 @@ import fetchMock from "fetch-mock";
 
 import { setupUpdateDataAppEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
 import type { DataApp } from "metabase-types/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
 import { DataAppMoreMenu } from "./DataAppMoreMenu";
+
+jest.mock("metabase/embedding/hooks/use-open-embed-js-wizard");
+
+const openEmbedWizard = jest.fn();
+
+beforeEach(() => {
+  jest.mocked(useOpenEmbedJsWizard).mockReturnValue(openEmbedWizard);
+});
 
 type SetupOpts = {
   app: DataApp;
@@ -34,6 +43,25 @@ describe("DataAppMoreMenu", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens the embed wizard with the app selected and SSO enabled", async () => {
+    setup({ app: createMockDataApp({ name: "sales" }) });
+
+    await openMenu();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Embed/ }),
+    );
+
+    expect(useOpenEmbedJsWizard).toHaveBeenCalledWith({
+      initialState: {
+        resourceType: "data-app",
+        resourceId: "sales",
+        isGuest: false,
+        useExistingUserSession: false,
+      },
+    });
+    expect(openEmbedWizard).toHaveBeenCalledWith({});
+  });
+
   it("does not offer to open a draft app", async () => {
     setup({ app: createMockDataApp({ enabled: false }) });
 
@@ -46,6 +74,22 @@ describe("DataAppMoreMenu", () => {
       screen.queryByRole("menuitem", { name: /Open app/ }),
     ).not.toBeInTheDocument();
   });
+
+  it.each([
+    { name: "draft", enabled: false, outdated: false },
+    { name: "outdated", enabled: true, outdated: true },
+  ])(
+    "does not offer to embed an app that is $name",
+    async ({ enabled, outdated }) => {
+      setup({ app: createMockDataApp({ enabled, outdated }) });
+
+      await openMenu();
+
+      expect(
+        screen.queryByRole("menuitem", { name: /Embed/ }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("makes a live app a draft only after confirmation", async () => {
     setup({

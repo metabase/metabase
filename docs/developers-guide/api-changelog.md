@@ -7,6 +7,26 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- `POST /api/ee/transform-test/:id/run` answers a query under test that fails to run with the `error-code`
+  `transform-test.query-failed` in place of `transform-test.transform-failed`. The status stays `422`.
+
+- `POST /api/ee/transform-test/:id/run` answers a query under test whose output has two columns of one name with the
+  `error-code` `transform-test.duplicate-output-columns` in place of `transform-test.query-failed`. The status stays
+  `422`. On a database that ignores case in column names (MySQL, MariaDB, SQL Server, Redshift), two names that differ
+  only in case are one name.
+
+- `GET /api/ee/transform-test/:id/run` has been removed. List the runs of a transform test with
+  `GET /api/ee/data-test-run?test-type=transform&test-id=:id`, which takes the same `statuses`, `start-time`,
+  `end-time`, `limit` and `offset` parameters. Without `test-id`, it needs Data Studio access and lists the runs of
+  every test of the type that the caller can read. Runs of a test that was deleted are not listed. A run, and
+  `last_run` in the transform test responses, has `test_type` and `test_id` in place of `transform_test_id`. Deleting
+  a test through Metabase sets `test_id` to `null` on its runs. A delete outside Metabase (raw SQL, a database cascade)
+  leaves a `test_id` that names no test. A run belongs to a test only if the test exists and was created no later than
+  the run started, so such a run is never listed or returned as `last_run`.
+
+- `POST /api/ee/transform-test/:id/run` needs native query access to the transform's source database, as well as
+  read access to the test and its transform. Users without native query access get `403 Forbidden`.
+
 - Field filter (`dimension`) and time grouping (`temporal-unit`) template tags of native queries carry the Field ID
   they map to in `field-id` instead of a `dimension` field reference. Queries returned by the API use `field-id`.
   Queries sent with `dimension` are still accepted and converted to `field-id`.
@@ -60,6 +80,9 @@ summary: Breaking changes to the Metabase API, listed by release.
     - `POST /api/card/:id/query`
   - A metric requested from `POST /api/card/:id/query` with `collection_preview: true` now runs with its saved
     breakouts, as it does without the flag, instead of returning a single aggregated value.
+
+- The sandbox host used by custom visualizations and data apps is now at
+  `GET /api/ee/browser-sandboxing/sandbox-host`, replacing `GET /api/ee/custom-viz-plugin/sandbox-host`.
 
 ## Metabase 0.65.0
 

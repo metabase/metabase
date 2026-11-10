@@ -83,7 +83,6 @@ const getRecentItemName = (item: RecentItem) =>
   isRecentTableItem(item) ? (item.display_name ?? item.name) : item.name;
 
 const MOCK_DATABASE = createMockDatabase({
-  is_saved_questions: true,
   native_permissions: "write",
 });
 
@@ -343,7 +342,6 @@ describe("CommandSuggestion", () => {
 
     setupDatabasesEndpoints([
       createMockDatabase({
-        is_saved_questions: false,
         native_permissions: "none",
       }),
     ]);

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { removeNewLines } from "metabase/utils/formatting";
 import type { ColumnSettings } from "metabase-types/api";
 

@@ -252,16 +252,17 @@
           :model/TransformTag
           :model/TransformTransformTag}
         (when config/ee-available?
-          [:model/ConnectionImpersonation
+          [:model/CardTest
+           :model/ConnectionImpersonation
            :model/ContentDiagnosticsFinding
            :model/CustomVizPlugin
+           :model/DataTestRun
            :model/MetabotGroupLimit
            :model/MetabotInstanceLimit
            :model/Sandbox
            :model/TableRemapping
            :model/Tenant
            :model/TransformTest
-           :model/TransformTestRun
            :model/Workspace
            :model/WorkspaceDatabase])))
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { updateIn } from "icepick";
 import { type ComponentType, useState } from "react";
 import _ from "underscore";

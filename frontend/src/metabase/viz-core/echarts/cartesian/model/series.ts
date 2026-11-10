@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { getNullDisplayValue } from "metabase/utils/constants";
 import { memoize } from "metabase/utils/memoize";
 import { isEmpty } from "metabase/utils/validate";

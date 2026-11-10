@@ -45,18 +45,45 @@
     "question"  (:collection_id (cache.db/card-collection-id model_id))
     nil))
 
+(defn- can-write-config?
+  "Whether the current user can write the CacheConfig `instance`, given the collection of the dashboard or card it
+  targets and the database it targets, each looked up only for the configs that target one."
+  [instance target-collection-id target-database]
+  (case (:model instance)
+    "root"      (mi/superuser?)
+    "database"  (boolean (some-> target-database mi/can-write?))
+    ("dashboard" "question")
+    (mi/current-user-has-full-permissions?
+     (perms/perms-objects-set-for-parent-collection target-collection-id :write))))
+
 (defmethod mi/can-write? :model/CacheConfig
   ([instance]
-   (case (:model instance)
-     "root"      (mi/superuser?)
-     "database"  (mi/can-write? :model/Database (:model_id instance))
-     ("dashboard" "question")
-     (mi/current-user-has-full-permissions?
-      (perms/perms-objects-set-for-parent-collection
-       (target-collection-id instance)
-       :write))))
+   (can-write-config? instance
+                      (target-collection-id instance)
+                      (when (= "database" (:model instance))
+                        (first (cache.db/databases [(:model_id instance)])))))
   ([_model pk]
    (mi/can-write? (cache.db/cache-config pk))))
+
+(methodical/defmethod t2/batched-hydrate [:model/CacheConfig :can_write]
+  "Add whether the current user can write each CacheConfig, looking up the dashboards, cards, and databases they
+  target at once."
+  [_model k cache-configs]
+  (mi/instances-with-hydrated-data
+   cache-configs k
+   #(let [configs        (remove nil? cache-configs)
+          target-ids     (fn [model] (into [] (comp (filter (comp #{model} :model)) (keep :model_id) (distinct)) configs))
+          collection-ids {"dashboard" (cache.db/dashboard-collection-ids (target-ids "dashboard"))
+                          "question"  (cache.db/card-collection-ids (target-ids "question"))}
+          databases      (u/index-by :id (cache.db/databases (target-ids "database")))]
+      (into {}
+            (map (fn [{:keys [id model model_id] :as config}]
+                   [id (can-write-config? config
+                                          (get-in collection-ids [model model_id])
+                                          (when (= "database" model) (get databases model_id)))]))
+            configs))
+   :id
+   {:default false}))
 
 (defmethod mi/can-read? :model/CacheConfig
   ([instance]

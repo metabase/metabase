@@ -85,6 +85,14 @@
                           {:type "url_verification"
                            :challenge "test"})))))))
 
+(deftest ^:synchronized interactive-endpoint-test
+  (testing "POST /api/metabot/slack/interactive acknowledges a payload it does not handle with an empty 200"
+    (tu/with-slackbot-setup
+      (let [body {:payload (json/encode {:type "shortcut"})}]
+        (is (nil? (mt/client :post 200 "metabot/slack/interactive"
+                             (tu/slack-request-options body)
+                             body)))))))
+
 (deftest ^:synchronized feature-flag-test
   (testing "POST /api/metabot/slack/events"
     (testing "ack events even when metabot-v3 feature is disabled to prevent Slack retries"

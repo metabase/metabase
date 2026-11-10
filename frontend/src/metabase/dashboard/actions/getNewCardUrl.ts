@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import _ from "underscore";
 
 import { getStructuredQuestionUrlWithParameters } from "metabase/dashboard/click-behavior/question-url";

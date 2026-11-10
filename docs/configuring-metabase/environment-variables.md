@@ -2241,83 +2241,83 @@ Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
 
 ### `MB_REMOTE_SYNC_AUTO_IMPORT`
 
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
 - Type: boolean
 - Default: `false`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import`
 
-Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only.
+Whether a read-only instance pulls changes from the repository on a schedule.
 
 ### `MB_REMOTE_SYNC_AUTO_IMPORT_RATE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `5`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import-rate`
 
-If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
+How often, in minutes, a read-only instance that pulls automatically checks the repository for changes.
 
 ### `MB_REMOTE_SYNC_BRANCH`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-branch`
 
-The remote branch to sync with, e.g. `main`.
-
-### `MB_REMOTE_SYNC_CHECK_CHANGES_CACHE_TTL_SECONDS`
-
-- Type: integer
-- Default: `60`
-- [Configuration file name](./config-file.md): `remote-sync-check-changes-cache-ttl-seconds`
-
-Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
+The branch of the repository to sync with, such as `main`.
 
 ### `MB_REMOTE_SYNC_GIT_TIMEOUT_SECONDS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `60`
 - [Configuration file name](./config-file.md): `remote-sync-git-timeout-seconds`
 
-Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely.
+How long, in seconds, remote sync waits for the git repository to respond.
 
 ### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `300000`
 - [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
 
-How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit.
+How long, in milliseconds, a remote sync task can go without a sign that it is still running before Metabase ends it.
 
 ### `MB_REMOTE_SYNC_TOKEN`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-token`
 
-An Authorization Bearer token allowing access to the git repo over HTTP.
-
-### `MB_REMOTE_SYNC_TRANSFORMS`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `remote-sync-transforms`
-
-Whether to sync transforms via remote-sync. When enabled, transforms, transform tags, transform tests, Python libraries, and transforms folders are synced.
+An access token for the git repository, such as a personal access token.
 
 ### `MB_REMOTE_SYNC_TYPE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: keyword
 - Default: `read-only`
 - [Configuration file name](./config-file.md): `remote-sync-type`
 
-Git synchronization type - :read-write or :read-only.
+Whether this instance pushes synced content to the repository (read-write) or only pulls it (read-only).
 
 ### `MB_REMOTE_SYNC_URL`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-url`
 
-The location of your git repository, e.g. `https://github.com/acme-inco/metabase.git`.
+The URL of the git repository to sync with, such as `https://github.com/acme-inco/metabase.git`.
 
 ### `MB_REPORT_TIMEZONE`
 

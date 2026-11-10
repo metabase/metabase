@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 // NOTE: If we make changes to the algorithm or default values below we should change
 // [the backend version](https://github.com/metabase/metabase/blob/master/src/metabase/dashboards/autoplace.clj).
 

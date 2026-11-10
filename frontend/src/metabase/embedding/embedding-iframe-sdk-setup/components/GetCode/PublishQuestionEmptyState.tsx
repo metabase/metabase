@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { c, t } from "ttag";
 
 import EmptyStateImage from "assets/img/empty-states/snippet.svg";

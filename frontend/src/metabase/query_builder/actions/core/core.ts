@@ -1,22 +1,18 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import _ from "underscore";
 
 import {
   cardApi,
-  databaseApi,
   invalidateNotificationsApiCache,
   revisionApi,
   timelineApi,
 } from "metabase/api";
-import { listTag } from "metabase/api/tags";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
-import {
-  getShallowDatabases,
-  selectQuestionFromCard,
-} from "metabase/metadata-store";
+import { selectQuestionFromCard } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
@@ -299,11 +295,6 @@ export const apiCreateQuestion = (
       dispatch,
       options,
     );
-
-    const databases = Object.values(getShallowDatabases(getState()));
-    if (!databases.some((database) => database.is_saved_questions)) {
-      dispatch(databaseApi.util.invalidateTags([listTag("database")]));
-    }
 
     trackNewQuestionSaved(
       question,

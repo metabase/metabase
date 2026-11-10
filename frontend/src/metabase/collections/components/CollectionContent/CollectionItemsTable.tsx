@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useUncontrolled } from "@mantine/hooks";
 import cx from "classnames";
 import {

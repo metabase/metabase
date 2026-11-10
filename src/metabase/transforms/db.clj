@@ -99,6 +99,13 @@
    changes      :- ::transforms.schema/transform.update]
   (t2/update! :model/Transform :id transform-id changes))
 
+(mu/defn lock-transform! :- :nil
+  "Lock the row of the Transform with `transform-id` against writes until the current transaction ends."
+  [transform-id :- ::lib.schema.id/transform]
+  (t2/select-pks-vec :model/Transform {:where [:= :id transform-id]
+                                       :for   :update})
+  nil)
+
 (mu/defn delete-transform!
   "Delete the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]

@@ -692,7 +692,6 @@
            api-scope
            api.eid-translation
            collections
-           data-apps
            documents
            events
            lib.schema
@@ -2476,6 +2475,7 @@
            lib.schema
            permissions
            premium-features
+           remote-sync
            request.schema
            session
            settings
@@ -2662,6 +2662,7 @@
   {:team "Data Apps"
    :api  #{metabase.serialization.core metabase.serialization.protocol.mp metabase.serialization.resolve}
    :uses #{app-db
+           dependencies
            lib
            lib.legacy-mbql
            lib.metadata
@@ -3292,7 +3293,6 @@
            metabase.user-key-value.init}
    :uses #{api
            api-scope
-           data-apps
            lib.schema
            util
            util.config}}
@@ -3437,18 +3437,13 @@
            api
            api-scope
            app-db
-           collections
            database-routing
            driver
            events
-           lib
-           lib.be
-           lib.metadata
            lib.schema
            models
            permissions
            premium-features
-           queries
            request
            sample-data
            settings
@@ -3460,7 +3455,6 @@
            warehouses.schema
            warehouses.secrets}
    :model-imports #{:model/Card
-                    :model/Collection
                     :model/Database
                     :model/Field
                     :model/Table}}
@@ -3765,6 +3759,11 @@
            util}
    :model-imports #{:model/User}}
 
+  enterprise/browser-sandboxing
+  {:team "Gadget"
+   :api #{metabase-enterprise.browser-sandboxing.api}
+   :uses #{api}}
+
   enterprise/cache
   {:team "UX West"
    :api  #{metabase-enterprise.cache.init}
@@ -3904,7 +3903,7 @@
 
   enterprise/custom-viz-plugin
   {:team "Gadget"
-   :api  #{metabase-enterprise.custom-viz-plugin.api metabase-enterprise.custom-viz-plugin.api.sandbox-host metabase-enterprise.custom-viz-plugin.init}
+   :api  #{metabase-enterprise.custom-viz-plugin.api metabase-enterprise.custom-viz-plugin.init}
    :uses #{api
            api-scope
            events
@@ -3942,6 +3941,7 @@
            remote-sync
            search
            serialization
+           server
            settings
            system
            util
@@ -3955,6 +3955,9 @@
                     :model/Database
                     :model/Field
                     :model/Measure
+                    :model/Permissions
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
                     :model/Table
                     :model/User}
    :model-exports #{:model/DataApp}}
@@ -3980,7 +3983,10 @@
 
   enterprise/data-testing
   {:team "Graphy"
-   :api #{metabase-enterprise.data-testing.api metabase-enterprise.data-testing.init}
+   :api #{metabase-enterprise.data-testing.api
+          metabase-enterprise.data-testing.card-api
+          metabase-enterprise.data-testing.init
+          metabase-enterprise.data-testing.run-api}
    :uses #{api
            audit-app
            driver
@@ -3988,8 +3994,10 @@
            lib
            lib.be
            lib.schema
+           model-persistence
            models
            premium-features
+           queries
            query-permissions
            query-processor
            remote-sync
@@ -4004,7 +4012,8 @@
            transforms.base
            util}
    :model-exports #{:model/TransformTest}
-   :model-imports #{:model/Collection
+   :model-imports #{:model/Card
+                    :model/Collection
                     :model/Database
                     :model/Transform
                     :model/User}}
@@ -4146,6 +4155,7 @@
   {:team "UX West"
    :api  #{metabase-enterprise.library.api}
    :uses #{api
+           api-scope
            collections
            lib.schema
            premium-features
@@ -4708,7 +4718,6 @@
            lib.metadata
            lib.schema
            query-processor
-           server
            sql-tools
            tracing
            transforms

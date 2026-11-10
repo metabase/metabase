@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.data-testing.models]
-   [metabase-enterprise.data-testing.models.transform-test-run]
+   [metabase-enterprise.data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase.audit-app.events.audit-log]
    [metabase.test :as mt]
@@ -62,26 +62,59 @@
     (mt/with-temp [:model/Transform     {transform-id :id} {}
                    :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
       (let [initiated-by (mt/user->id :rasta)
-            {run-id :id} (data-testing.run-tracking/start-run! transform-test-id initiated-by)]
+            {run-id :id} (data-testing.run-tracking/start-run! :transform transform-test-id initiated-by)]
         (try
           (testing "start"
             (is (= {:model_id run-id
                     :user_id  initiated-by
-                    :details  {:transform_test_id transform-test-id
-                               :status            "started"}
+                    :details  {:test_type "transform"
+                               :test_id   transform-test-id
+                               :status    "started"}
                     :topic    :transform-test-run-start
-                    :model    "TransformTestRun"}
+                    :model    "DataTestRun"}
                    (mt/latest-audit-log-entry :transform-test-run-start run-id))))
           (testing "cluster reaping records the timeout"
-            (t2/update! :model/TransformTestRun :id run-id {:last_heartbeat (minutes-ago 10)})
+            (t2/update! :model/DataTestRun :id run-id {:last_heartbeat (minutes-ago 10)})
             (is (= [run-id] (mapv :id (data-testing.run-tracking/reap-orphaned-runs! 5))))
             (is (= {:model_id run-id
                     :user_id  initiated-by
-                    :details  {:transform_test_id transform-test-id
-                               :status            "timeout"}
+                    :details  {:test_type "transform"
+                               :test_id   transform-test-id
+                               :status    "timeout"}
                     :topic    :transform-test-run-timeout
-                    :model    "TransformTestRun"}
+                    :model    "DataTestRun"}
                    (mt/latest-audit-log-entry :transform-test-run-timeout run-id))))
           (finally
             (data-testing.run-tracking/finish-run! run-id :timeout)
-            (t2/delete! :model/TransformTestRun :id run-id)))))))
+            (t2/delete! :model/DataTestRun :id run-id)))))))
+
+(deftest card-test-run-audit-events-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card     {card-id :id} {}
+                   :model/CardTest {card-test-id :id} {:card_id card-id}]
+      (let [initiated-by (mt/user->id :rasta)
+            {run-id :id} (data-testing.run-tracking/start-run! :card card-test-id initiated-by)]
+        (try
+          (testing "start, under the card-test topic"
+            (is (= {:model_id run-id
+                    :user_id  initiated-by
+                    :details  {:test_type "card"
+                               :test_id   card-test-id
+                               :status    "started"}
+                    :topic    :card-test-run-start
+                    :model    "DataTestRun"}
+                   (mt/latest-audit-log-entry :card-test-run-start run-id))))
+          (testing "cluster reaping records the timeout under the card-test topic"
+            (t2/update! :model/DataTestRun :id run-id {:last_heartbeat (minutes-ago 10)})
+            (is (= [run-id] (mapv :id (data-testing.run-tracking/reap-orphaned-runs! 5))))
+            (is (= {:model_id run-id
+                    :user_id  initiated-by
+                    :details  {:test_type "card"
+                               :test_id   card-test-id
+                               :status    "timeout"}
+                    :topic    :card-test-run-timeout
+                    :model    "DataTestRun"}
+                   (mt/latest-audit-log-entry :card-test-run-timeout run-id))))
+          (finally
+            (data-testing.run-tracking/finish-run! run-id :timeout)
+            (t2/delete! :model/DataTestRun :id run-id)))))))

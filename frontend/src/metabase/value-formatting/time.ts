@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import type { Dayjs } from "metabase/dayjs";
 import {
   DEFAULT_TIME_STYLE,
