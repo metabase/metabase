@@ -468,7 +468,11 @@
   {:table_name table-name, :column_name column-name, :type_name "int"})
 
 (defn- field [table-name field-name position]
-  {:table-schema "s", :table-name table-name, :name field-name, :database-type "int", :base-type :type/Integer
+  {:table-schema      "s"
+   :table-name        table-name
+   :name              field-name
+   :database-type     "int"
+   :base-type         :type/Integer
    :database-position position})
 
 (defn- describe-fields-with-fake-athena
