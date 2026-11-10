@@ -1284,11 +1284,11 @@
                         [[:= :c.column_key [:inline "PRI"]] :pk?]
                         [[:= :is_nullable [:inline "YES"]] :database-is-nullable]
                         [[:if [:= [:lower :column_default] [:inline "null"]] nil :column_default] :database-default]
-                        [[:and
-                          ;; mariadb
-                          [:!= :generation_expression nil]
-                          ;; mysql
-                          [:<> :generation_expression ""]]
+                        ;; EXTRA also identifies generated columns on MySQL and MariaDB; unlike
+                        ;; GENERATION_EXPRESSION, it is available on AnalyticDB's metadata view.
+                        [[:or
+                          [:like [:upper :c.extra] [:inline "%VIRTUAL GENERATED%"]]
+                          [:like [:upper :c.extra] [:inline "%STORED GENERATED%"]]]
                          :database-is-generated]
                         [[:nullif :c.column_comment [:inline ""]] :field-comment]]
                :from [[:information_schema.columns :c]]
