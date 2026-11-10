@@ -7,7 +7,7 @@ import ViewSidebarS from "./ViewSidebar.module.css";
 
 interface ViewSidebarProps {
   side: "left" | "right";
-  width?: number;
+  width?: number | string;
   isOpen?: boolean;
   children?: ReactNode;
 }
