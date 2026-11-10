@@ -171,9 +171,13 @@
     (testing "a successful terminal-tool call whose result is marked :non-terminal? does not end the turn"
       (is (not (#'agent/terminal-tool-call? terminal warned)))
       (is (#'agent/should-continue? 0 20 terminal warned)))
-    (testing "another successful terminal call in the same iteration still ends it"
-      (is (#'agent/terminal-tool-call? terminal (into warned [{:type :tool-input :id "b" :function "create_sql_query"}
-                                                              {:type :tool-output :id "b" :result {:output "ok"}}]))))))
+    (testing "another successful terminal call in the same iteration does not end it either"
+      (is (not (#'agent/terminal-tool-call? terminal (into warned [{:type :tool-input :id "b" :function "create_sql_query"}
+                                                                   {:type :tool-output :id "b" :result {:output "ok"}}])))))
+    (testing "nor does a successful clarification question in the same iteration"
+      (is (not (#'agent/terminal-tool-call? (conj terminal "ask_for_sql_clarification")
+                                            (into warned [{:type :tool-input :id "c" :function "ask_for_sql_clarification"}
+                                                          {:type :tool-output :id "c" :result {:output "Asked"}}])))))))
 
 (defn- tools-registered-for-request!
   ([capabilities] (tools-registered-for-request! :internal capabilities))

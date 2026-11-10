@@ -197,19 +197,21 @@
   forcing the model to keep emitting tool calls under `:required-tool-call?`.
 
   Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
-  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct; nor
-  does a successful one whose result is marked `:non-terminal?`, such as SQL with reference warnings."
+  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct. No call
+  ends it while any result in `parts` is marked `:non-terminal?`, such as SQL with new reference
+  warnings: the model has not read that result yet."
   [terminal-tools parts]
   (boolean
    (when (seq terminal-tools)
      (let [outputs (u/index-by :id (filter #(= :tool-output (:type %)) parts))]
-       (some (fn [p]
-               (let [output (get outputs (:id p))]
-                 (and (= (:type p) :tool-input)
-                      (contains? terminal-tools (:function p))
-                      (successful-tool-output? output)
-                      (not (get-in output [:result :non-terminal?])))))
-             parts)))))
+       ;; Checked over every output, not only the terminal call's own: a second call that repeats the warning of a
+       ;; first one in the same response is accepted and unmarked, though the model has seen neither.
+       (and (not-any? #(get-in % [:result :non-terminal?]) (vals outputs))
+            (some (fn [p]
+                    (and (= (:type p) :tool-input)
+                         (contains? terminal-tools (:function p))
+                         (successful-tool-output? (get outputs (:id p)))))
+                  parts))))))
 
 (defn- truncated?
   "Whether the provider cut this iteration off at its output-token limit. A truncated

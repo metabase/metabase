@@ -9,6 +9,8 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.core :as tools.core]
@@ -1106,6 +1108,26 @@
           (let [result (create (join-sql "dbt_models.no_such_account"))]
             (is (warns-about? "dbt_models.no_such_account" result))
             (is (true? (:non-terminal? result)))))))))
+
+(deftest sql-reference-warning-in-one-response-keeps-turn-open-test
+  (testing "two calls in one model response that warn about the same table keep the turn open, so the model reads the
+           warning: the second call says it is repeated and accepted, but the model has not seen the first yet"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [memory-atom    (atom editor-memory)
+              create         #(invoke-sql-tool-with-memory-atom :sql memory-atom "create_sql_query"
+                                                                {:database_id (mt/id) :sql_query %})
+              terminal-tools (:terminal-tools (profiles/get-profile :sql))
+              ;; The tool executor runs `create_sql_query` calls in parallel; in sequence, the second one always
+              ;; finds the warning already shown.
+              results        [(create "SELECT COUNT(*) FROM no_such_account")
+                              (create "SELECT * FROM no_such_account")]
+              parts          (mapcat (fn [id result]
+                                       [{:type :tool-input :id id :function "create_sql_query"}
+                                        {:type :tool-output :id id :function "create_sql_query" :result result}])
+                                     ["a" "b"] results)]
+          (is (= [true nil] (map :non-terminal? results)))
+          (is (#'agent/should-continue? 0 20 terminal-tools parts)))))))
 
 (deftest sql-reference-repeated-warning-text-test
   (testing "repeated warnings say the query is accepted, and no longer ask to fix or resend it"
