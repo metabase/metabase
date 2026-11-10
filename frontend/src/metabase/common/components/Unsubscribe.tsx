@@ -1,11 +1,10 @@
 import type { Location } from "history";
 import { useMemo, useState } from "react";
 import { useAsync } from "react-use";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import Button from "metabase/common/components/Button";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import ExternalLink from "metabase/common/components/ExternalLink";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import LogoIcon from "metabase/common/components/LogoIcon";
@@ -40,9 +39,8 @@ type Subscription = (typeof SUBSCRIPTION)[keyof typeof SUBSCRIPTION];
 export const UnsubscribePage = ({
   location,
 }: UnsubscribeProps): JSX.Element => {
-  const [subscriptionChange, setSubscriptionChange] = useState<Subscription>(
-    SUBSCRIPTION.UNSUBSCRIBE,
-  );
+  const [subscriptionChange, setSubscriptionChange] =
+    useState<Subscription | null>(null);
 
   const hash = location?.query?.hash;
   const email = location?.query?.email;
@@ -77,18 +75,37 @@ export const UnsubscribePage = ({
     );
   }
 
+  if (subscriptionChange === null) {
+    return (
+      <UnsubscribeRoot>
+        <Stack align="center">
+          <Text fw={700} c="text-secondary" ta="center">
+            {t`Unsubscribe from these emails?`}
+          </Text>
+          <Text c="text-secondary" ta="center">
+            {email}
+          </Text>
+          <Button
+            primary
+            onClick={() => setSubscriptionChange(SUBSCRIPTION.UNSUBSCRIBE)}
+          >
+            {t`Confirm unsubscribe`}
+          </Button>
+        </Stack>
+      </UnsubscribeRoot>
+    );
+  }
+
   return (
     <UnsubscribeRoot>
       {subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE ? (
         <SuccessfulUnsubscribe
-          email={email}
-          alertTitle={data?.title}
+          title={data?.title}
           action={() => setSubscriptionChange(SUBSCRIPTION.RESUBSCRIBE)}
         />
       ) : (
         <SuccessfulResubscribe
-          email={email}
-          alertTitle={data?.title}
+          title={data?.title}
           action={() => setSubscriptionChange(SUBSCRIPTION.UNSUBSCRIBE)}
         />
       )}
@@ -96,36 +113,28 @@ export const UnsubscribePage = ({
   );
 };
 
-function SuccessfulUnsubscribe({
-  email,
-  alertTitle,
-  action,
-}: SubscriptionDetailProps) {
+function SuccessfulUnsubscribe({ title, action }: SubscriptionDetailProps) {
   return (
     <SuccessfulRequestWrapper
-      text={jt`You've unsubscribed ${(
-        <ExternalLink key="link" href={`mailto:${email}`}>
-          {email}
-        </ExternalLink>
-      )} from the "${alertTitle}" alert.`}
+      text={
+        title
+          ? t`You've unsubscribed from "${title}".`
+          : t`You've unsubscribed.`
+      }
       buttonText={t`Undo`}
       action={action}
     />
   );
 }
 
-function SuccessfulResubscribe({
-  email,
-  alertTitle,
-  action,
-}: SubscriptionDetailProps) {
+function SuccessfulResubscribe({ title, action }: SubscriptionDetailProps) {
   return (
     <SuccessfulRequestWrapper
-      text={jt`Okay, ${(
-        <ExternalLink key="link" href={`mailto:${email}`}>
-          {email}
-        </ExternalLink>
-      )} is subscribed to the "${alertTitle}" alert again.`}
+      text={
+        title
+          ? t`You're subscribed to "${title}" again.`
+          : t`You're subscribed again.`
+      }
       buttonText={t`Unsubscribe`}
       action={action}
     />
@@ -188,6 +197,10 @@ function useUnsubscribeRequest({
   } = useAsync(async () => {
     if (!params) {
       throw new Error(ERRORS.MISSING_REQUIRED_PARAMETERS);
+    }
+
+    if (subscriptionChange === null) {
+      return;
     }
 
     const api = notificationHandlerId
@@ -256,8 +269,7 @@ interface UnsubscribeProps {
 }
 
 interface SubscriptionDetailProps {
-  email: string;
-  alertTitle: string | undefined;
+  title: string | undefined;
   action: () => void;
 }
 
@@ -272,7 +284,7 @@ interface UseUnsubscribeProps {
   email: string | undefined;
   pulseId: string | undefined;
   notificationHandlerId: string | undefined;
-  subscriptionChange: Subscription;
+  subscriptionChange: Subscription | null;
 }
 
 interface UseUnsubscribeResult {
