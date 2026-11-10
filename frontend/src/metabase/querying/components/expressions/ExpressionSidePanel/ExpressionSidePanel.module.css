@@ -190,3 +190,19 @@
   font-size: var(--mantine-font-size-sm);
   color: var(--mb-color-text-secondary);
 }
+
+/* A tool row whose popover is open: stays highlighted like on hover */
+.row.active {
+  background-color: var(--mb-color-background_surface-primary-hover);
+}
+
+/* The popover a tool opens, next to the panel. Its 472px width is
+   TOOL_POPOVER_WIDTH in ExpressionSidePanel.tsx */
+.toolPopover {
+  max-height: 80vh;
+}
+
+/* "Select columns to combine", lined up with the 24px padding of the form below */
+.toolTitle {
+  padding: var(--mantine-spacing-xl) var(--mantine-spacing-xl) 0;
+}

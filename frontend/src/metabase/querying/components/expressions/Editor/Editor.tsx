@@ -63,6 +63,8 @@ export type EditorProps = {
   inline?: boolean;
   onCloseEditor?: () => void;
   initialExpressionClause?: Lib.DefinedClauseName | null;
+  /** Called with a name for an expression a side panel tool built. */
+  onSuggestName?: (name: string) => void;
 
   onChange: (
     clause: Lib.ExpressionClause | null,
@@ -91,6 +93,7 @@ export function Editor(props: EditorProps) {
     inline,
     onCloseEditor,
     initialExpressionClause,
+    onSuggestName,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -172,6 +175,27 @@ export function Editor(props: EditorProps) {
     }
   }, []);
 
+  // Inserts what a side panel tool built at the cursor, like a template.
+  const handleToolSubmit = useCallback(
+    async (clause: Lib.ExpressionClause, name: string) => {
+      const source = await format(clause, {
+        query,
+        stageIndex,
+        availableColumns,
+        printWidth: 55,
+      }).catch(() => null);
+      const view = ref.current?.view;
+      if (source == null || !view) {
+        return;
+      }
+
+      view.focus();
+      view.dispatch(view.state.replaceSelection(source));
+      onSuggestName?.(name);
+    },
+    [query, stageIndex, availableColumns, onSuggestName],
+  );
+
   const applyInitialSnippet = useInitialClause({
     initialExpressionClause,
   });
@@ -252,8 +276,11 @@ export function Editor(props: EditorProps) {
             expressionMode={expressionMode}
             reportTimezone={reportTimezone}
             query={query}
+            stageIndex={stageIndex}
+            availableColumns={availableColumns}
             onClauseClick={handleFunctionBrowserClauseClick}
             onTemplateClick={handleTemplateClick}
+            onToolSubmit={handleToolSubmit}
           />
         </LayoutSidebar>
       )}

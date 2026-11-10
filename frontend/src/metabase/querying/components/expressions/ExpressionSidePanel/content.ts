@@ -25,9 +25,13 @@ export type SidePanelGroupId =
   | "pull"
   | "text";
 
+export type SidePanelToolAction = "combine" | "extract";
+
 export type SidePanelTool = {
   name: string;
   icon: SidePanelIconName;
+  /** Opens a popover that builds the expression for you. */
+  action?: SidePanelToolAction;
 };
 
 export type SidePanelTemplate = {
@@ -197,8 +201,12 @@ export function getSidePanelTools(
 
   return [
     ...aiTools,
-    { name: t`Combine columns`, icon: "table-column" },
-    { name: t`Extract columns`, icon: "table-column" },
+    {
+      name: t`Combine text column values`,
+      icon: "table-column",
+      action: "combine",
+    },
+    { name: t`Extract date value`, icon: "table-column", action: "extract" },
   ];
 }
 

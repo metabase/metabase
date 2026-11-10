@@ -154,6 +154,11 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
     [query, stageIndex, handleExpressionChange],
   );
 
+  // A side panel tool names the column only if it doesn't have a name yet.
+  const handleSuggestName = useCallback((suggestedName: string) => {
+    setName((name) => (name.trim() === "" ? suggestedName : name));
+  }, []);
+
   const handleCancel = useCallback(() => {
     setIsCombiningColumns(false);
     setIsExtractingColumn(false);
@@ -208,7 +213,9 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         availableColumns={availableColumns}
         availableMetrics={availableMetrics}
         reportTimezone={reportTimezone}
-        shortcuts={shortcuts}
+        // The inline editor offers these in its side panel instead
+        shortcuts={isInline ? undefined : shortcuts}
+        onSuggestName={handleSuggestName}
         error={error}
         hasHeader={Boolean(header)}
         inline={isInline}

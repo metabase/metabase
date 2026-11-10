@@ -14,10 +14,22 @@ import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Markdown } from "metabase/common/components/Markdown";
 import { getHelpText } from "metabase/querying/expressions";
-import { HoverCard, ScrollArea, UnstyledButton } from "metabase/ui";
+import {
+  HoverCard,
+  Popover,
+  ScrollArea,
+  Title,
+  UnstyledButton,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
+import {
+  trackColumnCombineViaShortcut,
+  trackColumnExtractViaShortcut,
+} from "../../../analytics";
+import { CombineColumns, hasCombinations } from "../CombineColumns";
+import { ExtractColumn, hasExtractions } from "../ExtractColumn";
 import { HighlightExpressionSource } from "../HighlightExpression";
 
 import S from "./ExpressionSidePanel.module.css";
@@ -26,6 +38,7 @@ import type {
   SidePanelIconName,
   SidePanelTemplate,
   SidePanelTool,
+  SidePanelToolAction,
 } from "./content";
 import {
   ChevronDownIcon,
@@ -40,6 +53,7 @@ import {
 } from "./utils";
 
 const ICON_SIZE = 16;
+const TOOL_POPOVER_WIDTH = 472;
 
 const MARKDOWN_COMPONENTS = {
   code(props: { children: ReactNode }) {
@@ -56,17 +70,24 @@ const MARKDOWN_COMPONENTS = {
 type ExpressionSidePanelProps = {
   expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
+  stageIndex: number;
+  availableColumns: Lib.ColumnMetadata[];
   reportTimezone?: string;
   onClauseClick?: (name: string) => void;
   onTemplateClick?: (code: string) => void;
+  /** Called with the expression a tool built, and a name for it. */
+  onToolSubmit?: (clause: Lib.ExpressionClause, name: string) => void;
 };
 
 export function ExpressionSidePanel({
   expressionMode,
   query,
+  stageIndex,
+  availableColumns,
   reportTimezone,
   onClauseClick,
   onTemplateClick,
+  onToolSubmit,
 }: ExpressionSidePanelProps) {
   const databaseId = Lib.databaseID(query);
   const { data: database } = useGetDatabaseQuery(
@@ -79,9 +100,26 @@ export function ExpressionSidePanel({
   );
   const isSearching = search.trim() !== "";
 
-  const { tools, popular, groups } = useMemo(
+  const {
+    tools: allTools,
+    popular,
+    groups,
+  } = useMemo(
     () => getSidePanelSections({ expressionMode, database, search }),
     [expressionMode, database, search],
+  );
+
+  // Like the old editor buttons, a tool only shows when there's something
+  // to use it on.
+  const tools = useMemo(
+    () =>
+      allTools.filter(
+        (tool) =>
+          (tool.action !== "combine" || hasCombinations(availableColumns)) &&
+          (tool.action !== "extract" ||
+            hasExtractions(query, availableColumns)),
+      ),
+    [allTools, query, availableColumns],
   );
 
   const handleSearchChange = useCallback(
@@ -133,9 +171,21 @@ export function ExpressionSidePanel({
             <section className={S.tools}>
               <Subheading>{t`Tools`}</Subheading>
               <div className={S.list}>
-                {tools.map((tool) => (
-                  <ActionRow key={tool.name} item={tool} />
-                ))}
+                {tools.map((tool) =>
+                  tool.action ? (
+                    <ToolPopover
+                      key={tool.name}
+                      tool={tool}
+                      action={tool.action}
+                      query={query}
+                      stageIndex={stageIndex}
+                      availableColumns={availableColumns}
+                      onSubmit={onToolSubmit}
+                    />
+                  ) : (
+                    <ActionRow key={tool.name} item={tool} />
+                  ),
+                )}
               </div>
             </section>
             <section className={S.popular}>
@@ -195,14 +245,16 @@ function PanelIcon({ name }: { name: SidePanelIconName }) {
 
 function ActionRow({
   item,
+  isActive,
   onClick,
 }: {
   item: SidePanelTool | SidePanelTemplate;
+  isActive?: boolean;
   onClick?: () => void;
 }) {
   return (
     <UnstyledButton
-      className={S.row}
+      className={cx(S.row, { [S.active]: isActive })}
       onClick={onClick}
       data-testid="expression-side-panel-action"
     >
@@ -210,6 +262,92 @@ function ActionRow({
       <span className={S.label}>{item.name}</span>
     </UnstyledButton>
   );
+}
+
+function ToolPopover({
+  tool,
+  action,
+  query,
+  stageIndex,
+  availableColumns,
+  onSubmit,
+}: {
+  tool: SidePanelTool;
+  action: SidePanelToolAction;
+  query: Lib.Query;
+  stageIndex: number;
+  availableColumns: Lib.ColumnMetadata[];
+  onSubmit?: (clause: Lib.ExpressionClause, name: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleCombineSubmit = (name: string, clause: Lib.ExpressionClause) => {
+    trackColumnCombineViaShortcut(query);
+    setIsOpen(false);
+    onSubmit?.(clause, name);
+  };
+
+  const handleExtractSubmit = (
+    clause: Lib.ExpressionClause,
+    name: string,
+    extraction: Lib.ColumnExtraction,
+  ) => {
+    trackColumnExtractViaShortcut(query, stageIndex, extraction);
+    setIsOpen(false);
+    onSubmit?.(clause, name);
+  };
+
+  return (
+    <Popover
+      opened={isOpen}
+      onChange={setIsOpen}
+      position="right-start"
+      offset={8}
+    >
+      <Popover.Target>
+        <div>
+          <ActionRow
+            item={tool}
+            isActive={isOpen}
+            onClick={() => setIsOpen((isOpen) => !isOpen)}
+          />
+        </div>
+      </Popover.Target>
+      <Popover.Dropdown
+        className={S.toolPopover}
+        data-testid="expression-side-panel-tool-popover"
+        // Let clicks in the popover behave normally: the panel itself keeps
+        // focus in the editor by cancelling them.
+        onMouseDown={stopPropagation}
+      >
+        {action === "combine" ? (
+          <>
+            <Title className={S.toolTitle} order={6}>
+              {t`Select columns to combine`}
+            </Title>
+            <CombineColumns
+              query={query}
+              stageIndex={stageIndex}
+              availableColumns={availableColumns}
+              width={TOOL_POPOVER_WIDTH}
+              onSubmit={handleCombineSubmit}
+            />
+          </>
+        ) : (
+          <ExtractColumn
+            query={query}
+            stageIndex={stageIndex}
+            availableColumns={availableColumns}
+            onSubmit={handleExtractSubmit}
+          />
+        )}
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
+
+function stopPropagation(event: MouseEvent) {
+  event.stopPropagation();
 }
 
 function FunctionRow({
