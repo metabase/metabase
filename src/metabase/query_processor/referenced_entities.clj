@@ -2,7 +2,8 @@
   "Runs the queries a card references and injects their values into the response under `data.referenced_entities`,
   keyed by entity type and then by id.
 
-  An entity that returns more rows than its caller asked for fails that entity, never the main query.
+  An entity that returns more rows than its caller asked for fails that entity, never the main query. So does one whose
+  query reads parameters: it runs with no values for them.
 
   Each referenced query runs under its own QP store ([[qp.store/with-fresh-store]]): otherwise a nested run reuses
   the main query's store and can't resolve tables on a different database.
@@ -21,6 +22,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.template-tags :as qp.template-tags]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]
@@ -99,33 +101,41 @@
     (try
       ;; passes for anything under the public and embed paths' `as-admin`, so there the spec's producer must
       ;; already have checked that the reference is readable
-      (let [entity (api/read-check model id)
-            ;; a nested run inside the outer streaming response must return an in-memory map,
-            ;; not write to the outer stream
-            ;; own cancel chan: a finished query closes its chan, so sharing one would stop cancels reaching the
-            ;; main query or a later goal
-            result (qp.store/with-fresh-store
-                     (qp.pipeline/do-with-own-canceled-chan
-                      (fn []
-                        (binding [qp.pipeline/*result* qp.pipeline/default-result-handler
-                                  ;; a referenced card is a saved question, so reading it is enough. unbound, the
-                                  ;; perms check takes the ad-hoc branch and demands create-queries on its tables.
-                                  ;; measures have no equivalent yet, so they stay on the ad-hoc branch.
-                                  qp.perms/*card-id*   (when (= entity-type "card") id)]
-                          (qp/process-query
-                           (referenced-query (runnable-query entity query-key) entity-type id max-rows))))))
-            data   (:data result)]
-        (if (> (count (:rows data)) max-rows)
+      (let [entity (api/read-check model id)]
+        ;; it runs with no parameter values, so it'd get each one's default or none at all. a measure has neither
+        ;; parameters nor a `:dataset_query`
+        (if (qp.template-tags/reads-parameters? entity)
           (do
-            (log/warnf "Referenced %s %s returned more than the requested %s row(s)" entity-type id max-rows)
+            (log/warnf "Referenced %s %s reads parameters, so it can't run on its own" entity-type id)
             {:status     "failed"
-             :error_type "too-many-rows"
-             :error      (tru "Referenced {0} {1} returned more rows than the requested maximum of {2}."
-                              entity-type id max-rows)})
-          {:status "completed"
-           :data   (-> data
-                       (perf/select-keys [:cols :rows])
-                       (project-columns columns))}))
+             :error_type "has-parameters"
+             :error      (tru "Referenced {0} {1} uses variables, so it can''t run on its own." entity-type id)})
+          (let [;; a nested run inside the outer streaming response must return an in-memory map,
+                ;; not write to the outer stream
+                ;; own cancel chan: a finished query closes its chan, so sharing one would stop cancels reaching the
+                ;; main query or a later goal
+                result (qp.store/with-fresh-store
+                         (qp.pipeline/do-with-own-canceled-chan
+                          (fn []
+                            (binding [qp.pipeline/*result* qp.pipeline/default-result-handler
+                                      ;; a referenced card is a saved question, so reading it is enough. unbound, the
+                                      ;; perms check takes the ad-hoc branch and demands create-queries on its
+                                      ;; tables. measures have no equivalent yet, so they stay on the ad-hoc branch.
+                                      qp.perms/*card-id*   (when (= entity-type "card") id)]
+                              (qp/process-query
+                               (referenced-query (runnable-query entity query-key) entity-type id max-rows))))))
+                data   (:data result)]
+            (if (> (count (:rows data)) max-rows)
+              (do
+                (log/warnf "Referenced %s %s returned more than the requested %s row(s)" entity-type id max-rows)
+                {:status     "failed"
+                 :error_type "too-many-rows"
+                 :error      (tru "Referenced {0} {1} returned more rows than the requested maximum of {2}."
+                                  entity-type id max-rows)})
+              {:status "completed"
+               :data   (-> data
+                           (perf/select-keys [:cols :rows])
+                           (project-columns columns))}))))
       (catch Throwable e
         (log/warnf e "Failed to run referenced %s %s" entity-type id)
         {:status "failed"

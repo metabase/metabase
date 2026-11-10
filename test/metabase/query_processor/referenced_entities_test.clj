@@ -736,3 +736,141 @@
         (is (= "failed" (:status result)))
         (is (= "too-many-rows" (:error_type result)))
         (is (re-find #"more rows than the requested maximum" (:error result)))))))
+
+(defn- native-card
+  "With-temp attributes of a native card counting venues; `tag` is merged into a `tenant` variable when given."
+  ([sql]
+   {:dataset_query (mt/native-query {:query sql})})
+  ([sql tag]
+   {:dataset_query (mt/native-query {:query         sql
+                                     :template-tags {"tenant" (merge {:id "_TENANT_" :name "tenant"
+                                                                      :display-name "Tenant" :type :number}
+                                                                     tag)}})}))
+
+(def ^:private venues-by-tenant "SELECT COUNT(*) AS \"count\" FROM venues WHERE category_id = {{tenant}}")
+
+(defn- card-on
+  "With-temp attributes of an MBQL card counting the rows of card `card-id`."
+  [card-id]
+  {:dataset_query {:database (mt/id) :type :query :query {:source-table (str "card__" card-id)
+                                                          :aggregation  [[:count]]}}})
+
+(defn- card-referencing
+  "With-temp attributes of a native card counting the rows of card `card-id` through a `{{#id}}` tag."
+  [card-id]
+  (let [tag (str "#" card-id "-source")]
+    {:dataset_query (mt/native-query {:query         (str "SELECT COUNT(*) AS \"count\" FROM {{" tag "}} source")
+                                      :template-tags {tag {:id (str "source-" card-id) :name tag
+                                                           :display-name "Source" :type :card :card-id card-id}}})}))
+
+(defn- dataset-referenced-entities
+  "POST /api/dataset counting venues, with a `count` goal on each of `card-ids`. Returns the main rows and the goals."
+  [card-ids]
+  (let [response (mt/user-http-request
+                  :crowberto :post 202 "dataset"
+                  (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                         :referenced_entities (for [id card-ids] {:type "card" :id id :columns ["count"]})))]
+    {:rows  (get-in response [:data :rows])
+     :goals (into {} (for [id card-ids] [id (ref-entity response :card id)]))}))
+
+(deftest referenced-card-with-parameters-is-refused-test
+  (testing "a card whose query reads parameters, directly or through a card it reads, fails that goal only"
+    (mt/with-temp [:model/Card {required :id}   (native-card venues-by-tenant {:required true})
+                   :model/Card {defaulted :id}  (native-card venues-by-tenant {:default 2})
+                   :model/Card {optional :id}   (native-card (str "SELECT COUNT(*) AS \"count\" FROM venues"
+                                                                  " [[WHERE category_id = {{tenant}}]]")
+                                                             {})
+                   :model/Card {field-filter :id}
+                   (native-card "SELECT COUNT(*) AS \"count\" FROM venues WHERE {{tenant}}"
+                                {:type        :dimension
+                                 :dimension   [:field (mt/id :venues :category_id) nil]
+                                 :widget-type :number/=})
+                   :model/Card {with-params :id} (assoc (card-on required)
+                                                        :parameters [{:id "p" :slug "p" :name "P" :type :category}])
+                   :model/Card {on-defaulted :id}          (card-on defaulted)
+                   :model/Card {on-on-defaulted :id}       (card-on on-defaulted)
+                   :model/Card {referencing-required :id}  (card-referencing required)
+                   :model/Card {referencing-optional :id}  (card-referencing optional)]
+      (let [refused {"required variable"              required
+                     "defaulted variable"             defaulted
+                     "optional clause"                optional
+                     "field filter"                   field-filter
+                     "card parameters"                with-params
+                     "built on a defaulted card"      on-defaulted
+                     "two levels down"                on-on-defaulted
+                     "{{#}} to a required card"       referencing-required
+                     "{{#}} to an optional card"      referencing-optional}
+            {:keys [rows goals]} (dataset-referenced-entities (vals refused))]
+        (testing "the main query is unaffected"
+          (is (= [[100]] rows)))
+        (doseq [[label id] refused]
+          (testing label
+            (is (= {:status "failed" :error_type "has-parameters"}
+                   (select-keys (get goals id) [:status :error_type])))
+            (is (string? (:error (get goals id))))))))))
+
+(deftest referenced-card-without-parameters-runs-test
+  (testing "snippets and `{{#id}}` tags splice content in, so they don't count as parameters"
+    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "all venues" :content "venues"}
+                   :model/Card {plain :id}       (native-card "SELECT COUNT(*) AS \"count\" FROM venues")
+                   :model/Card {referencing :id} (card-referencing plain)
+                   :model/Card {snippet :id}
+                   {:dataset_query (mt/native-query
+                                    {:query         "SELECT COUNT(*) AS \"count\" FROM {{snippet: all venues}}"
+                                     :template-tags {"snippet: all venues" {:name         "snippet: all venues"
+                                                                            :display-name "All venues"
+                                                                            :type         :snippet
+                                                                            :snippet-name "all venues"
+                                                                            :snippet-id   snippet-id}}})}]
+      (let [{:keys [goals]} (dataset-referenced-entities [referencing snippet])]
+        ;; the `{{#id}}` card counts the plain card's single row
+        (doseq [[id rows] {referencing [[1]], snippet [[100]]}]
+          (is (= {:status "completed" :rows rows}
+                 {:status (get-in goals [id :status]) :rows (get-in goals [id :data :rows])})))))))
+
+(deftest referenced-card-with-parameters-is-refused-on-card-endpoints-test
+  (testing "a saved goal on a card with variables fails that goal only, on the card and public endpoints"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {source-id :id} (native-card venues-by-tenant {:default 2})
+                     :model/Card {chart-id :id uuid :public_uuid}
+                     (assoc (goal-chart "card" source-id) :public_uuid (str (random-uuid)))]
+        (doseq [[label response] {"signed in" (mt/user-http-request :crowberto :post 202
+                                                                    (format "card/%d/query" chart-id))
+                                  "public"    (client/client :get 202 (str "public/card/" uuid "/query"))}]
+          (testing label
+            (is (= [[100]] (get-in response [:data :rows])))
+            (is (= {:status "failed" :error_type "has-parameters"}
+                   (select-keys (ref-entity response :card source-id) [:status :error_type])))))))))
+
+(deftest referenced-card-reference-cycle-test
+  (testing "a reference cycle between saved cards, which only writes that skip the API can make, ends the walk"
+    (mt/with-temp [:model/Card {a :id} (native-card "SELECT 1 AS \"count\"")
+                   :model/Card {b :id} (card-on a)
+                   :model/Card {c :id} (card-referencing b)
+                   :model/Card {self :id} (native-card "SELECT 1 AS \"count\"")
+                   :model/Card {variable :id} (native-card venues-by-tenant {:default 2})
+                   :model/Card {with-variable :id} (card-on variable)]
+      ;; a -> c -> b -> a, self -> self, and with-variable -> a cycle through a card with a variable
+      (t2/update! :model/Card :id a {:dataset_query (:dataset_query (card-on c))})
+      (t2/update! :model/Card :id self {:dataset_query (:dataset_query (card-referencing self))})
+      (let [tag (str "#" with-variable "-x")]
+        (t2/update! :model/Card :id variable
+                    {:dataset_query
+                     (mt/native-query
+                      {:query         (str "SELECT COUNT(*) AS \"count\" FROM {{" tag "}} x WHERE {{tenant}} = 2")
+                       :template-tags {"tenant" {:id "_TENANT_" :name "tenant" :display-name "Tenant"
+                                                 :type :number :default 2}
+                                       tag      {:id (str "x" with-variable) :name tag :display-name "X"
+                                                 :type :card :card-id with-variable}}})}))
+      (let [result (deref (future (dataset-referenced-entities [a self with-variable])) 60000 ::timed-out)]
+        (is (not= ::timed-out result))
+        (when (map? result)
+          (testing "the main query is unaffected"
+            (is (= [[100]] (:rows result))))
+          (testing "without a variable, the QP refuses the cycle"
+            (doseq [id [a self]]
+              (is (= "failed" (get-in result [:goals id :status])))
+              (is (not= "has-parameters" (get-in result [:goals id :error_type])))))
+          (testing "with a variable in the cycle, the goal is refused for it"
+            (is (= {:status "failed" :error_type "has-parameters"}
+                   (select-keys (get-in result [:goals with-variable]) [:status :error_type])))))))))

@@ -42,6 +42,7 @@
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.template-tags :as qp.template-tags]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -1013,7 +1014,12 @@
     ;; a measure's value is its table's data, while reading a Table only takes metadata access
     (when (= "measure" entity-type)
       (api/check (query-perms/can-query-table? (get-in entity [:definition :database]) (:table_id entity))
-                 [403 (tru "You must have data permissions to use this measure as a goal.")]))))
+                 [403 (tru "You must have data permissions to use this measure as a goal.")]))
+    ;; a goal runs its source with no parameter values, so it'd get each one's default or none
+    (when (= "card" entity-type)
+      (api/check-400
+       (not (qp.template-tags/reads-parameters? entity))
+       (tru "This question uses variables, directly or through a question it''s built on, so it can''t be a goal.")))))
 
 (defn check-new-goal-references!
   "Throws if a goal in `viz-settings` reads a column no `previous-viz-settings` reads, and the card or measure that

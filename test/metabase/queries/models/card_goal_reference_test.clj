@@ -291,3 +291,47 @@
                                            {:public_uuid (str (random-uuid))}
                                            [{:card_id plain-id :series [carrier-id]}]
                                            [{:card_id plain-id :series [carrier-id]}])))))))))))
+
+(defn- venues-by-tenant []
+  (mt/native-query {:query         "SELECT COUNT(*) AS \"count\" FROM venues WHERE category_id = {{tenant}}"
+                    :template-tags {"tenant" {:id "_TENANT_" :name "tenant" :display-name "Tenant"
+                                              :type :number :default 2}}}))
+
+(deftest card-with-parameters-goal-reference-test
+  (mt/with-temp [:model/Card {variable-id :id} {:dataset_query (venues-by-tenant)}
+                 :model/Card {built-on-id :id} {:dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (str "card__" variable-id)
+                                                                           :aggregation  [[:count]]}}}
+                 :model/Card {plain-id :id} {:dataset_query (count-query)}
+                 :model/Card {card-id :id} {:dataset_query (count-query)}
+                 :model/Dashboard {dash-id :id} {}]
+    (mt/with-test-user :crowberto
+      (testing "a goal on a card with variables, or built on one, is refused even for an admin"
+        (doseq [source-id [variable-id built-on-id]]
+          (is (= 400 (save-card-status {:visualization_settings (gauge-viz (card-goal source-id))})))
+          (is (= 400 (status-of #(t2/update! :model/Card :id card-id
+                                             {:visualization_settings (gauge-viz (card-goal source-id))}))))
+          (is (= 400 (status-of #(t2/insert! :model/DashboardCard
+                                             (merge layout
+                                                    {:dashboard_id           dash-id
+                                                     :card_id                card-id
+                                                     :visualization_settings (gauge-viz (card-goal source-id))})))))))
+      (testing "a goal on a card without variables saves"
+        (is (= :no-error (save-card-status {:visualization_settings (gauge-viz (card-goal plain-id))})))))
+    (testing "the API says why"
+      (is (= (str "This question uses variables, directly or through a question it's built on, "
+                  "so it can't be a goal.")
+             (mt/user-http-request :crowberto :put 400 (format "card/%d" card-id)
+                                   {:visualization_settings (gauge-viz (card-goal variable-id))}))))))
+
+(deftest card-gaining-parameters-goal-reference-test
+  (testing "a goal saved before its source gained a variable doesn't block unrelated edits; it fails at run time"
+    (mt/with-temp [:model/Card {source-id :id} {:dataset_query (count-query)}
+                   :model/Card {card-id :id} {:dataset_query          (count-query)
+                                              :visualization_settings (gauge-viz (card-goal source-id))}]
+      (t2/update! :model/Card :id source-id {:dataset_query (venues-by-tenant)})
+      (mt/with-test-user :crowberto
+        (is (= :no-error (status-of #(t2/update! :model/Card :id card-id
+                                                 {:visualization_settings (assoc (gauge-viz (card-goal source-id))
+                                                                                 :card.title "renamed")}))))))))
