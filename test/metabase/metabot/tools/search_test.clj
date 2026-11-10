@@ -78,7 +78,7 @@
           (is (= {:error {:class :recoverable :code ::search/unavailable-database}
                   :output (str "Database " database-id
                                " was not found. It may not exist, or you may not have access to it.\n"
-                               "Use the database currently selected in the SQL editor.\n"
+                               "In the SQL editor, use the database currently selected there. Elsewhere, leave out `database_id`.\n"
                                "Call `read_resource` with `metabase://databases` to find an accessible database ID.")}
                  (invoke-search [#'search/sql-search-tool #'metabot.tools/read-resource-tool]
                                 {:database_id database-id :query "orders"}))))))))
@@ -102,7 +102,7 @@
             (is (= {:class :recoverable :code ::search/unavailable-database} (:error result)))
             (is (= (str "Database " (mt/id)
                         " was not found. It may not exist, or you may not have access to it.\n"
-                        "Use the database currently selected in the SQL editor.")
+                        "In the SQL editor, use the database currently selected there. Elsewhere, leave out `database_id`.")
                    (:output result)))))))))
 
 (deftest ^:parallel sql-search-database-recovery-follows-profile-test
@@ -110,7 +110,7 @@
     (is (= {:error {:class :recoverable :code ::search/unavailable-database}
             :output (str "Database " Integer/MAX_VALUE
                          " was not found. It may not exist, or you may not have access to it.\n"
-                         "Use the database currently selected in the SQL editor.")}
+                         "In the SQL editor, use the database currently selected there. Elsewhere, leave out `database_id`.")}
            (invoke-search [#'search/sql-search-tool]
                           {:database_id Integer/MAX_VALUE :query "orders"})))))
 
@@ -166,18 +166,41 @@
                                                   :entity_types (vec @#'search/general-entity-types)}
                         nil))
             "every type the tool accepts narrows nothing, even beyond the tool's defaults"))
-      (testing "the entity types the model picked, a collection it picked, curated content only and a confined collection are named"
+      (testing "the entity types the model picked, curated content only and a confined collection are named"
         (is (= {:empty_reason "restricted"
                 :notes        ["<no-results>"
                                "Only these entity types were searched: dashboard, metric. If other types could match, add them to `entity_types`."
-                               "Only collection 9 and the collections inside it were searched. To search everywhere, leave out `collection_id`."
                                "This Metabot searches only curated content, such as verified items and items in official collections."
                                "This Metabot searches only inside its own collection."
                                retry-note
                                "</no-results>"]}
                (explain #'search/nlq-search-tool
-                        {:query "zzz" :entity_types ["metric" "dashboard"] :collection_id 9}
-                        {:collection_id 7 :use_verified_content true})))))))
+                        {:query "zzz" :entity_types ["metric" "dashboard"]}
+                        {:collection_id 7 :use_verified_content true}))))
+      (testing "a database the model picked is named, with the types it leaves out"
+        (mt/with-test-user :crowberto
+          (is (= ["<no-results>"
+                  (str "Only database " (mt/id) " was searched, so dashboards, collections and documents were left out. "
+                       "To search everywhere, leave out `database_id`.")
+                  retry-note
+                  "</no-results>"]
+                 (:notes (explain #'search/search-tool {:query "zzz" :database_id (mt/id)} nil))))
+          (is (= {:empty_reason "no_match" :notes ["<no-results>" retry-note "</no-results>"]}
+                 (explain #'search/sql-search-tool {:query "zzz" :database_id (mt/id)} nil))
+              "the SQL tool always searches the editor's database, so that narrows nothing"))))
+    (testing "a collection the model picked is named only when the search ran in it"
+      (let [notes (fn [searched-collection-id metabot]
+                    (mt/with-dynamic-fn-redefs [search/search-by-query
+                                                (constantly (with-meta [] {:collection-id searched-collection-id}))]
+                      (:notes (explain #'search/nlq-search-tool {:query "zzz" :collection_id 9} metabot))))]
+        (is (= ["<no-results>"
+                "Only collection 9 and the collections inside it were searched. To search everywhere, leave out `collection_id`."
+                retry-note
+                "</no-results>"]
+               (notes 9 nil)))
+        (is (= ["<no-results>" "This Metabot searches only inside its own collection." retry-note "</no-results>"]
+               (notes 7 {:collection_id 7}))
+            "a confined Metabot that ignored the collection says only that it searched its own")))))
 
 (deftest ^:parallel unsupported-search-entity-types-test
   (mt/with-dynamic-fn-redefs [search/search-by-query (fn [_] (throw (ex-info "Search must not run" {})))]
@@ -1005,7 +1028,23 @@
                  (run! #{:search.engine/semantic :search.engine/appdb} :search.engine/appdb :postgres))))
         (testing "in-place engine does NOT retry — LIKE-pattern matching has no `|` notion"
           (is (= ["hard bounce rate"]
-                 (run! #{:search.engine/in-place} :search.engine/in-place :postgres))))))))
+                 (run! #{:search.engine/in-place} :search.engine/in-place :postgres))))))
+    (testing "the retry's results say which query found them, and a failed retry keeps the empty result"
+      (let [run! (fn [retry-search]
+                   (with-redefs [search-core/search              (fn [{:keys [search-string]}]
+                                                                   (if (= "hard bounce rate" search-string)
+                                                                     {:data [] :total 0}
+                                                                     (retry-search)))
+                                 search.engine/active-engines    (constantly #{:search.engine/appdb})
+                                 search.engine/default-engine    (constantly :search.engine/appdb)
+                                 mdb/db-type                     (constantly :postgres)
+                                 metabot.db/metabot-by-entity-id (constantly nil)]
+                     (let [results (#'search/search-by-query {:query "hard bounce rate"})]
+                       [(count results) (:broadened-query (meta results))])))]
+        (is (= [1 "hard or bounce or rate"]
+               (run! (constantly {:data [{:model "dashboard" :id 1 :name "Hard bounces"}] :total 1}))))
+        (is (= [0 nil]
+               (run! #(throw (ex-info "retry failed" {})))))))))
 
 (deftest enrich-with-portable-entity-ids-test
   (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up read_resource call"
