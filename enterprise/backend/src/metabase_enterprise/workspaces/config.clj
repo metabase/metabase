@@ -50,13 +50,16 @@
       {})))
 
 (def ^:private parent-login-keys
-  "Connection properties that pick or carry the parent's own warehouse login. The workspace user logs in with
-  the `:user`/`:password` in `:database_details`, so the config must carry none of these: each one either makes
-  the child connect as the parent's identity or leaks a parent credential.
+  "Connection properties of the eligible engines that pick or carry the parent's own warehouse login. The workspace
+  user logs in with the `:user`/`:password` in `:database_details`, so the config must carry none of these: each one
+  either makes the child connect with something other than that login or leaks a parent credential. Logins written
+  into `:additional-options` are refused instead (`check-additional-options!`). Engines that can't be a workspace
+  database, such as Snowflake and BigQuery, have credentials this list does not name.
 
   - Auth provider (`metabase.driver.common/auth-provider-options`): with `:use-auth-provider` still set, the
-    child replaces the password with a token fetched for the parent's identity. `:oauth-token-headers` can carry
-    a client secret.
+    child replaces the password with a token from the provider: for OAuth, fetched with the parent's client
+    settings (`:oauth-token-headers` can carry a client secret); for Azure managed identity, from the child's host
+    with the parent's client ID; for AWS IAM, with the child host's credentials.
   - `:auth-mode` selects the login on SQL Server and Snowflake. Without it, SQL Server falls back to SQL login
     (`:user`/`:password`).
   - SQL Server's Azure AD logins (`ad-*`): the service-principal client ID/secret, the certificate and key
@@ -185,7 +188,36 @@
           (map #(inlined-secret-entries db details %))
           inlined-secrets)))
 
+(def ^:private login-option-name
+  "Names of JDBC options that set a login or carry a credential, matched case-insensitively against the option names
+   in `:additional-options`."
+  #"(?i)user|username|uid|sslkey|accesskeyid|aadsecureprincipalid|.*(?:password|pwd|secret|token)")
+
+(defn- additional-option-names
+  "The option names in an `:additional-options` string: `name=value` pairs separated by `&` (Postgres, MySQL,
+   Redshift, ClickHouse) or `;` (SQL Server), with an optional leading `?`."
+  [additional-options]
+  (for [part  (str/split (str additional-options) #"[&;]")
+        :let  [option-name (-> part (str/split #"=" 2) first str/trim (str/replace #"^\?" ""))]
+        :when (seq option-name)]
+    option-name))
+
+(defn- check-additional-options!
+  "Throw a 409 when the parent's `:additional-options` set a login or carry a credential. The string ships to the
+   config as is, and drivers such as pgjdbc let URL options override the workspace's `:user`/`:password`, so the child
+   would connect as the parent and the config's holder would read the parent's password."
+  [db]
+  (when-let [option-name (some #(when (re-matches login-option-name %) %)
+                               (additional-option-names (:additional-options (:details db))))]
+    (throw (ex-info (format (str "Database %s sets %s in its additional JDBC connection options, which would give the "
+                                 "workspace the parent's login. Remove it from the database's connection settings, or "
+                                 "remove the database from the workspace.")
+                            (pr-str (:name db)) option-name)
+                    {:status-code 409
+                     :database_id (:id db)}))))
+
 (defn- database-entry [wsd db]
+  (check-additional-options! db)
   {:name    (:name db)
    :engine  (:engine db)
    ;; Force :let-user-control-scheduling false. The YAML only carries :details — not the
@@ -258,12 +290,13 @@
 
   Each database entry merges the underlying `metabase_database.details`, minus the
   parent's login properties (`parent-login-keys`), with the WorkspaceDatabase's
-  override credentials and adds `schema-filters-*` keys
+  override credentials, drops SSH-tunnel secrets the tunnel does not use
+  (`drop-unused-tunnel-secrets`), and adds `schema-filters-*` keys
   derived from `:input_schemas`. Per-database workspace entries carry the
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
   `instance-workspace` setting stores. Returns nil when the workspace does not
-  exist. Throws a 409 `ex-info` if any of the workspace's databases is not
-  `:provisioned`."
+  exist. Throws a 409 `ex-info` when a workspace database is not `:provisioned`,
+  or its `:additional-options` set a login (`check-additional-options!`)."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
