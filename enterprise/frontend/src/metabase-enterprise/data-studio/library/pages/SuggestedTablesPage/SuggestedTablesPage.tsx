@@ -11,7 +11,15 @@ import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout
 import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-handling";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages/LibraryUpsellPage";
 import { useDataLayers } from "metabase/metadata/data-layers";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import {
+  type TableRole,
+  useTableStructures,
+  useTablesWithFields,
+} from "metabase/metadata/table-structure";
+import {
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_REMOTE_SYNC,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import {
@@ -42,8 +50,55 @@ import { EMPTY_FILTERS, SuggestedTablesFilter } from "./SuggestedTablesFilter";
 import type { SuggestedTableRow, SuggestedTablesFilters } from "./types";
 
 /**
- * Unpublished tables whose schema is in its database's final data layer:
- * the ones most likely ready for end users.
+ * Whether tables of each role are suggested: the ones people use directly,
+ * for simple reports and record lookups. Left out: tables that only make
+ * sense joined to something else (bridges, list items, lookups, calendars,
+ * dimension fragments), versioned or raw key/value data, technical tables,
+ * and Data Vault or anchor-modeling internals. Every role is listed, so a
+ * new one needs a decision here. Tables with no role are suggested too.
+ */
+const IS_SUGGESTED_ROLE: Record<TableRole, boolean> = {
+  "role/Fact": true,
+  "role/TransactionFact": true,
+  "role/EventFact": true,
+  "role/PeriodicSnapshotFact": true,
+  "role/AccumulatingSnapshotFact": true,
+  "role/FactlessFact": false,
+  "role/AggregateFact": true,
+  "role/SessionFact": true,
+  "role/UserDayFact": true,
+  "role/CohortSnapshot": true,
+  "role/ActivityStream": true,
+  "role/Dimension": true,
+  "role/EntityDimension": true,
+  "role/DateDimension": false,
+  "role/TimeDimension": false,
+  "role/LookupDimension": false,
+  "role/HistoryDimension": false,
+  "role/MiniDimension": false,
+  "role/JunkDimension": false,
+  "role/OutriggerDimension": false,
+  "role/Bridge": false,
+  "role/HierarchyBridge": false,
+  "role/ArrayChild": false,
+  "role/CustomPropertyTable": false,
+  "role/TranslationTable": false,
+  "role/ConfigurationTable": false,
+  "role/SystemTable": false,
+  "role/OneBigTable": true,
+  "role/Hub": false,
+  "role/Link": false,
+  "role/Satellite": false,
+  "role/PointInTime": false,
+  "role/Anchor": false,
+  "role/Attribute": false,
+  "role/Tie": false,
+  "role/Knot": false,
+};
+
+/**
+ * Unpublished tables in their database's final data layer whose role says
+ * people would use them directly: the ones most likely ready for end users.
  */
 export function SuggestedTablesPage() {
   const hasLibraryFeature = useHasTokenFeature("library");
@@ -73,45 +128,86 @@ function SuggestedTablesPageContent() {
     isLoading: isLoadingTables,
     error: tablesError,
   } = useListTablesQuery();
+  // The databases Connected data lists: no usage analytics, no saved questions
   const { data: databasesResponse, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery();
-  const { getDataLayers, getSchemaDataLayer, getSchemaDisplayName } =
-    useDataLayers();
+    useListDatabasesQuery(PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps);
+  const {
+    getDataLayers,
+    getSchemaDataLayer,
+    getTableDataLayer,
+    getSchemaDisplayName,
+  } = useDataLayers();
+  const { getTableStructure } = useTableStructures();
   useErrorHandling(tablesError);
 
   const canPublish = !!tableCollection?.can_write && !isRemoteSyncReadOnly;
 
-  const suggestedRows = useMemo((): SuggestedTableRow[] => {
-    const databaseNames = new Map(
-      (databasesResponse?.data ?? []).map((database) => [
-        database.id,
-        database.name,
-      ]),
-    );
+  const databaseNames = useMemo(
+    () =>
+      new Map(
+        (databasesResponse?.data ?? [])
+          .filter((database) => !database.is_audit)
+          .map((database) => [database.id, database.name]),
+      ),
+    [databasesResponse],
+  );
 
-    return tables
-      .filter((table) => {
-        if (table.is_published) {
+  const finalLayerTables = useMemo(
+    () =>
+      tables.filter((table) => {
+        if (table.is_published || !databaseNames.has(table.db_id)) {
           return false;
         }
         const finalLayer = getDataLayers(table.db_id).at(-1);
         const schemaLayer = getSchemaDataLayer(table.db_id, table.schema);
-        return finalLayer != null && schemaLayer?.id === finalLayer.id;
-      })
-      .map((table) => ({
-        id: table.id,
-        table,
-        databaseName: databaseNames.get(table.db_id) ?? "",
-        schemaName: getSchemaDisplayName(table.db_id, table.schema),
-      }))
-      .sort((a, b) => a.table.display_name.localeCompare(b.table.display_name));
-  }, [
-    tables,
-    databasesResponse,
-    getDataLayers,
-    getSchemaDataLayer,
-    getSchemaDisplayName,
-  ]);
+        // A table's own layer override can move it out of its schema's layer
+        const { layer: tableLayer } = getTableDataLayer(
+          table.db_id,
+          table.schema,
+          table.id,
+        );
+        return (
+          finalLayer != null &&
+          schemaLayer?.id === finalLayer.id &&
+          tableLayer?.id === finalLayer.id
+        );
+      }),
+    [
+      tables,
+      databaseNames,
+      getDataLayers,
+      getSchemaDataLayer,
+      getTableDataLayer,
+    ],
+  );
+
+  // Roles are inferred from fields, which the table list comes without
+  const { tables: finalLayerTablesWithFields, isLoading: isLoadingFields } =
+    useTablesWithFields(finalLayerTables, { isEnabled: true });
+
+  const suggestedRows = useMemo(
+    (): SuggestedTableRow[] =>
+      finalLayerTablesWithFields
+        .filter((table) => {
+          const { role } = getTableStructure(table);
+          return role == null || IS_SUGGESTED_ROLE[role];
+        })
+        .map((table) => ({
+          id: table.id,
+          table,
+          databaseName: databaseNames.get(table.db_id) ?? "",
+          schemaName: getSchemaDisplayName(table.db_id, table.schema),
+        }))
+        .sort((a, b) =>
+          a.table.display_name.localeCompare(b.table.display_name),
+        ),
+    [
+      finalLayerTablesWithFields,
+      databaseNames,
+      getTableStructure,
+      getSchemaDisplayName,
+    ],
+  );
 
   const trimmedQuery = searchQuery.trim();
   const visibleRows = useMemo(() => {
@@ -174,7 +270,10 @@ function SuggestedTablesPageContent() {
   });
 
   const isLoading =
-    isLoadingCollections || isLoadingTables || isLoadingDatabases;
+    isLoadingCollections ||
+    isLoadingTables ||
+    isLoadingDatabases ||
+    isLoadingFields;
   const isFiltered =
     trimmedQuery !== "" ||
     filters.databaseId != null ||
@@ -211,11 +310,6 @@ function SuggestedTablesPageContent() {
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
-              <SuggestedTablesFilter
-                rows={suggestedRows}
-                filters={filters}
-                onChange={setFilters}
-              />
               {canPublish && (
                 <Button
                   size="lg"
@@ -233,6 +327,11 @@ function SuggestedTablesPageContent() {
                       )}
                 </Button>
               )}
+              <SuggestedTablesFilter
+                rows={suggestedRows}
+                filters={filters}
+                onChange={setFilters}
+              />
             </Flex>
             <Card withBorder p={0}>
               {isLoading ? (

@@ -1,9 +1,4 @@
 .gridLabelInput {
-  .label {
-    font-weight: normal;
-    color: var(--mb-color-text-secondary);
-  }
-
   .input {
     width: 11rem;
     border-radius: 1.25rem;

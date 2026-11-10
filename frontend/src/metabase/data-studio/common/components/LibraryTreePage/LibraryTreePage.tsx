@@ -23,6 +23,7 @@ import {
   Stack,
   TextInput,
   TreeTable,
+  type TreeTableColumnDef,
   TreeTableSkeleton,
 } from "metabase/ui";
 import type { CollectionId, IconName } from "metabase-types/api";
@@ -46,6 +47,8 @@ type LibraryTreePageProps = {
   emptyIcon?: IconName;
   /** Call to action shown under the empty message when there are no items */
   emptyAction?: ReactNode;
+  /** Off when the section has nowhere to move items to; defaults to on */
+  canMoveItems?: boolean;
   defaultExpandedIds?: readonly string[];
   defaultMoveCollectionIds?: Partial<Record<LibrarySection, CollectionId>>;
   createMenu?: ReactNode;
@@ -57,6 +60,10 @@ type LibraryTreePageProps = {
   onRowsChange?: (rows: Row<TreeItem>[]) => void;
   onSearchQueryChange: (searchQuery: string) => void;
   emptyStateActions?: Partial<Record<LibrarySectionType, () => void>>;
+  /** Section-specific columns between the name and the update time */
+  extraColumns?: TreeTableColumnDef<TreeItem>[];
+  /** Section-specific columns after the update time, before the row menu */
+  trailingColumns?: TreeTableColumnDef<TreeItem>[];
   getTrashMessage?: (
     section: LibrarySection,
     count: number,
@@ -85,6 +92,9 @@ export function LibraryTreePage({
   getTrashMessage,
   emptyIcon,
   emptyAction,
+  extraColumns,
+  trailingColumns,
+  canMoveItems,
 }: LibraryTreePageProps) {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
@@ -99,6 +109,8 @@ export function LibraryTreePage({
       defaultExpandedIds,
       renderRowMenu,
       emptyStateActions,
+      extraColumns,
+      trailingColumns,
     });
 
   const {
@@ -205,6 +217,7 @@ export function LibraryTreePage({
           }
           getTrashMessage={getTrashMessage}
           onClear={clearSelection}
+          canMove={canMoveItems}
         />
       )}
     </>

@@ -22,7 +22,7 @@ import { canAccessTransforms as canAccessTransformsSelector } from "metabase/tra
 import { Box, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import { getCurrentTab, getPythonSnippetsUrl } from "./utils";
+import { getCurrentTab, getPythonLibraryUrl } from "./utils";
 
 export function DataStudioLayout() {
   const {
@@ -184,10 +184,10 @@ export function DataStudioLayout() {
           }
         />
         <AreaTab
-          label={t`Python snippets`}
+          label={t`Python library`}
           icon="code_block"
-          to={getPythonSnippetsUrl()}
-          isSelected={currentTab === "python-snippets"}
+          to={getPythonLibraryUrl()}
+          isSelected={currentTab === "python-library"}
           showLabel={isNavbarOpened}
           isGated={!hasPythonTransformsFeature}
         />

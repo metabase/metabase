@@ -30,23 +30,48 @@ import {
 import type {
   Collection,
   CollectionId,
+  CollectionItemModel,
   CollectionNamespace,
 } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../../components/LibraryEmptyState";
 import { PublishedDataTabs } from "../../components/PublishedDataTabs";
 import { LIBRARY_COLLECTION_PICKER_OPTIONS } from "../../constants";
+import { useCollectionItemsTree } from "../../hooks/use-collection-items-tree";
+import { useHasDataSubfolders } from "../../hooks/use-has-data-subfolders";
 import { useLibraryCollections } from "../../hooks/use-library-collections";
+import {
+  type LibrarySearchModel,
+  useLibrarySearchResults,
+} from "../../hooks/use-library-search-results";
 
 import { ActionCell } from "./ActionCell";
 import { PublishTableModal } from "./PublishTableModal";
-import { useLibraryCollectionTree, useLibrarySearch } from "./hooks";
+import { useMetricOwnerColumns, usePublishedTableColumns } from "./columns";
 import {
   getArchiveLibraryCollectionsMessage,
   getWritableCollection,
 } from "./utils";
 
 type LibrarySectionPageType = Extract<LibrarySectionType, "data" | "metrics">;
+
+const SECTION_ITEM_MODELS: Record<
+  LibrarySectionPageType,
+  CollectionItemModel[]
+> = {
+  data: ["table", "collection"],
+  metrics: ["metric", "collection"],
+};
+
+const SECTION_SEARCH_MODELS: Record<
+  LibrarySectionPageType,
+  LibrarySearchModel[]
+> = {
+  data: ["table"],
+  metrics: ["metric"],
+};
+
+const NO_ITEMS: TreeItem[] = [];
 
 const LIBRARY_COLLECTION_NAMESPACES: CollectionNamespace[] = [null];
 
@@ -98,6 +123,15 @@ function LibrarySectionPage({ section }: { section: LibrarySectionPageType }) {
     metricCollection,
   } = useLibraryCollections();
 
+  const publishedTableColumns = usePublishedTableColumns({
+    isEnabled: isDataSection,
+  });
+  const metricOwnerColumns = useMetricOwnerColumns({
+    isEnabled: !isDataSection,
+  });
+  const { hasSubfolders: hasDataSubfolders } = useHasDataSubfolders({
+    skip: !isDataSection,
+  });
   const collection = isDataSection ? tableCollection : metricCollection;
   const writableCollection = useMemo(() => {
     if (isDataSection) {
@@ -114,28 +148,25 @@ function LibrarySectionPage({ section }: { section: LibrarySectionPageType }) {
       ? Urls.newDataStudioMetric({ collectionId: writableCollection.id })
       : undefined;
 
+  // The section's own folder stays implicit: its contents are the top rows
   const {
-    tree: sectionTree,
-    isLoading: isLoadingTree,
-    error: treeError,
+    items: sectionItems,
+    isLoading: isLoadingItems,
+    error: itemsError,
     watchRows,
     isChildrenLoading,
-  } = useLibraryCollectionTree(collection, section);
-  const searchModels = useMemo(
-    () => [isDataSection ? ("table" as const) : ("metric" as const)],
-    [isDataSection],
-  );
+  } = useCollectionItemsTree(collection, SECTION_ITEM_MODELS[section]);
   const {
-    tree: searchTree,
+    items: searchItems,
     isActive: isSearchActive,
     isLoading: isSearchLoading,
-  } = useLibrarySearch(searchQuery, libraryCollection?.id, searchModels);
-  useErrorHandling(treeError);
-
-  const defaultExpandedIds = useMemo(
-    () => (collection ? [`collection:${collection.id}`] : []),
-    [collection],
+    error: searchError,
+  } = useLibrarySearchResults(
+    searchQuery,
+    collection?.id,
+    SECTION_SEARCH_MODELS[section],
   );
+  useErrorHandling(itemsError || searchError);
   const defaultMoveCollectionIds = useMemo(
     () => ({ [section]: collection?.id }),
     [section, collection],
@@ -154,11 +185,15 @@ function LibrarySectionPage({ section }: { section: LibrarySectionPageType }) {
 
   const getEmptyAction = (): ReactNode => {
     if (isDataSection) {
-      return writableCollection != null ? (
-        <Button variant="filled" onClick={openPublishTableModal}>
-          {t`Publish your first table`}
+      return (
+        <Button
+          component={ForwardRefLink}
+          to={Urls.dataStudioSuggestedTables()}
+          variant="filled"
+        >
+          {t`See suggested tables`}
         </Button>
-      ) : undefined;
+      );
     }
     return newMetricUrl != null ? (
       <Button
@@ -176,8 +211,8 @@ function LibrarySectionPage({ section }: { section: LibrarySectionPageType }) {
     <LibraryTreePage
       title={isDataSection ? t`Published data` : t`Metrics`}
       tabs={isDataSection ? <PublishedDataTabs /> : undefined}
-      tree={isSearchActive ? searchTree : sectionTree}
-      isLoading={isLoadingCollections || isLoadingTree || isSearchLoading}
+      tree={isSearchActive ? searchItems : (sectionItems ?? NO_ITEMS)}
+      isLoading={isLoadingCollections || isLoadingItems || isSearchLoading}
       isSearchActive={isSearchActive}
       searchQuery={searchQuery}
       emptyMessage={
@@ -187,7 +222,6 @@ function LibrarySectionPage({ section }: { section: LibrarySectionPageType }) {
       }
       emptyIcon={isDataSection ? "table" : "metric"}
       emptyAction={getEmptyAction()}
-      defaultExpandedIds={defaultExpandedIds}
       defaultMoveCollectionIds={defaultMoveCollectionIds}
       emptyState={
         !libraryCollection && !isLoadingCollections ? (
@@ -207,6 +241,14 @@ function LibrarySectionPage({ section }: { section: LibrarySectionPageType }) {
       onRowsChange={watchRows}
       onSearchQueryChange={setSearchQuery}
       getTrashMessage={getTrashMessage}
+      extraColumns={isDataSection ? publishedTableColumns.columns : undefined}
+      trailingColumns={
+        isDataSection
+          ? publishedTableColumns.trailingColumns
+          : metricOwnerColumns
+      }
+      // Tables can only move between Data and its subfolders
+      canMoveItems={!isDataSection || hasDataSubfolders === true}
     >
       {isDataSection && (
         <PublishTableModal

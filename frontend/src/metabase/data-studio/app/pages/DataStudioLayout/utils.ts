@@ -8,7 +8,7 @@ type TabName =
   | "metrics"
   | "dashboards"
   | "snippets"
-  | "python-snippets"
+  | "python-library"
   | "actions"
   | "data-apps"
   | "transforms"
@@ -42,8 +42,8 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "published-data";
     case pathname.startsWith(Urls.dataStudioDashboards()):
       return "dashboards";
-    case pathname.startsWith(getPythonSnippetsUrl()):
-      return "python-snippets";
+    case pathname.startsWith(getPythonLibraryUrl()):
+      return "python-library";
     case pathname.startsWith(Urls.transformList()):
       return "transforms";
     case pathname.startsWith(Urls.dataStudioData()):
@@ -56,10 +56,10 @@ export const getCurrentTab = (pathname: string): TabName => {
 };
 
 /**
- * PROTOTYPE: "Python snippets" is the shared Python library that transforms
- * import, which lives under the transforms section
+ * PROTOTYPE: the shared Python library that transforms import lives under
+ * the transforms section; the nav links to it from Utilities
  */
-export const getPythonSnippetsUrl = () =>
+export const getPythonLibraryUrl = () =>
   Urls.transformPythonLibrary({
     path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPath,
   });
