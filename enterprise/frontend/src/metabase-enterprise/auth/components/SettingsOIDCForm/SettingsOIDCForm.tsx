@@ -425,19 +425,19 @@ export function SettingsOIDCForm() {
 
               <CollapsibleSettingsSection
                 title={t`Account linking`}
-                description={t`${applicationName} links each account to the identity your provider asserts for it, and checks the link on every sign-in. These settings control how a link gets established for an existing account.`}
+                description={t`Control how people's accounts at this provider get connected to their ${applicationName} accounts.`}
               >
                 <Stack gap="lg">
                   <FormSwitch
                     name="auto-link-verified-email"
                     label={t`Automatically link accounts with a verified email`}
-                    description={t`Link the identity to the existing account with the same email, or create an account for it, when the token asserts the email is verified (email_verified is true). When off, people link their existing accounts themselves from their account settings, and accounts are only created for trusted email domains.`}
+                    description={t`Connect people to the account with the same email when the provider has verified that email. When off, people connect their account from their account settings.`}
                     disabled={isLocked}
                   />
                   <FormTextInput
                     name="trusted-email-domains"
                     label={t`Trusted email domains`}
-                    description={t`Comma-separated list of email domains to link even when the token has no email_verified claim. Use * to trust all domains. Only trust domains where people can't register unverified email addresses themselves.`}
+                    description={t`Connect people with these email domains even if the provider hasn't verified their email. Separate domains with commas, or use * for all. Only add domains you control.`}
                     descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                     placeholder={t`e.g. mycompany.com`}
                     nullable
