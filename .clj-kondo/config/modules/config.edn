@@ -1069,6 +1069,7 @@
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/Pulse
+                    :model/SecurityAdvisory
                     :model/Segment
                     :model/Table
                     :model/User}}
@@ -4370,6 +4371,7 @@
            analytics.interface
            api
            app-db
+           audit-app
            channel
            driver
            events
