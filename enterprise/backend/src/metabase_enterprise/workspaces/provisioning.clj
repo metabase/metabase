@@ -258,8 +258,12 @@
             ;; The rethrow rolls back the cluster lock's wrapping transaction on
             ;; postgres/mysql app DBs, so the keep-row bookkeeping needs its own
             ;; autocommit connection to survive it.
+            ;; Store the identifiers this teardown used: a row reset by a failed provision,
+            ;; or never provisioned, still holds "" and {} here.
             (binding [t2.connection/*current-connectable* nil]
-              (ws.db/update-workspace-database! (:id wsd) {:status :teardown_failed}))
+              (ws.db/update-workspace-database! (:id wsd) {:status           :teardown_failed
+                                                           :output_namespace schema
+                                                           :database_details db-details}))
             (throw t))
           (finally
             ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
@@ -270,6 +274,22 @@
               (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))))
         (ws.db/delete-workspace-database! (:id wsd))
         nil))))
+
+(defn abandon-teardown-failed-workspace-database!
+  "Delete the WorkspaceDatabase `wsd` WITHOUT a warehouse teardown, when it is
+  `:teardown_failed`. This is the escape hatch for a warehouse that is gone for good:
+  its objects may remain, so the identifiers are logged at WARN for manual cleanup.
+  Rows in any other state are left alone. The failed teardown already cleared the
+  `TableRemapping` rows. Returns nil."
+  [wsd]
+  (with-workspace-database-lock (:id wsd)
+    (when-let [wsd (ws.db/workspace-database (:id wsd))]
+      (when (= :teardown_failed (:status wsd))
+        (log/warnf "Abandoning WorkspaceDatabase %s without warehouse teardown; clean up by hand: database %s, output namespace %s, database user %s"
+                   (:id wsd) (:database_id wsd) (pr-str (:output_namespace wsd))
+                   (pr-str (get-in wsd [:database_details :user])))
+        (ws.db/delete-workspace-database! (:id wsd))))
+    nil))
 
 (defn deprovision-workspace!
   "Flip every `:provisioned` WorkspaceDatabase under `workspace-id` to

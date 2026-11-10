@@ -305,6 +305,15 @@
             (throw (combined-exception [t]))))))
     (workspace/get-workspace (:id ws))))
 
+(defn abandon-teardown-failed-databases!
+  "Delete every `:teardown_failed` WorkspaceDatabase of workspace `id` without a
+  warehouse teardown, logging the identifiers of what may remain (see
+  [[provisioning/abandon-teardown-failed-workspace-database!]]). Use it when the
+  warehouse is gone for good and the teardown can never succeed. Returns nil."
+  [id]
+  (assert-workspace-exists id)
+  (run! provisioning/abandon-teardown-failed-workspace-database! (ws.db/workspace-databases id)))
+
 (defn delete-workspace!
   "Tear down every database's warehouse isolation (any state, blocking), then
   delete the workspace. There is no partial deletion: each WorkspaceDatabase is

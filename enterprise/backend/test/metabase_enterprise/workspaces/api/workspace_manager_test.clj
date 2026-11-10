@@ -94,6 +94,40 @@
                 (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))
               (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id)))))))))
 
+(deftest delete-workspace-force-test
+  (testing "DELETE ?force=true drops teardown_failed databases without a warehouse teardown"
+    ;; Committed `with-temp`: the teardown-failure bookkeeping writes on a fresh autocommit connection, which
+    ;; cannot see rows inside the default rollback-only `with-temp` transaction.
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                  :details  {}
+                                                  :settings {:database-enable-workspaces true}}]
+        (mt/with-model-cleanup [:model/Workspace]
+          (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                              (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                    {:name "Gone for good" :database_ids [db-id]}))
+                destroys    (atom 0)
+                boom        (reify provisioning/Provisioner
+                              (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                              (init!    [_ _ _ _]   nil)
+                              (grant!   [_ _ _ _ _] nil)
+                              (destroy! [_ _ _ _]   (swap! destroys inc) (throw (ex-info "Connection refused" {}))))]
+            (with-redefs [provisioning/dispatching-provisioner boom]
+              (testing "force does not skip the teardown of a database that is not teardown_failed"
+                (mt/user-http-request :crowberto :delete 500 (str "ee/workspace-manager/" ws-id) :force true)
+                (is (= 1 @destroys)))
+              (testing "without force, a teardown_failed database keeps failing"
+                (mt/user-http-request :crowberto :delete 500 (str "ee/workspace-manager/" ws-id))
+                (is (= 2 @destroys)))
+              (testing "with force, the workspace is deleted without calling destroy!, and the leftovers are logged"
+                (mt/with-log-messages-for-level [messages [metabase-enterprise.workspaces.provisioning :warn]]
+                  (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id) :force true)
+                  (is (= 2 @destroys))
+                  (is (some #(re-find #"mb_iso_stub.*stub_user" (:message %)) (messages)))))
+              (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))
+              (is (not (t2/exists? :model/WorkspaceDatabase :database_id db-id))
+                  "no row is left to block deleting the Database"))))))))
+
 (deftest create-workspace-with-database-ids-test
   (testing "POST / attaches and provisions the given databases (each must be eligible) with their schemas"
     (mt/with-temp [:model/Database {eligible-id :id} {:engine   :postgres

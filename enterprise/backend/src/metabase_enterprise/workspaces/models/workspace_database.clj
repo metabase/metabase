@@ -86,7 +86,7 @@
   :feature :none
   [db-id]
   (when (ws.db/database-has-active-workspace-databases? db-id)
-    (throw (ex-info "Cannot delete a Database with active workspace_database rows; deprovision them first"
+    (throw (ex-info "Cannot delete a Database with active workspace_database rows; delete their workspaces first (DELETE /api/ee/workspace-manager/:id, with ?force=true for rows in teardown_failed)"
                     {:status-code 409
                      :database_id db-id})))
   (ws.db/delete-unprovisioned-workspace-databases-of-database! db-id))

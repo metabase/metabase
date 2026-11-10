@@ -139,9 +139,11 @@
             (let [ws (t2/select-one :model/Workspace :name "Wedged")]
               (is (some? ws)
                   "the workspace must be kept while any database row remains")
-              (is (=? [{:status :teardown_failed}]
+              (is (=? [{:status           :teardown_failed
+                        :output_namespace "mb_iso_stub"
+                        :database_details {:user "stub_user"}}]
                       (t2/select :model/WorkspaceDatabase :workspace_id (:id ws)))
-                  "the row whose teardown failed is kept as :teardown_failed")
+                  "the row whose teardown failed is kept as :teardown_failed, with the identifiers the teardown used")
               ;; retry the teardown via delete once the warehouse is back
               (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
                 (is (nil? (ws/delete-workspace! (:id ws)))))
@@ -228,7 +230,7 @@
                  :output_namespace "mb_iso_stub"}
                 (t2/select-one :model/WorkspaceDatabase :id wsd-id))
             "the failed row is kept as :teardown_failed, with the identifiers of what may remain")
-        (is (thrown-with-msg? ExceptionInfo #"active workspace_database rows"
+        (is (thrown-with-msg? ExceptionInfo #"active workspace_database rows.*force=true"
                               (workspace-database/reconcile-workspace-database-refs-before-delete! (mt/id)))
             "a :teardown_failed row blocks deleting its Database, so the record of leftovers survives")
         (testing "retrying the delete once the warehouse is reachable finishes the job"
