@@ -217,9 +217,12 @@
           inlined-secrets)))
 
 (def ^:private login-option-name
-  "Names of JDBC options that set a login or carry a credential, matched case-insensitively against the option names
-   in `:additional-options`."
-  #"(?i)user|username|uid|sslkey|accesskeyid|aadsecureprincipalid|.*(?:password|pwd|secret|token)")
+  "Names of JDBC options that set a login or carry a credential, matched against option names normalized by
+   [[driver.u/normalize-connection-parameter]] (percent-decoded, case-folded, `_ . - +` and whitespace removed): the
+   exact login names, or any name containing a credential word (`SecretAccessKey`, `SessionToken`, `sslpassword`).
+   MySQL's `passwordCharacterEncoding` and Redshift's `TokenType` name no credential and are let through."
+  #"(?x) (?!passwordcharacterencoding$|tokentype$)
+         (?:user|username|uid|sslkey|accesskeyid|aadsecureprincipalid|.*(?:password|pwd|secret|token).*)")
 
 (defn- additional-option-names
   "The option names in an `:additional-options` string: `name=value` pairs separated by `&` (Postgres, MySQL,
@@ -235,7 +238,7 @@
    config as is, and drivers such as pgjdbc let URL options override the workspace's `:user`/`:password`, so the child
    would connect as the parent and the config's holder would read the parent's password."
   [db]
-  (when-let [option-name (some #(when (re-matches login-option-name %) %)
+  (when-let [option-name (some #(when (re-matches login-option-name (driver.u/normalize-connection-parameter %)) %)
                                (additional-option-names (:additional-options (:details db))))]
     (throw (ex-info (format (str "Database %s sets %s in its additional JDBC connection options, which would give the "
                                  "workspace the parent's login. Remove it from the database's connection settings, or "
