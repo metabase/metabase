@@ -1040,29 +1040,49 @@
   [:map {:closed true}
    [:collection-id [:maybe :int]]
    [:database-id   [:maybe :int]]
-   [:verified-only :boolean]])
+   [:verified-only :boolean]
+   [:tables?       {:optional true} :boolean]])
 
 (defn search-scope
   "The [[::search-scope]] of a search for the Metabot row `metabot`.
   `profile-id` names the profile the search runs under, and `database-id`, unless nil, is the database it is limited
   to.
   `collection-id`, unless nil, is the collection the caller asked for; it narrows the scope as [[scoped-collection-id]]
-  allows."
+  allows.
+  `entity-types`, unless nil, are the types the search looked for. `tables?` records whether they include tables,
+  for a Metabot not confined to a collection; a confined one browses only its collection."
   ([metabot profile-id database-id]
    (search-scope metabot profile-id database-id nil))
   ([metabot profile-id database-id collection-id]
-   {:collection-id (scoped-collection-id collection-id (confined-collection-id metabot profile-id))
-    :database-id   database-id
-    :verified-only (and (boolean (:use_verified_content metabot))
-                        (not (shared/curated-only?)))}))
+   (search-scope metabot profile-id database-id collection-id nil))
+  ([metabot profile-id database-id collection-id entity-types]
+   (let [confined-id (confined-collection-id metabot profile-id)]
+     (cond-> {:collection-id (scoped-collection-id collection-id confined-id)
+              :database-id   database-id
+              :verified-only (and (boolean (:use_verified_content metabot))
+                                  (not (shared/curated-only?)))}
+       (and (seq entity-types) (nil? confined-id))
+       (assoc :tables? (contains? (set entity-types) "table"))))))
+
+(defn- table-browse-uri
+  "Where `read_resource` lists the tables of database `database-id`, or all databases when it is nil."
+  [database-id]
+  (if database-id
+    (str "`metabase://database/" database-id "/tables`")
+    "`metabase://databases`, then `metabase://database/{id}/tables`"))
 
 (defn browse-steps
   "The recovery steps that find with `read_resource` what a search over a [[::search-scope]] could have found.
   They browse only what the search was limited to, so a `verified-only` scope gets none."
-  [{:keys [collection-id database-id verified-only]}]
+  [{:keys [collection-id database-id verified-only tables?]}]
   (cond
     verified-only
     []
+
+    ;; A collection's items never list tables, though a collection-scoped search can match a published one.
+    (and collection-id tables?)
+    [(browse-instead-step "read `metabase://collection/" collection-id "/items`, and "
+                          (table-browse-uri database-id) " for tables.")]
 
     collection-id
     [(browse-instead-step "read `metabase://collection/" collection-id "/items`.")]
@@ -1107,7 +1127,7 @@
                          ;; The runtime logs a recoverable error at debug level, without its cause.
                          (log/error e "Metabot search failed")
                          (search-failed! (search-scope (:metabot opts) (:profile-id opts) (:database-id opts)
-                                                       collection_id))))
+                                                       collection_id (:entity-types opts)))))
         restrictions (search-restrictions default-types search-opts args (:collection-id (meta results)))]
     {:output (format-search-output query results limit restrictions)
      :structured-output (cond-> {:result-type :search

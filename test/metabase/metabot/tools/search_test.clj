@@ -1640,7 +1640,16 @@
                     "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
                    ["a confined collection" #'search/nlq-search-tool {} {:collection_id 42} "nlq"
                     "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
+                   ;; a collection's items never list tables, which a collection-scoped search can match
                    ["the collection the caller asked for" #'search/search-tool {:collection_id 7} nil "internal"
+                    (str "Find the data with `read_resource` instead: read `metabase://collection/7/items`, and "
+                         "`metabase://databases`, then `metabase://database/{id}/tables` for tables.")]
+                   ["the collection and database the caller asked for" #'search/search-tool
+                    {:collection_id 7 :database_id (mt/id)} nil "internal"
+                    (str "Find the data with `read_resource` instead: read `metabase://collection/7/items`, and "
+                         "`metabase://database/" (mt/id) "/tables` for tables.")]
+                   ["the collection the caller asked for, without tables" #'search/search-tool
+                    {:collection_id 7 :entity_types ["metric" "dashboard"]} nil "internal"
                     "Find the data with `read_resource` instead: read `metabase://collection/7/items`."]
                    ;; a collection outside the confined one is ignored, as it is for the search itself
                    ["a confined collection" #'search/search-tool {:collection_id Integer/MAX_VALUE} confined "internal"
