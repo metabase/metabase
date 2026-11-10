@@ -222,10 +222,13 @@
     (mt/with-temp [:model/Card     {card-id :id}      {}
                    :model/CardTest {card-test-id :id} {:card_id card-id}]
       (mt/with-log-messages-for-level [messages [metabase.revisions.events :warn]]
-        (let [{run-id :id} (data-testing.run-tracking/start-run! :card card-test-id (mt/user->id :crowberto))]
+        (let [revision-count #(t2/count :model/Revision :model "CardTest" :model_id card-test-id)
+              before         (revision-count)
+              {run-id :id}   (data-testing.run-tracking/start-run! :card card-test-id (mt/user->id :crowberto))]
           (try
             (data-testing.run-tracking/finish-run! run-id :passed)
-            (is (zero? (t2/count :model/Revision :model "DataTestRun" :model_id run-id)))
+            (testing "the run adds no revision to the test"
+              (is (= before (revision-count))))
             ;; A run event routed to the card-test revision handler fails there and is only logged.
             (testing "no run event reaches a revision handler"
               (is (= [] (messages))))
