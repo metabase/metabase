@@ -92,29 +92,28 @@
 
 (defn update-settings-last-updated!
   "Update the value of `settings-last-updated` in the DB; if the row does not exist, insert one."
-  ([] (update-settings-last-updated! (current-state)))
-  ([state]
-   (log/debug "Updating value of settings-last-updated in DB...")
-   ;; Written raw, not through `:model/Setting`, so that `value` gets the plaintext timestamp a version predating
-   ;; `value_with_aad` compares in SQL. `value_with_aad` is encrypted under the marker's AAD like any other setting's.
-   (let [value          (settings.db/current-timestamp-string)
-         value-with-aad (encryption/maybe-encrypt value {:aad (mdb.setting/setting-aad settings-last-updated-key)})]
-     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
-     (or (pos? (settings.db/update-raw-setting-row! settings-last-updated-key value value-with-aad))
-         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
-         ;; try to INSERT it at the same time; one instance would fail because it would violate the PK constraint on
-         ;; `key`, and throw a SQLException. As long as one instance updates the value, we are fine, so we can go ahead
-         ;; and ignore that Exception if one is thrown.
-         (try
-           (settings.db/insert-raw-setting-row! settings-last-updated-key value value-with-aad)
-           (catch java.sql.SQLException e
-             ;; go ahead and log the whole SQLException message chain anyway on the off chance that it *wasn't* just a
-             ;; race condition issue
-             (log/errorf "Error updating Settings last updated value: %s"
-                         (str/join "; " (keep ex-message (take-while some? (iterate #(.getNextException ^java.sql.SQLException %) e)))))))))
-   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
-   ;; changes
-   (swap! (cache* state) assoc settings-last-updated-key (settings.db/setting-value settings-last-updated-key))))
+  [state]
+  (log/debug "Updating value of settings-last-updated in DB...")
+  ;; Written raw, not through `:model/Setting`, so that `value` gets the plaintext timestamp a version predating
+  ;; `value_with_aad` compares in SQL. `value_with_aad` is encrypted under the marker's AAD like any other setting's.
+  (let [value          (settings.db/current-timestamp-string)
+        value-with-aad (encryption/maybe-encrypt value {:aad (mdb.setting/setting-aad settings-last-updated-key)})]
+    ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
+    (or (pos? (settings.db/update-raw-setting-row! settings-last-updated-key value value-with-aad))
+        ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
+        ;; try to INSERT it at the same time; one instance would fail because it would violate the PK constraint on
+        ;; `key`, and throw a SQLException. As long as one instance updates the value, we are fine, so we can go ahead
+        ;; and ignore that Exception if one is thrown.
+        (try
+          (settings.db/insert-raw-setting-row! settings-last-updated-key value value-with-aad)
+          (catch java.sql.SQLException e
+            ;; go ahead and log the whole SQLException message chain anyway on the off chance that it *wasn't* just a
+            ;; race condition issue
+            (log/errorf "Error updating Settings last updated value: %s"
+                        (str/join "; " (keep ex-message (take-while some? (iterate #(.getNextException ^java.sql.SQLException %) e)))))))))
+  ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
+  ;; changes
+  (swap! (cache* state) assoc settings-last-updated-key (settings.db/setting-value settings-last-updated-key)))
 
 (defn cache-last-updated-at
   "Fetch the value of `settings-last-updated`, indicating the timestamp of the settings cache. Possibly null.
@@ -175,9 +174,10 @@
   "Check whether the settings cache is out of date by reading the DB value of `settings-last-updated`, and reload the
   cache if so. Called on every Setting read, so the check is throttled to run at most once per
   `cache-update-check-interval-ms`; pass `:force-check? true` to skip that throttle and check now. Returns truthy when
-  a reload happened."
-  [& {:keys [force-check?]}]
-  (let [{:keys [^AtomicLong last-update-check ^ReentrantLock restore-lock] :as state} (current-state)]
+  a reload happened.
+  Pass `:state` to check a state the caller already holds, instead of the one for the application DB this thread sees."
+  [& {:keys [force-check? state]}]
+  (let [{:keys [^AtomicLong last-update-check ^ReentrantLock restore-lock] :as state} (or state (current-state))]
     (when (or force-check? (time-for-another-update-check? last-update-check))
       ;; There's a potential race condition here where two threads both call this at the exact same moment, and both
       ;; get `true` from `cache-out-of-date?`, and then both simultaneously try to update the cache. Better to just add

@@ -212,3 +212,20 @@
       (mt/with-dynamic-fn-redefs [setting.cache/current-state #(if (= 1 (swap! calls inc)) checked (new-state))]
         (setting.cache/restore-cache-if-needed! :force-check? true))
       (is (some? @(:cache checked))))))
+
+(deftest per-app-db-clock-and-lock-test
+  (testing "each app DB has its own update-check clock and restore lock"
+    (let [{:keys [last-update-check ^java.util.concurrent.locks.ReentrantLock restore-lock]} (setting.cache/current-state)
+          ;; a fresh id, so the other app DB's state is new and its cache empty
+          other-app-db (assoc (mdb/app-db) :id (- (inc (rand-int Integer/MAX_VALUE))))]
+      (reset-last-update-check!)
+      (.lock restore-lock)
+      (try
+        (let [reloaded? (mdb/with-application-db other-app-db
+                          (setting.cache/restore-cache-if-needed! :force-check? true))]
+          (is (= {:other-app-db-reloaded? true
+                  :root-check-due?        true}
+                 {:other-app-db-reloaded? (boolean reloaded?)
+                  :root-check-due?        (#'setting.cache/time-for-another-update-check? last-update-check)})))
+        (finally
+          (.unlock restore-lock))))))
