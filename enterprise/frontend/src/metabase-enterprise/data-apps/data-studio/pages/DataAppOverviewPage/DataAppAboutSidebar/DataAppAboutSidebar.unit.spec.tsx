@@ -24,10 +24,10 @@ function setup({
   allowedHosts = [],
 }: SetupOpts) {
   const app = createMockDataApp({
-    name: "sales",
+    slug: "sales",
     allowed_hosts: allowedHosts,
   });
-  setupDataAppGroupsEndpoint(app.name, []);
+  setupDataAppGroupsEndpoint(app.slug, []);
   if (isRepoStatusUnavailable) {
     setupDataAppRepoStatusEndpointWithError("Server error");
   } else {

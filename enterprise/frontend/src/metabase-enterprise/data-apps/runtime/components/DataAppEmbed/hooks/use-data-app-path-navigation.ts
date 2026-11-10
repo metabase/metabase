@@ -14,11 +14,11 @@ import type { SdkIframeEmbedNavigateToDataAppPathMessage } from "metabase/embedd
  * when the `path` prop changes.
  **/
 export function useDataAppPathNavigation({
-  name,
+  slug,
   path,
   navigationRequest = null,
 }: {
-  name: string;
+  slug: string;
   path: string;
   navigationRequest?: SdkIframeEmbedNavigateToDataAppPathMessage["data"] | null;
 }) {
@@ -39,11 +39,11 @@ export function useDataAppPathNavigation({
     );
 
     if (currentUrl.href !== targetUrl.href) {
-      const route = normalizedPath.slice(name.length);
+      const route = normalizedPath.slice(slug.length);
 
       navigate(route.startsWith("/") ? route : `/${route}`, {
         replace: true,
       });
     }
-  }, [name, path, navigationRequest]);
+  }, [slug, path, navigationRequest]);
 }
