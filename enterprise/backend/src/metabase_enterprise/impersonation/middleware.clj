@@ -72,8 +72,12 @@
   [query]
   (if qp.i/*skip-middleware-because-app-db-access*
     query
-    (let [database              (lib.metadata/database (qp.store/metadata-provider))
-          impersonation-enabled? (impersonation.driver/impersonation-enabled-for-db? database)
+    (let [mp                    (qp.store/metadata-provider)
+          database              (lib.metadata/database mp)
+          ;; once per cached metadata provider, i.e. per request or job batch, rather than per query
+          impersonation-enabled? (lib.metadata/general-cached-value
+                                  mp [::impersonation-enabled? (:id database)]
+                                  #(impersonation.driver/impersonation-enabled-for-db? database))
           role                  (impersonation.driver/connection-impersonation-role database)]
       (cond-> query
         ;; Validate for ALL users if impersonation is configured on this DB
