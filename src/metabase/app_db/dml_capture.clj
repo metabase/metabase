@@ -24,6 +24,8 @@
     enclosing transaction commits.
     If the transaction rolls back, the event has already fired: consumers must treat events as \"look at these
     rows again\", never as facts about committed state.
+    No consumer needs delivery before commit; it stays there because this namespace is meant to become a
+    toucan2 tool, and toucan2 knows nothing of Metabase's commit callbacks.
   - An empty pre-image snapshot delivers no event.
   - A statement matching more rows than [[max-pre-image-rows]] delivers no event, so that a wide delete cannot
     materialize an unbounded result set on the caller's thread.
