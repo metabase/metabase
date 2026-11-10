@@ -858,8 +858,8 @@
     (case t
       ("model" "dataset") "model"
       ("card" "question") "question"
-      ("database" "collection" "table" "metric"
-                  "measure" "segment" "transform" "dashboard") t
+      ("database" "collection" "table" "metric" "measure"
+                  "segment" "transform" "dashboard" "document") t
       nil)))
 
 (defn- container-type?
@@ -922,14 +922,13 @@
                     (when-let [uri-type (search-result-uri-type type-kw)]
                       (metabase-uri uri-type id)))
       :search_is_container (container-type? type-kw)
-      :search_has_verified (some? verified)
-      :search_verified verified
+      :search_is_verified (true? verified)
       ;; `is_official` is the branch's presence-style flag; it's true when the entity lives in an
       ;; official collection (`official_collection`) or carries the legacy table `official` signal.
       :search_is_official (boolean (or official_collection official))
       :search_is_library_member (boolean library_member)
-      ;; Master's richer curation signals (table results): the precomputed `curated` rollup plus the
-      ;; table-only `data_layer` / `data_authority` attributes.
+      ;; Table curation signals: the precomputed `curated` rollup plus the table-only
+      ;; `data_layer` / `data_authority` attributes.
       :search_has_curated (some? curated)
       :search_curated curated
       :search_has_can_write (some? can_write)

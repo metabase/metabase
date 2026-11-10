@@ -168,18 +168,17 @@
     (when (int? id) id)))
 
 (defn- ancestor-ids
-  "Parse a Collection :location string like \"/12/34/\" into [12 34]."
+  "The ids in a Collection :location string like \"/12/34/\", or nil when there is none."
   [location]
-  (when (and location (not= "/" location))
-    (->> (str/split location #"/") (remove str/blank?) (keep parse-long))))
+  (some-> location collection/location-path->ids))
 
 (defn- enrich-with-collection-paths
-  "Stamp each collection-bearing result with :collection_path (and :full_path for collection
-   results) and :library_member (boolean, gated by the :library premium feature).
+  "Stamp each collection-bearing result with :collection_path and :library_member (boolean, gated by the
+   :library premium feature).
 
-   :collection_path is the slash-joined chain of ancestor names ending in the result's
-   collection name (e.g. \"Marketing/Q4 Reports/Email\"). For collection-typed results,
-   the same string is also exposed as :full_path.
+   :collection_path is the slash-joined chain of ancestor names ending in the name of the collection the result
+   lives in (e.g. \"Marketing/Q4 Reports/Email\"). A collection result lives in its parent, so its path ends
+   with the parent's name, and a top-level collection gets none.
 
    :library_member is true when the result's top-level (root) collection is a library-type
    collection. Published tables have a collection too, so they route through here like anything else.
@@ -205,13 +204,15 @@
         ;; which say nothing about its collection. Everything name-shaped is gated on reading that
         ;; collection; only the root's `:type` survives below, per the disclosure note there.
         readable-ids (into #{} (comp (filter mi/can-read?) (map :id)) direct-rows)
-        path-of      (fn [coll-id]
+        ;; The names from the top of the readable chain down to `coll-id`, or down to its parent when
+        ;; `include-self?` is false. Only readable ancestors (from :effective_location) contribute names,
+        ;; so we never leak the name of a collection the user can't see.
+        path-of      (fn [coll-id include-self?]
                        (when-let [{:keys [name]} (and (readable-ids coll-id) (get id->row coll-id))]
-                         ;; Only readable ancestors (from :effective_location) contribute names,
-                         ;; so we never leak the name of a collection the user can't see.
                          (let [ancestor-names (->> (ancestor-ids (get id->eff-loc coll-id))
                                                    (keep #(get-in id->row [% :name])))]
-                           (str/join "/" (concat ancestor-names [name])))))
+                           (not-empty (str/join "/" (cond-> (vec ancestor-names)
+                                                      include-self? (conj name)))))))
         library?     (premium-features/has-feature? :library)
         ;; A collection's root is its top-level ancestor, or itself when it's already top-level.
         ;; NOTE: the root is chased from the *raw* location, not `:effective_location`, so for a
@@ -232,7 +233,7 @@
                                      (collection/library-collection-types (root-type-of coll-id)))))]
     (mapv (fn [r]
             (let [cid  (result-collection-id r)
-                  path (when cid (path-of cid))]
+                  path (when cid (path-of cid (not (collection-result? r))))]
               (cond-> r
                 ;; drop the whole nested map when its collection is unreadable: it carries the name,
                 ;; and `enrich-with-collection-descriptions` may already have added the description
@@ -240,7 +241,6 @@
                 (dissoc :collection)
 
                 path (assoc :collection_path path)
-                (and path (collection-result? r)) (assoc :full_path path)
                 ;; Only expose the premium `:library_member` signal when the feature is on, leaving the
                 ;; key absent otherwise so external /v1/search consumers see a consistent shape.
                 (and library? cid) (assoc :library_member (library-of cid)))))
@@ -697,7 +697,8 @@
   It skips that retry when the query is a single token, is quoted, or already uses `or`.
 
   The result carries the size of the whole match set as `:total` metadata, so the caller can tell that `limit`
-  cut it short."
+  cut it short. When the results come from the retry, `:broadened-query` metadata holds the query that found them.
+  `:collection-id` metadata is the collection the search ran in, after [[scoped-collection-id]]."
   [{:keys [query database-id collection-id created-at last-edited-at
            entity-types limit metabot profile-id weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
@@ -746,14 +747,21 @@
         ;; The `or` rewrite only broadens where lowercase `or` compiles to a tsquery `|`; see
         ;; [[search.engine/tsquery-operators-supported?]] for where that holds. Semantic is excluded as well,
         ;; because it already blends keyword and vector matching.
-        {:keys [data total]} (or (when (and (empty? (:data primary))
-                                            (not= picked-engine :search.engine/semantic)
-                                            (search.engine/tsquery-operators-supported?))
-                                   (when-let [broadened (broaden-query query)]
-                                     (log/info "[METABOT-SEARCH] Zero hits; retrying with an OR-broadened query")
-                                     (let [retry (run-engine broadened)]
-                                       (when (seq (:data retry)) retry))))
-                                 primary)]
+        ;; The retry is optional: if it fails, the first search's empty result stands.
+        {:keys [data total broadened-query]}
+        (or (when (and (empty? (:data primary))
+                       (not= picked-engine :search.engine/semantic)
+                       (search.engine/tsquery-operators-supported?))
+              (when-let [broadened (broaden-query query)]
+                (log/info "[METABOT-SEARCH] Zero hits; retrying with an OR-broadened query")
+                (try
+                  (let [retry (run-engine broadened)]
+                    (when (seq (:data retry))
+                      (assoc retry :broadened-query broadened)))
+                  (catch Exception e
+                    (log/warn e "[METABOT-SEARCH] OR-broadened retry failed; keeping the empty result")
+                    nil))))
+            primary)]
     (log/infof "[METABOT-SEARCH] Query returned entity types: %s" (frequencies (map :model data)))
     (-> (->> data
              (take limit)
@@ -767,7 +775,9 @@
              enrich-with-collection-paths
              (validate-and-enrich-documents false)
              remove-unreadable-transforms)
-        (with-meta {:total total}))))
+        (with-meta (m/assoc-some {:total total}
+                                 :broadened-query broadened-query
+                                 :collection-id   collection-id)))))
 
 (defn- table-refs->results
   [ids]
@@ -891,15 +901,24 @@
 (def ^:private default-search-limit 25)
 (def ^:private max-search-limit 50)
 
+(def ^:private databaseless-types
+  "Entity types that don't belong to a database, so a `database_id` filter leaves them out."
+  #{"collection" "dashboard" "document"})
+
 (defn- search-restrictions
-  "What narrowed a search beyond its queries, as sentences for the model."
-  [default-types {:keys [metabot profile-id]} {:keys [entity_types collection_id]}]
+  "What narrowed a search beyond its queries, as sentences for the model. `searched-collection-id` is the collection
+  the search actually ran in, which differs from the caller's `collection_id` when a confined Metabot ignored it."
+  [default-types {:keys [metabot profile-id]} {:keys [entity_types collection_id database_id]} searched-collection-id]
   (cond-> []
     (and (seq entity_types) (not-every? (set entity_types) default-types))
     (conj (str "Only these entity types were searched: " (str/join ", " (sort (set entity_types)))
                ". If other types could match, add them to `entity_types`."))
 
-    collection_id
+    (and database_id (some databaseless-types default-types))
+    (conj (str "Only database " database_id " was searched, so dashboards, collections and documents were left out. "
+               "To search everywhere, leave out `database_id`."))
+
+    (and collection_id (= collection_id searched-collection-id))
     (conj (str "Only collection " collection_id " and the collections inside it were searched. "
                "To search everywhere, leave out `collection_id`."))
 
@@ -915,12 +934,17 @@
   empty result."
   [query results limit restrictions]
   (let [results-xml (str/join "\n" (map llm-shape/search-result->xml results))
-        {:keys [total]} (meta results)]
+        {:keys [total broadened-query]} (meta results)]
     (te/lines
-     (str "<results query=\"" (llm-shape/escape-xml query)
-          "\" total=\"" (count results) "\">")
+     (str "<results query=\"" (llm-shape/escape-xml query) "\""
+          (when broadened-query
+            (str " broadened_query=\"" (llm-shape/escape-xml broadened-query) "\""))
+          " total=\"" (count results) "\">")
      results-xml
      "</results>"
+     (when broadened-query
+       (str "Nothing matched every word of `query`, so these results match any one of its words. "
+            "Check that a result fits the whole request before using it."))
      ;; Search caps the ranked pool, so the total is a lower bound.
      (when (and total (< limit total))
        (str "Showing " (count results) " of at least " total " results. "
@@ -936,7 +960,15 @@
 
 ;; Field-level descriptions surface to the model as JSON-Schema `description`s on the
 ;; tool's input parameters (via `malli.json-schema` in `metabase.metabot.self.claude`).
-;; Query-writing guidance lives in the system prompt's discovery section, not here.
+;; The system prompt's discovery section, where a profile includes it, says how this instance matches a query and
+;; which operators it reads. `query-desc` covers what holds on every engine, for profiles without that section.
+(def ^:private query-desc
+  (str "What to look for: the likely name of the thing, in one to three words. "
+       "Unless the system prompt says otherwise, a result must contain every word, so a long phrase can match nothing."))
+
+(def ^:private query-schema
+  [:and {:description query-desc} ms/NonBlankString])
+
 (def ^:private entity-types-desc
   "Restrict results to these entity types. Omit to search across all types this tool supports.")
 
@@ -1037,7 +1069,7 @@
                          ;; The runtime logs a recoverable error at debug level, without its cause.
                          (log/error e "Metabot search failed")
                          (search-failed! (search-scope (:metabot opts) (:profile-id opts) (:database-id opts)))))
-        restrictions (search-restrictions default-types search-opts args)]
+        restrictions (search-restrictions default-types search-opts args (:collection-id (meta results)))]
     {:output (format-search-output query results limit restrictions)
      :structured-output (cond-> {:result-type :search
                                  :data results
@@ -1061,10 +1093,10 @@
 
 (def ^:private search-schema
   [:map {:closed true}
-   [:query ms/NonBlankString]
+   [:query query-schema]
    [:entity_types {:optional true} (apply entity-types-schema general-entity-types)]
    [:database_id   {:optional true} [:maybe :int]]
-   [:collection_id {:optional true} [:maybe :int]]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:limit {:optional true} limit-schema]])
 
 (defn- search-display
@@ -1082,7 +1114,7 @@
   {:message (str "Database " database-id
                  " was not found. It may not exist, or you may not have access to it.")
    :recovery [{:uses #{}
-               :text "Use the database currently selected in the SQL editor."}
+               :text "In the SQL editor, use the database currently selected there. Elsewhere, leave out `database_id`."}
               {:uses #{"read_resource"}
                :text "Call `read_resource` with `metabase://databases` to find an accessible database ID."}]})
 
@@ -1117,7 +1149,7 @@
 
 (def ^:private sql-search-schema
   [:map {:closed true}
-   [:query ms/NonBlankString]
+   [:query query-schema]
    [:database_id :int]
    [:entity_types {:optional true} (entity-types-schema "table" "model")]
    [:limit {:optional true} limit-schema]])
@@ -1130,10 +1162,10 @@
 
 (def ^:private nlq-search-schema
   [:map {:closed true}
-   [:query ms/NonBlankString]
+   [:query query-schema]
    [:entity_types {:optional true} (apply entity-types-schema general-entity-types)]
    [:database_id   {:optional true} [:maybe :int]]
-   [:collection_id {:optional true} [:maybe :int]]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:limit {:optional true} limit-schema]])
 
 (def nlq-search-tool
