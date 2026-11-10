@@ -73,7 +73,8 @@
                                       "vector_dimensions int NOT NULL, table_name text NOT NULL UNIQUE, "
                                       "index_version int NOT NULL, index_created_at timestamptz NOT NULL)")])
         (jdbc/execute! pgvector ["CREATE TABLE index_control (id bigint PRIMARY KEY, version text NOT NULL, active_id int, active_updated_at timestamptz)"])
-        (jdbc/execute! pgvector [(format "CREATE TABLE %s (id text PRIMARY KEY)" table-name)])
+        ;; content is here for later dynamic migrations to index
+        (jdbc/execute! pgvector [(format "CREATE TABLE %s (id text PRIMARY KEY, content text)" table-name)])
         (jdbc/execute! pgvector [(str "INSERT INTO index_metadata "
                                       "(id, provider, model_name, vector_dimensions, table_name, index_version, index_created_at) "
                                       "VALUES (7, 'openai', 'legacy-model', 4, ?, 5, NOW())")
@@ -554,3 +555,20 @@
         (is (contains? ids (str od))      "dashboards in official collections are backfilled")
         (is (not (contains? ids (str nd))) "dashboards in normal collections are not")
         (is (not (contains? ids (str ad))) "archived dashboards are skipped")))))
+
+(deftest migration-6-content-hash-index-test
+  (testing "migration 6 replaces the B-tree index on content with a hash index"
+    (mt/with-premium-features #{:semantic-search}
+      (semantic.tu/with-test-db! {:mode :mock-initialized}
+        (let [pgvector             (semantic.env/get-pgvector-datasource!)
+              index-metadata       (semantic.env/get-index-metadata)
+              table-name           (active-index-table-name! pgvector index-metadata)
+              bare-name            (semantic.util/table-name-part table-name)
+              {:keys [hash btree]} (semantic.tu/content-index-names table-name)]
+          (semantic.tu/restore-content-btree! pgvector index-metadata table-name)
+          (is (=? {btree #"CREATE INDEX .* USING btree \(content\)"}
+                  (semantic.tu/table-indexes bare-name)))
+          (semantic.core/init! (semantic.tu/mock-documents) nil)
+          (let [indexes (semantic.tu/table-indexes bare-name)]
+            (is (=? {hash #"CREATE INDEX .* USING hash \(content\)"} indexes))
+            (is (not (contains? indexes btree)))))))))

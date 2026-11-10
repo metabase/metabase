@@ -18,6 +18,7 @@
    [metabase-enterprise.search.semantic.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.search.semantic.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
+   [metabase-enterprise.search.semantic.util :as semantic.util]
    [metabase.app-db.core :as mdb]
    [metabase.search.embeddings.provider :as embeddings.provider]
    [metabase.search.embeddings.startup :as embeddings.startup]
@@ -153,6 +154,22 @@
                                 :results
                                 (filter (comp #{"card"} :model))
                                 (mapv #(select-keys % [:model :id]))))))
+                  (testing "dynamic migration 6 swaps the content B-tree for a hash index inside the schema"
+                    (let [table-name           (:table-name (:index (semantic.index-metadata/get-active-index-state
+                                                                     pgvector index-metadata)))
+                          bare-name            (semantic.util/table-name-part table-name)
+                          long-doc             (assoc (first documents)
+                                                      :embeddable_text (semantic.tu/incompressible-text 8000))
+                          {:keys [hash btree]} (semantic.tu/content-index-names table-name)]
+                      (semantic.tu/restore-content-btree! pgvector index-metadata table-name)
+                      (semantic.pgvector-api/init-semantic-search! pgvector index-metadata
+                                                                   (semantic.env/get-configured-embedding-model))
+                      (let [indexes (semantic.tu/table-indexes bare-name)]
+                        (is (=? {hash #"CREATE INDEX .* USING hash \(content\)"} indexes))
+                        (is (not (contains? indexes btree))))
+                      (testing "and a document too long for the B-tree now indexes"
+                        (is (= {"card" 1}
+                               (semantic.pgvector-api/index-documents! pgvector index-metadata [long-doc]))))))
                   (testing "the application schema is untouched"
                     (is (= public-before (tables-in-schema app-db "public"))))))
               (finally

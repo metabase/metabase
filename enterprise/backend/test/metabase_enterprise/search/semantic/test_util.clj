@@ -549,6 +549,36 @@
                        ["SELECT indexname, indexdef FROM pg_indexes WHERE tablename = ?" (name table-name)]
                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
+(defn incompressible-text
+  "`n` seeded random lowercase letters.
+  Random text compresses poorly, so 8000 letters stay past the 2704-byte B-tree entry limit after compression."
+  [n]
+  (let [rng (java.util.Random. 42)]
+    (apply str (repeatedly n #(char (+ (int \a) (.nextInt rng 26)))))))
+
+(defn content-index-names
+  "The names of the indexes on `content` for the (possibly schema-qualified) index table `table-name`.
+  `:hash` is the current hash index, and `:btree` the B-tree that dynamic migration 6 replaces."
+  [table-name]
+  {:hash  (semantic.index/content-index-name {:table-name table-name})
+   :btree (semantic.index/hash-identifier-if-exceeds-pg-limit
+           (str (semantic.util/table-name-part table-name) "_content_idx"))})
+
+(defn restore-content-btree!
+  "Put index table `table-name` back in its shape before dynamic migration 6: the B-tree on `content` in place
+  of the hash index, recorded at `index_version` 5 so the next init migrates it again."
+  [pgvector index-metadata table-name]
+  (let [{:keys [hash btree]} (content-index-names table-name)]
+    (jdbc/execute! pgvector [(str "DROP INDEX " (semantic.util/quote-table
+                                                 (semantic.index/schema-qualified-index-name
+                                                  {:table-name table-name} hash)))])
+    (jdbc/execute! pgvector [(format "CREATE INDEX %s ON %s (content)"
+                                     (semantic.util/quote-ident btree)
+                                     (semantic.util/quote-table table-name))])
+    (jdbc/execute! pgvector (sql/format {:update (keyword (:metadata-table-name index-metadata))
+                                         :set    {:index_version 5}
+                                         :where  [:= :table_name table-name]}))))
+
 ;; read-only pg_class lookup; the bang-named calls at most lazily initialize the shared pool
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn index-relfilenode

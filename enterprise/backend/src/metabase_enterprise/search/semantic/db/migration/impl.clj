@@ -152,7 +152,7 @@
 (def dynamic-schema-version
   "Code version of dynamic schema (the index_<provider>_<model>_<dims> index tables). If higher than what's found in
   db dynamic schema migration will be attempted."
-  5)
+  6)
 
 (defn- alter-index-tables!
   "Run `alter-fn` against each existing index table whose `index_version` is below `target-version`, then bump those
@@ -355,6 +355,26 @@
              (update-model-rows-in-batches! execute! kw-tbl "dashboard" @dashboards
                                             {:curated true :official_collection true}))))))))
 
+(defn- replace-content-btree-with-hash-index!
+  "Migration 6: replace the B-tree index on `content` with a hash index.
+  A B-tree entry is capped at about 2.7 KB, so rows with long text failed to insert.
+  The index serves only the equality lookup that reuses embeddings, which a hash index supports for any length."
+  [tx index-metadata]
+  (alter-index-tables!
+   tx index-metadata 6
+   (fn [_execute! table-name]
+     (let [index      {:table-name table-name}
+           ;; the old B-tree's name, as [[semantic.index/content-index-name]] built it before migration 6
+           btree-name (semantic.index/hash-identifier-if-exceeds-pg-limit
+                       (str (semantic.util/table-name-part table-name) "_content_idx"))]
+       ;; build the replacement first, so the embedding lookup is never left without an index
+       (jdbc/execute! tx [(format "CREATE INDEX IF NOT EXISTS %s ON %s USING hash (content)"
+                                  (semantic.util/quote-ident (semantic.index/content-index-name index))
+                                  (semantic.util/quote-table table-name))])
+       (jdbc/execute! tx [(str "DROP INDEX IF EXISTS "
+                               (semantic.util/quote-table
+                                (semantic.index/schema-qualified-index-name index btree-name)))])))))
+
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, i.e. the schema of the `index_...` index tables. Migration author is responsible for
   removing leftovers if necessary."
@@ -364,7 +384,9 @@
   ;; migration 3: add collection_type and data_layer columns to index tables
   ;; migration 4: add root_collection_type column to index tables
   ;; migration 5: add data_authority and precomputed curated columns to index tables
+  ;; migration 6: replace the B-tree index on content with a hash index
   (add-personal-owner-id-column! tx index-metadata)
   (add-collection-type-and-data-layer-columns! tx index-metadata)
   (add-root-collection-type-column! tx index-metadata)
-  (add-data-authority-and-curated-columns! tx index-metadata))
+  (add-data-authority-and-curated-columns! tx index-metadata)
+  (replace-content-btree-with-hash-index! tx index-metadata))

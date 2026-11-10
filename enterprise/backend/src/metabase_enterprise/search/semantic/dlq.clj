@@ -19,6 +19,7 @@
   and a permanent-policy (that is likely only resolved with manual intervention, a patch to the code).
   Even 'permanent' errors are retried however - due to inherent ambiguity - it just effects the backoff climb."
   (:require
+   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase-enterprise.search.semantic.gate :as semantic.gate]
    [metabase-enterprise.search.semantic.index :as semantic.index]
@@ -29,6 +30,7 @@
    [next.jdbc.result-set :as jdbc.rs])
   (:import
    (java.net SocketException)
+   (java.sql SQLException)
    (java.time Clock Duration Instant InstantSource)))
 
 (set! *warn-on-reflection* true)
@@ -86,6 +88,21 @@
   [pgvector index-metadata index-id]
   (semantic.util/table-exists? pgvector (name (dlq-table-name-kw index-metadata index-id))))
 
+(def ^:private deterministic-sqlstate-classes
+  "SQLState classes for errors that depend only on the statement and its data, so a retry fails the same way.
+  They are data exception (22), integrity constraint violation (23) and program limit exceeded (54)."
+  #{"22" "23" "54"})
+
+(defn- cause-chain
+  "`t` followed by its causes, outermost first."
+  [^Throwable t]
+  (take-while some? (iterate ex-cause t)))
+
+(defn- deterministic-sql-error? [t]
+  (when-let [state (when (instance? SQLException t)
+                     (.getSQLState ^SQLException t))]
+    (some #(str/starts-with? state %) deterministic-sqlstate-classes)))
+
 (defn categorize-error
   "Categorizes an error as :transient, :permanent, or defaults to :transient.
 
@@ -95,6 +112,8 @@
   - SocketException -> :transient (network issues, may recover)
   - AssertionError -> :permanent (logic errors, won't be fixed by retry)
   - NullPointerException -> :permanent (programming errors, won't be fixed by retry)
+  - SQLException in the cause chain with a data, constraint or limit SQLState -> :permanent
+    (the same row fails the same way, e.g. a value too large for an index)
   - Everything else -> :transient (safer to retry unknown errors)
 
   This categorization determines which retry policy is applied - 'permanent' errors
@@ -110,6 +129,8 @@
         AssertionError :permanent
         NullPointerException :permanent
         nil)
+      (when (some deterministic-sql-error? (cause-chain t))
+        :permanent)
       :transient))
 
 (def transient-policy
@@ -334,6 +355,10 @@
   (let [now         (.instant clock)
         ex-category (categorize-error ex)
         ex-policy   ({:transient transient-policy, :permanent permanent-policy} ex-category transient-policy)]
+    ;; The DLQ catches the exception, so this is the only place its cause reaches the logs.
+    (log/warnf "Semantic indexing failed for a batch of %d (%s error, will retry): %s"
+               (count gate-docs) (name ex-category) (ex-message (last (cause-chain ex))))
+    (log/debug ex "Semantic indexing failure")
     {:failures (mapv (fn [gate-doc]
                        {:gate-doc gate-doc
                         :dlq-entry

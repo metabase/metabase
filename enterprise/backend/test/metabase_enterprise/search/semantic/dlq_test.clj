@@ -15,8 +15,9 @@
    [next.jdbc.result-set :as jdbc.rs])
   (:import (java.io Closeable)
            (java.net SocketException)
-           (java.sql Timestamp)
+           (java.sql SQLException Timestamp)
            (java.time Duration Instant InstantSource)
+           (java.util.concurrent ExecutionException)
            (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
@@ -41,6 +42,22 @@
     (is (= :transient (semantic.dlq/categorize-error (SocketException. "Connection reset"))))
     (is (= :permanent (semantic.dlq/categorize-error (AssertionError. "Invalid assertion"))))
     (is (= :permanent (semantic.dlq/categorize-error (NullPointerException. "NPE")))))
+  (testing "SQL errors that fail the same way on every retry"
+    (doseq [state ["54000"   ; program limit exceeded, e.g. an index row too large
+                   "22021"   ; invalid byte sequence for the encoding
+                   "23502"]] ; not-null violation
+      (testing state
+        (is (= :permanent (semantic.dlq/categorize-error (SQLException. "boom" state))))
+        (testing "when wrapped, as the pooled index upsert does"
+          (is (= :permanent (semantic.dlq/categorize-error
+                             (ExecutionException. (SQLException. "boom" state)))))))))
+  (testing "other SQL errors stay transient"
+    (doseq [state ["08006"   ; connection failure
+                   "40001"   ; serialization failure
+                   "57014"   ; query canceled
+                   nil]]
+      (testing state
+        (is (= :transient (semantic.dlq/categorize-error (SQLException. "boom" ^String state)))))))
   (testing "Default to transient"
     (is (= :transient (semantic.dlq/categorize-error (RuntimeException. "Unknown error"))))
     (is (= :transient (semantic.dlq/categorize-error (Exception. "Generic exception")))))
