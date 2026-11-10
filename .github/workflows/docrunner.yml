@@ -5,6 +5,10 @@ run-name: "Docrunner for #${{ inputs.issue || github.event.issue.number }}"
 # A second job takes the screenshots that the change needs, and pushes them to the PR.
 # Prompt templates: dev/bot/docrunner-agent.md and dev/bot/docrunner-screenshots-agent.md.
 # For a label run, claude-code-action stops if the person who added the label cannot write to the repo.
+# The writer can also add the label to the synced Linear issue. Then Linear adds it on GitHub as `linear[bot]`.
+# For that path, `allowed_bots: linear` in each agent step lets the run continue. The action accepts each `[bot]`
+# actor with no check of its access, thus it does not check the person who added the label in Linear: each member
+# of the Linear workspace can start Docrunner. repro-bot.yml uses the same rule.
 
 on:
   issues:
@@ -96,10 +100,15 @@ jobs:
       - name: Set the paths
         run: printf 'T=%s\nOUT=%s\n' "$RUNNER_TEMP/docrunner" "$RUNNER_TEMP/docrunner/out" >> "$GITHUB_ENV"
 
+      # The PR goes to the person who added the label, or who started the dispatch. For a label from Linear, the
+      # sender is `linear[bot]`, and GitHub does not know which person added the label. Then the PR goes to the
+      # assignees of the issue: Linear copies the Linear assignee to GitHub if that person linked a GitHub account.
       - name: Check the issue
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
+          SENDER: ${{ github.event.sender.login }}
+          SENDER_TYPE: ${{ github.event.sender.type }}
         run: |
           if ! [[ "$ISSUE" =~ ^[0-9]+$ ]]; then
             echo "::error::The issue must be a number."
@@ -112,6 +121,13 @@ jobs:
             echo "::error::#$ISSUE is a pull request. Docrunner reads issues only."
             exit 1
           fi
+          if [ "$SENDER_TYPE" = User ]; then
+            assignees=$SENDER
+          else
+            assignees=$(jq -r '[.assignees[]?.login] | join(",")' "$T/issue.json")
+          fi
+          echo "assignees=$assignees" >> "$GITHUB_OUTPUT"
+          echo "PR assignees: ${assignees:-none}"
 
       # No `ref`: an `issues` run gets the default branch, and a dispatch run gets the branch of the run.
       # Thus a test on a branch uses the prompt templates of that branch.
@@ -139,7 +155,7 @@ jobs:
       #   dispatch, the cutoff is the start of this step.
       # - The linked PRs come from the visible HTML and from the timeline. A person who writes a PR can put any text
       #   in it. Thus Docrunner uses only PRs from people who can write to the repo, the same rule that
-      #   claude-code-action uses for the person who adds the label.
+      #   claude-code-action uses for a person who adds the label on GitHub.
       - name: Write the context for the agent
         if: steps.existing.outputs.url == ''
         env:
@@ -319,6 +335,8 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ github.token }}
+          # A label from Linear. See the comment at the top of this file.
+          allowed_bots: linear
           prompt: |
             Read and follow `dev/bot/docrunner-agent.md`.
           claude_args: |
@@ -524,8 +542,12 @@ jobs:
           labels: |
             Type:Documentation
             single-backport
-          assignees: ${{ github.event.sender.login }}
+          assignees: ${{ steps.check.outputs.assignees }}
 
+      # Docrunner does not remove the label, thus the label shows that Docrunner ran on the issue. Linear also syncs
+      # labels. If Linear adds the label again, the issue already has it, and GitHub sends no `labeled` event. A different
+      # label does not start a run, because the job checks `github.event.label.name`. To run again, a person removes the
+      # label, then adds it again.
       - name: Report on the issue
         if: always() && steps.token.outcome == 'success'
         env:
@@ -550,7 +572,7 @@ jobs:
             exists)
               {
                 echo "Docrunner did not run, because this issue has an open docrunner PR: $EXISTING_URL"
-                printf '\nTo run Docrunner again, close that PR, then add the label `Docrunner` again.\n'
+                printf '\nTo run Docrunner again, close that PR. Then remove the label `Docrunner`, and add it again.\n'
               } > "$f"
               ;;
             no-change)
@@ -571,14 +593,9 @@ jobs:
               ;;
           esac
           if [ "$GITHUB_EVENT_NAME" = issues ] && [ "$STATUS" != "done" ] && [ "$STATUS" != exists ]; then
-            printf '\nTo run Docrunner again, add the label `Docrunner` again.\n' >> "$f"
+            printf '\nTo run Docrunner again, remove the label `Docrunner`, then add it again.\n' >> "$f"
           fi
           gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" -F body=@"$f" > /dev/null
-
-          # Remove the label, so that a person can add it again.
-          if [ "$GITHUB_EVENT_NAME" = issues ]; then
-            gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$ISSUE/labels/Docrunner" > /dev/null || true
-          fi
 
       # `continue-on-error` keeps the agent step green. This step makes a failed run red in the list of runs.
       - name: Fail the job if Docrunner failed
@@ -777,6 +794,8 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ github.token }}
+          # This job has the actor of the label event too, thus it also needs this for a label from Linear.
+          allowed_bots: linear
           prompt: |
             Read and follow `dev/bot/docrunner-screenshots-agent.md`.
           claude_args: |

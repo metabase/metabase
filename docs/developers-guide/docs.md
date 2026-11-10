@@ -45,17 +45,19 @@ To preview a worktree or another checkout, pass its path. If `metabase-dot-com` 
 
 People with write access to Metabase can add the `Docrunner` label to an open issue.
 
+You can also add the label in Linear, to the issue that's synced with the GitHub issue. Linear adds the label on GitHub, and Docrunner starts. The Linear label must be named exactly `Docrunner`.
+
 Docrunner reads the issue, its comments, and the PRs that the issue links to (only PRs from people with write access). Docrunner reads only what was there when you added the label: it ignores later comments, and it stops if someone edits the issue title or body after that.
 
 Docrunner also reads text that the issue page hides, such as the contents of a collapsed `<details>` section. This is by design, so expand and read those sections before you add the label.
 
-When Docrunner finishes, it removes the label and comments on the issue. If it made a change, the comment links to a draft PR that's assigned to you. The PR description lists what changed and the facts to check against the code. If Docrunner didn't make a change, the comment says why and asks questions. Answer them in the issue, then add the label again.
+When Docrunner finishes, it comments on the issue. The label stays on the issue, so you can see which issues Docrunner ran on. If it made a change, the comment links to a draft PR that's assigned to you. If you added the label in Linear, GitHub doesn't know who you are, so Docrunner assigns the PR to the people who are assigned to the GitHub issue. The PR description lists what changed and the facts to check against the code. If Docrunner didn't make a change, the comment says why and asks questions. Answer them in the issue, then remove the label and add it again.
 
 If the change needs images, a second job takes the screenshots in a Metabase Enterprise Edition built from `master`, with the Sample Database. This Metabase can't connect to other hosts, so the job can't take screenshots that need a connection to another database, a webhook, email, or Slack. The job pushes the images to the PR in a second commit, and comments on the PR with a note for each image. Check the state and the crop of each image.
 
 GitHub doesn't ask the tech writers to review a draft PR, so mark the PR ready for review when you're done with it. Docrunner adds the `single-backport` label. For a feature that's only on `master`, change it to `no-backport`.
 
-Docrunner won't run if the issue already has an open Docrunner PR. To start over, close that PR, then add the label again.
+Docrunner won't run if the issue already has an open Docrunner PR. To start over, close that PR, then remove the label and add it again.
 
 ### Test prompt changes with a dry run
 
