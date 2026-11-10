@@ -360,8 +360,6 @@ categories:
             pages:
               - name: "Installation overview"
                 url: "installation-and-operation/installing-metabase"
-              - name: "Metabase Cloud"
-                url: "https://www.metabase.com/docs/latest/cloud/start"
               - name: "Running the JAR file"
                 url: "installation-and-operation/running-the-metabase-jar-file"
               - name: "Running in Docker"
