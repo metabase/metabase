@@ -206,6 +206,22 @@
                                      :ops  [{:op "add_tab", :id -1, :name "Revenue"}
                                             {:op "add_text", :id -2, :markdown "Notes", :tab -1}]}))))))))
 
+(deftest untabbed-card-on-tabbed-dashboard-test
+  (mt/with-temp [:model/Dashboard     {dash-id :id}     {:name "Tabbed"}
+                 :model/DashboardTab  {one-id :id}      {:dashboard_id dash-id, :name "One", :position 0}
+                 :model/DashboardTab  {two-id :id}      {:dashboard_id dash-id, :name "Two", :position 1}
+                 :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id, :row 0, :col 0, :size_x 12, :size_y 6
+                                                         :visualization_settings {:virtual_card {:display "text"}
+                                                                                  :text         "Notes"}}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "the result shows a card without a tab on the first tab, as the frontend does"
+        (is (re-find (re-pattern (str "<tab id=\"" one-id "\" name=\"One\">\n"
+                                      "      <dashcard id=\"" dashcard-id "\" display=\"text\"[^\n]*/>\n"
+                                      "    </tab>\n"
+                                      "    <tab id=\"" two-id "\" name=\"Two\">\n"
+                                      "    </tab>"))
+                     (:output (call {:dashboard_id dash-id, :name "Renamed"}))))))))
+
 (deftest retry-reuses-question-test
   (mt/with-model-cleanup [:model/Card]
     (mt/with-temp [:model/Dashboard           {dash-id :id}  {:name "Venues"}

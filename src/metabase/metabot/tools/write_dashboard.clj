@@ -653,9 +653,12 @@
 
 (defn- dashboard-lines
   "The lines of the saved dashboard `dash`: its tabs, dashcards with their layout, and filters with the dashcards
-  they connect to. The `saved-charts` are the charts this call saved, which [[card-shown-fn]] shows."
+  they connect to. The `saved-charts` are the charts this call saved, which [[card-shown-fn]] shows.
+  A dashcard with no tab shows on the first tab, as in the frontend and `read_resource`."
   [{:keys [id name description tabs dashcards parameters]} saved-charts]
-  (let [by-tab      (group-by :dashboard_tab_id (sort-by (juxt :row :col) dashcards))
+  (let [tabs        (sort-by :position tabs)
+        first-tab   (:id (first tabs))
+        by-tab      (group-by #(or (:dashboard_tab_id %) first-tab) (sort-by (juxt :row :col) dashcards))
         connections (fn [parameter-id]
                       (not-empty (for [dc dashcards
                                        :when (some #(= parameter-id (:parameter_id %)) (:parameter_mappings dc))]
@@ -666,7 +669,7 @@
      (when description
        (str "    <description>" (llm-shape/escape-xml-content description) "</description>"))
      (if (seq tabs)
-       (for [{tab-id :id tab-name :name} (sort-by :position tabs)]
+       (for [{tab-id :id tab-name :name} tabs]
          [(str "    <tab" (xml-attrs :id tab-id :name tab-name) ">")
           (card-lines "      " (get by-tab tab-id))
           "    </tab>"])
