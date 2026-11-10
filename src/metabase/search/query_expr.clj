@@ -81,9 +81,12 @@
                     :properties           props
                     :required             (vec (keys props))
                     :additionalProperties false})
+        term     {:type "string" :pattern "^\\S+$"}
+        text     {"phrase" {:type "string" :minLength 1}
+                  "prefix" term}
         level    (fn level [n]
-                   {:anyOf (cond-> (into [{:type "string" :pattern "^\\S+$"}]
-                                         (map #(object {"op" {:const %} "text" {:type "string"}}))
+                   {:anyOf (cond-> (into [term]
+                                         (map #(object {"op" {:const %} "text" (text %)}))
                                          leaf-ops)
                              (and (pos? n) (seq node-ops))
                              (conj (object {"op"   {:enum node-ops}

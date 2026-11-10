@@ -62,6 +62,12 @@
         (is (not (str/includes? (pr-str js) "$ref")))
         (is (= (set ops) (offered-ops js)))
         (is (= query-expr/max-depth (node-depth js))))))
+  (testing "leaves keep the constraints malli checks"
+    (let [leaf-text (fn [op] (some #(when (= {:const op} (get-in % [:properties "op"]))
+                                      (get-in % [:properties "text"]))
+                                   (:anyOf (mjs/transform (query-expr/schema query-expr/all-ops)))))]
+      (is (= {:type "string" :minLength 1} (leaf-text "phrase")))
+      (is (= {:type "string" :pattern "^\\S+$"} (leaf-text "prefix")))))
   (testing "levels share one node shape, so the size grows linearly with depth rather than 3^depth"
     (is (< (count (pr-str (mjs/transform (query-expr/schema query-expr/all-ops)))) 4000))))
 
