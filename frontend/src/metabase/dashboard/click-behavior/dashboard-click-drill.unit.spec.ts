@@ -1,5 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
+import { deserializeCardFromUrl } from "metabase/common/utils/card";
+import { getTargetsForQuestion } from "metabase/dashboard/utils/click-behavior";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { ClickBehavior } from "metabase-types/api";
 import {
@@ -10,12 +14,17 @@ import {
   createMockParameter,
   createMockVisualizerDashboardCard,
 } from "metabase-types/api/mocks";
+import {
+  PRODUCTS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { DashboardClickAction } from "./DashboardClickAction";
 import {
   getClickBehavior,
   getDashboardDrillLinkUrl,
   getDashboardDrillParameters,
+  getDashboardDrillQuestionUrl,
   getDashboardDrillTab,
   getDashboardDrillType,
   getDashboardDrillUrl,
@@ -288,6 +297,92 @@ describe("getDashboardDrillUrl", () => {
     });
 
     expect(url).toBe("/dashboard/2?state=CA&size=L&tab=7");
+  });
+});
+
+describe("getDashboardDrillQuestionUrl", () => {
+  it("filters the target question by a clicked boolean custom column value", () => {
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+    });
+    const query = Lib.createTestQuery(createMetadataProvider({ metadata }), {
+      stages: [
+        {
+          source: { type: "table", id: PRODUCTS_ID },
+          expressions: [
+            {
+              name: "Boolean column",
+              value: {
+                type: "operator",
+                operator: "starts-with",
+                args: [
+                  { type: "column", name: "CATEGORY" },
+                  { type: "literal", value: "Gi" },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const targetCard = createMockCard({
+      id: 5,
+      dataset_query: Lib.toJsQuery(query),
+    });
+    const target = getTargetsForQuestion(
+      new Question(targetCard, metadata),
+    ).find(({ name }) => name === "Boolean column");
+    if (target == null) {
+      throw new Error("Boolean column target not found");
+    }
+    const booleanColumn = createMockColumn({
+      name: "Boolean column",
+      base_type: "type/Boolean",
+      effective_type: "type/Boolean",
+    });
+
+    const url = getDashboardDrillQuestionUrl(
+      new Question(createMockCard(), metadata),
+      {
+        column: booleanColumn,
+        value: false,
+        data: [{ col: booleanColumn, value: false }],
+        settings: buildSettings({
+          root: {
+            type: "link",
+            linkType: "question",
+            targetId: 5,
+            parameterMapping: {
+              [target.id]: {
+                id: target.id,
+                source: {
+                  type: "column",
+                  id: "Boolean column",
+                  name: "Boolean column",
+                },
+                target: target.target,
+              },
+            },
+          },
+        }),
+        extraData: {
+          dashboard: createMockDashboard({ id: 1 }),
+          questions: { 5: targetCard },
+        },
+      },
+    );
+
+    const [pathname, hash] = url.split("#");
+    const drilledQuery = new Question(
+      deserializeCardFromUrl(hash),
+      metadata,
+    ).query();
+    expect(pathname).toBe("/question");
+    expect(
+      Lib.filters(drilledQuery, 0).map(
+        (filter) => Lib.displayInfo(drilledQuery, 0, filter).displayName,
+      ),
+    ).toEqual(["Boolean column is false"]);
   });
 });
 
