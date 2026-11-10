@@ -45,8 +45,8 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@types/tar-stream": "^3.1.4",
     "np": "^11.0.2",
     "oxlint": "^1.59.0",
