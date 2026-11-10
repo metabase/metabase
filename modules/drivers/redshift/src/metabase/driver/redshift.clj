@@ -1170,12 +1170,12 @@
     nil))
 
 (defmethod driver/grant-workspace-read-access! :redshift
-  [driver database workspace schemas]
+  [_driver database workspace schemas]
   (let [username       (-> workspace :database_details :user)
         quoted-user    (quote-field username)
         source-schemas (set schemas)
         spec           (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))]
-    ;; Pre-flight check (read-only, one connection, no transaction). Redshift's
+    ;; Pre-flight check (queries only, own transaction, search_path pinned). Redshift's
     ;; GRANT statements error loudly when grant authority is missing, so PG's
     ;; silent-skip USAGE/SELECT class doesn't reproduce here. But two ALTER
     ;; DEFAULT PRIVILEGES failure modes do reproduce and need explicit checks:
@@ -1185,13 +1185,11 @@
     ;; - Foreign default-priv grantors: pre-existing `pg_default_acl` rows whose
     ;;   grantor we can't impersonate at destroy time -> `DROP USER` fails
     ;;   (GHY-3709).
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver (driver.u/ensure-lib-database database) nil
-     (fn [^Connection conn]
-       (let [check-conn {:connection conn}]
-         (doseq [s source-schemas]
-           (assert-no-public-create-grant!       check-conn s)
-           (assert-can-alter-default-privileges! check-conn s)))))
+    (jdbc/with-db-transaction [check-conn spec]
+      (start-workspace-transaction! check-conn)
+      (doseq [s source-schemas]
+        (assert-no-public-create-grant!       check-conn s)
+        (assert-can-alter-default-privileges! check-conn s)))
     ;; Grants run as one batched transaction; it commits before this fn
     ;; returns, so a subsequent describe-database from a different connection
     ;; still observes the privileges.

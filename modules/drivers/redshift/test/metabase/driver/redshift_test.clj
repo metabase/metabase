@@ -1178,6 +1178,16 @@
              sql))
       (is (= [] params)))))
 
+(deftest workspace-grant-pins-search-path-before-catalog-queries-test
+  (testing "grant pins search_path before its preflight catalog queries, and again before the grants"
+    (let [{:keys [log error]} (run-with-fake-jdbc
+                               (answer-with {})
+                               #(driver/grant-workspace-read-access! :redshift {:id 1} unit-workspace ["src"]))
+          pin                 [:execute "SET LOCAL search_path TO pg_catalog"]]
+      (is (nil? error))
+      (is (= pin (first log)))
+      (is (= 2 (count (filter #{pin} log)))))))
+
 (deftest workspace-destroy-ends-sessions-before-drops-test
   (testing "destroy pins search_path, then ends the workspace user's sessions, before any REVOKE or DROP"
     (let [{:keys [log error]} (run-with-fake-jdbc
