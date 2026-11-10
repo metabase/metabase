@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.metabot.models.metabot-group-limit :as group-limit]
    [metabase-enterprise.metabot.usage :as ee.usage]
    [metabase.api.common :as api]
    [metabase.llm.test-util :as llm.tu]
@@ -11,7 +12,9 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.usage :as usage]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -153,6 +156,23 @@
             (is (nil? (:ai_proxied row))))
           (finally
             (t2/delete! :model/AiUsageLog :source "oss-sql-gen")))))))
+
+(deftest log-ai-usage!-records-tenant-id-of-current-user-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "log-ai-usage! records the tenant_id of the current user when no tenant-id is given"
+      (mt/with-temp [:model/Tenant {tenant-id :id} {}
+                     :model/User   {user-id :id}   {:tenant_id tenant-id}]
+        (try
+          (mt/with-current-user user-id
+            (usage/log-ai-usage!
+             {:source            "metabot_agent"
+              :model             "test/model"
+              :prompt-tokens     1
+              :completion-tokens 1}))
+          (is (= [tenant-id]
+                 (t2/select-fn-vec :tenant_id :model/AiUsageLog :user_id user-id)))
+          (finally
+            (t2/delete! :model/AiUsageLog :user_id user-id)))))))
 
 (deftest log-ai-usage!-throws-on-unknown-source-test
   (mt/with-premium-features #{:ai-controls}
@@ -351,10 +371,8 @@
     (ee.usage/clear-limit-cache!)
     (mt/with-temporary-setting-values [metabot-quota-reached-message "test limit reached"]
       (testing "User group limit: user over their group limit returns message"
-        (let [user-id   (mt/user->id :rasta)
-              group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
-              group-id  (first group-ids)]
-          (mt/with-temp [:model/MetabotGroupLimit _ {:group_id group-id :max_usage 50}]
+        (let [user-id (mt/user->id :rasta)]
+          (mt/with-temp [:model/MetabotGroupLimit _ {:group_id (u/the-id (perms/all-users-group)) :max_usage 50}]
             (insert-usage! user-id 100000000)
             (try
               (mt/with-test-user :rasta
@@ -365,39 +383,51 @@
 (deftest user-group-limit-takes-max-across-groups-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (t2/delete! :model/MetabotInstanceLimit :tenant_id nil)
-    (testing "User group limit: takes the max limit across all groups the user is in"
-      (let [user-id (mt/user->id :rasta)]
-        (mt/with-temp [:model/PermissionsGroup {g1 :id} {:name "Low limit group"}
-                       :model/PermissionsGroup {g2 :id} {:name "High limit group"}
-                       :model/PermissionsGroupMembership _ {:group_id g1 :user_id user-id}
-                       :model/PermissionsGroupMembership _ {:group_id g2 :user_id user-id}
-                       :model/MetabotGroupLimit _ {:group_id g1 :max_usage 10}
-                       :model/MetabotGroupLimit _ {:group_id g2 :max_usage 1000}]
-          (insert-usage! user-id 50000000)
+    (mt/with-temporary-setting-values [metabot-quota-reached-message "test limit reached"]
+      (testing "User group limit: takes the max limit across all groups the user is in"
+        (mt/with-temp [:model/User                       {user-id :id} {}
+                       :model/PermissionsGroup           {g1 :id}      {:name "Low limit group"}
+                       :model/PermissionsGroup           {g2 :id}      {:name "High limit group"}
+                       :model/PermissionsGroupMembership _             {:group_id g1 :user_id user-id}
+                       :model/PermissionsGroupMembership _             {:group_id g2 :user_id user-id}
+                       :model/MetabotGroupLimit          _             {:group_id  (u/the-id (perms/all-users-group))
+                                                                        :max_usage 1}
+                       :model/MetabotGroupLimit          _             {:group_id g1 :max_usage 2}
+                       :model/MetabotGroupLimit          _             {:group_id g2 :max_usage 3}]
           (try
-            (mt/with-test-user :rasta
-              ;; 50 < 1000 (the max across groups), so should pass
-              (is (nil? (usage/check-usage-limits!))))
+            (is (= 3 (group-limit/limit-for-user user-id)))
+            (mt/with-current-user user-id
+              (testing "usage below the highest limit passes"
+                (insert-usage! user-id 2000000)
+                (is (nil? (usage/check-usage-limits!))))
+              (testing "usage at the highest limit returns the quota message"
+                (insert-usage! user-id 1000000)
+                (ee.usage/clear-limit-cache!)
+                (is (= "test limit reached" (usage/check-usage-limits!)))))
             (finally
               (cleanup-test-usage! user-id))))))))
 
 (deftest user-group-null-limit-means-unlimited-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (t2/delete! :model/MetabotInstanceLimit :tenant_id nil)
-    (testing "User group limit: if any of the user's groups has no limit configured, user is unlimited"
-      (let [user-id (mt/user->id :rasta)]
-        (mt/with-temp [:model/PermissionsGroup {g1 :id} {:name "Limited group"}
-                       :model/PermissionsGroup {g2 :id} {:name "Unlimited group"}
-                       :model/PermissionsGroupMembership _ {:group_id g1 :user_id user-id}
-                       :model/PermissionsGroupMembership _ {:group_id g2 :user_id user-id}
-                       :model/MetabotGroupLimit _ {:group_id g1 :max_usage 10}]
-          ;; g2 has no limit row — being in any unlimited group makes the user unlimited
-          (insert-usage! user-id 50000000)
+    (mt/with-temporary-setting-values [metabot-quota-reached-message "test limit reached"]
+      (testing "User group limit: if any of the user's groups has no limit configured, user is unlimited"
+        (mt/with-temp [:model/User                       {user-id :id} {}
+                       :model/PermissionsGroup           {group-id :id} {:name "Limited group"}
+                       :model/PermissionsGroupMembership _              {:group_id group-id :user_id user-id}
+                       :model/MetabotGroupLimit          _              {:group_id  (u/the-id (perms/all-users-group))
+                                                                         :max_usage 1}
+                       :model/MetabotGroupLimit          _              {:group_id group-id :max_usage 1}]
+          (insert-usage! user-id 5000000)
           (try
-            (mt/with-test-user :rasta
-              (is (nil? (usage/check-usage-limits!))))
+            (mt/with-current-user user-id
+              (testing "every group has a limit, so the user is blocked"
+                (is (= "test limit reached" (usage/check-usage-limits!))))
+              (testing "one group without a limit makes the user unlimited"
+                (t2/delete! :model/MetabotGroupLimit :group_id group-id)
+                (ee.usage/clear-limit-cache!)
+                (is (nil? (group-limit/limit-for-user user-id)))
+                (is (nil? (usage/check-usage-limits!)))))
             (finally
               (cleanup-test-usage! user-id))))))))
 
