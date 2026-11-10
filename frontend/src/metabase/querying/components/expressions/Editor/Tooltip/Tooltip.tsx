@@ -1,12 +1,7 @@
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
-import {
-  type RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import cx from "classnames";
+import { type RefObject, useEffect, useMemo, useState } from "react";
 
 import { enclosingFunction } from "metabase/querying/expressions";
 import { Popover } from "metabase/ui";
@@ -57,28 +52,7 @@ export function Tooltip({
 
   const { options: completions } = useCompletions(state);
 
-  const [isHelpTextOpen, setIsHelpTextOpen] = useState(true);
-  const [preferHelpText, setPreferHelpText] = useState(false);
-
-  const handleToggleHelpText = useCallback(() => {
-    if (completions.length > 0) {
-      setIsHelpTextOpen(!preferHelpText);
-      setPreferHelpText(!preferHelpText);
-      return;
-    }
-    setIsHelpTextOpen((open) => !open);
-  }, [completions, preferHelpText]);
-
-  useEffect(() => {
-    if (completions.length > 0) {
-      setPreferHelpText(false);
-    }
-  }, [completions.length, enclosingFn]);
-
-  const shouldShowHelpText =
-    completions.length === 0 ? isHelpTextOpen : preferHelpText;
-  const shouldShowCompletions =
-    completions.length === 0 ? false : !preferHelpText;
+  const hasCompletions = completions.length > 0;
 
   return (
     <Popover
@@ -98,16 +72,18 @@ export function Tooltip({
         className={S.dropdown}
         data-ignore-editor-clicks="true"
       >
-        <div className={S.tooltip} ref={tooltipRef}>
+        <div
+          className={cx(S.tooltip, { [S.withCard]: !hasCompletions })}
+          ref={tooltipRef}
+        >
           <HelpText
             enclosingFunction={enclosingFn}
             database={database}
             reportTimezone={reportTimezone}
-            open={shouldShowHelpText}
-            onToggle={handleToggleHelpText}
+            variant={hasCompletions ? "structure" : "card"}
             expressionMode={expressionMode}
           />
-          {shouldShowCompletions && (
+          {hasCompletions && (
             <Listbox
               state={state}
               view={view}

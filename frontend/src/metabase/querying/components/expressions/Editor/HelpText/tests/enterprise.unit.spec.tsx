@@ -15,10 +15,7 @@ describe("ExpressionEditorHelpText (EE without token)", () => {
         showMetabaseLinks: true,
       });
 
-      expect(
-        screen.getByRole("img", { name: "reference icon" }),
-      ).toBeInTheDocument();
-      expect(screen.getByText("Learn more")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Docs" })).toBeInTheDocument();
     });
 
     it("should show a help link when `show-metabase-links: false`", async () => {
@@ -27,10 +24,7 @@ describe("ExpressionEditorHelpText (EE without token)", () => {
         showMetabaseLinks: false,
       });
 
-      expect(
-        screen.getByRole("img", { name: "reference icon" }),
-      ).toBeInTheDocument();
-      expect(screen.getByText("Learn more")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Docs" })).toBeInTheDocument();
     });
   });
 });

@@ -1,11 +1,12 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 
-import { getBrokenUpTextMatcher, waitFor } from "__support__/ui";
-
 import { setup } from "./setup";
 
+const DOCS_URL =
+  "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list.html";
+
 describe("HelpText (OSS)", () => {
-  it("should render expression function info, example and documentation link", async () => {
+  it("should show the description, example, structure and docs link", async () => {
     await setup({
       enclosingFunction: {
         name: "concat",
@@ -13,26 +14,35 @@ describe("HelpText (OSS)", () => {
     });
 
     expect(
-      await screen.findByText('concat([Last Name], ", ", [First Name])'),
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByText(getBrokenUpTextMatcher("concat(value1, value2, …)")),
-    ).toBeInTheDocument();
-
-    expect(
       screen.getByText("Joins two or more pieces of text together."),
     ).toBeInTheDocument();
-
-    const link = screen.getByRole("link");
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveProperty(
+    expect(screen.getByText("e.g.")).toBeInTheDocument();
+    expect(screen.getByTestId("helptext-example")).toHaveTextContent(
+      'concat([Last Name], ", ", [First Name])',
+    );
+    expect(
+      screen.getByTestId("expression-helper-popover-structure"),
+    ).toHaveTextContent("concat(value1, value2, …)");
+    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/questions/query-builder/expressions/concat.html",
+      `${DOCS_URL}#concat`,
     );
   });
 
-  it("should keep documentation link clicks from reaching the editor (metabase#54638)", async () => {
+  it("should keep a long example on one line", async () => {
+    await setup({
+      enclosingFunction: {
+        name: "does-not-contain",
+      },
+    });
+
+    expect(screen.getByTestId("helptext-example")).toHaveTextContent(
+      'doesNotContain([Title], "Small", "Medium", "case-insensitive")',
+      { normalizeWhitespace: false },
+    );
+  });
+
+  it("should link to the function's section of the docs, in a new tab, without the click reaching the editor (metabase#54638)", async () => {
     await setup({
       enclosingFunction: {
         name: "case",
@@ -42,24 +52,19 @@ describe("HelpText (OSS)", () => {
     const onDocumentMouseDown = jest.fn();
     document.addEventListener("mousedown", onDocumentMouseDown);
 
-    const link = screen.getByRole("link", { name: /Learn more/ });
+    const link = screen.getByRole("link", { name: "Docs" });
     expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveAttribute(
-      "href",
-      "https://www.metabase.com/docs/latest/questions/query-builder/expressions/case.html",
-    );
+    expect(link).toHaveAttribute("href", `${DOCS_URL}#case`);
 
     fireEvent.mouseDown(link);
     expect(onDocumentMouseDown).not.toHaveBeenCalled();
-
-    expect(link).toBeInTheDocument();
     // `false` when a handler calls `preventDefault()`, which cancels navigation
     expect(fireEvent.click(link)).toBe(true);
 
     document.removeEventListener("mousedown", onDocumentMouseDown);
   });
 
-  it("should handle expression function without arguments", async () => {
+  it("should handle a function without arguments", async () => {
     await setup({
       enclosingFunction: {
         name: "cum-count",
@@ -67,13 +72,9 @@ describe("HelpText (OSS)", () => {
       expressionMode: "aggregation",
     });
 
-    const exampleCodeEl = screen.getByTestId(
-      "expression-helper-popover-structure",
-    );
     expect(
-      await within(exampleCodeEl).findByText("CumulativeCount()"),
-    ).toBeInTheDocument();
-
+      screen.getByTestId("expression-helper-popover-structure"),
+    ).toHaveTextContent("CumulativeCount()");
     expect(
       screen.getByText(
         "Counts rows as a running total across groups, such as months.",
@@ -81,93 +82,69 @@ describe("HelpText (OSS)", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render function arguments", async () => {
-    const { helpText } = await setup({
+  it("should only show the structure in the structure variant", async () => {
+    await setup({
       enclosingFunction: {
         name: "concat",
       },
+      variant: "structure",
     });
 
-    // Wait for the async-formatted example so HighlightExpressionParts
-    // settles before the test ends.
-    await screen.findByText('concat([Last Name], ", ", [First Name])');
-
-    const argumentsBlock = screen.getByTestId(
-      "expression-helper-popover-arguments",
-    );
-
-    helpText?.args?.forEach(({ name, description }) => {
-      expect(
-        within(argumentsBlock).getByTestId(`arg-${name}-name`),
-      ).toHaveTextContent(name);
-
-      expect(
-        within(argumentsBlock).getByTestId(`arg-${name}-description`) ?? "",
-      ).toHaveTextContent(
-        description?.replaceAll("`", "").replaceAll("$", "") ?? "",
-      );
-    });
+    expect(
+      screen.getByTestId("expression-helper-popover-structure"),
+    ).toHaveTextContent("concat(value1, value2, …)");
+    expect(screen.queryByTestId("expression-helper")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("should render long examples on multiple lines", async () => {
+  it.each([
+    [0, "column"],
+    [2, "end"],
+  ])(
+    "should mark the value at position %s as the current one",
+    async (index, name) => {
+      await setup({
+        enclosingFunction: {
+          name: "between",
+          arg: { index },
+        },
+      });
+
+      const structure = screen.getByTestId(
+        "expression-helper-popover-structure",
+      );
+      expect(within(structure).getByText(name)).toHaveAttribute("data-active");
+      expect(within(structure).getByText("start")).not.toHaveAttribute(
+        "data-active",
+      );
+    },
+  );
+
+  it("should mark the repeated value as current past the last named one", async () => {
     await setup({
       enclosingFunction: {
-        name: "does-not-contain",
+        name: "concat",
+        arg: { index: 4 },
       },
     });
 
-    await waitFor(() => {
-      expect(screen.getByTestId("helptext-example")).toHaveTextContent(
-        `
-          doesNotContain(
-            [Title],
-            "Small",
-            "Medium",
-            "case-insensitive"
-          )
-        `
-          // textContent collapses whitespace to a single space
-          .replace(/\s+/g, " ")
-          .trim(),
-      );
-    });
+    const structure = screen.getByTestId("expression-helper-popover-structure");
+    expect(within(structure).getByText("…")).toHaveAttribute("data-active");
   });
 
   describe("Metabase links", () => {
-    it("should show a help link when `show-metabase-links: true`", async () => {
-      await setup({
-        enclosingFunction: {
-          name: "concat",
-        },
-        showMetabaseLinks: true,
-      });
+    it.each([true, false])(
+      "should show the docs link in OSS when `show-metabase-links: %s`",
+      async (showMetabaseLinks) => {
+        await setup({
+          enclosingFunction: {
+            name: "concat",
+          },
+          showMetabaseLinks,
+        });
 
-      // Wait for the async-formatted example so HighlightExpressionParts
-      // settles before the test ends.
-      await screen.findByText('concat([Last Name], ", ", [First Name])');
-
-      expect(
-        screen.getByRole("img", { name: "reference icon" }),
-      ).toBeInTheDocument();
-      expect(screen.getByText("Learn more")).toBeInTheDocument();
-    });
-
-    it("should show a help link when `show-metabase-links: false`", async () => {
-      await setup({
-        enclosingFunction: {
-          name: "concat",
-        },
-        showMetabaseLinks: false,
-      });
-
-      // Wait for the async-formatted example so HighlightExpressionParts
-      // settles before the test ends.
-      await screen.findByText('concat([Last Name], ", ", [First Name])');
-
-      expect(
-        screen.getByRole("img", { name: "reference icon" }),
-      ).toBeInTheDocument();
-      expect(screen.getByText("Learn more")).toBeInTheDocument();
-    });
+        expect(screen.getByRole("link", { name: "Docs" })).toBeInTheDocument();
+      },
+    );
   });
 });

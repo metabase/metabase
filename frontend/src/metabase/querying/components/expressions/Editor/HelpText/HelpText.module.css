@@ -1,79 +1,93 @@
-.usage {
-  padding: 0.25rem 0;
-  padding-left: 0.5rem;
-  background-color: var(--mb-color-core-white);
-  color: var(--mb-color-text-secondary);
-  cursor: pointer;
-  font-family: var(--mb-default-monospace-font-family);
-  flex-shrink: 0;
-  font-size: 0.75rem;
-  min-height: 2.5rem;
-  box-sizing: border-box;
+/* The whole help card shown under the cursor inside a function */
+.card {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  font-size: 12px;
 }
 
-.toggle {
-  margin-left: auto;
-  padding: 0 0.65rem;
+/* Top row: the function description and the Docs button */
+.header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-xl);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: inset 0 -0.5px 0 var(--mb-color-border-neutral);
 }
 
-.chevron {
+.description {
+  flex: 1 1 auto;
+  min-width: 0;
   color: var(--mb-color-text-secondary);
-
-  &.open {
-    transform: rotate(90deg);
-  }
-}
-
-.arg {
-  color: var(--mb-color-text-syntax-parameter);
-  font-family: var(--mb-default-monospace-font-family);
-  font-size: 0.75rem;
-  line-height: 1.57em;
-  border-radius: 2px;
-
-  &.active {
-    background-color: var(--mb-color-text-syntax-parameter-active);
-  }
-}
-
-.info {
-  color: var(--mb-color-text-primary);
   font-family: var(--mb-default-font-family);
-  padding: 0.5rem;
-  overflow: auto;
-  border-top: 1px solid var(--mb-color-border-neutral);
-  background-color: var(--mb-color-background_page-secondary);
-  height: calc(50% - 2.5rem);
+  line-height: 1.15;
 
-  &:last-child {
-    height: calc(100% - 2.5rem);
+  /* Markdown wraps the text in paragraphs */
+  p {
+    margin: 0;
   }
 }
 
-.title {
-  color: var(--mb-color-text-secondary);
-  margin: 0.5rem 0;
+/* The Docs button, on the first line of the description */
+.docsButton {
+  flex-shrink: 0;
 }
 
-.arguments {
+/* Bottom part: "e.g." with the example, and the structure below it.
+   Two columns, so the structure lines up with the example. */
+.body {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(2, minmax(4rem, max-content));
-  margin: 1rem 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 9px;
+  row-gap: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-md);
+  background-color: var(--mb-color-background_page-primary);
+  font-family: var(--mb-default-monospace-font-family);
+  line-height: 1.22;
+}
 
-  .arg {
-    line-height: 1.92;
+.exampleLabel {
+  color: var(--mb-color-text-disabled);
+}
+
+/* The example stays on one line, and wraps only if it's wider than the card */
+.example {
+  color: var(--mb-color-text-primary);
+  overflow-wrap: anywhere;
+
+  code {
+    font-size: inherit;
   }
 }
 
-.documentationLink {
-  display: inline-flex;
-  align-items: center;
-  margin-top: 1rem;
-  color: var(--mb-color-core-brand);
-  font-weight: 700;
+.structure {
+  grid-column: 2;
+}
+
+/* The structure on its own, above the suggestion list */
+.structureOnly {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: inset 0 -0.5px 0 var(--mb-color-border-neutral);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 12px;
+  line-height: 1.22;
+}
+
+/* Function name, brackets and values in the structure: gray, except the
+   value the cursor is in */
+.structure,
+.structureOnly {
+  color: var(--mb-color-text-disabled);
+}
+
+.arg.active {
+  color: var(--mb-color-text-primary);
+}
+
+/* A value name mentioned in the description, like `$column` */
+.argName {
+  color: var(--mb-color-text-primary);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: inherit;
 }

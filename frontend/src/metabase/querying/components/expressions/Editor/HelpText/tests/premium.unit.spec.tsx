@@ -23,10 +23,7 @@ describe("ExpressionEditorHelpText (EE with token)", () => {
       // settles before the test ends.
       await screen.findByText('concat([Last Name], ", ", [First Name])');
 
-      expect(
-        screen.getByRole("img", { name: "reference icon" }),
-      ).toBeInTheDocument();
-      expect(screen.getByText("Learn more")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Docs" })).toBeInTheDocument();
     });
 
     it("should not show a help link when `show-metabase-links: false`", async () => {
@@ -40,9 +37,8 @@ describe("ExpressionEditorHelpText (EE with token)", () => {
       await screen.findByText('concat([Last Name], ", ", [First Name])');
 
       expect(
-        screen.queryByRole("img", { name: "reference icon" }),
+        screen.queryByRole("link", { name: "Docs" }),
       ).not.toBeInTheDocument();
-      expect(screen.queryByText("Learn more")).not.toBeInTheDocument();
     });
   });
 });

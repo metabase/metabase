@@ -1,12 +1,6 @@
 import cx from "classnames";
-import {
-  Children,
-  Fragment,
-  type MouseEvent,
-  type ReactNode,
-  useCallback,
-} from "react";
-import { t } from "ttag";
+import { Children, type MouseEvent, type ReactNode } from "react";
+import { c, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
@@ -17,7 +11,7 @@ import {
   getClauseDefinition,
   getHelpText,
 } from "metabase/querying/expressions";
-import { Box, Flex, Icon, UnstyledButton } from "metabase/ui";
+import { Button } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
@@ -28,17 +22,14 @@ import {
 
 import S from "./HelpText.module.css";
 
-function wrapPlaceholder(name: string) {
-  if (name === "…") {
-    return name;
-  }
-
-  return name;
-}
+const DOCS_PAGE = "questions/query-builder/expressions-list";
 
 export type HelpTextProps = {
-  open?: boolean;
-  onToggle?: () => void;
+  /**
+   * `card` shows the description, docs link, example and structure.
+   * `structure` shows only the structure, for when suggestions are open.
+   */
+  variant?: "card" | "structure";
   enclosingFunction?: {
     name: string;
     arg: {
@@ -50,7 +41,7 @@ export type HelpTextProps = {
   expressionMode: Lib.ExpressionMode;
 };
 
-const components = {
+const MARKDOWN_COMPONENTS = {
   code(props: { children: ReactNode }) {
     const children = Children.toArray(props.children);
     if (!children.every((child) => typeof child === "string")) {
@@ -60,16 +51,20 @@ const components = {
 
     if (source.startsWith("$")) {
       // The code is an argument name
-      return <code className={S.arg}>{source.slice(1)}</code>;
+      return <code className={S.argName}>{source.slice(1)}</code>;
     }
 
     return <HighlightExpressionSource inline expression={source} />;
   },
 };
 
+// Keeps clicks in the help from moving the cursor or closing the editor.
+function stopPropagation(event: MouseEvent) {
+  event.stopPropagation();
+}
+
 export function HelpText({
-  open = true,
-  onToggle,
+  variant = "card",
   enclosingFunction,
   database,
   reportTimezone,
@@ -87,126 +82,110 @@ export function HelpText({
     hasRequiredFeature(database, clause?.requiresFeature) &&
     expressionModeSupportsClause(expressionMode, clause.name);
 
-  const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
-    helpText?.docsUrl ?? "",
-  );
-
-  const handleMouseDown = useCallback(
-    (evt: MouseEvent<HTMLDivElement>) => {
-      evt.stopPropagation();
-      evt.preventDefault();
-      onToggle?.();
-    },
-    [onToggle],
-  );
-
-  const handleContentMouseDown = useCallback(
-    (evt: MouseEvent<HTMLDivElement>) => {
-      evt.stopPropagation();
-    },
-    [],
-  );
+  const { url: docsUrl, showMetabaseLinks } = useDocsUrl(DOCS_PAGE, {
+    anchor: helpText?.displayName.toLowerCase(),
+  });
 
   if (!helpText || !clause || !isSupported) {
     return null;
   }
 
-  const { description, displayName: structure, args, example } = helpText;
-  const argIndex = enclosingFunction?.arg?.index ?? -1;
+  const structure = (
+    <Structure
+      displayName={helpText.displayName}
+      args={helpText.args}
+      argIndex={enclosingFunction?.arg?.index ?? -1}
+    />
+  );
+
+  if (variant === "structure") {
+    return (
+      <div
+        className={S.structureOnly}
+        data-testid="expression-helper-popover-structure"
+        onMouseDown={stopPropagation}
+      >
+        {structure}
+      </div>
+    );
+  }
 
   return (
-    <>
-      <Flex
-        className={S.usage}
-        onMouseDown={handleMouseDown}
-        data-testid="expression-helper-popover-structure"
-        role="button"
-      >
-        <Box>
-          {structure}
-          {
-            <>
-              (
-              {args?.map(({ name }, index) => (
-                <span key={index}>
-                  <span
-                    className={cx(S.arg, {
-                      [S.active]:
-                        argIndex === index ||
-                        (name === "…" && argIndex > args.length - 1),
-                    })}
-                  >
-                    {wrapPlaceholder(name)}
-                  </span>
-                  {index < args.length - 1 && ", "}
-                </span>
-              ))}
-              )
-            </>
-          }
-        </Box>
-        <UnstyledButton className={S.toggle} px="sm">
-          <Icon
-            name="chevronright"
-            width={12}
-            className={cx(S.chevron, { [S.open]: open })}
+    <div
+      className={S.card}
+      data-testid="expression-helper"
+      onMouseDown={stopPropagation}
+    >
+      <div className={S.header}>
+        <div className={S.description}>
+          <Markdown components={MARKDOWN_COMPONENTS}>
+            {helpText.description}
+          </Markdown>
+        </div>
+        {showMetabaseLinks && (
+          <Button
+            component={ExternalLink}
+            href={docsUrl}
+            target="_blank"
+            variant="subtle"
+            size="compact-sm"
+            className={S.docsButton}
+          >
+            {t`Docs`}
+          </Button>
+        )}
+      </div>
+
+      <div className={S.body}>
+        <span className={S.exampleLabel}>
+          {c("Short for 'for example', shown before a code example").t`e.g.`}
+        </span>
+        <div className={S.example}>
+          <HighlightExpressionParts
+            inline
+            expression={helpText.example}
+            data-testid="helptext-example"
           />
-        </UnstyledButton>
-      </Flex>
-
-      {open && (
-        <Box
-          className={S.info}
-          data-testid="expression-helper"
-          onMouseDown={handleContentMouseDown}
+        </div>
+        <div
+          className={S.structure}
+          data-testid="expression-helper-popover-structure"
         >
-          <Box>
-            <Markdown components={components}>{description}</Markdown>
-          </Box>
+          {structure}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-          {args != null && (
-            <Box
-              className={S.arguments}
-              data-testid="expression-helper-popover-arguments"
+function Structure({
+  displayName,
+  args,
+  argIndex,
+}: {
+  displayName: string;
+  args: Lib.ClauseArgDefinition[];
+  argIndex: number;
+}) {
+  return (
+    <>
+      {displayName}(
+      {args.map(({ name }, index) => {
+        const isRepeatedArg = name === "…" && argIndex > args.length - 1;
+        const isActive = argIndex === index || isRepeatedArg;
+        return (
+          <span key={index}>
+            <span
+              className={cx(S.arg, { [S.active]: isActive })}
+              data-active={isActive || undefined}
             >
-              {args.map(({ name, description }, index) => (
-                <Fragment key={index}>
-                  <Box className={S.arg} data-testid={`arg-${name}-name`}>
-                    {wrapPlaceholder(name)}
-                  </Box>
-                  <Box data-testid={`arg-${name}-description`}>
-                    <Markdown components={components}>
-                      {description ?? ""}
-                    </Markdown>
-                  </Box>
-                </Fragment>
-              ))}
-            </Box>
-          )}
-
-          {example != null && (
-            <>
-              <Box className={S.title}>{t`Example`}</Box>
-              <HighlightExpressionParts
-                expression={example}
-                printWidth={50}
-                data-testid="helptext-example"
-              />
-            </>
-          )}
-
-          {showMetabaseLinks && (
-            <ExternalLink
-              className={S.documentationLink}
-              href={docsUrl}
-              target="_blank"
-            >
-              <Icon m="0.25rem 0.5rem" name="reference" size={12} />
-              {t`Learn more`}
-            </ExternalLink>
-          )}
-        </Box>
-      )}
+              {name}
+            </span>
+            {index < args.length - 1 && ", "}
+          </span>
+        );
+      })}
+      )
     </>
   );
 }

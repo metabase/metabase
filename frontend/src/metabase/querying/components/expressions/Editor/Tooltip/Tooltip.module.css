@@ -31,4 +31,9 @@
   &:empty {
     display: none;
   }
+
+  /* Wider when it shows the function help card instead of suggestions */
+  &.withCard {
+    width: 560px;
+  }
 }

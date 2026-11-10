@@ -19,6 +19,7 @@ export interface SetupOpts {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
   expressionMode?: Lib.ExpressionMode;
+  variant?: HelpTextProps["variant"];
 }
 
 export async function setup({
@@ -28,6 +29,7 @@ export async function setup({
   enterprisePlugins,
   tokenFeatures = {},
   expressionMode = "expression",
+  variant,
 }: SetupOpts) {
   const state = createMockState({
     settings: mockSettings({
@@ -47,6 +49,7 @@ export async function setup({
     database,
     reportTimezone,
     expressionMode,
+    variant,
   };
 
   if (enterprisePlugins) {
