@@ -196,11 +196,11 @@
         (is (not (ws/workspace-mode?)) "premise: outside workspace mode")
         (mt/with-dynamic-fn-redefs [ws.db/table-remapping-database-ids
                                     (fn []
-                        (let [ids (real-read)]
-                          (when (= (Thread/currentThread) @reader)
-                            (deliver read-done ids)
-                            @release)
-                          ids))]
+                                      (let [ids (real-read)]
+                                        (when (= (Thread/currentThread) @reader)
+                                          (deliver read-done ids)
+                                          @release)
+                                        ids))]
           (let [fut (future
                       (reset! reader (Thread/currentThread))
                       (ws.remapping/enabled-for-db? db-id))]
