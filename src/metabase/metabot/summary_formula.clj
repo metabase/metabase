@@ -13,7 +13,25 @@
 
 (def ^:private required-permission :permission/metabot-nlq)
 
-(def ^:private max-name-chars 60)
+(def max-prompt-chars
+  "Limit the length of a request's natural-language prompt, in characters."
+  500)
+
+(def max-columns
+  "The most columns a request can list."
+  200)
+
+(def max-metrics
+  "The most metrics a request can list."
+  200)
+
+(def max-string-input-chars
+  "Limit the length of input names and type hints, in characters."
+  255)
+
+(def max-name-chars
+  "Limit the length of a drafted formula's name, in characters."
+  60)
 
 (def ^:private max-formula-tokens
   ;; a formula needs a few dozen tokens, but reasoning models spend this budget before the forced tool call
