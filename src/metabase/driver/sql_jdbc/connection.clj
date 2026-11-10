@@ -513,7 +513,7 @@
 (defn- set-canonical-pool!
   "Atomically update the canonical connection pool for a database and connection type.
 
-  Use this function instead of modifying connection pool atoms directly because it properly closes down old pools in a
+  Use this function instead of writing the pools state directly because it properly closes down old pools in a
   thread-safe way, ensuring no more than one canonical pool is ever open for a specific database and connection type.
 
   `database` is the database the pool connects to, which [[WarehouseConnectionCustomizer]] reads on each checkout.
@@ -521,34 +521,30 @@
   error rethrown.
 
   This function is only for canonical (non-swapped) pools. Swapped pools are managed by the Guava cache."
-  [cache-key details-hash pool-spec-or-nil database]
-  {:pre [(vector? cache-key) (some? details-hash)]}
+  [cache-key details-hash pool-spec database]
+  {:pre [(vector? cache-key) (some? details-hash) (some? pool-spec)]}
   (let [[database-id _connection-type] cache-key
         [old-state] (try
                       (swap-pools-state!
                        (fn [state]
                          (let [old-pool-spec (get-in state [:pools cache-key])
-                               replaced?     (and old-pool-spec (not (identical? old-pool-spec pool-spec-or-nil)))]
+                               replaced?     (and old-pool-spec (not (identical? old-pool-spec pool-spec)))]
                            (-> state
                                (assoc-in [:hashes cache-key] details-hash)
-                               (update :pools (fn [pools]
-                                                (if pool-spec-or-nil
-                                                  (assoc pools cache-key pool-spec-or-nil)
-                                                  (dissoc pools cache-key))))
-                               (cond-> (pool-token pool-spec-or-nil)
-                                 (assoc-in [:databases (pool-token pool-spec-or-nil)] [(:engine database) database]))
+                               (assoc-in [:pools cache-key] pool-spec)
+                               (cond-> (pool-token pool-spec)
+                                 (assoc-in [:databases (pool-token pool-spec)] [(:engine database) database]))
                                (cond-> replaced? (update :databases dissoc (pool-token old-pool-spec)))))))
                       ;; only the caching itself: a failure destroying the old pool below must not destroy the new one
                       (catch Throwable e
-                        (when pool-spec-or-nil
-                          (try
-                            (destroy-pool! database-id pool-spec-or-nil)
-                            (catch Throwable cleanup-error
-                              (.addSuppressed e cleanup-error))))
+                        (try
+                          (destroy-pool! database-id pool-spec)
+                          (catch Throwable cleanup-error
+                            (.addSuppressed e cleanup-error)))
                         (throw e)))]
     ;; if we replaced a different pool with the new pool that is different from the old one, destroy the old pool
     (when-let [old-pool-spec (get-in old-state [:pools cache-key])]
-      (when-not (identical? old-pool-spec pool-spec-or-nil)
+      (when-not (identical? old-pool-spec pool-spec)
         (destroy-pool! database-id old-pool-spec))))
   nil)
 
@@ -599,10 +595,12 @@
   (when (empty-pool? data-source)
     (doseq [[cache-key pool-spec] (pool-cache-key->connection-pool)
             :when (identical? (:datasource pool-spec) data-source)
-            :let [db-id (first cache-key)]]
+            :let [db-id       (first cache-key)
+                  ;; do not remove a newer pool that another thread put in the cache, or its details hash
+                  [old-state] (swap-pools-state! without-pool cache-key pool-spec)]
+            ;; only the thread whose swap removed the pool closes it
+            :when (identical? pool-spec (get-in old-state [:pools cache-key]))]
       (log/warnf "Could not acquire a connection for database %d; closing its empty connection pool" db-id)
-      ;; do not remove a newer pool that another thread put in the cache, or its details hash
-      (swap-pools-state! without-pool cache-key pool-spec)
       (destroy-pool! db-id pool-spec))))
 
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]

@@ -1207,6 +1207,41 @@
               :databases {"newer-token" [:h2 {}]}}
              (#'sql-jdbc.conn/without-pool (assoc-in state [:pools cache-key] newer-pool) cache-key old-pool))))))
 
+(deftest empty-pool-is-destroyed-once-test
+  (testing "two failed checkouts that see the same empty pool destroy it once"
+    (let [cache-key   [Integer/MAX_VALUE :default]
+          data-source (reify com.mchange.v2.c3p0.PooledDataSource
+                        (getIdentityToken [_] "empty-pool-token")
+                        (getNumConnectionsDefaultUser [_] 0))
+          pool-spec   {:datasource data-source}
+          destroyed   (atom [])]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.conn/destroy-pool! (fn [_id spec] (swap! destroyed conj spec))]
+        (try
+          (#'sql-jdbc.conn/set-canonical-pool! cache-key 42 pool-spec {:id Integer/MAX_VALUE, :engine :h2})
+          ;; both calls read the open pools before either removes the pool
+          (let [snapshot (#'sql-jdbc.conn/pool-cache-key->connection-pool)]
+            (mt/with-dynamic-fn-redefs [sql-jdbc.conn/pool-cache-key->connection-pool (constantly snapshot)]
+              (sql-jdbc.conn/invalidate-empty-pool! data-source)
+              (sql-jdbc.conn/invalidate-empty-pool! data-source)))
+          (is (= [pool-spec] @destroyed))
+          (finally
+            (sql-jdbc.conn/invalidate-pool-for-db! Integer/MAX_VALUE)))))))
+
+(deftest ^:synchronized no-write-lands-between-a-stop-and-the-next-start-test
+  (testing "a stop that comes while a write is under way waits for it, so the write cannot leave an untracked state"
+    (let [pools       @#'sql-jdbc.conn/pools-component
+          pools-state (dynamic-redefs/original-fn #'sql-jdbc.conn/pools-state)]
+      (#'sql-jdbc.conn/pools-state)
+      (mt/with-dynamic-fn-redefs [sql-jdbc.conn/pools-state (fn []
+                                                              (u/prog1 (pools-state)
+                                                                ;; give a stop on another thread the chance to run
+                                                                ;; before the write
+                                                                (deref (future (system/stop! pools)) 200 nil)))]
+        (#'sql-jdbc.conn/swap-pools-state! assoc ::written true))
+      ;; wait for the stop, which the write may have held up
+      (system/stop! pools)
+      (is (nil? @pools)))))
+
 (deftest ^:synchronized checkout-after-a-halt-test
   (testing "a checkout on a pool left over from a halt closes the connection and does not start the pools again"
     (let [pools  @#'sql-jdbc.conn/pools-component
