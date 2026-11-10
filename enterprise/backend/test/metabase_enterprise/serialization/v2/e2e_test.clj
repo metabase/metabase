@@ -1577,3 +1577,26 @@
               (is (= #{} (:cards exploration))))
             (testing "the export takes no test of the card"
               (is (= #{} (:tested exploration))))))))))
+
+(deftest import-publishes-no-card-test-events-test
+  (testing "An import writes no CardTest revision and no CardTest audit row"
+    (mt/with-premium-features #{:audit-app}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (let [db      (ts/create! :model/Database :name "my-db")
+                  coll    (ts/create! :model/Collection :name "Finance")
+                  creator (ts/create! :model/User :email "creator@example.com")]
+              (create-card-with-test! db creator "Revenue ignores refunds" :name "Revenue" :collection_id (:id coll))
+              (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))))
+          (ts/with-db dest-db
+            (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+            (testing "premise: the test is imported"
+              (is (t2/exists? :model/CardTest :name "Revenue ignores refunds")))
+            (is (zero? (t2/count :model/Revision :model "CardTest")))
+            (is (zero? (t2/count :model/AuditLog :model "CardTest")))
+            (testing "control: an edit outside an import writes both"
+              (mt/with-current-user (t2/select-one-pk :model/User :email "creator@example.com")
+                (t2/update! :model/CardTest :name "Revenue ignores refunds" {:description "Edited"}))
+              (is (= 1 (t2/count :model/Revision :model "CardTest")))
+              (is (= 1 (t2/count :model/AuditLog :model "CardTest"))))))))))

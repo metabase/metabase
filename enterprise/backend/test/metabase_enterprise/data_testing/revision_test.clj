@@ -219,12 +219,18 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card     {card-id :id}      {}
                    :model/CardTest {card-test-id :id} {:card_id card-id}]
-      (let [{run-id :id} (data-testing.run-tracking/start-run! :card card-test-id (mt/user->id :crowberto))]
-        (try
-          (data-testing.run-tracking/finish-run! run-id :passed)
-          (is (zero? (t2/count :model/Revision :model "DataTestRun" :model_id run-id)))
-          (finally
-            (t2/delete! :model/DataTestRun :id run-id)))))))
+      (mt/with-log-messages-for-level [messages [metabase.revisions.events :warn]]
+        (let [{run-id :id} (data-testing.run-tracking/start-run! :card card-test-id (mt/user->id :crowberto))]
+          (try
+            (data-testing.run-tracking/finish-run! run-id :passed)
+            (is (zero? (t2/count :model/Revision :model "DataTestRun" :model_id run-id)))
+            ;; A run event routed to the card-test revision handler fails there and is only logged.
+            (testing "no run event reaches a revision handler"
+              (is (= [] (messages))))
+            (testing "the test has only its creation revision"
+              (is (=? [{:is_creation true}] (revisions/revisions :model/CardTest card-test-id))))
+            (finally
+              (t2/delete! :model/DataTestRun :id run-id))))))))
 
 (deftest card-test-revision-history-api-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -242,6 +248,9 @@
         (testing "GET /api/revision/card-test/:id"
           (is (=? expected
                   (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" card-test-id)))))
+        (testing "a non-admin who can read the card reads the history"
+          (is (=? expected
+                  (mt/user-http-request :rasta :get 200 (str "revision/card-test/" card-test-id)))))
         (testing "a user who cannot read the card cannot read the history"
           (mt/with-non-admin-groups-no-root-collection-perms
             (mt/with-temp [:model/Collection {coll-id :id} {}]
@@ -294,3 +303,22 @@
               (is (=? [{:is_creation false}] history))
               (is (= 1 (count history)))
               (is (not (re-find #"On the old card" (pr-str history)))))))))))
+
+(deftest card-test-revert-by-a-user-who-may-edit-both-cards-test
+  (testing "A non-admin who may edit the current and the reverted card reverts a card test"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {writable :id} {}
+                     :model/Card       {old-card :id} {:collection_id writable
+                                                       :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                     :model/Card       {new-card :id} {:collection_id writable
+                                                       :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable)
+        (mt/with-current-user (mt/user->id :crowberto)
+          (mt/with-temp [:model/CardTest {card-test-id :id} {:card_id old-card}]
+            (t2/update! :model/CardTest :id card-test-id {:card_id new-card})
+            (let [creation (last (revisions/revisions :model/CardTest card-test-id))]
+              (mt/user-http-request :rasta :post 200 "revision/revert"
+                                    {:entity      "card-test"
+                                     :id          card-test-id
+                                     :revision_id (:id creation)})
+              (is (= old-card (t2/select-one-fn :card_id :model/CardTest :id card-test-id))))))))))

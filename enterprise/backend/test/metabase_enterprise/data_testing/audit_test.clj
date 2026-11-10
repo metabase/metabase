@@ -155,3 +155,21 @@
                 :topic    :card-test-delete
                 :model    "CardTest"}
                (mt/latest-audit-log-entry :card-test-delete card-test-id)))))))
+
+(deftest card-test-audit-events-name-the-creator-then-the-acting-user-test
+  (testing "The create row names the test's creator; the update and delete rows name the user who acts"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-temp [:model/Card     {card-id :id}      {}
+                     :model/CardTest {card-test-id :id} {:card_id    card-id
+                                                         :creator_id (mt/user->id :crowberto)}]
+        (testing "create"
+          (is (=? {:user_id (mt/user->id :crowberto)}
+                  (mt/latest-audit-log-entry :card-test-create card-test-id))))
+        (testing "update"
+          (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
+          (is (=? {:user_id (mt/user->id :rasta)}
+                  (mt/latest-audit-log-entry :card-test-update card-test-id))))
+        (testing "delete"
+          (t2/delete! :model/CardTest :id card-test-id)
+          (is (=? {:user_id (mt/user->id :rasta)}
+                  (mt/latest-audit-log-entry :card-test-delete card-test-id))))))))
