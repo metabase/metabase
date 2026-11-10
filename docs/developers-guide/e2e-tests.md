@@ -64,7 +64,7 @@ Try to avoid repeatedly testing pieces of the application incidentally. For exam
 ## Cypress Documentation
 
 - Introduction: https://docs.cypress.io/guides/core-concepts/introduction-to-cypress.html
-- Commands: https://docs.cypress.io/api/api/table-of-contents.html
+- Commands: https://docs.cypress.io/api/table-of-contents
 - Assertions: https://docs.cypress.io/guides/references/assertions.html
 
 ## Tips/Gotchas

@@ -1,6 +1,4 @@
-# Temporary lychee excludes; the weekly link check reports ones no longer needed.
-# A `# expect:` line names the failure the next pattern is excluded for: a status
-# code or the start of lychee's error text. Any other failure gets reported.
+# Temporary lychee excludes, each after the failure it's excluded for: see docs/util/README.md.
 # login walls: redirect to sign-in for a client without a session
 # expect: 302
 ^https://admin\.google\.com

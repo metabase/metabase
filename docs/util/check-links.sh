@@ -49,7 +49,8 @@ lychee_args=(--config ./.lychee/config.toml "${docs_latest_args[@]}")
 [ "$external" -eq 1 ] || lychee_args+=(--offline)
 
 # Prints each failure in lychee's JSON report ($1) as "path:line: url: status", with a GitHub annotation in
-# CI, and appends it to $LINKS_REPORT when that's set. Checks that render their urls into a temporary file
+# CI, and appends it to $LINKS_REPORT when that's set, or touches $LINKS_REPORT.crashed when lychee printed no
+# report. A remapped http link is printed as written, not as checked. Checks that render their urls into a temporary file
 # pass $2, which holds the real path:line for each line of that file. Sets `total` and `count`.
 # lychee exits 2 when links fail but still prints the report. It also exits 2 on a bad flag and prints
 # nothing, so trust the report, not the exit code.
@@ -57,6 +58,7 @@ print_failures() {
   local report=$1 locations=${2:-} file line url text location
   total=$(jq -e -r '.total' <<<"$report") || {
     echo "lychee produced no report (see errors above)" >&2
+    [ -z "${LINKS_REPORT:-}" ] || touch "$LINKS_REPORT.crashed"
     return 1
   }
   count=0
@@ -78,7 +80,8 @@ print_failures() {
     fi
   # lychee reports a url it already checked as "Error (cached)", so reuse the first status for it.
   done < <(jq -r '[.error_map | to_entries[] | .key as $file | .value[]
-                   | {$file, line: .span.line, url, text: .status.text}] as $failures
+                   | {$file, line: .span.line, url: (if .remap and (.url | startswith("file:") | not) then .remap.original.url else .url end),
+                     text: .status.text}] as $failures
                   | ($failures | map(select(.text | test("cached") | not)) | INDEX(.url)) as $first
                   | $failures[] | "\(.file)\t\(.line)\t\(.url)\t\($first[.url].text // .text)"' <<<"$report")
 }

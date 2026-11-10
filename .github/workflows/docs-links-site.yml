@@ -65,10 +65,9 @@ jobs:
 
       # lychee reads .lycheeignore only from its working directory, so rechecking from elsewhere drops just those excludes.
       - name: Recheck the links .lycheeignore skips
-        id: recheck
+        if: github.ref == 'refs/heads/master'
         continue-on-error: true
         working-directory: ${{ runner.temp }}
-        shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -85,7 +84,10 @@ jobs:
           ids=$(gh run list --workflow docs-links-site.yml --branch master --status completed --limit 10 \
                   --json databaseId --jq '.[].databaseId')
           for id in $ids; do
-            if gh run download "$id" --name link-quarantine --dir .; then
+            found=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/artifacts?name=link-quarantine" \
+                      --jq '[.artifacts[] | select(.expired | not)] | length')
+            if [ "$found" -gt 0 ]; then
+              gh run download "$id" --name link-quarantine --dir .
               echo "Restored the link quarantine from run $id"
               exit 0
             fi
