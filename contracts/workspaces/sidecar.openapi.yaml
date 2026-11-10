@@ -12,15 +12,14 @@ info:
     (`EE/transform_hooks.clj:11`, `EE/query_processor/middleware.clj`.)
 
     Workspace mode is not a security boundary. Isolation comes only from the warehouse login. Workspace mode
-    redirects transform output and nothing else: native SQL writes, model persistence and data-grid edits still
+    redirects transform output and nothing else: native SQL writes, per-database model persistence and data-grid edits still
     reach production when the login can write there. `POST /current` checks only the shape of the body, not the
     namespaces it names (`src/metabase/workspaces/core.clj:46-77,100-112`).
 
     Remapping follows remap rows, not the mode: queries are rewritten whenever rows exist
-    (`src/metabase/workspaces/core.clj:14-19`). Booting without the `config.yml` `workspace:` section does not
-    turn `workspaces-enabled` off; an app DB that was a sidecar's stays in workspace mode with its remap rows. To
-    leave workspace mode, use a fresh app DB or call `DELETE /current`. `MB_WORKSPACES_ENABLED=false` turns the
-    mode off but leaves the remap rows.
+    (`src/metabase/workspaces/core.clj:14-19`). master: booting without the `config.yml` `workspace:` section does
+    not clear the stored `instance-workspace` setting; an app DB that was a sidecar's stays in workspace mode with
+    its remap rows. To leave workspace mode, use a fresh app DB or call `DELETE /current`.
 
     Request bodies: the server ignores unknown keys instead of rejecting them, also where a schema says
     `additionalProperties: false` (`src/metabase/api/macros.clj:428-437`).
@@ -32,7 +31,9 @@ info:
     set it as well as `/current`:
     - `workspaces-enabled`: instance setting, boolean, env `MB_WORKSPACES_ENABLED`. On = this instance is a
       workspace. `PUT /api/setting/workspaces-enabled` returns 400 on an instance that has workspaces of its own
-      (a parent). Turning it off by any route deletes every remap row.
+      (a parent). Turning it off through a setter (`DELETE /current`, the settings API) deletes every remap row.
+      The env var is not a setter: `MB_WORKSPACES_ENABLED=false` turns the mode off but leaves the remap rows.
+      As on master, booting without the `workspace:` section does not turn `workspaces-enabled` off.
     - `database-workspace-schema`: database-local string, set with `PUT /api/database/{id}`
       `{"settings": {"database-workspace-schema": "..."}}`. The schema that database's transforms write to
       (on MySQL, a database name).
