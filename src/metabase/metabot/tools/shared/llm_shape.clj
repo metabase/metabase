@@ -322,7 +322,8 @@
     :collection_name            (or name "Our analytics")
     :collection_path            path
     :collection_description     description
-    :collection_authority_level authority_level}))
+    ;; A Collection read from the app DB has its authority level as a keyword.
+    :collection_authority_level (some-> authority_level u/qualified-name)}))
 
 (defn- drill-in-location-context
   "The `<pfx>_database_name` / `<pfx>_base_table_fqn` keys a standalone measure/segment drill-in carries so

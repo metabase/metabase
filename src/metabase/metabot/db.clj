@@ -930,7 +930,8 @@
 (mu/defn collection-with-ancestors
   "The Collection with `collection-id`, hydrated with the ancestors the current user can read, root first, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (some-> (t2/select-one [:model/Collection :id :name :location :namespace :personal_owner_id :type]
+  (some-> (t2/select-one [:model/Collection
+                          :id :name :location :namespace :personal_owner_id :type :archived_directly :authority_level]
                          :id [:auto/param collection-id])
           (t2/hydrate :effective_ancestors)))
 

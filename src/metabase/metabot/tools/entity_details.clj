@@ -124,7 +124,8 @@
   (or (not-empty (str/trim (str first_name " " last_name))) (not-empty email)))
 
 (defn- dashboard-collection
-  "The collection with `collection-id`, nil for the root collection, with the path to it the current user can see."
+  "The collection with `collection-id`, nil for the root collection, with its authority level and the path to it the
+  current user can see. A collection in the Trash has its path through the Trash."
   [collection-id]
   (if-not collection-id
     (let [root-name (:name (collection/root-collection-with-ui-details nil))]
@@ -137,9 +138,10 @@
                         (remove #(= "root" (:id %))))
             chain     (collection/personal-collections-with-ui-details
                        (conj (vec ancestors) (dissoc collection :effective_ancestors)))]
-        {:id   collection-id
-         :name (:name (last chain))
-         :path (str/join " / " (map :name chain))}))))
+        {:id              collection-id
+         :name            (:name (last chain))
+         :path            (str/join " / " (map :name chain))
+         :authority_level (:authority_level collection)}))))
 
 (defn- visible-dashcards
   "The dashcards of the dashboard with `dashboard-id` that the current user can see: text, headings, links and actions,

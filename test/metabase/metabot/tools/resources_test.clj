@@ -690,6 +690,22 @@
         (testing "a creator without a first or last name goes by their email"
           (is (str/includes? output "<created by=\"sso@example.com\"")))))))
 
+(deftest read-dashboard-collection-trash-and-authority-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Collection {sales-id :id}    {:name "Sales"}
+                   :model/Collection emea              {:name "EMEA", :location (str "/" sales-id "/")}
+                   :model/Collection {official-id :id} {:name "Finance", :authority_level "official"}
+                   :model/Dashboard  {trashed-id :id}  {:name "EMEA overview", :collection_id (:id emea)}
+                   :model/Dashboard  {official :id}    {:name "Finance overview", :collection_id official-id}]
+      (collection/archive-collection! emea)
+      (testing "a dashboard in a trashed collection has its path through the Trash"
+        (is (str/includes? (:output (read-uris {:uris [(str "metabase://dashboard/" trashed-id)]}))
+                           (str "<collection id=\"" (:id emea) "\" name=\"EMEA\" path=\"Our analytics / Trash / EMEA\">"))))
+      (testing "a dashboard in an official collection shows the collection's authority level"
+        (is (str/includes? (:output (read-uris {:uris [(str "metabase://dashboard/" official)]}))
+                           (str "<collection id=\"" official-id "\" name=\"Finance\" path=\"Our analytics / Finance\""
+                                " authority_level=\"official\">")))))))
+
 (deftest read-document-resource-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card {card-id :id} {:name "Embedded chart"}
