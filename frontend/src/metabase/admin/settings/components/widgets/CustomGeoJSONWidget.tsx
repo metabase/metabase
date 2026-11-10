@@ -165,22 +165,21 @@ export const CustomGeoJSONWidget = () => {
           opened
           onClose={handleCancel}
           size="95%"
+          density="relaxed"
+          title={originalMap ? t`Edit map` : t`Add a new map`}
           withCloseButton={false}
-          padding={0}
         >
-          <div className={CS.p4}>
-            <EditMap
-              map={map}
-              originalMap={originalMap}
-              onMapChange={handleMapChange}
-              geoJson={geoJson}
-              geoJsonLoading={geoJsonLoading}
-              geoJsonError={geoJsonError}
-              onLoadGeoJson={() => triggerLoadGeoJSON({ url: map.url })}
-              onCancel={handleCancel}
-              onSave={handleSave}
-            />
-          </div>
+          <EditMap
+            map={map}
+            originalMap={originalMap}
+            onMapChange={handleMapChange}
+            geoJson={geoJson}
+            geoJsonLoading={geoJsonLoading}
+            geoJsonError={geoJsonError}
+            onLoadGeoJson={() => triggerLoadGeoJSON({ url: map.url })}
+            onCancel={handleCancel}
+            onSave={handleSave}
+          />
         </Modal>
       ) : null}
     </div>
@@ -336,17 +335,17 @@ interface SettingContainerProps {
 const SettingContainer = ({
   name,
   description,
-  className = CS.py1,
+  className,
   children,
 }: SettingContainerProps) => (
   <div className={className}>
     {name && (
-      <div className={cx(CS.textMedium, CS.textBold, CS.textUppercase, CS.my1)}>
+      <div className={cx(CS.textMedium, CS.textBold, CS.textUppercase, CS.mb1)}>
         {name}
       </div>
     )}
     {description && (
-      <div className={cx(CS.textMedium, CS.my1)}>{description}</div>
+      <div className={cx(CS.textMedium, CS.mb1)}>{description}</div>
     )}
     {children}
   </div>
@@ -377,8 +376,7 @@ const EditMap = ({
 }: EditMapProps) => (
   <div data-testid="edit-map-modal">
     <div className={CS.flex}>
-      <div className={CS.flexNoShrink}>
-        <h2>{!originalMap ? t`Add a new map` : t`Edit map`}</h2>
+      <Stack className={CS.flexNoShrink} gap="xl">
         <SettingContainer description={t`What do you want to call this map?`}>
           <div className={CS.flex}>
             <input
@@ -428,7 +426,7 @@ const EditMap = ({
             </Button>
           </div>
         </SettingContainer>
-        <div className={cx({ disabled: !geoJson })}>
+        <Stack className={cx({ disabled: !geoJson })} gap="xl">
           <SettingContainer
             description={t`Which property specifies the region's identifier?`}
           >
@@ -449,8 +447,8 @@ const EditMap = ({
               dataTestId={"map-region-name-select"}
             />
           </SettingContainer>
-        </div>
-      </div>
+        </Stack>
+      </Stack>
       <div
         className={cx(
           CS.flexAuto,
@@ -459,7 +457,6 @@ const EditMap = ({
           CS.bordered,
           CS.rounded,
           CS.flex,
-          CS.my4,
           CS.overflowHidden,
         )}
       >
@@ -499,21 +496,16 @@ const EditMap = ({
         )}
       </div>
     </div>
-    <div className={cx(CS.py1, CS.flex)}>
-      <div className={CS.mlAuto}>
-        <Button onClick={onCancel}>{t`Cancel`}</Button>
-        <Button
-          ml="sm"
-          variant="filled"
-          disabled={
-            !map.name || !map.url || !map.region_name || !map.region_key
-          }
-          onClick={onSave}
-        >
-          {originalMap ? t`Save map` : t`Add map`}
-        </Button>
-      </div>
-    </div>
+    <Modal.Footer>
+      <Button onClick={onCancel}>{t`Cancel`}</Button>
+      <Button
+        variant="filled"
+        disabled={!map.name || !map.url || !map.region_name || !map.region_key}
+        onClick={onSave}
+      >
+        {originalMap ? t`Save map` : t`Add map`}
+      </Button>
+    </Modal.Footer>
   </div>
 );
 

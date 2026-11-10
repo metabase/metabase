@@ -82,7 +82,7 @@ const ModalWrapper = ({
   onClose: () => void;
 }) => (
   <Modal opened onClose={onClose} title={title} size="44rem">
-    <Flex gap="lg" pt="xxl" direction="column" justify="center">
+    <Flex gap="lg" direction="column" justify="center">
       {children}
     </Flex>
   </Modal>
