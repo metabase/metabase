@@ -256,6 +256,10 @@
                      running-indexes
                      "Index status could not be verified after the transform completed.")))))
             (transforms-base.u/save-watermark! (:id transform) source-range-params)
+            ;; After the write, so the remap can't point at a table that was never written. After the watermark, so
+            ;; when this fails the append that landed is not appended again by the retry. Before the succeed mark,
+            ;; so a failure here fails the run rather than leaving a succeeded run unremapped.
+            (transforms-base.u/record-workspace-target-remapping! transform)
             (transform-run/succeed-started-run! run-id)
             ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's
             ;; fail-started-run! after succeed-started-run! has already fired.

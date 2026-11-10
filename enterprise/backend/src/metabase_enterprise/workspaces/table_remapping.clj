@@ -635,7 +635,7 @@
    Inputs:
    - `db-id` -- the canonical `:model/Database` id.
    - `target` -- the transform's target map, with `:schema` and `:name` for the canonical
-     identifier the transform was configured to write to. Same shape `resolve-transform-target`
+     identifier the transform was configured to write to. Same shape `workspace-transform-target`
      already passes around.
 
    Resolution:
@@ -650,15 +650,11 @@
 
    Returns the to-side as a denormalized `{:db :schema :name}` map (consumer
    shape: `nil` for slots the driver doesn't fill, string otherwise). The
-   storage layer's `\"\"` sentinel never leaks above this boundary, so the value
-   can be `assoc`ed onto a transform target without a per-call denormalization shim.
+   storage layer's `\"\"` sentinel never leaks above this boundary.
 
    Throws when the database is not workspaced -- reaching this with a non-workspaced
    db is a programming error; gate on [[ws/db-workspace-namespace]] first."
   [db-id target]
   (let [{:keys [from-spec to-spec]} (transform-target-specs db-id target)]
     (add-mapping! db-id from-spec to-spec)
-    ;; Hand callers the denormalized shape so storage's `""` sentinel stays
-    ;; below the line. Symmetric with the read hooks (`workspace-remap-schema+name`,
-    ;; `canonical-schema+name`) which also denormalize at the boundary.
     (spec->consumer-shape to-spec)))
