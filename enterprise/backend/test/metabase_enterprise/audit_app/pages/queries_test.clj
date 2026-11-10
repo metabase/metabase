@@ -117,6 +117,30 @@
             (testing "and the total_count agrees"
               (is (= 1 (bad-table-total "collision-error-marker-abc" nil nil))))))))))
 
+(deftest bad-table-ignores-dynamic-goal-runs-test
+  (testing "a dynamic goal's run of a card neither hides nor reports the card's own error, nor counts as a run"
+    (mt/test-helpers-set-global-values!
+      (let [run (fn [card-id started-at context error]
+                  (merge query-execution-defaults {:card_id     card-id
+                                                   :executor_id (mt/user->id :crowberto)
+                                                   :started_at  started-at
+                                                   :context     context
+                                                   :error       error}))]
+        (mt/with-temp [:model/Card {broken-id :id} {:name "Plover broken card"}
+                       :model/Card {working-id :id} {:name "Plover working card"}
+                       :model/QueryExecution _ (run broken-id #t "2026-06-06T08:00:00Z" :ad-hoc "goal-run-marker-hj")
+                       :model/QueryExecution _ (run broken-id #t "2026-06-06T09:00:00Z" :dynamic-goal nil)
+                       :model/QueryExecution _ (run working-id #t "2026-06-06T08:00:00Z" :ad-hoc nil)
+                       :model/QueryExecution _ (run working-id #t "2026-06-06T09:00:00Z" :dynamic-goal
+                                                    "goal-run-marker-hj")]
+          (let [result    (run-query ::queries/bad-table :args ["goal-run-marker-hj" nil nil])
+                col-names (map :name (mt/cols result))
+                rows      (mt/rows result)]
+            (testing "only the card whose own latest run failed is listed"
+              (is (= [broken-id] (map first rows))))
+            (testing "its total runs leave out the goal run"
+              (is (= [1] (map #(get (zipmap col-names %) "total_runs") rows))))))))))
+
 (deftest bad-table-dedupes-tied-executions-for-one-card-test
   (testing "a card whose latest executions tie on started_at appears once, not once per tied execution"
     (mt/test-helpers-set-global-values!

@@ -3705,6 +3705,7 @@
    :uses #{cache
            lib.schema
            premium-features
+           queries
            query-processor
            query-processor.cache-backend
            task

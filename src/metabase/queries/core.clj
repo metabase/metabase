@@ -9,6 +9,7 @@
    [metabase.queries.models.card.metadata]
    [metabase.queries.models.parameter-card]
    [metabase.queries.models.query]
+   [metabase.queries.models.query-execution]
    [metabase.queries.models.stored-result]
    [metabase.queries.models.stored-result-use]
    [metabase.query-processor.card]
@@ -82,6 +83,8 @@
   average-execution-time-ms
   query->database-and-table-ids
   save-queries-and-update-average-execution-times!]
+ [metabase.queries.models.query-execution
+  not-referenced-run]
  [metabase.queries.cached-result
   allowed-chart-sorts
   assert-can-view-cached-result!
