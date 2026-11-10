@@ -53,25 +53,38 @@ env:
   DOCRUNNER_MAX_TURNS: "100"
   SCREENSHOTS_MODEL: claude-sonnet-5-5
   SCREENSHOTS_MAX_TURNS: "150"
-  # The bot posts text from the agents, and no person reviews it first. `sanitize` makes this text safer:
-  # - A URL that is not on github.com/metabase or metabase.com goes in a code span, thus it is not a link.
-  #   First, the filter removes each backslash before `:` or `/`, and escapes each `&` before an entity,
-  #   because Markdown can hide a URL with them. A browser reads `\` as `/` in a URL, thus `/\host` and `\\host`
-  #   are URLs to other sites. An allowed URL with `..`, `%2e`, or `\` also goes in a code span, because a browser
-  #   opens `https://github.com/metabase/../x` as `https://github.com/x`.
-  # - A closing keyword before a GitHub URL puts the URL in a code span. A zero-width space after the `#` of a
+  # The bot posts text from the agents, and no person reviews it first. `sanitize` makes this text safer.
+  # It adds zero-width spaces, not code spans: a zero-width space has the same effect in each Markdown context.
+  # If the filter puts a URL in backticks, and the URL is already in a code span, the URL comes out of the span.
+  # - A URL that is not on github.com/metabase or metabase.com gets a zero-width space after its first character
+  #   (`defang`), thus it is not a link. `defang` also puts one after each `@` in that URL, because GitHub makes
+  #   a `mailto:` link of `host@other-host`. First, the filter removes each backslash before `:` or `/`, and escapes
+  #   each `&` before an entity, because Markdown can hide a URL with them. A browser reads `\` as `/` in a URL,
+  #   thus `/\host` and `\\host` are URLs to other sites. An allowed URL with `..`, `%2e`, or `\` is also not
+  #   permitted, because a browser opens `https://github.com/metabase/../x` as `https://github.com/x`.
+  #   The `https?:` form has no lookbehind: GitHub also makes a link of a URL that follows `:`, `-`, `_`, `.`,
+  #   or a digit. The `www.` form is a link after `_`, thus `_` is not in the lookbehind.
+  # - A Markdown link is permitted only to an allowed URL or to `#anchor`. For each other target (for example
+  #   `/other-org/repo`), a zero-width space after the `]` of `](` and of `]:` stops the link. This rule does not
+  #   use the line start, because a link definition can be in a block quote or a list. `<a` becomes `&lt;a`.
+  # - A closing keyword before a GitHub URL also defangs the URL. A zero-width space after the `#` of a
   #   closing keyword (for example `Fixes #123`) stops the reference. Thus a merge does not close that issue.
   # - A zero-width space after each `@` stops the mentions, also in code spans.
+  # Not changed: an email address in plain text, which GitHub shows as a `mailto:` link.
   SANITIZE_JQ: |
+    def defang: .[0:1] + "\u200b" + (.[1:] | gsub("@"; "@\u200b"));
     def sanitize:
       gsub("\\\\(?=[:/])"; "")
       | gsub("&(?=#?[A-Za-z0-9]+;)"; "&amp;")
-      | gsub("(?<![A-Za-z0-9_/\\\\:.@-])(?<u>(?:https?:|[/\\\\]{2}|www\\.)[^\\s<>()\\[\\]\"'`]+)";
+      | gsub("<(?=/?a[\\s/>])"; "&lt;"; "i")
+      | gsub("(?<u>https?:[^\\s<>()\\[\\]\"'`]+)";
           if (.u | test("^https://(?:github\\.com/metabase/|(?:[a-z0-9-]+\\.)*metabase\\.com(?:[/?#]|$))"; "i"))
             and (.u | test("/[.][.]|%2e|\\\\"; "i") | not)
-          then .u else "`\(.u)`" end; "i")
+          then .u else (.u | defang) end; "i")
+      | gsub("(?<![A-Za-z0-9/\\\\:.@-])(?<u>(?:[/\\\\]{2}|www\\.)[^\\s<>()\\[\\]\"'`]+)"; .u | defang; "i")
+      | gsub("\\](?=[(:](?!\\s*(?:https://|#)))"; "]\u200b"; "i")
       | gsub("(?<k>\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\\s*:?\\s*)(?<u>https://github\\.com/[^\\s<>()\\[\\]\"'`]+)";
-          "\(.k)`\(.u)`"; "i")
+          "\(.k)\(.u | defang)"; "i")
       | gsub("(?<k>\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\\s*:?\\s*)(?<r>(?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#)(?=[0-9])";
           "\(.k)\(.r)\u200b"; "i")
       | gsub("(?<a>^|[^A-Za-z0-9_])@(?<n>[A-Za-z0-9])"; "\(.a)@\u200b\(.n)");
@@ -135,8 +148,11 @@ jobs:
         with:
           persist-credentials: false
 
+      # A dry run opens no PR, thus it does not need this check. Then a writer can test a prompt change on an issue
+      # that has an open docrunner PR. A skipped step gives an empty `url`, and the steps after it continue.
       - name: Find an open docrunner PR
         id: existing
+        if: inputs.dry_run != true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -150,6 +166,8 @@ jobs:
       # The agent gets only the text that the writer saw:
       # - Rendered HTML has no HTML comments. `visible` also removes the `alt` and `title` attributes, because the
       #   page does not show them. Text in a closed `<details>` block still gets to the agent.
+      # - GitHub keeps invisible characters in the HTML, and they can hold text that the writer cannot see. `visible`
+      #   removes them: zero-width characters, direction controls, variation selectors, and Unicode tag characters.
       # - The writer read the issue, then added the label. Comments and timeline links from after that time do not
       #   get to the agent. If the title or the body of the issue changed after that time, Docrunner stops. For a
       #   dispatch, the cutoff is the start of this step.
@@ -161,7 +179,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           LABELED_AT: ${{ github.event.issue.updated_at }}
-          VISIBLE_JQ: 'def visible: gsub("\\s(?:alt|title)=\"[^\"]*\""; "");'
+          VISIBLE_JQ: >-
+            def visible: gsub("\\s(?:alt|title)=\"[^\"]*\""; "")
+            | gsub("[\\x{200B}-\\x{200F}\\x{202A}-\\x{202E}\\x{2060}-\\x{2069}\\x{FE00}-\\x{FE0F}\\x{FEFF}\\x{E0000}-\\x{E0FFF}]"; "");
         run: |
           accept="Accept: application/vnd.github.full+json"
           mkdir -p .docrunner/prs
@@ -169,7 +189,8 @@ jobs:
           echo "Cutoff: $cutoff"
 
           # `lastEditedAt` is only for the body. A change to the title is a `RenamedTitleEvent` on the timeline.
-          # `edited` is the later of the two times.
+          # `edited` is the later of the two times. The `$` names in the query are GraphQL variables.
+          # shellcheck disable=SC2016
           edited=$(gh api graphql -F number="$ISSUE" -f owner="$GITHUB_REPOSITORY_OWNER" -f name="${GITHUB_REPOSITORY#*/}" \
             -f query='query($owner: String!, $name: String!, $number: Int!) {
               repository(owner: $owner, name: $name) { issue(number: $number) {
@@ -435,7 +456,7 @@ jobs:
               jq -r "$SANITIZE_JQ"' .body // "" | sanitize' <<< "$RESULT"
             } > "$T/agent-body.md"
           else
-            status=done
+            status="done"
           fi
 
           images='[]'
@@ -467,6 +488,7 @@ jobs:
             {
               jq -r "$SANITIZE_JQ"' .body | sanitize' <<< "$RESULT"
               if [ "$images" != '[]' ]; then
+                # shellcheck disable=SC2016
                 printf '\n## Images\n\nThe `screenshots` job tries to add these images in a second commit. Examine each image.\n\n'
                 jq -r "$SANITIZE_JQ"' .[] | "- `\(.path)`: \(.shows | gsub("\\s+"; " ") | sanitize)\n  - Steps: \(.steps | gsub("\\s+"; " ") | sanitize)"' <<< "$images"
               fi
@@ -474,6 +496,7 @@ jobs:
                 printf '\n## Skills\n\nDocrunner did not load %s. Examine the style of the change.\n' "$missing"
               fi
               printf '\n---\n\nResolves #%s\n\n' "$ISSUE"
+              # shellcheck disable=SC2016
               printf 'Check the backport label. For a feature that is only on `master`, change it to `no-backport`.\n\n'
               printf 'Docrunner made this draft. Run: %s\n' "$RUN_URL"
             } > "$T/pr-body.md"
@@ -572,6 +595,7 @@ jobs:
             exists)
               {
                 echo "Docrunner did not run, because this issue has an open docrunner PR: $EXISTING_URL"
+                # shellcheck disable=SC2016
                 printf '\nTo run Docrunner again, close that PR. Then remove the label `Docrunner`, and add it again.\n'
               } > "$f"
               ;;
@@ -593,6 +617,7 @@ jobs:
               ;;
           esac
           if [ "$GITHUB_EVENT_NAME" = issues ] && [ "$STATUS" != "done" ] && [ "$STATUS" != exists ]; then
+            # shellcheck disable=SC2016
             printf '\nTo run Docrunner again, remove the label `Docrunner`, then add it again.\n' >> "$f"
           fi
           gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" -F body=@"$f" > /dev/null
