@@ -13,7 +13,6 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -161,31 +160,11 @@
    :transform {:card_id    (serialization/fk-transform :model/Card)
                :creator_id serialization/user-transform}})
 
-(defn- entity-ids
-  "The entity ids of the `model` rows with the database ids `ids`, in order, nil for a nil id."
-  [model ids]
-  (serialization/column-refs serialization/app-db-store model ids))
-
 (defmethod serialization/storage-paths :model/CardTest [_ entities _ctx]
-  ;; A test is stored in the directory named like its card's file, wherever the card is: in a collection, a dashboard
-  ;; or a document.
-  (let [cards (vec (data-testing.db/cards-by-entity-ids (vec (distinct (keep :card_id entities)))))
-        cards (u/index-by :entity_id
-                          (map (fn [card coll-eid dash-eid doc-eid]
-                                 {:serdes/meta   [{:model "Card"}]
-                                  :name          (:name card)
-                                  :entity_id     (:entity_id card)
-                                  :collection_id coll-eid
-                                  :dashboard_id  dash-eid
-                                  :document_id   doc-eid})
-                               cards
-                               (entity-ids :model/Collection (map :collection_id cards))
-                               (entity-ids :model/Dashboard (map :dashboard_id cards))
-                               (entity-ids :model/Document (map :document_id cards))))
-        paths (serialization/batch-storage-paths (mapv #(get cards (:card_id %)) entities))]
-    (mapv (fn [card-test path]
-            (conj path {:label (:name card-test) :key (:entity_id card-test)}))
-          entities paths)))
+  ;; A card's file can sit in a collection, a dashboard or a document, so its path reads all three.
+  (data-testing.models/subject-storage-paths entities :model/Card :card_id {:collection_id :model/Collection
+                                                                            :dashboard_id  :model/Dashboard
+                                                                            :document_id   :model/Document}))
 
 (defmethod serialization/import-dependencies :model/CardTest [_ entities]
   (mapv (fn [{:keys [card_id]}]
