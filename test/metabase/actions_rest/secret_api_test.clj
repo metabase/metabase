@@ -41,6 +41,20 @@
       (is (=? {:name "listed" :creator {:id (mt/user->id :crowberto)}} listed))
       (is (not (contains? listed :value))))))
 
+(deftest get-secret-test
+  (mt/with-temp [:model/ActionSecret {id :id} {:name          "fetched"
+                                               :value         "v"
+                                               :allowed_hosts ["example.com"]
+                                               :creator_id    (mt/user->id :crowberto)}]
+    (let [fetched (mt/user-http-request :crowberto :get 200 (str "action-secret/" id))]
+      (is (=? {:name          "fetched"
+               :allowed_hosts ["example.com"]
+               :creator       {:id (mt/user->id :crowberto)}}
+              fetched))
+      (is (not (contains? fetched :value))))
+    (mt/user-http-request :crowberto :get 404 (str "action-secret/" Integer/MAX_VALUE))
+    (mt/user-http-request :rasta :get 403 (str "action-secret/" id))))
+
 (deftest update-secret-test
   (mt/with-temp [:model/ActionSecret {id :id} {:name "old" :value "old-value" :allowed_hosts ["example.com"]}]
     (let [value (fn [] (t2/select-one-fn :value [:model/ActionSecret :value] :id id))]

@@ -14,6 +14,13 @@
   (api/check-superuser)
   (actions/secrets))
 
+(api.macros/defendpoint :get "/:id" :- ::actions.schema/action-secret
+  "The secret with `id`, without its value. Superusers only."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id pos-int?]]]
+  (api/check-superuser)
+  (actions/secret id))
+
 (api.macros/defendpoint :post "/" :- ::actions.schema/action-secret
   "Create a secret. Its value is never returned. Superusers only."
   [_route-params
