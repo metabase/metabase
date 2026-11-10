@@ -123,7 +123,7 @@
     option-name))
 
 (defn- check-additional-options!
-  "Throw a 409 when the parent's `:additional-options` set a login or carry a credential. The string ships to the
+  "Throw a 422 when the parent's `:additional-options` set a login or carry a credential. The string ships to the
    config as is, and drivers such as pgjdbc let URL options override the workspace's `:user`/`:password`, so the child
    would connect as the parent and the config's holder would read the parent's password."
   [db]
@@ -133,7 +133,7 @@
                                  "workspace the parent's login. Remove it from the database's connection settings, or "
                                  "remove the database from the workspace.")
                             (pr-str (:name db)) option-name)
-                    {:status-code 409
+                    {:status-code 422
                      :database_id (:id db)}))))
 
 (defn- database-entry [wsd db]
@@ -215,8 +215,9 @@
   derived from `:input_schemas`. Per-database workspace entries carry the
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
   `instance-workspace` setting stores. Returns nil when the workspace does not
-  exist. Throws a 409 `ex-info` when a workspace database is not `:provisioned`,
-  or its `:additional-options` set a login (`check-additional-options!`)."
+  exist. Throws a 409 `ex-info` when a workspace database is not `:provisioned`
+  (waiting clears it), and a 422 when its `:additional-options` set a login
+  (`check-additional-options!`; only an admin can clear it)."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]

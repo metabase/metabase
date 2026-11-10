@@ -393,7 +393,7 @@
         (is (= {:user "iso" :password "iso-pass" :additional-options "sslmode=require&tcpKeepAlive=true"}
                (select-keys (login-dw-details (config/build-workspace-config ws-id))
                             [:user :password :additional-options]))))))
-  (testing "options that set the parent's login are a 409: pgjdbc lets them override the workspace login, and the
+  (testing "options that set the parent's login are a 422: pgjdbc lets them override the workspace login, and the
             config's holder would read them"
     (doseq [[additional-options option-name] {"user=parent_admin&password=parent-secret" "user"
                                               "?sslmode=require&PASSWORD=parent-secret"  "PASSWORD"
@@ -402,7 +402,7 @@
         (with-postgres-workspace
           {:host "h" :port 5432 :additional-options additional-options}
           (fn [db-id ws-id]
-            (is (=? {:status-code 409 :database_id db-id}
+            (is (=? {:status-code 422 :database_id db-id}
                     (try
                       (config/build-workspace-config ws-id)
                       nil
