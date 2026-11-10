@@ -207,11 +207,10 @@
               (str/join ", " (sort (keys uri-templates)))
               ". Read `metabase://databases` or `metabase://collections` to start navigating.")})
 
-(def ^:private search-step
-  "The step to offer whenever the agent composed a URI by hand. Dropped automatically in a profile
-  without `search`."
-  {:uses #{"search"}
-   :text "Copy the `uri` attribute from a `search` result instead of composing a URI by hand."})
+(def ^:private search-steps
+  "The steps to offer whenever the agent composed a URI by hand, one per search tool. The runtime drops the ones for
+  tools the profile doesn't offer."
+  (tools/search-steps #(str "Copy the `uri` attribute from a `" % "` result instead of composing a URI by hand.")))
 
 (tools/defrecoverable malformed-uri!
   "The string is not a metabase:// URI at all."
@@ -219,7 +218,7 @@
   [{:keys [uri]}]
   {:message  (str (pr-str (uri-preview uri)) " is not a Metabase resource URI. One starts with `metabase://` and"
                   " has at least one path segment, for example `metabase://databases`.")
-   :recovery [kinds-step search-step]})
+   :recovery (into [kinds-step] search-steps)})
 
 (tools/defrecoverable unsupported-uri!
   "The URI parses, but no handler serves that shape."
@@ -230,13 +229,13 @@
              [:kind {:optional true} [:maybe :string]]]}
   [{:keys [uri kind]}]
   {:message  (str "No resource is served at " (pr-str (uri-preview uri)) ".")
-   :recovery (vec (keep identity [(templates-step kind) kinds-step search-step]))})
+   :recovery (-> (vec (keep identity [(templates-step kind) kinds-step]))
+                 (into search-steps))})
 
-(def ^:private search-id-step
-  "The step that finds a numeric id through `search`."
-  {:uses #{"search"}
-   :text (str "Call `search` and build the URI from a result's numeric `id`"
-              " attribute, or copy its `uri` attribute as-is.")})
+(def ^:private search-id-steps
+  "The steps that find a numeric id through a search tool, one per search tool."
+  (tools/search-steps #(str "Call `" % "` and build the URI from a result's numeric `id`"
+                            " attribute, or copy its `uri` attribute as-is.")))
 
 (def ^:private id-lookup-steps
   "A kind → step map for `database` and `collection`, because the agent-loop `search` tools do not return them.
@@ -266,9 +265,8 @@
   [{:keys [kind id]}]
   {:message  (str "Invalid id " (pr-str (uri-preview id)) " in URI. Resource URIs use the numeric entity id, not"
                   " an entity_id, a name or a slug.")
-   :recovery (vec (keep identity
-                        [(templates-step kind)
-                         (get id-lookup-steps kind search-id-step)]))})
+   :recovery (-> (vec (keep identity [(templates-step kind)]))
+                 (into (if-let [step (get id-lookup-steps kind)] [step] search-id-steps)))})
 
 (tools/defrecoverable inactive-table!
   "Report a readable table that is no longer active."

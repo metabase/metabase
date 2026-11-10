@@ -245,29 +245,27 @@
   [engine]
   (u/seek #(not= engine %) (concat (active-engines) (supported-engines))))
 
-(defn resolved-engine
-  "The engine a search will actually run on: the semantic engine when it's active (it serves a query
-  alone, fusing keyword and vector matching), otherwise whatever the default precedence resolves to."
+(defn keyword-engine
+  "The engine that matches keyword queries: the default engine, or the one semantic search falls back to when the
+  default is semantic."
   []
-  (or (u/seek #{:search.engine/semantic} (active-engines))
-      (default-engine)))
+  (let [engine (default-engine)]
+    (if (= :search.engine/semantic engine)
+      (fallback-engine engine)
+      engine)))
 
-(defn tsquery-operators-supported?
-  "Whether the keyword matcher that [[resolved-engine]] will use understands Postgres tsquery operator
-  syntax — `or` as alternation, `\"exact phrase\"`, `-exclusion`, trailing-word prefix.
+(defn keyword-flavour
+  "How the [[keyword-engine]] matches a query, or nil when there is none:
 
-  True for the semantic engine, whose keyword half runs `to_tsquery` inside pgvector whatever the app
-  db is, and for the appdb engine on a Postgres app db. False otherwise: `in-place` matches with LIKE
-  patterns, and appdb on H2/MySQL splits on whitespace and ANDs the tokens as LIKE patterns (see
-  `metabase.search.appdb.specialization.h2/wildcard-tokens`), so there `or` is simply one more token
-  that must also match — an `or`-joined query is *narrower*, not broader.
-
-  Callers use this to decide whether operator syntax is worth emitting at all."
+  - `:fulltext`: app-db on Postgres. Lexemes, with stemming and stopwords from the text-search language, and boolean
+    tsquery operators.
+  - `:substring-and`: app-db on H2. Every term must appear somewhere as a substring.
+  - `:substring-or`: in-place. Any term may appear as a substring in any searched column."
   []
-  (case (resolved-engine)
-    :search.engine/semantic true
-    :search.engine/appdb    (= :postgres (mdb/db-type))
-    false))
+  (case (keyword-engine)
+    :search.engine/appdb    (if (= :postgres (mdb/db-type)) :fulltext :substring-and)
+    :search.engine/in-place :substring-or
+    nil))
 
 (defmethod disjunction :default [_ terms] terms)
 

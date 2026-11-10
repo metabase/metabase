@@ -14,6 +14,7 @@
    [metabase.metabot.tools.metadata :as metadata-tools]
    [metabase.metabot.tools.util :as tools.u]
    [metabase.query-processor :as qp]
+   [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -24,7 +25,8 @@
    (invoke-metadata profile tool-name args nil))
   ([profile tool-name args metabot]
    (binding [scope/*current-user-scope* #{"*"}]
-     (let [entries (metabot.tools/->entries (:tools (profiles/get-profile profile)) nil metabot profile)]
+     (let [offered (profiles/profile->tools (profiles/get-profile profile) [] {:metabot metabot :profile-id profile})
+           entries (metabot.tools/->entries (vals offered) nil metabot profile)]
        ((get-in entries [tool-name :fn]) args)))))
 
 (deftest missing-metabot-is-recoverable-test
@@ -83,7 +85,8 @@
         (is (= {:error {:class :recoverable :code :metabase.metabot.tools.recoverable.common/not-found}
                 :output (str "Table " table-id " was not found. It may not exist, or you may not have access to it."
                              (when (= profile :slackbot)
-                               "\nCall `search` to find the entity you want and use an id from the results."))}
+                               (str "\nCall `" (if (= :fulltext (search.engine/keyword-flavour)) "fulltext_search" "substring_search")
+                                    "` to find the entity you want and use an id from the results.")))}
                (invoke-metadata profile "get_field_values"
                                 {:data_source "table" :source_id table-id :field_id 1})))))))
 

@@ -20,8 +20,8 @@
    :segment :measure :snippet :table :timeline :transform])
 
 (def ^:private finder-tools
-  "The tool that lists entities of each kind `search` does not return. [[not-found!]] offers it as
-  the recovery step, and `search` for a kind missing here."
+  "The tool that lists entities of each kind the search tools do not return. [[not-found!]] offers it as
+  the recovery step, and the search tools for a kind missing here."
   {:snippet  "list_snippets"
    :timeline "list_timelines"})
 
@@ -43,9 +43,10 @@
                     (str (str/capitalize (name kind)) " " id)
                     "The entity referenced here")
                   " was not found. It may not exist, or you may not have access to it.")
-   :recovery (let [finder (get finder-tools kind "search")]
-               [{:uses #{finder}
-                 :text (str "Call `" finder "` to find the entity you want and use an id from the results.")}])})
+   :recovery (let [step #(str "Call `" % "` to find the entity you want and use an id from the results.")]
+               (if-let [finder (get finder-tools kind)]
+                 [{:uses #{finder} :text (step finder)}]
+                 (tools.error/search-steps step)))})
 
 (def ^:private max-query-id-chars
   "The most characters of the requested query ID that [[unknown-query-id!]] repeats.
@@ -173,5 +174,5 @@
   [{:keys [label]}]
   {:message  (str "`" label "` is not available: this Metabot only uses curated content (verified, official, or "
                   "Library content).")
-   :recovery [{:uses #{"search"}
-               :text "Call `search` to find curated tables, models, or metrics and use one of those instead."}]})
+   :recovery (tools.error/search-steps
+              #(str "Call `" % "` to find curated tables, models, or metrics and use one of those instead."))})

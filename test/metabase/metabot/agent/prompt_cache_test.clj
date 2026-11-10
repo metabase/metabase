@@ -45,7 +45,12 @@
    Must stay a subset of the stable (non-per-request) keys in
    `metabase.metabot.agent.prompts/build-system-message-content`'s `template-context` — never a
    per-request value like `current_time` / `current_user_info` / `viewing_context` / `recent_views`."
-  #{"has_semantic_search" "has_tsquery_operators"})
+  #{"has_semantic_search"
+    "has_fulltext_search"
+    "has_substring_or_search"
+    "has_substring_and_search"
+    "has_keyword_search"
+    "has_library_retrieval"})
 
 (def ^:private bare-control-tags
   "`{% … %}` tags that carry no variable reference (loop/branch scaffolding), always cache-safe."

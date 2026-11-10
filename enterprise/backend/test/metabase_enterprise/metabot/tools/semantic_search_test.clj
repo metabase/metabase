@@ -3,6 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.search :as search]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
@@ -240,3 +242,32 @@
                                                        :entity-types ["dashboard"]})]
                   (is (= 1 (count results)))
                   (is (= 2 (:id (first results)))))))))))))
+
+(defn- invoke-semantic-search
+  "Call `semantic_search` with `args` through the runtime, in a profile that also offers `fulltext_search`."
+  [args]
+  (binding [scope/*current-user-scope* #{scope/agent-search}]
+    ((get-in (metabot.tools/->entries [#'search/semantic-search-tool #'search/fulltext-search-tool] (atom {}) nil nil)
+             ["semantic_search" :fn])
+     args)))
+
+(deftest semantic-search-tool-is-vector-only-test
+  (mt/with-premium-features #{:semantic-search}
+    (mt/with-test-user :rasta
+      (mt/with-dynamic-fn-redefs [perms/impersonated-user? (fn [] false)
+                                  perms/sandboxed-user?    (fn [] false)]
+        (testing "semantic_search asks the semantic engine for meaning alone"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search/search-by-query (fn [args] (reset! captured args) [])]
+              (invoke-semantic-search {:query "how much did we make"}))
+            (is (=? {:engine       :search.engine/semantic
+                     :query        "how much did we make"
+                     :vector-only? true}
+                    @captured))))
+        (testing "a semantic search failure points the model at the keyword search tool"
+          (mt/with-dynamic-fn-redefs [search-core/search (fn [_]
+                                                           (throw (ex-info "Error executing semantic search"
+                                                                           {:type :semantic-search-error})))]
+            (is (= {:error  {:class :recoverable :code ::search/semantic-search-failed}
+                    :output "Semantic search isn't working right now.\nUse `fulltext_search` instead, with the likely words."}
+                   (invoke-semantic-search {:query "how much did we make"})))))))))

@@ -153,7 +153,7 @@ Stage 2 references each stage-1 aggregation by the **output column name** it pro
 
 Instead of `source-table`, use `source-card` to query an existing question or model. The value is the card's **portable entity id** — a 21-char opaque string reported by search and `read_resource` as `portable_entity_id`.
 
-1. Get the `portable_entity_id` from a tool response. `search` and `read_resource` (`metabase://question/<id>`, `metabase://model/<id>`) include it on the result tag — reuse what's already in context, no extra call needed.
+1. Get the `portable_entity_id` from a tool response. Search results and `read_resource` (`metabase://question/<id>`, `metabase://model/<id>`) include it on the result tag — reuse what's already in context, no extra call needed.
 2. Copy it **verbatim** into `source-card`. The id is opaque — never guess, construct, or abbreviate.
 3. Reference the card's columns by their output **name** (a string in slot 3), not by portable FK. If you don't know the names and `read_resource` is available, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`). If `read_resource` is unavailable, use `list_available_fields` with the card's numeric ID in `model_ids` and `[]` in the required `table_ids` and `metric_ids`. For a **saved question**, the tool returns a `<metabase_question>` block with the question's fields and, when available, its saved query. Reuse column names from an earlier `search` or tool result rather than guessing.
 

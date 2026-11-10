@@ -2,6 +2,7 @@
   "Search tool wrappers for Metabot v3."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
@@ -23,6 +24,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -667,62 +669,22 @@
                    :total total
                    :failed-queries (into [] (comp (mapcat :queries) (distinct)) failed)))))
 
-(def ^:private query-broadening-stopwords
-  "Tokens we don't include in an OR-broadened fallback query — they'd flood the result
-   set with noise without adding signal."
-  #{"the" "a" "an" "of" "for" "with" "on" "in" "to" "by" "at" "and" "or"})
-
-(defn- broaden-query
-  "When the original keyword query produces zero hits, the agent has typically over-
-   specified — every word is ANDed and one stray qualifier (e.g. \"hard bounce rate
-   campaign\") collapses the result set to empty. As a one-shot fallback we rejoin the
-   meaningful tokens with `or` so the engine compiles them with `|` semantics.
-
-   Returns nil (no fallback) when broadening doesn't apply:
-     - the query is empty or has a single distinct token
-     - the agent already used `or` (so OR-broadening would be redundant)
-     - the agent used a quoted phrase (treat as a deliberate exact-match intent)
-     - the agent excluded a word (OR-joined branches would drop the exclusion and surface exactly what was
-       ruled out)"
-  [q]
-  (when (and q
-             (not (str/includes? q "\""))
-             (not (re-find #"(?i)\bor\b" q))
-             ;; the same test `search.util/to-tsquery-expr` uses to read a word as negated
-             (not (re-find #"(?:^|\s)-\w" q)))
-    (let [tokens (->> (str/split q #"\s+")
-                      ;; Strip clinging edge punctuation so "sales, revenue" broadens to
-                      ;; "sales or revenue", not "sales, or revenue".
-                      (map #(str/replace % #"^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$" ""))
-                      (remove str/blank?)
-                      (remove #(query-broadening-stopwords (u/lower-case-en %))))]
-      ;; Decide on distinct words: repeats of one word OR to the query that just came back empty. Keep the
-      ;; repeats in the output, though: `to-tsquery-expr` reads a repeated final word as typed in full rather
-      ;; than as a prefix, and dropping the repeat would hand that prefix to a different word.
-      (when (> (count (distinct (map u/lower-case-en tokens))) 1)
-        (str/join " or " tokens)))))
-
 ;; TODO (Chris 2026-09-30) -- Two search entry points have diverged. [[search]] is the multi-query search (term and
 ;; semantic queries, fused by rank, paginated) behind MCP v2's `search` tool and `/v1/search`. [[search-by-query]] is
-;; the single-query search the Metabot tools use, with its own engine choice, zero-hit broadening, and richer result
-;; enrichment. We may want to consolidate them once it's clear which shape both callers should share.
+;; the single-query search the Metabot tools use, which pins one engine per call and enriches results further. We may
+;; want to consolidate them once it's clear which shape both callers should share.
 (defn search-by-query
-  "Search for data sources (tables, models, cards, dashboards, metrics, measures, segments, collections) in Metabase
-  with a single query string. This is the Metabot tools' search.
+  "The Metabot search tools' search: one query, run on one engine, with results shaped and enriched for the model.
 
-  Routes the query to the semantic engine when available. That engine already blends keyword and vector matching for
-  one query (see `metabase-enterprise.search.semantic.scoring/rrf-rank-exp`), so no metabot-level fusion is needed.
-  Otherwise the instance's default keyword engine runs it.
-
-  The keyword (appdb) engine ANDs every token in the input, so one extra qualifier word can collapse the result set to
-  zero. When the first call returns no hits, the search retries once with the tokens OR-joined by [[broaden-query]].
-  It skips that retry when the query is a single token, is quoted, or already uses `or`.
+  `engine` is the engine to run, by default the keyword engine. `query` is a plain string, such as a natural-language
+  description for the semantic engine. `search-expr` is a structured keyword query (see `metabase.search.query-expr`):
+  engines that compile it match on it, and the others match its leaves as a plain string. `vector-only?` asks the
+  semantic engine for meaning alone, and `max-semantic-distance` overrides its distance cutoff.
 
   The result carries the size of the whole match set as `:total` metadata, so the caller can tell that `limit`
-  cut it short. When the results come from the retry, `:broadened-query` metadata holds the query that found them.
-  `:collection-id` metadata is the collection the search ran in, after [[scoped-collection-id]]."
-  [{:keys [query database-id collection-id created-at last-edited-at
-           entity-types limit metabot profile-id weights]}]
+  cut it short. `:collection-id` metadata is the collection the search ran in, after [[scoped-collection-id]]."
+  [{:keys [query search-expr engine vector-only? max-semantic-distance database-id collection-id created-at
+           last-edited-at entity-types limit metabot profile-id weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:database-id  database-id
               :entity-types entity-types
@@ -738,10 +700,7 @@
         ;; A caller-supplied collection narrows a confined metabot's search but never widens it.
         collection-id  (scoped-collection-id collection-id (confined-collection-id metabot profile-id))
         limit          (or limit 50)
-        ;; Pick the engine that will actually run the search. Semantic blends keyword and vector matching itself,
-        ;; so it gets first refusal when active. Otherwise the instance's default precedence decides, typically
-        ;; appdb but `in-place` on minimal installs. Choosing here lets the broadening below branch on the engine.
-        picked-engine  (search.engine/resolved-engine)
+        picked-engine  (or engine (search.engine/keyword-engine))
         run-engine     (fn [search-string]
                          (search/search
                           (search/search-context
@@ -762,29 +721,17 @@
                                     :archived                            false
                                     :limit                               limit
                                     :offset                              0}
-                             weights       (assoc :weights weights)
-                             use-verified? (assoc :curated true)
-                             collection-id (assoc :collection collection-id)))))
-        primary        (run-engine query)
-        ;; The `or` rewrite only broadens where lowercase `or` compiles to a tsquery `|`; see
-        ;; [[search.engine/tsquery-operators-supported?]] for where that holds. Semantic is excluded as well,
-        ;; because it already blends keyword and vector matching.
-        ;; The retry is optional: if it fails, the first search's empty result stands.
-        {:keys [data total broadened-query]}
-        (or (when (and (empty? (:data primary))
-                       (not= picked-engine :search.engine/semantic)
-                       (search.engine/tsquery-operators-supported?))
-              (when-let [broadened (broaden-query query)]
-                (log/info "[METABOT-SEARCH] Zero hits; retrying with an OR-broadened query")
-                (try
-                  (let [retry (run-engine broadened)]
-                    (when (seq (:data retry))
-                      (assoc retry :broadened-query broadened)))
-                  (catch Exception e
-                    (log/warn e "[METABOT-SEARCH] OR-broadened retry failed; keeping the empty result")
-                    nil))))
-            primary)]
-    (log/infof "[METABOT-SEARCH] Query returned entity types: %s" (frequencies (map :model data)))
+                             weights               (assoc :weights weights)
+                             use-verified?         (assoc :curated true)
+                             collection-id         (assoc :collection collection-id)
+                             search-expr           (assoc :search-expr search-expr)
+                             vector-only?          (assoc :vector-only? true)
+                             max-semantic-distance (assoc :max-semantic-distance max-semantic-distance)))))
+        {:keys [data total]} (run-engine (if search-expr (search/query-expr-search-string search-expr) query))]
+    (log/info "[METABOT-SEARCH] Search finished" {:engine       picked-engine
+                                                  :query-shape  (if search-expr :expression :string)
+                                                  :result-count (count data)
+                                                  :entity-types (frequencies (map :model data))})
     (-> (->> data
              (take limit)
              (map postprocess-search-result)
@@ -798,8 +745,7 @@
              (validate-and-enrich-documents false)
              remove-unreadable-transforms)
         (with-meta (m/assoc-some {:total total}
-                                 :broadened-query broadened-query
-                                 :collection-id   collection-id)))))
+                                 :collection-id collection-id)))))
 
 (defn- table-refs->results
   [ids]
@@ -963,17 +909,12 @@
   empty result."
   [query results limit restrictions]
   (let [results-xml (str/join "\n" (map llm-shape/search-result->xml results))
-        {:keys [total broadened-query]} (meta results)]
+        {:keys [total]} (meta results)]
     (te/lines
-     (str "<results query=\"" (llm-shape/escape-xml query) "\""
-          (when broadened-query
-            (str " broadened_query=\"" (llm-shape/escape-xml broadened-query) "\""))
-          " total=\"" (count results) "\">")
+     (str "<results query=\"" (llm-shape/escape-xml query)
+          "\" total=\"" (count results) "\">")
      results-xml
      "</results>"
-     (when broadened-query
-       (str "Nothing matched every word of `query`, so these results match any one of its words. "
-            "Check that a result fits the whole request before using it."))
      ;; Search caps the ranked pool, so the total is a lower bound.
      (when (and total (< limit total))
        (str "Showing " (count results) " of at least " total " results. "
@@ -989,14 +930,7 @@
 
 ;; Field-level descriptions surface to the model as JSON-Schema `description`s on the
 ;; tool's input parameters (via `malli.json-schema` in `metabase.metabot.self.claude`).
-;; The system prompt's discovery section, where a profile includes it, says how this instance matches a query and
-;; which operators it reads. `query-desc` covers what holds on every engine, for profiles without that section.
-(def ^:private query-desc
-  (str "What to look for: the likely name of the thing, in one to three words. "
-       "Unless the system prompt says otherwise, a result must contain every word, so a long phrase can match nothing."))
-
-(def ^:private query-schema
-  [:and {:description query-desc} ms/NonBlankString])
+;; Each matcher's `query` describes itself; see [[matchers]].
 
 (def ^:private entity-types-desc
   "Restrict results to these entity types. Omit to search across all types this tool supports.")
@@ -1099,8 +1033,8 @@
                           "for tables.")]))
 
 (def ^:private no-retry-step
-  {:uses #{"search"}
-   :text (str "Do not call `search` again in this turn. If you cannot find the data another way, "
+  {:uses #{}
+   :text (str "Do not call the search tools again in this turn. If you cannot find the data another way, "
               "tell the user that search is unavailable right now.")})
 
 (tools/defrecoverable search-failed!
@@ -1112,12 +1046,48 @@
   {:message  "Search failed."
    :recovery (conj (browse-steps scope) no-retry-step)})
 
+(tools/defrecoverable semantic-search-failed!
+  "The semantic engine failed. A vector-only search doesn't fall back to a keyword engine, so the model is pointed at
+  the keyword search tool instead."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "Semantic search isn't working right now."
+   :recovery [{:uses #{"fulltext_search"}
+               :text "Use `fulltext_search` instead, with the likely words."}
+              {:uses #{"substring_search"}
+               :text "Use `substring_search` instead, with the likely words."}]})
+
+(tools/defrecoverable query-too-large!
+  "A structured query has more leaves than [[metabase.search.core/query-expr-limit-error]] allows."
+  {:payload [:map {:closed true} [:message :string]]}
+  [{:keys [message]}]
+  {:message  message
+   :recovery []})
+
+(tools/defrecoverable query-matches-nothing!
+  "Full-text search drops some terms of a structured query entirely, because they normalize to nothing."
+  {:payload [:map {:closed true} [:terms [:sequential :string]]]}
+  [{:keys [terms]}]
+  {:message  (str (str/join ", " (map #(str "`" % "`") terms))
+                  " can't match anything: full-text search drops very common words such as `the` and `and`.")
+   :recovery [{:uses #{"fulltext_search"}
+               :text "Remove it, or use a more specific word, then call `fulltext_search` again."}]})
+
+(tools/defrecoverable query-matches-everything!
+  "A structured query can't restrict the full-text index, because a `not` inside an `or` excludes one thing from
+  everything else."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "This query would match almost everything: a `not` inside an `or` excludes one thing from everything else."
+   :recovery [{:uses #{"fulltext_search"}
+               :text "Put each `not` inside an `and` with a term that has to match, then call `fulltext_search` again."}]})
+
 (defn- do-search
   [default-types search-opts {:keys [query entity_types limit collection_id] :as args}]
   ;; Recoverable, not `:internal`: the agent can find the data without search, or tell the user that
   ;; search failed. `read_resource` does not use the search index.
   (let [limit        (min max-search-limit (or limit default-search-limit))
-        opts         (merge {:query        query
+        opts         (merge {:query        (when (string? query) query)
                              :entity-types (or (seq entity_types) (vec default-types))
                              :limit        limit}
                             search-opts
@@ -1128,10 +1098,12 @@
                        (catch Exception e
                          ;; The runtime logs a recoverable error at debug level, without its cause.
                          (log/error e "Metabot search failed")
-                         (search-failed! (search-scope (:metabot opts) (:profile-id opts) (:database-id opts)
-                                                       collection_id (:entity-types opts)))))
+                         (if (= :semantic-search-error (:type (ex-data e)))
+                           (semantic-search-failed! {})
+                           (search-failed! (search-scope (:metabot opts) (:profile-id opts) (:database-id opts)
+                                                         collection_id (:entity-types opts))))))
         restrictions (search-restrictions default-types search-opts args (:collection-id (meta results)))]
-    {:output (format-search-output query results limit restrictions)
+    {:output (format-search-output (if (string? query) query (json/encode query)) results limit restrictions)
      :structured-output (cond-> {:result-type :search
                                  :data results
                                  :total_count (count results)}
@@ -1139,6 +1111,90 @@
      :data-parts [(streaming/search-results-part
                    {:total_count (count results)
                     :results (mapv search-result->item results)})]}))
+
+;;; ------------------------------------------------ The search tools ------------------------------------------------
+;;
+;; One tool per matcher, named for how it matches, because a query is written for a matcher: `cust` is a good
+;; substring query and a useless full-text one. `semantic_search` matches meaning. `fulltext_search` (app-db on
+;; Postgres) and `substring_search` (in-place, or app-db on H2) take a structured query whose schema lists only the
+;; operators that engine runs, so nothing the model can send is silently reinterpreted. Each tool is offered only while
+;; its engine serves this instance (`:metabot/available?`), and each profile gets variants that carry its own entity
+;; types and scope arguments.
+
+(defn- semantic-available? [_ctx] (= :ok (search.engine/engine-status :search.engine/semantic)))
+(defn- fulltext-available? [_ctx] (= :fulltext (search.engine/keyword-flavour)))
+(defn- substring-or-available? [_ctx] (= :substring-or (search.engine/keyword-flavour)))
+(defn- substring-and-available? [_ctx] (= :substring-and (search.engine/keyword-flavour)))
+
+(defn- semantic-unavailable-note
+  "What the prompt says about `semantic_search` when it isn't offered. Nothing here is sensitive: it names the kind of
+  thing that is missing, never configuration details."
+  [_ctx]
+  {:purpose    "finds data by what it means, even when its name and description use different words"
+   :missing    "matching by meaning, so synonyms and paraphrases only match when they share words"
+   :reason     (if (= :unsupported (search.engine/engine-status :search.engine/semantic))
+                 "semantic search isn't available on this instance"
+                 "semantic search isn't set up on this instance")
+   :workaround "search for the likely words, and give synonyms as `or` alternatives where the search tool allows"})
+
+(def ^:private semantic-query-schema
+  [:string {:min         1
+            :description (str "What you're looking for, described in plain words. Write a short description of the "
+                              "data, not keywords or operators.")}])
+
+(defn- keyword-query-schema
+  [ops description]
+  (mut/update-properties (search/query-expr-schema ops) assoc :description description))
+
+(def ^:private fulltext-query-schema
+  (keyword-query-schema
+   #{"and" "or" "not" "phrase" "prefix"}
+   (str "The words to match in names and descriptions: one term, or a tree of `and`, `or` and `not` nodes over "
+        "terms, `phrase`s and `prefix`es. Terms match whole words after stemming, so `orders` finds `order` but "
+        "`cust` finds nothing unless it is a `prefix`. Very common words such as `the` match nothing.")))
+
+(def ^:private substring-or-query-schema
+  (keyword-query-schema
+   #{"or"}
+   (str "Text to find in names and descriptions: one term, or an `or` of terms of which any may match. A term "
+        "matches anywhere inside a word, so `cust` finds `customers`.")))
+
+(def ^:private substring-and-query-schema
+  (keyword-query-schema
+   #{"and"}
+   (str "Text to find in names and descriptions: one term, or an `and` of terms that must all appear. A term "
+        "matches anywhere inside a word, so `cust` finds `customers`.")))
+
+;; Metabot reads a short ranked list and pairs it with keyword search, so it casts a wider net than the semantic
+;; engine's default cutoff and leaves precision to ranking.
+(def ^:private metabot-max-semantic-distance 0.8)
+
+(def ^:private matchers
+  "How each matcher runs and how it is offered: its tool name, the engine it pins, whether its `query` is a structured
+  query, the query's schema, and its availability check."
+  {:semantic      {:tool-name             "semantic_search"
+                   :engine                (constantly :search.engine/semantic)
+                   :vector-only?          true
+                   :max-semantic-distance metabot-max-semantic-distance
+                   :query-schema          semantic-query-schema
+                   :available?            semantic-available?
+                   :unavailable-note      semantic-unavailable-note}
+   :fulltext      {:tool-name         "fulltext_search"
+                   :engine            search.engine/keyword-engine
+                   :expr?             true
+                   :validate-tsquery? true
+                   :query-schema      fulltext-query-schema
+                   :available?        fulltext-available?}
+   :substring-or  {:tool-name    "substring_search"
+                   :engine       search.engine/keyword-engine
+                   :expr?        true
+                   :query-schema substring-or-query-schema
+                   :available?   substring-or-available?}
+   :substring-and {:tool-name    "substring_search"
+                   :engine       search.engine/keyword-engine
+                   :expr?        true
+                   :query-schema substring-and-query-schema
+                   :available?   substring-and-available?}})
 
 (def ^:private general-entity-types
   "The entity types the general and NLQ search tools accept."
@@ -1152,21 +1208,50 @@
               "segment"
               "table"))
 
-(def ^:private search-schema
-  [:map {:closed true}
-   [:query query-schema]
-   [:entity_types {:optional true} (apply entity-types-schema general-entity-types)]
-   [:database_id   {:optional true} [:maybe :int]]
-   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:limit {:optional true} limit-schema]])
+(def ^:private profiles
+  "Each profile's variant: the entity types it searches by default, and the extra search options it sets.
+  The entity types each variant accepts are in its schema; see [[tool-schema]]."
+  {:general {:default-types general-entity-types}
+   :sql     {:default-types (sorted-set "model" "table")}
+   :nlq     {:default-types ["collection" "metric" "measure" "segment" "model" "question" "table"]
+             :opts          {:profile-id "nlq"}}})
+
+(defn- tool-schema
+  [profile query-schema]
+  (case profile
+    (:general :nlq) [:map {:closed true}
+                     [:query query-schema]
+                     [:entity_types {:optional true} (apply entity-types-schema general-entity-types)]
+                     [:database_id   {:optional true} [:maybe :int]]
+                     [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                     [:limit {:optional true} limit-schema]]
+    :sql            [:map {:closed true}
+                     [:query query-schema]
+                     [:database_id :int]
+                     [:entity_types {:optional true} (entity-types-schema "table" "model")]
+                     [:limit {:optional true} limit-schema]]))
+
+(defn- check-keyword-query!
+  "Reject a structured query the engine would run in a way the model didn't mean: too many leaves, and on Postgres,
+  leaves that normalize to nothing or a query that can't restrict the index."
+  [{:keys [validate-tsquery?]} expr]
+  (when-let [message (search/query-expr-limit-error expr)]
+    (query-too-large! {:message message}))
+  (when validate-tsquery?
+    (let [{:keys [empty-leaves unrestricted?]} (search/query-expr-problems expr)]
+      (when (seq empty-leaves)
+        (query-matches-nothing! {:terms (vec empty-leaves)}))
+      (when unrestricted?
+        (query-matches-everything! {})))))
 
 (defn- search-display
   [{:keys [query]}]
   ;; just the object (the query) — the client wraps it in the verb + tense
   ;; ("Searching for …" while active, "Searched for …" once finished). The title runs before argument
   ;; validation, so a malformed query yields no title rather than an error.
-  (when (string? query)
-    (not-empty query)))
+  (cond
+    (string? query) (not-empty query)
+    (map? query)    (u/ignore-exceptions (not-empty (search/query-expr-search-string query)))))
 
 (tools/defrecoverable unavailable-database!
   "The database for this SQL search does not exist or the user cannot read it."
@@ -1186,51 +1271,129 @@
                    (mi/can-read? database)))
     (unavailable-database! {:database-id database-id})))
 
-(defrecord SearchTool [description args default-types search-opts]
+(defrecord SearchTool [profile matcher description]
   tools/Tool
   (declaration [_]
-    {:name "search"
-     :description description
-     :args args
-     :scope scope/agent-search
-     :metabot/title-fn search-display})
-  (handle [_ {:keys [database_id] :as args} {:keys [metabot]}]
-    (when (some? database_id)
-      (check-search-database! database_id))
-    (do-search default-types
-               (cond-> (assoc search-opts :metabot metabot)
-                 (some? database_id) (assoc :database-id database_id))
-               args)))
+    (let [{:keys [tool-name query-schema available? unavailable-note]} (matchers matcher)]
+      (cond-> {:name                tool-name
+               :description         description
+               :args                (tool-schema profile query-schema)
+               :scope               scope/agent-search
+               :metabot/title-fn    search-display
+               :metabot/available?  available?
+               :metabot/replaces    #{"search"}}
+        unavailable-note (assoc :metabot/unavailable-note unavailable-note))))
+  (handle [_ {:keys [database_id query] :as args} {:keys [metabot]}]
+    (let [{:keys [default-types opts]}                                    (profiles profile)
+          {:keys [engine expr? vector-only? max-semantic-distance] :as m} (matchers matcher)]
+      (when (some? database_id)
+        (check-search-database! database_id))
+      (when expr?
+        (check-keyword-query! m query))
+      (do-search default-types
+                 (cond-> (merge opts {:metabot metabot :engine (engine)})
+                   vector-only?          (assoc :vector-only? true)
+                   max-semantic-distance (assoc :max-semantic-distance max-semantic-distance)
+                   expr?                 (assoc :search-expr query)
+                   (some? database_id)   (assoc :database-id database_id))
+                 args))))
 
-(def search-tool
-  "The general `search` tool."
+;;; general profiles (internal, Slackbot, Explorations)
+
+(def semantic-search-tool
+  "`semantic_search` for the general profiles."
   (->SearchTool
-   "Find tables, models, metrics, measures, segments, dashboards, documents, saved questions, and collections by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
-   search-schema general-entity-types {}))
+   :general :semantic
+   (str "Find data and content by meaning: describe what you want in plain words, and it finds matches even when "
+        "their names use different words. It can return only a few matches, so pair it with the keyword search tool, "
+        "which also finds exact names and codes and can exclude things. Searches tables, models, metrics, measures, "
+        "segments, dashboards, documents, saved questions, and collections.")))
 
-(def ^:private sql-search-schema
-  [:map {:closed true}
-   [:query query-schema]
-   [:database_id :int]
-   [:entity_types {:optional true} (entity-types-schema "table" "model")]
-   [:limit {:optional true} limit-schema]])
-
-(def sql-search-tool
-  "The SQL `search` tool."
+(def fulltext-search-tool
+  "`fulltext_search` for the general profiles."
   (->SearchTool
-   "Find SQL-queryable data sources (tables and models) within a specific database by topic."
-   sql-search-schema (sorted-set "model" "table") {}))
+   :general :fulltext
+   (str "Find data and content by the words in its name and description. Matches whole words (stemmed), and combines "
+        "terms with `and`, `or` and `not`, `phrase`s and `prefix`es. Use it for the distinctive words of what you "
+        "want, exact names and codes, and exclusions. Searches tables, models, metrics, measures, segments, "
+        "dashboards, documents, saved questions, and collections.")))
 
-(def ^:private nlq-search-schema
-  [:map {:closed true}
-   [:query query-schema]
-   [:entity_types {:optional true} (apply entity-types-schema general-entity-types)]
-   [:database_id   {:optional true} [:maybe :int]]
-   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:limit {:optional true} limit-schema]])
-
-(def nlq-search-tool
-  "The NLQ `search` tool."
+(def substring-or-search-tool
+  "`substring_search` for the general profiles, on the in-place engine."
   (->SearchTool
-   "Find NLQ-queryable data sources (tables, models, metrics, measures, segments, questions, and collections) by topic, or find dashboards and documents as save destinations."
-   nlq-search-schema ["collection" "metric" "measure" "segment" "model" "question" "table"] {:profile-id "nlq"}))
+   :general :substring-or
+   (str "Find data and content whose name or description contains the given text. Give alternatives with `or`. "
+        "Searches tables, models, metrics, measures, segments, dashboards, documents, saved questions, and "
+        "collections.")))
+
+(def substring-and-search-tool
+  "`substring_search` for the general profiles, on app-db over H2."
+  (->SearchTool
+   :general :substring-and
+   (str "Find data and content whose name or description contains the given text. Require several terms with `and`. "
+        "Searches tables, models, metrics, measures, segments, dashboards, documents, saved questions, and "
+        "collections.")))
+
+;;; SQL profile: tables and models in the database the user has open
+
+(def sql-semantic-search-tool
+  "`semantic_search` for the SQL profile."
+  (->SearchTool
+   :sql :semantic
+   (str "Find SQL-queryable tables and models in a database by meaning: describe what you want in plain words. Use "
+        "it for concepts; use the keyword search tool for exact table names.")))
+
+(def sql-fulltext-search-tool
+  "`fulltext_search` for the SQL profile."
+  (->SearchTool
+   :sql :fulltext
+   (str "Find SQL-queryable tables and models in a database by the words in their names and descriptions. Matches "
+        "whole words (stemmed), and combines terms with `and`, `or` and `not`, `phrase`s and `prefix`es.")))
+
+(def sql-substring-or-search-tool
+  "`substring_search` for the SQL profile, on the in-place engine."
+  (->SearchTool
+   :sql :substring-or
+   (str "Find SQL-queryable tables and models in a database whose name or description contains the given text. "
+        "Give alternatives with `or`.")))
+
+(def sql-substring-and-search-tool
+  "`substring_search` for the SQL profile, on app-db over H2."
+  (->SearchTool
+   :sql :substring-and
+   (str "Find SQL-queryable tables and models in a database whose name or description contains the given text. "
+        "Require several terms with `and`.")))
+
+;;; NLQ profiles (NLQ, embedded): queryable data by default, dashboards and documents as save destinations
+
+(def nlq-semantic-search-tool
+  "`semantic_search` for the NLQ profiles."
+  (->SearchTool
+   :nlq :semantic
+   (str "Find data to answer a question by meaning: describe what you want in plain words, and it finds tables, "
+        "models, metrics, measures, segments, questions, and collections even when their names use different words. "
+        "Can also find dashboards and documents as save destinations.")))
+
+(def nlq-fulltext-search-tool
+  "`fulltext_search` for the NLQ profiles."
+  (->SearchTool
+   :nlq :fulltext
+   (str "Find data to answer a question by the words in its name and description: tables, models, metrics, "
+        "measures, segments, questions, and collections, or dashboards and documents as save destinations. Matches "
+        "whole words (stemmed), and combines terms with `and`, `or` and `not`, `phrase`s and `prefix`es.")))
+
+(def nlq-substring-or-search-tool
+  "`substring_search` for the NLQ profiles, on the in-place engine."
+  (->SearchTool
+   :nlq :substring-or
+   (str "Find data to answer a question whose name or description contains the given text: tables, models, metrics, "
+        "measures, segments, questions, and collections, or dashboards and documents as save destinations. Give "
+        "alternatives with `or`.")))
+
+(def nlq-substring-and-search-tool
+  "`substring_search` for the NLQ profiles, on app-db over H2."
+  (->SearchTool
+   :nlq :substring-and
+   (str "Find data to answer a question whose name or description contains the given text: tables, models, metrics, "
+        "measures, segments, questions, and collections, or dashboards and documents as save destinations. Require "
+        "several terms with `and`.")))

@@ -575,15 +575,17 @@
   [{:keys [messages state metabot profile-id context tracking-opts conversation-id request-canceled-chan]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
-        ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
-        ;; prompt and the tools so they can't disagree about whether the curated library tool is offered.
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
+        ;; One availability check per tool feeds both the offered tools and the prompt's "Unavailable tools" section.
+        ;; The checks read the request, for example whether this metabot is confined to a collection.
+        {offered :tools unavailable :unavailable-tools} (profiles/resolve-tools profile capabilities
+                                                                                {:metabot metabot :profile-id profile-id})
+        profile      (assoc profile :unavailable-tools unavailable)
         ;; Where run_query would refuse every call, it is not offered and the prompt does not promise results: where
         ;; other people can read the conversation, where there is no conversation or user to check, and for the
         ;; embedded Metabot, whatever profile the request names. The tool checks again, for someone who joins mid-turn.
-        offered      (profiles/profile->tools profile capabilities)
         base-tools   (cond-> offered
                        (and (contains? offered "run_query")
                             (or (not (and conversation-id api/*current-user-id*))

@@ -22,6 +22,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.search.engine :as search.engine]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -42,25 +43,35 @@
 
 (deftest entries-carry-title-fn-test
   (testing "a tool's title function reaches the entry the adapters read"
-    (let [entries (agent-tools/->entries [#'agent-tools/search-tool] (atom {}) nil nil)]
-      (is (fn? (get-in entries ["search" :title-fn]))))))
+    (let [entries (agent-tools/->entries [#'agent-tools/fulltext-search-tool] (atom {}) nil nil)]
+      (is (fn? (get-in entries ["fulltext_search" :title-fn]))))))
+
+(deftest entries-carry-replaces-test
+  (testing "the names a tool took over reach the entry the tool executor reads"
+    (let [entries (agent-tools/->entries [#'agent-tools/fulltext-search-tool] (atom {}) nil nil)]
+      (is (= #{"search"} (get-in entries ["fulltext_search" :replaces]))))))
 
 (deftest filter-by-capabilities-test
   (testing "returns tools with no capability requirements when capabilities empty"
-    (let [tool-vars [#'agent-tools/search-tool #'agent-tools/read-resource-tool]]
+    (let [tool-vars [#'agent-tools/fulltext-search-tool #'agent-tools/read-resource-tool]]
       (is (= tool-vars
              (#'profiles/filter-by-capabilities tool-vars #{})))))
   (testing "filters out tools that require missing capabilities"
-    (let [tool-vars [#'agent-tools/search-tool
+    (let [tool-vars [#'agent-tools/fulltext-search-tool
                      #'agent-tools/create-sql-query-tool]
           capabilities #{}
           result (#'profiles/filter-by-capabilities tool-vars capabilities)]
-      (is (= ["search"] (mapv #(:name (tools.legacy/declaration-of %)) result)))))
+      (is (= ["fulltext_search"] (mapv #(:name (tools.legacy/declaration-of %)) result)))))
   (testing "includes tools when capabilities are provided"
-    (let [tool-vars [#'agent-tools/search-tool #'agent-tools/create-sql-query-tool #'agent-tools/create-chart-tool]
+    (let [tool-vars [#'agent-tools/fulltext-search-tool #'agent-tools/create-sql-query-tool #'agent-tools/create-chart-tool]
           capabilities #{:permission-write-sql-queries}
           result (#'profiles/filter-by-capabilities tool-vars capabilities)]
       (is (= tool-vars result)))))
+
+(defn- keyword-search-tool-name
+  "The keyword search tool this instance advertises: full-text on a Postgres app DB, else substring."
+  []
+  (if (= :fulltext (search.engine/keyword-flavour)) "fulltext_search" "substring_search"))
 
 (defn- tools-for-profile
   "Get tools for a profile with unrestricted scope."
@@ -72,7 +83,7 @@
   (let [tools (tools-for-profile :internal)]
     (is (map? tools))
     (is (>= (count tools) 5))
-    (is (contains? tools "search"))
+    (is (contains? tools (keyword-search-tool-name)))
     (is (contains? tools "edit_chart"))
     (is (contains? tools "create_chart"))
     (is (contains? tools "create_dashboard_subscription"))))
@@ -94,27 +105,25 @@
 (deftest ^:parallel get-tools-for-sql-profile-test
   (let [tools (tools-for-profile :sql)]
     (is (map? tools))
-    (is (contains? tools "search"))
+    (is (contains? tools (keyword-search-tool-name)))
     (is (contains? tools "read_resource"))
     (is (contains? tools "ask_for_sql_clarification"))))
 
 (deftest get-tools-for-nlq-profile-test
-  (testing "nlq discovers data through the curated library tool when it can serve queries, else general search"
-    ;; Entity retrieval unavailable (no pgvector / OSS): the general `search` fallback is the discovery tool,
-    ;; so the agent is never left with zero ways to find data. The library tool is filtered out.
+  (testing "nlq offers library retrieval beside the search tools when it can serve, and the search tools always"
+    ;; Entity retrieval unavailable (no pgvector / OSS): the search tools alone. The library tool is filtered out.
     (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly false)]
       (let [tools (tools-for-profile :nlq)]
         (is (map? tools))
-        (is (contains? tools "search"))
+        (is (contains? tools (keyword-search-tool-name)))
         (is (contains? tools "construct_notebook_query"))
         (is (contains? tools "create_chart"))
         (is (not (contains? tools "retrieve_library_entities")))))
-    ;; Entity retrieval available (pgvector configured + library-retrieval licensed): the curated library tool
-    ;; replaces general search. Exactly one discovery tool survives capability filtering.
+    ;; Entity retrieval available (pgvector configured + library-retrieval licensed): library retrieval joins them.
     (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
       (let [tools (tools-for-profile :nlq)]
         (is (contains? tools "retrieve_library_entities"))
-        (is (not (contains? tools "search")))))))
+        (is (contains? tools (keyword-search-tool-name)))))))
 
 (deftest ^:parallel get-tools-for-document-generate-content-profile-test
   (let [tools     (tools-for-profile :document-generate-content)
@@ -140,7 +149,7 @@
 (deftest ^:parallel get-tools-for-slackbot-profile-test
   (let [tools (tools-for-profile :slackbot)]
     (is (map? tools))
-    (is (contains? tools "search"))
+    (is (contains? tools (keyword-search-tool-name)))
     (is (contains? tools "construct_notebook_query"))
     (is (contains? tools "list_available_fields"))
     (is (contains? tools "get_field_values"))
@@ -167,10 +176,16 @@
           (is (some? args)))))))
 
 (deftest search-tool-test
-  (testing "search declares its name and argument schema"
-    (let [declared (tools.legacy/declaration-of #'agent-tools/search-tool)]
-      (is (= "search" (:name declared)))
-      (is (some? (:args declared))))))
+  (testing "the search tools declare their names, schemas, availability checks, and the name they replaced"
+    (doseq [[tool-var tool-name] [[#'agent-tools/semantic-search-tool "semantic_search"]
+                                  [#'agent-tools/fulltext-search-tool "fulltext_search"]
+                                  [#'agent-tools/substring-or-search-tool "substring_search"]
+                                  [#'agent-tools/substring-and-search-tool "substring_search"]]]
+      (let [declared (tools.legacy/declaration-of tool-var)]
+        (is (= tool-name (:name declared)))
+        (is (= #{"search"} (:metabot/replaces declared)))
+        (is (fn? (:metabot/available? declared)))
+        (is (some? (:args declared)))))))
 
 (deftest construct-notebook-query-tool-test
   (testing "construct_notebook_query evaluates a representations query and creates a chart"
@@ -915,9 +930,9 @@
 (deftest ->entries-test
   (testing "an entry carries what the adapters and the system message read"
     (let [entries (agent-tools/->entries [#'agent-tools/create-sql-query-tool
-                                          #'agent-tools/search-tool]
+                                          #'agent-tools/fulltext-search-tool]
                                          (atom {:state {:queries {} :charts {}}}) nil :nlq)]
-      (doseq [tool-name ["create_sql_query" "search"]]
+      (doseq [tool-name ["create_sql_query" "fulltext_search"]]
         (testing tool-name
           (let [entry (get entries tool-name)]
             (is (map? entry))
@@ -937,8 +952,8 @@
       (is (= #{"unconverted" "get_timeline_details"} (set (keys entries))))
       (is (every? fn? (map :fn (vals entries))))))
   (testing "the entry's :fn goes through the runtime, so it reports rather than throws"
-    (let [entries (agent-tools/->entries [#'agent-tools/search-tool] (atom {}) nil :nlq)
-          outcome ((get-in entries ["search" :fn]) {:not_an_argument true})]
+    (let [entries (agent-tools/->entries [#'agent-tools/fulltext-search-tool] (atom {}) nil :nlq)
+          outcome ((get-in entries ["fulltext_search" :fn]) {:not_an_argument true})]
       (is (=? {:error {:class :validation :code :invalid-arguments}} outcome)))))
 
 (deftest tool-schemas-exclude-state-keys-test
@@ -997,3 +1012,18 @@
                       (is (=? {:output #"^Created (alert|subscription) \d+ .*"}
                               (tools.core/call @tool (assoc args :schedule schedule) ctx)))
                       (is (= [expected] (stored-schedules))))))))))))))
+
+(deftest entries-keep-the-available-alternative-test
+  (testing "of tools that share a name, ->entries keeps the one available this turn, and keeps a lone tool as listed"
+    (doseq [[flavour expected] [[:substring-or #'agent-tools/substring-or-search-tool]
+                                [:substring-and #'agent-tools/substring-and-search-tool]
+                                [:fulltext nil]]]
+      (mt/with-dynamic-fn-redefs [search.engine/keyword-flavour (constantly flavour)]
+        (let [entries (agent-tools/->entries [#'agent-tools/substring-or-search-tool
+                                              #'agent-tools/substring-and-search-tool
+                                              #'agent-tools/fulltext-search-tool]
+                                             (atom {}) nil nil)]
+          (testing flavour
+            (is (contains? entries "fulltext_search"))
+            (is (= (some-> expected tools.legacy/declaration-of :description)
+                   (get-in entries ["substring_search" :doc])))))))))

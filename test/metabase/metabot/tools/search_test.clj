@@ -8,10 +8,10 @@
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.config :as metabot.config]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.search :as search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.permissions.core :as perms]
@@ -26,10 +26,27 @@
    [toucan2.core :as t2]))
 
 (defn- invoke-search
+  "Call the first tool in `tool-list` with `args`, through the runtime, as the agent would."
   ([tool-list args] (invoke-search tool-list args nil nil))
   ([tool-list args metabot profile-id]
    (binding [scope/*current-user-scope* #{scope/agent-search}]
-     ((get-in (metabot.tools/->entries tool-list (atom {}) metabot profile-id) ["search" :fn]) args))))
+     (let [tool-name (:name (tools.legacy/declaration-of (first tool-list)))]
+       ((get-in (metabot.tools/->entries tool-list (atom {}) metabot profile-id) [tool-name :fn]) args)))))
+
+(defn- keyword-tool
+  "The keyword search tool `profile` offers on this instance: full-text on a Postgres app DB, substring elsewhere.
+  A single-word `query` is valid for all of them."
+  [profile]
+  (get-in {:general {:fulltext      #'search/fulltext-search-tool
+                     :substring-or  #'search/substring-or-search-tool
+                     :substring-and #'search/substring-and-search-tool}
+           :sql     {:fulltext      #'search/sql-fulltext-search-tool
+                     :substring-or  #'search/sql-substring-or-search-tool
+                     :substring-and #'search/sql-substring-and-search-tool}
+           :nlq     {:fulltext      #'search/nlq-fulltext-search-tool
+                     :substring-or  #'search/nlq-substring-or-search-tool
+                     :substring-and #'search/nlq-substring-and-search-tool}}
+          [profile (search.engine/keyword-flavour)]))
 
 (defn- do-with-search-stub!
   "Call `thunk` with the engines set to `engines`, `ranked-results` answering each search string from
@@ -63,9 +80,9 @@
 
 (deftest ^:parallel search-requires-query-test
   (mt/with-dynamic-fn-redefs [search/search-by-query (fn [_] (throw (ex-info "Search must not run" {})))]
-    (doseq [[tool-var extra-args] [[#'search/search-tool {}]
-                                   [#'search/sql-search-tool {:database_id 1}]
-                                   [#'search/nlq-search-tool {}]]
+    (doseq [[tool-var extra-args] [[(keyword-tool :general) {}]
+                                   [(keyword-tool :sql) {:database_id 1}]
+                                   [(keyword-tool :nlq) {}]]
             query-args [{} {:query ""} {:query "  "}]]
       (is (=? {:error {:class :validation :code :invalid-arguments}}
               (invoke-search [tool-var] (merge extra-args query-args)))))))
@@ -80,7 +97,7 @@
                                " was not found. It may not exist, or you may not have access to it.\n"
                                "In the SQL editor, use the database currently selected there. Elsewhere, leave out `database_id`.\n"
                                "Call `read_resource` with `metabase://databases` to find an accessible database ID.")}
-                 (invoke-search [#'search/sql-search-tool #'metabot.tools/read-resource-tool]
+                 (invoke-search [(keyword-tool :sql) #'metabot.tools/read-resource-tool]
                                 {:database_id database-id :query "orders"}))))))))
 
 (deftest sql-search-non-admin-database-access-test
@@ -90,7 +107,7 @@
                             (mt/with-test-user :rasta
                               (is (false? api/*is-superuser?*))
                               (is (= (mt/user->id :rasta) api/*current-user-id*))
-                              (invoke-search [#'search/sql-search-tool] args)))]
+                              (invoke-search [(keyword-tool :sql)] args)))]
       (testing "a non-admin with database access can search"
         (let [result (search-as-rasta)]
           (is (nil? (:error result)))
@@ -111,16 +128,16 @@
             :output (str "Database " Integer/MAX_VALUE
                          " was not found. It may not exist, or you may not have access to it.\n"
                          "In the SQL editor, use the database currently selected there. Elsewhere, leave out `database_id`.")}
-           (invoke-search [#'search/sql-search-tool]
+           (invoke-search [(keyword-tool :sql)]
                           {:database_id Integer/MAX_VALUE :query "orders"})))))
 
 (deftest search-query-and-context-test
   (mt/with-test-user :crowberto
     (let [metabot {:entity_id "configured-search-bot" :collection_id 42 :use_verified_content true}]
       (doseq [[tool-var extra-args search-opts]
-              [[#'search/search-tool {} {}]
-               [#'search/sql-search-tool {:database_id (mt/id)} {:database-id (mt/id)}]
-               [#'search/nlq-search-tool {} {:profile-id "nlq"}]]]
+              [[(keyword-tool :general) {} {}]
+               [(keyword-tool :sql) {:database_id (mt/id)} {:database-id (mt/id)}]
+               [(keyword-tool :nlq) {} {:profile-id "nlq"}]]]
         (let [captured (atom nil)]
           (mt/with-dynamic-fn-redefs [search/search-by-query (fn [opts] (reset! captured opts) [])]
             (is (=? {:structured-output {:result-type :search :data [] :total_count 0}
@@ -142,13 +159,13 @@
                                                          (throw (ex-info "Search index unavailable" {}))))]
         (testing "a page cut short gives the total as a lower bound, since search caps the ranked pool"
           (is (= ["Showing 1 of at least 1000 results. To see more, raise `limit` (max 50) or make the query more specific."]
-                 (result-notes (:output (invoke-search [#'search/search-tool] {:query "reports" :limit 1}))))))
+                 (result-notes (:output (invoke-search [(keyword-tool :general)] {:query "reports" :limit 1}))))))
         (testing "a page that holds every match adds no note"
           (is (= []
-                 (result-notes (:output (invoke-search [#'search/search-tool] {:query "orders"}))))))
+                 (result-notes (:output (invoke-search [(keyword-tool :general)] {:query "orders"}))))))
         (testing "a failed search is a search failure the agent can recover from"
           (is (= {:class :recoverable :code ::search/search-failed}
-                 (:error (invoke-search [#'search/search-tool] {:query "broken"})))))))))
+                 (:error (invoke-search [(keyword-tool :general)] {:query "broken"})))))))))
 
 (deftest empty-search-explains-itself-test
   (let [explain (fn [tool-var args metabot]
@@ -159,11 +176,11 @@
       (testing "nothing narrowed the search"
         (is (= {:empty_reason "no_match"
                 :notes        ["<no-results>" retry-note "</no-results>"]}
-               (explain #'search/search-tool {:query "zzz"} nil)))
+               (explain (keyword-tool :general) {:query "zzz"} nil)))
         (is (= {:empty_reason "no_match"
                 :notes        ["<no-results>" retry-note "</no-results>"]}
-               (explain #'search/nlq-search-tool {:query        "zzz"
-                                                  :entity_types (vec @#'search/general-entity-types)}
+               (explain (keyword-tool :nlq) {:query        "zzz"
+                                             :entity_types (vec @#'search/general-entity-types)}
                         nil))
             "every type the tool accepts narrows nothing, even beyond the tool's defaults"))
       (testing "the entity types the model picked, curated content only and a confined collection are named"
@@ -174,7 +191,7 @@
                                "This Metabot searches only inside its own collection."
                                retry-note
                                "</no-results>"]}
-               (explain #'search/nlq-search-tool
+               (explain (keyword-tool :nlq)
                         {:query "zzz" :entity_types ["metric" "dashboard"]}
                         {:collection_id 7 :use_verified_content true}))))
       (testing "a database the model picked is named, with the types it leaves out"
@@ -184,14 +201,14 @@
                        "To search everywhere, leave out `database_id`.")
                   retry-note
                   "</no-results>"]
-                 (:notes (explain #'search/search-tool {:query "zzz" :database_id (mt/id)} nil))))
+                 (:notes (explain (keyword-tool :general) {:query "zzz" :database_id (mt/id)} nil))))
           (testing "only the types the search would have reached are named"
             (is (= ["<no-results>"
                     (str "Only database " (mt/id) " was searched, so collections were left out. "
                          "To search everywhere, leave out `database_id`.")
                     retry-note
                     "</no-results>"]
-                   (:notes (explain #'search/nlq-search-tool {:query "zzz" :database_id (mt/id)} nil)))
+                   (:notes (explain (keyword-tool :nlq) {:query "zzz" :database_id (mt/id)} nil)))
                 "the NLQ tool's defaults have no dashboards or documents")
             (is (= ["<no-results>"
                     "Only these entity types were searched: dashboard, table. If other types could match, add them to `entity_types`."
@@ -199,7 +216,7 @@
                          "To search everywhere, leave out `database_id`.")
                     retry-note
                     "</no-results>"]
-                   (:notes (explain #'search/search-tool
+                   (:notes (explain (keyword-tool :general)
                                     {:query "zzz" :database_id (mt/id) :entity_types ["table" "dashboard"]}
                                     nil))))
             (is (= ["<no-results>"
@@ -207,18 +224,18 @@
                     (str "Only database " (mt/id) " was searched. To search everywhere, leave out `database_id`.")
                     retry-note
                     "</no-results>"]
-                   (:notes (explain #'search/search-tool
+                   (:notes (explain (keyword-tool :general)
                                     {:query "zzz" :database_id (mt/id) :entity_types ["table"]}
                                     nil)))
                 "with no type left out, the database is still named, since a table in another one could match"))
           (is (= {:empty_reason "no_match" :notes ["<no-results>" retry-note "</no-results>"]}
-                 (explain #'search/sql-search-tool {:query "zzz" :database_id (mt/id)} nil))
+                 (explain (keyword-tool :sql) {:query "zzz" :database_id (mt/id)} nil))
               "the SQL tool always searches the editor's database, so that narrows nothing"))))
     (testing "a collection the model picked is named only when the search ran in it"
       (let [notes (fn [searched-collection-id metabot]
                     (mt/with-dynamic-fn-redefs [search/search-by-query
                                                 (constantly (with-meta [] {:collection-id searched-collection-id}))]
-                      (:notes (explain #'search/nlq-search-tool {:query "zzz" :collection_id 9} metabot))))]
+                      (:notes (explain (keyword-tool :nlq) {:query "zzz" :collection_id 9} metabot))))]
         (is (= ["<no-results>"
                 "Only collection 9 and the collections inside it were searched. To search everywhere, leave out `collection_id`."
                 retry-note
@@ -231,9 +248,9 @@
 (deftest ^:parallel unsupported-search-entity-types-test
   (mt/with-dynamic-fn-redefs [search/search-by-query (fn [_] (throw (ex-info "Search must not run" {})))]
     (doseq [[tool-var extra-args entity-type]
-            [[#'search/search-tool {} "database"]
-             [#'search/sql-search-tool {:database_id 1} "metric"]
-             [#'search/nlq-search-tool {} "transform"]]]
+            [[(keyword-tool :general) {} "database"]
+             [(keyword-tool :sql) {:database_id 1} "metric"]
+             [(keyword-tool :nlq) {} "transform"]]]
       (let [result (invoke-search [tool-var] (merge extra-args {:query        "orders"
                                                                 :entity_types [entity-type]}))]
         (is (= {:class :validation :code :invalid-arguments} (:error result)))
@@ -242,9 +259,14 @@
 (deftest ^:parallel search-display-test
   (testing "surfaces the query as the search object (client owns the verb/tense)"
     (is (= "revenue" (#'search/search-display {:query "revenue"}))))
+  (testing "a structured query shows its positive terms"
+    (is (= "revenue income" (#'search/search-display {:query {:op   "and"
+                                                              :args [{:op "or" :args ["revenue" "income"]}
+                                                                     {:op "not" :args ["gross"]}]}}))))
   (testing "no query -> nil"
     (is (nil? (#'search/search-display {})))
-    (is (nil? (#'search/search-display {:query ""})))))
+    (is (nil? (#'search/search-display {:query ""})))
+    (is (nil? (#'search/search-display {:query {:op "bogus"}})))))
 
 (deftest ^:parallel search-result->item-test
   (testing "trims a result to the fields the results card renders, nesting collection id+name"
@@ -553,48 +575,48 @@
       (with-redefs [perms/impersonated-user? (fn [] false)
                     perms/sandboxed-user? (fn [] false)
                     api/*current-user-id* 1]
-        (testing "nlq-search-tool with no entity_types searches table/model/metric/measure/segment/question/collection"
+        (testing "NLQ search with no entity_types searches table/model/metric/measure/segment/question/collection"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:models context))
                                                              {:data []})]
-              (invoke-search [#'search/nlq-search-tool] {:query "x"}))
+              (invoke-search [(keyword-tool :nlq)] {:query "x"}))
             (is (= #{"table" "dataset" "metric" "measure" "segment" "card" "collection"} @captured))
             (is (not (contains? @captured "dashboard")))
             (is (not (contains? @captured "transform")))
             (is (not (contains? @captured "database")))))
-        (testing "sql-search-tool with no entity_types searches only table/model"
+        (testing "SQL search with no entity_types searches only table/model"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:models context))
                                                              {:data []})]
-              (invoke-search [#'search/sql-search-tool] {:query "x" :database_id (mt/id)}))
+              (invoke-search [(keyword-tool :sql)] {:query "x" :database_id (mt/id)}))
             (is (= #{"table" "dataset"} @captured))))
         (testing "general search includes documents in its default entity types"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:models context))
                                                              {:data []})]
-              (invoke-search [#'search/search-tool] {:query "x"}))
+              (invoke-search [(keyword-tool :general)] {:query "x"}))
             (is (contains? @captured "document"))))
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:models context))
                                                              {:data []})]
-              (invoke-search [#'search/nlq-search-tool] {:query "x" :entity_types ["metric"]}))
+              (invoke-search [(keyword-tool :nlq)] {:query "x" :entity_types ["metric"]}))
             (is (= #{"metric"} @captured))))
         (testing "NLQ search accepts document and dashboard destination types"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:models context))
                                                              {:data []})]
-              (invoke-search [#'search/nlq-search-tool] {:query        "plan"
-                                                         :entity_types ["document" "dashboard"]}))
+              (invoke-search [(keyword-tool :nlq)] {:query        "plan"
+                                                    :entity_types ["document" "dashboard"]}))
             (is (= #{"document" "dashboard"} @captured))))))))
 
 (deftest tool-scope-args-test
-  (testing "search-tool surfaces database_id/collection_id scope args to the search context"
+  (testing "the general search tools surface database_id/collection_id scope args to the search context"
     (mt/with-test-user :rasta
       (with-redefs [perms/impersonated-user? (fn [] false)
                     perms/sandboxed-user? (fn [] false)
@@ -604,14 +626,14 @@
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured context)
                                                              {:data []})]
-              (invoke-search [#'search/search-tool] {:query "x" :database_id (mt/id)}))
+              (invoke-search [(keyword-tool :general)] {:query "x" :database_id (mt/id)}))
             (is (= (mt/id) (:table-db-id @captured)))))
         (testing "collection_id is forwarded as :collection (descendant scope)"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured context)
                                                              {:data []})]
-              (invoke-search [#'search/search-tool] {:query "x" :collection_id 7}))
+              (invoke-search [(keyword-tool :general)] {:query "x" :collection_id 7}))
             (is (= 7 (:collection @captured)))))))))
 
 (deftest configured-collection-bounds-caller-collection-test
@@ -651,19 +673,19 @@
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:limit-int context))
                                                              {:data []})]
-              (invoke-search [#'search/search-tool] {:query "x"}))
+              (invoke-search [(keyword-tool :general)] {:query "x"}))
             (is (= 25 @captured))))
         (testing "explicit limit is honored"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:limit-int context))
                                                              {:data []})]
-              (invoke-search [#'search/search-tool] {:query "x" :limit 10}))
+              (invoke-search [(keyword-tool :general)] {:query "x" :limit 10}))
             (is (= 10 @captured))))
         (testing "limits below 1 or above 50 are rejected by schema validation"
           (doseq [limit [0 75]]
             (is (=? {:error {:class :validation :code :invalid-arguments}}
-                    (invoke-search [#'search/search-tool] {:query "x" :limit limit})))))))))
+                    (invoke-search [(keyword-tool :general)] {:query "x" :limit limit})))))))))
 
 (deftest ^:parallel scalar-search-args-test
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
@@ -672,16 +694,26 @@
               "Invalid tool arguments: `entity_types` must be an array of supported entity type strings; received a string."]]]
       (testing (str "a scalar " field)
         (is (= message
-               (test-util/tool-boundary-error "search" #'metabot.tools/search-tool {:query "x" field value})))))))
+               (test-util/tool-boundary-error "substring_search" #'metabot.tools/substring-or-search-tool
+                                              {:query "x" field value})))))))
 
 (deftest ^:parallel scalar-search-args-every-variant-test
   (testing "every search tool variant rejects a scalar the same way"
-    (doseq [[tool-var extra-args] [[#'metabot.tools/search-tool {}]
-                                   [#'metabot.tools/sql-search-tool {:database_id 1}]
-                                   [#'metabot.tools/nlq-search-tool {}]]]
+    (doseq [[tool-var extra-args] [[#'metabot.tools/semantic-search-tool {}]
+                                   [#'metabot.tools/fulltext-search-tool {}]
+                                   [#'metabot.tools/substring-or-search-tool {}]
+                                   [#'metabot.tools/substring-and-search-tool {}]
+                                   [#'metabot.tools/sql-semantic-search-tool {:database_id 1}]
+                                   [#'metabot.tools/sql-fulltext-search-tool {:database_id 1}]
+                                   [#'metabot.tools/sql-substring-or-search-tool {:database_id 1}]
+                                   [#'metabot.tools/sql-substring-and-search-tool {:database_id 1}]
+                                   [#'metabot.tools/nlq-semantic-search-tool {}]
+                                   [#'metabot.tools/nlq-fulltext-search-tool {}]
+                                   [#'metabot.tools/nlq-substring-or-search-tool {}]
+                                   [#'metabot.tools/nlq-substring-and-search-tool {}]]]
       (testing (str tool-var)
         (is (= "Invalid tool arguments: `entity_types` must be an array of supported entity type strings; received a string."
-               (test-util/tool-boundary-error "search" tool-var
+               (test-util/tool-boundary-error (:name (tools.legacy/declaration-of tool-var)) tool-var
                                               (assoc extra-args :query "x" :entity_types "table"))))))))
 
 (deftest other-user-collection-test
@@ -853,18 +885,14 @@
   (testing "a document in an official collection reads as official under the in-place engine too"
     (mt/with-test-user :crowberto
       (search.tu/with-legacy-search
-        ;; `with-legacy-search` leaves semantic *active* where it's supported, and metabot resolves
-        ;; through `resolved-engine`, which prefers semantic — so on an instance with the feature on
-        ;; this would quietly stop exercising in-place. Force it, then assert we got there.
-        (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly nil)]
-          (is (= :search.engine/in-place (search.engine/resolved-engine))
-              "this test is only meaningful against the in-place engine")
-          (mt/with-temp [:model/Collection {off-id :id} {:name "Ip4OfficialColl" :authority_level "official"}
-                         :model/Document {doc-id :id}  {:name "Ip4Doc" :collection_id off-id}]
-            (let [doc (->> (search/search-by-query {:query "Ip4" :entity-types ["document"]})
-                           (filter #(= doc-id (:id %)))
-                           first)]
-              (is (=? {:type "document" :official true} doc)))))))))
+        (mt/with-temp [:model/Collection {off-id :id} {:name "Ip4OfficialColl" :authority_level "official"}
+                       :model/Document {doc-id :id}  {:name "Ip4Doc" :collection_id off-id}]
+          (let [doc (->> (search/search-by-query {:query        "Ip4"
+                                                  :engine       :search.engine/in-place
+                                                  :entity-types ["document"]})
+                         (filter #(= doc-id (:id %)))
+                         first)]
+            (is (=? {:type "document" :official true} doc))))))))
 
 (deftest table-collection-edge-cases-test
   ;; A table published at the *root* has no collection row, and the table spec coalesces a display
@@ -1024,74 +1052,6 @@
               (is (= "Visible Child" rasta-path))
               (is (not (str/includes? rasta-path "Secret Parent"))
                   "the unreadable ancestor's name must not leak into collection_path"))))))))
-
-(deftest ^:parallel broaden-query-test
-  (testing "zero-hit fallback OR-joins meaningful tokens, skipping queries where broadening doesn't apply"
-    (are [in out] (= out (#'search/broaden-query in))
-      "hard bounce rate campaign" "hard or bounce or rate or campaign"  ; every word ANDed -> OR-join
-      "the rate of churn"         "rate or churn"                        ; stopwords dropped
-      "Rate OF Churn"             "Rate or Churn"                        ; stopword match is case-insensitive
-      "revenue"                   nil                                    ; single token, nothing to broaden
-      "a or b"                    nil                                    ; already an OR query
-      "Orders OR Revenue"         nil                                    ; `or` match is case-insensitive too
-      "\"monthly revenue\""       nil                                    ; quoted = deliberate exact match
-      "sales, revenue"            "sales or revenue"                     ; clinging edge punctuation is stripped
-      "sales -refunds"            nil                                    ; an exclusion would be lost across OR branches
-      "sales - refunds"           "sales or refunds"                     ; a lone `-` is not an exclusion
-      "the of for"                nil                                    ; collapses to <2 tokens after stopwords
-      "revenue Revenue, revenue"  nil                                    ; repeats would OR to the same query
-      "sales revenue sales"       "sales or revenue or sales"            ; repeats kept, so the final word stays a repeat (no prefix)
-      "revenue dogs revenue"      "revenue or dogs or revenue"           ; likewise: neither word gets a prefix, as in the original
-      ""                          nil
-      nil                         nil)))
-
-(deftest broaden-query-retry-wiring-test
-  ;; `with-test-user` wraps the whole test so the app DB is initialized *before* any `with-redefs`
-  ;; below stubs `mdb/db-type` — otherwise a lazy DB init inside the redef window would see the H2
-  ;; test DB reporting itself as `:postgres` and fail the version check.
-  (mt/with-test-user :crowberto
-    (testing "a zero-hit search retries once with the broadened query — but only on a Postgres appdb engine"
-      (let [calls       (atom [])
-            fake-search (fn [ctx] (swap! calls conj (:search-string ctx)) {:data []})
-            run!        (fn [engines default db-type]
-                          (reset! calls [])
-                          (with-redefs [search-core/search           fake-search
-                                        search.engine/active-engines (constantly engines)
-                                        search.engine/default-engine (constantly default)
-                                        mdb/db-type                  (constantly db-type)
-                                        ;; No metabot-id and always-empty results, so the metabot
-                                        ;; row is irrelevant; stub the lookup.
-                                        metabot.db/metabot-by-entity-id (constantly nil)]
-                            (#'search/search-by-query {:query "hard bounce rate"}))
-                          @calls)]
-        (testing "Postgres appdb: empty primary triggers a second call with the OR-broadened string"
-          (is (= ["hard bounce rate" "hard or bounce or rate"]
-                 (run! #{:search.engine/appdb} :search.engine/appdb :postgres))))
-        (testing "appdb on H2 does NOT retry — its LIKE-AND token semantics make the OR-join narrower, not broader"
-          (is (= ["hard bounce rate"]
-                 (run! #{:search.engine/appdb} :search.engine/appdb :h2))))
-        (testing "semantic engine does NOT retry — it already fuses keyword + vector matching"
-          (is (= ["hard bounce rate"]
-                 (run! #{:search.engine/semantic :search.engine/appdb} :search.engine/appdb :postgres))))
-        (testing "in-place engine does NOT retry — LIKE-pattern matching has no `|` notion"
-          (is (= ["hard bounce rate"]
-                 (run! #{:search.engine/in-place} :search.engine/in-place :postgres))))))
-    (testing "the retry's results say which query found them, and a failed retry keeps the empty result"
-      (let [run! (fn [retry-search]
-                   (with-redefs [search-core/search              (fn [{:keys [search-string]}]
-                                                                   (if (= "hard bounce rate" search-string)
-                                                                     {:data [] :total 0}
-                                                                     (retry-search)))
-                                 search.engine/active-engines    (constantly #{:search.engine/appdb})
-                                 search.engine/default-engine    (constantly :search.engine/appdb)
-                                 mdb/db-type                     (constantly :postgres)
-                                 metabot.db/metabot-by-entity-id (constantly nil)]
-                     (let [results (#'search/search-by-query {:query "hard bounce rate"})]
-                       [(count results) (:broadened-query (meta results))])))]
-        (is (= [1 "hard or bounce or rate"]
-               (run! (constantly {:data [{:model "dashboard" :id 1 :name "Hard bounces"}] :total 1}))))
-        (is (= [0 nil]
-               (run! #(throw (ex-info "retry failed" {})))))))))
 
 (deftest enrich-with-portable-entity-ids-test
   (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up read_resource call"
@@ -1627,29 +1587,28 @@
         (let [instance-step (str "Find the data with `read_resource` instead: read `metabase://collections` for "
                                  "metrics, models, questions and dashboards, or `metabase://databases`, then "
                                  "`metabase://database/{id}/tables`, for tables.")
-              no-retry-step (str "Do not call `search` again in this turn. If you cannot find the data another "
-                                 "way, tell the user that search is unavailable right now.")
+              no-retry-step (str "Do not call the search tools again in this turn. If you cannot find the data "
+                                 "another way, tell the user that search is unavailable right now.")
               confined      {:entity_id metabot.config/embedded-metabot-id :collection_id 42}]
           (doseq [[scope tool-var extra-args metabot profile-id step]
-                  [["the instance" #'search/search-tool {} nil "internal" instance-step]
-                   ["the instance" #'search/nlq-search-tool {} nil "nlq" instance-step]
-                   ["one database" #'search/sql-search-tool {:database_id (mt/id)} nil "sql"
+                  [["the instance" (keyword-tool :general) {} nil "internal" instance-step]
+                   ["the instance" (keyword-tool :nlq) {} nil "nlq" instance-step]
+                   ["one database" (keyword-tool :sql) {:database_id (mt/id)} nil "sql"
                     (str "Find the data with `read_resource` instead: read `metabase://database/" (mt/id)
                          "/tables` and `metabase://database/" (mt/id) "/models`.")]
-                   ["a confined collection" #'search/search-tool {} confined "internal"
+                   ["a confined collection" (keyword-tool :general) {} confined "internal"
                     "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
-                   ["a confined collection" #'search/nlq-search-tool {} {:collection_id 42} "nlq"
+                   ["a confined collection" (keyword-tool :nlq) {} {:collection_id 42} "nlq"
                     "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
                    ;; a collection outside the confined one is ignored, as it is for the search itself
-                   ["a confined collection" #'search/search-tool {:collection_id Integer/MAX_VALUE} confined "internal"
+                   ["a confined collection" (keyword-tool :general) {:collection_id Integer/MAX_VALUE} confined "internal"
                     "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
                    ;; `read_resource` shows only verified content here too, so the browse step stays
-                   ["verified content" #'search/search-tool {} {:use_verified_content true} "internal" instance-step]
+                   ["verified content" (keyword-tool :general) {} {:use_verified_content true} "internal" instance-step]
                    ;; Profiles exempt from curation, where `read_resource` shows unverified content
-                   ["verified content" #'search/nlq-search-tool {} {:use_verified_content true} "nlq-fallback" nil]
-                   ["verified content" #'search/sql-search-tool {:database_id (mt/id)} {:use_verified_content true}
+                   ["verified content" (keyword-tool :sql) {:database_id (mt/id)} {:use_verified_content true}
                     "sql" nil]
-                   ["verified content" #'search/nlq-search-tool {} (assoc confined :use_verified_content true)
+                   ["verified content" (keyword-tool :nlq) {} (assoc confined :use_verified_content true)
                     "nlq" nil]]]
             (testing (str tool-var " limited to " scope " under " profile-id)
               (is (= {:error  {:class :recoverable :code ::search/search-failed}
@@ -1661,7 +1620,7 @@
           (testing "a profile without `read_resource`, like slackbot, is still told to stop searching"
             (is (= {:error  {:class :recoverable :code ::search/search-failed}
                     :output (str "Search failed.\n" no-retry-step)}
-                   (invoke-search [#'search/search-tool] {:query "orders"})))))))))
+                   (invoke-search [(keyword-tool :general)] {:query "orders"})))))))))
 
 (deftest search-failure-in-a-collection-browses-tables-test
   (testing "a collection's items never list tables, so recovery adds a table route when the search could match one"
@@ -1671,7 +1630,7 @@
                        :model/Collection {metrics-id :id} {:name "Metrics" :type "library-metrics"}
                        :model/Collection {plain-id :id}   {:name "Plain"}]
           (let [recovery (fn [args]
-                           (-> (invoke-search [#'search/search-tool #'metabot.tools/read-resource-tool]
+                           (-> (invoke-search [(keyword-tool :general) #'metabot.tools/read-resource-tool]
                                               (merge args {:query "orders"}) nil "internal")
                                :output
                                str/split-lines
@@ -1913,3 +1872,106 @@
               (is (= {:source_unavailable true}
                      (select-keys metric metric-source-keys))
                   "the source is explicitly marked unavailable"))))))))
+
+(deftest matcher-engine-test
+  (testing "each matcher tool pins its engine, and the keyword tools pass the structured query through"
+    (mt/with-test-user :rasta
+      (mt/with-dynamic-fn-redefs [perms/impersonated-user? (fn [] false)
+                                  perms/sandboxed-user?    (fn [] false)]
+        (let [captured (atom nil)
+              op       (if (= :substring-or (search.engine/keyword-flavour)) "or" "and")
+              expr     {:op op :args ["revenue" "income"]}]
+          (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                           (reset! captured context)
+                                                           {:data []})]
+            (is (=? {:structured-output {:result-type :search}}
+                    (invoke-search [(keyword-tool :general)] {:query expr}))))
+          (is (=? {:search-engine (search.engine/keyword-engine)
+                   :search-string "revenue income"
+                   :search-expr   expr}
+                  @captured)))))))
+
+(deftest ^:parallel only-one-keyword-tool-is-available-test
+  (testing "each profile's keyword search tools are alternatives: exactly one serves this instance"
+    (doseq [profile [:general :sql :nlq]
+            :let [prefix (case profile :general "" :sql "sql-" :nlq "nlq-")
+                  vars   (for [matcher ["fulltext" "substring-or" "substring-and"]]
+                           (ns-resolve 'metabase.metabot.tools.search (symbol (str prefix matcher "-search-tool"))))]]
+      (testing profile
+        (is (= [(keyword-tool profile)]
+               (filter #((:metabot/available? (tools.legacy/declaration-of %)) {}) vars)))))))
+
+(deftest keyword-query-limit-test
+  (testing "a structured query with too many leaves is a recoverable error, and nothing is searched"
+    (mt/with-dynamic-fn-redefs [search/search-by-query (fn [_] (throw (ex-info "should not search" {})))]
+      (let [op (if (= :substring-or (search.engine/keyword-flavour)) "or" "and")]
+        (is (=? {:error  {:class :recoverable :code ::search/query-too-large}
+                 :output #"(?s)The query has 17 leaves; the most is 16\..*"}
+                (invoke-search [(keyword-tool :general)] {:query {:op op :args (mapv #(str "t" %) (range 17))}})))))))
+
+(deftest fulltext-validation-test
+  (when (= :postgres (mdb/db-type))
+    (mt/with-test-user :rasta
+      (mt/with-dynamic-fn-redefs [search/search-by-query (fn [_] (throw (ex-info "should not search" {})))]
+        (testing "a leaf that is only stopwords is rejected, naming it"
+          (is (=? {:error  {:class :recoverable :code ::search/query-matches-nothing}
+                   :output #"(?s)`the and` can't match anything.*"}
+                  (invoke-search [#'search/fulltext-search-tool]
+                                 {:query {:op "and" :args ["revenue" {:op "not" :args [{:op "phrase" :text "the and"}]}]}}))))
+        (testing "a query that can't restrict the index is rejected"
+          (is (=? {:error  {:class :recoverable :code ::search/query-matches-everything}
+                   :output #"(?s)This query would match almost everything.*"}
+                  (invoke-search [#'search/fulltext-search-tool]
+                                 {:query {:op "or" :args ["revenue" {:op "not" :args ["archive"]}]}}))))))))
+
+(deftest fulltext-search-end-to-end-test
+  (when (= :postgres (mdb/db-type))
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-test-user :crowberto
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Card {revenue-id :id} {:name "Zf8 revenue forecast"}
+                         :model/Card {income-id :id}  {:name "Zf8 income statement"}
+                         :model/Card {margin-id :id}  {:name "Zf8 gross margin"}]
+            (let [found (fn [expr]
+                          (->> (search/search-by-query {:search-expr  expr
+                                                        :engine       :search.engine/appdb
+                                                        :entity-types ["question"]})
+                               (map :id)
+                               set))]
+              (is (= #{revenue-id income-id}
+                     (found {:op "and" :args ["zf8" {:op "or" :args ["revenue" "income"]}]})))
+              (is (= #{margin-id}
+                     (found {:op "and" :args ["zf8" {:op "not" :args [{:op "or" :args ["revenue" "income"]}]}]}))))))))))
+
+(deftest semantic-search-tool-runs-the-vector-arm-test
+  (testing "semantic_search asks for meaning alone, with Metabot's wider distance cutoff"
+    (mt/with-test-user :rasta
+      (mt/with-dynamic-fn-redefs [perms/impersonated-user? (fn [] false)
+                                  perms/sandboxed-user?    (fn [] false)]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [search/search-by-query (fn [opts] (reset! captured opts) [])]
+            (invoke-search [#'search/semantic-search-tool] {:query "how much did we make"}))
+          (is (=? {:engine                :search.engine/semantic
+                   :query                 "how much did we make"
+                   :vector-only?          true
+                   :max-semantic-distance 0.8}
+                  @captured)))))))
+
+(deftest vector-only-reaches-the-search-context-test
+  (mt/with-test-user :rasta
+    (mt/with-dynamic-fn-redefs [perms/impersonated-user? (fn [] false)
+                                perms/sandboxed-user?    (fn [] false)]
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [search-core/search (fn [ctx] (reset! captured ctx) {:data []})]
+          (search/search-by-query {:query "how much did we make" :vector-only? true :max-semantic-distance 0.8}))
+        (is (=? {:vector-only?          true
+                 :max-semantic-distance 0.8}
+                @captured))))))
+
+(deftest semantic-search-failure-test
+  (testing "a failing semantic engine points the model at the keyword search tool it has"
+    (mt/with-dynamic-fn-redefs [search/search-by-query (fn [_] (throw (ex-info "pgvector is down"
+                                                                               {:type :semantic-search-error})))]
+      (is (= {:error  {:class :recoverable :code ::search/semantic-search-failed}
+              :output "Semantic search isn't working right now.\nUse `fulltext_search` instead, with the likely words."}
+             (invoke-search [#'search/semantic-search-tool #'search/fulltext-search-tool] {:query "revenue"}))))))

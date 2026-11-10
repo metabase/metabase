@@ -28,10 +28,10 @@
 ;;; ----- Session -----
 
 (def curation-exempt-profiles
-  "Profiles whose tools aren't restricted by `use_verified_content`. The nlq profile discovers data through the
-  Library index, which carries its own scope; `nlq-fallback` serves the same profile with general search. The sql
-  profile writes SQL, which the product decision leaves outside the rule, and reads raw tables' columns to do it."
-  #{:nlq :nlq-fallback :sql})
+  "Profiles whose tools aren't restricted by `use_verified_content`. The nlq profile prefers the Library index, which
+  carries its own scope. The sql profile writes SQL, which the product decision leaves outside the rule, and reads raw
+  tables' columns to do it."
+  #{:nlq :sql})
 
 (defn curated-only?
   "Whether a Metabot tool running for the Metabot row `metabot` under `profile-id` may only reach curated content:

@@ -41,12 +41,18 @@
    [metabase.native-query-snippets.core :as snippets]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- keyword-search-tool-name
+  "The keyword search tool this instance advertises: full-text on a Postgres app DB, else substring."
+  []
+  (if (= :fulltext (search.engine/keyword-flavour)) "fulltext_search" "substring_search"))
 
 (def ^:private test-provider "openrouter/anthropic/claude-haiku-4-5")
 
@@ -1308,7 +1314,7 @@
                  [{:type :start :id "msg-1"}
                   {:type      :tool-input
                    :id        "call-search-1"
-                   :function  "search"
+                   :function  (keyword-search-tool-name)
                    :arguments {:query        "orders"
                                :entity_types ["table"]}}
                   {:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "test" :id "msg-1"}]
@@ -1342,11 +1348,11 @@
                                                                            :database_id  (mt/id)}])]
               (testing "Should successfully go through 3 iterations"
                 (is (=? [{:type :start}
-                         {:type :tool-input :function "search"}
+                         {:type :tool-input :function (keyword-search-tool-name)}
                          ;; Cumulative usage after iteration 1: 100 prompt, 20 completion
                          {:type :usage :usage {:promptTokens 100 :completionTokens 20}}
                          {:type     :tool-output
-                          :function "search"
+                          :function (keyword-search-tool-name)
                           :result   {:structured-output {:total_count 1}}}
                          {:type :data :data-type "search_results"}
                          {:type :start}
@@ -1555,7 +1561,7 @@
                               [{:type :start :id "msg-1"}
                                {:type      :tool-input
                                 :id        "call-search-1"
-                                :function  "search"
+                                :function  (keyword-search-tool-name)
                                 :arguments {:query        "orders"
                                             :entity_types ["table"]}}
                                {:type :usage :usage {:promptTokens 100 :completionTokens 20}
@@ -1592,7 +1598,7 @@
               (let [turn       (first trace)
                     llms       (:children turn)
                     tool-spans (mapcat :children llms)
-                    search     (first (filter #(= "tool.search" (:name %)) tool-spans))]
+                    search     (first (filter #(= (str "tool." (keyword-search-tool-name)) (:name %)) tool-spans))]
                 (testing "root is the agent turn"
                   (is (= :turn (:type turn)))
                   (is (= "agent.turn" (:name turn)))
@@ -1973,7 +1979,7 @@
                                            [{:type :start :id "msg-1"}
                                             {:type      :tool-input
                                              :id        "t1"
-                                             :function  "search"
+                                             :function  (keyword-search-tool-name)
                                              :arguments {:query        "test"
                                                          :entity_types ["table"]}}
                                             {:type :usage :usage {:promptTokens 100 :completionTokens 20}
@@ -2003,7 +2009,7 @@
                                       "session_id"    "00000000-0000-0000-0000-000000000001"
                                       "result"        "success"
                                       "duration_ms"   nat-int?
-                                      "event_details" {"tool_name" "search"
+                                      "event_details" {"tool_name" (keyword-search-tool-name)
                                                        "step"      1}}}]
                           tool-events)))))))))
     (testing "fires 'agent_used_tool' with result=error when tool fails"
@@ -2017,7 +2023,7 @@
                                            [{:type :start :id "msg-1"}
                                             {:type      :tool-input
                                              :id        "t1"
-                                             :function  "search"
+                                             :function  (keyword-search-tool-name)
                                              :arguments {:bad-arg "wrong"}}
                                             {:type :usage :usage {:promptTokens 100 :completionTokens 20}
                                              :model "test-model" :id "msg-1"}])
@@ -2040,7 +2046,7 @@
                       tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
                   (is (=? [{:data {"event"         "agent_used_tool"
                                    "result"        "error"
-                                   "event_details" {"tool_name"   "search"
+                                   "event_details" {"tool_name"   (keyword-search-tool-name)
                                                     "step"        1
                                                     "error_class" "validation"
                                                     "error_code"  "invalid-arguments"}}}]

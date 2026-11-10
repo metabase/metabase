@@ -145,10 +145,9 @@
   [_]
   {:message  (str "Pass `metric_ids`, `q`, or both. This tool reports the candidate dimensions of"
                   " metrics that you have already chosen.")
-   :recovery [{:uses #{"list_research_metrics"}
-               :text "Call `list_research_metrics` to choose metric IDs."}
-              {:uses #{"search"}
-               :text "Call `search` with `entity_types` [\"metric\"] to find metrics by topic."}]})
+   :recovery (into [{:uses #{"list_research_metrics"}
+                     :text "Call `list_research_metrics` to choose metric IDs."}]
+                   (tools/search-steps #(str "Call `" % "` with `entity_types` [\"metric\"] to find metrics by topic.")))})
 
 (defrecord GetResearchCandidatesTool []
   tools/Tool

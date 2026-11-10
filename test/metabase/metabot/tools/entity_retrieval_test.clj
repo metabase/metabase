@@ -229,8 +229,8 @@
       (doseq [[scenario tool-vars metabot steps]
               [["without other discovery tools" [#'metabot.tools/retrieve-library-entities-tool] nil []]
                [":nlq" nlq-discovery-tools nil [browse-instance-step]]
-               ["with `search`" (conj nlq-discovery-tools #'metabot.tools/search-tool) nil
-                ["Use `search` to find data for the user's request." browse-instance-step]]
+               ["with `fulltext_search`" (conj nlq-discovery-tools #'metabot.tools/fulltext-search-tool) nil
+                ["Use `fulltext_search` to find data for the user's request." browse-instance-step]]
                [":nlq for a Metabot confined to a collection" nlq-discovery-tools {:collection_id 42}
                 ["Find the data with `read_resource` instead: read `metabase://collection/42/items`."]]
                [":nlq for a Metabot limited to verified content" nlq-discovery-tools {:use_verified_content true}
@@ -259,12 +259,12 @@
                (invoke {:user_search_prompt "revenue per region"} nlq-discovery-tools)))))))
 
 (deftest ^:parallel library-miss-test
-  (testing "a miss is a successful call that tells the model to rephrase once, then ask the user"
+  (testing "a miss is a successful call that tells the model to rephrase once, then search instead"
     (with-unfiltered-search (constantly [])
       (is (= {:output            (str "<search_results>No matching library entities.</search_results>\n"
                                       "<instructions>Rephrase `user_search_prompt` and call "
-                                      "`retrieve_library_entities` once more. If there are still no matches, ask the "
-                                      "user to clarify or narrow the request.</instructions>")
+                                      "`retrieve_library_entities` once more. If there are still no matches, search "
+                                      "for the data with the search tools instead.</instructions>")
               :structured-output {:result-type :search
                                   :data        []
                                   :total_count 0
