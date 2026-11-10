@@ -9,7 +9,6 @@ import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
-const OBJECT_DETAIL_ROW_ID = 11;
 
 const TEST_PARAMETER = createMockActionParameter({
   id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
@@ -335,33 +334,6 @@ describe(
       });
 
       if (dialect === "postgres") {
-        it(
-          "should close the action modal but not the object detail on Escape",
-          { viewportHeight: 1200 },
-          () => {
-            cy.intercept("POST", "/api/action/*/execute/values").as(
-              "prefetchValues",
-            );
-
-            cy.get("@writableModelId").then((modelId) => {
-              H.createImplicitAction({ model_id: modelId, kind: "update" });
-              H.visitModel(modelId);
-            });
-            cy.get("main").findByText("Loading...").should("not.exist");
-            H.tableInteractive().findByText(OBJECT_DETAIL_ROW_ID).click();
-            cy.findByTestId("object-detail").should("be.visible");
-
-            cy.findByTestId("actions-menu").click();
-            H.popover().findByText("Update").click();
-            cy.wait("@prefetchValues");
-            cy.findByTestId("action-execute-modal").should("be.visible");
-
-            cy.realPress("Escape");
-            cy.findByTestId("action-execute-modal").should("not.exist");
-            cy.findByTestId("object-detail").should("be.visible");
-          },
-        );
-
         it("should respect impersonated permission", () => {
           const role = "readonly_role";
           const sql = getCreatePostgresRoleIfNotExistSql(

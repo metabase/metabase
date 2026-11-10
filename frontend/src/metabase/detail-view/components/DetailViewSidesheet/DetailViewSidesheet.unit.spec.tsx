@@ -202,9 +202,9 @@ describe("DetailViewSidesheet", () => {
       ).toBeInTheDocument();
     });
 
-    it("closes the action modal on Escape", async () => {
+    it("closes only the action modal, not the object detail, on Escape", async () => {
       setupPrefetchActionValuesEndpoint(updateAction.id, { id: ROW_ID });
-      setup();
+      const { onClose } = setup();
 
       await openUpdateModal();
       await userEvent.keyboard("{Escape}");
@@ -214,6 +214,8 @@ describe("DetailViewSidesheet", () => {
           screen.queryByTestId("action-execute-modal"),
         ).not.toBeInTheDocument();
       });
+      expect(screen.getByTestId("object-detail")).toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
     });
 
     it("prefills the update form with the row values", async () => {
