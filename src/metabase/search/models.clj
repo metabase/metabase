@@ -7,6 +7,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;; Models must derive from :hook/search-index if their state can influence the contents of the Search Index.
 ;; Note that it might not be the model itself that depends on it, for example, Dashcards are used in Card entries.
 ;; Don't worry about whether you've added it in the right place, we have tests to ensure that it is derived if, and only
