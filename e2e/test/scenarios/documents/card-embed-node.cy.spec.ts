@@ -119,31 +119,6 @@ describe("documents card embed node custom logic", () => {
         .first()
         .should("have.attr", "data-testid", "document-card-supporting-text");
     });
-
-    it("should handle drag and drop with proper drop side positioning", () => {
-      // Wait for cards to load
-      H.getDocumentCard("Orders")
-        .should("be.visible")
-        .findByTestId("table-root")
-        .should("exist");
-      H.getDocumentCard("Orders, Count")
-        .should("be.visible")
-        .findByTestId("table-root")
-        .should("exist");
-
-      H.dragAndDropCardOnAnotherCard("Orders", "Orders, Count", {
-        side: "right",
-      });
-
-      // Verify flexContainer was created with correct order
-      H.documentContent()
-        .find('[data-type="flexContainer"]')
-        .should("exist")
-        .within(() => {
-          // Orders, Count should be first (left), Orders should be second (right)
-          assertFlexContainerCardsOrder(["Orders, Count", "Orders"]);
-        });
-    });
   });
 
   describe("advanced flexContainer scenarios", () => {
@@ -777,7 +752,7 @@ describe("documents card embed node custom logic", () => {
         });
     });
 
-    describe("supporting text drag and drop", () => {
+    describe("drag and drop", () => {
       beforeEach(() => {
         H.createDocument({
           name: "DnD Test Document",

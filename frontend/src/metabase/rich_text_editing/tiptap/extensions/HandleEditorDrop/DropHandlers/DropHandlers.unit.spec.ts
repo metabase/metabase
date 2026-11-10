@@ -5,7 +5,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { FlexContainer } from "../../FlexContainer/FlexContainer";
 import { ResizeNode } from "../../ResizeNode/ResizeNode";
 import { SupportingText } from "../../SupportingText/SupportingText";
-import type { DroppedCardEmbedNodeData } from "../utils";
+import { type DroppedCardEmbedNodeData, findNodeParentAndPos } from "../utils";
 
 import { handleCardDropOnCard } from "./cardToCard";
 import { handleCardDropToFlexContainer } from "./cardToFlexContainer";
@@ -122,11 +122,11 @@ function dropCardOnCard(
 ): DroppedCardEmbedNodeData {
   const dragged = findCard(editor, draggedCardId);
   const target = findCard(editor, targetCardId);
-  const originalParent = dragged.parent;
-  const originalPos =
-    originalParent.type.name === "resizeNode"
-      ? dragged.$pos.before()
-      : dragged.pos;
+  const original = findNodeParentAndPos(editor.view, dragged.node);
+  if (!original) {
+    throw new Error(`No parent for card ${draggedCardId}`);
+  }
+  const { parent: originalParent, parentPos: originalPos } = original;
   return {
     draggedNode: dragged.node,
     originalParent,
@@ -168,6 +168,25 @@ function getCardIds(editor: Editor) {
 }
 
 describe("card drop handlers", () => {
+  it.each([
+    { side: "left" as const, expectedOrder: [1, 2] },
+    { side: "right" as const, expectedOrder: [2, 1] },
+  ])(
+    "puts the dropped card on the $side of the target card in a new flexContainer",
+    ({ side, expectedOrder }) => {
+      const editor = makeEditor([resizeNode(card(1)), resizeNode(card(2))]);
+
+      handleCardDropOnCard(
+        dropCardOnCard(editor, 1, 2, side),
+        findCard(editor, 2).node,
+      );
+
+      expect(getFlexContainerCardIds(editor)).toEqual([expectedOrder]);
+
+      editor.destroy();
+    },
+  );
+
   it("does not add a fourth card to a flexContainer that already has 3 cards", () => {
     const editor = makeEditor([
       resizeNode(flexContainer([card(1), card(2), card(3)])),
