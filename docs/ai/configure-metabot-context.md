@@ -9,6 +9,8 @@ Metabot answers questions using the metadata and content in your Metabase. This 
 
 ## What Metabot searches depends on where people use it
 
+Metabot can only see what the person asking has [permission](../permissions/data.md) to see.
+
 | Where                                                       | What Metabot searches                                                                                                                                                                                                              |
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [Chat sidebar](./metabot.md#the-metabot-chat-sidebar)       | Tables, models, metrics, measures, segments, questions, dashboards, and documents the person has permission to see, plus their recently viewed items.                                                                              |
@@ -16,16 +18,16 @@ Metabot answers questions using the metadata and content in your Metabase. This 
 | [SQL generation](./metabot.md#metabot-in-the-native-editor) | Tables in the database selected in the SQL editor.                                                                                                                                                                                 |
 | [Documents](../documents/introduction.md) (**Ask Metabot**) | Models and metrics in the [collection for natural language querying](#without-a-library-point-ai-exploration-at-a-collection), or all models and metrics if you haven't set one. To write SQL, the database the person @-mentions. |
 
-Metabot also sees the item the person has open, any items they @-mention, and your [glossary](#define-company-terms-in-the-glossary). Metabot can only see what the person asking has [permission](../permissions/data.md) to see.
+Metabot also sees the item the person has open, any items they @-mention, and your [glossary](#define-company-terms-in-the-glossary).
 
-In documents, **Ask Metabot** works differently from the chat sidebar. It only builds a chart, so it doesn't search tables, questions, or dashboards, and it ignores recently viewed items. It prefers an existing model or metric, and only writes SQL if none fits or when directly asked for SQL. To write SQL, @-mention exactly one database.
+In documents, **Ask Metabot** can only build a chart, so Metabot doesn't search tables, questions, or dashboards, and it ignores recently viewed items. Metabot prefers an existing model or metric, and only writes SQL if none fits or when directly asked for SQL. To write SQL, @-mention exactly one database.
 
 ## Add descriptions to tables, columns, models, and metrics
 
-Metabot reads an item's description when it looks at that item, and search matches questions against descriptions. Descriptions on questions and dashboards help Metabot find them, too.
+Metabot can read item descriptions (including when searching for stuff). In your descriptions:
 
-- Say what the item means to your business and which questions it answers. Metabot already knows column types.
-- Start with columns that are easy to misread: codes, flags, anything called `status`, and anything with an internal encoding.
+- Say what the item means to your business and which questions it answers.
+- Explain columns that are easy to misread: codes, flags, anything called `status`, and anything with an internal encoding. (Metabot already knows the column types, though).
 - Include the names people use for the item outside your database. Metabot can't know these on its own.
 
 For example, here's a useful description for an ID column:
@@ -34,7 +36,7 @@ For example, here's a useful description for an ID column:
 Unique ID for the product. Customer-facing emails and screens call this the "Invoice number" or "Confirmation number".
 ```
 
-You can ask Metabot to draft descriptions, but it only knows what's in your database. It can't know that this ID is called the "Invoice number" in your app, which is exactly the kind of context worth writing down.
+You can ask Metabot to draft descriptions, but be careful with this; Metabot only knows what's in your database. It can't know that this ID is called the "Invoice number" in your app, which is exactly the kind of context worth writing down.
 
 Admins and data analysts can edit table and column descriptions in [Data Studio](../data-modeling/metadata/managing-tables.md). To add descriptions to a model's columns, see [Add metadata to columns in a model](../data-modeling/models/models.md#add-metadata-to-columns-in-a-model).
 
@@ -64,7 +66,7 @@ When Metabot looks at a table, it sees the table's measures and segments and is 
 
 When more than one source could answer a question, Metabot picks the most curated one: [Metrics](../data-modeling/semantic-layer/metrics.md)** are preferred for calculations. [Models](../data-modeling/models/models.md)** serve as a fallback when no matching metric is found. Build a metric if you want Metabot to reuse a calculation.
 
-In additiona, **saved questions** are used when one directly answers the question. **Tables** rank higher if they're [published](../data-modeling/semantic-layer/published-tables.md) or their visibility layer is **Final** rather than **Internal**. **[Verified](../exploration-and-organization/content-verification.md)** items and items in [official collections](../exploration-and-organization/collections.md#official-collections) also count as endorsed.
+Metabot will respond with an existing **questions** if it directly answers the question. **Tables** rank higher if they're [published](../data-modeling/semantic-layer/published-tables.md) or their visibility layer is **Final** rather than **Internal**. **[Verified](../exploration-and-organization/content-verification.md)** items and items in [official collections](../exploration-and-organization/collections.md#official-collections) also count as endorsed.
 
 If a source is named or is open, Metabot uses that source, even if a more curated one exists.
 
@@ -73,7 +75,7 @@ If a source is named or is open, Metabot uses that source, even if a more curate
 - **Tables**: In **Data Studio > Connected data**, set the table's [visibility layer](../data-modeling/metadata/managing-tables.md#visibility-layer) to **Hidden**. Hidden tables don't show up in Metabot's search or in the tables it considers for SQL, and Metabot can't build query-builder questions on them. Hidden tables also disappear from the query builder and stop syncing.
 - **Columns**: Set the column's [visibility](../data-modeling/metadata/metadata-editing.md#field-visibility) to **Do not include**. Metabot never sees these columns. They also disappear from the query builder.
 
-Neither setting is a permission: people can still query hidden tables and columns with SQL. To control what data Metabot can get to, use [data permissions](../permissions/data.md).
+Neither setting is a permission: people can still query hidden tables and columns with SQL. To control what data Metabot view and query, use [data permissions](../permissions/data.md).
 
 ## Show Metabot real values for columns people filter on
 
