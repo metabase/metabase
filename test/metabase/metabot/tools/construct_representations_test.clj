@@ -316,14 +316,17 @@
                              "breakout"     [["field" {"source-field" (conj filled "id")} (conj filled "email")]
                                              ["field" (conj filled "email")]
                                              ["field" {} [quoted "lever_data" "user" "email"]]]
-                             "filters"      [["=" {} ["field" {} "email"] null-fk]]}]}
+                             "filters"      [["=" {} ["field" {} "email"] null-fk]]}
+                            ;; The schema is filled in but the quotes stay: only the schema slot is rewritten.
+                            {"source-table" [db-name "lever_data" "\"user\""]}]}
                  (#'construct/fill-in-null-schemas
                   (lib-be/application-database-metadata-provider (:id db))
                   {"stages" [{"source-table" null-fk
                               "breakout"     [["field" {"source-field" (conj null-fk "id")} (conj null-fk "email")]
                                               ["field" (conj null-fk "email")]
                                               ["field" {} [quoted nil "user" "email"]]]
-                              "filters"      [["=" {} ["field" {} "email"] null-fk]]}]}))))))))
+                              "filters"      [["=" {} ["field" {} "email"] null-fk]]}
+                             {"source-table" [db-name nil "\"user\""]}]}))))))))
 
 (defn- metadata-lookup-failures []
   (let [message    "SELECT private_metadata failed: connection unavailable"
