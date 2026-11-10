@@ -1,5 +1,9 @@
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
-import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
+import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
+import {
+  createMockActionDashboardCard,
+  createMockImplicitQueryAction,
+} from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup } from "./setup";
 
@@ -106,5 +110,23 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("This dashboard is empty")).toBeInTheDocument();
+  });
+
+  it("should hide action buttons on a static embed dashboard (metabase#34395)", async () => {
+    await setupCommon({
+      extraDashcards: [
+        createMockActionDashboardCard({
+          id: 100,
+          action: createMockImplicitQueryAction({ name: "Create" }),
+        }),
+      ],
+    });
+
+    expect(
+      screen.getByRole("heading", { name: DASHBOARD_TITLE }),
+    ).toBeInTheDocument();
+    const grid = screen.getByTestId("dashboard-grid");
+    expect(within(grid).getAllByTestId("dashcard")).toHaveLength(1);
+    expect(within(grid).queryByText("Click me")).not.toBeInTheDocument();
   });
 });
