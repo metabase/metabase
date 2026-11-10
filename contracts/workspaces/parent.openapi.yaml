@@ -43,8 +43,8 @@ info:
     - Postgres 14 and older: the same default and the same fix. Postgres 15 and later do not grant it.
     - ClickHouse 23.3 to 24.3: every login can read `system.*` unless the server setting
       `select_from_system_db_requires_grant` is on. Fix: turn it on in the server config.
-    The team has not decided the behavior: refuse (what the hardening PRs do now), warn and allow, or refuse
-    with a per-database opt-out. Treat these refusals as subject to change.
+    Decided (2026-11-10): refuse with a 412 until an admin runs the fix, rather than warn and allow. The 412 message
+    names the statement or setting and who must run it. A per-database opt-out may come later if customers need it.
 
     Facts a client can rely on (master):
     - `created_at` and `updated_at` use the parent's app-DB clock.
@@ -651,10 +651,11 @@ components:
               description: True when the workspace was kept and the caller must DELETE it.
             workspace_id:
               type: integer
-              x-status: proposed
+              x-status: hardening
+              x-pr: [86601, 86825]
               description: |
                 The kept workspace, when `cleanup_required` is true, so the caller can DELETE it without a name
-                lookup. Requested for MB Code's ledger.
+                lookup. #86825 replays the same body on a retry with the same `Idempotency-Key`.
 
     ValidationError:
       type: object
