@@ -207,6 +207,13 @@
           (is (= {:bumped? true, :value "after the bump"}
                  {:bumped? @bumped?, :value (setting-test/test-setting-1)})))))))
 
+(deftest write-to-an-unloaded-cache-test
+  (testing "a write to a state whose cache is not loaded yet leaves it unloaded, so the next read restores all of it"
+    (let [state ((var-get #'setting.cache/new-state))]
+      (mt/with-dynamic-fn-redefs [setting.cache/current-state (constantly state)]
+        (setting.cache/update-cache! "test-setting-1" "written"))
+      (is (nil? @(:cache state))))))
+
 (deftest restore-uses-the-state-it-checked-test
   (testing "a restore fills the cache whose clock and lock it checked, even if the state this thread sees changes"
     (let [new-state #'setting.cache/new-state

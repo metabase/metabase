@@ -62,9 +62,13 @@
 (defn update-cache!
   "Update the String value of a Setting in the Settings cache."
   [setting-name, ^String new-value]
-  (if (seq new-value)
-    (swap! (cache*) assoc  setting-name new-value)
-    (swap! (cache*) dissoc setting-name)))
+  ;; A cache not loaded yet stays nil, so the next read restores all of it rather than trusting a partial map. A write
+  ;; could reach one if the app DB got a new id partway through, as the testing API's snapshot restore gives it.
+  (swap! (cache*) (fn [cache]
+                    (when cache
+                      (if (seq new-value)
+                        (assoc cache setting-name new-value)
+                        (dissoc cache setting-name))))))
 
 ;; CACHE SYNCHRONIZATION
 ;;
@@ -110,8 +114,9 @@
             (log/errorf "Error updating Settings last updated value: %s"
                         (str/join "; " (keep ex-message (take-while some? (iterate #(.getNextException ^java.sql.SQLException %) e)))))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
-  ;; changes
-  (swap! (cache*) assoc settings-last-updated-key (settings.db/setting-value settings-last-updated-key)))
+  ;; changes. A cache not loaded yet stays nil, as in [[update-cache!]].
+  (let [last-updated (settings.db/setting-value settings-last-updated-key)]
+    (swap! (cache*) #(some-> % (assoc settings-last-updated-key last-updated)))))
 
 (defn cache-last-updated-at
   "Fetch the value of `settings-last-updated`, indicating the timestamp of the settings cache. Possibly null.
