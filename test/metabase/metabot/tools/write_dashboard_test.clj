@@ -863,7 +863,7 @@
       (is (=? #"Invalid tool arguments: `name` must be a non-blank string.*"
               (boundary-error {:name "   "}))))
     (testing "so is a blank name for the question a chart becomes"
-      (is (=? #"Invalid tool arguments: `ops` .*must be a non-blank string.*"
+      (is (=? #"Invalid tool arguments: `ops\[0\]\.name` must be a non-blank string.*"
               (boundary-error {:dashboard_id 1
                                :ops          [{:op "add_card", :id -1, :chart_id "A", :name "   "}]}))))
     (testing "a name too long for the app DB is refused"
