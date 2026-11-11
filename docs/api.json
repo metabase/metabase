@@ -2761,8 +2761,8 @@
             "properties" : {
               "created_at" : { },
               "description" : { },
-              "display_name" : { },
-              "name" : { }
+              "name" : { },
+              "slug" : { }
             }
           },
           "dependents_count" : {
@@ -32583,17 +32583,6 @@
             "description" : "Server error response"
           }
         },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
         "tags" : [ "/api/action" ]
       },
       "post" : {
@@ -32743,17 +32732,6 @@
           },
           "5XX" : {
             "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
           }
         },
         "tags" : [ "/api/action" ]
@@ -36116,17 +36094,6 @@
             "description" : "Server error response"
           }
         },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
         "tags" : [ "/api/card" ]
       },
       "put" : {
@@ -36505,17 +36472,6 @@
           },
           "5XX" : {
             "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
           }
         },
         "tags" : [ "/api/card" ]
@@ -37375,17 +37331,6 @@
             "description" : "Server error response"
           }
         },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
         "tags" : [ "/api/collection" ]
       },
       "post" : {
@@ -37879,17 +37824,6 @@
             "description" : "Server error response"
           }
         },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
         "tags" : [ "/api/collection" ]
       }
     },
@@ -38214,17 +38148,6 @@
             "description" : "Server error response"
           }
         },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
         "tags" : [ "/api/collection" ]
       }
     },
@@ -38265,17 +38188,6 @@
           },
           "5XX" : {
             "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
           }
         },
         "tags" : [ "/api/collection" ]
@@ -38607,17 +38519,6 @@
           },
           "5XX" : {
             "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
           }
         },
         "tags" : [ "/api/collection" ]
@@ -45354,12 +45255,12 @@
                           "type" : "string",
                           "minLength" : 1
                         },
-                        "updated_at" : { },
-                        "display_name" : {
+                        "slug" : {
                           "description" : "value must be a non-blank string.",
                           "type" : "string",
                           "minLength" : 1
                         },
+                        "updated_at" : { },
                         "version" : {
                           "description" : "value must be an integer greater than zero.",
                           "type" : "integer",
@@ -45400,15 +45301,10 @@
                           "minLength" : 1
                         }
                       },
-                      "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                      "required" : [ "id", "slug", "name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                     }, {
                       "type" : "object",
                       "properties" : {
-                        "display_name" : {
-                          "description" : "value must be a non-blank string.",
-                          "type" : "string",
-                          "minLength" : 1
-                        },
                         "enabled" : {
                           "type" : "boolean"
                         },
@@ -45424,9 +45320,14 @@
                         },
                         "outdated" : {
                           "type" : "boolean"
+                        },
+                        "slug" : {
+                          "description" : "value must be a non-blank string.",
+                          "type" : "string",
+                          "minLength" : 1
                         }
                       },
-                      "required" : [ "id", "name", "display_name", "enabled", "outdated" ],
+                      "required" : [ "id", "slug", "name", "enabled", "outdated" ],
                       "additionalProperties" : false
                     } ]
                   }
@@ -45756,12 +45657,12 @@
                       "type" : "string",
                       "minLength" : 1
                     },
-                    "updated_at" : { },
-                    "display_name" : {
+                    "slug" : {
                       "description" : "value must be a non-blank string.",
                       "type" : "string",
                       "minLength" : 1
                     },
+                    "updated_at" : { },
                     "version" : {
                       "description" : "value must be an integer greater than zero.",
                       "type" : "integer",
@@ -45802,7 +45703,7 @@
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                  "required" : [ "id", "slug", "name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                 }
               }
             }
@@ -45868,12 +45769,12 @@
                         "type" : "string",
                         "minLength" : 1
                       },
-                      "updated_at" : { },
-                      "display_name" : {
+                      "slug" : {
                         "description" : "value must be a non-blank string.",
                         "type" : "string",
                         "minLength" : 1
                       },
+                      "updated_at" : { },
                       "version" : {
                         "description" : "value must be an integer greater than zero.",
                         "type" : "integer",
@@ -45914,15 +45815,10 @@
                         "minLength" : 1
                       }
                     },
-                    "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                    "required" : [ "id", "slug", "name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                   }, {
                     "type" : "object",
                     "properties" : {
-                      "display_name" : {
-                        "description" : "value must be a non-blank string.",
-                        "type" : "string",
-                        "minLength" : 1
-                      },
                       "enabled" : {
                         "type" : "boolean"
                       },
@@ -45938,9 +45834,14 @@
                       },
                       "outdated" : {
                         "type" : "boolean"
+                      },
+                      "slug" : {
+                        "description" : "value must be a non-blank string.",
+                        "type" : "string",
+                        "minLength" : 1
                       }
                     },
-                    "required" : [ "id", "name", "display_name", "enabled", "outdated" ],
+                    "required" : [ "id", "slug", "name", "enabled", "outdated" ],
                     "additionalProperties" : false
                   } ]
                 }
@@ -73032,17 +72933,6 @@
             "description" : "Server error response"
           }
         },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
         "tags" : [ "/api/table" ]
       }
     },
@@ -80231,17 +80121,6 @@
             "description" : "Server error response"
           }
         },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
         "tags" : [ "/api/user-key-value" ]
       },
       "delete" : {
@@ -80276,17 +80155,6 @@
           },
           "5XX" : {
             "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
           }
         },
         "tags" : [ "/api/user-key-value" ]
