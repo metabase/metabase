@@ -2,6 +2,7 @@
   (:require
    [clojure.core.cache :as cache]
    [clojure.test :refer :all]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.lib-be.metadata.jvm :as metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -248,6 +249,20 @@
         (search/init-index!)
         (is (= 3 @factory-calls)
             "Factory should be called once per unique database-id, not once per lookup")))))
+
+(deftest update!-reports-every-batch-test
+  (testing "the update counts cover every batch of documents, not just the last one"
+    (let [counted (atom [])]
+      (with-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
+                    search.engine/update!        (fn [_engine batch] {"card" (count batch)})
+                    analytics/inc!               (fn
+                                                   ([_metric] nil)
+                                                   ([_metric _amount] nil)
+                                                   ([metric labels amount]
+                                                    (when (= :metabase-search/index-updates metric)
+                                                      (swap! counted conj [labels amount]))))]
+        (search.ingestion/update! (range 400) [])
+        (is (= [[{:model "card"} 400]] @counted))))))
 
 (deftest curation-signals-surfaced-in-results-test
   (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,
