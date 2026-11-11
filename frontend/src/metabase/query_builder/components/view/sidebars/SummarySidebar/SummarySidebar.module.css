@@ -165,12 +165,6 @@
   opacity: 0.4;
 }
 
-.chipLabel {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
 .chipButton {
   display: inline-flex;
   align-items: center;
@@ -352,14 +346,6 @@
 .fieldListEmpty {
   padding: var(--mantine-spacing-sm) var(--field-list-gutter);
   text-wrap: pretty;
-}
-
-.matchedLabel {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 .matchedLabelMatch {
