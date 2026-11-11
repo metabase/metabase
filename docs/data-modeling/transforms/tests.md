@@ -69,10 +69,10 @@ To review the checks the agent wrote, open the transform's **Tests** tab and cli
 
 ## Version and transfer your tests with Remote Sync
 
-If you use [Remote Sync](../../installation-and-operation/remote-sync.md#8-configure-transforms-syncing-optional), your transform tests live in your Git repository as YAML files, next to the transforms they test. How you add tests depends on your Metabase's sync mode.
+If you use [Remote Sync](../../installation-and-operation/remote-sync.md#8-configure-transforms-syncing-optional), your transform tests live in your Git repository as files, next to the transforms they test. How you add tests depends on your Metabase's sync mode.
 
 - In **read-write mode**, create tests with an agent and the Metabase CLI, as described above. Then push them to your repository like any other synced content.
-- If your instance is in **read-only mode**, run your agent in a local checkout of the repository to write transforms and tests as YAML files. If the agent tries to edit Metabase directly, tell it to use the [`@metabase/representations`](https://github.com/metabase/representations) package to write the files. Once the files are written, commit them, push, and open a pull request. After the pull request is merged, Metabase picks up the new tests the next time it pulls changes.
+- If your instance is in **read-only mode**, run your agent in a local checkout of the repository to write transforms and tests as files. If the agent tries to edit Metabase directly, tell it to use the [`@metabase/representations`](https://github.com/metabase/representations) package to write the files. Once the files are written, commit them, push, and open a pull request. After the pull request is merged, Metabase picks up the new tests the next time it pulls changes.
 
 In either mode, you can have CI run your transform tests before changes reach production. For example, a GitHub Action can start a temporary Metabase in Docker, import the content from the pull request's commit, and use the Metabase CLI to run every test.
 
