@@ -162,6 +162,10 @@ describe("bookmarkApi", () => {
       "path:/api/dashboard/2",
       createMockDashboard({ id: 2, name: "Orders in a dashboard 2" }),
     );
+    fetchMock.put(
+      "path:/api/card/3",
+      createMockCard({ id: 3, name: "Orders 2" }),
+    );
     const { store, bookmarkListCalls } = await setup({
       bookmarks: [CARD_BOOKMARK],
     });
@@ -172,7 +176,13 @@ describe("bookmarkApi", () => {
         name: "Orders in a dashboard 2",
       }),
     );
+    // Renaming the bookmarked card refetches the list once. Any refetch caused
+    // by the dashboard rename starts before it, so it would be counted too.
+    await store.dispatch(
+      cardApi.endpoints.updateCard.initiate({ id: 3, name: "Orders 2" }),
+    );
 
-    expect(await bookmarkListCalls()).toBe(1);
+    await waitFor(async () => expect(await bookmarkListCalls()).toBe(2));
+    expect(await bookmarkListCalls()).toBe(2);
   });
 });
