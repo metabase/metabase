@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import type { Editor } from "@tiptap/core";
 
 import {
   setupBookmarksEndpoints,
@@ -8,9 +9,40 @@ import {
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
-import { createMockDocument } from "metabase-types/api/mocks";
+import {
+  createMockDocument,
+  createMockDocumentContent,
+} from "metabase-types/api/mocks";
 
 import { DocumentPage } from "./DocumentPage";
+
+// The real updateDocument mutation leaves its `queryFulfilled` rejection
+// unhandled when the request fails, which fails any test that sends a failing
+// update through it. Tests that need a failed save set this flag instead, so
+// the mutation resolves with an error like RTK Query does for a failed request.
+const mockUpdateDocumentFailure = { current: false };
+
+jest.mock("metabase/api/document", () => {
+  const actual = jest.requireActual("metabase/api/document");
+  return {
+    ...actual,
+    useUpdateDocumentMutation: (
+      ...args: Parameters<typeof actual.useUpdateDocumentMutation>
+    ) => {
+      const [updateDocument, result] = actual.useUpdateDocumentMutation(
+        ...args,
+      );
+      const failingUpdateDocument = () =>
+        Promise.resolve({ error: { status: 500, data: "" } });
+      return [
+        mockUpdateDocumentFailure.current
+          ? failingUpdateDocument
+          : updateDocument,
+        result,
+      ];
+    },
+  };
+});
 
 const setup = () => {
   setupBookmarksEndpoints([]);
@@ -19,12 +51,21 @@ const setup = () => {
       name: "Ends with whitespace ",
       id: 1,
       can_write: true,
+      document: createMockDocumentContent({
+        content: [
+          {
+            type: "paragraph",
+            attrs: { _id: "1" },
+            content: [{ type: "text", text: "Original content" }],
+          },
+        ],
+      }),
     }),
   );
   setupCommentEndpoints([], { target_type: "document", target_id: 1 });
   setupTimelinesEndpoints([]);
 
-  renderWithProviders(
+  return renderWithProviders(
     <>
       <Route path="/document/:entityId" element={<DocumentPage />}></Route>
     </>,
@@ -52,6 +93,10 @@ const getDocumentTitle = async () =>
   await screen.findByRole("textbox", { name: /document title/i });
 
 describe("Document Page", () => {
+  afterEach(() => {
+    mockUpdateDocumentFailure.current = false;
+  });
+
   it("should show a save button when title changes", async () => {
     setup();
     await waitFor(async () =>
@@ -77,6 +122,41 @@ describe("Document Page", () => {
         screen.queryByRole("button", { name: "Save" }),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("shows an error toast and keeps the save button when saving fails", async () => {
+    mockUpdateDocumentFailure.current = true;
+    const { store } = setup();
+
+    await getDocumentTitle();
+    await screen.findByText("Original content");
+    // A body edit sets the unsaved-changes flag. A title edit does not, so it
+    // keeps the Save button visible whatever the save handler does.
+    // Tiptap attaches its editor instance to the contenteditable element.
+    const editorElement = screen
+      .getAllByRole("textbox")
+      .find((element) => "editor" in element) as HTMLElement & {
+      editor: Editor;
+    };
+    act(() => {
+      editorElement.editor.commands.insertContentAt(
+        editorElement.editor.state.doc.content.size - 1,
+        " edited",
+      );
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(store.getState().undo).toEqual([
+        expect.objectContaining({
+          message: "Error saving document",
+          icon: "warning",
+        }),
+      ]),
+    );
+    // The Save button fades out over 200ms and stays mounted during the fade.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
   });
 
   it("warns about unsaved changes only once a navigation lands back on /document/new", async () => {
