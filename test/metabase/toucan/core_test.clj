@@ -18,9 +18,9 @@
                                         (metabase.toucan.impl/value (f x))]
                                :limit  (metabase.toucan.impl/value n)})
          (macroexpand-1 '(metabase.toucan.core/query {:select [:id]
-                                                       :from   [:core_user]
-                                                       :where  [:and [:= :email (str a b)] (f x)]
-                                                       :limit  n})))))
+                                                      :from   [:core_user]
+                                                      :where  [:and [:= :email (str a b)] (f x)]
+                                                      :limit  n})))))
 
 (deftest update-conditions-wrapped-test
   (is (= '(toucan2.core/update! :model/User :id (metabase.toucan.impl/value id)
@@ -119,9 +119,9 @@
   (is (= :email (macroexpand-1 '(metabase.toucan.core/column-name :email))))
   (is (= :u.email (macroexpand-1 '(metabase.toucan.core/column-name :u :email))))
   (is (= '(toucan2.core/select :model/User {:where [:= (metabase.toucan.core/column-name :u :email)
-                                                     (metabase.toucan.impl/value email)]})
+                                                    (metabase.toucan.impl/value email)]})
          (macroexpand-1 '(metabase.toucan.core/select :model/User {:where [:= (metabase.toucan.core/column-name :u :email)
-                                                                          email]}))))
+                                                                           email]}))))
   (let [email        "a@b.c"
         [sql & args] (toucan2.core/compile (t2/select :model/User {:where [:= (t2/column-name :email) email]}))]
     (is (re-find #"(?i)email\W* = \?$" sql))

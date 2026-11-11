@@ -12,17 +12,17 @@
   "The `:where` clause for OAuthClientEvents narrowed by `client-id` and/or `event-type`."
   [client-id event-type]
   (t2/fragment [:and
-                 (when client-id (t2/fragment [:= :c.client_id client-id]))
-                 (when event-type (t2/fragment [:= :e.event_type event-type]))]))
+                (when client-id (t2/fragment [:= :c.client_id client-id]))
+                (when event-type (t2/fragment [:= :e.event_type event-type]))]))
 
 (mu/defn client-event-count
   "The number of OAuthClientEvents matching `client-id` and/or `event-type` (all of them when both nil)."
   [client-id  :- [:maybe :string]
    event-type :- [:maybe :string]]
   (t2/query {:select    [[[:count :*] :count]]
-              :from      [[:oauth_client_event :e]]
-              :left-join [[:oauth_client :c] [:= :e.oauth_client_id :c.id]]
-              :where     (client-event-where client-id event-type)}))
+             :from      [[:oauth_client_event :e]]
+             :left-join [[:oauth_client :c] [:= :e.oauth_client_id :c.id]]
+             :where     (client-event-where client-id event-type)}))
 
 (mu/defn client-events
   "Up to `limit` OAuthClientEvents from `offset` matching `client-id` and/or `event-type` (all of them when
@@ -32,22 +32,22 @@
    limit      :- ms/PositiveInt
    offset     :- ms/IntGreaterThanOrEqualToZero]
   (t2/query {:select    [:e.id :e.oauth_client_id :e.user_id :e.event_type :e.created_at
-                          [:c.client_id :client_id]
-                          [:c.client_name :client_name]
-                          [:c.client_uri :client_uri]
-                          [:c.registration_type :registration_type]
-                          [:c.application_type :application_type]
-                          [:c.redirect_uris :redirect_uris]
-                          [:u.email :user_email]
-                          [:u.first_name :user_first_name]
-                          [:u.last_name :user_last_name]]
-              :from      [[:oauth_client_event :e]]
-              :left-join [[:oauth_client :c] [:= :e.oauth_client_id :c.id]
-                          [:core_user :u]    [:= :e.user_id :u.id]]
-              :where     (client-event-where client-id event-type)
-              :order-by  [[:e.created_at :desc] [:e.id :desc]]
-              :limit     limit
-              :offset    offset}))
+                         [:c.client_id :client_id]
+                         [:c.client_name :client_name]
+                         [:c.client_uri :client_uri]
+                         [:c.registration_type :registration_type]
+                         [:c.application_type :application_type]
+                         [:c.redirect_uris :redirect_uris]
+                         [:u.email :user_email]
+                         [:u.first_name :user_first_name]
+                         [:u.last_name :user_last_name]]
+             :from      [[:oauth_client_event :e]]
+             :left-join [[:oauth_client :c] [:= :e.oauth_client_id :c.id]
+                         [:core_user :u]    [:= :e.user_id :u.id]]
+             :where     (client-event-where client-id event-type)
+             :order-by  [[:e.created_at :desc] [:e.id :desc]]
+             :limit     limit
+             :offset    offset}))
 
 (mu/defn active-user-exists?
   "Whether an active User with `user-id` exists."
