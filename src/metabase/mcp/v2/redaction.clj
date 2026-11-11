@@ -28,16 +28,16 @@
   "`:visualization_settings` keys that describe every card on a dashcard, its series cards included.
    The frontend keys `:series_settings` entries by a card's name, alone or followed by a column name or breakout value.
    The legacy `:graph.series_labels` lists the cards' names in series order.
-   Additional tooltip columns may come from any series card's results.
+   Column settings, additional tooltip columns and click mappings may name columns from any series card's results.
+   Click behaviors also name other entities.
    A visualizer dashcard's `:visualization` maps its columns to the cards and columns they come from."
-  [:series_settings :graph.series_labels :graph.tooltip_columns :visualization])
+  [:series_settings :graph.series_labels :graph.tooltip_columns :column_settings :click_behavior :visualization])
 
 (def ^:private card-describing-viz-keys
-  "`:visualization_settings` keys that describe the card rather than the grid slot: its author-written
-   title, the warehouse columns it displays and their labels, click targets naming other entities, and the
-   [[series-describing-viz-keys]], since the card is one of the cards those describe.
+  "`:visualization_settings` keys that describe the main card rather than the grid slot: its author-written title
+   and description, and the [[series-describing-viz-keys]], since it is one of the cards those describe.
    Layout keys (sizing, container styling) describe the dashboard itself and survive redaction."
-  (into [:card.title :card.description :column_settings :click_behavior] series-describing-viz-keys))
+  (into [:card.title :card.description] series-describing-viz-keys))
 
 (defn- strip-viz-keys
   "The dashcard with the `ks` removed from its `:visualization_settings`, which become nil when nothing is left."

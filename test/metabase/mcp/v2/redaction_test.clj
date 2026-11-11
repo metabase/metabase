@@ -317,16 +317,18 @@
                     :card_id                12
                     :card                   (card 12 "Open")
                     :series                 [(card 13 "Hidden Series") (card 14 "Open Series")]
-                    :visualization_settings {:series_settings     {:Open                            {:color "#111"}
-                                                                   (keyword "Hidden Series")        {:color "#222"}
-                                                                   (keyword "Hidden Series: Count") {:color "#333"}}
+                    :visualization_settings {:series_settings       {:Open                            {:color "#111"}
+                                                                     (keyword "Hidden Series")        {:color "#222"}
+                                                                     (keyword "Hidden Series: Count") {:color "#333"}}
                                              :graph.series_labels   ["Open" "Hidden Series" "Open Series"]
                                              :graph.tooltip_columns ["[\"name\",\"salary\"]"]
-                                             :visualization       {:columnValuesMapping
-                                                                   {:COLUMN_2 [{:sourceId     "card:13"
-                                                                                :originalName "salary"
-                                                                                :name         "COLUMN_2"}]}}
-                                             :dashcard.background true}
+                                             :column_settings       {"[\"name\",\"salary\"]" {:column_title "Salary"}}
+                                             :click_behavior        {:parameterMapping {"p" {:source {:id "salary"}}}}
+                                             :visualization         {:columnValuesMapping
+                                                                     {:COLUMN_2 [{:sourceId     "card:13"
+                                                                                  :originalName "salary"
+                                                                                  :name         "COLUMN_2"}]}}
+                                             :dashcard.background   true}
                     :parameter_mappings     [{:parameter_id "p", :card_id 12, :target [:dimension [:field 1 nil]]}
                                              {:parameter_id "p", :card_id 13, :target [:dimension [:field 999 nil]]}
                                              {:parameter_id "p", :card_id 14, :target [:dimension [:field 2 nil]]}]}
