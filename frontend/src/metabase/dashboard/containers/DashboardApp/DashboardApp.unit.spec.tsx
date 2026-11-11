@@ -386,6 +386,21 @@ describe("DashboardApp", () => {
         method: "PUT",
       });
 
+    // Waits a while to make sure that no other update request is sent later
+    const expectNoMoreUpdates = async (
+      dashboardId: DashboardId,
+      count: number,
+    ) => {
+      await expect(
+        waitFor(
+          () =>
+            expect(getUpdateCalls(dashboardId).length).toBeGreaterThan(count),
+          { timeout: 1000 },
+        ),
+      ).rejects.toThrow();
+      expect(getUpdateCalls(dashboardId)).toHaveLength(count);
+    };
+
     const getUpdateBody = async (dashboardId: DashboardId, index: number) =>
       JSON.parse(String(getUpdateCalls(dashboardId)[index].options.body));
 
@@ -433,6 +448,13 @@ describe("DashboardApp", () => {
       expect(
         within(screen.getByTestId("sidesheet")).getByText(NEW_DESCRIPTION),
       ).toBeInTheDocument();
+
+      await userEvent.click(
+        within(screen.getByTestId("sidesheet")).getByRole("button", {
+          name: "Close",
+        }),
+      );
+      await expectNoMoreUpdates(dashboardId, 2);
     });
 
     it("should revert the title and the description changes on Escape", async () => {
