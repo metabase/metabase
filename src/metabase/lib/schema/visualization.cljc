@@ -1,4 +1,4 @@
-(ns metabase.lib.schema.visualization-settings
+(ns metabase.lib.schema.visualization
   "Schemas for the visualization settings the frontend authors for cards, dashboard cards and the like, normalizing
   them to the shape their columns store: keyword keys all the way down, but for the JSON-encoded column keys of
   `:column_settings`, with the legacy MBQL references that older settings give in place of column names normalized.

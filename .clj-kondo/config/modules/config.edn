@@ -1411,7 +1411,7 @@
           metabase.lib.schema.test-spec
           metabase.lib.schema.util
           metabase.lib.schema.validate
-          metabase.lib.schema.visualization-settings}
+          metabase.lib.schema.visualization}
    :uses #{lib lib.types util}}
 
   lib.source-swap

@@ -18,7 +18,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
@@ -157,7 +157,7 @@
                                                 (cond-> x
                                                   (string? x) json/decode))}
                                  ::lib-be.schema/maybe-legacy-or-internal-query]]
-       [:visualization_settings {:default {}} (mu/with ::lib.schema.visualization-settings/visualization-settings
+       [:visualization_settings {:default {}} (mu/with ::lib.schema.visualization/visualization-settings
                                                        {:decode/api (fn [x]
                                                                       (lib.schema.common/remove-internal-keys
                                                                        (cond-> x
@@ -173,7 +173,7 @@
        [:csv_include_bom         {:default false} ms/BooleanValue]]
    request]
   (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
-  (let [viz-settings                  (lib/normalize ::lib.schema.visualization-settings/visualization-settings
+  (let [viz-settings                  (lib/normalize ::lib.schema.visualization/visualization-settings
                                                      visualization-settings)
         query                         (-> query
                                           (dissoc :constraints :cache-strategy)

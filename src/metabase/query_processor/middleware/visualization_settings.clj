@@ -4,7 +4,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
@@ -13,7 +13,7 @@
   "The settings of the Field with `field-id`, normalized as column settings, or nil when it has none."
   [metadata-providerable field-id]
   (some->> (:settings (lib.metadata/field metadata-providerable field-id))
-           (lib/normalize ::lib.schema.visualization-settings/column-settings.entry)
+           (lib/normalize ::lib.schema.visualization/column-settings.entry)
            perf/not-empty))
 
 (defn- update-column-settings

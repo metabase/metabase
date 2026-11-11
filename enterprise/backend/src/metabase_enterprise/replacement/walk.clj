@@ -4,7 +4,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.lib.util :as lib.util]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util.malli :as mu]))
@@ -68,7 +68,7 @@
   "Walk the viz settings and update the refs using the provided function.
 
   `ref-fn` will be called with a ref and should return either a string to be used as a column name."
-  [viz-settings :- ::lib.schema.visualization-settings/visualization-settings
+  [viz-settings :- ::lib.schema.visualization/visualization-settings
    ref-fn       :- fn?]
   (letfn [(update-legacy-ref-or-name [ref-or-name]
             (or (when (vector? ref-or-name)
@@ -106,13 +106,13 @@
 
 (mu/defn click-behavior-card-id :- [:maybe ::lib.schema.id/card]
   "Returns the card ID from a click behavior if it links to a card."
-  [click-behavior :- ::lib.schema.visualization-settings/visualization-settings]
+  [click-behavior :- ::lib.schema.visualization/visualization-settings]
   (when (= "question" (:linkType click-behavior))
     (:targetId click-behavior)))
 
 (mu/defn viz-settings-click-behavior-card-ids :- [:set ::lib.schema.id/card]
   "Get all card IDs referenced by the click behaviors in the viz settings."
-  [viz-settings :- ::lib.schema.visualization-settings/visualization-settings]
+  [viz-settings :- ::lib.schema.visualization/visualization-settings]
   (into #{}
         (concat
          ;; global click behavior (non-table cards)
@@ -127,7 +127,7 @@
   "Walk the click behaviors in the viz settings and update the targets using the provided function.
 
   `target-fn` will be called with a parameter target and a card ID and should return a new parameter target."
-  [viz-settings :- ::lib.schema.visualization-settings/visualization-settings
+  [viz-settings :- ::lib.schema.visualization/visualization-settings
    target-fn    :- fn?]
   (letfn [(update-mapping [card-id mapping]
             (or (when-some [target (some->> mapping :target :dimension

@@ -124,7 +124,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
-   [metabase.lib.visualization-settings :as lib.visualization-settings]
+   [metabase.lib.visualization :as lib.visualization]
    [metabase.lib.walk]
    [metabase.lib.walk.util]
    [metabase.util.malli :as mu]
@@ -1866,7 +1866,7 @@
   metabase.lib.parameters.parse.types/no-value)
 
 (shared.ns/import-fns
- [lib.visualization-settings
+ [lib.visualization
   column-name->column-settings-key
   column-settings-for-field-id
   column-settings-for-name

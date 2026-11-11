@@ -1,4 +1,4 @@
-(ns metabase.lib.visualization-settings-test
+(ns metabase.lib.visualization-test
   (:require
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]))

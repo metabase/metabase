@@ -7,7 +7,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    ;; per-query-execution cache via qp.store/cached; general-cached-value migration pending
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -257,7 +257,7 @@
 (def ^:private normalize-column-settings
   "The stored `:settings` of a column, normalized, without the values that are malformed; memoized, since exports
   look them up for every value they write."
-  (u.memo/fast-bounded #(lib/normalize ::lib.schema.visualization-settings/column-settings.entry %)
+  (u.memo/fast-bounded #(lib/normalize ::lib.schema.visualization/column-settings.entry %)
                        :bounded/threshold 1024))
 
 (defn viz-settings-for-col

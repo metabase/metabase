@@ -5,7 +5,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.serialization.mbql :as mbql]
    [metabase.serialization.resolve :as resolve]
    [metabase.util :as u]
@@ -318,7 +318,7 @@
       (walk-import-viz-column-settings visit $)
       (cond->> $
         (not (resolve/collecting? visit))
-        (lib/normalize ::lib.schema.visualization-settings/visualization-settings)))))
+        (lib/normalize ::lib.schema.visualization/visualization-settings)))))
 
 (defn export-visualization-settings
   "Each of the `:visualization_settings` of `xs` exported by [[walk-export-visualization-settings]], with the database

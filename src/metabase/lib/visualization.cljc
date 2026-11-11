@@ -1,5 +1,5 @@
-(ns metabase.lib.visualization-settings
-  "Lookups into the `:column_settings` of [[metabase.lib.schema.visualization-settings]], whose keys are the
+(ns metabase.lib.visualization
+  "Lookups into the `:column_settings` of [[metabase.lib.schema.visualization]], whose keys are the
   JSON-encoded reference or name of each column."
   (:require
    #?@(:clj ([metabase.util.json :as json]) :cljs ([metabase.util :as u]))
