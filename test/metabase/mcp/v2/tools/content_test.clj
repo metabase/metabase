@@ -313,6 +313,53 @@
             (testing "and so is an unreadable series entry"
               (is (= [{:id hidden-series}] (:series (get refs open-dc)))))))))))
 
+(deftest get-content-dashboard-layout-redacts-unreadable-series-card-test
+  (testing "BOT-2561: with a readable main card and a series card the caller cannot read, the `layout` include
+            names the series card nowhere and keeps no filter mapping to it. Its `series_settings` entry is
+            keyed by its name, and its mapping carries its field ids."
+    (mt/with-temp [:model/Collection    {open-id :id}       {}
+                   :model/Collection    {locked-id :id}     {}
+                   :model/Dashboard     {dash-id :id}       {:collection_id open-id
+                                                             :parameters    [{:id "p" :name "P" :slug "p"
+                                                                              :type "category"}]}
+                   :model/Card          {open-card :id}     {:name "Open" :collection_id open-id}
+                   :model/Card          {hidden-series :id} {:name "SECRET Series" :collection_id locked-id}
+                   :model/DashboardCard {dc-id :id}         {:dashboard_id           dash-id
+                                                             :card_id                open-card
+                                                             :row                    0
+                                                             :col                    0
+                                                             :visualization_settings
+                                                             {:series_settings {"Open"          {:color "#111"}
+                                                                                "SECRET Series" {:color "#222"}}}
+                                                             :parameter_mappings
+                                                             [{:parameter_id "p"
+                                                               :card_id      open-card
+                                                               :target       [:dimension [:field (mt/id :venues :price) nil]]}
+                                                              {:parameter_id "p"
+                                                               :card_id      hidden-series
+                                                               :target       [:dimension [:field (mt/id :venues :name) nil]]}]}
+                   :model/DashboardCardSeries _             {:dashboardcard_id dc-id
+                                                             :card_id          hidden-series
+                                                             :position         0}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        (let [layout-dashcard (fn []
+                                (->> (content-one {:items [{:type "dashboard" :id dash-id}] :include ["layout"]})
+                                     :layout
+                                     :dashcards
+                                     (some #(when (= dc-id (:id %)) %))))]
+          (testing "an admin sees the series card's settings and mapping"
+            (mt/with-test-user :crowberto
+              (let [dc (layout-dashcard)]
+                (is (str/includes? (json/encode dc) "SECRET Series"))
+                (is (= #{open-card hidden-series} (set (map :card_id (:parameter_mappings dc))))))))
+          (mt/with-test-user :rasta
+            (let [dc (layout-dashcard)]
+              (is (some? dc))
+              (is (not (str/includes? (json/encode dc) "SECRET Series")))
+              (is (= [open-card] (map :card_id (:parameter_mappings dc))))
+              (testing "the readable main card's entry stays"
+                (is (= "#111" (get-in dc [:visualization_settings :series_settings :Open :color])))))))))))
+
 (defn- link-card-settings
   "Stored `visualization_settings` for a link dashcard pointing at `model`/`id`, carrying the
    cached entity name the frontend writes alongside the reference."

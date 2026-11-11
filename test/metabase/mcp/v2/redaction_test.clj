@@ -303,3 +303,49 @@
                     :visualization_settings {:text "{{x}}", :click_behavior {:type "link"}}
                     :parameter_mappings     [{:parameter_id "p", :card_id nil, :target [:text-tag "x"]}]}]
       (is (= dashcard (first (:dashcards (redaction/redact-dashboard {:dashcards [dashcard]}))))))))
+
+(deftest unreadable-series-card-loses-its-settings-and-mappings-test
+  (testing "BOT-2561: a series card the caller cannot read is not only reduced to its id. The dashcard's
+            `:series_settings` are keyed by series card name, and its `:parameter_mappings` to the series card
+            carry that card's field ids, so both go with it. The main card's are untouched."
+    (let [card     (fn [id card-name] (t2/instance :model/Card {:id id :name card-name}))
+          dashcard {:id                     1
+                    :card_id                12
+                    :card                   (card 12 "Open")
+                    :series                 [(card 13 "Hidden Series") (card 14 "Open Series")]
+                    :visualization_settings {:series_settings     {:Open                     {:color "#111"}
+                                                                   (keyword "Hidden Series") {:color "#222"}
+                                                                   (keyword "Open Series")   {:color "#333"}}
+                                             :dashcard.background true}
+                    :parameter_mappings     [{:parameter_id "p" :card_id 12 :target [:dimension [:field 1 nil]]}
+                                             {:parameter_id "p" :card_id 13 :target [:dimension [:field 999 nil]]}
+                                             {:parameter_id "p" :card_id 14 :target [:dimension [:field 2 nil]]}]}
+          redact   (fn [dashcard hidden-ids]
+                     (with-redefs [mi/can-read? (fn [c] (not (contains? hidden-ids (:id c))))]
+                       (first (:dashcards (redaction/redact-dashboard {:dashcards [dashcard]})))))]
+      (is (=? {:card                   {:id 12 :name "Open"}
+               :series                 [{:id 13} {:id 14 :name "Open Series"}]
+               :visualization_settings {:series_settings     {:Open                     {:color "#111"}
+                                                              (keyword "Open Series")   {:color "#333"}}
+                                        :dashcard.background true}
+               :parameter_mappings     [{:card_id 12} {:card_id 14}]}
+              (redact dashcard #{13})))
+      (is (= {:id 13} (first (:series (redact dashcard #{13}))))
+          "the hidden entry carries nothing but its id")
+      (is (not (contains? (get-in (redact dashcard #{13}) [:visualization_settings :series_settings])
+                          (keyword "Hidden Series"))))
+      (testing "a key holding only hidden entries goes entirely, as an unreadable main card's does"
+        (is (= {:dashcard.background true}
+               (:visualization_settings
+                (redact (assoc-in dashcard [:visualization_settings :series_settings]
+                                  {(keyword "Hidden Series") {:color "#222"}})
+                        #{13})))))
+      (testing "a name a readable card shares is not withheld, and its entry describes that card too, so it stays"
+        (is (= {:Open {:color "#111"}}
+               (get-in (redact (-> dashcard
+                                   (assoc :series [(card 13 "Open")])
+                                   (assoc-in [:visualization_settings :series_settings] {:Open {:color "#111"}}))
+                               #{13})
+                       [:visualization_settings :series_settings]))))
+      (testing "readable series: nothing is stripped"
+        (is (= dashcard (redact dashcard #{})))))))
