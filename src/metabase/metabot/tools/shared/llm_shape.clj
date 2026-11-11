@@ -23,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.quoting :as quoting]
    [ring.util.codec :as codec]
    [selmer.parser :as selmer]))
 
@@ -176,15 +177,23 @@
         (str/replace "<" "&lt;")
         (str/replace ">" "&gt;"))))
 
-(defn- markdown-cell
-  "Render `v` as the text of one markdown table cell in `|safe` template output.
-  Pipes are escaped and each line break becomes a space, so the value stays in its column."
-  [v]
-  ;; The model copies these values into filters and column references, so nothing else is changed.
-  (-> (str v)
+(defn escape-cell-text
+  "Escape `s` for one markdown table cell in `|safe` template output, on one line and reversibly.
+  XML special characters, backslashes and pipes are escaped, and invisible or line-breaking characters are written
+  as `\\uXXXX`."
+  [s]
+  ;; Reversible because the model copies cell values into filters and column references.
+  (-> s
       escape-xml-content
+      (str/replace "\\" "\\\\")
       (str/replace "|" "\\|")
-      (str/replace #"\r\n|\r|\n" " ")))
+      ;; After the backslashes are doubled, so an escape written here differs from the same text in the data.
+      (quoting/escape-code-points quoting/invisible-code-point?)))
+
+(defn- markdown-cell
+  "Render `v` as the text of one markdown table cell; see [[escape-cell-text]]."
+  [v]
+  (escape-cell-text (str v)))
 
 (defn- json-cell-safe
   "Keep a JSON string valid inside a markdown table cell. Markdown `\\|` escaping is not
@@ -264,7 +273,7 @@
 
 (defn format-fields-table
   "Format fields as markdown table for LLM.
-   Matches Python render_table output format.
+   Based on Python render_table output, with cells escaped by [[escape-cell-text]].
    Note: This output is used with |safe in templates, so we must escape manually."
   [fields & [{:keys [columns] :or {columns {:name          "Field Name"
                                             :field_id      "Field ID"
@@ -938,8 +947,8 @@
 
 (defn field-values-metadata->xml
   "Format field values metadata for LLM consumption.
-   Matches Python FieldValuesMetadata.llm_representation, with notes when only some values are listed
-   or when the database couldn't be sampled for statistics.
+   Based on Python FieldValuesMetadata.llm_representation, with cells escaped by [[escape-cell-text]].
+   Adds a note when only some values are listed or when the database couldn't be sampled for statistics.
    Tables use |safe in the template, so values must be escaped."
   [{:keys [field_values field_values_total has_more_values statistics statistics_unavailable]}]
   (let [escape-value        (fn [_k v] (markdown-cell v))

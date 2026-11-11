@@ -27,8 +27,7 @@
    [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.util :as u]
-   [metabase.util.quoting :as quoting]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -618,12 +617,7 @@
 
 (defn- escaped-code-point
   [code-point]
-  (-> (Character/toString (int code-point))
-      llm-shape/escape-xml-content
-      (str/replace "\\" "\\\\")
-      (str/replace "|" "\\|")
-      ;; After the backslashes are doubled, so an escape written here differs from the same text in the data.
-      (quoting/escape-code-points quoting/invisible-code-point?)))
+  (llm-shape/escape-cell-text (Character/toString (int code-point))))
 
 (defn- whitespace-code-point?
   [code-point]

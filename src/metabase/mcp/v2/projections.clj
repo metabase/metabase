@@ -333,12 +333,12 @@
 
 (defn- notification-recipient-row
   [recipient]
-  (m/remove-vals nil?
-                 {:type                 (some-> (:type recipient) u/qualified-name)
-                  :user_id              (:user_id recipient)
-                  :email                (or (get-in recipient [:user :email])
-                                            (get-in recipient [:details :value]))
-                  :permissions_group_id (:permissions_group_id recipient)}))
+  (u/remove-nils
+   {:type                 (some-> (:type recipient) u/qualified-name)
+    :user_id              (:user_id recipient)
+    :email                (or (get-in recipient [:user :email])
+                              (get-in recipient [:details :value]))
+    :permissions_group_id (:permissions_group_id recipient)}))
 
 (defn- notification-handler-rows
   "Projected handler rows. Recipients are projected as given: redaction happens before the
@@ -367,10 +367,10 @@
     :updated_at    (:updated_at notification)
     :payload       (not-empty
                     (u/select-non-nil-keys (:payload notification) [:card_id :send_condition :send_once]))
-    :subscriptions (mapv #(m/remove-vals nil?
-                                         {:type            (some-> (:type %) u/qualified-name)
-                                          :cron_schedule   (:cron_schedule %)
-                                          :ui_display_type (some-> (:ui_display_type %) u/qualified-name)})
+    :subscriptions (mapv #(u/remove-nils
+                           {:type            (some-> (:type %) u/qualified-name)
+                            :cron_schedule   (:cron_schedule %)
+                            :ui_display_type (some-> (:ui_display_type %) u/qualified-name)})
                          (:subscriptions notification))
     :handlers      (notification-handler-rows (:handlers notification))}))
 
