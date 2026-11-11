@@ -1,11 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
+import fetchMock from "fetch-mock";
 
 import {
   setupBookmarksEndpoints,
   setupCommentEndpoints,
   setupDocumentEndpoints,
   setupTimelinesEndpoints,
+  setupUpdateDocumentErrorEndpoint,
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
@@ -15,34 +17,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { DocumentPage } from "./DocumentPage";
-
-// The real updateDocument mutation leaves its `queryFulfilled` rejection
-// unhandled when the request fails, which fails any test that sends a failing
-// update through it. Tests that need a failed save set this flag instead, so
-// the mutation resolves with an error like RTK Query does for a failed request.
-const mockUpdateDocumentFailure = { current: false };
-
-jest.mock("metabase/api/document", () => {
-  const actual = jest.requireActual("metabase/api/document");
-  return {
-    ...actual,
-    useUpdateDocumentMutation: (
-      ...args: Parameters<typeof actual.useUpdateDocumentMutation>
-    ) => {
-      const [updateDocument, result] = actual.useUpdateDocumentMutation(
-        ...args,
-      );
-      const failingUpdateDocument = () =>
-        Promise.resolve({ error: { status: 500, data: "" } });
-      return [
-        mockUpdateDocumentFailure.current
-          ? failingUpdateDocument
-          : updateDocument,
-        result,
-      ];
-    },
-  };
-});
 
 const setup = () => {
   setupBookmarksEndpoints([]);
@@ -93,10 +67,6 @@ const getDocumentTitle = async () =>
   await screen.findByRole("textbox", { name: /document title/i });
 
 describe("Document Page", () => {
-  afterEach(() => {
-    mockUpdateDocumentFailure.current = false;
-  });
-
   it("should show a save button when title changes", async () => {
     setup();
     await waitFor(async () =>
@@ -125,8 +95,8 @@ describe("Document Page", () => {
   });
 
   it("shows an error toast and keeps the save button when saving fails", async () => {
-    mockUpdateDocumentFailure.current = true;
     const { store } = setup();
+    setupUpdateDocumentErrorEndpoint(1, { status: 500 });
 
     await getDocumentTitle();
     await screen.findByText("Original content");
@@ -154,6 +124,9 @@ describe("Document Page", () => {
         }),
       ]),
     );
+    expect(
+      fetchMock.callHistory.calls("path:/api/document/1", { method: "PUT" }),
+    ).toHaveLength(1);
     // The Save button fades out over 200ms and stays mounted during the fade.
     await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
