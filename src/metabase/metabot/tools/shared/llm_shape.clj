@@ -314,8 +314,9 @@
 
 (defn collection->xml
   "Format collection for LLM consumption.
-   Matches Python Collection.llm_representation exactly."
-  [{:keys [id name description authority_level path]}]
+   Matches Python Collection.llm_representation exactly, except we additionally say when the collection is in the
+   trash."
+  [{:keys [id name description authority_level path archived]}]
   (render-llm-template
    :collection
    {:collection_id              (some-> id str)
@@ -323,7 +324,8 @@
     :collection_path            path
     :collection_description     description
     ;; A Collection read from the app DB has its authority level as a keyword.
-    :collection_authority_level (some-> authority_level u/qualified-name)}))
+    :collection_authority_level (some-> authority_level u/qualified-name)
+    :collection_archived        (boolean archived)}))
 
 (defn- drill-in-location-context
   "The `<pfx>_database_name` / `<pfx>_base_table_fqn` keys a standalone measure/segment drill-in carries so

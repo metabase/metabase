@@ -20,7 +20,7 @@
 {{field_description}}{% endif %}</field>
 {% endif %}
 {% if is_collection %}
-<collection{% if collection_id %} id="{{collection_id}}"{% endif %} name="{{collection_name}}"{% if collection_path %} path="{{collection_path}}"{% endif %}{% if collection_authority_level %} authority_level="{{collection_authority_level}}"{% endif %}>{% if collection_description %}
+<collection{% if collection_id %} id="{{collection_id}}"{% endif %} name="{{collection_name}}"{% if collection_path %} path="{{collection_path}}"{% endif %}{% if collection_authority_level %} authority_level="{{collection_authority_level}}"{% endif %}{% if collection_archived %} archived="true"{% endif %}>{% if collection_description %}
 <description>{{collection_description}}</description>{% endif %}</collection>
 {% endif %}
 {% if is_related_table %}

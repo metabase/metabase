@@ -707,16 +707,17 @@
       (collection/archive-collection! emea)
       (collection/archive-collection! ops)
       (let [read-dashboard #(:output (read-uris {:uris [(str "metabase://dashboard/" %)]}))]
-        (testing "a dashboard in a trashed collection has its path through the Trash, and is archived"
+        (testing "a dashboard in a trashed collection has its path through the Trash, and both are archived"
           (let [output (read-dashboard trashed-id)]
             (is (str/includes? output (str "<collection id=\"" (:id emea) "\" name=\"EMEA\""
-                                           " path=\"Our analytics / Trash / EMEA\">")))
-            (is (str/includes? output " archived=\"true\">"))))
-        (testing "a dashboard in a collection trashed with its parent keeps the collection's location, and is archived"
+                                           " path=\"Our analytics / Trash / EMEA\" archived=\"true\">")))
+            (is (str/includes? output (str "<dashboard id=\"" trashed-id "\" is_verified=\"false\" archived=\"true\">")))))
+        (testing (str "a dashboard in a collection trashed with its parent keeps the collection's location, and both are"
+                      " archived")
           (let [output (read-dashboard nested-id)]
             (is (str/includes? output (str "<collection id=\"" nordics-id "\" name=\"Nordics\""
-                                           " path=\"Our analytics / Ops / Nordics\">")))
-            (is (str/includes? output " archived=\"true\">"))))
+                                           " path=\"Our analytics / Ops / Nordics\" archived=\"true\">")))
+            (is (str/includes? output (str "<dashboard id=\"" nested-id "\" is_verified=\"false\" archived=\"true\">")))))
         (testing "a dashboard trashed directly from a live collection is archived, with that collection's path"
           (let [output (read-dashboard direct-id)]
             (is (str/includes? output (str "<collection id=\"" sales-id "\" name=\"Sales\""

@@ -124,9 +124,10 @@
   (or (not-empty (str/trim (str first_name " " last_name))) (not-empty email)))
 
 (defn- dashboard-collection
-  "The collection with `collection-id`, nil for the root collection, with its authority level and the path to it the
-  current user can see. A collection trashed directly has its path through the Trash; one trashed with its parent
-  keeps its own location."
+  "The collection with `collection-id`, nil for the root collection, with its authority level, whether it is in the
+  trash, and the path to it the current user can see. A collection trashed directly has its path through the Trash;
+  one trashed with its parent keeps its own location, as core's breadcrumbs do, so only `:archived` says it is in the
+  trash."
   [collection-id]
   (if-not collection-id
     (let [root-name (:name (collection/root-collection-with-ui-details nil))]
@@ -142,7 +143,8 @@
         {:id              collection-id
          :name            (:name (last chain))
          :path            (str/join " / " (map :name chain))
-         :authority_level (:authority_level collection)}))))
+         :authority_level (:authority_level collection)
+         :archived        (boolean (:archived collection))}))))
 
 (defn- visible-dashcards
   "The dashcards of the dashboard with `dashboard-id` that the current user can see: text, headings, links and actions,
