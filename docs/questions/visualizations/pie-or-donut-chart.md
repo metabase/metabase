@@ -1,5 +1,6 @@
 ---
 title: Pie and sunburst charts
+summary: Show a metric as parts of a whole with a pie chart, or break out multiple levels of categories with a sunburst.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/pie-or-donut-chart
 ---

@@ -1,8 +1,16 @@
 /* eslint-disable metabase/no-external-references-for-sdk-package-code */
 
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import type { TestAggregationSpec } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import type { Field, TestAggregationSpec } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockDatabase,
+  createMockField,
+  createMockMeasure,
+  createMockSegment,
+  createMockTable,
+} from "metabase-types/api/mocks";
 
 const column = <
   TFieldId extends number,
@@ -55,16 +63,17 @@ const metadataField = (
   name: string,
   displayName: string,
   baseType: string,
-  options: object = {},
-) => ({
-  id,
-  table_id: tableId,
-  name,
-  display_name: displayName,
-  base_type: baseType,
-  effective_type: baseType,
-  ...options,
-});
+  options: Partial<Field> = {},
+) =>
+  createMockField({
+    id,
+    table_id: tableId,
+    name,
+    display_name: displayName,
+    base_type: baseType,
+    effective_type: baseType,
+    ...options,
+  });
 
 export const TEST_SCHEMA = {
   tables: {
@@ -161,65 +170,72 @@ export const TEST_SCHEMA = {
   },
 } as const;
 
-const BASE_METADATA = {
-  databases: {
-    1: {
-      id: 1,
-      name: "Test Database",
-      features: ["basic-aggregations", "binning", "expressions"],
-    },
-  },
-  tables: {
-    1: { id: 1, db_id: 1, name: "orders", display_name: "Orders" },
-    2: { id: 2, db_id: 1, name: "products", display_name: "Products" },
-  },
-  fields: {
-    100: metadataField(100, 1, "ID", "ID", "type/Integer"),
-    101: metadataField(101, 1, "STATUS", "Status", "type/Text"),
-    102: metadataField(102, 1, "AMOUNT", "Amount", "type/Float", {
-      fingerprint: { type: { "type/Number": { min: 0, max: 100 } } },
-    }),
-    103: metadataField(103, 1, "CREATED_AT", "Created At", "type/DateTime"),
-    104: metadataField(104, 1, "PRODUCT_ID", "Product ID", "type/Integer", {
-      semantic_type: "type/FK",
-      fk_target_field_id: 200,
-    }),
-    200: metadataField(200, 2, "ID", "ID", "type/Integer", {
-      semantic_type: "type/PK",
-    }),
-    202: metadataField(202, 2, "NAME", "Name", "type/Text"),
-  },
-  segments: {
-    11: { id: 11, table_id: 1, name: "Completed" },
-  },
-  measures: {
-    21: {
-      id: 21,
-      name: "Revenue",
-      table_id: 1,
-      definition: {
-        "lib/type": "mbql/query",
-        database: 1,
-        stages: [
-          {
-            "lib/type": "mbql.stage/mbql",
-            "source-table": 1,
-            aggregation: [
-              ["count", { "lib/uuid": "00000000-0000-4000-8000-000000000021" }],
-            ],
-          },
-        ],
-      },
-    },
-  },
-};
+const TABLES = [
+  createMockTable({
+    id: 1,
+    db_id: 1,
+    name: "orders",
+    display_name: "Orders",
+    fields: [
+      metadataField(100, 1, "ID", "ID", "type/Integer"),
+      metadataField(101, 1, "STATUS", "Status", "type/Text"),
+      metadataField(102, 1, "AMOUNT", "Amount", "type/Float", {
+        fingerprint: { type: { "type/Number": { min: 0, max: 100 } } },
+      }),
+      metadataField(103, 1, "CREATED_AT", "Created At", "type/DateTime"),
+      metadataField(104, 1, "PRODUCT_ID", "Product ID", "type/Integer", {
+        semantic_type: "type/FK",
+        fk_target_field_id: 200,
+      }),
+    ],
+  }),
+  createMockTable({
+    id: 2,
+    db_id: 1,
+    name: "products",
+    display_name: "Products",
+    fields: [
+      metadataField(200, 2, "ID", "ID", "type/Integer", {
+        semantic_type: "type/PK",
+      }),
+      metadataField(202, 2, "NAME", "Name", "type/Text"),
+    ],
+  }),
+];
+
+const DATABASE = createMockDatabase({
+  id: 1,
+  name: "Test Database",
+  features: ["basic-aggregations", "binning", "expressions"],
+  tables: TABLES,
+});
+
+const SEGMENTS = [
+  createMockSegment({ id: 11, table_id: 1, name: "Completed" }),
+];
 
 const BASE_PROVIDER = Lib.metadataProvider(
   1,
-  // `Lib.Metadata` is opaque, and a fixture in the API shape cannot build it otherwise.
-  // A clone keeps the provider from caching parsed state into the shared fixture.
-  structuredClone(BASE_METADATA) as unknown as Lib.Metadata,
+  createMockMetadata({ databases: [DATABASE], segments: SEGMENTS }),
 );
+
+const MEASURES = [
+  createMockMeasure({
+    id: 21,
+    name: "Revenue",
+    table_id: 1,
+    definition: Lib.toJsQuery(
+      Lib.createTestQuery(BASE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: 1 },
+            aggregations: [{ type: "operator", operator: "count" }],
+          },
+        ],
+      }),
+    ),
+  }),
+];
 
 const cardMetadata = (
   id: number,
@@ -243,14 +259,23 @@ const cardMetadata = (
     ),
   });
 
-export const TEST_METADATA = {
-  ...BASE_METADATA,
-  questions: {
-    41: cardMetadata(41, "Orders question", 1),
-    31: cardMetadata(31, "Revenue", 1, {
-      type: "operator",
-      operator: "sum",
-      args: [{ type: "column", fieldId: 102 }],
-    }),
-  },
+const QUESTIONS = {
+  41: cardMetadata(41, "Orders question", 1),
+  31: cardMetadata(31, "Revenue", 1, {
+    type: "operator",
+    operator: "sum",
+    args: [{ type: "column", fieldId: 102 }],
+  }),
 };
+
+export const TEST_METADATA = {
+  tables: { 1: TABLES[0], 2: TABLES[1] },
+  questions: QUESTIONS,
+};
+
+export const TEST_JS_METADATA = createMockMetadata({
+  databases: [DATABASE],
+  segments: SEGMENTS,
+  measures: MEASURES,
+  questions: Object.values(QUESTIONS),
+});

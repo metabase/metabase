@@ -1089,6 +1089,43 @@
       {:sub "s"}
       {:exp "nope"})))
 
+(defn- write-temp-token-file!
+  "Write `contents` to a fresh temp file, return the absolute path."
+  ^String [contents]
+  (let [f (doto (java.io.File/createTempFile "wif-ambient-token" ".jwt") .deleteOnExit)]
+    (spit f contents)
+    (.getAbsolutePath f)))
+
+(deftest wif-ambient-token-file-aws-test
+  (testing "AWS reads AWS_WEB_IDENTITY_TOKEN_FILE and returns the trimmed contents"
+    (let [path (write-temp-token-file! "  aws-jwt-contents\n")]
+      (mt/with-temp-env-var-value! ["AWS_WEB_IDENTITY_TOKEN_FILE" path]
+        (is (= "aws-jwt-contents" (driver.u/wif-ambient-token-file "AWS")))))))
+
+(deftest wif-ambient-token-file-azure-test
+  (testing "AZURE reads AZURE_FEDERATED_TOKEN_FILE and returns the trimmed contents"
+    (let [path (write-temp-token-file! "\nazure-jwt-contents\t")]
+      (mt/with-temp-env-var-value! ["AZURE_FEDERATED_TOKEN_FILE" path]
+        (is (= "azure-jwt-contents" (driver.u/wif-ambient-token-file "AZURE")))))))
+
+(deftest ^:parallel wif-ambient-token-file-unknown-provider-test
+  (testing "throws for a provider that has no file-based convention"
+    (let [thrown (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                       #"Unsupported WIF provider"
+                                       (driver.u/wif-ambient-token-file "GCP")))]
+      (is (= {:provider "GCP"} (-> thrown ex-data (select-keys [:provider]))))))
+  (testing "rejects lowercase"
+    (is (thrown? clojure.lang.ExceptionInfo (driver.u/wif-ambient-token-file "aws")))))
+
+(deftest wif-ambient-token-file-env-var-unset-test
+  (testing "throws when the conventional env var is unset, naming the provider and env var"
+    (mt/with-temp-env-var-value! ["AWS_WEB_IDENTITY_TOKEN_FILE" nil]
+      (let [thrown (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                         #"AWS_WEB_IDENTITY_TOKEN_FILE"
+                                         (driver.u/wif-ambient-token-file "AWS")))]
+        (is (= {:provider "AWS" :env-var "AWS_WEB_IDENTITY_TOKEN_FILE"}
+               (-> thrown ex-data (select-keys [:provider :env-var]))))))))
+
 ;;; ---------------------------------------- scrub-exceptions -------------------------------------------------
 
 (deftest ^:parallel scrub-exceptions-test

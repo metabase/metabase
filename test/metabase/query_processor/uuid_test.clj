@@ -50,7 +50,7 @@
                                                          :display-name "id"
                                                          :type         :dimension
                                                          :widget-type  :id
-                                                         :dimension    [:field (mt/id :people :id) nil]}}))
+                                                         :field-id     (mt/id :people :id)}}))
                            :parameters [{:type   :id
                                          :name   "id"
                                          :target [:dimension [:template-tag "id"]]

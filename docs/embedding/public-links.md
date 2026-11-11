@@ -1,5 +1,6 @@
 ---
 title: Public sharing
+summary: Share a question, dashboard, or document with anyone through a link or iframe, no Metabase account required.
 redirect_from:
   - /docs/latest/administration-guide/12-public-links
   - /docs/latest/embedding/12-public-links

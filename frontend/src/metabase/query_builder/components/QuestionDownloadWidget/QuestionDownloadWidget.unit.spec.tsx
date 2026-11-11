@@ -11,10 +11,10 @@ import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
-import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
@@ -49,7 +49,7 @@ const setup = ({
   });
 
   const metadata = createMockMetadataFromState(state);
-  const question = checkNotNull(metadata.question(card.id));
+  const question = new Question(card, metadata);
 
   setupCardQueryDownloadEndpoint(card, "json");
   setupLastDownloadFormatEndpoints();

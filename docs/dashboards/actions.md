@@ -1,5 +1,6 @@
 ---
 title: Actions on dashboards
+summary: Add buttons to a dashboard that create, update, or delete records, and connect them to dashboard filters.
 ---
 
 # Actions on dashboards

@@ -14,7 +14,6 @@ import {
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -79,8 +78,6 @@ const setup = ({
 
   const metadata = createMockMetadataFromState(state);
 
-  const databaseMetadata = checkNotNull(metadata.database(database.id));
-
   setupDatabasesEndpoints([database]);
   setupSearchEndpoints([]);
   setupParameterValuesEndpoints(parameterValues);
@@ -92,8 +89,7 @@ const setup = ({
   renderWithProviders(
     <TagEditorParam
       tag={tag}
-      database={databaseMetadata}
-      databases={metadata.databasesList()}
+      databaseId={database.id}
       parameter={parameter}
       originalQuestion={
         originalCard ? new Question(originalCard, metadata) : undefined
@@ -114,7 +110,7 @@ describe("TagEditorParam", () => {
       setup({
         tag: createMockTemplateTag({
           type: "dimension",
-          dimension: ["field", PEOPLE.NAME, null],
+          "field-id": PEOPLE.NAME,
           "widget-type": "string/=",
         }),
         transformDatabase: (database) => {
@@ -144,7 +140,7 @@ describe("TagEditorParam", () => {
       setup({
         tag: createMockTemplateTag({
           type: "dimension",
-          dimension: ["field", PEOPLE.NAME, null],
+          "field-id": PEOPLE.NAME,
           "widget-type": "string/=",
         }),
       });
@@ -183,7 +179,7 @@ describe("TagEditorParam", () => {
     it("should be able to change the type of the tag", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: ["field", PEOPLE.NAME, null],
+        "field-id": PEOPLE.NAME,
         "widget-type": "string/starts-with",
       });
       const { setTemplateTag } = setup({ tag });
@@ -197,7 +193,7 @@ describe("TagEditorParam", () => {
         ...tag,
         type: "number",
         default: undefined,
-        dimension: undefined,
+        "field-id": undefined,
         "widget-type": undefined,
       });
     });
@@ -239,7 +235,7 @@ describe("TagEditorParam", () => {
       expect(setTemplateTag).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "dimension",
-          dimension: undefined,
+          "field-id": undefined,
           "widget-type": "none",
         }),
       );
@@ -256,7 +252,7 @@ describe("TagEditorParam", () => {
         ...tag,
         type: "boolean",
         default: undefined,
-        dimension: undefined,
+        "field-id": undefined,
         "widget-type": undefined,
       });
     });
@@ -264,7 +260,7 @@ describe("TagEditorParam", () => {
     it("should not throw when the original question is an mbql query (metabase#50662)", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: ["field", PEOPLE.NAME, null],
+        "field-id": PEOPLE.NAME,
         "widget-type": "string/starts-with",
       });
       const originalCard = createMockCard();
@@ -279,7 +275,7 @@ describe("TagEditorParam", () => {
         ...tag,
         type: "number",
         default: undefined,
-        dimension: undefined,
+        "field-id": undefined,
         "widget-type": undefined,
       });
     });
@@ -378,7 +374,7 @@ describe("TagEditorParam", () => {
     it("should default to string/= for a new low cardinality string field filter", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: undefined,
+        "field-id": undefined,
         "widget-type": undefined,
       });
       const { setTemplateTag } = setup({ tag });
@@ -390,7 +386,7 @@ describe("TagEditorParam", () => {
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
-        dimension: ["field", PEOPLE.SOURCE, null],
+        "field-id": PEOPLE.SOURCE,
         "widget-type": "string/=",
         options: undefined,
       });
@@ -399,7 +395,7 @@ describe("TagEditorParam", () => {
     it("should default to string/contains for a new high cardinality string field filter", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: undefined,
+        "field-id": undefined,
         "widget-type": undefined,
       });
       const { setTemplateTag } = setup({ tag });
@@ -411,7 +407,7 @@ describe("TagEditorParam", () => {
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
-        dimension: ["field", PEOPLE.NAME, null],
+        "field-id": PEOPLE.NAME,
         "widget-type": "string/contains",
         options: { "case-sensitive": false },
       });
@@ -420,7 +416,7 @@ describe("TagEditorParam", () => {
     it("should default to number/= for a new numeric field filter", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: undefined,
+        "field-id": undefined,
         "widget-type": undefined,
       });
       const { setTemplateTag } = setup({ tag });
@@ -432,7 +428,7 @@ describe("TagEditorParam", () => {
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
-        dimension: ["field", ORDERS.QUANTITY, null],
+        "field-id": ORDERS.QUANTITY,
         "widget-type": "number/=",
         options: undefined,
       });
@@ -441,7 +437,7 @@ describe("TagEditorParam", () => {
     it("should default to number/= for a new reviews->rating field filter (metabase#16151)", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: undefined,
+        "field-id": undefined,
         "widget-type": undefined,
       });
       const { setTemplateTag } = setup({ tag });
@@ -453,7 +449,7 @@ describe("TagEditorParam", () => {
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
-        dimension: ["field", REVIEWS.RATING, null],
+        "field-id": REVIEWS.RATING,
         "widget-type": "number/=",
         options: undefined,
       });
@@ -462,7 +458,7 @@ describe("TagEditorParam", () => {
     it("should default to id for a new primary key field filter (metabase#31606)", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: undefined,
+        "field-id": undefined,
         "widget-type": undefined,
       });
       const { setTemplateTag } = setup({ tag });
@@ -474,7 +470,7 @@ describe("TagEditorParam", () => {
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
-        dimension: ["field", PRODUCTS.ID, null],
+        "field-id": PRODUCTS.ID,
         "widget-type": "id",
         options: undefined,
       });
@@ -483,7 +479,7 @@ describe("TagEditorParam", () => {
     it("should allow to change the field for a field filter", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: ["field", PEOPLE.NAME, null],
+        "field-id": PEOPLE.NAME,
         "widget-type": "string/=",
       });
       const { setTemplateTag } = setup({ tag });
@@ -495,7 +491,7 @@ describe("TagEditorParam", () => {
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
-        dimension: ["field", PEOPLE.ADDRESS, null],
+        "field-id": PEOPLE.ADDRESS,
       });
     }, 40000);
   });
@@ -521,7 +517,7 @@ describe("TagEditorParam", () => {
       async (type) => {
         const tag = createMockTemplateTag({
           type,
-          dimension: ["field", PEOPLE.CREATED_AT, null],
+          "field-id": PEOPLE.CREATED_AT,
           "widget-type": type === "dimension" ? "date/all-options" : undefined,
         });
         const { setTemplateTag } = setup({ tag });
@@ -540,7 +536,7 @@ describe("TagEditorParam", () => {
     it("should trim the field alias", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: ["field", PEOPLE.CREATED_AT, null],
+        "field-id": PEOPLE.CREATED_AT,
         "widget-type": "date/all-options",
       });
       const { setTemplateTag } = setup({ tag });
@@ -560,7 +556,7 @@ describe("TagEditorParam", () => {
       async (type) => {
         const tag = createMockTemplateTag({
           type,
-          dimension: ["field", PEOPLE.CREATED_AT, null],
+          "field-id": PEOPLE.CREATED_AT,
           alias: "p.created_at",
           "widget-type": type === "dimension" ? "date/all-options" : undefined,
         });
@@ -593,7 +589,7 @@ describe("TagEditorParam", () => {
     it("should be able to set the widget type with options", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: ["field", PEOPLE.NAME, null],
+        "field-id": PEOPLE.NAME,
         "widget-type": "string/=",
       });
       const { setTemplateTag } = setup({ tag });
@@ -618,7 +614,7 @@ describe("TagEditorParam", () => {
     it("should be able to set the widget type without options", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: ["field", PEOPLE.NAME, null],
+        "field-id": PEOPLE.NAME,
         "widget-type": "string/starts-with",
         options: { "case-sensitive": false },
       });
@@ -644,7 +640,7 @@ describe("TagEditorParam", () => {
     it("should be able to set a negated widget type for a category field (metabase#15700)", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "field-id": PRODUCTS.CATEGORY,
         "widget-type": "string/=",
       });
       const { setTemplateTag } = setup({ tag });
@@ -662,7 +658,7 @@ describe("TagEditorParam", () => {
     it("should clear the default value and the parameter value when the widget type is changed (metabase#16756)", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: ["field", PRODUCTS.CREATED_AT, null],
+        "field-id": PRODUCTS.CREATED_AT,
         "widget-type": "date/range",
         default: "2027-03-31~2028-03-31",
       });
@@ -685,7 +681,7 @@ describe("TagEditorParam", () => {
     it("should replace old location widget-type values with string/=", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: ["field", PEOPLE.NAME, null],
+        "field-id": PEOPLE.NAME,
         "widget-type": "location/country",
       });
       setup({ tag });
@@ -699,7 +695,7 @@ describe("TagEditorParam", () => {
     it("should show the legacy category widget-type as String", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "field-id": PRODUCTS.CATEGORY,
         "widget-type": "category",
       });
       setup({ tag });
@@ -712,7 +708,7 @@ describe("TagEditorParam", () => {
     it("should show a disabled ID widget type for a PK field", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: ["field", PRODUCTS.ID, null],
+        "field-id": PRODUCTS.ID,
         "widget-type": "id",
       });
       setup({ tag });
@@ -818,7 +814,7 @@ describe("TagEditorParam", () => {
     it("should set the default value of a field filter to null when its last value is removed (metabase#31606)", async () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: ["field", PRODUCTS.ID, null],
+        "field-id": PRODUCTS.ID,
         "widget-type": "id",
         default: "2",
       });
@@ -936,7 +932,7 @@ describe("TagEditorParam", () => {
         type: "temporal-unit",
         name: "unit",
         "display-name": "Unit",
-        dimension: ["field", ORDERS.CREATED_AT, null],
+        "field-id": ORDERS.CREATED_AT,
         ...opts,
       });
 
@@ -1024,7 +1020,7 @@ describe("TagEditorParam", () => {
     it("should support single and multiple values with field filters", () => {
       const tag = createMockTemplateTag({
         type: "dimension",
-        dimension: ["field", PEOPLE.SOURCE, null],
+        "field-id": PEOPLE.SOURCE,
       });
       setup({ tag });
       expect(screen.getByLabelText("Multiple values")).toBeInTheDocument();
@@ -1046,7 +1042,7 @@ describe("TagEditorParam", () => {
     it("should not support single and multiple values with time grouping", () => {
       const tag = createMockTemplateTag({
         type: "temporal-unit",
-        dimension: ["field", PEOPLE.CREATED_AT, null],
+        "field-id": PEOPLE.CREATED_AT,
       });
       setup({ tag });
       expect(

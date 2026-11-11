@@ -268,7 +268,11 @@ describe("column settings", () => {
 
     describe("widget visibility for currency columns", () => {
       beforeAll(() => {
-        registerSettingWidgets({ select: () => null, radio: () => null });
+        registerSettingWidgets({
+          select: () => null,
+          radio: () => null,
+          segmentedControl: () => null,
+        });
       });
 
       function getWidgetHiddenById(storedSettings: VisualizationSettings = {}) {

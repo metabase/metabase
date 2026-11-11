@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";

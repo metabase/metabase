@@ -9,7 +9,7 @@ export function RemoteSyncSettingsPage() {
   const isPro = isProPlan(getPlan(tokenFeatures));
 
   if (hasRemoteSync || isPro) {
-    return <PLUGIN_REMOTE_SYNC.RemoteSyncSettings />;
+    return <PLUGIN_REMOTE_SYNC.SettingsPage />;
   }
 
   return <UpsellRemoteSync source="settings-git-sync" />;

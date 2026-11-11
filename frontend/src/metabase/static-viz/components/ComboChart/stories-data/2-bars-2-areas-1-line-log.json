@@ -30,7 +30,6 @@
         "graph.series_order": null,
         "graph.metrics": ["count"]
       },
-      "collection_preview": true,
       "entity_id": "BFOb5ShD1JuysPGVwYz_0",
       "display": "area",
       "parameter_mappings": [],

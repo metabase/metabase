@@ -1,11 +1,52 @@
 const { H } = cy;
 import type { ChecklistItemValue } from "metabase/redux/store";
 
+describe("Onboarding checklist page", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.visit("/getting-started");
+  });
+
+  it("should let non-admins access this page", () => {
+    cy.get("[data-accordion=true]").within(() => {
+      cy.findByRole("heading", { name: "Explore your data" }).should(
+        "be.visible",
+      );
+      cy.contains("to create a question in natural language").should(
+        "be.visible",
+      );
+
+      cy.findByTestId("dashboard-item").click();
+      cy.contains(
+        "You can present questions, text, and links on a dashboard",
+      ).should("be.visible");
+      cy.contains("to create a question in natural language").should(
+        "not.be.visible",
+      );
+    });
+  });
+});
+
 describe("Inaccessible Onboarding checklist", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+  });
+
+  it("should not render when embedded in an iframe", () => {
+    H.visitFullAppEmbeddingUrl({ url: "/", qs: {} });
+    cy.findByTestId("main-navbar-root").within(() => {
+      cy.findByRole("listitem", { name: "Home" }).should("be.visible");
+      cy.findByRole("listitem", { name: "How to use Metabase" }).should(
+        "not.exist",
+      );
+    });
+
+    cy.log("Redirects to the home page");
+    H.visitFullAppEmbeddingUrl({ url: "/getting-started", qs: {} });
+    cy.location("pathname").should("eq", "/");
   });
 
   it("should not render when the instance is whitelabelled", () => {

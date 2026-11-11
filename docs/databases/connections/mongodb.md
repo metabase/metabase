@@ -1,5 +1,6 @@
 ---
 title: MongoDB
+summary: Connect Metabase to MongoDB using either individual fields or a connection string, including Atlas clusters.
 redirect_from:
   - /docs/latest/administration-guide/databases/mongodb
 ---

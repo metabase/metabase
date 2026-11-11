@@ -10,6 +10,7 @@ import {
   stagesOf,
 } from "./setup";
 
+import { createMockMetadata } from "__support__/metadata";
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import { cardApi } from "metabase/api";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
@@ -520,28 +521,14 @@ describe("resolveDatasetQuery", () => {
   // `/api/card/:id/query_metadata` returns empty databases/tables/fields for a
   // user who may read the card but not create queries. Lib then cannot resolve a
   // database and omits `:database`, which `/api/dataset` rejects outright.
-  //
-  // Built without spreading `TEST_METADATA`: `Lib.metadataProvider` caches the
-  // provider on the metadata object itself, so copying that key would hand back
-  // a provider built from the full metadata and the empty databases would be
-  // ignored.
   it("sets the database when the user cannot see database metadata", async () => {
-    const metadataWithoutDatabases = {
-      databases: {},
-      tables: {},
-      fields: {},
-      segments: {},
-      measures: {},
-      questions: TEST_METADATA.questions,
-    };
+    const metadataWithoutDatabases = createMockMetadata({
+      questions: Object.values(TEST_METADATA.questions),
+    });
 
     mockSelectMetadataProviderUnfiltered.mockImplementation(
       (_state, databaseId) =>
-        Lib.metadataProvider(
-          databaseId,
-          // The fixture supplies the plain metadata shape instead of the Metadata class.
-          metadataWithoutDatabases as unknown as Lib.Metadata,
-        ),
+        Lib.metadataProvider(databaseId, metadataWithoutDatabases),
     );
 
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({

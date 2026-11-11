@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import Bowser from "bowser";
 
 import { cardApi, collectionApi, dashboardApi } from "metabase/api";
