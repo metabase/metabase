@@ -13,8 +13,18 @@ import {
 
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
+const COUNT_COLUMN_SOURCE = {
+  type: "column",
+  id: COUNT_COLUMN_ID,
+  name: COUNT_COLUMN_NAME,
+};
 const CREATED_AT_COLUMN_ID = "CREATED_AT";
 const CREATED_AT_COLUMN_NAME = "Created At: Month";
+const CREATED_AT_COLUMN_SOURCE = {
+  type: "column",
+  id: CREATED_AT_COLUMN_ID,
+  name: CREATED_AT_COLUMN_NAME,
+};
 const FILTER_VALUE = "Dell Adams";
 const FILTERED_POINT_COUNT = 1;
 const FILTERED_POINT_CREATED_AT = "2026-10";
@@ -1497,6 +1507,103 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
   });
 
+  describe("static embedding", () => {
+    const questionDetails = QUESTION_LINE_CHART;
+
+    beforeEach(() => {
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+    });
+
+    it("allows opening custom URL destination with parameters and updating multiple dashboard filters", () => {
+      const dashboardDetails = {
+        parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+        enable_embedding: true,
+        embedding_params: {
+          [DASHBOARD_FILTER_TEXT.slug]: "enabled",
+          [DASHBOARD_FILTER_TIME.slug]: "enabled",
+        },
+      };
+      const countParameterId = "1";
+      const createdAtParameterId = "2";
+
+      H.createQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: dashCard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashCard.dashboard_id,
+          cards: [
+            {
+              card_id: dashCard.card_id,
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: dashCard.card_id }),
+                createTimeFilterMapping({ card_id: dashCard.card_id }),
+              ],
+              visualization_settings: {
+                click_behavior: {
+                  type: "crossfilter",
+                  parameterMapping: {
+                    [countParameterId]: {
+                      source: COUNT_COLUMN_SOURCE,
+                      target: { type: "parameter", id: countParameterId },
+                      id: countParameterId,
+                    },
+                    [createdAtParameterId]: {
+                      source: CREATED_AT_COLUMN_SOURCE,
+                      target: { type: "parameter", id: createdAtParameterId },
+                      id: createdAtParameterId,
+                    },
+                  },
+                },
+              },
+            },
+            {
+              card_id: dashCard.card_id,
+              col: 12,
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: dashCard.card_id }),
+              ],
+              visualization_settings: {
+                click_behavior: {
+                  type: "link",
+                  linkType: "url",
+                  linkTemplate: URL_WITH_PARAMS,
+                },
+              },
+            },
+          ],
+        });
+
+        H.visitEmbeddedPage({
+          resource: { dashboard: dashCard.dashboard_id },
+          params: {},
+        });
+        cy.wait("@dashboard");
+        cy.wait(["@cardQuery", "@cardQuery"]);
+      });
+
+      cy.log("custom URL destination with parameters");
+      cy.button(DASHBOARD_FILTER_TEXT.name).click();
+      H.dashboardParametersPopover().within(() => {
+        cy.findByPlaceholderText("Search the list").type(FILTER_VALUE);
+        cy.button("Add filter").click();
+      });
+      H.stubAnchorClick();
+      clickLineChartPoint({ dashcardIndex: 1 });
+      H.assertAnchorClicked({ href: URL_WITH_FILLED_PARAMS });
+
+      cy.log("update multiple dashboard filters");
+      H.clearFilterWidget(0);
+      cy.button(DASHBOARD_FILTER_TEXT.name).should("be.visible");
+      clickLineChartPoint({ dashcardIndex: 0 });
+      cy.findAllByTestId("parameter-widget")
+        .should("have.length", 2)
+        .should("contain.text", POINT_COUNT)
+        .should("contain.text", POINT_CREATED_AT_FORMATTED);
+    });
+  });
+
   describe("multi-stage questions as target destination", () => {
     const questionDetails = {
       name: "Table",
@@ -1756,6 +1863,81 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           filters: ["Count is equal to -80"],
         },
       ]);
+    });
+  });
+
+  it("should navigate to a different tab on the same dashboard when configured (metabase#39319)", () => {
+    const TAB_1 = { id: 1, name: "first-tab" };
+    const TAB_2 = { id: 2, name: "second-tab" };
+    const DASHBOARD_TEXT_FILTER = {
+      id: "1",
+      name: "Text filter",
+      slug: "filter-text",
+      type: "string/contains",
+    };
+
+    H.createDashboardWithTabs({
+      name: TARGET_DASHBOARD.name,
+      tabs: [TAB_1, TAB_2],
+      parameters: [DASHBOARD_TEXT_FILTER],
+      dashcards: [
+        createMockDashboardCard({
+          id: -1,
+          card_id: ORDERS_QUESTION_ID,
+          size_x: 12,
+          size_y: 6,
+          dashboard_tab_id: TAB_1.id,
+          parameter_mappings: [
+            createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+          ],
+        }),
+      ],
+    }).then((dashboard) => {
+      const secondTab = dashboard.tabs.find((tab) => tab.name === TAB_2.name);
+
+      cy.log("link the User ID column to the second tab of this dashboard");
+      cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+        tabs: dashboard.tabs,
+        dashcards: dashboard.dashcards.map((dashcard) => ({
+          ...dashcard,
+          visualization_settings: {
+            column_settings: {
+              '["name","USER_ID"]': {
+                click_behavior: {
+                  type: "link",
+                  linkType: "dashboard",
+                  targetId: dashboard.id,
+                  tabId: secondTab.id,
+                  parameterMapping: {
+                    [DASHBOARD_TEXT_FILTER.id]: {
+                      id: DASHBOARD_TEXT_FILTER.id,
+                      source: {
+                        type: "column",
+                        id: "USER_ID",
+                        name: "User ID",
+                      },
+                      target: {
+                        type: "parameter",
+                        id: DASHBOARD_TEXT_FILTER.id,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        })),
+      });
+
+      H.visitDashboard(dashboard.id);
+      getTableCell(1).click();
+
+      cy.location().should(({ pathname, search }) => {
+        expect(pathname).to.equal(`/dashboard/${dashboard.id}`);
+        expect(search).to.equal(
+          `?${DASHBOARD_TEXT_FILTER.slug}=1&tab=${secondTab.id}-${TAB_2.name}`,
+        );
+      });
     });
   });
 
