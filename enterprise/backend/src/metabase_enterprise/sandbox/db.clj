@@ -171,8 +171,8 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Database
                  :id (t2/fragment {:select [:t.db_id]
-                                    :from   [[(t2/table-name :model/Table) :t]]
-                                    :where  [:= :t.id table-id]})))
+                                   :from   [[(t2/table-name :model/Table) :t]]
+                                   :where  [:= :t.id table-id]})))
 
 (mu/defn fields-of-table-named
   "The `:id` and `:name` of the Fields of the Table with `table-id` named one of `field-names`."
@@ -204,8 +204,8 @@
                        :c.type :c.entity_id :c.result_metadata :c.dimensions :c.dimension_mappings]
               :from   [[(t2/table-name :model/Card) :c]]
               :where  [:exists (t2/fragment {:select [[[:inline 1]]]
-                                              :from   [[(t2/table-name :model/Sandbox) :s]]
-                                              :where  [:= :s.card_id :c.id]})]}))
+                                             :from   [[(t2/table-name :model/Sandbox) :s]]
+                                             :where  [:= :s.card_id :c.id]})]}))
 
 (mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id`, returning the number updated."
