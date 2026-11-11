@@ -73,13 +73,13 @@
         extra-clause    (if (= (mdb/db-type) :mysql)
                           ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
                           ;; DELETE target
-                          [:not-in :id (t2/fragment {:select [:parent_id]
-                                                     :from   [[^:allow-subquery {:select [:parent_id]
-                                                                                 :from   [(t2/table-name :model/Field)]
-                                                                                 :where  [:and
-                                                                                          [:not= :parent_id nil]
-                                                                                          [:in :table_id table-ids-query]]}
-                                                               :parent_fields]]})]
+                          (t2/fragment [:not-in :id (t2/fragment {:select [:parent_id]
+                                                                  :from   [[^:allow-subquery {:select [:parent_id]
+                                                                                              :from   [(t2/table-name :model/Field)]
+                                                                                              :where  [:and
+                                                                                                       [:not= :parent_id nil]
+                                                                                                       [:in :table_id table-ids-query]]}
+                                                                            :parent_fields]]})])
                           (t2/fragment [:not [:exists (t2/fragment {:select [1]
                                                                     :from   [[(t2/table-name :model/Field) :child_field]]
                                                                     :where  [:= :child_field.parent_id :metabase_field.id]})]]))]
