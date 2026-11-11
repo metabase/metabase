@@ -1,11 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
-import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import type {
   ColumnSettings,
-  DimensionReference,
   Series,
   VisualizationDisplay,
   VisualizationSettings,
@@ -72,7 +69,8 @@ export function getSettingDefinitionsForDisplay(
     ...visualization?.settings,
   };
   for (const id in definitions) {
-    definitions[id].id = id;
+    // definitions has an `any` index signature; each definition is an object that gets tagged with its id
+    (definitions[id] as { id?: string }).id = id;
   }
   return definitions;
 }
@@ -91,8 +89,12 @@ function normalizeColumnSettings(
 ): Record<string, ColumnSettings> {
   const newColumnSettings: Record<string, ColumnSettings> = {};
   for (const oldColumnKey of Object.keys(columnSettings)) {
-    const [refOrName, fieldRef]: [string, DimensionReference] =
-      JSON.parse(oldColumnKey);
+    // column settings keys are JSON-serialized `[refOrName, fieldRef]` tuples
+    const parsedKey: unknown = JSON.parse(oldColumnKey);
+    const keyParts: readonly unknown[] = Array.isArray(parsedKey)
+      ? parsedKey
+      : [];
+    const [refOrName, fieldRef] = keyParts;
     // keys are re-serialized so legacy formatting differences don't matter
     const newColumnKey =
       refOrName === "ref" ? JSON.stringify(["ref", fieldRef]) : oldColumnKey;
@@ -109,11 +111,10 @@ export function getStoredSettingsForSeries(
 
   if (storedSettings.column_settings) {
     // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]
-    storedSettings = assocIn(
-      storedSettings,
-      ["column_settings"],
-      normalizeColumnSettings(storedSettings.column_settings),
-    );
+    storedSettings = {
+      ...storedSettings,
+      column_settings: normalizeColumnSettings(storedSettings.column_settings),
+    };
   }
 
   return migrateStoredCustomVizSettings(

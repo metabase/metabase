@@ -1,0 +1,41 @@
+# Weekly count of files that disable a type-aware no-unsafe-* lint rule,
+# imported into eng-stats-importer. Tracks the cleanup of the disable comments
+# added when those rules were turned on (#86296).
+name: No-Unsafe Disable Stats
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 40 1 * * 3 # every Wednesday at 1:40
+
+jobs:
+  no-unsafe-disable-stats:
+    if: github.repository == 'metabase/metabase'
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/prepare-node-bun
+      - name: Get file count
+        id: get-file-count
+        run: |
+          # Matches file-level and next-line disables, including ones that list
+          # several rules. `|| true` prevents failing on the day the count
+          # reaches 0: git grep exits 1 on no matches, which fails the step
+          # under bash's default pipefail.
+          files=$(
+            git grep -l -E "eslint-disable.*@typescript-eslint/no-unsafe-(argument|assignment|call|member-access|return)([^a-z-]|$)" -- \
+              '*.ts' \
+              '*.tsx' \
+              | wc -l || true
+          )
+
+          echo "$files files disabling a no-unsafe-* rule"
+
+          echo "NO_UNSAFE_DISABLE_FILES=$files" >> "$GITHUB_OUTPUT"
+      - name: Upload count to Stats
+        env:
+          NO_UNSAFE_DISABLE_FILES: ${{ steps.get-file-count.outputs.NO_UNSAFE_DISABLE_FILES }}
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+        run: bun .github/scripts/upload-no-unsafe-disable-stats.ts

@@ -2963,6 +2963,114 @@
           "additionalProperties" : false
         } ]
       },
+      "metabase-enterprise.data-testing.schema..card-test.create" : {
+        "description" : "What a client sends to create a card test.",
+        "type" : "object",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "card_id", "name", "inputs", "expectations" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema..card-test.response" : {
+        "description" : "A card test as the read endpoints return it, with its newest run.",
+        "type" : "object",
+        "properties" : {
+          "entity_id" : {
+            "type" : "string"
+          },
+          "last_run" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.data-test-run"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name", "inputs", "expectations", "id", "entity_id", "card_id", "creator_id", "created_at", "updated_at", "last_run" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-testing.schema..card-test.update" : {
+        "description" : "What a client sends to update a card test. Omitted fields are left unchanged.",
+        "type" : "object",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "additionalProperties" : false
+      },
       "metabase-enterprise.data-testing.schema..data-test-run.response" : {
         "description" : "A test run as the API returns it, with the user who started it.",
         "type" : "object",
@@ -3085,7 +3193,7 @@
         "additionalProperties" : false
       },
       "metabase-enterprise.data-testing.schema..expectation.empty" : {
-        "description" : "A check that a SQL query over the transform output returns no rows.",
+        "description" : "A check that a SQL query over the output of the query under test returns no rows.",
         "type" : "object",
         "properties" : {
           "name" : {
@@ -3102,9 +3210,9 @@
         "additionalProperties" : false
       },
       "metabase-enterprise.data-testing.schema..expectation.equals" : {
-        "description" : "A check that the transform output holds exactly the declared rows, over exactly the declared columns.",
+        "description" : "A check that the output of the query under test holds exactly the declared rows, over exactly the declared columns.",
         "anyOf" : [ {
-          "description" : "Test data returned by a SQL query run against the transform's source database.",
+          "description" : "Test data returned by a SQL query run against the Database of the query under test.",
           "type" : "object",
           "properties" : {
             "format" : {
@@ -3153,6 +3261,30 @@
           "additionalProperties" : false
         } ]
       },
+      "metabase-enterprise.data-testing.schema..test.definition" : {
+        "description" : "A test as a client writes it, without the subject it covers.",
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "name", "inputs", "expectations" ],
+        "additionalProperties" : false
+      },
       "metabase-enterprise.data-testing.schema..transform-test.create" : {
         "description" : "What a client sends to create a transform test.",
         "type" : "object",
@@ -3178,30 +3310,6 @@
           }
         },
         "required" : [ "transform_id", "name", "inputs", "expectations" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-testing.schema..transform-test.definition" : {
-        "description" : "A transform test as a client writes it, without the transform it covers.",
-        "type" : "object",
-        "properties" : {
-          "description" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "expectations" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
-          },
-          "inputs" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          }
-        },
-        "required" : [ "name", "inputs", "expectations" ],
         "additionalProperties" : false
       },
       "metabase-enterprise.data-testing.schema..transform-test.response" : {
@@ -3285,6 +3393,54 @@
         },
         "additionalProperties" : false
       },
+      "metabase-enterprise.data-testing.schema.card-test" : {
+        "description" : "A saved card test.",
+        "type" : "object",
+        "properties" : {
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name", "inputs", "expectations", "id", "entity_id", "card_id", "creator_id", "created_at", "updated_at" ],
+        "additionalProperties" : false
+      },
       "metabase-enterprise.data-testing.schema.column" : {
         "description" : "A column of inline test data, with the type its cells are cast to.\n\n  A cast target, which on some engines is not a type name the warehouse ever reports: MySQL takes\n  `SIGNED` and reports `BIGINT`.",
         "type" : "object",
@@ -3300,7 +3456,7 @@
         "additionalProperties" : false
       },
       "metabase-enterprise.data-testing.schema.data-test-run" : {
-        "description" : "A persisted execution of a test of any type. Deleting the test through its model sets `:test_id` to nil. A delete\n  that skips model hooks (raw SQL, a database cascade) leaves a `:test_id` that names no test.",
+        "description" : "A persisted execution of a test of any type. Deleting the test through its model sets `:test_id` to nil. A delete\n  that skips model hooks (raw SQL, a database cascade) leaves a `:test_id` that names no test; such a run is never\n  listed or shown as `last_run`.",
         "type" : "object",
         "properties" : {
           "end_time" : {
@@ -3354,7 +3510,7 @@
         "additionalProperties" : false
       },
       "metabase-enterprise.data-testing.schema.expectation" : {
-        "description" : "A check on the output of the transform under test.",
+        "description" : "A check on the output of the query under test.",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..expectation.equals"
         }, {
@@ -3370,16 +3526,16 @@
         } ]
       },
       "metabase-enterprise.data-testing.schema.expectations" : {
-        "description" : "The checks run against the transform's output. Names must be unique within a test,\n  case-sensitively.",
+        "description" : "The checks run against the output of the query under test. Names must be unique within a test,\n  case-sensitively.",
         "type" : "array",
         "items" : {
           "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectation"
         }
       },
       "metabase-enterprise.data-testing.schema.input" : {
-        "description" : "An input table of the transform under test, replaced with test data.",
+        "description" : "An input table of the query under test, replaced with test data.",
         "anyOf" : [ {
-          "description" : "Test data returned by a SQL query run against the transform's source database.",
+          "description" : "Test data returned by a SQL query run against the Database of the query under test.",
           "type" : "object",
           "properties" : {
             "format" : {
@@ -3423,7 +3579,7 @@
         } ]
       },
       "metabase-enterprise.data-testing.schema.inputs" : {
-        "description" : "Test data for the tables the transform reads. Every table it reads needs one, and an input for\n  a table it does not read is refused.",
+        "description" : "Test data for the tables the query under test reads. Every table it reads needs one, and an input for\n  a table it does not read is refused.",
         "type" : "array",
         "items" : {
           "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.input"
@@ -3485,7 +3641,7 @@
         "additionalProperties" : false
       },
       "metabase-enterprise.data-testing.schema.run-result" : {
-        "description" : "The outcome of a transform test run.\n\n  `:tables` maps each temp table the run created to the table it stood in for.",
+        "description" : "The outcome of a test run.\n\n  `:tables` maps each temp table the run created to the table it stood in for.",
         "type" : "object",
         "properties" : {
           "expectations" : {
@@ -3513,7 +3669,7 @@
         "enum" : [ "started", "passed", "failed", "error", "timeout" ]
       },
       "metabase-enterprise.data-testing.schema.sql-data" : {
-        "description" : "Test data returned by a SQL query run against the transform's source database.",
+        "description" : "Test data returned by a SQL query run against the Database of the query under test.",
         "type" : "object",
         "properties" : {
           "format" : {
@@ -3527,12 +3683,12 @@
         "additionalProperties" : false
       },
       "metabase-enterprise.data-testing.schema.status" : {
-        "description" : "The outcome of a transform test run, or of one of its expectations.\n\n  `:error` is an expectation outcome only: that expectation's own query could not be run, while\n  the rest of the run completed and still reported.",
+        "description" : "The outcome of a test run, or of one of its expectations.\n\n  `:error` is an expectation outcome only: that expectation's own query could not be run, while\n  the rest of the run completed and still reported.",
         "type" : "string",
         "enum" : [ "passed", "failed", "error" ]
       },
       "metabase-enterprise.data-testing.schema.table" : {
-        "description" : "A table read by the transform under test, by schema and name.",
+        "description" : "A table read by the query under test, by schema and name.",
         "type" : "object",
         "properties" : {
           "name" : {
@@ -3552,10 +3708,10 @@
       "metabase-enterprise.data-testing.schema.test-type" : {
         "description" : "The kind of test a run ran. It selects the table that `test_id` points into.",
         "type" : "string",
-        "enum" : [ "transform" ]
+        "enum" : [ "transform", "card" ]
       },
       "metabase-enterprise.data-testing.schema.transform-test" : {
-        "description" : "A saved transform test: the transform it covers, the inputs that stand in for its source\n  tables, and the expectations checked against its output.",
+        "description" : "A saved transform test.",
         "type" : "object",
         "properties" : {
           "entity_id" : {
@@ -3828,8 +3984,8 @@
             "properties" : {
               "created_at" : { },
               "description" : { },
-              "display_name" : { },
-              "name" : { }
+              "name" : { },
+              "slug" : { }
             }
           },
           "dependents_count" : {
@@ -5958,9 +6114,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -6037,9 +6191,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -6109,9 +6261,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -6353,9 +6503,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -6434,9 +6582,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -6508,9 +6654,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -6619,9 +6763,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -6775,9 +6917,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -6924,9 +7064,7 @@
           "properties" : {
             "visualization_settings" : {
               "anyOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -7464,9 +7602,7 @@
           },
           "visualization_settings" : {
             "anyOf" : [ {
-              "description" : "Value must be a map.",
-              "type" : "object",
-              "properties" : { }
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -7554,9 +7690,7 @@
           },
           "visualization_settings" : {
             "anyOf" : [ {
-              "description" : "Value must be a map.",
-              "type" : "object",
-              "properties" : { }
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -8227,9 +8361,7 @@
           },
           "visualization_settings" : {
             "anyOf" : [ {
-              "description" : "Value must be a map.",
-              "type" : "object",
-              "properties" : { }
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -8333,9 +8465,7 @@
           },
           "visualization_settings" : {
             "anyOf" : [ {
-              "description" : "Value must be a map.",
-              "type" : "object",
-              "properties" : { }
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -9358,11 +9488,7 @@
           },
           "authority_level" : {
             "anyOf" : [ {
-              "anyOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "string"
-              } ]
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
             }, {
               "type" : "null"
             } ]
@@ -9411,11 +9537,7 @@
           },
           "type" : {
             "anyOf" : [ {
-              "anyOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "string"
-              } ]
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
@@ -9431,11 +9553,7 @@
           },
           "namespace" : {
             "anyOf" : [ {
-              "anyOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "string"
-              } ]
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
             }, {
               "type" : "null"
             } ]
@@ -9815,11 +9933,7 @@
           },
           "authority_level" : {
             "anyOf" : [ {
-              "anyOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "string"
-              } ]
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
             }, {
               "type" : "null"
             } ]
@@ -9881,11 +9995,7 @@
           },
           "type" : {
             "anyOf" : [ {
-              "anyOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "string"
-              } ]
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
@@ -9901,11 +10011,7 @@
           },
           "namespace" : {
             "anyOf" : [ {
-              "anyOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "string"
-              } ]
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
             }, {
               "type" : "null"
             } ]
@@ -10229,6 +10335,42 @@
         "required" : [ "kind", "table" ],
         "additionalProperties" : false
       },
+      "metabase.data-apps.schema.allowed-host" : {
+        "description" : "An origin a data app's sandboxed bundle may fetch: scheme, host with an optional `*.` subdomain wildcard, and an\n   optional port.",
+        "type" : "string",
+        "pattern" : "^https?://(\\*\\.)?[a-z0-9-]+(\\.[a-z0-9-]+)*(:\\d+)?(?![\\s\\S])"
+      },
+      "metabase.data-apps.schema.allowed-hosts" : {
+        "description" : "The origins a data app's sandboxed bundle may fetch, `[]` when nil.",
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.data-apps.schema.allowed-host"
+        }
+      },
+      "metabase.data-apps.schema.bundle-path" : {
+        "description" : "value must be a non-blank string.",
+        "type" : "string",
+        "minLength" : 1
+      },
+      "metabase.data-apps.schema.bundle-text" : {
+        "description" : "The text of a data app's bundle file.",
+        "type" : "string",
+        "maxLength" : 10485760
+      },
+      "metabase.data-apps.schema.description" : {
+        "description" : "A data app's optional one-line summary, nil when blank.",
+        "anyOf" : [ {
+          "type" : "string",
+          "maxLength" : 255
+        }, {
+          "type" : "null"
+        } ]
+      },
+      "metabase.data-apps.schema.name" : {
+        "description" : "A data app's name, which people see.",
+        "type" : "string",
+        "minLength" : 1
+      },
       "metabase.data-apps.schema.query-spec" : {
         "description" : "A Lib test query spec of a data app's question: one stage.",
         "type" : "object",
@@ -10316,6 +10458,21 @@
         },
         "required" : [ "source" ],
         "additionalProperties" : false
+      },
+      "metabase.data-apps.schema.slug" : {
+        "description" : "A data app's slug: lowercase letters and numbers separated by single dashes, at most 100 characters.",
+        "allOf" : [ {
+          "type" : "string",
+          "maxLength" : 100
+        }, {
+          "type" : "string",
+          "pattern" : "^[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])"
+        } ]
+      },
+      "metabase.data-apps.schema.version" : {
+        "description" : "The data app contract version an app was built for, 1 when it declares none.",
+        "type" : "integer",
+        "minimum" : 1
       },
       "metabase.data-studio.api.table.bulk-table-info" : {
         "description" : "Schema for table info in bulk operations. Matches frontend BulkTableInfo type.",
@@ -13070,7 +13227,7 @@
           },
           "settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -13987,9 +14144,7 @@
           },
           "viz-settings" : {
             "anyOf" : [ {
-              "description" : "Value must be a map.",
-              "type" : "object",
-              "properties" : { }
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -14862,7 +15017,7 @@
           },
           "viz-settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -15659,6 +15814,10 @@
           "type" : "null"
         } ]
       },
+      "metabase.lib.schema.common.keyword" : {
+        "description" : "A keyword, normalized from its name.",
+        "type" : "string"
+      },
       "metabase.lib.schema.common.non-blank-string" : {
         "description" : "Schema for a string that cannot be blank.",
         "type" : "string",
@@ -15835,11 +15994,6 @@
         "type" : "string",
         "minLength" : 36,
         "maxLength" : 36
-      },
-      "metabase.lib.schema.common.visualization-settings" : {
-        "description" : "visualization settings",
-        "type" : "object",
-        "properties" : { }
       },
       "metabase.lib.schema.compiled-native-query" : {
         "description" : "drivers add their own keys to a compiled query, and an already-native query compiles to its whole native stage",
@@ -16418,7 +16572,7 @@
           },
           "visualization-settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -17441,7 +17595,7 @@
           },
           "settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -18367,7 +18521,7 @@
             },
             "settings" : {
               "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.common.visualization-settings"
+                "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
               }, {
                 "type" : "null"
               } ]
@@ -19491,7 +19645,7 @@
               },
               "settings" : {
                 "anyOf" : [ {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.common.visualization-settings"
+                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                 }, {
                   "type" : "null"
                 } ]
@@ -20927,7 +21081,7 @@
           },
           "viz-settings" : {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.visualization-settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
             }, {
               "type" : "null"
             } ]
@@ -22573,6 +22727,236 @@
             "$ref" : "#/components/schemas/metabase.lib.schema.value"
           }
         } ]
+      },
+      "metabase.lib.schema.visualization-settings..click-behavior.dimension" : {
+        "description" : "The `:dimension` a click behavior parameter maps to, with the legacy MBQL reference of its column."
+      },
+      "metabase.lib.schema.visualization-settings..pivot-table.collapsed-rows" : {
+        "description" : "pivot table collapsed rows",
+        "type" : "object",
+        "properties" : {
+          "rows" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "anyOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-name-or-ref"
+                }, {
+                  "type" : "null"
+                } ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.lib.schema.visualization-settings..pivot-table.column-split" : {
+        "description" : "pivot table column split",
+        "type" : "object",
+        "properties" : {
+          "columns" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "anyOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-name-or-ref"
+                }, {
+                  "type" : "null"
+                } ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "rows" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "anyOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-name-or-ref"
+                }, {
+                  "type" : "null"
+                } ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "values" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "anyOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-name-or-ref"
+                }, {
+                  "type" : "null"
+                } ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.lib.schema.visualization-settings..table.column-formatting" : {
+        "description" : "The `:table.column_formatting` of a table visualization: its conditional formatting rules, each with the columns it\n  applies to.",
+        "type" : "array",
+        "items" : {
+          "anyOf" : [ {
+            "description" : "column formatting rule",
+            "type" : "object",
+            "properties" : {
+              "columns" : {
+                "anyOf" : [ {
+                  "type" : "array",
+                  "items" : {
+                    "anyOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-name-or-ref"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                }, {
+                  "type" : "null"
+                } ]
+              }
+            }
+          }, {
+            "type" : "null"
+          } ]
+        }
+      },
+      "metabase.lib.schema.visualization-settings..table.columns" : {
+        "description" : "The `:table.columns` of a table visualization: its columns in display order, with the legacy MBQL reference older\n  settings give each under `:fieldRef`.",
+        "type" : "array",
+        "items" : {
+          "anyOf" : [ {
+            "description" : "table column",
+            "type" : "object",
+            "properties" : {
+              "fieldRef" : {
+                "anyOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-name-or-ref"
+                }, {
+                  "type" : "null"
+                } ]
+              }
+            }
+          }, {
+            "type" : "null"
+          } ]
+        }
+      },
+      "metabase.lib.schema.visualization-settings.click-behavior" : {
+        "description" : "click behavior",
+        "type" : "object",
+        "properties" : {
+          "parameterMapping" : {
+            "anyOf" : [ {
+              "type" : "object",
+              "additionalProperties" : {
+                "anyOf" : [ {
+                  "type" : "object",
+                  "properties" : {
+                    "target" : {
+                      "anyOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "dimension" : {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings..click-behavior.dimension"
+                          }
+                        }
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  }
+                }, {
+                  "type" : "null"
+                } ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.lib.schema.visualization-settings.column-name-or-ref" : {
+        "description" : "How a setting refers to a column: by name, as newer settings do, by legacy MBQL reference, as older ones do, or by\n  something else the frontend wrote, which is kept as it is."
+      },
+      "metabase.lib.schema.visualization-settings.column-settings" : {
+        "description" : "The `:column_settings` of a visualization: the settings of each column, by its JSON-encoded reference or name, with\n  keyword keys all the way down, without the invalid ones.",
+        "type" : "object",
+        "additionalProperties" : {
+          "anyOf" : [ {
+            "description" : "column settings",
+            "type" : "object",
+            "properties" : {
+              "click_behavior" : {
+                "anyOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.click-behavior"
+                }, {
+                  "type" : "null"
+                } ]
+              }
+            }
+          }, {
+            "type" : "null"
+          } ]
+        }
+      },
+      "metabase.lib.schema.visualization-settings.legacy-reference" : {
+        "description" : "A legacy MBQL reference to a column, as older settings give it.",
+        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
+      },
+      "metabase.lib.schema.visualization-settings.visualization-settings" : {
+        "description" : "Value must be a map.",
+        "type" : "object",
+        "properties" : {
+          "click_behavior" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.click-behavior"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "column_settings" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.column-settings"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "pivot_table.collapsed_rows" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings..pivot-table.collapsed-rows"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "pivot_table.column_split" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings..pivot-table.column-split"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table.column_formatting" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings..table.column-formatting"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table.columns" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings..table.columns"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
       },
       "metabase.lib.util.query-like" : {
         "description" : "query-like map",
@@ -27144,11 +27528,7 @@
                 },
                 "embedding_type" : {
                   "anyOf" : [ {
-                    "anyOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "string"
-                    } ]
+                    "type" : "string"
                   }, {
                     "type" : "null"
                   } ]
@@ -27349,11 +27729,7 @@
                 },
                 "display" : {
                   "anyOf" : [ {
-                    "anyOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "string"
-                    } ]
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
                   }, {
                     "type" : "null"
                   } ]
@@ -28804,11 +29180,7 @@
                 },
                 "embedding_type" : {
                   "anyOf" : [ {
-                    "anyOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "string"
-                    } ]
+                    "type" : "string"
                   }, {
                     "type" : "null"
                   } ]
@@ -29009,11 +29381,7 @@
                 },
                 "display" : {
                   "anyOf" : [ {
-                    "anyOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "string"
-                    } ]
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
                   }, {
                     "type" : "null"
                   } ]
@@ -30678,20 +31046,14 @@
         "properties" : {
           "settings" : {
             "anyOf" : [ {
-              "description" : "Value must be a map.",
-              "type" : "object",
-              "properties" : { }
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
             }, {
               "type" : "null"
             } ]
           },
           "visibility_type" : {
             "anyOf" : [ {
-              "anyOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "string"
-              } ]
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
             }, {
               "type" : "null"
             } ]
@@ -30708,8 +31070,7 @@
           },
           "semantic_type" : {
             "anyOf" : [ {
-              "description" : "value must be a valid field semantic or relation type.",
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
             }, {
               "type" : "null"
             } ]
@@ -30835,11 +31196,7 @@
           },
           "embedding_type" : {
             "anyOf" : [ {
-              "anyOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "string"
-              } ]
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
@@ -31027,11 +31384,7 @@
           },
           "display" : {
             "anyOf" : [ {
-              "anyOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "string"
-              } ]
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
             }, {
               "type" : "null"
             } ]
@@ -31123,8 +31476,7 @@
       },
       "metabase.queries.schema..card.visualization-settings" : {
         "description" : "The `:visualization_settings` column of a Card, decoded.",
-        "type" : "object",
-        "properties" : { }
+        "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
       },
       "metabase.query-processor.schema..query-result.data" : {
         "description" : "Schema for the :data key of query results.",
@@ -32976,7 +33328,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -33173,7 +33532,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -34075,7 +34441,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -34381,7 +34754,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -35142,7 +35522,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -35246,7 +35633,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -35638,9 +36032,7 @@
                 "type" : "object",
                 "properties" : {
                   "visualization_settings" : {
-                    "description" : "Value must be a map.",
-                    "type" : "object",
-                    "properties" : { }
+                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                   },
                   "dashboard_tab_id" : {
                     "anyOf" : [ {
@@ -35733,8 +36125,7 @@
                   },
                   "display" : {
                     "description" : "value must be a non-blank string.",
-                    "type" : "string",
-                    "minLength" : 1
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
                   },
                   "size" : {
                     "anyOf" : [ {
@@ -35800,7 +36191,21 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -35879,7 +36284,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -36096,7 +36508,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -36364,9 +36783,7 @@
                   },
                   "visualization_settings" : {
                     "anyOf" : [ {
-                      "description" : "Value must be a map.",
-                      "type" : "object",
-                      "properties" : { }
+                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                     }, {
                       "type" : "null"
                     } ]
@@ -36477,8 +36894,7 @@
                   "display" : {
                     "anyOf" : [ {
                       "description" : "value must be a non-blank string.",
-                      "type" : "string",
-                      "minLength" : 1
+                      "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
                     }, {
                       "type" : "null"
                     } ]
@@ -36530,7 +36946,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -36804,7 +37227,21 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -39113,7 +39550,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -39390,7 +39834,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -39482,9 +39933,7 @@
                         "properties" : {
                           "visualization_settings" : {
                             "anyOf" : [ {
-                              "description" : "Value must be a map.",
-                              "type" : "object",
-                              "properties" : { }
+                              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                             }, {
                               "type" : "null"
                             } ]
@@ -39595,9 +40044,7 @@
                                   },
                                   "visualization_settings" : {
                                     "anyOf" : [ {
-                                      "description" : "Value must be a map.",
-                                      "type" : "object",
-                                      "properties" : { }
+                                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                                     }, {
                                       "type" : "null"
                                     } ]
@@ -39662,9 +40109,7 @@
                                 },
                                 "visualization_settings" : {
                                   "anyOf" : [ {
-                                    "description" : "Value must be a map.",
-                                    "type" : "object",
-                                    "properties" : { }
+                                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                                   }, {
                                     "type" : "null"
                                   } ]
@@ -39797,9 +40242,7 @@
                         "properties" : {
                           "visualization_settings" : {
                             "anyOf" : [ {
-                              "description" : "Value must be a map.",
-                              "type" : "object",
-                              "properties" : { }
+                              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                             }, {
                               "type" : "null"
                             } ]
@@ -39910,9 +40353,7 @@
                                   },
                                   "visualization_settings" : {
                                     "anyOf" : [ {
-                                      "description" : "Value must be a map.",
-                                      "type" : "object",
-                                      "properties" : { }
+                                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                                     }, {
                                       "type" : "null"
                                     } ]
@@ -39977,9 +40418,7 @@
                                 },
                                 "visualization_settings" : {
                                   "anyOf" : [ {
-                                    "description" : "Value must be a map.",
-                                    "type" : "object",
-                                    "properties" : { }
+                                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                                   }, {
                                     "type" : "null"
                                   } ]
@@ -40100,7 +40539,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.query-processor.schema.query-result"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -40389,7 +40835,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -40559,7 +41012,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -40772,9 +41232,7 @@
                           },
                           "visualization_settings" : {
                             "anyOf" : [ {
-                              "description" : "Value must be a map.",
-                              "type" : "object",
-                              "properties" : { }
+                              "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                             }, {
                               "type" : "null"
                             } ]
@@ -40929,9 +41387,7 @@
                         },
                         "visualization_settings" : {
                           "anyOf" : [ {
-                            "description" : "Value must be a map.",
-                            "type" : "object",
-                            "properties" : { }
+                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                           }, {
                             "type" : "null"
                           } ]
@@ -41811,9 +42267,8 @@
                     } ]
                   },
                   "engine" : {
-                    "description" : "value must be a non-blank string.",
-                    "type" : "string",
-                    "minLength" : 1
+                    "description" : "value must be a valid database engine.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
                   },
                   "details" : {
                     "description" : "Value must be a map.",
@@ -41921,9 +42376,8 @@
                         "properties" : { }
                       },
                       "engine" : {
-                        "description" : "value must be a non-blank string.",
-                        "type" : "string",
-                        "minLength" : 1
+                        "description" : "value must be a valid database engine.",
+                        "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
                       },
                       "id" : {
                         "anyOf" : [ {
@@ -42095,9 +42549,8 @@
                   },
                   "engine" : {
                     "anyOf" : [ {
-                      "description" : "value must be a non-blank string.",
-                      "type" : "string",
-                      "minLength" : 1
+                      "description" : "value must be a valid database engine.",
+                      "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
                     }, {
                       "type" : "null"
                     } ]
@@ -42194,7 +42647,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -42324,7 +42784,21 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -42353,7 +42827,21 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -42583,7 +43071,21 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -42904,7 +43406,21 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -43335,9 +43851,7 @@
                     "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-or-internal-query"
                   },
                   "visualization_settings" : {
-                    "description" : "Value must be a map.",
-                    "type" : "object",
-                    "properties" : { },
+                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings",
                     "default" : { }
                   }
                 },
@@ -43398,9 +43912,7 @@
                         "type" : "object",
                         "properties" : {
                           "visualization_settings" : {
-                            "description" : "Value must be a map.",
-                            "type" : "object",
-                            "properties" : { }
+                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                           },
                           "entity_id" : {
                             "anyOf" : [ {
@@ -43636,9 +44148,7 @@
                         "type" : "object",
                         "properties" : {
                           "visualization_settings" : {
-                            "description" : "Value must be a map.",
-                            "type" : "object",
-                            "properties" : { }
+                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                           },
                           "entity_id" : {
                             "anyOf" : [ {
@@ -43773,7 +44283,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -43919,7 +44436,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -44319,7 +44843,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -45367,12 +45898,12 @@
                           "type" : "string",
                           "minLength" : 1
                         },
-                        "updated_at" : { },
-                        "display_name" : {
+                        "slug" : {
                           "description" : "value must be a non-blank string.",
                           "type" : "string",
                           "minLength" : 1
                         },
+                        "updated_at" : { },
                         "version" : {
                           "description" : "value must be an integer greater than zero.",
                           "type" : "integer",
@@ -45413,15 +45944,10 @@
                           "minLength" : 1
                         }
                       },
-                      "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                      "required" : [ "id", "slug", "name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                     }, {
                       "type" : "object",
                       "properties" : {
-                        "display_name" : {
-                          "description" : "value must be a non-blank string.",
-                          "type" : "string",
-                          "minLength" : 1
-                        },
                         "enabled" : {
                           "type" : "boolean"
                         },
@@ -45437,9 +45963,14 @@
                         },
                         "outdated" : {
                           "type" : "boolean"
+                        },
+                        "slug" : {
+                          "description" : "value must be a non-blank string.",
+                          "type" : "string",
+                          "minLength" : 1
                         }
                       },
-                      "required" : [ "id", "name", "display_name", "enabled", "outdated" ],
+                      "required" : [ "id", "slug", "name", "enabled", "outdated" ],
                       "additionalProperties" : false
                     } ]
                   }
@@ -45452,6 +45983,126 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      },
+      "post" : {
+        "operationId" : "post-api-ee-apps",
+        "summary" : "POST /api/ee/apps",
+        "description" : "Create a data app with its resource collection and an empty bundle. It is enabled unless the request says otherwise.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "description" : "value must be a non-blank string.",
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "slug" : {
+                      "description" : "value must be a non-blank string.",
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : { },
+                    "version" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "anyOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "allowed_hosts" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "outdated" : {
+                      "type" : "boolean"
+                    },
+                    "resource_collection_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "description" : {
+                      "anyOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "bundle_path" : {
+                      "description" : "value must be a non-blank string.",
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  },
+                  "required" : [ "id", "slug", "name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "allowed_hosts" : {
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.allowed-hosts"
+                  },
+                  "bundle_path" : {
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.bundle-path"
+                  },
+                  "description" : {
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.description"
+                  },
+                  "enabled" : {
+                    "type" : "boolean"
+                  },
+                  "name" : {
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.name"
+                  },
+                  "slug" : {
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.slug"
+                  },
+                  "version" : {
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.version"
+                  }
+                },
+                "required" : [ "slug" ],
+                "additionalProperties" : false
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/apps" ]
@@ -45708,36 +46359,11 @@
         "tags" : [ "/api/ee/apps" ]
       }
     },
-    "/api/ee/apps/sandbox-host" : {
-      "get" : {
-        "operationId" : "get-api-ee-apps-sandbox-host",
-        "summary" : "GET /api/ee/apps/sandbox-host",
-        "description" : "Serve the document used as the `src` of the Near-Membrane realm iframe, carrying a\n   per-document CSP that confines `'unsafe-eval'` to that realm. See [[sandbox-host-csp]].",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/apps" ]
-      }
-    },
     "/api/ee/apps/{slug}" : {
       "put" : {
         "operationId" : "put-api-ee-apps-slug",
         "summary" : "PUT /api/ee/apps/{slug}",
-        "description" : "Enable or disable a data app. A disabled app is served to superusers only. Superusers only; anything else about an\n  app changes only through a repository import.",
+        "description" : "Update a data app's manifest fields, or enable or disable it. A disabled app is served to superusers only.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -45769,12 +46395,12 @@
                       "type" : "string",
                       "minLength" : 1
                     },
-                    "updated_at" : { },
-                    "display_name" : {
+                    "slug" : {
                       "description" : "value must be a non-blank string.",
                       "type" : "string",
                       "minLength" : 1
                     },
+                    "updated_at" : { },
                     "version" : {
                       "description" : "value must be an integer greater than zero.",
                       "type" : "integer",
@@ -45815,7 +46441,7 @@
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                  "required" : [ "id", "slug", "name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                 }
               }
             }
@@ -45833,14 +46459,62 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "allowed_hosts" : {
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.allowed-hosts"
+                  },
+                  "bundle_path" : {
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.bundle-path"
+                  },
+                  "description" : {
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.description"
+                  },
                   "enabled" : {
                     "type" : "boolean"
+                  },
+                  "name" : {
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.name"
+                  },
+                  "version" : {
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.version"
                   }
                 },
-                "required" : [ "enabled" ],
                 "additionalProperties" : false
               }
             }
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-apps-slug",
+        "summary" : "DELETE /api/ee/apps/{slug}",
+        "description" : "Delete a data app, its bundle, and its collection with the grants on it.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "description" : "value must be a non-blank string."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/ee/apps" ]
@@ -45881,12 +46555,12 @@
                         "type" : "string",
                         "minLength" : 1
                       },
-                      "updated_at" : { },
-                      "display_name" : {
+                      "slug" : {
                         "description" : "value must be a non-blank string.",
                         "type" : "string",
                         "minLength" : 1
                       },
+                      "updated_at" : { },
                       "version" : {
                         "description" : "value must be an integer greater than zero.",
                         "type" : "integer",
@@ -45927,15 +46601,10 @@
                         "minLength" : 1
                       }
                     },
-                    "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                    "required" : [ "id", "slug", "name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                   }, {
                     "type" : "object",
                     "properties" : {
-                      "display_name" : {
-                        "description" : "value must be a non-blank string.",
-                        "type" : "string",
-                        "minLength" : 1
-                      },
                       "enabled" : {
                         "type" : "boolean"
                       },
@@ -45951,9 +46620,14 @@
                       },
                       "outdated" : {
                         "type" : "boolean"
+                      },
+                      "slug" : {
+                        "description" : "value must be a non-blank string.",
+                        "type" : "string",
+                        "minLength" : 1
                       }
                     },
-                    "required" : [ "id", "name", "display_name", "enabled", "outdated" ],
+                    "required" : [ "id", "slug", "name", "enabled", "outdated" ],
                     "additionalProperties" : false
                   } ]
                 }
@@ -45971,10 +46645,121 @@
       }
     },
     "/api/ee/apps/{slug}/bundle" : {
+      "put" : {
+        "operationId" : "put-api-ee-apps-slug-bundle",
+        "summary" : "PUT /api/ee/apps/{slug}/bundle",
+        "description" : "Replace a data app's bundle.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "description" : "value must be a non-blank string."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "description" : "value must be a non-blank string.",
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "slug" : {
+                      "description" : "value must be a non-blank string.",
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : { },
+                    "version" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "anyOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "allowed_hosts" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "outdated" : {
+                      "type" : "boolean"
+                    },
+                    "resource_collection_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "description" : {
+                      "anyOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "bundle_path" : {
+                      "description" : "value must be a non-blank string.",
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  },
+                  "required" : [ "id", "slug", "name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "bundle" : {
+                    "$ref" : "#/components/schemas/metabase.data-apps.schema.bundle-text"
+                  }
+                },
+                "required" : [ "bundle" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      },
       "get" : {
         "operationId" : "get-api-ee-apps-slug-bundle",
         "summary" : "GET /api/ee/apps/{slug}/bundle",
-        "description" : "Serve the cached JS bundle for a single data app by slug, disabled ones to superusers only. Honors\n   `If-None-Match` against the content-hash ETag with a 304.",
+        "description" : "Serve the cached JS bundle and its CSP for a single data app by slug, disabled ones to superusers only.\n   Honors `If-None-Match` against the content-hash ETag with a 304.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -46124,6 +46909,9 @@
                         "type" : "integer",
                         "minimum" : 1
                       },
+                      "is_tenant_group" : {
+                        "type" : "boolean"
+                      },
                       "member_count" : {
                         "description" : "value must be an integer greater or equal to than zero.",
                         "type" : "integer",
@@ -46133,7 +46921,7 @@
                         "type" : "string"
                       }
                     },
-                    "required" : [ "id", "name", "member_count" ]
+                    "required" : [ "id", "name", "member_count", "is_tenant_group" ]
                   }
                 }
               }
@@ -46151,7 +46939,7 @@
       "post" : {
         "operationId" : "post-api-ee-apps-slug-groups",
         "summary" : "POST /api/ee/apps/{slug}/groups",
-        "description" : "Grant a batch of internal groups read access to a data app's resource collection atomically.",
+        "description" : "Grant a batch of internal or tenant groups read access to a data app's resource collection atomically.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -46177,6 +46965,9 @@
                         "type" : "integer",
                         "minimum" : 1
                       },
+                      "is_tenant_group" : {
+                        "type" : "boolean"
+                      },
                       "member_count" : {
                         "description" : "value must be an integer greater or equal to than zero.",
                         "type" : "integer",
@@ -46186,7 +46977,7 @@
                         "type" : "string"
                       }
                     },
-                    "required" : [ "id", "name", "member_count" ]
+                    "required" : [ "id", "name", "member_count", "is_tenant_group" ]
                   }
                 }
               }
@@ -46338,7 +47129,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -46368,6 +47166,268 @@
           }
         },
         "tags" : [ "/api/ee/billing" ]
+      }
+    },
+    "/api/ee/browser-sandboxing/sandbox-host" : {
+      "get" : {
+        "operationId" : "get-api-ee-browser-sandboxing-sandbox-host",
+        "summary" : "GET /api/ee/browser-sandboxing/sandbox-host",
+        "description" : "Serve a minimal HTML document used as the iframe `src` for the near-membrane\n   sandbox. The response carries a per-document `Content-Security-Policy` that permits\n   `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict\n   nonce-based CSP. Available in EE when the request passes the fetch-metadata gate\n   (see [[donor-load-allowed?]]).",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/browser-sandboxing" ]
+      }
+    },
+    "/api/ee/card-test" : {
+      "get" : {
+        "operationId" : "get-api-ee-card-test",
+        "summary" : "GET /api/ee/card-test",
+        "description" : "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio\n  access.\n\n  A card test, with its inputs and expectations, is readable by every user who can read its card.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "card-id",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.response"
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/card-test" ]
+      },
+      "post" : {
+        "operationId" : "post-api-ee-card-test",
+        "summary" : "POST /api/ee/card-test",
+        "description" : "Create a card test. Its expectations read the result of the card's query without remapped columns and without the\n  default row limit. Expectation SQL names that result `{{output}}`, spaces inside the braces allowed; any other\n  `{{...}}` is refused.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.card-test"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.create"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/card-test" ]
+      }
+    },
+    "/api/ee/card-test/{id}" : {
+      "get" : {
+        "operationId" : "get-api-ee-card-test-id",
+        "summary" : "GET /api/ee/card-test/{id}",
+        "description" : "Get a card test with its newest run.\n\n  A card test, with its inputs and expectations, is readable by every user who can read its card.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/card-test" ]
+      },
+      "put" : {
+        "operationId" : "put-api-ee-card-test-id",
+        "summary" : "PUT /api/ee/card-test/{id}",
+        "description" : "Update a card test.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.card-test"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.update"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/card-test" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-card-test-id",
+        "summary" : "DELETE /api/ee/card-test/{id}",
+        "description" : "Delete a card test.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/card-test" ]
+      }
+    },
+    "/api/ee/card-test/{id}/run" : {
+      "post" : {
+        "operationId" : "post-api-ee-card-test-id-run",
+        "summary" : "POST /api/ee/card-test/{id}/run",
+        "description" : "Run a card test. Needs read access to the test, permission to run its card's query, and native query access to the\n  database of that query.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the\n  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)\n  carries none.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-result"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/card-test" ]
       }
     },
     "/api/ee/cloud-add-ons/addons" : {
@@ -48183,7 +49243,21 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -48682,42 +49756,6 @@
           },
           "5XX" : {
             "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/custom-viz-plugin" ]
-      }
-    },
-    "/api/ee/custom-viz-plugin/sandbox-host" : {
-      "get" : {
-        "operationId" : "get-api-ee-custom-viz-plugin-sandbox-host",
-        "summary" : "GET /api/ee/custom-viz-plugin/sandbox-host",
-        "description" : "Serve a minimal HTML document used as the iframe `src` for the near-membrane custom-viz\n   sandbox. The response carries a per-document `Content-Security-Policy` that permits\n   `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict\n   nonce-based CSP. 404s unless the custom-viz kill switch is on and the request passes the\n   fetch-metadata gate (see [[donor-load-allowed?]]).",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
           }
         },
         "tags" : [ "/api/ee/custom-viz-plugin" ]
@@ -50678,7 +51716,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -50793,7 +51838,21 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "not-connected"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -52487,7 +53546,7 @@
       "post" : {
         "operationId" : "post-api-ee-remote-sync-current-task-cancel",
         "summary" : "POST /api/ee/remote-sync/current-task/cancel",
-        "description" : "Cancel the running task.",
+        "description" : "Ask the running task to stop. A task that already started to change content finishes.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -57347,7 +58406,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -57478,16 +58544,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "body" : {
-                      "type" : "null"
-                    },
-                    "status" : {
-                      "const" : 204
-                    }
-                  },
-                  "required" : [ "status", "body" ]
+                  "type" : "null"
                 }
               }
             }
@@ -59609,9 +60666,7 @@
                     "minItems" : 1
                   },
                   "visualization_settings" : {
-                    "description" : "Value must be a map.",
-                    "type" : "object",
-                    "properties" : { }
+                    "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                   }
                 },
                 "required" : [ "exploration_query_ids", "display", "visualization_settings" ],
@@ -59761,9 +60816,7 @@
                   },
                   "settings" : {
                     "anyOf" : [ {
-                      "description" : "Value must be a map.",
-                      "type" : "object",
-                      "properties" : { }
+                      "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                     }, {
                       "type" : "null"
                     } ]
@@ -59774,8 +60827,7 @@
                   },
                   "coercion_strategy" : {
                     "anyOf" : [ {
-                      "description" : "value must be a valid coercion strategy (keyword or string).",
-                      "type" : "string"
+                      "$ref" : "#/components/schemas/metabase.lib.schema.common.coercion-strategy"
                     }, {
                       "type" : "null"
                     } ]
@@ -59793,8 +60845,7 @@
                   },
                   "semantic_type" : {
                     "anyOf" : [ {
-                      "description" : "value must be a valid field semantic or relation type (keyword or string).",
-                      "type" : "string"
+                      "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
                     }, {
                       "type" : "null"
                     } ]
@@ -59918,7 +60969,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -59947,7 +61005,21 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -60052,7 +61124,21 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -60184,7 +61270,21 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -60275,7 +61375,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -60511,7 +61618,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -61058,7 +62172,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -63034,9 +64155,7 @@
                   "properties" : {
                     "visualization_settings" : {
                       "anyOf" : [ {
-                        "description" : "Value must be a map.",
-                        "type" : "object",
-                        "properties" : { }
+                        "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                       }, {
                         "type" : "null"
                       } ]
@@ -63172,9 +64291,7 @@
                       },
                       "visualization_settings" : {
                         "anyOf" : [ {
-                          "description" : "Value must be a map.",
-                          "type" : "object",
-                          "properties" : { }
+                          "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                         }, {
                           "type" : "null"
                         } ]
@@ -63301,9 +64418,7 @@
                             } ]
                           },
                           "visualization_settings" : {
-                            "description" : "Value must be a map.",
-                            "type" : "object",
-                            "properties" : { }
+                            "$ref" : "#/components/schemas/metabase.lib.schema.visualization-settings.visualization-settings"
                           }
                         },
                         "required" : [ "name", "dataset_query", "database_id", "parameters", "visualization_settings" ]
@@ -63371,16 +64486,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "body" : {
-                      "type" : "null"
-                    },
-                    "status" : {
-                      "const" : 204
-                    }
-                  },
-                  "required" : [ "status", "body" ]
+                  "type" : "null"
                 }
               }
             }
@@ -63605,7 +64711,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -63707,7 +64820,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -63993,7 +65113,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -64108,16 +65235,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "body" : {
-                      "type" : "null"
-                    },
-                    "status" : {
-                      "const" : 204
-                    }
-                  },
-                  "required" : [ "status", "body" ]
+                  "type" : "null"
                 }
               }
             }
@@ -65499,7 +66617,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -66436,7 +67561,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -66456,7 +67588,21 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -66523,7 +67669,21 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -66975,7 +68135,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67251,7 +68418,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67427,7 +68601,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67499,7 +68680,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67577,7 +68765,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67606,7 +68801,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67635,7 +68837,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67693,7 +68902,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67713,7 +68929,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67733,7 +68956,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -67753,7 +68983,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -70354,7 +71591,21 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "ok" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "ok" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -71439,7 +72690,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -71471,7 +72729,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test" ]
+            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test" ]
           }
         } ],
         "responses" : {
@@ -71513,7 +72771,7 @@
                 "properties" : {
                   "entity" : {
                     "type" : "string",
-                    "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test" ]
+                    "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test" ]
                   },
                   "id" : {
                     "description" : "value must be an integer greater than zero.",
@@ -71546,7 +72804,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test" ]
+            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test" ]
           }
         }, {
           "in" : "path",
@@ -72258,7 +73516,21 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "message" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "message" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -72570,7 +73842,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -72691,7 +73970,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -73014,7 +74300,21 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "valid" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "valid" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -74062,7 +75362,7 @@
                   },
                   "data_layer" : {
                     "anyOf" : [ {
-                      "type" : "string"
+                      "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
                     }, {
                       "type" : "null"
                     } ]
@@ -74116,7 +75416,7 @@
                   },
                   "data_source" : {
                     "anyOf" : [ {
-                      "type" : "string"
+                      "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
                     }, {
                       "type" : "null"
                     } ]
@@ -74130,7 +75430,7 @@
                   },
                   "entity_type" : {
                     "anyOf" : [ {
-                      "description" : "value must be a valid entity type (keyword or string).",
+                      "description" : "value must be a valid entity type.",
                       "type" : "string"
                     }, {
                       "type" : "null"
@@ -74264,7 +75564,7 @@
                   },
                   "data_layer" : {
                     "anyOf" : [ {
-                      "type" : "string"
+                      "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
                     }, {
                       "type" : "null"
                     } ]
@@ -74310,7 +75610,7 @@
                   },
                   "data_source" : {
                     "anyOf" : [ {
-                      "type" : "string"
+                      "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
                     }, {
                       "type" : "null"
                     } ]
@@ -74324,7 +75624,7 @@
                   },
                   "entity_type" : {
                     "anyOf" : [ {
-                      "description" : "value must be a valid entity type (keyword or string).",
+                      "description" : "value must be a valid entity type.",
                       "type" : "string"
                     }, {
                       "type" : "null"
@@ -74431,7 +75731,21 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -74718,7 +76032,21 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -74747,7 +76075,21 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "status" : {
+                      "const" : "ok"
+                    }
+                  },
+                  "required" : [ "status" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -75640,7 +76982,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -75916,7 +77265,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -81676,7 +83032,21 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -81713,7 +83083,21 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "success" : {
+                      "const" : true
+                    }
+                  },
+                  "required" : [ "success" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -81870,17 +83254,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "body" : {
-                      "type" : "null"
-                    },
-                    "status" : {
-                      "const" : 204
-                    }
-                  },
-                  "required" : [ "status", "body" ],
-                  "additionalProperties" : false
+                  "type" : "null"
                 }
               }
             }

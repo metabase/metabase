@@ -124,13 +124,10 @@
  [serialization.transform
   date-transform
   export-dates
-  export-keywords
   export-unchanged
   import-dates
-  import-keywords
   import-only-transform
   import-unchanged
-  keyword-transform
   column-ids
   column-refs
   database-transform

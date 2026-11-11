@@ -36,12 +36,18 @@ type SetupOpts = {
 
 function setup({ groups, warnings = [], useTenants = false }: SetupOpts) {
   const onSelectGroup = jest.fn<void, [GroupId]>();
-  setupDataAppGroupsEndpoint("sales", groups);
-  setupDataAppGroupPermissionWarningsEndpoint("sales", warnings);
-  groups.forEach((group) => setupRemoveDataAppGroupEndpoint("sales", group.id));
+  const app = createMockDataApp({
+    slug: "sales",
+    name: "Sales",
+  });
+  setupDataAppGroupsEndpoint(app.slug, groups);
+  setupDataAppGroupPermissionWarningsEndpoint(app.slug, warnings);
+  groups.forEach((group) =>
+    setupRemoveDataAppGroupEndpoint(app.slug, group.id),
+  );
   renderWithProviders(
     <DataAppGroupList
-      app={createMockDataApp({ name: "sales", display_name: "Sales" })}
+      app={createMockDataApp({ slug: "sales", name: "Sales" })}
       selectedGroupId={undefined}
       onSelectGroup={onSelectGroup}
     />,

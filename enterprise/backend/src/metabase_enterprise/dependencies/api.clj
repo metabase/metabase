@@ -53,7 +53,7 @@
    :segment   [:name :description :created_at :creator :creator_id :table :table_id]
    :measure   [:name :description :created_at :creator :creator_id :table :table_id]
    :action    [:name :description :type :model_id :parameters :created_at :creator :creator_id :collection :collection_id]
-   :data-app  [:name :display_name :description :created_at]})
+   :data-app  [:slug :name :description :created_at]})
 
 (mr/def ::data-value
   [:schema {::mr/deliberately-open true, :description "any column or hydrated value of a dependency-tracked entity"}
@@ -282,7 +282,7 @@
    :segment   [:id :name :description :created_at :creator_id :table_id]
    :measure   [:id :name :description :created_at :creator_id :table_id]
    :action    [:id :name :description :type :model_id :parameters :created_at :creator_id :collection_id]
-   :data-app  [:id :name :display_name :description :created_at]})
+   :data-app  [:id :slug :name :description :created_at]})
 
 (mr/def ::include-archived-items
   [:enum :exclude :all :only])
@@ -421,7 +421,7 @@
                          (dependencies.db/action-root-namespace (nil? (:model_id %)))))))
     ;; Like the data-app API, which gives a non-admin only an app's names.
     :data-app (cond->> entities
-                (not api/*is-superuser?*) (map #(select-keys % [:id :name :display_name])))))
+                (not api/*is-superuser?*) (map #(select-keys % [:id :slug :name])))))
 
 (mu/defn- fetch-and-hydrate-nodes :- [:map-of ::deps.schema/node Entity]
   "Fetches and hydrates entities for the given nodes.
@@ -498,7 +498,7 @@
   [entity :- ::entity-node]
   (let [data (:data entity)]
     (case (:type entity)
-      (:table :data-app) (:display_name data)
+      :table             (:display_name data)
       :sandbox           nil
       (:name data))))
 

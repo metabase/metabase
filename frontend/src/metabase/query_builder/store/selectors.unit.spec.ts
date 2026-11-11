@@ -1,5 +1,3 @@
-import { assoc } from "icepick";
-
 import { createMockMetadata } from "__support__/metadata";
 import {
   createMockQueryBuilderState,
@@ -134,7 +132,7 @@ describe("getQuestion", () => {
       }),
     );
 
-    expect(question?.card()).toEqual(assoc(card, "displayIsLocked", true));
+    expect(question?.card()).toEqual({ ...card, displayIsLocked: true });
   });
 });
 

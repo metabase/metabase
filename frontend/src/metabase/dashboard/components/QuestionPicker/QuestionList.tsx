@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { type ComponentProps, useEffect, useState } from "react";
 import { t } from "ttag";
 

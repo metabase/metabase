@@ -21,10 +21,17 @@
   [model entity]
   ((:label (remote-sync.spec/spec model) :name) entity))
 
+(defn synced-collection-from-parent?
+  "Whether the UI shows the changes to the rows of `model` under the collection of their parent."
+  [model]
+  (boolean (:collection-from-parent? (remote-sync.spec/spec model))))
+
 (defn synced-collection-id
-  "The id of the collection the UI shows the changes to `row`, a row of `model`, under, or nil."
+  "The id of the collection the UI shows the changes to `row`, a row of `model`, under, or nil, always nil when that is
+  the collection of its parent, which `row` alone doesn't give."
   [model row]
-  ((:collection-id (remote-sync.spec/spec model) :collection_id) row))
+  (when-not (synced-collection-from-parent? model)
+    ((:collection-id (remote-sync.spec/spec model) :collection_id) row)))
 
 (defn synced-parent
   "The `[model pk]` of the entity the UI shows `row`, a row of `model`, within, or nil."
