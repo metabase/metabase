@@ -730,11 +730,9 @@ class Question {
         : rawDatasetQuery;
 
     // Back to the opaque type once the raw edits are applied.
-    const datasetQueryWithDatabase = (
-      databaseId != null
-        ? { ...datasetQueryWithTable, database: databaseId }
-        : datasetQueryWithTable
-    ) as unknown as DatasetQuery;
+    const datasetQueryWithDatabase = (databaseId != null
+      ? { ...datasetQueryWithTable, database: databaseId }
+      : datasetQueryWithTable) as unknown as DatasetQuery;
 
     // `create` builds an unsaved draft that lacks the fields a saved Card has
     // (id, entity_id, name, type, ...). The Question class nevertheless treats
