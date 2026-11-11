@@ -44,7 +44,10 @@ describe("ValuesSourceSettings", () => {
       });
 
       await userEvent.click(screen.getByRole("button", { name: "Edit" }));
-      await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
+      // The modal is lazy-loaded, so wait for it to open.
+      await userEvent.click(
+        await screen.findByRole("radio", { name: "Custom list" }),
+      );
       await userEvent.type(screen.getByRole("textbox"), "A");
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
 

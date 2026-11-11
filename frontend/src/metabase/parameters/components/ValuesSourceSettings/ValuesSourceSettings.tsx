@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Button, Flex, Radio, Stack, Tooltip } from "metabase/ui";
@@ -10,7 +10,8 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 
-import ValuesSourceModal from "../ValuesSourceModal";
+// The modal carries the CSV parser and stringifier, so it loads when opened rather than with the app.
+const ValuesSourceModal = lazy(() => import("../ValuesSourceModal"));
 
 interface ValuesSourceSettingsProps {
   parameter: Parameter;
@@ -67,11 +68,13 @@ export function ValuesSourceSettings({
         </Stack>
       </Radio.Group>
       {isModalOpened && (
-        <ValuesSourceModal
-          parameter={parameter}
-          onSubmit={onChangeSourceSettings}
-          onClose={closeModal}
-        />
+        <Suspense fallback={null}>
+          <ValuesSourceModal
+            parameter={parameter}
+            onSubmit={onChangeSourceSettings}
+            onClose={closeModal}
+          />
+        </Suspense>
       )}
     </>
   );
