@@ -1619,6 +1619,21 @@
                     :output (str "Search failed.\n" no-retry-step)}
                    (invoke-search [(keyword-tool :general)] {:query "orders"})))))))))
 
+(deftest search-failure-without-a-scope-test
+  (testing "a failed search whose browse scope can't be worked out still fails recoverably, without browse steps"
+    (mt/with-test-user :rasta
+      (mt/with-dynamic-fn-redefs [search/search-by-query (fn [_] (throw (ex-info "connection refused" {})))
+                                  search/search-scope    (fn [& _] (throw (ex-info "connection refused" {})))]
+        (is (= {:error  {:class :recoverable :code ::search/search-failed}
+                :output (str "Search failed.\nDo not call the search tools again in this turn. If you cannot find "
+                             "the data another way, tell the user that search is unavailable right now.")}
+               (invoke-search [(keyword-tool :general) #'metabot.tools/read-resource-tool] {:query "orders"}))))))
+  (testing "an interrupted search ends the call"
+    (mt/with-test-user :rasta
+      (mt/with-dynamic-fn-redefs [search/search-by-query (fn [_] (throw (InterruptedException.)))]
+        (is (= {:class :unrecoverable :code :interrupted}
+               (:error (invoke-search [(keyword-tool :general)] {:query "orders"}))))))))
+
 (deftest search-failure-in-a-collection-browses-tables-test
   (testing "a collection's items never list tables, so recovery adds a table route when the search could match one"
     (mt/with-test-user :crowberto

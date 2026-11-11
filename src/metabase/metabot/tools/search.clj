@@ -867,8 +867,7 @@
          enrich-with-metric-sources
          enrich-with-measure-segment-base-tables
          ;; after base tables: that step resolves a measure/segment's binding collection
-         enrich-with-collection-paths
-         remove-unreadable-transforms)))
+         enrich-with-collection-paths)))
 
 (def ^:private default-search-limit 25)
 (def ^:private max-search-limit 50)
@@ -1048,11 +1047,24 @@
 (tools/defrecoverable search-failed!
   "The search backend failed, for example because the search index is missing.
 
-  Every failure gets [[no-retry-step]], because each retry uses an iteration and logs a stack trace."
-  {:payload ::search-scope}
+  Every failure gets [[no-retry-step]], because each retry uses an iteration and logs a stack trace.
+  The browse steps come from `scope`; a nil scope, when the failure left none to build, gets no browse steps."
+  {:payload [:maybe ::search-scope]}
   [scope]
   {:message  "Search failed."
-   :recovery (conj (browse-steps scope) no-retry-step)})
+   :recovery (conj (if scope (browse-steps scope) []) no-retry-step)})
+
+(defn- failed-search-scope
+  "The [[search-scope]] to recover from a failed search with, or nil when building it fails too.
+  Building it can read the app DB, which may be why the search failed."
+  [& args]
+  (try
+    (apply search-scope args)
+    (catch InterruptedException e
+      (throw e))
+    (catch Exception e
+      (log/warn e "Could not work out where a failed Metabot search could browse instead")
+      nil)))
 
 (tools/defrecoverable semantic-search-failed!
   "The semantic engine failed. A vector-only search doesn't fall back to a keyword engine, so the model is pointed at
@@ -1093,7 +1105,7 @@
 
 (defn- do-search
   [default-types search-opts {:keys [query entity_types limit collection_id] :as args}]
-  (let [limit       (min max-search-limit (or limit default-search-limit))
+  (let [limit        (min max-search-limit (or limit default-search-limit))
         opts         (merge {:query        (when (string? query) query)
                              :entity-types (or (seq entity_types) (vec default-types))
                              :limit        limit}
@@ -1102,6 +1114,8 @@
                               {:collection-id collection_id}))
         results      (try
                        (search-by-query opts)
+                       (catch InterruptedException e
+                         (throw e))
                        (catch Exception e
                          ;; Recoverable, not `:internal`: the agent can find the data without search, or tell the
                          ;; user that search failed. `read_resource` does not use the search index. The runtime
@@ -1109,8 +1123,8 @@
                          (log/error e "Metabot search failed")
                          (if (= :semantic-search-error (:type (ex-data e)))
                            (semantic-search-failed! {})
-                           (search-failed! (search-scope (:metabot opts) (:profile-id opts) (:database-id opts)
-                                                         collection_id (:entity-types opts))))))
+                           (search-failed! (failed-search-scope (:metabot opts) (:profile-id opts) (:database-id opts)
+                                                                collection_id (:entity-types opts))))))
         restrictions (search-restrictions default-types search-opts args (:collection-id (meta results)))]
     {:output (format-search-output (if (string? query) query (json/encode query)) results limit restrictions)
      :structured-output (cond-> {:result-type :search
