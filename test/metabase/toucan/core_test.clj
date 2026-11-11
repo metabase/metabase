@@ -142,6 +142,21 @@
   (is (= '(methodical.core/defmethod toucan2.core/batched-hydrate :around [:model/User :k] [_model _k users] users)
          (macroexpand-1 '(metabase.toucan.core/define-batched-hydrate :around [:model/User :k] [_model _k users] users)))))
 
+(deftest ^:parallel literal-subquery-keeps-metadata-test
+  (let [email        "a@b.c"
+        [sql & args] (toucan2.core/compile
+                       (t2/select :model/User {:where [:in :id ^:allow-subquery {:select [:id]
+                                                                                 :from   [:core_user]
+                                                                                 :where  [:= :email email]}]}))]
+    (is (re-find #"(?i)IN \(SELECT" sql))
+    (is (= ["a@b.c"] args))))
+
+(deftest ^:parallel hand-written-marker-kept-test
+  (let [emails       ["a@b.c" "d@e.f"]
+        [sql & args] (toucan2.core/compile (t2/select :model/User :email [:in [:auto/param emails]]))]
+    (is (re-find #"(?i)IN \(\?, \?\)$" sql))
+    (is (= ["a@b.c" "d@e.f"] args))))
+
 (deftest ^:parallel plain-honeysql-value-rejected-test
   (letfn [(email-is [email] [:= :email email])]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

@@ -73,14 +73,16 @@
                   (some-> (resolve (first form)) symbol))))
 
 (defn- wrap-dynamic
-  "`form` with every symbol or call inside its literal maps, vectors and sets wrapped in a [[value]] call."
+  "`form` with every symbol or call inside its literal maps, vectors and sets wrapped in a [[value]] call, keeping their
+  metadata and any `[:auto/param ...]` marker written by hand."
   [form]
   (cond
     (name-call? form)       form
     (dynamic? form)         (list `value form)
-    (map? form)             (into {} (map (fn [[k v]] [k (wrap-dynamic v)])) form)
-    (vector? form)          (mapv wrap-dynamic form)
-    (set? form)             (into #{} (map wrap-dynamic) form)
+    (marker? form)          form
+    (map? form)             (with-meta (into {} (map (fn [[k v]] [k (wrap-dynamic v)])) form) (meta form))
+    (vector? form)          (with-meta (mapv wrap-dynamic form) (meta form))
+    (set? form)             (with-meta (into #{} (map wrap-dynamic) form) (meta form))
     :else                   form))
 
 (defmacro table-name
