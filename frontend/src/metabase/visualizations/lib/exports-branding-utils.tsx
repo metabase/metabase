@@ -24,9 +24,16 @@ export const getBrandingSize = (width: number): BrandingSize => {
 };
 
 // Uses the raw SVG source, so exports don't pull `react-dom/server` and the `Buffer` polyfill
-// into the main bundle. The logo is ASCII-only, so `btoa` can encode it.
-const getBrandingLogoDataUrl = () =>
-  `data:image/svg+xml;base64,${btoa(brandingLogoSource)}`;
+// into the main bundle. The logo is ASCII-only, so `btoa` can encode it. The root element gets
+// the target size, as when the logo was rendered as a React component, so it draws the same.
+const getBrandingLogoDataUrl = (width: number, height: number) => {
+  const sizedSource = brandingLogoSource.replace(
+    /<svg\b([^>]*)>/,
+    (_match, attributes: string) =>
+      `<svg${attributes.replace(/\s(width|height)="[^"]*"/g, "")} width="${width}" height="${height}">`,
+  );
+  return `data:image/svg+xml;base64,${btoa(sizedSource)}`;
+};
 
 type BrandingConfig = {
   /** Font size */
@@ -102,7 +109,7 @@ export const createBrandingElement = (size: BrandingSize) => {
   }
 
   const logo = document.createElement("img");
-  logo.src = getBrandingLogoDataUrl();
+  logo.src = getBrandingLogoDataUrl(LOGO_WIDTH, LOGO_HEIGHT);
   logo.width = LOGO_WIDTH;
   logo.height = LOGO_HEIGHT;
 
