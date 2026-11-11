@@ -8,6 +8,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
+  waitFor,
   within,
 } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
@@ -77,7 +78,6 @@ function renderGrid(dashboard: Dashboard) {
   return (
     <MockDashboardContext
       dashboardId={dashboard.id}
-      dashboard={dashboard}
       isEditing
       navigateToNewCardFromDashboard={jest.fn()}
       onChangeLocation={jest.fn()}
@@ -109,18 +109,7 @@ function setup(dashcards: DashboardCard[]) {
     }),
   });
 
-  const { rerender } = renderWithProviders(renderGrid(dashboard), {
-    storeInitialState,
-  });
-
-  const rerenderWithDashcards = (nextDashcards: DashboardCard[]) =>
-    rerender(
-      renderGrid(
-        createMockDashboard({ id: DASHBOARD_ID, dashcards: nextDashcards }),
-      ),
-    );
-
-  return { rerenderWithDashcards };
+  renderWithProviders(renderGrid(dashboard), { storeInitialState });
 }
 
 function getActionsPanels() {
@@ -165,17 +154,20 @@ describe("DashboardGrid", () => {
       expect(await screen.findByText("Remove")).toBeInTheDocument();
     });
 
-    it("shows the trash action again once only one dashcard of a dashboard question remains", () => {
-      const first = createDashcard(1, dashboardQuestion, 0);
-      const second = createDashcard(2, dashboardQuestion, 4);
-      const { rerenderWithDashcards } = setup([first, second]);
+    it("shows the trash action again once the other dashcard of a dashboard question is removed", async () => {
+      setup([
+        createDashcard(1, dashboardQuestion, 0),
+        createDashcard(2, dashboardQuestion, 4),
+      ]);
 
       expect(queryIcon("trash")).not.toBeInTheDocument();
 
-      rerenderWithDashcards([first]);
+      await userEvent.click(
+        within(getActionsPanels()[1]).getByLabelText("close icon"),
+      );
 
+      await waitFor(() => expect(getActionsPanels()).toHaveLength(1));
       const panels = getActionsPanels();
-      expect(panels).toHaveLength(1);
       expect(
         within(panels[0]).getByLabelText("trash icon"),
       ).toBeInTheDocument();
