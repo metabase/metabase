@@ -591,14 +591,14 @@
           (sorted-children node))))
 
 (defn- write-explorer!
-  "Write the HTML explorer to `output`, or to stdout, and exit."
-  [modules-config {:keys [output no-stats]}]
+  "Write the HTML explorer, or with `:json` the data it shows, to `output` or to stdout, and exit."
+  [modules-config {:keys [output no-stats json]}]
   (let [data (module-explorer/explorer-data modules-config {:stats? (not no-stats), :resolve-any? true})
-        html (module-explorer/page data)]
+        text (if json (json/generate-string data) (module-explorer/page data))]
     (if output
-      (do (spit output html)
+      (do (spit output text)
           (println (c/green (str "Wrote " output))))
-      (do (print html)
+      (do (print text)
           ;; u/exit throws for bb to catch, which skips the flush at shutdown
           (flush)))
     (u/exit 0)))
@@ -607,9 +607,9 @@
   "Print the module tree, nesting enterprise extensions under their OSS module.
 
   Marks modules whose namespace prefix differs from their name.
-  With `--html`, writes the interactive explorer instead."
+  With `--html`, writes the interactive explorer instead, and with `--json` the data it shows."
   [{:keys [options] :as _parsed}]
-  (when (:html options)
+  (when (or (:html options) (:json options))
     (write-explorer! (read-modules-config) options))
   (let [modules-config (read-modules-config)
         tree           (module-display-tree modules-config)
