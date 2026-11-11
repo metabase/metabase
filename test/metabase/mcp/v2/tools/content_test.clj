@@ -314,7 +314,8 @@
               (is (= [{:id hidden-series}] (:series (get refs open-dc)))))))))))
 
 (deftest get-content-dashboard-layout-redacts-unreadable-series-card-test
-  ;; The series card's `series_settings` entry is keyed by its name, and its filter mapping carries its field ids.
+  ;; The frontend keys `series_settings` by card name, alone or with a column or breakout value after it, and the
+  ;; series card's filter mapping carries its field ids.
   (testing "BOT-2561: the layout include names an unreadable series card nowhere and keeps no mapping to it"
     (mt/with-temp [:model/Collection    {open-id :id}       {}
                    :model/Collection    {locked-id :id}     {}
@@ -330,8 +331,9 @@
                                                              :row                    0
                                                              :col                    0
                                                              :visualization_settings
-                                                             {:series_settings {"Open"          {:color "#111"}
-                                                                                "SECRET Series" {:color "#222"}}}
+                                                             {:series_settings {"Open"                 {:color "#111"}
+                                                                                "SECRET Series"        {:color "#222"}
+                                                                                "SECRET Series: Count" {:color "#333"}}}
                                                              :parameter_mappings
                                                              [{:parameter_id "p"
                                                                :card_id      open-card
@@ -358,8 +360,8 @@
               (is (some? dc))
               (is (not (str/includes? (json/encode dc) "SECRET Series")))
               (is (= [open-card] (map :card_id (:parameter_mappings dc))))
-              (testing "the readable main card's entry stays"
-                (is (= "#111" (get-in dc [:visualization_settings :series_settings :Open :color])))))))))))
+              (testing "the series settings go whole, since composite keys also name the card"
+                (is (nil? (get-in dc [:visualization_settings :series_settings])))))))))))
 
 (defn- link-card-settings
   "Stored `visualization_settings` for a link dashcard pointing at `model`/`id`, carrying the

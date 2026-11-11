@@ -260,6 +260,8 @@
                                              :column_settings     {"[\"name\",\"base_salary\"]"
                                                                    {:column_title "Salary"}}
                                              :click_behavior      {:targetId 999}
+                                             :visualization       {:columnValuesMapping
+                                                                   {:COLUMN_1 [{:sourceId "card:12"}]}}
                                              :dashcard.background true}
                     :parameter_mappings     [{:card_id 12 :target [:dimension [:field 999 nil]]}]}
           redact   (fn [readable?]
@@ -274,6 +276,8 @@
               "column settings name warehouse columns the caller may hold no permission on")
           (is (nil? (get-in dc [:visualization_settings :click_behavior]))
               "click targets name other entities")
+          (is (nil? (get-in dc [:visualization_settings :visualization]))
+              "a visualizer definition names the card and its columns")
           (is (= [] (:parameter_mappings dc))
               (str "parameter mappings carry the field ids the card's filters are wired to. Emptied "
                    "rather than removed: the key is required on a DashboardCard, and the parameters "
@@ -305,17 +309,21 @@
       (is (= dashcard (first (:dashcards (redaction/redact-dashboard {:dashcards [dashcard]}))))))))
 
 (deftest unreadable-series-card-loses-its-settings-and-mappings-test
-  ;; The dashcard's `:series_settings` are keyed by series card name, and its `:parameter_mappings` to a series card
-  ;; carry that card's field ids, so reducing a hidden series card to its id leaves both behind unless they go too.
-  (testing "BOT-2561: an unreadable series card takes its settings entry and filter mappings with it"
+  ;; The frontend keys `:series_settings` by card name, alone or followed by a column name or breakout value, and a
+  ;; visualizer dashcard's `:visualization` names each card's columns. Mappings to a series card carry its field ids.
+  (testing "BOT-2561: an unreadable series card takes the series settings and its filter mappings with it"
     (let [card     (fn [id card-name] (t2/instance :model/Card {:id id :name card-name}))
           dashcard {:id                     1
                     :card_id                12
                     :card                   (card 12 "Open")
                     :series                 [(card 13 "Hidden Series") (card 14 "Open Series")]
-                    :visualization_settings {:series_settings     {:Open                     {:color "#111"}
-                                                                   (keyword "Hidden Series") {:color "#222"}
-                                                                   (keyword "Open Series")   {:color "#333"}}
+                    :visualization_settings {:series_settings     {:Open                            {:color "#111"}
+                                                                   (keyword "Hidden Series")        {:color "#222"}
+                                                                   (keyword "Hidden Series: Count") {:color "#333"}}
+                                             :visualization       {:columnValuesMapping
+                                                                   {:COLUMN_2 [{:sourceId     "card:13"
+                                                                                :originalName "salary"
+                                                                                :name         "COLUMN_2"}]}}
                                              :dashcard.background true}
                     :parameter_mappings     [{:parameter_id "p", :card_id 12, :target [:dimension [:field 1 nil]]}
                                              {:parameter_id "p", :card_id 13, :target [:dimension [:field 999 nil]]}
@@ -325,24 +333,11 @@
                        (first (:dashcards (redaction/redact-dashboard {:dashcards [dashcard]})))))]
       (is (=? {:card                   {:id 12, :name "Open"}
                :series                 [#(= {:id 13} %) {:id 14, :name "Open Series"}]
-               :visualization_settings {:series_settings     #(= {:Open                   {:color "#111"}
-                                                                  (keyword "Open Series") {:color "#333"}}
-                                                                 %)
-                                        :dashcard.background true}
+               :visualization_settings #(= {:dashcard.background true} %)
                :parameter_mappings     [{:card_id 12} {:card_id 14}]}
               (redact dashcard #{13})))
-      (testing "a key left with no entries goes, as it does for an unreadable main card"
-        (is (= {:dashcard.background true}
-               (:visualization_settings
-                (redact (assoc-in dashcard [:visualization_settings :series_settings]
-                                  {(keyword "Hidden Series") {:color "#222"}})
-                        #{13})))))
-      (testing "an entry whose name a readable card shares stays"
-        (is (= {:Open {:color "#111"}}
-               (get-in (redact (-> dashcard
-                                   (assoc :series [(card 13 "Open")])
-                                   (assoc-in [:visualization_settings :series_settings] {:Open {:color "#111"}}))
-                               #{13})
-                       [:visualization_settings :series_settings]))))
+      (testing "settings left with nothing else in them become nil, as for an unreadable main card"
+        (is (nil? (:visualization_settings
+                   (redact (update dashcard :visualization_settings dissoc :dashcard.background) #{13})))))
       (testing "readable series: nothing is stripped"
         (is (= dashcard (redact dashcard #{})))))))

@@ -12,25 +12,39 @@
    These read `metabase.api.common/*current-user*` (the dashboard side through the model read
    checks) and so must be called as the requesting user; the projections they feed are pure."
   (:require
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.mcp.db :as mcp.db]
    [metabase.models.interface :as mi]
    [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
    [metabase.pulse.core :as pulse]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------- dashboard ----------------------------------------------------
 
+(def ^:private series-describing-viz-keys
+  "`:visualization_settings` keys that describe every card on a dashcard, its series cards included.
+   The frontend keys `:series_settings` entries by a card's name, alone or followed by a column name or breakout value.
+   A visualizer dashcard's `:visualization` maps its columns to the cards and columns they come from."
+  [:series_settings :visualization])
+
 (def ^:private card-describing-viz-keys
   "`:visualization_settings` keys that describe the card rather than the grid slot: its author-written
    title, the warehouse columns it displays and their labels, and click targets naming other entities.
    Layout keys (sizing, container styling) describe the dashboard itself and survive redaction."
-  [:card.title :card.description :column_settings :series_settings :click_behavior])
+  (into [:card.title :card.description :column_settings :click_behavior] series-describing-viz-keys))
+
+(defn- strip-viz-keys
+  "The dashcard with the `ks` removed from its `:visualization_settings`, which become nil when nothing is left."
+  [dashcard ks]
+  ;; Left alone when none of `ks` is there: a dashcard read from the app db is a Toucan instance, where writing an
+  ;; absent `:visualization_settings` back as nil makes the projection report a key the dashcard never had.
+  (let [settings (:visualization_settings dashcard)]
+    (cond-> dashcard
+      (some #(contains? settings %) ks)
+      (assoc :visualization_settings (not-empty (apply dissoc settings ks))))))
 
 (defn- readable-card?
   "Whether `card`, a dashcard's `:card` or an entry in its `:series`, is a card row the current user can read."
@@ -42,27 +56,20 @@
 
 (defn- redact-hidden-series
   "The dashcard with the series cards the current user cannot read reduced to their ids.
-   Their `:series_settings` entries, keyed by card name, and the `:parameter_mappings` to them, which carry their
-   field ids, are removed too.
-   An entry whose name a readable card on the dashcard shares stays.
-   Takes a dashcard whose `:card`, if it still has one, is readable."
+   When there are any, the `:parameter_mappings` to them go, since they carry those cards' field ids, and so do the
+   [[series-describing-viz-keys]]."
   [dashcard]
-  (let [{shown true, hidden false} (group-by readable-card? (:series dashcard))
-        hidden-ids                 (into #{} (keep :id) hidden)
-        ;; A shared name is not withheld, and its entry styles the readable card too.
-        shown-names                (into #{} (keep :name) (cons (:card dashcard) shown))
-        hidden-name?               (into #{} (comp (keep :name) (remove shown-names)) hidden)
-        hidden-key?                (comp hidden-name? u/qualified-name)
-        settings                   (:series_settings (:visualization_settings dashcard))]
-    (cond-> (update dashcard :series (partial mapv #(cond-> % (hidden-ids (:id %)) (select-keys [:id]))))
-      (some (comp hidden-ids :card_id) (:parameter_mappings dashcard))
-      (update :parameter_mappings (partial into [] (remove (comp hidden-ids :card_id))))
-
-      (some hidden-key? (keys settings))
-      (update :visualization_settings
-              #(if-let [kept (not-empty (m/remove-keys hidden-key? settings))]
-                 (assoc % :series_settings kept)
-                 (dissoc % :series_settings))))))
+  (let [hidden (into #{} (remove readable-card?) (:series dashcard))]
+    (if (empty? hidden)
+      dashcard
+      ;; The settings go whole rather than entry by entry: what names a hidden card follows the frontend's key and
+      ;; column formats, and a readable card losing its series styling in a read is the cheaper mistake.
+      (let [hidden-ids (into #{} (keep :id) hidden)]
+        (-> dashcard
+            (update :series (partial mapv #(cond-> % (hidden %) (select-keys [:id]))))
+            (cond-> (some (comp hidden-ids :card_id) (:parameter_mappings dashcard))
+              (update :parameter_mappings (partial into [] (remove (comp hidden-ids :card_id)))))
+            (strip-viz-keys series-describing-viz-keys))))))
 
 (defn- redact-dashcard
   [dashcard]
@@ -81,14 +88,8 @@
       ;; and `dashboard->resolved-params` — which the parameters summary runs over the same row — fails
       ;; its schema when the key is absent.
       (-> (dissoc :card)
-          (assoc :parameter_mappings []))
-
-      ;; Guarded on there being something to strip rather than on the key's presence: a dashcard read
-      ;; from the app db is a Toucan instance, where `update` on an absent key still writes it back as
-      ;; nil and the projection then reports a key the dashcard never had.
-      (and hidden-card? (seq (:visualization_settings dashcard)))
-      (assoc :visualization_settings
-             (not-empty (apply dissoc (:visualization_settings dashcard) card-describing-viz-keys)))
+          (assoc :parameter_mappings [])
+          (strip-viz-keys card-describing-viz-keys))
 
       (seq (:series dashcard))
       redact-hidden-series)))
