@@ -132,7 +132,7 @@ function AgentApiSettingsSection({ disabled }: { disabled: boolean }) {
   return (
     <ToggleSettingsSection
       checked={checked}
-      description={jt`The Agent API is deprecated and will be removed in Metabase 68. Use the MCP server for your agents instead. Until then the Agent API is opt-in: turn it on to keep using it. ${(
+      description={jt`The Agent API is deprecated and will be removed in Metabase 67. Use the MCP server for your agents instead. Until then the Agent API is opt-in: turn it on to keep using it. ${(
         <ExternalLink key="docs" href={agentApiDocsUrl}>
           {t`Learn more`}
         </ExternalLink>

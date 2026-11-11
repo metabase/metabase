@@ -250,7 +250,7 @@ describe("AISettingsPage", () => {
           checked: deprecatedAgentApiEnabled,
         }),
       ).toBeInTheDocument();
-      expect(screen.getByText(/removed in Metabase 68/)).toBeInTheDocument();
+      expect(screen.getByText(/removed in Metabase 67/)).toBeInTheDocument();
     },
   );
 
