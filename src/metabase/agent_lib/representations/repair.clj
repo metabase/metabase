@@ -1317,10 +1317,16 @@
 (defn- repair-day-and-default-comparison [node]
   (if (hoistable-comparison-node? node)
     (let [literals (mapv redundant-bucket-literal (subvec node 3))]
-      (if (every? whole-day-bound? (subvec node 3))
+      (cond
+        (every? nil? literals)
+        node
+
+        (every? whole-day-bound? (subvec node 3))
         (if (contains? #{"!=" "not-in"} (first node))
           node
           (expand-day-comparison (into (subvec node 0 3) literals)))
+
+        :else
         (unwrap-whole-day-start
          (into (subvec node 0 3)
                (map (fn [operand literal]
@@ -1329,8 +1335,8 @@
     node))
 
 (def ^:private day-comparison-skipped-keys
-  "Keys whose clauses [[repair-day-and-default-comparisons*]] leaves to other passes: the stage keys a bucket is
-  hoisted in, and join conditions."
+  "Keys that [[repair-day-and-default-comparisons*]] does not descend into, in a map at any depth.
+  Pass 2.95 hoists buckets under the stage keys, and join conditions refuse temporal literals."
   (conj (set bucket-hoist-stage-keys) "conditions"))
 
 (defn- repair-day-and-default-comparisons*
@@ -2453,7 +2459,7 @@
 (defn- resolve-implicit-joins-in-stage
   "Apply implicit-join repair to a single stage map (string-keyed). Returns an updated stage.
 
-  Skips descent into the `\"joins\"` subtree by plucking it out before the postwalk and
+  Skips descent into the `\"joins\"` subtree by plucking it out before the rewrite and
   restoring it afterwards - field clauses inside explicit joins are expected to carry a
   `join-alias` already."
   [stage mp import-store export-store]

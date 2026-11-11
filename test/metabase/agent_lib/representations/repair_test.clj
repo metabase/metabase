@@ -1186,6 +1186,12 @@
              (get (repair-in-stage {"aggregation" [["count-where" {} input]]}) "aggregation"))
           (pr-str input)))))
 
+(deftest ^:parallel whole-day-repair-returns-an-unchanged-query-test
+  (testing "a query with nothing to repair comes back as the same object"
+    (let [query {"stages" [{"aggregation" [["count-where" {} [">=" {} created-at "2017-01-31"]]]
+                            "filters"     [["=" {} created-at "2017-01-31"]]}]}]
+      (is (identical? query (#'repair/repair-day-and-default-comparisons* query))))))
+
 (deftest ^:parallel between-a-whole-day-and-now-or-a-timestamp-test
   (doseq [unit ["day" "default"]
           [end end'] [[["now" {}] ["now" {}]]
