@@ -76,7 +76,14 @@ interface TableStructureProps {
  * PROTOTYPE: mocked. A table's role and grain, plus the history or custom
  * property binding its role needs. Inferred in the browser and overridable.
  */
-export function TableStructure({ table, readOnly }: TableStructureProps) {
+export function TableStructure({
+  table,
+  readOnly,
+  hasTitle = true,
+}: TableStructureProps & {
+  /** Off drops the "Structure" heading, for a page that names the section */
+  hasTitle?: boolean;
+}) {
   const {
     getTableStructure,
     setTableRole,
@@ -107,102 +114,103 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
     });
   };
 
+  const structureTable = (
+    <DetailsTable>
+      <DetailsRow
+        label={t`Role`}
+        fillValue
+        value={
+          <RoleValue
+            structure={structure}
+            disabled={readOnly}
+            onChange={(role) => setTableRole(table, role)}
+          />
+        }
+      />
+      <DetailsRow
+        label={t`Each row is`}
+        fillValue
+        value={
+          <DetailsEditableText
+            initialValue={structure.grainDescription}
+            placeholder={
+              role ? getTableRoleRowDescription(role) : t`Describe one row`
+            }
+            isMultiline
+            isOptional
+            isDisabled={readOnly}
+            onChange={(value) => setGrainDescription(table, value.trim())}
+            data-testid="table-grain-description-input"
+          />
+        }
+      />
+      <DetailsRow
+        label={t`Grain`}
+        value={
+          <GrainFields table={table} grainFields={structure.grainFields} />
+        }
+      />
+      <DetailsRow
+        label={t`Row identity`}
+        value={getRowIdentityLabel(structure.rowIdentity)}
+      />
+      <DetailsRow
+        label={t`Main date`}
+        fillValue
+        value={
+          <MainDateValue
+            fields={fields}
+            structure={structure}
+            disabled={readOnly}
+            onChange={(fieldId) => setMainDate(table, fieldId)}
+          />
+        }
+      />
+      <DetailsRow
+        label={t`Visibility`}
+        value={
+          hiddenReason ? (
+            <Text>{t`Hidden: ${hiddenReason}`}</Text>
+          ) : (
+            <Text>{t`Shown to people who can see its data layer`}</Text>
+          )
+        }
+      />
+      {role && isRoleA(role, "role/PeriodicSnapshotFact") && (
+        <DetailsRow
+          label={t`Period`}
+          fillValue
+          value={
+            <Select
+              aria-label={t`Period`}
+              classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+              data={getPeriodGranularityOptions()}
+              value={structure.periodGranularity}
+              allowDeselect={false}
+              disabled={readOnly}
+              onChange={(value) => {
+                const option = getPeriodGranularityOptions().find(
+                  (option) => option.value === value,
+                );
+                if (option) {
+                  setPeriodGranularity(table, option.value);
+                }
+              }}
+            />
+          }
+        />
+      )}
+    </DetailsTable>
+  );
+
   return (
     <>
       <Box ref={structureSectionRef} className={S.structureSection}>
-        <SidebarSection title={t`Structure`}>
-          <DetailsTable>
-            <DetailsRow
-              label={t`Role`}
-              fillValue
-              value={
-                <RoleValue
-                  structure={structure}
-                  disabled={readOnly}
-                  onChange={(role) => setTableRole(table, role)}
-                />
-              }
-            />
-            <DetailsRow
-              label={t`Each row is`}
-              fillValue
-              value={
-                <DetailsEditableText
-                  initialValue={structure.grainDescription}
-                  placeholder={
-                    role
-                      ? getTableRoleRowDescription(role)
-                      : t`Describe one row`
-                  }
-                  isMultiline
-                  isOptional
-                  isDisabled={readOnly}
-                  onChange={(value) => setGrainDescription(table, value.trim())}
-                  data-testid="table-grain-description-input"
-                />
-              }
-            />
-            <DetailsRow
-              label={t`Grain`}
-              value={
-                <GrainFields
-                  table={table}
-                  grainFields={structure.grainFields}
-                />
-              }
-            />
-            <DetailsRow
-              label={t`Row identity`}
-              value={getRowIdentityLabel(structure.rowIdentity)}
-            />
-            <DetailsRow
-              label={t`Main date`}
-              fillValue
-              value={
-                <MainDateValue
-                  fields={fields}
-                  structure={structure}
-                  disabled={readOnly}
-                  onChange={(fieldId) => setMainDate(table, fieldId)}
-                />
-              }
-            />
-            <DetailsRow
-              label={t`Visibility`}
-              value={
-                hiddenReason ? (
-                  <Text>{t`Hidden: ${hiddenReason}`}</Text>
-                ) : (
-                  <Text>{t`Shown to people who can see its data layer`}</Text>
-                )
-              }
-            />
-            {role && isRoleA(role, "role/PeriodicSnapshotFact") && (
-              <DetailsRow
-                label={t`Period`}
-                fillValue
-                value={
-                  <Select
-                    aria-label={t`Period`}
-                    classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-                    data={getPeriodGranularityOptions()}
-                    value={structure.periodGranularity}
-                    allowDeselect={false}
-                    disabled={readOnly}
-                    onChange={(value) => {
-                      const option = getPeriodGranularityOptions().find(
-                        (option) => option.value === value,
-                      );
-                      if (option) {
-                        setPeriodGranularity(table, option.value);
-                      }
-                    }}
-                  />
-                }
-              />
-            )}
-          </DetailsTable>
-        </SidebarSection>
+        {hasTitle ? (
+          <SidebarSection title={t`Structure`}>{structureTable}</SidebarSection>
+        ) : (
+          structureTable
+        )}
       </Box>
 
       <PreviousValuesSection table={table} disabled={readOnly} />

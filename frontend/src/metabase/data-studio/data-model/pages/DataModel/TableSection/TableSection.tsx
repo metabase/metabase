@@ -18,7 +18,6 @@ import { SegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
 import { TableFieldsTab } from "./TableFieldsTab";
-import { TableFiltering } from "./TableFiltering";
 import { TableMetadata, TableStats } from "./TableMetadata";
 import { TableProcess, useHasProcess } from "./TableProcess";
 import { TablePropertyList } from "./TablePropertyList";
@@ -119,8 +118,6 @@ const TableSectionBase = ({
               <TableAttributesEditSingle table={table} onUpdate={onUpdate} />
 
               <TableStructure table={table} readOnly={readOnly} />
-
-              <TableFiltering table={table} readOnly={readOnly} />
 
               {table.is_published && <TableCollection table={table} />}
 

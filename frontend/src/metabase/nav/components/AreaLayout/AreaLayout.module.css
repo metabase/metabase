@@ -1,10 +1,52 @@
 .nav {
   border-right: 1px solid var(--mb-color-border-neutral);
   overflow: auto;
+
+  /* Items read it, including ones plugins render, so all icons agree */
+  &[data-brand-icons] {
+    --area-nav-icon-color: var(--mb-color-core-brand);
+  }
 }
 
 .opened {
   width: 300px;
+}
+
+.resizable {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  height: 100%;
+}
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  width: var(--mantine-spacing-sm);
+  cursor: col-resize;
+
+  /* Sits over the nav's right border; colored while hovered or dragged */
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 1px;
+    transition: background-color 0.15s ease;
+  }
+
+  &:hover::after,
+  &:active::after {
+    background-color: var(--mb-color-border-neutral-strong);
+  }
+}
+
+.noSelect {
+  user-select: none;
 }
 
 .logo {
@@ -17,7 +59,7 @@
 }
 
 .icon {
-  color: var(--mb-color-text-secondary);
+  color: var(--area-nav-icon-color, var(--mb-color-text-secondary));
 }
 
 .tab {

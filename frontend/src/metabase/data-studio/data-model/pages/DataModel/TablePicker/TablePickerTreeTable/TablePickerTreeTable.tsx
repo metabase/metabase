@@ -107,7 +107,7 @@ export function TablePickerTreeTable({
     typeof useTreeTableInstance<TablePickerTreeNode>
   > | null>(null);
 
-  const { getTableDataLayer } = useDataLayers();
+  const { getTableDataLayer, getSchemaDataLayer } = useDataLayers();
 
   const flatTreeData = useMemo(() => transformToTreeTableFormat(tree), [tree]);
   const customPropertyParents = useCustomPropertyParents(
@@ -261,22 +261,20 @@ export function TablePickerTreeTable({
         header: t`Data layer`,
         width: 150,
         cell: ({ row }) => {
-          const table = row.original.table;
-          if (row.original.type !== "table" || !table) {
-            return null;
-          }
-          // PROTOTYPE: mocked. The table's layer, else its schema's, as the
-          // drawer's Data layer row shows it
-          const { layer } = getTableDataLayer(
-            table.db_id,
-            table.schema,
-            table.id,
-          );
+          // PROTOTYPE: mocked. A schema's layer; a table's own layer, else
+          // its schema's, as the drawer's Data layer row shows it
+          const { type, table, databaseId, schemaName } = row.original;
+          const layer =
+            type === "schema" && databaseId != null && schemaName != null
+              ? getSchemaDataLayer(databaseId, schemaName)
+              : type === "table" && table
+                ? getTableDataLayer(table.db_id, table.schema, table.id).layer
+                : undefined;
           if (layer == null) {
             return null;
           }
           return (
-            <Group gap="sm" wrap="nowrap" data-testid="table-data-layer">
+            <Group gap="sm" wrap="nowrap" data-testid={`${type}-data-layer`}>
               <Icon
                 name={DATA_LAYER_VISIBILITY_ICONS[layer.visibility]}
                 c="text-secondary"
@@ -334,6 +332,7 @@ export function TablePickerTreeTable({
     isLibraryEnabled,
     formatNumber,
     getTableDataLayer,
+    getSchemaDataLayer,
     showRows,
     showPublished,
   ]);

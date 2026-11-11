@@ -1,24 +1,3 @@
-.gridLabelInput {
-  .input {
-    width: 15rem;
-    border-radius: 1.25rem;
-
-    &.unset {
-      color: var(--mb-color-text-secondary);
-    }
-  }
-
-  .sectionLabel {
-    &[data-position="right"] {
-      color: var(--mb-color-text-primary);
-    }
-
-    &[data-position="left"] {
-      color: var(--mb-color-core-brand);
-    }
-  }
-}
-
 .textStyleWrapper {
   flex-grow: 1;
 }

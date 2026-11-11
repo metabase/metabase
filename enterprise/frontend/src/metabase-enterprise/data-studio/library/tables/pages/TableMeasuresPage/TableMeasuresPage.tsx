@@ -6,6 +6,7 @@ import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { TableHeader } from "../../components/TableHeader";
+import { TableListBody } from "../../components/TableListBody";
 
 import { TableMeasures } from "./TableMeasures";
 
@@ -27,9 +28,11 @@ export function TableMeasuresPage() {
   }
 
   return (
-    <PageContainer data-testid="table-measures-page">
-      <TableHeader table={table} />
-      <TableMeasures table={table} />
+    <PageContainer data-testid="table-measures-page" gap="lg" px={0} pb={0}>
+      <TableHeader table={table} px="3.5rem" />
+      <TableListBody>
+        <TableMeasures table={table} />
+      </TableListBody>
     </PageContainer>
   );
 }

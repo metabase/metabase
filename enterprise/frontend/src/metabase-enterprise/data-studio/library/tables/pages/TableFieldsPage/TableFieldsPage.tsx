@@ -14,6 +14,7 @@ import {
 import { TableFieldsTab } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableFieldsTab";
 import {
   FieldEmptyState,
+  MetadataCardVariantProvider,
   PreviewSection,
   type PreviewType,
   SyncOptionsModal,
@@ -57,112 +58,115 @@ export function TableFieldsPage() {
   return (
     <PageContainer data-testid="table-fields-page" gap="lg" px={0} pb={0}>
       <TableHeader table={table} px="3.5rem" />
-      <Flex
-        className={S.body}
-        flex={1}
-        bg="background_page-primary"
-        style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
-      >
-        <Stack
-          className={S.column}
-          flex="8 1 0"
-          miw={320}
-          maw={640}
-          mih={0}
-          pt="xl"
-          pb="xl"
-          pl="3.5rem"
-          pr="xl"
+      {/* Flat, bordered metadata cards, as in Connected data's drawer */}
+      <MetadataCardVariantProvider value="outlined">
+        <Flex
+          className={S.body}
+          flex={1}
+          bg="background_page-primary"
+          style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
         >
-          <TableFieldsTab
-            /**
-             * Make sure internal component state is reset when changing tables.
-             * This is to avoid state mix-up with optimistic updates.
-             */
-            key={tableId}
-            table={table}
-            activeFieldId={fieldId}
-            getFieldHref={(fieldId) =>
-              Urls.dataStudioTableFields(tableId, fieldId)
-            }
-            actions={
-              !table.db?.is_attached_dwh && (
-                <Button
-                  leftSection={<Icon name="gear_settings_filled" />}
-                  onClick={openSyncModal}
-                >{t`Sync options`}</Button>
-              )
-            }
-          />
-        </Stack>
-        {field != null && (
           <Stack
             className={S.column}
-            flex="9 1 0"
+            flex="8 1 0"
             miw={320}
-            maw={680}
+            maw={640}
             mih={0}
-            px="xl"
-            gap="xl"
-            pos="relative"
+            pt="xl"
+            pb="xl"
+            pl="3.5rem"
+            pr="xl"
           >
-            <Box
-              pt="xl"
-              pos="sticky"
-              top={0}
-              className={S.header}
-              bg="background_page-primary"
-            >
-              <DetailPanelHeader
-                icon={getColumnIcon(Lib.legacyColumnTypeInfo(field))}
-                label={t`Field`}
-                title={field.display_name}
-                isLoading={false}
-                actions={
-                  <FieldActionsMenu
-                    fieldId={getRawTableFieldId(field)}
-                    onPreviewClick={togglePreview}
-                  />
-                }
-                onClose={() => {
-                  closePreview();
-                  navigate(Urls.dataStudioTableFields(table.id));
-                }}
-                data-testid="field-section-header"
-              />
-            </Box>
-            <FieldDetails
+            <TableFieldsTab
               /**
-               * Make sure internal component state is reset when changing fields.
+               * Make sure internal component state is reset when changing tables.
                * This is to avoid state mix-up with optimistic updates.
                */
-              key={fieldId}
-              field={field}
+              key={tableId}
               table={table}
+              activeFieldId={fieldId}
               getFieldHref={(fieldId) =>
                 Urls.dataStudioTableFields(tableId, fieldId)
               }
+              actions={
+                !table.db?.is_attached_dwh && (
+                  <Button
+                    leftSection={<Icon name="gear_settings_filled" />}
+                    onClick={openSyncModal}
+                  >{t`Sync options`}</Button>
+                )
+              }
             />
           </Stack>
-        )}
-        {isPreviewOpen && field != null && (
-          <Box flex="10 1 0" miw={504} maw={734} p="xl">
-            <PreviewSection
-              className={S.preview}
-              field={field}
-              table={table}
-              previewType={previewType}
-              onPreviewTypeChange={setPreviewType}
-              onClose={closePreview}
-            />
-          </Box>
-        )}
-        {field == null && (
-          <Flex align="center" flex="1" justify="center" miw={240}>
-            <FieldEmptyState hasTable />
-          </Flex>
-        )}
-      </Flex>
+          {field != null && (
+            <Stack
+              className={S.column}
+              flex="9 1 0"
+              miw={320}
+              maw={680}
+              mih={0}
+              px="xl"
+              gap="xl"
+              pos="relative"
+            >
+              <Box
+                pt="xl"
+                pos="sticky"
+                top={0}
+                className={S.header}
+                bg="background_page-primary"
+              >
+                <DetailPanelHeader
+                  icon={getColumnIcon(Lib.legacyColumnTypeInfo(field))}
+                  label={t`Field`}
+                  title={field.display_name}
+                  isLoading={false}
+                  actions={
+                    <FieldActionsMenu
+                      fieldId={getRawTableFieldId(field)}
+                      onPreviewClick={togglePreview}
+                    />
+                  }
+                  onClose={() => {
+                    closePreview();
+                    navigate(Urls.dataStudioTableFields(table.id));
+                  }}
+                  data-testid="field-section-header"
+                />
+              </Box>
+              <FieldDetails
+                /**
+                 * Make sure internal component state is reset when changing fields.
+                 * This is to avoid state mix-up with optimistic updates.
+                 */
+                key={fieldId}
+                field={field}
+                table={table}
+                getFieldHref={(fieldId) =>
+                  Urls.dataStudioTableFields(tableId, fieldId)
+                }
+              />
+            </Stack>
+          )}
+          {isPreviewOpen && field != null && (
+            <Box flex="10 1 0" miw={504} maw={734} p="xl">
+              <PreviewSection
+                className={S.preview}
+                field={field}
+                table={table}
+                previewType={previewType}
+                onPreviewTypeChange={setPreviewType}
+                onClose={closePreview}
+              />
+            </Box>
+          )}
+          {field == null && (
+            <Flex align="center" flex="1" justify="center" miw={240}>
+              <FieldEmptyState hasTable />
+            </Flex>
+          )}
+        </Flex>
+      </MetadataCardVariantProvider>
       <SyncOptionsModal
         isOpen={isSyncModalOpen}
         tableId={table.id}
