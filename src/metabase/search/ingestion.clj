@@ -1,5 +1,6 @@
 (ns metabase.search.ingestion
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
@@ -326,10 +327,21 @@
   [search-model ids]
   {:op :delete, :search-model search-model, :ids (set (map str ids))})
 
-(defn- tombstone?
-  "Whether a queued `message` is a [[tombstone]] rather than a re-index message."
+;; The survivor check queries the app DB, so it runs on the worker, one message at a time, instead of on the thread
+;; that committed the delete.
+;; Running it when the message comes off the queue also decides survival after every earlier message has applied.
+(defn reconcile
+  "A queue message that settles `search-model`'s documents with these `ids`, enumerated before a delete.
+  When it comes off the queue, documents that still resolve are re-derived and the rest are removed."
+  [search-model ids]
+  {:op :reconcile, :search-model search-model, :ids (set ids)})
+
+(defn- message-kind
+  "Whether a queued `message` is a re-index selector, a [[tombstone]] or a [[reconcile]]."
   [message]
-  (= :delete (:op message)))
+  (if (map? message)
+    (:op message)
+    :reindex))
 
 (defn- apply-tombstones!
   "Remove the documents a run of [[tombstone]] messages names from every active engine."
@@ -356,8 +368,47 @@
         to-delete        (remove indexed-pairs passed-documents)]
     (update! documents to-delete)))
 
+;; The worker ORs a run of re-index messages into one query, so one unchunked id list would put up to the enumeration
+;; ceiling's worth of bind parameters in a single statement.
+(def ^:private reindex-batch-size
+  "Ids re-derived per statement when settling a [[reconcile]] message."
+  100)
+
+;; Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
+;; rather than deleted still produces a document, and the relationship that changed is usually indexed on it.
+(defn- apply-reconcile!
+  "Settle one [[reconcile]] message: re-derive its documents that still resolve, and remove the rest.
+  Documents whose survival cannot be enumerated are left alone."
+  [{:keys [search-model ids]}]
+  ;; Nil means the survivors could not be enumerated, and reading it as "none survived" would purge live documents.
+  (when-some [alive (existing-doc-ids search-model ids)]
+    (doseq [chunk (partition-all reindex-batch-size alive)]
+      (ingest-updates! [[search-model (doc-id-selector search-model chunk)]]))
+    (when-let [gone (not-empty (set/difference ids alive))]
+      (apply-tombstones! [(tombstone search-model gone)]))))
+
+(defn- apply-run!
+  "Apply a run of queued messages of one kind."
+  [messages]
+  (case (message-kind (first messages))
+    :reindex   (ingest-updates! messages)
+    :delete    (apply-tombstones! messages)
+    :reconcile (run! apply-reconcile! messages)))
+
+(defn- message-runs
+  "Split queued `messages` into runs to apply in order.
+  Contiguous re-index messages and contiguous tombstones share a run, while each [[reconcile]] is a run of its own,
+  so one search-model's failure does not cost another's."
+  [messages]
+  (into []
+        (mapcat (fn [run]
+                  (if (= :reconcile (message-kind (first run)))
+                    (map vector run)
+                    [run])))
+        (partition-by message-kind messages)))
+
 (defn bulk-ingest!
-  "Process the given search model updates and tombstones, in queue order.
+  "Process the given search model updates, tombstones and reconciles, in queue order.
   A run of messages that fails is logged and the later runs still apply; the first failure is then rethrown."
   [updates]
   (tracing/with-span :search "search.ingestion.bulk-ingest" {:search/update-count (count updates)}
@@ -369,11 +420,11 @@
         ;; The first failure is rethrown once every run has had its turn, so the caller still sees it.
         (when-some [e (reduce (fn [first-error messages]
                                 (try
-                                  (if (tombstone? (first messages))
-                                    (apply-tombstones! messages)
-                                    (ingest-updates! messages))
+                                  (apply-run! messages)
                                   first-error
+                                  ;; The interrupt stops the batch, and its status stays set for the caller to see.
                                   (catch InterruptedException e
+                                    (.interrupt (Thread/currentThread))
                                     (throw e))
                                   ;; A failed `assert` or `:pre` check is the run's own failure, like an exception.
                                   ;; Any other Error is fatal, so it stops the batch at once.
@@ -383,7 +434,7 @@
                                           (or first-error e))
                                       (throw e)))))
                               nil
-                              (partition-by tombstone? updates))]
+                              (message-runs updates))]
           (throw e))))))
 
 (defn- track-queue-size! []
@@ -391,22 +442,6 @@
 
 (defn- index-worker-exists? []
   (queue/listener-exists? listener-name))
-
-(defn future-counted
-  "Run `f` in a future that counts as a pending update until it finishes, so [[await-pending-updates!]] and
-  [[wait-for-idle!]] wait for work that queues its messages only later, such as an after-commit handoff."
-  [f]
-  (swap! pending-updates inc)
-  (try
-    (future
-      (try
-        (f)
-        (finally
-          (swap! pending-updates dec))))
-    ;; A future that never starts would leave the count raised for good.
-    (catch Throwable e
-      (swap! pending-updates dec)
-      (throw e))))
 
 (mu/defn await-pending-updates! :- :boolean
   "Wait up to `timeout-ms` for queued and running index updates to finish. Return whether none remain."
