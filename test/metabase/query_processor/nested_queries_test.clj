@@ -1972,6 +1972,16 @@
                                          (lib/with-fields [b-col])
                                          (lib/order-by b-col :desc)))))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::filter-on-boolean-expression-reference]
+  [_driver _feature _database]
+  true)
+
+;;; SQL Server compiles a filter that compares a boolean expression reference with a value to a predicate compared
+;;; with a value, which is a syntax error.
+(defmethod driver/database-supports? [:sqlserver ::filter-on-boolean-expression-reference]
+  [_driver _feature _database]
+  false)
+
 ;;; A boolean custom column from a source card can be used in custom columns, filters and aggregations downstream.
 ;;; Selecting a bare boolean expression is unsupported on Oracle and Mongo: those are the `:expressions` drivers
 ;;; lacking `:expressions/date` (Oracle) and `:distinct-where` (Mongo).
@@ -1990,8 +2000,7 @@
           (let [query (lib/expression base "ne" (lib/!= b true))
                 ne    (m/find-first #(= "ne" (:name %)) (lib/visible-columns query))]
             (is (= 200 (n-rows query)))
-            ;; SQL Server compiles `ne = true` to a predicate compared with a value, which is a syntax error.
-            (when-not (= driver/*driver* :sqlserver)
+            (when (driver/database-supports? driver/*driver* ::filter-on-boolean-expression-reference (mt/db))
               (testing "used in a filter"
                 (is (= 149 (n-rows (lib/filter query (lib/= ne true)))))))))
         (testing "a filter on the boolean column"

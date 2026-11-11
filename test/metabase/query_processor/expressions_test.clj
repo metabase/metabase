@@ -705,11 +705,20 @@
           (is (= [[10 20]]
                  (mt/formatted-rows [int int] (qp/process-query query)))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::select-untyped-string-literal]
+  [_driver _feature _database]
+  true)
+
 ;; A date-like string literal gets the type `:type/*` (`#{:type/Text :type/Date}` resolved), so it compiles to an
 ;; untyped parameter. Redshift and Vertica cannot find the type of an untyped parameter in a SELECT list.
+(doseq [driver [:redshift :vertica]]
+  (defmethod driver/database-supports? [driver ::select-untyped-string-literal]
+    [_driver _feature _database]
+    false))
+
 (deftest ^:parallel date-like-string-literal-expressions-test
   (testing "date-like strings stay text literals"
-    (mt/test-drivers (remove #{:redshift :vertica} (mt/normal-drivers-with-feature :expressions :expression-literals))
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expression-literals ::select-untyped-string-literal)
       (mt/dataset test-data
         (let [mp     (mt/metadata-provider)
               query  (as-> (lib/query mp (lib.metadata/table mp (mt/id :products))) q
@@ -1348,10 +1357,29 @@
 (defn- column-named [query column-name]
   (m/find-first #(= column-name (:name %)) (lib/visible-columns query)))
 
+(defmethod driver/database-supports? [::driver/driver ::select-boolean-expression-reference]
+  [_driver _feature _database]
+  true)
+
 ;; SQL Server selects a custom column that refers to a boolean expression as a bare predicate, which is a syntax error.
+(defmethod driver/database-supports? [:sqlserver ::select-boolean-expression-reference]
+  [_driver _feature _database]
+  false)
+
+(defmethod driver/database-supports? [::driver/driver ::sort-boolean-breakout-descending-in-later-stage]
+  [_driver _feature _database]
+  true)
+
+;; SQLite ignores `ORDER BY b DESC` on a boolean breakout of a later stage: the SQL is correct, but the rows come back
+;; ascending.
+(defmethod driver/database-supports? [:sqlite ::sort-boolean-breakout-descending-in-later-stage]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:parallel boolean-expression-in-same-stage-custom-columns-test
   (testing "custom columns can reference a boolean expression and compare it with a boolean literal"
-    (mt/test-drivers (remove #{:sqlserver} (mt/normal-drivers-with-feature :expressions :expressions/date :distinct-where))
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :expressions/date :distinct-where
+                                                     ::select-boolean-expression-reference)
       (mt/dataset test-data
         (let [mp    (mt/metadata-provider)
               query (as-> (products-with-boolean-expression mp) q
@@ -1420,8 +1448,7 @@
                             (lib/breakout b))]
               (is (= [[false 1] [true 1]]
                      (mt/formatted-rows [mt/boolish->bool int] (qp/process-query query))))
-              ;; SQLite ignores `ORDER BY b DESC` here: the SQL is correct, but the rows come back ascending.
-              (when-not (= driver/*driver* :sqlite)
+              (when (driver/database-supports? driver/*driver* ::sort-boolean-breakout-descending-in-later-stage (mt/db))
                 (testing "sorted descending"
                   (is (= [[true 1] [false 1]]
                          (mt/formatted-rows [mt/boolish->bool int]
