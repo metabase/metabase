@@ -31,20 +31,18 @@ export function updateSummaryFormula({
   const owned = reconcileSummaryFormulas(query, generatedExpressions);
   let formulas = owned
     .map((formula) => {
-      if (
-        formula.stageIndex === index &&
-        formula.name === renamedExpression?.from
-      ) {
-        const renamed = makeSummaryFormula(
-          nextQuery,
-          index,
-          renamedExpression.to,
-        );
-        return (
-          renamed && { ...renamed, breakoutOptions: formula.breakoutOptions }
-        );
+      if (!renamedExpression || formula.stageIndex !== index) {
+        return formula;
       }
-      return formula;
+      // Lib also rewrites formulas that reference the renamed one
+      const name =
+        formula.name === renamedExpression.from
+          ? renamedExpression.to
+          : formula.name;
+      const refreshed = makeSummaryFormula(nextQuery, index, name);
+      return (
+        refreshed && { ...refreshed, breakoutOptions: formula.breakoutOptions }
+      );
     })
     .filter(isNotNull);
 

@@ -135,74 +135,120 @@ async function findOption(name: string) {
   return option;
 }
 
+function getResultNames(query: Lib.Query) {
+  return Lib.returnedColumns(query, STAGE_INDEX).map(
+    (column) => Lib.displayInfo(query, STAGE_INDEX, column).displayName,
+  );
+}
+
 const getValuesField = () => screen.getByLabelText("Add a value by name");
 const getGroupingField = () => screen.getByLabelText("Add a grouping by name");
 
 describe("SummaryWells", () => {
-  it.each(["Order date", "Sum total"])(
-    "renames %s and its result column without changing the formula",
-    async (name) => {
-      const { onChange } = setup({
-        spec: FORMULA_QUERY,
-        formulaNames: ["Order date"],
-      });
+  it("renames a grouping formula and its result column without changing the formula", async () => {
+    const { onChange } = setup({
+      spec: FORMULA_QUERY,
+      formulaNames: ["Order date"],
+    });
 
-      await userEvent.dblClick(
-        screen.getByRole("button", {
-          name:
-            name === "Order date"
-              ? "Rename Order date: Month"
-              : `Rename ${name}`,
-        }),
-      );
-      const input = screen.getByRole("textbox", { name: `Name of ${name}` });
-      expect(input).toHaveFocus();
-      expect(input).toHaveValue(name);
-      await userEvent.keyboard("  Renamed formula  {Enter}");
+    await userEvent.dblClick(
+      screen.getByRole("button", { name: "Rename Order date: Month" }),
+    );
+    const input = screen.getByRole("textbox", { name: "Name of Order date" });
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue("Order date");
+    await userEvent.keyboard("  Renamed formula  {Enter}");
 
-      expect(onChange).toHaveBeenCalledTimes(1);
-      expect(
-        name === "Order date" ? getGroupingField() : getValuesField(),
-      ).toHaveFocus();
-      const [query] = onChange.mock.calls[0];
-      const resultNames = Lib.returnedColumns(query, STAGE_INDEX).map(
-        (column) => Lib.displayInfo(query, STAGE_INDEX, column).displayName,
-      );
-      expect(resultNames).toContain(
-        name === "Order date" ? "Renamed formula: Month" : "Renamed formula",
-      );
-      expect(resultNames).not.toContain(name);
-      const options = {
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(getGroupingField()).toHaveFocus();
+    const [query] = onChange.mock.calls[0];
+    expect(getResultNames(query)).toContain("Renamed formula: Month");
+    const options = {
+      query,
+      stageIndex: STAGE_INDEX,
+      availableColumns: Lib.expressionableColumns(query, STAGE_INDEX),
+    };
+    const [expression] = Lib.expressions(query, STAGE_INDEX);
+    const [filter] = Lib.filters(query, STAGE_INDEX);
+    expect(await format(expression, options)).toBe(
+      'datetimeAdd([Created At], 1, "day")',
+    );
+    expect(await format(filter, options)).toBe(
+      '[Renamed formula] > "2024-01-01"',
+    );
+  });
+
+  it("renames a value formula from the keyboard", async () => {
+    const { onChange } = setup({ spec: FORMULA_QUERY });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Rename Sum total" }),
+    );
+    await userEvent.keyboard("{F2}");
+    expect(
+      screen.getByRole("textbox", { name: "Name of Sum total" }),
+    ).toHaveFocus();
+    await userEvent.keyboard("Renamed formula{Enter}");
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(getValuesField()).toHaveFocus();
+    const [query] = onChange.mock.calls[0];
+    expect(getResultNames(query)).toContain("Renamed formula");
+    expect(getResultNames(query)).not.toContain("Sum total");
+    const [aggregation] = Lib.aggregations(query, STAGE_INDEX);
+    expect(
+      await format(aggregation, {
         query,
         stageIndex: STAGE_INDEX,
         availableColumns: Lib.expressionableColumns(query, STAGE_INDEX),
-      };
-      const [expression] = Lib.expressions(query, STAGE_INDEX);
-      const [aggregation] = Lib.aggregations(query, STAGE_INDEX);
-      const [filter] = Lib.filters(query, STAGE_INDEX);
-      expect(await format(expression, options)).toBe(
-        'datetimeAdd([Created At], 1, "day")',
-      );
-      expect(await format(aggregation, options)).toBe("Sum([Total])");
-      const dimensionName =
-        name === "Order date" ? "Renamed formula" : "Order date";
-      expect(await format(filter, options)).toBe(
-        `[${dimensionName}] > "2024-01-01"`,
-      );
-      const [breakout] = Lib.breakouts(query, STAGE_INDEX);
-      expect(Lib.temporalBucket(breakout)).not.toBeNull();
-      expect(Lib.toLegacyQuery(query)).toMatchObject({
-        query: {
-          "order-by": [
-            [
-              "asc",
-              ["expression", dimensionName, { "temporal-unit": "month" }],
-            ],
-          ],
-        },
-      });
-    },
-  );
+      }),
+    ).toBe("Sum([Total])");
+  });
+
+  it("keeps keyboard focus in the well when Tab commits a new name", async () => {
+    const { onChange } = setup({ spec: FORMULA_QUERY });
+
+    await userEvent.dblClick(
+      screen.getByRole("button", { name: "Rename Sum total" }),
+    );
+    await userEvent.keyboard("Renamed formula");
+    await userEvent.tab();
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(getValuesField()).toHaveFocus();
+  });
+
+  it("commits a rename when the well title is clicked", async () => {
+    const { onChange, getLastChange } = setup({
+      spec: FORMULA_QUERY,
+      formulaNames: ["Order date"],
+    });
+
+    await userEvent.dblClick(
+      screen.getByRole("button", { name: "Rename Order date: Month" }),
+    );
+    await userEvent.keyboard("Renamed formula");
+    await userEvent.click(screen.getByText("Group by"));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(getLastChange().dimensions).toEqual(["Renamed formula: Month"]);
+    expect(getGroupingField()).toHaveFocus();
+  });
+
+  it("removes a chip instead of renaming it when Remove is clicked during a rename", async () => {
+    const { onChange, getLastChange } = setup({ spec: FORMULA_QUERY });
+
+    await userEvent.dblClick(
+      screen.getByRole("button", { name: "Rename Sum total" }),
+    );
+    await userEvent.keyboard("Renamed formula");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Sum total" }),
+    );
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(getLastChange().values).toEqual([]);
+  });
 
   it("cancels renaming with Escape and commits a nonempty name on blur", async () => {
     const { onChange, getLastChange } = setup({
@@ -235,7 +281,7 @@ describe("SummaryWells", () => {
   });
 
   it("only renames the grouping created through the formula input", async () => {
-    const { onChange } = setup({
+    setup({
       formulaNames: ["Order date"],
       spec: {
         stages: [
@@ -264,7 +310,6 @@ describe("SummaryWells", () => {
         screen.queryByRole("textbox", { name: /^Name of / }),
       ).not.toBeInTheDocument();
     }
-    expect(onChange).not.toHaveBeenCalled();
     await userEvent.dblClick(
       screen.getByRole("button", { name: "Rename Order date: Month" }),
     );

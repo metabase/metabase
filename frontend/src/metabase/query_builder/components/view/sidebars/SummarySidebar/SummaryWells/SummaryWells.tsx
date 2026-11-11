@@ -104,6 +104,7 @@ export function SummaryWells({
         wellId="values"
         title={t`Summarize by`}
         dropState={dropStates?.values ?? null}
+        fieldRef={valueInputRef}
       >
         <SummaryWellInput
           wellId="values"
@@ -140,6 +141,7 @@ export function SummaryWells({
         wellId="columns"
         title={t`Group by`}
         dropState={dropStates?.columns ?? null}
+        fieldRef={columnInputRef}
       >
         <SummaryWellInput
           wellId="columns"

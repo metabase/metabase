@@ -1,5 +1,5 @@
 import { useDroppable } from "@dnd-kit/core";
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent, ReactNode, RefObject } from "react";
 
 import { Card, Flex, Text } from "metabase/ui";
 
@@ -16,6 +16,7 @@ type SummaryWellProps = {
   wellId: SummaryWellId;
   title: string;
   dropState: WellDropState | null;
+  fieldRef: RefObject<HTMLInputElement | null>;
   children: ReactNode;
 };
 
@@ -23,6 +24,7 @@ export function SummaryWell({
   wellId,
   title,
   dropState,
+  fieldRef,
   children,
 }: SummaryWellProps) {
   const { setNodeRef, isOver } = useDroppable({
@@ -39,7 +41,7 @@ export function SummaryWell({
     ) {
       return;
     }
-    const field = event.currentTarget.querySelector("input");
+    const field = fieldRef.current;
     if (field) {
       // keep the mousedown from blurring the field we're about to focus
       event.preventDefault();

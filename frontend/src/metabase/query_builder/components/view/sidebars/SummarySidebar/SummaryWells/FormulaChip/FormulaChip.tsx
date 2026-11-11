@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Icon, UnstyledButton } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 
 import S from "../../SummarySidebar.module.css";
 import type { SummaryDragItem } from "../../types";
@@ -29,7 +30,7 @@ export function FormulaChip({
   const [draftName, setDraftName] = useState<string | null>(null);
   const isDone = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const isRenaming = draftName !== null;
+  const isRenaming = isNotNull(draftName);
 
   useEffect(() => {
     if (isRenaming) {
@@ -42,15 +43,17 @@ export function FormulaChip({
     setDraftName(name);
   };
 
+  const newName = draftName?.trim();
+  const hasNewName = Boolean(newName) && newName !== name;
+
   const finishRenaming = (commit: boolean) => {
     if (isDone.current) {
       return;
     }
     isDone.current = true;
     setDraftName(null);
-    const trimmedName = draftName?.trim();
-    if (commit && trimmedName && trimmedName !== name) {
-      onRename(trimmedName);
+    if (commit && newName && hasNewName) {
+      onRename(newName);
     }
   };
 
@@ -64,7 +67,7 @@ export function FormulaChip({
         onRemove();
       }}
     >
-      {draftName !== null ? (
+      {isRenaming ? (
         <span className={S.chipButton}>
           <Icon name="function" size={12} />
           <input
@@ -81,9 +84,16 @@ export function FormulaChip({
               if (event.nativeEvent.isComposing) {
                 return;
               }
-              if (event.key === "Enter" || event.key === "Escape") {
+              // a new name remounts the chip, so Tab would land on a removed button
+              const isTabRename =
+                event.key === "Tab" && !event.shiftKey && hasNewName;
+              if (
+                event.key === "Enter" ||
+                event.key === "Escape" ||
+                isTabRename
+              ) {
                 event.preventDefault();
-                finishRenaming(event.key === "Enter");
+                finishRenaming(event.key !== "Escape");
                 onFocusInput();
               }
             }}

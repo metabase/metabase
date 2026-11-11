@@ -36,10 +36,7 @@ export function DimensionChip({
       expression,
     ).displayName;
     const handleRename = (name: string) => {
-      const uniqueName =
-        name === currentName
-          ? name
-          : getUniqueExpressionName(query, stageIndex, name);
+      const uniqueName = getUniqueExpressionName(query, stageIndex, name);
       const nextQuery = Lib.replaceClause(
         query,
         stageIndex,
