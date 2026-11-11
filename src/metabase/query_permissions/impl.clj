@@ -397,7 +397,6 @@
   "Checks that the current user has the permissions for tables specified in `table-id->perm`. Returns true if access
   is allowed, otherwise false."
   [perm-type table-id->required-perm db-id]
-  (perms/prime-table-perms-cache {:db-ids #{db-id} :table-ids (set (keys table-id->required-perm))})
   (every? (fn [[table-id required-perm]]
             (perms/user-has-permission-for-table?
              api/*current-user-id*
@@ -428,7 +427,6 @@
         table-ids (into (set (keep (some-fn :table-id :table_id) result-metadata))
                         (when (seq field-ids)
                           (query-permissions.db/field-table-ids field-ids)))]
-    (perms/prime-table-perms-cache {:db-ids #{database-id} :table-ids table-ids})
     (run! #(when-not (perms/user-has-permission-for-table?
                       api/*current-user-id*
                       :perms/view-data
@@ -576,7 +574,6 @@
     (let [table-ids             (query-permissions.db/field-table-ids (set field-ids))
           table-id->database-id (when (seq table-ids)
                                   (query-permissions.db/table-id->database-id table-ids))]
-      (perms/prime-table-perms-cache {:table-ids table-ids})
       (doseq [table-id table-ids
               :let     [database-id (table-id->database-id table-id)]]
         (when-not (can-query-table? database-id table-id)

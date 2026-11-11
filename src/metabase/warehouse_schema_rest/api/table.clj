@@ -115,9 +115,6 @@
             :include-transform-targets? include-transform-targets})
           tables
       (apply t2/hydrate tables hydrations)
-      (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                          :table-ids (into #{} (map :id) tables)})
-          tables)
       (if include-editable-data-model
         (schema.table/filter-tables-by-data-model-perms tables)
         (filter mi/can-read? tables))

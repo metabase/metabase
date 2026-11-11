@@ -46,7 +46,6 @@
   (->> (memoized k table-ids
                  (fn [ids]
                    (let [tables (into [] (keep (table-rows ids)) ids)]
-                     (perms/prime-table-perms-cache {:table-ids (into #{} (map :id) tables)})
                      (into {} (comp (filter pred) (map (juxt :id (constantly true)))) tables)))
                  false)
        (into #{} (keep (fn [[id permitted?]] (when permitted? id))))))

@@ -110,7 +110,6 @@
                                         (when (routes-user? attribute-name)
                                           db-id)))
                                 (database-routing.db/all-router-user-attributes))]
-       (perms/prime-database-perms-cache {:db-ids routing-db-ids})
        (some (fn [db-id]
                (not= :blocked
                      (perms/most-permissive-database-permission-for-user

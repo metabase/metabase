@@ -28,7 +28,6 @@
   (or
    (not= :blocked (perms/full-database-permission-for-user api/*current-user-id* :perms/view-data database-id))
    (let [{:keys [table-ids]} (query-perms/query->source-ids query)]
-     (perms/prime-table-perms-cache {:db-ids #{database-id} :table-ids table-ids})
      (= #{:unrestricted}
         (into #{}
               (map (partial perms/table-permission-for-user api/*current-user-id* :perms/view-data database-id))

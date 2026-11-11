@@ -1,6 +1,5 @@
 (ns ^:mb/app-db-migrations-test metabase.permissions.models.data-permissions-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
@@ -40,142 +39,50 @@
       :legacy-no-self-service [1 1]
       :blocked                [2 2])))
 
-(deftest ^:parallel combine-rank-pairs-test
-  (is (= [0 2] (#'data-perms/combine-rank-pairs [1 2] [0 1])))
-  (is (= [1 1] (#'data-perms/combine-rank-pairs nil [1 1])))
-  (is (nil? (#'data-perms/combine-rank-pairs nil nil))))
-
-(deftest db-permission-cache-loads-per-database-test
+(deftest permission-cache-test
   (let [user-id 1
-        loads   (atom [])
-        cache   (atom {:db-ids #{} :perms {}})]
-    (binding [api/*current-user-id*                user-id
-              data-perms/*db-permission-cache*     cache
-              data-perms/*all-db-permission-cache* (atom {})]
-      (mt/with-dynamic-fn-redefs [data-perms/load-database-perms
-                                  (fn [_user-id db-ids]
-                                    (swap! loads conj (some-> db-ids set))
-                                    {:perms/manage-database {10 {:database :yes :every-table :yes :any-table :yes}
-                                                             11 {:database :no  :every-table :no  :any-table :no}}
-                                     :perms/create-queries  {10 {:every-table :query-builder
-                                                                 :any-table   :query-builder-and-native}}})]
-        (testing "one load per database serves all three of its values"
-          (is (true? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 10)))
-          (is (= :query-builder
-                 (data-perms/full-database-permission-for-user user-id :perms/create-queries 10)))
-          (is (= :query-builder-and-native
-                 (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries 10)))
-          (is (= [#{10}] @loads)))
-        (testing "a different database is its own load"
-          (is (false? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 11)))
-          (is (= [#{10} #{11}] @loads)))
-        (testing "priming a list of databases takes them in one go, skipping those already loaded"
-          (reset! loads [])
-          (data-perms/prime-database-perms-cache {:db-ids #{10 12 13}})
-          (is (= [#{12 13}] @loads)))
-        (testing "a database with no rows still counts as loaded, and is not re-queried"
-          (reset! loads [])
-          (is (false? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 12)))
-          (is (= [] @loads)))))))
-
-(deftest all-db-permission-cache-test
-  (let [user-id 1
-        probes  (atom [])]
-    (binding [api/*current-user-id*                user-id
-              data-perms/*all-db-permission-cache* (atom {})]
+        calls   (atom [])]
+    (binding [api/*current-user-id*         user-id
+              data-perms/*permission-cache* (atom {})]
       (mt/with-dynamic-fn-redefs [permissions.db/user-has-perm-value?
-                                  (fn [_user-id perm-type perm-value exclude-db-ids]
-                                    (swap! probes conj [perm-type perm-value exclude-db-ids])
+                                  (fn [_user-id perm-type perm-value opts]
+                                    (swap! calls conj [:probe perm-type perm-value opts])
                                     (and (= [perm-type perm-value] [:perms/create-queries :query-builder])
-                                         (empty? exclude-db-ids)))]
-        (testing "probes values from most permissive down, stopping at first grant"
+                                         (nil? (:exclude-db-ids opts))))
+                                  permissions.db/permission-rank-pair
+                                  (fn [_user-id perm-type scope]
+                                    (swap! calls conj [:rank-pair perm-type scope])
+                                    {:mn nil :mx nil})]
+        (testing "most permissive value probes values in coalesce order, stopping at first grant"
           (is (= :query-builder
                  (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries)))
-          (is (= [[:perms/create-queries :query-builder-and-native nil]
-                  [:perms/create-queries :query-builder nil]]
-                 @probes)))
-        (testing "falls back to least permissive value without probing it"
-          (reset! probes [])
-          (is (= :no (data-perms/most-permissive-database-permission-for-user user-id :perms/manage-table-metadata)))
-          (is (= [[:perms/manage-table-metadata :yes nil]] @probes)))
-        (testing "repeated questions read cache, false answers included"
-          (reset! probes [])
+          (is (= [[:probe :perms/create-queries :query-builder-and-native {}]
+                  [:probe :perms/create-queries :query-builder {}]]
+                 @calls)))
+        (testing "view-data probes blocked before legacy-no-self-service"
+          (reset! calls [])
+          (is (= :blocked (data-perms/most-permissive-database-permission-for-user user-id :perms/view-data 10)))
+          (is (= [[:probe :perms/view-data :unrestricted {:db-id 10}]
+                  [:probe :perms/view-data :blocked {:db-id 10}]
+                  [:probe :perms/view-data :legacy-no-self-service {:db-id 10}]]
+                 @calls)))
+        (testing "repeated questions read cache, false and nil answers included"
+          (reset! calls [])
           (is (= :query-builder
                  (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries)))
+          (is (= :blocked (data-perms/most-permissive-database-permission-for-user user-id :perms/view-data 10)))
           (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
-          (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)))
-          (is (= [] @probes)))
-        (testing "exclude-db-ids is its own question"
-          (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries
-                                                              :exclude-db-ids [10])))
-          (is (= [[:perms/create-queries :query-builder-and-native [10]]] @probes)))))))
-
-(deftest table-permission-cache-scope-test
-  (let [user-id 1
-        loads   (atom [])
-        cache   (atom {:db-ids #{} :table-ids #{} :perms {}})]
-    (binding [api/*current-user-id*               user-id
-              data-perms/*table-permission-cache* cache]
-      (mt/with-dynamic-fn-redefs [data-perms/load-table-permission-perms
-                                  (fn [_user-id scope]
-                                    (swap! loads conj scope)
-                                    {:perms/view-data {10 {100 :unrestricted}}})]
-        (testing "priming by table loads exactly those tables, and does not mark their database loaded"
-          (data-perms/prime-table-perms-cache {:table-ids #{100 101}})
-          (is (= [{:table-ids #{100 101}}] @loads))
-          (is (= #{100 101} (:table-ids @cache)))
-          (is (= #{} (:db-ids @cache))))
-        (testing "tables already loaded are not re-requested"
-          (data-perms/prime-table-perms-cache {:table-ids #{100 102}})
-          (is (= [{:table-ids #{100 101}} {:table-ids #{102}}] @loads)))
-        (testing "a table nobody primed loads on its own, not its whole database"
-          (#'data-perms/cached-table-perms user-id 10 999)
-          (is (= {:table-ids #{999}} (last @loads)))
-          (is (contains? (:table-ids @cache) 999)))
-        (testing "an already-loaded table is answered from cache"
-          (reset! loads [])
-          (#'data-perms/cached-table-perms user-id 10 100)
-          (is (= [] @loads)))
-        (testing "priming by database covers every table in it, including ones never named"
-          (reset! loads [])
-          (data-perms/prime-table-perms-cache {:db-ids #{11}})
-          (is (= [{:db-ids #{11}}] @loads))
-          (is (contains? (:db-ids @cache) 11))
-          (reset! loads [])
-          (#'data-perms/cached-table-perms user-id 11 55555)
-          (is (= [] @loads)))
-        (testing "an already-loaded database is not re-requested"
-          (reset! loads [])
-          (data-perms/prime-table-perms-cache {:db-ids #{11}})
-          (is (= [] @loads)))
-        (testing "priming with neither key is a no-op"
-          (reset! loads [])
-          (data-perms/prime-table-perms-cache {})
-          (is (= [] @loads)))))))
-
-(deftest table-permission-cache-batches-large-table-id-sets-test
-  (testing "a table-id set larger than the parameter budget is split across queries rather than failing"
-    (let [user-id    1
-          batch-size @#'data-perms/max-ids-per-query
-          table-ids  (set (range 1 (+ 1 (* 2 batch-size) 10)))
-          loads      (atom [])]
-      (binding [api/*current-user-id*               user-id
-                data-perms/*table-permission-cache* (atom {:db-ids #{} :table-ids #{} :perms {}})]
-        (mt/with-dynamic-fn-redefs [data-perms/load-table-permission-perms
-                                    (fn [_user-id scope]
-                                      (swap! loads conj (count (:table-ids scope)))
-                                      {})]
-          (data-perms/prime-table-perms-cache {:table-ids table-ids})
-          (is (= 3 (count @loads)))
-          (is (every? #(<= % batch-size) @loads))
-          (is (= (count table-ids) (reduce + @loads))))))))
-
-(deftest merge-table-perms-unions-tables-test
-  (testing "re-loading a database unions its table map instead of replacing it"
-    (is (= {:perms/view-data {10 {100 :unrestricted, 101 :blocked}}}
-           (#'data-perms/merge-table-perms
-            {:perms/view-data {10 {100 :unrestricted}}}
-            {:perms/view-data {10 {101 :blocked}}})))))
+          (is (= :no (data-perms/database-permission-for-user user-id :perms/manage-database 10)))
+          (is (= :no (data-perms/database-permission-for-user user-id :perms/manage-database 10)))
+          (is (= [[:probe :perms/create-queries :query-builder-and-native {:exclude-db-ids nil}]
+                  [:rank-pair :perms/manage-database {:db-id 10 :database-level? true}]]
+                 @calls)))
+        (testing "other users are not cached"
+          (reset! calls [])
+          (mt/with-dynamic-fn-redefs [data-perms/is-superuser? (constantly false)]
+            (data-perms/user-has-any-perms-of-type? 2 :perms/create-queries)
+            (data-perms/user-has-any-perms-of-type? 2 :perms/create-queries))
+          (is (= 2 (count @calls))))))))
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
@@ -239,23 +146,6 @@
         (is (nil? (data-perms/assert-no-destination-db-permissions! [normal-row normal-row]))))
       (testing "an empty seq does not throw"
         (is (nil? (data-perms/assert-no-destination-db-permissions! [])))))))
-
-(deftest cache-miss-error-names-its-prime-function-test
-  (testing "the miss error points at the prime function for the kind of check, and names the entity"
-    (binding [data-perms/*perms-cache-misses-are-errors?* true]
-      ;; ids past the thousands, so a regression to formatting them as numbers -- "1,234,567" -- is caught
-      (doseq [[kind id expected-fn] [[:table    1234567    "prime-table-perms-cache"]
-                                     [:schema   #{7654321} "prime-schema-perms-cache"]
-                                     [:database 9876543    "prime-database-perms-cache"]]]
-        (testing kind
-          (let [cache (atom {})
-                miss! #(#'data-perms/cache-miss! kind id cache)]
-            (testing "a handful of misses is allowed"
-              (dotimes [_ 4] (is (nil? (miss!)))))
-            (let [e (is (thrown? ExceptionInfo (miss!)))]
-              (is (str/includes? (ex-message e) (str "[[" expected-fn "]]")))
-              (is (str/includes? (ex-message e) (str id)))
-              (is (= {:kind kind :id id} (ex-data e))))))))))
 
 (deftest admin-permission-graph-excludes-destination-dbs-test
   (testing "the admin permission graph covers routers but not their destinations"
@@ -463,10 +353,9 @@
               (is (= :yes (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)))
               (is (zero? (call-count))))
             (testing "a different database is a cache miss"
-              (binding [data-perms/*perms-cache-misses-are-errors?* false]
-                (t2/with-call-count [call-count]
-                  (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)
-                  (is (pos? (call-count))))))))))))
+              (t2/with-call-count [call-count]
+                (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)
+                (is (pos? (call-count)))))))))))
 
 (deftest table-permission-for-user-absent-table-still-sees-database-grant-test
   (testing "a check against a table that doesn't exist still sees the database-level grant"
