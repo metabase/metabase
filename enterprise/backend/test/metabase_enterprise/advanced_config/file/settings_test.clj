@@ -81,19 +81,21 @@
         (is (=? [{:level :warn, :message (u/colorize :yellow "Ignoring unknown setting in config: config-from-file-settings-test-setting-FAKE.")}]
                 (messages)))))))
 
-(deftest removed-setting-test
-  (testing "A config file that sets a removed Setting logs a warning, and its other Settings are applied"
-    ;; `agent-api-enabled?` is removed in 0.66.0. A config file written for 0.65 can have it.
+(deftest stub-setting-test
+  (testing "A config file that sets a stub Setting stores nothing for it, and its other Settings are applied"
+    ;; `agent-api-enabled?` is a stub with no effect since 0.66.0. A config file written for 0.65 can have it.
     (mt/with-temporary-setting-values [config-from-file-settings-test-setting nil]
-      (mt/with-log-messages-for-level [messages [metabase-enterprise.advanced-config.file.settings :warn]]
+      (mt/with-log-messages-for-level [messages [metabase.agent-api.settings :warn]]
         (is (= :ok
                (advanced-config.file/initialize!
                 {:version 1
                  :config  {:settings {:agent-api-enabled?                     true
                                       :config-from-file-settings-test-setting "applied"}}})))
-        (is (=? [{:level   :warn
-                  :message (u/colorize :yellow "Ignoring unknown setting in config: agent-api-enabled?.")}]
-                (messages)))
+        (testing "the setter of the stub logs what to use"
+          (is (=? [{:level   :warn
+                    :message #"agent-api-enabled\? has been removed.*"}]
+                  (messages))))
+        (is (nil? (setting/db-stored-value :agent-api-enabled?)))
         (is (= "applied"
                (config-from-file-settings-test-setting)))))))
 

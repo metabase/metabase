@@ -179,17 +179,17 @@
     (mt/with-temporary-setting-values [deprecated-agent-api-enabled? nil]
       (is (= agent-api-off-message
              (mt/user-http-request :rasta :get 403 "agent/v1/ping")))
-      ;; `agent-api-enabled?` is removed. An upgraded instance can still hold a value for it: a row with no setting
-      ;; behind it, or the env var.
-      (testing "a stored value of the removed setting agent-api-enabled? is not an opt-in"
+      ;; `agent-api-enabled?` is a stub with no effect. An upgraded instance can still hold a value for it: a stored
+      ;; row, or the env var. The rows are written raw, because the setter of the stub stores nothing.
+      (testing "a stored value of the old setting agent-api-enabled? is not an opt-in"
         (mt/with-temporary-raw-setting-values [:agent-api-enabled? "true"]
           (is (= agent-api-off-message
                  (mt/user-http-request :rasta :get 403 "agent/v1/ping")))))
-      (testing "the env var of the removed setting agent-api-enabled? is not an opt-in"
+      (testing "the env var of the old setting agent-api-enabled? is not an opt-in"
         (mt/with-temp-env-var-value! [mb-agent-api-enabled "true"]
           (is (= agent-api-off-message
                  (mt/user-http-request :rasta :get 403 "agent/v1/ping")))))))
-  (testing "External Agent API routes are served after the opt-in, whatever the removed agent-api-enabled? holds"
+  (testing "External Agent API routes are served after the opt-in, whatever the old agent-api-enabled? holds"
     (mt/with-temporary-setting-values [deprecated-agent-api-enabled? true]
       (mt/with-temporary-raw-setting-values [:agent-api-enabled? "false"]
         (is (= {:message "pong"}

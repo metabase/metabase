@@ -420,6 +420,21 @@
           (is (= 1 (count errors)))
           (is (= "After" (setting/get :site-name))))))))
 
+(deftest settings-stub-setting-test
+  (testing "an export of 0.65 imports: it lists agent-api-enabled?, which is a stub with no effect since 0.66"
+    ;; Each export of 0.65 with settings has the key, first in `settings.yaml`. An import with a value stores a row;
+    ;; the raw binding removes it after the test.
+    (mt/with-temporary-raw-setting-values [:agent-api-enabled? nil]
+      (mt/with-temporary-setting-values [site-name "Before"]
+        (doseq [value ["null" "true"]]
+          (testing (str "agent-api-enabled?: " value)
+            (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+              (io/make-parents dump-dir "settings.yaml")
+              (spit (io/file dump-dir "settings.yaml")
+                    (str "agent-api-enabled?: " value "\nsite-name: After " value "\n"))
+              (is (= [] (:errors (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)))))
+              (is (= (str "After " value) (setting/get :site-name))))))))))
+
 (deftest escape-continue-on-error-roundtrip-test
   (testing "archive exported past escape analysis imports under continue-on-error without crashing (#74622)"
     (let [serialized  (atom nil)

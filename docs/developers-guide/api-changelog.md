@@ -11,17 +11,23 @@ summary: Breaking changes to the Metabase API, listed by release.
   instead. The Agent API is now off by default: every endpoint answers `403 Forbidden` until an admin turns it on in
   **Admin > AI > MCP**, or the instance starts with `MB_DEPRECATED_AGENT_API_ENABLED=true`.
 
-- The setting `agent-api-enabled?`, which turned the Agent API on and off, has been removed with no deprecation
-  period. Its value does not carry over: an instance that had the Agent API on has it off after the upgrade. To turn
-  the Agent API on, use the opt-in described above, the setting `deprecated-agent-api-enabled?`.
+- The setting `agent-api-enabled?`, which turned the Agent API on and off, no longer has an effect, with no
+  deprecation period. Its value does not carry over: an instance that had the Agent API on has it off after the
+  upgrade. To turn the Agent API on, use the opt-in described above, the setting `deprecated-agent-api-enabled?`.
+  The old setting stays defined as a stub, so that a client, a config file or a serialization export that still
+  holds it does not fail.
   - `GET /api/session/properties` and `GET /api/setting` no longer return `agent-api-enabled?`.
-  - `GET /api/setting/:key` and `PUT /api/setting/:key` with the key `agent-api-enabled?` answer an admin with
-    `500 Internal Server Error` and any other user with `403 Forbidden`, as they do for any setting that does not
-    exist. `PUT /api/setting` skips the key.
-  - The environment variable `MB_AGENT_API_ENABLED` is ignored, and so is an `agent-api-enabled?` key in a config
-    file. An instance that held the Agent API off with `MB_AGENT_API_ENABLED=false` holds it off with
-    `MB_DEPRECATED_AGENT_API_ENABLED=false` instead: the environment variable takes precedence over the value that
-    an admin sets.
+  - `PUT /api/setting/:key` with the key `agent-api-enabled?`, and `PUT /api/setting` with that key, still answer
+    an admin with `204 No Content`. They store nothing, and the server log says to use
+    `deprecated-agent-api-enabled?`.
+  - `GET /api/setting/:key` with the key `agent-api-enabled?` answers an admin with `500 Internal Server Error` and
+    any other user with `403 Forbidden`.
+  - The environment variable `MB_AGENT_API_ENABLED` is ignored. An `agent-api-enabled?` key in a config file stores
+    nothing and logs the same message. An instance that held the Agent API off with `MB_AGENT_API_ENABLED=false`
+    holds it off with `MB_DEPRECATED_AGENT_API_ENABLED=false` instead: the environment variable takes precedence
+    over the value that an admin sets.
+  - A serialization export no longer lists `agent-api-enabled?`. An export made by Metabase 65 lists it and still
+    imports; the key has no effect.
 
 - `POST /api/ee/transform-test/run`, which ran a transform test that wasn't saved, has been removed. Save the test and
   run it with `POST /api/ee/transform-test/:id/run`.

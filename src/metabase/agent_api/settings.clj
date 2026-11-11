@@ -1,7 +1,8 @@
 (ns metabase.agent-api.settings
   (:require
    [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]))
 
 (defsetting mcp-execute-sql-enabled
   (deferred-tru "Whether the MCP `execute_sql` tool is available. Disable to remove the tool entirely; underlying native-query permissions still apply when enabled.")
@@ -11,8 +12,8 @@
   :export?    true
   :doc        false)
 
-;; The opt-in for the deprecated Agent API. It replaces `agent-api-enabled?`, which was on by default and is removed.
-;; An upgraded instance can still hold a value for the removed setting, in a stored row or in the env var
+;; The opt-in for the deprecated Agent API. It replaces `agent-api-enabled?`, which was on by default and is a stub
+;; now, see below. An upgraded instance can still hold a value for the old setting, in a stored row or in the env var
 ;; `MB_AGENT_API_ENABLED`. Nothing reads it.
 ;;
 ;; Do not add `:deprecated-name :agent-api-enabled?` here. A value of the old setting must not carry over: an admin has
@@ -28,3 +29,28 @@
   :default    false
   :deprecated "0.66.0"
   :export?    true)
+
+(def ^:private agent-api-enabled-removed-message
+  "agent-api-enabled? has been removed and has no effect; use deprecated-agent-api-enabled? instead")
+
+;; `agent-api-enabled?` was the switch of the Agent API before 0.66. It has no effect now: the opt-in above replaces
+;; it. It stays defined as a stub, like the upload settings of 0.50.0 in [[metabase.upload.settings]], so that an
+;; input that still holds it does not fail: a serialization export of 0.65, which lists the key, a config file, or a
+;; client that writes it.
+;;
+;; A write through the setter stores nothing and logs what to use. The getter throws, so nothing can read the
+;; setting by mistake. It is not sent to clients and not exported.
+;;
+;; The getter throws an `ex-info`, not a plain `Exception` as the upload settings do: `GET /api/setting/:key` turns
+;; only an `ExceptionInfo` into the generic 403 for a non-admin.
+;;
+;; Delete it together with the Agent API.
+(defsetting agent-api-enabled?
+  "The switch of the Agent API before 0.66. Removed and without effect."
+  :type       :boolean
+  :visibility :internal
+  :deprecated "0.66.0"
+  :export?    false
+  :doc        false
+  :getter     (fn [] (throw (ex-info agent-api-enabled-removed-message {})))
+  :setter     (fn [_] (log/warn agent-api-enabled-removed-message)))
