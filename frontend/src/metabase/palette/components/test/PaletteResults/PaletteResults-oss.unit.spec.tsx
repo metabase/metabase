@@ -220,6 +220,15 @@ describe("PaletteResults", () => {
     });
     expect(option).toHaveTextContent("Orders in a dashboard");
     expect(option).not.toHaveTextContent("Shorebirds");
+
+    const paletteSearchRequests = fetchMock.callHistory
+      .calls("path:/api/search")
+      .map((call) => new URL(call.url).searchParams)
+      .filter((params) => params.get("q") === "Total");
+    expect(paletteSearchRequests.length).toBeGreaterThan(0);
+    paletteSearchRequests.forEach((params) =>
+      expect(params.get("include_dashboard_questions")).toBe("true"),
+    );
   });
 
   it("should display collections that search results are from", async () => {

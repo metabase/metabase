@@ -251,6 +251,12 @@ describe("SearchApp", () => {
       expect(params.get("context")).toBe("search-app");
       expect(params.get("q")).toBe("orders");
     });
+
+    it("should include dashboard questions in the search request", async () => {
+      await setup({ searchText: "orders" });
+
+      expectLastSearchRequestParam("include_dashboard_questions", ["true"]);
+    });
   });
 
   describe("filtering search results with the sidebar", () => {
