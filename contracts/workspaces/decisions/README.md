@@ -12,6 +12,44 @@ Entries 0001-0011 were written after the fact on 2026-11-11 from the PRs, Slack 
 - **Record what was rejected,** so nobody (person or agent) re-proposes it.
 - **Template:** Context, Decision, Alternatives rejected, Consequences, Resources.
 
+## How to add a decision
+
+1. Copy the template below into `NNNN-short-slug.md`, using the next free number.
+2. Fill it in. Keep it to a page. Write the Context so a reader who wasn't there understands the constraint.
+3. Add a row to the Index.
+4. Put the file in the same PR as the code that makes the decision. Start it as `proposed` while it's under discussion; flip it to `accepted` when the PR is approved.
+5. To change a decision, add a new file with `- Supersedes: NNNN`, and change the old file's status to `superseded by NNNN (date)`. Leave the rest of the old file as it was.
+
+Agents drafting a record: set status `proposed`, and check that every Resources link exists. A person accepts it.
+
+```markdown
+# NNNN. <the decision, stated as the outcome>
+
+- Status: proposed | accepted | superseded by NNNN (YYYY-MM-DD)
+- Date: YYYY-MM-DD
+- Supersedes: NNNN (only if it does)
+
+## Context
+
+What forced the decision: the problem and the constraints.
+
+## Decision
+
+What we chose, in a few sentences.
+
+## Alternatives rejected
+
+- <option>: why it lost.
+
+## Consequences
+
+What this makes easier or harder, including the bad parts.
+
+## Resources
+
+- <PR, issue, Slack thread or doc where it was decided>
+```
+
 ## Index
 
 | # | Decision | Status | Date |
