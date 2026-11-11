@@ -135,15 +135,20 @@
     (and (not (.isAbsolute normalized))
          (not (.startsWith normalized "..")))))
 
+(defn servable-icon
+  "`icon` when the asset endpoint would serve it (an SVG file with a safe relative path), else nil.
+   Legacy imports can carry a bitmap icon; advertising it would only produce a 404."
+  [icon]
+  (when (and (string? icon) (svg-file? icon) (safe-relative-path? icon))
+    icon))
+
 (defn asset-paths
   "List the static asset paths the backend will serve for a plugin.
    Custom viz plugins do not ship arbitrary assets — the only servable asset is the
    plugin `icon` (when it's an SVG file with a safe relative path). Authors who need
    images inline them (e.g. base64) into their single JS bundle."
   [manifest]
-  (when-let [icon (:icon manifest)]
-    (when (and (svg-file? icon) (safe-relative-path? icon))
-      [icon])))
+  (some-> (servable-icon (:icon manifest)) vector))
 
 (defn asset-content-type
   "Return the MIME content type for an asset file, or nil if not recognized.

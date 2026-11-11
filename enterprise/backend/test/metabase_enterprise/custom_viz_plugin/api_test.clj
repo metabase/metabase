@@ -167,6 +167,25 @@
           (is (contains? (warn-types "colon:dev-viz") "invalid-identifier")
               "dev-only plugins are exempt from version warnings but not from this one"))))))
 
+(deftest legacy-bitmap-icon-hidden-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "a plugin imported with a bitmap icon is listed without it, with an invalid-icon warning, so the frontend shows its default icon"
+      (mt/with-temp [:model/CustomVizPlugin {:keys [id]} {:identifier   "png-viz"
+                                                          :display_name "PNG Viz"
+                                                          :status       :active
+                                                          :enabled      true
+                                                          :bundle_hash  "png-hash"
+                                                          :icon         "icon.png"
+                                                          :manifest     {:sdk {:version "2.0.0"}}}]
+        (doseq [[endpoint user] [["ee/custom-viz-plugin/" :crowberto]
+                                 ["ee/custom-viz-plugin/list" :rasta]]]
+          (testing endpoint
+            (let [plugin (->> (mt/user-http-request user :get 200 endpoint)
+                              (filter #(= id (:id %)))
+                              first)]
+              (is (nil? (:icon plugin)))
+              (is (= [{:type "invalid-icon" :icon "icon.png"}] (:warnings plugin))))))))))
+
 (deftest bundle-bytes-not-exposed-test
   (mt/with-premium-features #{:custom-viz}
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "bytes-sec"

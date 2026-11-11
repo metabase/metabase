@@ -190,6 +190,14 @@
                                   :assets ["thumbs-up.svg" "thumbs-down.svg" "en.json"]})))
     (is (nil? (manifest/asset-paths {:assets ["thumbs-up.svg"]})))))
 
+(deftest ^:parallel servable-icon-test
+  (testing "a safe SVG icon is returned as-is"
+    (is (= "Icon.SVG" (manifest/servable-icon "Icon.SVG"))))
+  (testing "a bitmap, traversing, or missing icon is nil"
+    (is (nil? (manifest/servable-icon "icon.png")))
+    (is (nil? (manifest/servable-icon "../secret.svg")))
+    (is (nil? (manifest/servable-icon nil)))))
+
 (deftest ^:parallel icon-error-test
   (testing "an SVG icon passes, whatever the extension's case"
     (is (nil? (manifest/icon-error "Icon.SVG"))))

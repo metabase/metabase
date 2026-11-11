@@ -102,14 +102,19 @@
             (manifest/warnings plugin))
     ;; a legacy pre-validation identifier; /list skips such plugins entirely
     (manifest/identifier-error (:identifier plugin))
-    (conj {:type "invalid-identifier" :identifier (:identifier plugin)})))
+    (conj {:type "invalid-identifier" :identifier (:identifier plugin)})
+
+    ;; a legacy bitmap icon, kept by serdes imports; responses hide it so the frontend shows its default icon
+    (manifest/icon-error (:icon plugin))
+    (conj {:type "invalid-icon" :icon (:icon plugin)})))
 
 (defn- plugin->response
   "Convert a plugin record to API response format."
   [plugin]
   (-> plugin
       (assoc :dev_only (dev-only-plugin? plugin)
-             :warnings (plugin-warnings plugin))
+             :warnings (plugin-warnings plugin)
+             :icon     (manifest/servable-icon (:icon plugin)))
       ;; never expose the raw bundle bytes
       (dissoc :bundle)))
 
@@ -122,7 +127,7 @@
   (cond-> {:id           id
            :identifier   identifier
            :display_name display_name
-           :icon         icon
+           :icon         (manifest/servable-icon icon)
            :bundle_url   (cond-> (format "/api/ee/custom-viz-plugin/%d/bundle" id)
                            bundle_hash (str "?v=" bundle_hash))
            :bundle_hash  bundle_hash
