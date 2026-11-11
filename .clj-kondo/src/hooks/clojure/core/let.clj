@@ -62,12 +62,23 @@
     {:vars    (into #{} (keep common/node->qualified-symbol) (take-nth 2 (:children bindings)))
      :symbols (symbols node)}))
 
+(defn- dependent-locals
+  "The set of `local` and every local in `later-pairs` whose init uses it, directly or through another of them."
+  [local later-pairs]
+  (reduce (fn [locals [binding init]]
+            (if (and (hooks/token-node? binding)
+                     (some locals (symbols init)))
+              (conj locals (hooks/sexpr binding))
+              locals))
+          #{local}
+          later-pairs))
+
 (defn- redefined-while-used?
-  "Whether a form in `redefs` uses `local` while redefining `captured` or a var that `captured` re-exports."
-  [redefs local captured]
+  "Whether a form in `redefs` uses one of `locals` while redefining `captured` or a var that `captured` re-exports."
+  [redefs locals captured]
   ;; Calling a captured re-export calls whatever its source's proxy calls, so redefining the source counts.
   ;; The reverse is fine: redefining a re-export only intercepts calls made through the re-export.
-  (when-let [using (seq (filter #((:symbols %) local) redefs))]
+  (when-let [using (seq (filter #(some locals (:symbols %)) redefs))]
     (let [targets (var-and-sources captured)]
       (some #(some (:vars %) targets) using))))
 
@@ -85,19 +96,22 @@
   (let [[_let bindings & body] (:children node)]
     (when (hooks/vector-node? bindings)
       (let [pairs    (partition 2 (:children bindings))
-            captures (for [[local init] pairs
+            captures (for [[i [local init]] (map-indexed vector pairs)
                            :let  [var-node (captured-var-node init)
                                   captured (common/node->qualified-symbol var-node)]
                            :when (and captured (hooks/token-node? local))]
-                       {:local    (hooks/sexpr local)
-                        :init     init
-                        :var-node var-node
-                        :captured captured})]
+                       {:local       (hooks/sexpr local)
+                        :later-pairs (drop (inc i) pairs)
+                        :init        init
+                        :var-node    var-node
+                        :captured    captured})]
         ;; Only walk the scope when some binding captures a var, which few do.
         (when (seq captures)
           (let [redefs (dynamic-redefs (concat (map second pairs) body))]
-            (doseq [{:keys [local init var-node captured]} captures
-                    :when (redefined-while-used? redefs local captured)]
+            ;; A redef can reach the capture through a later local, such as a replacement fn bound in this `let`.
+            (doseq [{:keys [local later-pairs init var-node captured]} captures
+                    :when (and (seq redefs)
+                               (redefined-while-used? redefs (dependent-locals local later-pairs) captured))]
               (hooks/reg-finding!
                (assoc (meta init)
                       :message (message (hooks/sexpr var-node))

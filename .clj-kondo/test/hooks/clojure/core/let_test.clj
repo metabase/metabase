@@ -100,6 +100,15 @@
                                 "  (mt/with-dynamic-fn-redefs [impl/f (fn [x] (orig x))]"
                                 "    (ex/f 1)))")))))
 
+(deftest flags-capture-through-later-locals-test
+  (testing "a redefinition that reaches the capture through later locals"
+    (is (=? [{:row 6, :col 19}]
+            (findings! "(let [orig        ex/f"
+                       "      wrapped     (fn [x] (orig x))"
+                       "      replacement (fn [x] (wrapped x))]"
+                       "  (mt/with-dynamic-fn-redefs [ex/f replacement]"
+                       "    (ex/f 1)))")))))
+
 (deftest message-test
   (testing "the message names the fix with the symbol as written"
     (is (=? [{:message #".*\(mt/original-fn #'ex/f\) instead.*"}]
