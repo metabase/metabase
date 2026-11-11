@@ -2,8 +2,11 @@
   "Local git repositories and remote sync settings for remote sync tests."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
+   [metabase-enterprise.remote-sync.content :as content]
    [metabase-enterprise.remote-sync.protocol :as protocol]
    [metabase-enterprise.remote-sync.protocol.git :as git]
+   [metabase-enterprise.remote-sync.sync :as sync]
    [metabase.test :as mt])
   (:import
    (java.io File)
@@ -52,6 +55,12 @@
   (let [repo (repository! url)]
     (set (protocol/list-files repo (protocol/version repo branch)))))
 
+(defn entity-path!
+  "The path of the YAML file of `entity` at the tip of `branch` of the repository of `url`, or nil."
+  [url branch entity]
+  (some #(when (str/includes? (read-file! url branch %) (str "entity_id: " (:entity_id entity))) %)
+        (files! url branch)))
+
 (defn commit!
   "Commits `changes`, a map from path to content (nil to delete), on top of the tip of `branch` of the repository of
   `url`, as another instance would, returning the new version."
@@ -77,3 +86,23 @@
         (or (not= task-id (:id task)) (not= "running" (:status task))) task
         (pos? attempts) (do (Thread/sleep 100) (recur (dec attempts)))
         :else (throw (ex-info "The remote sync task did not end" {:task task}))))))
+
+(defn push!
+  "Pushes the synced content to `main` of the repository of `url`, since `base-version`."
+  ([url base-version]
+   (push! url base-version {}))
+  ([url base-version opts]
+   (sync/push! (repository! url) "main" base-version (merge {:message "Push"} opts))))
+
+(defn pull!
+  "Pulls `main` of the repository of `url` into the app DB, since `base-version`."
+  ([url base-version]
+   (pull! url base-version {}))
+  ([url base-version opts]
+   (sync/pull! (repository! url) "main" base-version opts)))
+
+(defn local-changes!
+  "The `{:key :status :doc}` of each change to the synced content of the app DB since the tree of `version` of the
+  repository of `url`."
+  [url version]
+  (sync/local-changes (content/tree-documents (repository! url) version) (content/local-documents)))

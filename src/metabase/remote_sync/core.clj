@@ -19,6 +19,7 @@
   do-with-read-only-pks-cache
   read-only?
   synced-changes?
+  synced-collection-from-parent?
   synced-collection-id
   synced-label
   synced-models

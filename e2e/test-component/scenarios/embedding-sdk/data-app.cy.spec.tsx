@@ -57,11 +57,11 @@ describe("scenarios > embedding-sdk > data app component", () => {
     );
 
     cy.log("mount two app frames and an interactive question");
-    cy.get<EmbeddedDataApp>("@app").then(({ name }) =>
+    cy.get<EmbeddedDataApp>("@app").then(({ slug }) =>
       mountSdkContent(
         <>
-          <DataApp path={`${name}/orders`} height={300} />
-          <DataApp path={`${name}/orders/details?tab=summary`} height={300} />
+          <DataApp path={`${slug}/orders`} height={300} />
+          <DataApp path={`${slug}/orders/details?tab=summary`} height={300} />
 
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} height={400} />
         </>,

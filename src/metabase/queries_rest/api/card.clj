@@ -1,6 +1,7 @@
 (ns metabase.queries-rest.api.card
   "/api/card endpoints."
   (:require
+   [clojure.string :as str]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -11,9 +12,11 @@
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
@@ -441,6 +444,12 @@
 
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
+(def ^:private CardDisplay
+  "The display type of a Card, normalized from its name."
+  (mu/with-api-error-message
+   [:and ::lib.schema.common/keyword [:fn #(not (str/blank? (name %)))]]
+   (deferred-tru "value must be a non-blank string.")))
+
 (def ^:private CardCreateSchema
   "Schema for creating a new card"
   [:map {:closed true}
@@ -452,8 +461,8 @@
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:description            {:optional true} [:maybe ms/NonBlankString]]
-   [:display                ms/NonBlankString]
-   [:visualization_settings ms/VisualizationSettings]
+   [:display                CardDisplay]
+   [:visualization_settings ::lib.schema.visualization-settings/visualization-settings]
    [:collection_id          {:optional true} [:maybe [:or ms/PositiveInt ms/NanoIdString]]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
    [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
@@ -535,9 +544,9 @@
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-query]]
    [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
-   [:display                {:optional true} [:maybe ms/NonBlankString]]
+   [:display                {:optional true} [:maybe CardDisplay]]
    [:description            {:optional true} [:maybe :string]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:enable_embedding       {:optional true} [:maybe :boolean]]
    [:embedding_type         {:optional true} [:maybe :string]]

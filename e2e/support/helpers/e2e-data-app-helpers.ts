@@ -25,7 +25,7 @@ export function createEmbeddedDataApp(): Cypress.Chainable<EmbeddedDataApp> {
   configureGitAndPullChanges("read-only");
 
   return cy.request<DataApp[]>("/api/ee/apps").then(({ body: apps }) => {
-    const app = apps.find(({ name }) => name === slug);
+    const app = apps.find((app) => app.slug === slug);
 
     if (!app) {
       throw new Error(`The pull loaded no data app named ${slug}.`);

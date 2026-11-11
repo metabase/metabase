@@ -7,6 +7,7 @@
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -22,16 +23,19 @@
 
 (mu/defn synced-action-details-clause :- [:fn vector?]
   "The clause over an action details table aliased `alias` selecting the details of the synced actions."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :action_id :model/Action))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :action_id :model/Action opts))
 
 (mu/defn synced-actions-clause :- [:fn vector?]
   "The clause over the Action table aliased `alias` selecting the actions remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   [:and
-   [:= (u/qualified-key alias :archived) false]
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
    [:or
-    (remote-sync/synced-fk-clause alias :collection_id :model/Collection)
+    (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)
     [:and
      [:= (u/qualified-key alias :collection_id) nil]
      [:= (u/qualified-key alias :model_id) nil]]]])

@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-apps.api
-  "Data-app endpoints, mounted at `/api/ee/apps`: list data apps, enable or disable them, manage the groups that can read
-  their collections, serve their bundles, and generate the files of their repository."
+  "Data-app endpoints, mounted at `/api/ee/apps`: manage data apps and the groups that can read their collections, serve
+  their bundles, and generate the files of their repository."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -12,11 +12,13 @@
    [metabase-enterprise.data-apps.generate.schema :as generate.schema]
    [metabase-enterprise.data-apps.generate.util :as generate.util]
    [metabase-enterprise.data-apps.group-access :as data-app.group-access]
+   [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.data-apps.schema :as data-apps.schema]
+   [metabase.events.core :as events]
    [metabase.server.middleware.security :as mw.security]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -61,8 +63,8 @@
 (def ^:private DataAppResponse
   [:map
    [:id              ms/PositiveInt]
+   [:slug            ms/NonBlankString]
    [:name            ms/NonBlankString]
-   [:display_name    ms/NonBlankString]
    [:description     [:maybe :string]]
    [:version         ms/PositiveInt]
    [:outdated        :boolean]
@@ -74,15 +76,37 @@
    [:created_at      :any]
    [:updated_at      :any]])
 
+(def ^:private CreateDataAppRequest
+  [:map {:closed true}
+   [:slug          ::data-apps.schema/slug]
+   [:name          {:optional true} ::data-apps.schema/name]
+   [:description   {:optional true} ::data-apps.schema/description]
+   [:version       {:optional true} ::data-apps.schema/version]
+   [:bundle_path   {:optional true} ::data-apps.schema/bundle-path]
+   [:allowed_hosts {:optional true} ::data-apps.schema/allowed-hosts]
+   [:enabled       {:optional true} :boolean]])
+
 (def ^:private UpdateDataAppRequest
   [:map {:closed true}
-   [:enabled :boolean]])
+   [:name          {:optional true} ::data-apps.schema/name]
+   [:description   {:optional true} ::data-apps.schema/description]
+   [:version       {:optional true} ::data-apps.schema/version]
+   [:bundle_path   {:optional true} ::data-apps.schema/bundle-path]
+   [:allowed_hosts {:optional true} ::data-apps.schema/allowed-hosts]
+   [:enabled       {:optional true} :boolean]])
+
+(def ^:private create-defaults
+  "What a new app starts with unless its request says otherwise: enabled, with an empty bundle at the path the app
+  template builds to."
+  {:enabled     true
+   :bundle_path "dist/index.js"
+   :bundle      (byte-array 0)})
 
 (def ^:private PublicDataAppResponse
   [:map {:closed true}
    [:id           ms/PositiveInt]
+   [:slug         ms/NonBlankString]
    [:name         ms/NonBlankString]
-   [:display_name ms/NonBlankString]
    [:enabled      :boolean]
    [:outdated     :boolean]])
 
@@ -152,7 +176,7 @@
    navigational fields to other users."
   [app]
   (cond-> (assoc app :outdated (data-app.config/outdated? app))
-    (not api/*is-superuser?*) (select-keys [:id :name :display_name :enabled :outdated])))
+    (not api/*is-superuser?*) (select-keys [:id :slug :name :enabled :outdated])))
 
 (defn- check-not-outdated
   "Refuse an app built for an older contract than this Metabase serves with a 409 carrying
@@ -175,18 +199,53 @@
        (remove #(and (not api/*is-superuser?*) (data-app.config/outdated? %)))
        (mapv data-app-response)))
 
+(api.macros/defendpoint :post "/" :- DataAppResponse
+  "Create a data app with its resource collection and an empty bundle. It is enabled unless the request says otherwise."
+  [_route-params
+   _query-params
+   body :- CreateDataAppRequest]
+  (api/create-check :model/DataApp body)
+  (api/check (not (data-apps.db/data-app-exists? (:slug body)))
+             [409 (tru "A data app with this slug already exists.")])
+  (let [app (data-apps.db/data-app
+             (data-apps.db/insert-data-app-returning-pk! (merge create-defaults {:name (:slug body)} body)))]
+    (events/publish-event! :event/data-app-create {:object app :user-id api/*current-user-id*})
+    (data-app-response app)))
+
+(defn- update-app!
+  "Apply `changes` to the data app with `slug` and return the updated app."
+  [slug changes]
+  (let [{:keys [id] :as app} (api/check-404 (data-apps.db/data-app-by-slug slug))]
+    (api/update-check app changes)
+    (when (seq changes)
+      (data-apps.db/update-data-app! id changes))
+    (let [app (data-apps.db/data-app id)]
+      (events/publish-event! :event/data-app-update {:object app :user-id api/*current-user-id*})
+      (data-app-response app))))
+
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows slashes inside a segment, so `/:slug`
 ;; would otherwise swallow `/x/bundle`. The regex also excludes the literal `repo-status` and `generate` routes.
 (api.macros/defendpoint :put ["/:slug" :slug slug-regex] :- DataAppResponse
-  "Enable or disable a data app. A disabled app is served to superusers only. Superusers only; anything else about an
-  app changes only through a repository import."
+  "Update a data app's manifest fields, or enable or disable it. A disabled app is served to superusers only."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
-   {:keys [enabled]} :- UpdateDataAppRequest]
-  (api/check-superuser)
-  (let [app (api/check-404 (data-apps.db/data-app-by-slug slug))]
-    (data-apps.db/update-data-app! (:id app) {:enabled enabled})
-    (data-app-response (data-apps.db/data-app (:id app)))))
+   changes :- UpdateDataAppRequest]
+  (update-app! slug changes))
+
+(api.macros/defendpoint :put ["/:slug/bundle" :slug slug-regex] :- DataAppResponse
+  "Replace a data app's bundle."
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
+   _query-params
+   {:keys [bundle]} :- [:map {:closed true} [:bundle ::data-apps.schema/bundle-text]]]
+  (update-app! slug {:bundle (data-app/file->bundle bundle)}))
+
+(api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
+  "Delete a data app, its bundle, and its collection with the grants on it."
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
+  (let [app (api/write-check (data-apps.db/data-app-by-slug slug))]
+    (data-apps.db/delete-data-app! (:id app))
+    (events/publish-event! :event/data-app-delete {:object app :user-id api/*current-user-id*}))
+  nil)
 
 (api.macros/defendpoint :get "/generate/schema" :- GeneratedFiles
   "The `src/metabase.schema.ts` file of a data app: the Library's published tables, with their fields, segments and
@@ -290,8 +349,9 @@
       (cond
         (and hash (contains? (if-none-match-hashes (get-in request [:headers "if-none-match"])) hash))
         ;; 304 carries only the cacheable headers (Cache-Control) + ETag — never
-        ;; Content-Type or a body, per RFC 9110 §15.4.5.
-        (respond {:status 304, :headers {"Cache-Control" "no-cache", "ETag" etag}})
+        ;; Content-Type or a body, per RFC 9110 §15.4.5. `:body` must be present, even nil:
+        ;; without it the endpoint wrapper sends this map as the JSON body of a 200.
+        (respond {:status 304, :headers {"Cache-Control" "no-cache", "ETag" etag}, :body nil})
 
         :else
         (let [^bytes bundle (data-apps.db/data-app-bundle (:id row))]

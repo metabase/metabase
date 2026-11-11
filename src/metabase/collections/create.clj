@@ -8,7 +8,9 @@
    [metabase.api.common :as api]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.schema :as collections.schema]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -92,8 +94,9 @@
   callers both go through here."
   [coll-data :- CreateCollectionArguments]
   (u/prog1 (collections.db/insert-collection!
-            (-> (apply-defaults-to-collection coll-data)
-                write-check-authority-level
-                validate-new-tenant-collection!))
+            (->> (-> (apply-defaults-to-collection coll-data)
+                     write-check-authority-level
+                     validate-new-tenant-collection!)
+                 (lib/normalize ::collections.schema/collection.update)))
     (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*})
     (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
