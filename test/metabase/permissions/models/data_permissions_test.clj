@@ -7,6 +7,7 @@
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.config.core :as config]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -75,17 +76,39 @@
         (testing "a database with no rows still counts as loaded, and is not re-queried"
           (reset! loads [])
           (is (false? (data-perms/user-has-permission-for-database? user-id :perms/manage-database :yes 12)))
-          (is (= [] @loads)))
-        (testing "the all-databases question uses its own cache, loaded whole"
-          (reset! loads [])
-          (is (true? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
-          (is (= [nil] @loads) "loaded with no database scope")
-          (reset! loads [])
-          (is (true? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
-          (is (= [] @loads) "and only once"))
-        (testing "exclude-db-ids is honoured"
+          (is (= [] @loads)))))))
+
+(deftest all-db-permission-cache-test
+  (let [user-id 1
+        probes  (atom [])]
+    (binding [api/*current-user-id*                user-id
+              data-perms/*all-db-permission-cache* (atom {})]
+      (mt/with-dynamic-fn-redefs [permissions.db/user-has-perm-value?
+                                  (fn [_user-id perm-type perm-value exclude-db-ids]
+                                    (swap! probes conj [perm-type perm-value exclude-db-ids])
+                                    (and (= [perm-type perm-value] [:perms/create-queries :query-builder])
+                                         (empty? exclude-db-ids)))]
+        (testing "probes values from most permissive down, stopping at first grant"
+          (is (= :query-builder
+                 (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries)))
+          (is (= [[:perms/create-queries :query-builder-and-native nil]
+                  [:perms/create-queries :query-builder nil]]
+                 @probes)))
+        (testing "falls back to least permissive value without probing it"
+          (reset! probes [])
+          (is (= :no (data-perms/most-permissive-database-permission-for-user user-id :perms/manage-database)))
+          (is (= [[:perms/manage-database :yes nil]] @probes)))
+        (testing "repeated questions read cache, false answers included"
+          (reset! probes [])
+          (is (= :query-builder
+                 (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries)))
+          (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
+          (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/manage-database)))
+          (is (= [] @probes)))
+        (testing "exclude-db-ids is its own question"
           (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries
-                                                              :exclude-db-ids [10]))))))))
+                                                              :exclude-db-ids [10])))
+          (is (= [[:perms/create-queries :query-builder-and-native [10]]] @probes)))))))
 
 (deftest table-permission-cache-scope-test
   (let [user-id 1
@@ -543,6 +566,34 @@
           (t2/update! :model/Table :id table-id-1 {:active true})
           (is (= :unrestricted
                  (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1))))))))
+
+(deftest most-permissive-permission-across-databases-test
+  (mt/with-temp [:model/PermissionsGroup           {group-id :id}      {}
+                 :model/User                       {user-id :id}       {}
+                 :model/PermissionsGroupMembership {}                  {:user_id  user-id
+                                                                        :group_id group-id}
+                 :model/Database                   {database-id :id}   {}
+                 :model/Table                      {table-id-1 :id}    {:db_id database-id}
+                 :model/Table                      {table-id-2 :id}    {:db_id database-id}
+                 :model/Database                   {database-id-2 :id} {}]
+    (mt/with-no-data-perms-for-all-users!
+      (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+      (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
+      (data-perms/set-database-permission! group-id database-id-2 :perms/create-queries :no)
+      (testing "per-table grant on one database wins over others"
+        (is (= :query-builder
+               (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries)))
+        (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries))))
+      (testing "database-level grant on another database wins over per-table grants"
+        (data-perms/set-database-permission! group-id database-id-2 :perms/create-queries :query-builder-and-native)
+        (is (= :query-builder-and-native
+               (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries)))
+        (is (true? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
+        (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries
+                                                            :exclude-db-ids [database-id-2]))))
+      (testing "view-data needs database"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"needs a database"
+                              (data-perms/most-permissive-database-permission-for-user user-id :perms/view-data)))))))
 
 (deftest inactive-table-grants-ignored-test
   (testing "a grant that exists only on an inactive table does not count for value-aggregating checks"

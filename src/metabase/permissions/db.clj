@@ -55,12 +55,28 @@
   "0 for a database-level row, 1 for a table-level row."
   [:case [:= :p.table_id nil] [:inline 0] :else [:inline 1]])
 
+(mu/defn user-has-perm-value?
+  "Whether a DataPermissions row of the User with `user-id`'s groups grants `perm-type` with `perm-value`, outside
+  `exclude-db-ids`."
+  [user-id        :- [:maybe ::lib.schema.id/user]
+   perm-type      :- ::permissions.schema/data-permission-type
+   perm-value     :- ::permissions.schema/data-permission-value
+   exclude-db-ids :- [:maybe [:sequential ::lib.schema.id/database]]]
+  (some? (t2/query-one (-> (perm-rows-query-base user-id nil)
+                           (assoc :select [[[:inline 1] :one]]
+                                  :limit  [:inline 1])
+                           (update :where conj
+                                   [:= :p.perm_type (u/qualified-name perm-type)]
+                                   [:= :p.perm_value (u/qualified-name perm-value)]
+                                   (when (seq exclude-db-ids)
+                                     [:not-in :p.db_id exclude-db-ids]))))))
+
 (mu/defn database-permission-rank-rows
-  "For each `(perm-type, db-id)` of the DataPermissions rows of the User with `user-id`'s groups (narrowed to
-  `db-ids`, or every database when nil), the `[min max]` value rank pairs needed to reconstruct the `:database`,
-  `:every-table`, and `:any-table` whole-database permission values."
+  "For each `(perm-type, db-id)` of the DataPermissions rows of the User with `user-id`'s groups in `db-ids`, the
+  `[min max]` value rank pairs needed to reconstruct the `:database`, `:every-table`, and `:any-table` whole-database
+  permission values."
   [user-id :- [:maybe ::lib.schema.id/user]
-   db-ids  :- [:maybe [:or [:set ::lib.schema.id/database] [:sequential ::lib.schema.id/database]]]]
+   db-ids  :- [:or [:set {:min 1} ::lib.schema.id/database] [:sequential {:min 1} ::lib.schema.id/database]]]
   (let [per-group (-> (perm-rows-query-base user-id db-ids)
                       (assoc :select   [:p.perm_type :p.db_id :p.group_id
                                         [[:min value-rank-case] :gmin]
