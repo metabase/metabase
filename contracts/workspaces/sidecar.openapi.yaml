@@ -24,8 +24,9 @@ info:
     Request bodies: the server ignores unknown keys instead of rejecting them, also where a schema says
     `additionalProperties: false` (`src/metabase/api/macros.clj:428-437`).
 
-    Every route needs a session or API key, the `:workspaces` premium feature (402 otherwise), and a superuser
-    on the sidecar (403 otherwise).
+    Every `/api/ee/workspace-instance` route needs a session or API key, the `:workspaces` premium feature (402
+    otherwise), and a superuser on the sidecar (403 otherwise). The two core routes at the end of `paths` (#86735)
+    need no premium feature.
 
     #86735 (hardening) makes workspace mode two ordinary settings, so the settings API, env vars and `config.yml`
     set it as well as `/current`:
@@ -63,7 +64,8 @@ info:
          `config.workspace` with names replaced by ids.
        - #86735: `POST /current` `{databases: [{database_id, schema}]}`, where `schema` is `output.schema`
          (`output.db` on MySQL). Equivalent: `PUT /api/database/{id}` `{"settings": {"database-workspace-schema":
-         "..."}}` per database, then `PUT /api/setting/workspaces-enabled` `{"value": true}` last.
+         "..."}}` per database (`setDatabaseWorkspaceSchema`), then `PUT /api/setting/workspaces-enabled`
+         `{"value": true}` last (`setWorkspacesEnabled`).
        - #86792 adds `workspace_id` (the parent's workspace id) and `parent_url` to the same `POST /current` body.
     4. Check with `GET /current`.
     The details from step 1 contain the workspace password: treat the response as a secret, as `config.yml`.
@@ -102,7 +104,12 @@ paths:
                 properties:
                   data:
                     oneOf:
-                      - { $ref: "#/components/schemas/WorkspaceInstance" }
+                      - x-status: master
+                        x-removed-in: hardening
+                        allOf: [{ $ref: "#/components/schemas/WorkspaceInstance" }]
+                      - x-status: hardening
+                        x-pr: 86735
+                        allOf: [{ $ref: "#/components/schemas/WorkspaceInstanceSettings" }]
                       - { type: "null" }
           description: "`data` is null when the instance is not in workspace mode."
         "402": { $ref: "#/components/responses/FeatureMissing" }
@@ -128,13 +135,28 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/WorkspaceInstanceConfig" }
+            schema:
+              oneOf:
+                - x-status: master
+                  x-removed-in: hardening
+                  allOf: [{ $ref: "#/components/schemas/WorkspaceInstanceConfig" }]
+                - x-status: hardening
+                  x-pr: 86735
+                  allOf: [{ $ref: "#/components/schemas/WorkspaceInstanceSettings" }]
       responses:
         "200":
           headers:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
-            application/json: { schema: { $ref: "#/components/schemas/WorkspaceInstance" } }
+            application/json:
+              schema:
+                oneOf:
+                  - x-status: master
+                    x-removed-in: hardening
+                    allOf: [{ $ref: "#/components/schemas/WorkspaceInstance" }]
+                  - x-status: hardening
+                    x-pr: 86735
+                    allOf: [{ $ref: "#/components/schemas/WorkspaceInstanceSettings" }]
           description: The stored workspace.
         "400":
           description: Invalid body, or the workspace is locked by deployment config (`config.yml` or `MB_INSTANCE_WORKSPACE`).
@@ -204,6 +226,100 @@ paths:
         - { name: id, in: path, required: true, schema: { type: integer } }
       responses:
         "204": { description: Remap row gone. }
+
+  # Two Metabase core routes, outside /api/ee/workspace-instance. With #86735 they set workspace mode without /current.
+  /database/{id}:
+    servers:
+      - url: "{sidecar}/api"
+        variables:
+          sidecar:
+            default: http://localhost:3000
+    put:
+      operationId: setDatabaseWorkspaceSchema
+      summary: Set the schema one database's transforms write to in workspace mode.
+      description: |
+        `PUT /api/database/{id}`, Metabase's general database update. This contract covers only
+        `settings.database-workspace-schema`; the route's other keys are out of scope. Settings merge into the
+        stored ones (a PATCH), and `null` unsets this one. The value is stored as sent and trimmed when read; a blank
+        value means no schema.
+
+        A changed value deletes this database's remap rows, so reads do not follow old rows into the old schema.
+        The value has no effect while `workspaces-enabled` is off. On a workspace instance, a transform whose
+        database has no value is refused with 400.
+      x-status: hardening
+      x-pr: 86735
+      x-source: src/metabase/warehouses_rest/api.clj:965, EE/settings.clj:39, EE/events.clj:11
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [settings]
+              properties:
+                settings:
+                  type: object
+                  required: [database-workspace-schema]
+                  properties:
+                    database-workspace-schema:
+                      type: [string, "null"]
+                      description: The schema (on MySQL, a database name). `null` unsets it.
+      responses:
+        "200":
+          description: The updated database.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: { type: integer }
+                  settings:
+                    type: [object, "null"]
+                    properties:
+                      database-workspace-schema: { type: string }
+        "400":
+          description: |
+            Invalid body, the sample database, or a connection test failed (only when the same request changes
+            `details` or `engine`).
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { description: No such database. }
+
+  /setting/workspaces-enabled:
+    servers:
+      - url: "{sidecar}/api"
+        variables:
+          sidecar:
+            default: http://localhost:3000
+    put:
+      operationId: setWorkspacesEnabled
+      summary: Turn workspace mode on or off.
+      description: |
+        `PUT /api/setting/workspaces-enabled`, the generic settings route. On a sidecar, set each database's
+        `database-workspace-schema` first and turn this on last. Turning it off deletes every remap row and
+        leaves each `database-workspace-schema` in place. `MB_WORKSPACES_ENABLED` wins over the stored value.
+        Needs no premium feature.
+      x-status: hardening
+      x-pr: 86735
+      x-source: src/metabase/settings_rest/api.clj:83, EE/settings.clj:22
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [value]
+              properties:
+                value:
+                  type: [boolean, "null"]
+                  description: "`null` resets to the default, off."
+      responses:
+        "204": { description: Stored. }
+        "400": { description: "`true` on an instance that has workspaces of its own (a parent)." }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
 components:
   securitySchemes:
@@ -299,11 +415,13 @@ components:
       properties:
         workspace_id:
           type: [integer, "null"]
+          minimum: 1
           x-status: hardening
           x-pr: 86792
           description: The id of the parent workspace this sidecar serves. Null when not set.
         parent_url:
           type: [string, "null"]
+          minLength: 1
           x-status: hardening
           x-pr: 86792
           description: The parent Metabase's site URL. Null when not set.

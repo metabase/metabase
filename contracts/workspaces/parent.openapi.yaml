@@ -11,6 +11,8 @@ info:
     - A response or field that an open hardening PR adds carries `x-status: hardening` and `x-pr`.
     - A response or field that exists on master but that an open PR changes carries `x-pr`; its description says
       what changes. Not on master until the PR merges.
+    - A shape that an open PR replaces is a `oneOf`: the master branch carries `x-removed-in: hardening`, the new
+      branch `x-status: hardening`.
     - `config.schema.json` lists the PRs that change `details` as a whole under `x-hardening`.
     - Hardening PRs that change behavior but no request or response shape (for example #86604) are not in the
       specs; the Linear doc "Workspaces API contract" lists them
