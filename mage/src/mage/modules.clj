@@ -144,6 +144,8 @@
      dependencies
      documents
      embedding
+     enterprise/serialization
+     enterprise/transforms
      events
      explorations
      formatter
@@ -186,9 +188,7 @@
      warehouses.schema
      warehouses.secrets
      workspaces
-     xrays
-     enterprise/serialization
-     enterprise/transforms})
+     xrays})
 
 (def driver-test-opt-ins
   "Submodules of [[driver-test-exemptions]] whose changes still trigger driver tests.
@@ -196,17 +196,12 @@
   '#{users.tenants
      util.graph})
 
-(defn- lineage
-  "The module followed by its ancestors, nearest first."
-  [deps module]
-  (take-while some? (iterate #(modules/parent-module deps %) module)))
-
 (defn- driver-exempt?
   "Whether changes to `module` should skip driver tests.
   The nearest listed module among `module` and its ancestors decides.
   An exemption skips them, and an opt-in or one of `trigger-modules` keeps them."
   [deps trigger-modules module]
-  (->> (lineage deps module)
+  (->> (modules/lineage deps module)
        (some (fn [m]
                ;; Exemptions come first, so a module that is both a trigger and an exemption, such as
                ;; `enterprise/transforms`, stays exempt.
@@ -649,23 +644,18 @@
   Changed modules that [[driver-exempt?]] exempts are left out.
   The 1-arity and 2-arity trigger on the union of [[default-modules-which-trigger-drivers]] and
   [[modules-triggering-cloud-drivers]].
-  Throws when a trigger, exemption or opt-in is not a declared module, or an opt-in is not under an exemption."
+  Throws when one of `trigger-modules` is not a declared module."
   ([modules]
    (driver-deps-affected? (dependencies) modules))
   ([deps modules]
    (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
                                                   modules-triggering-cloud-drivers)))
   ([deps modules trigger-modules]
-   ;; Fail clearly when a renamed module is missing from the config.
-   (when-let [missing (seq (remove #(contains? deps %)
-                                   (concat trigger-modules driver-test-exemptions driver-test-opt-ins)))]
-     (throw (ex-info (str "Driver-trigger, exemption or opt-in module(s) not declared in the module config: "
+   ;; Fail clearly when a renamed trigger is missing from the config.
+   (when-let [missing (seq (remove #(contains? deps %) trigger-modules))]
+     (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
                           (pr-str missing))
                      {:missing missing})))
-   ;; An opt-in with no exempt ancestor does nothing, which hides a stale entry.
-   (when-let [stray (seq (remove #(some driver-test-exemptions (rest (lineage deps %))) driver-test-opt-ins))]
-     (throw (ex-info (str "Driver-test opt-in(s) not under any exemption: " (pr-str stray))
-                     {:stray stray})))
    (let [exempt?    (partial driver-exempt? deps (set trigger-modules))
          unaffected (unaffected-modules deps (remove exempt? modules))]
      (boolean

@@ -289,19 +289,36 @@
 ;;; Exemptions and opt-ins
 ;;; =============================================================================
 
+(deftest exemptions-and-opt-ins-are-well-formed-test
+  (let [deps       (mage.modules/dependencies)
+        exemptions mage.modules/driver-test-exemptions
+        opt-ins    mage.modules/driver-test-opt-ins
+        listed     (into exemptions opt-ins)
+        nearest    (fn [module] (some listed (rest (modules/lineage deps module))))]
+    (testing "every exemption and opt-in is a declared module"
+      (is (empty? (remove #(contains? deps %) listed))))
+    (testing "no exemption sits under another exemption, which already covers it"
+      (is (empty? (filter (comp exemptions nearest) exemptions))))
+    (testing "every opt-in sits under an exemption, not under another opt-in or nothing"
+      (is (empty? (remove (comp exemptions nearest) opt-ins))))))
+
 (deftest exemption-covers-submodules-test
   (testing "a submodule of an exemption does not trigger driver tests, even where a trigger reaches it"
     ;; The `transforms` module reaches `metabot`, and so `metabot.toolkit` once `metabot` uses it.
     (let [deps (update (mage.modules/dependencies) 'metabot conj 'metabot.toolkit)]
+      (is (contains? (mage.modules/affected-modules deps ['metabot.toolkit]) 'transforms))
       (is (false? (mage.modules/driver-deps-affected? deps ['metabot.toolkit]))))))
 
 (deftest opt-in-submodule-triggers-driver-tests-test
   (testing "an opted-in submodule of an exemption still triggers driver tests"
     ;; The `util` module is exempt, but `lib`, and through it `driver`, uses `util.graph`.
+    (is (contains? mage.modules/driver-test-exemptions 'util))
+    (is (contains? (mage.modules/affected-modules (mage.modules/dependencies) ['util.graph]) 'driver))
     (is (true? (mage.modules/driver-deps-affected? ['util.graph])))))
 
 (deftest trigger-submodule-of-exemption-triggers-driver-tests-test
   (testing "a driver-trigger module still triggers driver tests when its parent is an exemption"
+    (is (contains? mage.modules/driver-test-exemptions 'workspaces))
     (is (true? (mage.modules/driver-deps-affected? ['enterprise/workspaces])))))
 
 ;;; =============================================================================
