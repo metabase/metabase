@@ -282,9 +282,16 @@ paths:
                       database-workspace-schema: { type: string }
         "400":
           description: |
-            Invalid body, the sample database, or a connection test failed (only when the same request changes
-            `details` or `engine`).
-        "403": { $ref: "#/components/responses/Forbidden" }
+            Invalid body, a `database-workspace-schema` that is not a string or null ("Setting
+            database-workspace-schema must be a string."), the sample database, or a connection test failed (only
+            when the same request changes `details` or `engine`).
+        "403":
+          description: |
+            Changing `database-workspace-schema` (setting or clearing it) needs a superuser, even for a user who may
+            otherwise edit the database: it is a `:visibility :admin` database-local setting. Plain-text body.
+          content:
+            text/plain:
+              schema: { type: string }
         "404": { description: No such database. }
 
   /setting/workspaces-enabled:
@@ -299,8 +306,9 @@ paths:
       description: |
         `PUT /api/setting/workspaces-enabled`, the generic settings route. On a sidecar, set each database's
         `database-workspace-schema` first and turn this on last. Turning it off deletes every remap row and
-        leaves each `database-workspace-schema` in place. `MB_WORKSPACES_ENABLED` wins over the stored value.
-        Needs no premium feature.
+        leaves each `database-workspace-schema` in place. While `MB_WORKSPACES_ENABLED` is set, a write of any
+        other value is refused with 400 and nothing changes (no remap rows are deleted); writing the env var's own
+        value succeeds. Needs no premium feature.
       x-status: hardening
       x-pr: 86735
       x-source: src/metabase/settings_rest/api.clj:83, EE/settings.clj:22
@@ -318,7 +326,11 @@ paths:
                   description: "`null` resets to the default, off."
       responses:
         "204": { description: Stored. }
-        "400": { description: "`true` on an instance that has workspaces of its own (a parent)." }
+        "400":
+          description: |
+            `true` on an instance that has workspaces of its own (a parent), or a value other than the env var's
+            while `MB_WORKSPACES_ENABLED` is set ("workspaces-enabled is set to <value> by the MB_WORKSPACES_ENABLED
+            env var and can't be changed at runtime.").
         "403": { $ref: "#/components/responses/Forbidden" }
 
 components:
