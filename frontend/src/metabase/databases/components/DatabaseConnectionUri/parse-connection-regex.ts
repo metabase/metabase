@@ -87,6 +87,15 @@ const connectionStringRegexes: Record<
   druid: druidRegex,
   "druid-jdbc": druidRegex,
   mongo: undefined,
+  // MotherDuck's own format, as its UI copies it: `jdbc:duckdb:md:<database>?motherduck_token=<token>`.
+  motherduck: new RegExp(
+    "^(?:(?<hasJdbcPrefix>jdbc:)?duckdb:)?" +
+      "(?<protocol>md):" +
+      "(?<database>[^?#]*)" +
+      "(?:\\?(?<params>.*))?" +
+      "$",
+    "i",
+  ),
   mysql: new RegExp(
     "^" +
       jdbcPrefix +

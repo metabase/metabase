@@ -33,7 +33,6 @@ export const createMockField = (opts?: Partial<Field>): Field => ({
   fingerprint: null,
 
   has_field_values: "none",
-  has_more_values: false,
 
   last_analyzed: new Date().toISOString(),
   created_at: new Date().toISOString(),

@@ -110,7 +110,7 @@
        (:source_table :source-table :table-id)
        (cond-> m (pos-int? v) (assoc k (visit :model/Table v)))
 
-       (:source-field :metabase.models.visualization-settings/param-mapping-source)
+       (:source-field :field-id :metabase.models.visualization-settings/param-mapping-source)
        (cond-> m (pos-int? v) (assoc k (visit :model/Field v)))
 
        :segment
@@ -171,7 +171,7 @@
        (:table-id)
        (cond-> m (vector? v) (assoc k (visit :model/Table v)))
 
-       :source-field
+       (:source-field :field-id)
        (cond-> m (vector? v) (assoc k (visit :model/Field v)))
 
        (:source-card :card-id)
@@ -265,8 +265,8 @@
   (resolve/found-or-nil #(visit :model/Card card-id)))
 
 (defn recording-card-entity-ids
-  "`[visit' card-entity-id]`: `visit'` visits like `visit` and records the Card ids it resolves, and `card-entity-id`
-  returns the entity id that a recorded Card id was resolved from."
+  "`[visit' card-id->entity-id]`: `visit'` visits like `visit` and records the Card ids it resolves, and
+  `card-id->entity-id` returns the entity id that a recorded Card id was resolved from."
   [visit]
   (let [card-eids (volatile! {})]
     [(with-meta (fn [model x]
@@ -279,21 +279,21 @@
 
 (defn card-template-tag-export-rename
   "The exported name of a card template tag whose `#<id>-slug` name embeds a local card id: the id swapped for the
-  entity id of the tag's card, which `card-entity-id` returns, and the slug kept verbatim. Nil when the name doesn't
+  entity id of the tag's card, which `card-id->entity-id` returns, and the slug kept verbatim. Nil when the name doesn't
   embed an id."
-  [card-entity-id {tag-type :type, :keys [card-id], tag-name :name}]
+  [card-id->entity-id {tag-type :type, :keys [card-id], tag-name :name}]
   (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
     (when-let [[_ _embedded-id suffix] (re-matches #"#(\d+)(-.*)?" tag-name)]
-      (when-let [card-eid (card-entity-id card-id)]
+      (when-let [card-eid (card-id->entity-id card-id)]
         (str "#" card-eid suffix)))))
 
 (defn card-template-tag-import-rename
   "The imported name of a card template tag whose name embeds the entity id of its already imported `:card-id`, which
-  `card-entity-id` returns, a different local id, or another entity id: the embedded value swapped for the id, and the
-  slug kept verbatim. Nil when they already agree or the name doesn't embed an id."
-  [card-entity-id {tag-type :type, :keys [card-id], tag-name :name}]
+  `card-id->entity-id` returns, a different local id, or another entity id: the embedded value swapped for the id, and
+  the slug kept verbatim. Nil when they already agree or the name doesn't embed an id."
+  [card-id->entity-id {tag-type :type, :keys [card-id], tag-name :name}]
   (when (and (= tag-type :card) (pos-int? card-id) (string? tag-name))
-    (let [entity-id-prefix (some->> (card-entity-id card-id) (str "#"))
+    (let [entity-id-prefix (some->> (card-id->entity-id card-id) (str "#"))
           entity-id-suffix (when (and entity-id-prefix (str/starts-with? tag-name entity-id-prefix))
                              (subs tag-name (count entity-id-prefix)))]
       (if (and entity-id-suffix (or (= "" entity-id-suffix) (str/starts-with? entity-id-suffix "-")))
@@ -377,12 +377,12 @@
   [visit x]
   (if (resolve/collecting? visit)
     (walk-import-refs visit x)
-    (let [[visit' card-entity-id] (recording-card-entity-ids visit)]
+    (let [[visit' card-id->entity-id] (recording-card-entity-ids visit)]
       (some->> (walk-import-refs visit' x)
                normalize-imported
                (#(cond-> % (not (:skip-schema-validation? (resolve/options visit))) validate-imported-query))
                (#(cond-> % (mbql-query? %) (rename-card-template-tags (partial card-template-tag-import-rename
-                                                                               card-entity-id))))
+                                                                               card-id->entity-id))))
                legacy-query->mbql5))))
 
 (defn export-mbql

@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
+import Question from "metabase-lib/v1/Question";
 import type { CardType } from "metabase-types/api";
 import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
 
@@ -22,7 +22,7 @@ describe("hasQuestionCacheSection", () => {
     });
     const settings = createMockSettings();
     const metadata = createMockMetadata({ questions: [card] }, settings);
-    return checkNotNull(metadata.question(card.id));
+    return new Question(card, metadata);
   }
 
   it("should not have the cache section for models", () => {

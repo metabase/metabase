@@ -300,7 +300,7 @@
                                        :name         "filter"
                                        :display-name "Filter"
                                        :type         :dimension
-                                       :dimension    [:field (mt/id :products :category) nil]
+                                       :field-id     (mt/id :products :category)
                                        :widget-type  :category
                                        :default      ["Gizmo" "Gadget"]
                                        :required     false}}}}}
@@ -480,7 +480,7 @@
                                                            :name         "cat"
                                                            :display-name "Cat"
                                                            :type         :dimension
-                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                           :field-id     (mt/id :products :category)
                                                            :widget-type  :string/=
                                                            :default      nil}}})]
         (mt/with-native-query-testing-context query
@@ -529,7 +529,7 @@
                                                            :name         "cat"
                                                            :display-name "Cat"
                                                            :type         :dimension
-                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                           :field-id     (mt/id :products :category)
                                                            :widget-type  :string/=
                                                            :default      ["Gizmo"]}}})]
         (mt/with-native-query-testing-context query

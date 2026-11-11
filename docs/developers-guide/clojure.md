@@ -1,5 +1,6 @@
 ---
 title: Working with Clojure
+summary: Where to start learning Clojure before working on the Metabase backend.
 ---
 
 # Working with Clojure

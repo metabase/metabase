@@ -434,7 +434,7 @@
             filter-clause (lib/= (m/find-first #(= (:name %) "NAME") (lib/filterable-columns query)) "test")
             filter-parts  (lib.fe-util/string-filter-parts query -1 filter-clause)]
         (is (=? {:field-id (meta/id :venues :name)}
-                (lib.field/field-values-search-info query (:column filter-parts))))))
+                (lib.field/field-search-info query (:column filter-parts))))))
     (testing "should create case-insensitive filter clauses unless `case-sensitive` is explicitly set to `true`"
       (doseq [operator [:contains :does-not-contain :starts-with :ends-with]]
         (are [expected options] (=? expected (lib/options (lib.fe-util/string-filter-clause operator column ["A"] options)))
@@ -1006,7 +1006,7 @@
                                                :name "foo"
                                                :widget-type :text
                                                :display-name "foo"
-                                               :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
+                                               :field-id  1}})
                (lib/dependent-metadata nil :question))))))
 
 (deftest ^:parallel dependent-metadata-test-2

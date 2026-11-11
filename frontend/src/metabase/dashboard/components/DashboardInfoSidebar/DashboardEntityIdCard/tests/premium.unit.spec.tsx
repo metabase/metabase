@@ -57,12 +57,12 @@ describe("DashboardEntityIdCard (EE with token)", () => {
       await screen.findByRole("listitem", { name: "This dashboard" }),
     ).toBeInTheDocument();
 
-    tabs.forEach(async (tab) => {
+    for (const tab of tabs) {
       expect(
         await screen.findByRole("listitem", { name: tab.name }),
         // Unjustified type cast. FIXME
       ).toHaveTextContent(tab.entity_id as string);
-    });
+    }
   });
 
   it("does not display a select, if there are no tabs", () => {

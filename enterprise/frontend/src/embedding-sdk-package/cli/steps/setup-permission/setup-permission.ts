@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { SANDBOXED_GROUP_NAMES } from "../../constants/config";
 import { getNoTenantMessage } from "../../constants/messages";
 import type { CliStepMethod } from "../../types/cli";

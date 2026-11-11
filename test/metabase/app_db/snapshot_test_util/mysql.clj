@@ -94,7 +94,8 @@
                                      "--no-tablespaces" "--protocol=TCP" "--skip-no-autocommit"]
                                     (when (= flavor :mysql) ["--set-gtid-purged=OFF"])
                                     ["--host=127.0.0.1" "--port=3306"
-                                     (str "--user=" user) (str db)]))))))]
+                                     (str "--user=" user) (str db)])))))
+                  :backslash-escapes? true)]
       (-> [(database-charset-statement conn db)]
           (into dumped)
           ;; views last: they read from the tables above, and none of them reads from another view

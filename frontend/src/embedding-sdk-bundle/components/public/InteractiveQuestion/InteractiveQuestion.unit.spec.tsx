@@ -62,6 +62,7 @@ import {
   createMockDataset,
   createMockDatasetData,
   createMockModelResult,
+  createMockSearchResult,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -371,6 +372,11 @@ describe('questionId: "new"', () => {
         id: 1,
         name: "Orders model",
       }),
+      createMockSearchResult({
+        id: 2,
+        name: "Revenue",
+        model: "metric",
+      }),
     ]);
 
     renderWithSDKProviders(
@@ -422,6 +428,7 @@ describe('questionId: "new"', () => {
     ).not.toBeInTheDocument();
     expect(withinPopover.getByText("Raw Data")).toBeVisible();
     expect(withinPopover.getByText("Models")).toBeVisible();
+    expect(withinPopover.getByText("Metrics")).toBeVisible();
   });
 });
 

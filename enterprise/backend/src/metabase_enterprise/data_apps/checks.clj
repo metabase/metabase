@@ -1,14 +1,13 @@
 (ns metabase-enterprise.data-apps.checks
-  "The checks that hold a data app's requests to the Library and its own collection. A dev preview, which has no app on
-  the instance, uses Library metrics but no saved card and runs ad-hoc implicit actions; an app may also use the cards
-  and run the actions in its collection."
+  "The checks on the requests through which a data app runs queries and actions. A dev preview, which has no app on the
+  instance, builds on no card and runs ad-hoc implicit actions; an app builds only on the cards and runs only the
+  actions in its collection."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
-   [metabase.collections.core :as collections]
    [metabase.data-apps.core :as data-apps]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -57,9 +56,33 @@
   (let [collection-id (app-collection-id data-app)]
     (and (some? collection-id) (= collection-id (:collection_id entity)))))
 
+(defn- check-preview-query
+  "Throws a 400 if `query`, a dev preview's MBQL query, builds on a card; its metrics, like everything else, may be any."
+  [query]
+  (when-let [card-ids (not-empty (set/difference (set (lib/all-source-card-ids query)) (set (lib/all-metric-ids query))))]
+    (throw (data-app-error (tru "A data app''s dev preview cannot build on cards, not the cards {0}." (format-ids card-ids))))))
+
+(defn- check-app-query
+  "Throws a 400 unless `query`, an app's MBQL query, builds only on the cards in the app's collection, reading no table,
+  segment, measure or metric."
+  [data-app query]
+  (when-let [ids (lib/all-source-table-ids query)]
+    (throw (data-app-error (tru "A data app cannot read tables, not the tables {0}." (format-ids ids)))))
+  (when-let [ids (lib/all-segment-ids query)]
+    (throw (data-app-error (tru "A data app cannot use segments, not the segments {0}." (format-ids ids)))))
+  (when-let [ids (lib/all-measure-ids query)]
+    (throw (data-app-error (tru "A data app cannot use measures, not the measures {0}." (format-ids ids)))))
+  (when-let [ids (lib/all-metric-ids query)]
+    (throw (data-app-error (tru "A data app cannot use metrics, not the metrics {0}." (format-ids ids)))))
+  (when-let [external (some->> (lib/all-source-card-ids query)
+                               (data-apps.db/external-card-ids (app-collection-id data-app))
+                               not-empty)]
+    (throw (data-app-error (tru "A data app can use only the cards in its own collection, not the cards {0}."
+                                (format-ids external))))))
+
 (defenterprise-schema check-adhoc-query :- :nil
-  "Throws a 400 unless `query`, as the `/api/dataset` endpoints normalize it, is an MBQL query without explicit joins or
-  custom columns that uses only Library metrics; an app's query may also build on the cards in its collection."
+  "Throws a 400 unless `data-app` may run `query`, as the `/api/dataset` endpoints normalize it: no internal or native
+  query, a dev preview's query that builds on no card, or an app's that builds only on the cards in its collection."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app-info
    query    :- ::lib-be.schema/maybe-legacy-or-internal-query]
@@ -67,36 +90,23 @@
     (throw (data-app-error (tru "A data app cannot run internal queries."))))
   (when (lib/any-native-stage? query)
     (throw (data-app-error (tru "A data app cannot run native queries."))))
-  (when (some #(seq (lib/joins query %)) (range (lib/stage-count query)))
-    (throw (data-app-error (tru "A data app cannot run queries that join tables explicitly."))))
-  (when (some #(seq (lib/expressions query %)) (range (lib/stage-count query)))
-    (throw (data-app-error (tru "A data app cannot run queries with custom columns."))))
-  (let [metric-ids (lib/all-metric-ids query)
-        card-ids   (set/difference (set (lib/all-source-card-ids query)) metric-ids)]
-    (when (seq card-ids)
-      (when (preview? data-app)
-        (throw (data-app-error (tru "A data app''s dev preview cannot build on cards, not the cards {0}." (format-ids card-ids)))))
-      (when-let [external (not-empty (data-apps.db/external-card-ids (app-collection-id data-app) card-ids))]
-        (throw (data-app-error (tru "A data app can use only the cards in its own collection, not the cards {0}."
-                                    (format-ids external))))))
-    (when-let [external (some-> metric-ids data-apps.db/external-metric-ids not-empty)]
-      (throw (data-app-error (tru "A data app can use only metrics from the Library, not the metrics {0}." (format-ids external))))))
+  (if (preview? data-app)
+    (check-preview-query query)
+    (check-app-query data-app query))
   nil)
 
 (defenterprise-schema check-card :- :nil
-  "Throws a 400 unless the card with `card-id` is a Library metric, or `data-app` is an app and the card is in its
-  collection, after a read check of the card; a dev preview uses no saved card but Library metrics."
+  "Throws a 400 unless `data-app` is an app and the card with `card-id` is in its collection, after a read check of the
+  card; a dev preview runs no saved card."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app-info
    card-id  :- ::lib.schema.id/card]
   (let [card (api/read-check :model/Card card-id)]
-    (when (seq (data-apps.db/external-metric-ids #{card-id}))
-      (when (preview? data-app)
-        (throw (data-app-error (tru "A data app''s dev preview cannot use saved cards but Library metrics, not the card {0}."
-                                    (str card-id)))))
-      (when-not (in-app-collection? data-app card)
-        (throw (data-app-error (tru "A data app can use only the cards in its own collection and Library metrics, not the card {0}."
-                                    (str card-id)))))))
+    (when (preview? data-app)
+      (throw (data-app-error (tru "A data app''s dev preview cannot run saved cards, not the card {0}." (str card-id)))))
+    (when-not (in-app-collection? data-app card)
+      (throw (data-app-error (tru "A data app can run only the cards in its own collection, not the card {0}."
+                                  (str card-id))))))
   nil)
 
 (defenterprise-schema check-action :- :nil
@@ -121,43 +131,4 @@
     (throw (data-app-error (tru "A data app can run only the actions in its own collection, not ad-hoc ones."))))
   (when-not (and (= :implicit (keyword (:type action))) (nil? (:model_id action)) (:table_id action))
     (throw (data-app-error (tru "A data app''s dev preview can run only implicit actions on a table."))))
-  nil)
-
-(defenterprise-schema data-app-actions :- [:sequential ::actions.schema/action]
-  "The `actions` in `data-app`'s collection."
-  :feature :data-apps
-  [data-app :- ::data-apps.schema/data-app-info
-   actions  :- [:sequential ::actions.schema/action]]
-  (filterv (partial in-app-collection? data-app) actions))
-
-(def ^:private sdk-user-key-values
-  "The user key-values, as `[namespace key]`, that the SDK reads and writes inside a data app."
-  #{["last_download_format" "download_format_preference"]})
-
-(defenterprise-schema check-user-key-value :- :nil
-  "Throws a 400 unless the user key-value `k` in `nmspace` is one the SDK uses inside a data app."
-  :feature :data-apps
-  [_data-app :- ::data-apps.schema/data-app-info
-   nmspace   :- :string
-   k         :- :string]
-  (when-not (contains? sdk-user-key-values [nmspace k])
-    (throw (data-app-error (tru "A data app can use only the user key-values of the SDK, not the key {0} in the namespace {1}."
-                                k nmspace))))
-  nil)
-
-(defenterprise-schema data-app-collection-types :- [:maybe [:set :string]]
-  "The types of the Library and of its collections, which their subcollections inherit."
-  :feature :data-apps
-  [_data-app :- ::data-apps.schema/data-app-info]
-  collections/library-collection-types)
-
-(defenterprise-schema check-collection :- :nil
-  "Throws a 400 unless the collection with `collection-id` is of a type in [[data-app-collection-types]], after a read
-  check of the collection."
-  :feature :data-apps
-  [data-app      :- ::data-apps.schema/data-app-info
-   collection-id :- ::lib.schema.id/collection]
-  (when-not (contains? (data-app-collection-types data-app) (:type (api/read-check :model/Collection collection-id)))
-    (throw (data-app-error (tru "A data app can see only the Library and its collections, not the collection {0}."
-                                (str collection-id)))))
   nil)

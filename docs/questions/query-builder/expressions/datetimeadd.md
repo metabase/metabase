@@ -1,5 +1,6 @@
 ---
 title: DatetimeAdd
+summary: Add an interval to a datetime, handy for working out an end date from a start date.
 ---
 
 # DatetimeAdd

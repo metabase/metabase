@@ -1,5 +1,6 @@
 ---
 title: "Metabase Cloud versus self-hosting"
+summary: Compare Metabase Cloud and self-hosting on cost, maintenance, and features.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true

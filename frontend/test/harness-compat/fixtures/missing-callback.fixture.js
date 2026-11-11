@@ -1,0 +1,1 @@
+test("has no callback");

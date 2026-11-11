@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 
@@ -14,7 +15,7 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
-} from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
+} from "metabase/visualizations/visualizations/CartesianChart/CartesianChartLayout";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 import {
   extractRemappings,
