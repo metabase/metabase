@@ -5,10 +5,12 @@
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -113,7 +115,7 @@
   (t2/instance :model/DashboardCard
                (-> dashboard-card
                    (m/update-existing :parameter_mappings #(some->> % (lib/normalize ::parameters.schema/parameter-mappings)))
-                   (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
+                   (m/update-existing :visualization_settings #(lib/normalize ::lib.schema.visualization-settings/visualization-settings %)))))
 
 (defn virtual-card-settings
   "`visualization_settings` for a virtual dashcard — a dashcard with no backing card, such as a text
@@ -363,3 +365,7 @@
                                                                opts))))
                :parameter_mappings     serialization/parameter-mappings-transform
                :visualization_settings serialization/visualization-settings-transform}})
+
+(defmethod remote-sync/spec :model/DashboardCard
+  [_model]
+  {:synced-filter-clause dashboards.db/synced-dashcards-clause})

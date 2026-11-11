@@ -69,8 +69,10 @@ interface ModalLayoutProps {
    */
   layout?: ModalLayout;
   /**
-   * Space between the header, body and footer. `default` is 16px. `relaxed`
-   * is 24px, for bodies with several fields or sections, such as forms.
+   * Space between the header, body and footer, and between the footer
+   * buttons. `default` is 16px, with 12px between buttons. `relaxed` is 24px,
+   * with 16px between buttons, for bodies with several fields or sections,
+   * such as forms.
    */
   density?: ModalDensity;
   /**
@@ -113,6 +115,18 @@ export interface ModalRootProps
     Omit<MantineModalRootProps, ForbiddenMantineModalProps>,
     ModalLayoutProps {}
 
+// Modals close instantly unless a call site sets its own `exitDuration`, as
+// side sheets do.
+function withInstantExit(transitionProps: ModalProps["transitionProps"]) {
+  // Mantine's default, restated because a call site's `transitionProps` replace it
+  const DEFAULT_TRANSITION_PROPS = {
+    duration: 200,
+    transition: "fade-down",
+  } satisfies ModalProps["transitionProps"];
+
+  return { ...DEFAULT_TRANSITION_PROPS, exitDuration: 0, ...transitionProps };
+}
+
 export function Modal({
   layout = "default",
   density = "default",
@@ -140,6 +154,7 @@ export function Modal({
         title={isCentered ? undefined : title}
         onBack={isCentered ? undefined : onBack}
         headerActions={isCentered ? undefined : headerActions}
+        transitionProps={withInstantExit(props.transitionProps)}
         closeOnClickOutside={closeProps.closeOnClickOutside}
         closeOnEscape={closeProps.closeOnEscape}
       >
@@ -225,6 +240,7 @@ function ModalRoot({
         {...props}
         data-layout={layout}
         data-density={density}
+        transitionProps={withInstantExit(props.transitionProps)}
         closeOnClickOutside={closeProps.closeOnClickOutside}
         closeOnEscape={closeProps.closeOnEscape}
       >

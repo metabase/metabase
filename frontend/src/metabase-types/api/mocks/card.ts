@@ -80,6 +80,7 @@ export const createMockCardQueryMetadata = (
   databases: [],
   tables: [],
   fields: [],
+  cards: [],
   ...opts,
 });
 

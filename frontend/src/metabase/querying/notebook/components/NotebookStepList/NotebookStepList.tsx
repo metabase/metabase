@@ -38,7 +38,7 @@ export function NotebookStepList({
   updateQuestion,
   readOnly = false,
 }: NotebookStepListProps) {
-  const database = question.database();
+  const databaseInfo = Lib.databaseDisplayInfo(question.query());
   const [openSteps, setOpenSteps] = useState<OpenSteps>(
     getInitialOpenSteps(question, readOnly),
   );
@@ -50,8 +50,8 @@ export function NotebookStepList({
     if (!question) {
       return [];
     }
-    return getQuestionSteps(question, database ?? undefined, openSteps);
-  }, [database, question, openSteps]);
+    return getQuestionSteps(question, databaseInfo ?? undefined, openSteps);
+  }, [databaseInfo, question, openSteps]);
 
   const handleStepOpen = useCallback((id: INotebookStep["id"]) => {
     setOpenSteps((openSteps) => ({ ...openSteps, [id]: true }));

@@ -1,161 +1,147 @@
+import { provideRemoteSyncContentTags } from "metabase/api/tags";
 import type {
-  CreateBranchRequest,
   ExportChangesRequest,
   ExportChangesResponse,
+  ExportPreflightRequest,
   ExportPreflightResponse,
   GetBranchesResponse,
   HasRemoteChangesResponse,
-  ImportFromBranchRequest,
-  ImportFromBranchResponse,
+  ImportChangesRequest,
+  ImportChangesResponse,
   RemoteSyncChangesResponse,
-  RemoteSyncConfigurationSettings,
-  RemoteSyncHasChangesResponse,
+  RemoteSyncIsDirtyResponse,
   RemoteSyncTask,
+  StashChangesRequest,
+  StashChangesResponse,
   TestRemoteSyncConnectionRequest,
   TestRemoteSyncConnectionResponse,
-  UpdateRemoteSyncConfigurationResponse,
+  UpdateRemoteSyncSettingsRequest,
+  UpdateRemoteSyncSettingsResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { listTag, tag } from "./tags";
+import { invalidateTags, listTag, tag } from "./tags";
 
 export const remoteSyncApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getRemoteSyncChanges: builder.query<RemoteSyncChangesResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/remote-sync/dirty",
+      }),
+      providesTags: () => [
+        tag("remote-sync-changes"),
+        ...provideRemoteSyncContentTags(),
+      ],
+    }),
+    getRemoteSyncIsDirty: builder.query<RemoteSyncIsDirtyResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/remote-sync/is-dirty",
+      }),
+      providesTags: () => [
+        tag("remote-sync-changes"),
+        ...provideRemoteSyncContentTags(),
+      ],
+    }),
+    getHasRemoteChanges: builder.query<HasRemoteChangesResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/remote-sync/has-remote-changes",
+      }),
+      providesTags: () => [tag("remote-sync-remote-changes")],
+    }),
+    getExportPreflight: builder.query<
+      ExportPreflightResponse,
+      ExportPreflightRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/remote-sync/export-preflight",
+        params,
+      }),
+      providesTags: () => [
+        tag("remote-sync-remote-changes"),
+        tag("remote-sync-changes"),
+        ...provideRemoteSyncContentTags(),
+      ],
+    }),
+    getRemoteSyncCurrentTask: builder.query<RemoteSyncTask | null, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/remote-sync/current-task",
+      }),
+      providesTags: () => [tag("remote-sync-current-task")],
+    }),
+    getRemoteSyncBranches: builder.query<GetBranchesResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/remote-sync/branches",
+      }),
+      providesTags: () => [tag("remote-sync-branches")],
+    }),
     exportChanges: builder.mutation<
       ExportChangesResponse,
       ExportChangesRequest
     >({
-      query: ({ message, force, branch, merge }) => ({
-        url: `/api/ee/remote-sync/export`,
+      query: (body) => ({
         method: "POST",
-        body: {
-          message,
-          branch,
-          force,
-          merge,
-        },
+        url: "/api/ee/remote-sync/export",
+        body,
       }),
-      invalidatesTags: () => [
-        tag("collection-dirty-entities"),
-        tag("session-properties"),
-      ],
-    }),
-    getExportPreflight: builder.query<
-      ExportPreflightResponse,
-      { branch: string }
-    >({
-      query: ({ branch }) => ({
-        url: `/api/ee/remote-sync/export-preflight`,
-        method: "GET",
-        params: { branch },
-      }),
-      providesTags: () => [tag("remote-sync-has-remote-changes")],
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("remote-sync-current-task")]),
     }),
     importChanges: builder.mutation<
-      ImportFromBranchResponse,
-      ImportFromBranchRequest
+      ImportChangesResponse,
+      ImportChangesRequest
     >({
-      query: ({ branch, force, merge, expected_branch }) => ({
-        url: `/api/ee/remote-sync/import`,
+      query: (body) => ({
         method: "POST",
-        body: {
-          branch,
-          force,
-          merge,
-          expected_branch,
-        },
+        url: "/api/ee/remote-sync/import",
+        body,
       }),
-      /**
-       * Tags invalidation for import happens in the middleware after the import task is successful.
-       * @see remote-sync-middleware.ts
-       */
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("remote-sync-current-task")]),
     }),
-    getRemoteSyncChanges: builder.query<RemoteSyncChangesResponse, void>({
-      query: () => ({
-        url: `/api/ee/remote-sync/dirty`,
-        method: "GET",
+    stashChanges: builder.mutation<StashChangesResponse, StashChangesRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/remote-sync/stash",
+        body,
       }),
-      providesTags: () => [tag("collection-dirty-entities")],
-      transformResponse: (response: RemoteSyncChangesResponse) => {
-        const collectionMap: Record<number, boolean> = {};
-        response.dirty.forEach((entity) => {
-          if (entity.collection_id) {
-            collectionMap[entity.collection_id] = true;
-          }
-        });
-        return {
-          dirty: response.dirty,
-          changedCollections: collectionMap,
-        };
-      },
-    }),
-    getRemoteSyncHasChanges: builder.query<RemoteSyncHasChangesResponse, void>({
-      query: () => ({
-        url: `/api/ee/remote-sync/is-dirty`,
-        method: "GET",
-      }),
-      providesTags: () => [tag("collection-is-dirty")],
-    }),
-    getHasRemoteChanges: builder.query<HasRemoteChangesResponse, void>({
-      query: () => ({
-        url: `/api/ee/remote-sync/has-remote-changes`,
-        method: "GET",
-      }),
-      providesTags: () => [tag("remote-sync-has-remote-changes")],
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [
+          tag("remote-sync-current-task"),
+          tag("remote-sync-branches"),
+        ]),
     }),
     updateRemoteSyncSettings: builder.mutation<
-      UpdateRemoteSyncConfigurationResponse,
-      RemoteSyncConfigurationSettings
+      UpdateRemoteSyncSettingsResponse,
+      UpdateRemoteSyncSettingsRequest
     >({
-      query: (settings) => ({
+      query: (body) => ({
         method: "PUT",
-        url: `/api/ee/remote-sync/settings`,
-        body: settings,
+        url: "/api/ee/remote-sync/settings",
+        body,
       }),
-      invalidatesTags: () => [
-        tag("session-properties"),
-        // Invalidate collection list to refresh is_remote_synced values
-        listTag("collection"),
-        // Invalidate library collection to refresh is_remote_synced value
-        tag("library-collection"),
-        // Invalidate dirty state to refetch after settings change
-        tag("collection-dirty-entities"),
-        tag("collection-is-dirty"),
-      ],
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [
+          tag("session-properties"),
+          listTag("collection"),
+          tag("remote-sync-branches"),
+          tag("remote-sync-changes"),
+          tag("remote-sync-current-task"),
+          tag("remote-sync-remote-changes"),
+        ]),
     }),
-    getBranches: builder.query<GetBranchesResponse, void>({
-      query: () => ({
-        method: "GET",
-        url: `/api/ee/remote-sync/branches`,
-      }),
-      providesTags: () => [tag("remote-sync-branches")],
-    }),
-    createBranch: builder.mutation<void, CreateBranchRequest>({
-      query: ({ name }) => ({
-        method: "POST",
-        url: `/api/ee/remote-sync/create-branch`,
-        body: {
-          name,
-        },
-      }),
-      invalidatesTags: () => [
-        tag("remote-sync-branches"),
-        tag("session-properties"),
-      ],
-    }),
-    getRemoteSyncCurrentTask: builder.query<RemoteSyncTask, void>({
-      query: () => ({
-        method: "GET",
-        url: `/api/ee/remote-sync/current-task`,
-      }),
-      providesTags: () => [tag("remote-sync-current-task")],
-    }),
-    cancelRemoteSyncCurrentTask: builder.mutation<void, void>({
+    cancelRemoteSyncCurrentTask: builder.mutation<RemoteSyncTask, void>({
       query: () => ({
         method: "POST",
-        url: `/api/ee/remote-sync/current-task/cancel`,
+        url: "/api/ee/remote-sync/current-task/cancel",
       }),
-      invalidatesTags: () => [tag("remote-sync-current-task")],
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("remote-sync-current-task")]),
     }),
     testRemoteSyncConnection: builder.mutation<
       TestRemoteSyncConnectionResponse,
@@ -163,7 +149,7 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: `/api/ee/remote-sync/test-connection`,
+        url: "/api/ee/remote-sync/test-connection",
         body,
       }),
     }),
@@ -172,16 +158,16 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useGetRemoteSyncChangesQuery,
-  useLazyGetRemoteSyncChangesQuery,
-  useGetRemoteSyncHasChangesQuery,
+  useGetRemoteSyncIsDirtyQuery,
+  useLazyGetRemoteSyncIsDirtyQuery,
   useGetHasRemoteChangesQuery,
-  useUpdateRemoteSyncSettingsMutation,
-  useExportChangesMutation,
-  useLazyGetExportPreflightQuery,
-  useGetBranchesQuery,
-  useCreateBranchMutation,
-  useImportChangesMutation,
+  useGetExportPreflightQuery,
   useGetRemoteSyncCurrentTaskQuery,
+  useGetRemoteSyncBranchesQuery,
+  useExportChangesMutation,
+  useImportChangesMutation,
+  useStashChangesMutation,
+  useUpdateRemoteSyncSettingsMutation,
   useCancelRemoteSyncCurrentTaskMutation,
   useTestRemoteSyncConnectionMutation,
 } = remoteSyncApi;

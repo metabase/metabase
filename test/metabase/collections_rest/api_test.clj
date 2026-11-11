@@ -297,18 +297,14 @@
     (with-collection-hierarchy! [a b]
       (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))]
         (mt/with-temp [:model/Card _ {:name "Personal Card"
-                                      :collection_preview false
                                       :collection_id (:id personal-collection)}
                        :model/Card _ {:name "Personal Model"
                                       :type :model
-                                      :collection_preview false
                                       :collection_id (:id personal-collection)}
                        :model/Card _ {:name "A Card"
-                                      :collection_preview false
                                       :collection_id (:id a)}
                        :model/Card _ {:name "B Model"
                                       :type :model
-                                      :collection_preview false
                                       :collection_id (:id b)}]
           (is (=? [{:here ["card"] :below ["dataset"] :children [{:here ["dataset"]}]}
                    {:here ["card" "dataset"]}]
@@ -688,7 +684,6 @@
     (let [collection-id-or-nil (when collection-or-id-or-nil
                                  (u/the-id collection-or-id-or-nil))]
       (mt/with-temp [:model/Card          {card-id :id}                     {:name               "Birthday Card"
-                                                                             :collection_preview false
                                                                              :collection_id      collection-id-or-nil}
                      :model/Dashboard     {dashboard-id :id}                {:name          "Dine & Dashboard"
                                                                              :collection_id collection-id-or-nil}
@@ -779,7 +774,6 @@
                   :location            nil
                   :name                (:name card)
                   :collection_position nil
-                  :collection_preview  true
                   :database_id         (mt/id)
                   :display             "table"
                   :description         nil
@@ -1376,7 +1370,7 @@
         (with-some-children-of-collection! collection
           (is (partial= (-> (mapv default-item [{:name "Acme Products", :model "pulse", :entity_id true}
                                                 {:name               "Birthday Card", :description nil,     :model     "card",
-                                                 :collection_preview false,           :display     "table", :entity_id true}
+                                                 :display "table", :entity_id true}
                                                 {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true}
                                                 {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id true}])
                             (assoc-in [1 :fully_parameterized] true))
@@ -1397,7 +1391,7 @@
                           (mt/boolean-ids-and-timestamps
                            (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items") :models "dashboard")))))
             (is (partial= [(-> {:name               "Birthday Card", :description nil,     :model     "card",
-                                :collection_preview false,           :display     "table", :entity_id true}
+                                :display "table", :entity_id true}
                                default-item
                                (assoc :fully_parameterized true))
                            (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
@@ -2227,7 +2221,7 @@
   (testing "GET /api/collection/root/items"
     (testing "Make sure you can see everything for Users that can see everything"
       (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
-                          :collection_preview false, :display "table"}
+                          :display "table"}
                          default-item
                          (assoc :fully_parameterized true))
                      (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
@@ -2758,7 +2752,7 @@
                          :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.collections.models.collection.root/is-root? true}))
             (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
-                                :collection_preview false,           :display     "table"}
+                                :display "table"}
                                default-item
                                (assoc :fully_parameterized true))
                            (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
@@ -2794,7 +2788,6 @@
              [{:name                "Business Card"
                :description         nil
                :collection_position nil
-               :collection_preview  true
                :display             "table"
                :moderated_status    nil
                :entity_id           (:entity_id card)
@@ -2841,7 +2834,7 @@
                                                                                   :param1 {:type         "dimension"
                                                                                            :display-name "Param 1"
                                                                                            :required     true
-                                                                                           :dimension    [:field 1 nil]}}
+                                                                                           :field-id     1}}
                                                                   :query         "select {{param0}}, {{param1}}"}}}]
         (is (partial= [{:name               "Business Card"
                         :entity_id          (:entity_id card)
@@ -2904,7 +2897,7 @@
                                                                                   :param2 {:type         :number
                                                                                            :display-name "Param 2"}
                                                                                   :param3 {:type         "dimension"
-                                                                                           :dimension    [:field (mt/id :venues :id) nil]
+                                                                                           :field-id     (mt/id :venues :id)
                                                                                            :display-name "Param 3"}}
                                                                   :query         "select {{param0}}, {{param1}} [[ , {{param2}} ]] from t {{param3}}"}}}]
         (is (partial= [{:name               "Business Card"

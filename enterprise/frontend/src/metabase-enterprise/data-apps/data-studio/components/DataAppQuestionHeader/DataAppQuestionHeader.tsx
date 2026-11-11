@@ -19,13 +19,13 @@ export function DataAppQuestionHeader({
   const tabs: PillTab[] = [
     {
       label: t`Overview`,
-      to: Urls.dataStudioDataAppQuestion(app.name, card.id),
+      to: Urls.dataStudioDataAppQuestion(app.slug, card.id),
     },
     ...(PLUGIN_DEPENDENCIES.isEnabled
       ? [
           {
             label: t`Dependencies`,
-            to: Urls.dataStudioDataAppQuestionDependencies(app.name, card.id),
+            to: Urls.dataStudioDataAppQuestionDependencies(app.slug, card.id),
           },
         ]
       : []),
@@ -37,7 +37,7 @@ export function DataAppQuestionHeader({
       name={card.name}
       icon="table2"
       sectionName={t`Questions`}
-      sectionUrl={Urls.dataStudioDataAppQuestions(app.name)}
+      sectionUrl={Urls.dataStudioDataAppQuestions(app.slug)}
       tabs={tabs}
       data-testid="data-app-question-header"
     />

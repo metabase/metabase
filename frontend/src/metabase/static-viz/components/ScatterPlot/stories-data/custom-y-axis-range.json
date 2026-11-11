@@ -114,7 +114,6 @@
       "include_csv": false,
       "display": "scatter",
       "entity_id": "lMDkS53Qjv2w0T7bQm1pV",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.y_axis.title_text": "Attack Stat",
         "graph.y_axis.max": 255,

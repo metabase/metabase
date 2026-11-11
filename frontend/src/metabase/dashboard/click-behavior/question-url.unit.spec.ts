@@ -165,7 +165,7 @@ describe("getStructuredQuestionUrlWithParameters", () => {
   });
 
   describe("with structured question & no permissions", () => {
-    const question = new Question(card);
+    const question = new Question(card, createMockMetadata());
     const originalQuestion = question;
 
     it("should return a card with attached parameters and parameter values as query params", () => {

@@ -251,6 +251,7 @@ function setup({
     databases: [database],
     tables: database.tables ?? [],
     fields: database.tables?.flatMap((table) => table.fields ?? []) ?? [],
+    cards: [],
   });
   setupUsersEndpoints([createMockUser({ id: 1 })]);
   setupGroupsEndpoint([createMockGroup({ id: 1 }), createMockGroup({ id: 2 })]);

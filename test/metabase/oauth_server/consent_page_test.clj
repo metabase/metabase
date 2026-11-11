@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.oauth-server.consent-page :as consent-page]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.fonts :as u.fonts]))
 
 (set! *warn-on-reflection* true)
 
@@ -87,7 +88,9 @@
                    :csrf-token   "test-csrf"}))]
       (is (re-find #"action=\"https://example\.com/metabase/oauth/authorize/decision\"" html))
       (testing "bundled fonts are also loaded from under the subpath"
-        (is (re-find #"url\('https://example\.com/metabase/app/fonts/" html)))))
+        ;; The face URLs carry a content hash, so they only exist once the frontend has been built.
+        (when (u.fonts/bundled-fonts-available?)
+          (is (re-find #"url\('https://example\.com/metabase/app/dist/fonts/" html))))))
   (testing "at the domain root the action still targets /oauth/authorize/decision"
     (let [html (render!)]
       (is (re-find #"action=\"http://localhost:3000/oauth/authorize/decision\"" html)))))

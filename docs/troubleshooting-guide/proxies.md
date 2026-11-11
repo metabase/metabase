@@ -1,5 +1,6 @@
 ---
 title: Can't save questions or dashboards, or getting a blank page
+summary: Fix failed saves and blank pages caused by a proxy, web application firewall, or content optimizer.
 ---
 
 # Can't save questions or dashboards, or getting a blank page

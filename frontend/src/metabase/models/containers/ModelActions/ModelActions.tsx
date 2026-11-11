@@ -59,10 +59,10 @@ function ModelActions({
 
   const card = model.card();
   const isModel = model.type() === "model";
-  const database = model.database();
-  const databaseId = database?.id;
+  const databaseId = Lib.databaseID(model.query());
   const hasActions = actions.length > 0;
-  const hasActionsEnabled = database != null && database.hasActionsEnabled();
+  const hasActionsEnabled =
+    Lib.databaseDisplayInfo(model.query())?.isActionsEnabled ?? false;
   const shouldShowActionsUI = hasActions || hasActionsEnabled;
 
   const mainTableId = useMemo(() => {

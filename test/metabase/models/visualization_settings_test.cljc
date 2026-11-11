@@ -3,7 +3,7 @@
 
   TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
   `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
-  also [[metabase.models.interface/normalize-visualization-settings]]."
+  also [[metabase.lib.schema.visualization-settings]]."
   (:require #?@(:cljs [[goog.string :as gstring]]
                 :default [])
             [clojure.test :as t]

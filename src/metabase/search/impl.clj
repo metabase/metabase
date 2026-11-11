@@ -228,7 +228,8 @@
          :collection_type
          :archived_directly
          :display_name
-         :effective_parent)
+         :effective_parent
+         :slug)
         (cond-> (= model "transform")
           (dissoc :source :target)))))
 

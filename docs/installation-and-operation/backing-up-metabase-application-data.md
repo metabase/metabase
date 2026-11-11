@@ -1,5 +1,6 @@
 ---
 title: Backing up Metabase
+summary: Back up the application database that holds your questions, dashboards, collections, and settings, with instructions for H2, Amazon RDS, and self-hosted PostgreSQL.
 redirect_from:
   - /docs/latest/operations-guide/backing-up-metabase-application-data
 ---
@@ -35,7 +36,7 @@ The above command would copy the database file to the directory you ran the comm
 1. Navigate to your Metabase directory.
 2. If your Metabase is running, stop the Metabase process. You can either close the terminal or kill the process with CTRL-C. If you are running the process as a service, then stop the service.
 3. Copy the application database file (called `metabase.db.mv.db`) and keep that copy somewhere safe. That's it.
-4. Restart Metabase: `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar` or start the service again.
+4. Restart Metabase: `java -jar metabase.jar` or start the service again.
 
 ## Amazon RDS for the application database
 

@@ -109,6 +109,8 @@ frontend_loki_infra: &frontend_loki_infra
   - "frontend/src/metabase/css/**/*.css"
   # Storybook serves resources/frontend_client as static files, and the stories bundle the app's SVGs.
   - "resources/frontend_client/**"
+  # The bundled fonts every story renders with.
+  - "frontend/fonts/**"
   - "frontend/**/*.svg"
   - "enterprise/frontend/**/*.svg"
 
