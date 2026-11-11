@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+import { createElement } from "react";
 import _ from "underscore";
 
 import { getMainStore } from "__support__/entities-store";
@@ -6,8 +8,9 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "__support__/state";
-import { waitFor } from "__support__/ui";
-import type { StoreDashcard } from "metabase/redux/store";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import type { State, StoreDashcard } from "metabase/redux/store";
 import { performUndo } from "metabase/redux/undo";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -494,7 +497,13 @@ describe("moveDashCardToTab", () => {
     size_y: 4,
   });
 
-  function getTabDashcards(store: ReturnType<typeof setup>["store"]) {
+  function setupWithUndoListing(opts: SetupOpts) {
+    return renderWithProviders(createElement(UndoListing), {
+      storeInitialState: { dashboard: createDashboardState(opts) },
+    });
+  }
+
+  function getTabDashcards(store: { getState: () => State }) {
     return _.groupBy(
       getCurrentDashcards(store.getState()),
       (dashcard) => dashcard.dashboard_tab_id ?? "none",
@@ -502,7 +511,10 @@ describe("moveDashCardToTab", () => {
   }
 
   it("should move dashcards between tabs and restore their position on undo", async () => {
-    const { store } = setup({ parameters: [], dashcards: [ORDERS_DASHCARD] });
+    const { store } = setupWithUndoListing({
+      parameters: [],
+      dashcards: [ORDERS_DASHCARD],
+    });
 
     store.dispatch(addLinkDashCardToDashboard({ dashId: 1, tabId: 1 }));
     expect(getSelectedTabId(store.getState())).toBe(1);
@@ -531,12 +543,14 @@ describe("moveDashCardToTab", () => {
       { size_x: 24, size_y: 4 },
     );
 
-    await waitFor(() => expect(store.getState().undo).toHaveLength(2));
-    const [linkUndo, ordersUndo] = store.getState().undo;
-    expect(linkUndo.message).toBe("Link card moved");
-    expect(ordersUndo.message).toBe("Card moved: Orders");
+    const toasts = await screen.findAllByTestId("toast-undo");
+    expect(
+      toasts.map((toast) => within(toast).queryByText(/moved/)?.textContent),
+    ).toEqual(["Link card moved", "Card moved: Orders"]);
 
-    store.dispatch(performUndo(linkUndo.id));
+    await userEvent.click(
+      within(toasts[0]).getByRole("button", { name: "Undo" }),
+    );
 
     expect(getTabDashcards(store)[1]).toHaveLength(1);
     expect(getTabDashcards(store)[2]).toHaveLength(1);

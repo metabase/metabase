@@ -23,6 +23,7 @@ import {
   waitForDashboardToLoad,
   within,
 } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { Route } from "metabase/router";
@@ -125,7 +126,15 @@ async function setup({ dashboard: dashboardOpts }: SetupOpts) {
   setupActionsEndpoints([]);
 
   const { router } = renderWithProviders(
-    <Route path="/dashboard/:slug" element={<DashboardApp />} />,
+    <Route
+      path="/dashboard/:slug"
+      element={
+        <>
+          <DashboardApp />
+          <UndoListing />
+        </>
+      }
+    />,
     {
       initialRoute: `/dashboard/${dashboard.id}`,
       withRouter: true,
@@ -168,6 +177,24 @@ async function cancelEditing() {
       name: "Cancel",
     }),
   );
+}
+
+function createHeadingDashcard({
+  id,
+  text,
+  dashboardTabId = null,
+}: {
+  id: number;
+  text: string;
+  dashboardTabId?: number | null;
+}) {
+  return createMockVirtualDashCard({
+    id,
+    dashboard_id: DASHBOARD_ID,
+    dashboard_tab_id: dashboardTabId,
+    card: HEADING_CARD,
+    visualization_settings: { text, virtual_card: HEADING_CARD },
+  });
 }
 
 async function getSavedDashcards() {
@@ -288,17 +315,7 @@ describe("DashboardApp > tabs", () => {
   it("should keep showing the dashcards after canceling the creation of a new tab (#38055, #38278)", async () => {
     await setup({
       dashboard: {
-        dashcards: [
-          createMockVirtualDashCard({
-            id: 1,
-            dashboard_id: DASHBOARD_ID,
-            card: HEADING_CARD,
-            visualization_settings: {
-              text: "Existing heading",
-              virtual_card: HEADING_CARD,
-            },
-          }),
-        ],
+        dashcards: [createHeadingDashcard({ id: 1, text: "Existing heading" })],
       },
     });
 
@@ -344,5 +361,49 @@ describe("DashboardApp > tabs", () => {
     expect(screen.getAllByTestId("dashcard")).toHaveLength(2);
     expect(screen.getByText("Existing heading")).toBeInTheDocument();
     expect(screen.getByText("New heading")).toBeInTheDocument();
+  });
+
+  it("should show the cards of a deleted tab again after undoing its deletion from the toast (#45364)", async () => {
+    await setup({
+      dashboard: {
+        tabs: [TAB_1, TAB_2],
+        dashcards: [
+          createHeadingDashcard({
+            id: 1,
+            text: "Tab 1 heading",
+            dashboardTabId: TAB_1.id,
+          }),
+          createHeadingDashcard({
+            id: 2,
+            text: "Tab 2 heading",
+            dashboardTabId: TAB_2.id,
+          }),
+        ],
+      },
+    });
+    expect(screen.getByText("Tab 1 heading")).toBeInTheDocument();
+
+    await startEditing();
+    await userEvent.click(
+      within(screen.getByRole("tab", { name: TAB_1.name })).getByRole("button"),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Delete" }),
+    );
+
+    expect(
+      screen.queryByRole("tab", { name: TAB_1.name }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Tab 1 heading")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(await screen.findByTestId("toast-undo")).getByRole("button", {
+        name: "Undo",
+      }),
+    );
+    await userEvent.click(screen.getByRole("tab", { name: TAB_1.name }));
+
+    expect(await screen.findByText("Tab 1 heading")).toBeInTheDocument();
+    expect(screen.queryByText("Tab 2 heading")).not.toBeInTheDocument();
   });
 });

@@ -634,8 +634,10 @@ describe("fetchDashboardCardData", () => {
 describe("fetchCardDataAction", () => {
   it("should not rerun a query when the last result lists the same parameters in another order (metabase#39863)", async () => {
     const dashboardId = 400;
-    // Clojure keeps maps with 9 or more entries unordered, so the backend can
-    // return the parameters of `json_query` in a different order
+    // This depends on the backend possibly returning `json_query.parameters`
+    // in a different order than they were sent (Clojure stops keeping map
+    // order at 9 or more entries). The mock below simulates that by reversing
+    // them, and the frontend must compare the parameters regardless of order.
     const parameters = _.range(1, 10).map((index) =>
       createMockParameter({
         id: String(index),
