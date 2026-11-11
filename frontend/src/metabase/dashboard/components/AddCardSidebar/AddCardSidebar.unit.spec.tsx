@@ -8,6 +8,7 @@ import {
 import { createMockDashboardState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { dashboardApi } from "metabase/api";
 import { ROOT_COLLECTION as ROOT } from "metabase/common/collections/constants";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { checkNotNull } from "metabase/utils/types";
@@ -98,7 +99,7 @@ async function setup({
     collectionItems,
   });
 
-  renderWithProviders(
+  const { store } = renderWithProviders(
     <MockDashboardContext
       dashboardId={dashboard.id}
       navigateToNewCardFromDashboard={null}
@@ -128,6 +129,8 @@ async function setup({
   await waitFor(() => {
     expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
   });
+
+  return { store };
 }
 
 describe("AddCardSideBar", () => {
@@ -228,6 +231,33 @@ describe("AddCardSideBar", () => {
         await screen.findByText(questionInPublicCollection.name),
       ).toBeInTheDocument();
     });
+  });
+
+  it("should show personal collections after the dashboard is moved to a personal collection", async () => {
+    const dashboard = createMockDashboard({ collection: ROOT_COLLECTION });
+    const { store } = await setup({ collections: COLLECTIONS, dashboard });
+    expect(
+      screen.queryByRole("menuitem", { name: PERSONAL_COLLECTION.name }),
+    ).not.toBeInTheDocument();
+
+    fetchMock.put(`path:/api/dashboard/${dashboard.id}`, {
+      ...dashboard,
+      collection_id: PERSONAL_COLLECTION.id,
+      collection: PERSONAL_COLLECTION,
+    });
+    await store.dispatch(
+      dashboardApi.endpoints.updateDashboard.initiate({
+        id: dashboard.id,
+        collection_id: PERSONAL_COLLECTION.id,
+      }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", { name: PERSONAL_COLLECTION.name }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: COLLECTION.name }),
+    ).toBeInTheDocument();
   });
 
   describe("dashboards in public collections", () => {
