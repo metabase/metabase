@@ -6,11 +6,14 @@ import {
   setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import {
   createMockDatabase,
   createMockRecentCollectionItem,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { Editor } from "./Editor";
@@ -29,7 +32,11 @@ const CONTENT: JSONContent = {
   ],
 };
 
-const setup = async () => {
+type SetupOpts = {
+  canUseMetabot?: boolean;
+};
+
+const setup = async ({ canUseMetabot = false }: SetupOpts = {}) => {
   setupDatabasesEndpoints([createMockDatabase({ id: 1, name: "QA Postgres" })]);
   setupSearchEndpoints([]);
   setupUserMetabotPermissionsEndpoint();
@@ -45,6 +52,17 @@ const setup = async () => {
         editor = readyEditor;
       }}
     />,
+    canUseMetabot
+      ? {
+          storeInitialState: createMockState({
+            currentUser: createMockUser(),
+            settings: mockSettings({
+              "metabot-enabled?": true,
+              "llm-metabot-configured?": true,
+            }),
+          }),
+        }
+      : undefined,
   );
   await waitFor(() => expect(editor?.getText()).toContain("Chart orders by"));
   return checkNotNull<TiptapEditor>(editor);
@@ -86,6 +104,16 @@ describe("Editor suggestion routing", () => {
     expect(
       screen.queryByRole("dialog", { name: "Mention Dialog" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("offers Ask Metabot in the command menu when the user can use Metabot", async () => {
+    const editor = await setup({ canUseMetabot: true });
+
+    typeAtEndOf(editor, "paragraph", " /");
+
+    expect(
+      await screen.findByRole("option", { name: /Ask Metabot/ }),
+    ).toBeInTheDocument();
   });
 
   it("does not open the command menu for / inside a Metabot block", async () => {

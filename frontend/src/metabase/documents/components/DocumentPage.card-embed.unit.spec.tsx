@@ -22,6 +22,7 @@ import {
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
+import { captureClickModifierKeys } from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -441,6 +442,9 @@ describe("DocumentPage card embeds", () => {
 
   describe("navigating from and deleting a card embed", () => {
     const setupNavigationDocument = async () => {
+      // The app calls this at startup. Without it, a modifier key gets to
+      // openUrl only through window.event, which some test runners do not set.
+      captureClickModifierKeys();
       // the table grid is virtualized and renders no cells without a size
       mockGetBoundingClientRect({ width: 1000, height: 1000 });
       const { router } = setupDocumentPage({

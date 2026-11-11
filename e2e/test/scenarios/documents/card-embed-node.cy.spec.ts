@@ -1064,7 +1064,6 @@ describe("documents card embed node custom logic", () => {
       });
     });
   });
-
 });
 
 function assertFlexContainerCardsOrder(expectedCardTitles: string[]) {

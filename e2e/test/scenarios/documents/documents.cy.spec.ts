@@ -1,7 +1,5 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
-import {
-  ORDERS_BY_YEAR_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   ACCOUNTS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_CREATED_AT,
@@ -699,6 +697,65 @@ describe("documents", () => {
     const TIMESERIES_CARD_3 = "Orders by Created At (Month)";
     const TIMELINE_NAME = "Releases";
     const TIMELINE_EVENT_NAME = "RC1";
+    const TIMESERIES_CARD_1 = "Orders, Count, Grouped by Created At (year)";
+
+    it("should show a timeline on a timeseries chart embed from the Events menu", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: TIMELINE_NAME },
+        events: [
+          {
+            name: TIMELINE_EVENT_NAME,
+            timestamp: "2026-06-01T00:00:00Z",
+            icon: "star",
+            timezone: "UTC",
+          },
+        ],
+      });
+      H.createDocument({
+        name: "Timeline events document",
+        document: {
+          type: "doc",
+          content: [
+            {
+              type: "resizeNode",
+              attrs: { height: 350, minHeight: 280, _id: "1" },
+              content: [
+                {
+                  type: "cardEmbed",
+                  attrs: {
+                    id: ORDERS_BY_YEAR_QUESTION_ID,
+                    name: null,
+                    _id: "1a",
+                  },
+                },
+              ],
+            },
+            { type: "paragraph", attrs: { _id: "2" } },
+          ],
+        },
+        collection_id: null,
+        idAlias: "timelineDocumentId",
+      });
+
+      H.visitDocument("@timelineDocumentId");
+      H.getDocumentCard(TIMESERIES_CARD_1)
+        .findByTestId("chart-container")
+        .should("exist");
+
+      H.openDocumentCardMenu(TIMESERIES_CARD_1);
+      H.popover()
+        .findByRole("menuitem", { name: /Events/ })
+        .click();
+
+      cy.findByTestId("document-timeline-sidebar")
+        .findByLabelText("Timeline card header")
+        .findByRole("checkbox")
+        .click();
+
+      H.getDocumentCard(TIMESERIES_CARD_1)
+        .findByRole("button", { name: TIMELINE_EVENT_NAME })
+        .should("be.visible");
+    });
 
     it("should save a document after editing the visualization of an embed whose timeline the user cannot read", () => {
       H.createCollection({ name: "Private" }).then(
