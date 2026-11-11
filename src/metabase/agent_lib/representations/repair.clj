@@ -1316,20 +1316,23 @@
 
 (defn- repair-day-and-default-comparison [node]
   (if (hoistable-comparison-node? node)
-    (let [literals (mapv redundant-bucket-literal (subvec node 3))]
-      (if (every? whole-day-bound? (subvec node 3))
+    (let [operands   (subvec node 3)
+          literals   (mapv redundant-bucket-literal operands)
+          timestamp? #(and % (not (re-matches date-only-pattern %)))]
+      (cond
+        (every? whole-day-bound? operands)
         (if (contains? #{"!=" "not-in"} (first node))
           node
           (expand-day-comparison (into (subvec node 0 3) literals)))
-        (let [operands  (subvec node 3)
-              operands' (mapv (fn [operand literal]
-                                (if (and literal (not (re-matches date-only-pattern literal)))
-                                  (t-separated literal)
-                                  operand))
-                              operands literals)]
-          (unwrap-whole-day-start (if (= operands' operands)
-                                    node
-                                    (into (subvec node 0 3) operands'))))))
+
+        (not-any? timestamp? literals)
+        (unwrap-whole-day-start node)
+
+        :else
+        (unwrap-whole-day-start
+         (into (subvec node 0 3)
+               (map (fn [operand literal] (if (timestamp? literal) (t-separated literal) operand))
+                    operands literals)))))
     node))
 
 (def ^:private day-comparison-skipped-keys
