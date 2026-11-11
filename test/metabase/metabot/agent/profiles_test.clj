@@ -268,6 +268,22 @@
                                                            {:metabot confined :profile-id :nlq})
                                   "retrieve_library_entities"))))))))))
 
+(deftest library-withheld-wherever-search-is-confined-test
+  (testing "every profile whose search tools confine a metabot to its collection also withholds library retrieval"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Scope"}
+                       :model/Metabot    custom {:name "custom bot" :collection_id coll-id}]
+          (let [confining (for [[profile-id profile] @@#'profiles/*profiles
+                                :when (some #{#'tools/nlq-fulltext-search-tool} (:tools profile))]
+                            profile-id)]
+            (is (some #{:embedding_next} confining) "a custom metabot's default profile")
+            (doseq [profile-id confining]
+              (testing (str profile-id)
+                (is (not (contains? (profiles/profile->tools (profiles/get-profile profile-id) []
+                                                             {:metabot custom :profile-id profile-id})
+                                    "retrieve_library_entities")))))))))))
+
 (deftest terminal-tools-test
   (testing "the :sql profile marks its SQL write tools AND clarification terminal"
     (is (= #{"create_sql_query" "edit_sql_query" "replace_sql_query" "ask_for_sql_clarification"}

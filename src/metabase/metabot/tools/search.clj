@@ -491,13 +491,19 @@
       ;; Create futures for parallel execution
       (mapv deref (mapv #(future (attempt %)) all-queries)))))
 
+;; The search tools' NLQ variants pass `profile-id` "nlq", so their searches are confined whichever profile offers them.
+;; Other tools see the profile's own id, so every profile that offers the NLQ variants is listed here.
+(def ^:private confining-profile-ids
+  #{"embedding_next" "nlq"})
+
 (defn confined-collection-id
   "The collection that discovery for `metabot` must stay inside, or nil.
-  A confined metabot (embedded, or the nlq profile) may only search inside its own collection.
+  A confined metabot (embedded, or a profile that offers the NLQ search tools) may only search inside its own
+  collection.
   Takes `profile-id` as a string or a keyword."
   [metabot profile-id]
   (when (or (= (:entity_id metabot) metabot.config/embedded-metabot-id)
-            (= "nlq" (some-> profile-id name)))
+            (confining-profile-ids (some-> profile-id name)))
     (:collection_id metabot)))
 
 (defn- scoped-collection-id
