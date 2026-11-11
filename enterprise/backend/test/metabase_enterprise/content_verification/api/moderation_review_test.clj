@@ -106,3 +106,43 @@
                                         {:status              "verified"
                                          :moderated_item_id   dashboard-id
                                          :moderated_item_type "dashboard"}))))))))
+
+(deftest remove-dashboard-verification-test
+  (testing "POST /api/moderation-review can remove the verification of a dashboard"
+    (mt/with-premium-features #{:content-verification}
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+        (mt/with-model-cleanup [:model/ModerationReview]
+          (mt/user-http-request :crowberto :post 200 "moderation-review"
+                                {:status              "verified"
+                                 :moderated_item_id   dashboard-id
+                                 :moderated_item_type "dashboard"})
+          (is (=? {:status              nil
+                   :moderated_item_type "dashboard"
+                   :moderated_item_id   dashboard-id
+                   :most_recent         true}
+                  (mt/user-http-request :crowberto :post 200 "moderation-review"
+                                        {:status              nil
+                                         :moderated_item_id   dashboard-id
+                                         :moderated_item_type "dashboard"}))))))))
+
+(deftest dashboard-returns-latest-moderation-review-status-test
+  (testing "GET /api/dashboard/:id returns the status of the latest review, which the UI shows as the verified badge"
+    (mt/with-premium-features #{:content-verification}
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+        (mt/with-model-cleanup [:model/ModerationReview]
+          (let [review!        (fn [status]
+                                 (mt/user-http-request :crowberto :post 200 "moderation-review"
+                                                       {:status              status
+                                                        :moderated_item_id   dashboard-id
+                                                        :moderated_item_type "dashboard"}))
+                latest-reviews (fn []
+                                 (->> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id))
+                                      :moderation_reviews
+                                      (filter :most_recent)
+                                      (map #(select-keys % [:status :most_recent]))))]
+            (review! "verified")
+            (is (= [{:status "verified" :most_recent true}]
+                   (latest-reviews)))
+            (review! nil)
+            (is (= [{:status nil :most_recent true}]
+                   (latest-reviews)))))))))
