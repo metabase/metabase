@@ -3,9 +3,9 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model-level helpers."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn all-users
   "Every User."
@@ -28,7 +28,7 @@
   "Whether an instance of `model` whose primary key is `id` exists."
   [model :- :keyword
    id    :- [:maybe ms/PositiveInt]]
-  (t2/exists? model (first (t2/primary-keys model)) id))
+  (t2/exists? model :toucan/pk id))
 
 (mu/defn root-collections-for-user
   "The top-level non-analytics Collections that are not personal or belong to the User with `user-id`."
@@ -66,27 +66,41 @@
   (set (t2/select-pks-set :model/Collection {:where [:and [:in :id collection-ids] [:= :archived true]]})))
 
 (mu/defn rows-for-export
-  "A reducible of the rows `model`, a model or a selection of its columns, matching the honey SQL `where` clause, in
-  ascending order of `order-columns`."
-  [model         :- [:or :keyword vector?]
-   where         :- [:maybe vector?]
-   order-columns :- [:sequential :keyword]]
-  (t2/reducible-select model {:where    where
-                              :order-by (mapv (fn [column] [column :asc]) order-columns)}))
+  "A reducible of the rows `model`, a model or a selection of its columns, with a primary key among `ids` unless nil,
+  matching the honey SQL `where` clause, in the honey SQL `order-by`."
+  [model    :- [:or :keyword vector?]
+   ids      :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   where    :- [:maybe vector?]
+   order-by :- vector?]
+  (if ids
+    (t2/reducible-select model :toucan/pk [:in ids] {:where where :order-by order-by})
+    (t2/reducible-select model {:where where :order-by order-by})))
 
 (mu/defn entity-pk
   "The primary key of the `model` row with `entity-id`, or nil."
   [model     :- :keyword
    entity-id :- :string]
-  (let [pk (first (t2/primary-keys model))]
-    (t2/select-one-fn pk [model pk] :entity_id entity-id)))
+  (t2/select-one-pk model :entity_id entity-id))
 
 (mu/defn ids-for-export :- [:set :any]
-  "The primary keys of the `model` rows matching the honey SQL `where` clause."
+  "The primary keys of the `model` rows, with a primary key among `ids` unless nil, matching the honey SQL `where`
+  clause."
   [model :- :keyword
-   pk    :- :keyword
+   ids   :- [:maybe [:sequential [:maybe [:or :int :string]]]]
    where :- [:maybe vector?]]
-  (set (t2/select-fn-set pk [model pk] {:where where})))
+  (set (if ids
+         (t2/select-pks-set model :toucan/pk [:in ids] {:where where})
+         (t2/select-pks-set model {:where where}))))
+
+(defn- located-under-any
+  "The clause matching the Collections located under one of `collection-ids`, as a balanced tree."
+  [collection-ids]
+  (let [n (count collection-ids)]
+    (case n
+      0 (t2/fragment [:or])
+      1 (t2/fragment [:like :location (str "%/" (first collection-ids) "/%")])
+      (let [[l r] (split-at (quot n 2) collection-ids)]
+        (t2/fragment [:or (located-under-any l) (located-under-any r)])))))
 
 (mu/defn collection-subtree-ids :- [:set ::lib.schema.id/collection]
   "The ids of the Collections with `collection-ids` and of their descendants, without archived ones when
@@ -97,7 +111,5 @@
     #{}
     (set (t2/select-pks-set :model/Collection
                             {:where [:and
-                                     (into [:or [:in :id [:auto/param collection-ids]]]
-                                           (map (fn [id] [:like :location (str "%/" id "/%")]))
-                                           collection-ids)
-                                     (when unarchived-only? [:= :archived false])]}))))
+                                     [:or [:in :id collection-ids] (located-under-any collection-ids)]
+                                     (when unarchived-only? (t2/fragment [:= :archived false]))]}))))

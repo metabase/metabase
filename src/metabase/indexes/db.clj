@@ -15,10 +15,9 @@
   [:enum :create-pending :update-pending :delete-pending :running :succeeded :failed])
 
 (mu/defn synced-table-indexes-clause :- [:fn vector?]
-  "The clause over the TableIndex table aliased `alias` selecting the indexes of the transforms remote sync syncs."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  (remote-sync/synced-fk-clause alias :transform_id :model/Transform opts))
+  "The clause over the TableIndex table selecting the indexes of the transforms remote sync syncs."
+  [opts :- ::remote-sync.schema/synced-filter-opts]
+  (t2/fragment [:in :transform_id (remote-sync/synced-ids-clause :model/Transform opts)]))
 
 (mu/defn table-indexes-for-transform
   "The TableIndexes of the Transform with `transform-id`, in id order."

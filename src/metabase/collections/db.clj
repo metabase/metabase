@@ -7,8 +7,6 @@
    [metabase.app-db.core :as app-db]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.remote-sync.schema :as remote-sync.schema]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -24,28 +22,6 @@
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
 
 ;;; ---------------------------------------------- Single Collections ----------------------------------------------
-
-(mu/defn synced-collections-clause :- [:fn vector?]
-  "The clause over the Collection table aliased `alias` selecting the collections remote sync syncs: the synced
-  top-level ones with their descendants, and those of the `always-synced` namespaces."
-  [always-synced :- [:sequential :keyword]
-   alias         :- :keyword
-   opts          :- ::remote-sync.schema/synced-filter-opts]
-  (let [column #(u/qualified-key alias %)]
-    [:and
-     (when-not (:include-archived? opts)
-       [:= (column :archived) false])
-     [:or
-      [:exists ^:allow-subquery {:select [[[:inline 1] :one]]
-                                 :from   [[(t2/table-name :model/Collection) :synced_root]]
-                                 :where  [:and
-                                          [:= :synced_root.is_remote_synced true]
-                                          [:= :synced_root.location "/"]
-                                          [:or
-                                           [:= :synced_root.id (column :id)]
-                                           [:like (column :location)
-                                            [:concat (h2x/literal "/") :synced_root.id (h2x/literal "/%")]]]]}]
-      [:in (column :namespace) (mapv name always-synced)]]]))
 
 (mu/defn collection
   "The ::collections.schema/collection with `collection-id`, or nil."

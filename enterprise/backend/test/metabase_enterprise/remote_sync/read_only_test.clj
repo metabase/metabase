@@ -29,9 +29,7 @@
                  :model/Collection unsynced {:name "Unsynced" :location "/"}
                  :model/Card       card     {:name "Synced card" :collection_id (:id synced)}
                  :model/Card       other    {:name "Unsynced card" :collection_id (:id unsynced)}]
-    (let [writable-ids #(t2/select-pks-set :model/Card {:where [:and
-                                                                [:in :id [(:id card) (:id other)]]
-                                                                (remote-sync/can-write-filter-clause :model/Card :report_card)]})]
+    (let [writable-ids #(remote-sync/writable-pks :model/Card [(:id card) (:id other)])]
       (testing "on read-only instance, synced rows can't be written"
         (remote-sync.tu/with-remote-sync [url :read-only]
           (is (false? (remote-sync/can-write? :model/Card (:id card))))

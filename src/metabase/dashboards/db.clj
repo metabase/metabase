@@ -9,35 +9,11 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
-   [metabase.remote-sync.core :as remote-sync]
-   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(mu/defn synced-dashboard-tabs-clause :- [:fn vector?]
-  "The clause over the DashboardTab table aliased `alias` selecting the tabs of the Dashboards remote sync syncs."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  (remote-sync/synced-fk-clause alias :dashboard_id :model/Dashboard opts))
-
-(mu/defn synced-dashcards-clause :- [:fn vector?]
-  "The clause over the DashboardCard table aliased `alias` selecting the cards of the Dashboards remote sync syncs."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  (remote-sync/synced-fk-clause alias :dashboard_id :model/Dashboard opts))
-
-(mu/defn synced-dashboards-clause :- [:fn vector?]
-  "The clause over the Dashboard table aliased `alias` selecting the Dashboards remote sync syncs."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  [:and
-   (when-not (:include-archived? opts)
-     [:= (u/qualified-key alias :archived) false])
-   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."

@@ -131,5 +131,7 @@
 
 (defmethod remote-sync/spec :model/TransformTag
   [_model]
-  {:synced-filter-clause   transforms.db/synced-transform-tags-clause
-   :built-in-filter-clause transforms.db/built-in-transform-tags-clause})
+  {:synced-filter-clause   (fn [_opts]
+                             (t2/fragment [:= :built_in_type nil]))
+   :built-in-filter-clause (fn []
+                             (t2/fragment [:not= :built_in_type nil]))})

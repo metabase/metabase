@@ -6,54 +6,50 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn row
   "The row of `model` with the primary key `pk`, or nil."
   [model :- :keyword
    pk    :- [:or :int :string]]
-  (t2/select-one model (first (t2/primary-keys model)) pk))
+  (t2/select-one model :toucan/pk pk))
 
 (mu/defn exported-rows
   "The rows of `model` with the primary keys `pks`, with the columns its export takes."
   [model :- :keyword
    pks   :- [:sequential [:or :int :string]]]
   (if (seq pks)
-    (t2/select (into [model] (serialization/columns model)) (first (t2/primary-keys model)) [:in pks])
+    (t2/select (into [model] (serialization/columns model)) :toucan/pk [:in pks])
     []))
 
 (mu/defn synced-rows
   "The rows of `model` remote sync syncs with the columns its export takes, ordered by primary key."
   [model :- :keyword]
-  (let [pk (first (t2/primary-keys model))]
-    (t2/select (into [model] (serialization/columns model))
-               pk [:in (remote-sync/synced-ids-clause model nil)]
-               {:order-by [[pk :asc]]})))
+  (sort-by (first (t2/primary-keys model))
+           (t2/select (into [model] (serialization/columns model))
+                      {:where (remote-sync/synced-filter-clause model nil)})))
 
 (mu/defn synced-count :- :int
   "The number of rows of `model` remote sync syncs."
   [model :- :keyword]
-  (t2/count model (first (t2/primary-keys model)) [:in (remote-sync/synced-ids-clause model nil)]))
+  (t2/count model {:where (remote-sync/synced-filter-clause model nil)}))
 
 (mu/defn delete-rows!
   "Deletes the rows of `model` with the primary keys `pks`, running its hooks."
   [model :- :keyword
    pks   :- [:sequential [:or :int :string]]]
-  (t2/delete! model (first (t2/primary-keys model)) [:in pks]))
+  (t2/delete! model :toucan/pk [:in pks]))
 
 (mu/defn built-in-entity-ids :- [:set :string]
   "Those of the `entity-ids` of rows of `model` that every instance has."
   [model      :- :keyword
    entity-ids :- [:sequential :string]]
   (if (seq entity-ids)
-    (into #{}
-          (map :entity_id)
-          (t2/query {:select [:row.entity_id]
-                     :from   [[(t2/table-name model) :row]]
-                     :where  [:and [:in :row.entity_id entity-ids] (remote-sync/built-in-filter-clause model :row)]}))
+    (set (t2/select-fn-set :entity_id [model :entity_id]
+                           :entity_id [:in entity-ids]
+                           {:where (remote-sync/built-in-filter-clause model)}))
     #{}))
 
 (mu/defn rows-not-built-in
@@ -61,9 +57,7 @@
   [model :- :keyword
    pks   :- [:sequential [:or :int :string]]]
   (if (seq pks)
-    (let [pk (u/qualified-key :row (first (t2/primary-keys model)))]
-      (t2/select [model :row.*] {:from  [[(t2/table-name model) :row]]
-                                 :where [:and [:in pk pks] [:not (remote-sync/built-in-filter-clause model :row)]]}))
+    (t2/select [model :*] :toucan/pk [:in pks] {:where [:not (remote-sync/built-in-filter-clause model)]})
     []))
 
 (mu/defn collections
@@ -86,7 +80,7 @@
 (mu/defn task
   "The RemoteSyncTask with `task-id`, or nil."
   [task-id :- ms/PositiveInt]
-  (t2/select-one :model/RemoteSyncTask :id [:auto/param task-id]))
+  (t2/select-one :model/RemoteSyncTask :id task-id))
 
 (mu/defn task-cancelled?
   "The cancelled flag of the RemoteSyncTask with `task-id`."
@@ -95,7 +89,7 @@
 
 (def ^:private last-alive-at
   "The last sign of life of a task: its heartbeat, or its last progress report when it has no heartbeat yet."
-  [:coalesce :last_heartbeat_at :last_progress_report_at])
+  (t2/fragment [:coalesce :last_heartbeat_at :last_progress_report_at]))
 
 (mu/defn current-task
   "The newest started, unfinished RemoteSyncTask whose owner was alive after `liveness-cutoff`, or nil."
@@ -168,10 +162,10 @@
   ids."
   [cutoff  :- ms/TemporalInstant
    message :- :string]
-  (let [stale [:and
-               [:<> :started_at nil]
-               [:= :ended_at nil]
-               [:< last-alive-at cutoff]]
+  (let [stale (t2/fragment [:and
+                            [:<> :started_at nil]
+                            [:= :ended_at nil]
+                            [:< last-alive-at cutoff]])
         ids   (vec (t2/select-pks-vec :model/RemoteSyncTask {:where stale}))]
     (when (seq ids)
       (t2/query {:update (t2/table-name :model/RemoteSyncTask)

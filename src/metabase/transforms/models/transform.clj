@@ -628,4 +628,5 @@
 
 (defmethod remote-sync/spec :model/Transform
   [_model]
-  {})
+  {:ids-query (fn [where]
+                (t2/fragment {:select [:id] :from [(t2/table-name :model/Transform)] :where where}))})

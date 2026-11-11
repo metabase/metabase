@@ -2,6 +2,7 @@
   "Which models remote sync syncs, how it names their rows, and whether those rows can be written, which synced rows
   can't on a read-only instance."
   (:require
+   [clojure.set :as set]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.remote-sync.db :as remote-sync.db]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -77,14 +78,13 @@
   (or (not (read-only?))
       (not (read-only-row? model pk))))
 
-(mu/defn can-write-filter-clause :- [:fn vector?]
-  "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows that can be
-  written (see [[can-write?]])."
+(mu/defn writable-pks :- [:set ::remote-sync.schema/pk]
+  "Those of `pks` whose rows of `model` can be written (see [[can-write?]])."
   [model :- :keyword
-   alias :- :keyword]
+   pks   :- [:sequential ::remote-sync.schema/pk]]
   (if (read-only?)
-    (remote-sync.db/writable-filter-clause model alias)
-    remote-sync.db/all-rows-filter-clause))
+    (set/difference (set pks) (remote-sync.db/read-only-pks-among model pks))
+    (set pks)))
 
 (mu/defn synced-changes? :- :boolean
   "Whether `changes` to `instance` of `model` change a column an export of it holds."

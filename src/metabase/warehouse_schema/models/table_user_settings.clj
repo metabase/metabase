@@ -226,4 +226,10 @@
 (defmethod remote-sync/spec :model/TableUserSettings
   [_model]
   {:label                (fn [{:keys [display_name table_id]}] (or display_name (last table_id)))
-   :synced-filter-clause warehouse-schema.db/synced-table-user-settings-clause})
+   :synced-filter-clause (fn [opts]
+                           (t2/fragment
+                            [:and
+                             [:= :is_published true]
+                             [:in :collection_id (remote-sync/synced-ids-clause :model/Collection opts)]]))
+   :ids-query            (fn [where]
+                           (t2/fragment {:select [:table_id] :from [(t2/table-name :model/TableUserSettings)] :where where}))})

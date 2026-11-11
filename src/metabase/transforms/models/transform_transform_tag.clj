@@ -3,7 +3,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.toucan.core :as t2]
-   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.schema :as transforms.schema]))
 
 (set! *warn-on-reflection* true)
@@ -23,4 +22,5 @@
 
 (defmethod remote-sync/spec :model/TransformTransformTag
   [_model]
-  {:synced-filter-clause transforms.db/synced-transform-transform-tags-clause})
+  {:synced-filter-clause (fn [opts]
+                           (t2/fragment [:in :transform_id (remote-sync/synced-ids-clause :model/Transform opts)]))})
