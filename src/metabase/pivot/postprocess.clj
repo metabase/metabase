@@ -7,7 +7,7 @@
   (:refer-clojure :exclude [mapv empty?])
   (:require
    [clojure.set :as set]
-   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.lib.core :as lib]
    [metabase.pivot.core :as pivot]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -95,13 +95,12 @@
   "Correlates column viz settings with columns by name in order to produce column settings closer
   to what the FE gets."
   [cols settings]
-  (let [col-settings (::mb.viz/column-settings settings)]
-    (map
-     (fn [col]
-       (merge
-        {:column col}
-        (get col-settings {::mb.viz/column-name (:name col)})))
-     cols)))
+  (map
+   (fn [col]
+     (merge
+      {:column col}
+      (lib/column-settings-for-name settings (:name col))))
+   cols))
 
 (defn- build-top-headers
   [top-header-items left-header-items row-indexes display-name-for-col]

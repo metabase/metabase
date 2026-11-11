@@ -7,7 +7,6 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.visualization-settings :as viz-settings]
    [metabase.notification.db :as notification.db]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.parameters.schema :as parameters.schema]
@@ -170,8 +169,7 @@
   TODO (Ngoc 2026-04-23) -- now that the QP cache preserves fresh viz-settings on cache hit
   (#72922), this hack is likely redundant. Confirm with coverage and remove."
   [qp-result]
-  (update-in qp-result [:data :viz-settings] merge (-> (get-in qp-result [:json_query :viz-settings])
-                                                       viz-settings/db->norm)))
+  (update-in qp-result [:data :viz-settings] merge (get-in qp-result [:json_query :viz-settings])))
 
 (defn- format-qp-result
   "Extracts only the keys that the notification pipeline needs from a QP result.

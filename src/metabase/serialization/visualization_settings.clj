@@ -105,18 +105,15 @@
       (m/update-existing-in [:target :dimension] #(mbql/walk-import-refs visit %))))
 
 (defn- walk-export-viz-click-behavior-mappings
-  "The `:parameterMapping` on a `:click_behavior` viz settings is a map of... IDs turned into JSON strings which have
-  been keywordized. Therefore the keys must be converted to strings, parsed, exported, and JSONified. The values are
-  ported by [[walk-export-viz-click-behavior-mapping]]."
+  "The `:parameterMapping` on a `:click_behavior` viz settings is a map of IDs turned into JSON strings, so its keys
+  must be parsed, exported, and JSONified again. The values are ported by [[walk-export-viz-click-behavior-mapping]]."
   [visit mappings]
   (into {}
-        (comp (map (fn [[k v]]
-                     [(u/qualified-name k) v]))
-              (map (fn [[k mapping]]
-                     (if (dimension-param-mapping? mapping)
-                       [(json-export-mbql visit k)
-                        (walk-export-viz-click-behavior-mapping visit mapping)]
-                       [k mapping]))))
+        (map (fn [[k mapping]]
+               (if (dimension-param-mapping? mapping)
+                 [(json-export-mbql visit k)
+                  (walk-export-viz-click-behavior-mapping visit mapping)]
+                 [k mapping])))
         mappings))
 
 (defn- walk-import-viz-click-behavior-mappings

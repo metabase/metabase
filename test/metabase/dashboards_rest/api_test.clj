@@ -5153,12 +5153,12 @@
                                                      :card_id card-id-1
                                                      :visualization_settings {:column_settings
                                                                               {"[\"name\",\"ID\"]" ;; FE reference that must be json formatted
-                                                                               {:click_behavior {:type :link
+                                                                               {:click_behavior {:type "link"
                                                                                                  :linkType "dashboard"
                                                                                                  :targetId link-dash}}}}}
      :model/DashboardCard       _                   {:dashboard_id dashboard-id,
                                                      :card_id card-id-2
-                                                     :visualization_settings {:click_behavior {:type :link
+                                                     :visualization_settings {:click_behavior {:type "link"
                                                                                                :linkType "question"
                                                                                                :targetId link-card}}}
      :model/Card                {series-id-1 :id}   {:name "Series Card 1"

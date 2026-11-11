@@ -1,6 +1,8 @@
 (ns metabase.lib.schema.visualization-settings-test
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.util.malli.registry :as mr]))
@@ -50,11 +52,11 @@
 
 (deftest ^:parallel normalize-invalid-visualization-settings-test
   (testing "Unknown keys in `:column_settings` should be removed rather than causing normalization to fail (#69626)"
-    (let [viz-settings {"column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}
-                                           "[\"REF\",[\"expression\",\"expression\"]]" {:number_style "y"}
-                                           "[\"bad-clause\",\"a\"]"                    {:number_style "z"}}}]
+    (let [viz-settings {"column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "currency"}
+                                           "[\"REF\",[\"expression\",\"expression\"]]" {:number_style "percent"}
+                                           "[\"bad-clause\",\"a\"]"                    {:number_style "decimal"}}}]
       (is (= {:column_settings
-              {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}}}
+              {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "currency"}}}
              (lib/normalize ::lib.schema.visualization-settings/visualization-settings viz-settings))))))
 
 (deftest ^:parallel normalize-column-names-and-legacy-refs-test
@@ -88,8 +90,8 @@
 (deftest ^:parallel normalize-click-behavior-dimension-test
   (testing "a click behavior dimension target keeps its \"dimension\" tag and normalizes the ref of its column"
     (let [mapping {:target {:type "dimension" :dimension ["dimension" [:field 3 nil]]}}]
-      (is (= {:click_behavior  {:parameterMapping {:abc mapping}}
-              :column_settings {"[\"name\",\"A\"]" {:click_behavior {:parameterMapping {:abc mapping}}}}}
+      (is (= {:click_behavior  {:parameterMapping {"abc" mapping}}
+              :column_settings {"[\"name\",\"A\"]" {:click_behavior {:parameterMapping {"abc" mapping}}}}}
              (lib/normalize ::lib.schema.visualization-settings/visualization-settings
                             {"click_behavior"  {"parameterMapping" {"abc" {"target" {"type"      "dimension"
                                                                                      "dimension" [:dimension ["field-id" 3]]}}}}
@@ -137,4 +139,46 @@
            (get-in (lib/normalize ::lib.schema.visualization-settings/visualization-settings
                                   {"click_behavior" {"parameterMapping" {"abc" {"target" {"type"      "dimension"
                                                                                           "dimension" ["dimension" ["field" 3 nil] {"stage-number" 0}]}}}}})
-                   [:click_behavior :parameterMapping :abc :target :dimension])))))
+                   [:click_behavior :parameterMapping "abc" :target :dimension])))))
+
+(deftest ^:parallel normalize-drops-invalid-values-per-key-test
+  (testing "a value that doesn't match its type is dropped without its siblings, at every level"
+    (is (= {:column_settings {"[\"name\",\"A\"]" {:currency       "EUR"
+                                                  :click_behavior {:type "link" :linkType "url" :linkTemplate "/x"}}}
+            :table.columns   [{:name "A" :enabled true :fieldRef [:field 1 nil]}]}
+           (lib/normalize ::lib.schema.visualization-settings/visualization-settings
+                          {"column_settings" {"[\"name\",\"A\"]" {"currency"       "EUR"
+                                                                  "decimals"       "two"
+                                                                  "click_behavior" {"type"         "link"
+                                                                                    "linkType"     "url"
+                                                                                    "linkTemplate" "/x"
+                                                                                    "targetId"     "abc"}}}
+                           "table.columns"   [{"name" "A" "enabled" true "fieldRef" ["field" 1 nil] "key" "k"}]
+                           "table.pivot"     "yes"})))))
+
+(deftest ^:parallel normalize-deprecated-values-test
+  (testing "deprecated values are normalized to the ones that replaced them"
+    (is (= {:column_settings {"[\"name\",\"A\"]" {:time_style     "HH:mm"
+                                                  :click_behavior {:type "link" :linkType "dashboard" :targetId 1}}}
+            :click_behavior  {:type "link" :linkType "dashboard" :targetId 2}}
+           (lib/normalize ::lib.schema.visualization-settings/visualization-settings
+                          {"column_settings" {"[\"name\",\"A\"]" {"time_style"     "k:mm"
+                                                                  "click_behavior" {"type" "link" "linkType" "page" "targetId" 1}}}
+                           "click_behavior"  {"type" "link" "linkType" "page" "targetId" 2}})))))
+
+(deftest ^:parallel normalize-pie-percent-visibility-test
+  (testing "the pie legend settings of older settings become the percent visibility they mean"
+    (are [settings expected] (= expected
+                                (:pie.percent_visibility
+                                 (lib/normalize ::lib.schema.visualization-settings/visualization-settings settings)))
+      {"pie.show_legend" true}                                  "inside"
+      {"pie.show_legend" false "pie.show_legend_perecent" true} "legend"
+      {"pie.show_legend" true "pie.percent_visibility" "off"}   "off"
+      {"pie.show_legend" false}                                 nil)))
+
+(deftest ^:parallel api-decode-removes-qp-keys-test
+  (testing "the keys the query processor adds are never accepted from the REST API"
+    (is (= {"table.pivot" true}
+           (mc/decode ::lib.schema.visualization-settings/visualization-settings
+                      {"table.pivot" true "qp/display" "table" "qp/global-column-settings" {}}
+                      (mtx/transformer {:name :api}))))))

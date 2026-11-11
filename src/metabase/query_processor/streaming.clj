@@ -6,7 +6,6 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
@@ -65,9 +64,7 @@
   should include it. This way, if e.g. the query has changed from `SELECT id FROM ...` to `SELECT id, created_at FROM
   ...`, we'll include the new columns. (This is the same behavior as the UI.)"
   [table-columns cols]
-  (let [{:keys [name->table field-ref->table]} (reduce (fn [m {n ::mb.viz/table-column-name
-                                                               fr ::mb.viz/table-column-field-ref
-                                                               :as table}]
+  (let [{:keys [name->table field-ref->table]} (reduce (fn [m {n :name, fr :fieldRef, :as table}]
                                                          (cond-> m
                                                            true (assoc-in [:name->table n] table)
                                                            fr (assoc-in [:field-ref->table fr] table)))
@@ -79,9 +76,9 @@
           :let [col-name (:name col)
                 id-or-name (or (:id col) col-name)
                 field-ref (:field_ref col)]]
-      {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
-       ::mb.viz/table-column-enabled   true
-       ::mb.viz/table-column-name      col-name})))
+      {:fieldRef (or field-ref [:field id-or-name nil])
+       :enabled  true
+       :name     col-name})))
 
 (defn- pivot-grouping-exists?
   "Returns `true` if there's a column with the :name \"pivot-grouping\",
@@ -136,7 +133,7 @@
           ;; entries that do match, instead of being discarded all-or-nothing (#19465, #75791).
           table-columns'     (or (when (seq table-columns)
                                    (concat
-                                    (filter ::mb.viz/table-column-enabled table-columns)
+                                    (filter :enabled table-columns)
                                     (not-explicitly-excluded-columns table-columns cols)))
                                  ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
                                  ;; that retains the original column ordering in `cols`
@@ -144,9 +141,9 @@
                                    (let [col-name   (:name col)
                                          id-or-name (or (:id col) col-name)
                                          field-ref  (:field_ref col)]
-                                     {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
-                                      ::mb.viz/table-column-enabled   true
-                                      ::mb.viz/table-column-name      col-name})))
+                                     {:fieldRef (or field-ref [:field id-or-name nil])
+                                      :enabled  true
+                                      :name     col-name})))
           cols-vector        (into [] cols)
           ;; cols-index is a map from keys representing fields to their indices into `cols`
           cols-index         (reduce-kv (fn [m i col]
@@ -159,7 +156,7 @@
                                         {}
                                         cols-vector)]
       (->> (map
-            (fn [{field-ref ::mb.viz/table-column-field-ref, col-name ::mb.viz/table-column-name}]
+            (fn [{field-ref :fieldRef, col-name :name}]
               (let [index              (or (get cols-index field-ref)
                                            (get cols-index col-name))
                     col                (get cols-vector index)
@@ -184,8 +181,8 @@
   (let [deduped-cols  (deduplicate-col-names cols)
         ;; the pivot grid is built from every column, so details-only ones are not hidden there
         display       (when-not (simple-pivot-indexes deduped-cols viz-settings)
-                        (::mb.viz/display viz-settings))
-        output-order  (export-column-order deduped-cols (::mb.viz/table-columns viz-settings) display)
+                        (:qp/display viz-settings))
+        output-order  (export-column-order deduped-cols (:table.columns viz-settings) display)
         ordered-cols  (if output-order
                         (let [v (into [] deduped-cols)]
                           (for [i output-order] (v i)))

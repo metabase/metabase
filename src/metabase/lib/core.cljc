@@ -124,6 +124,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
+   [metabase.lib.visualization-settings :as lib.visualization-settings]
    [metabase.lib.walk]
    [metabase.lib.walk.util]
    [metabase.util.malli :as mu]
@@ -1863,3 +1864,12 @@
 
   **Code Health:** Healthy."
   metabase.lib.parameters.parse.types/no-value)
+
+(shared.ns/import-fns
+ [lib.visualization-settings
+  column-name->column-settings-key
+  column-settings-for-field-id
+  column-settings-for-name
+  field-id->column-settings-key
+  parse-column-settings-key
+  ref->column-settings-key])

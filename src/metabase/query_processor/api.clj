@@ -14,12 +14,12 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.model-persistence.core :as model-persistence]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.field :as parameters.field]
@@ -159,8 +159,9 @@
                                  ::lib-be.schema/maybe-legacy-or-internal-query]]
        [:visualization_settings {:default {}} (mu/with ::lib.schema.visualization-settings/visualization-settings
                                                        {:decode/api (fn [x]
-                                                                      (cond-> x
-                                                                        (string? x) (json/decode viz-setting-key-fn)))})]
+                                                                      (lib.schema.common/remove-internal-keys
+                                                                       (cond-> x
+                                                                         (string? x) (json/decode viz-setting-key-fn))))})]
        ;; the browser form-encodes downloads and JSON-encodes every value, so a display arrives as "\"table\""
        [:display                {:optional true} [:maybe (mu/with ms/KeywordOrString
                                                                   {:decode/api (fn [x]
@@ -172,9 +173,8 @@
        [:csv_include_bom         {:default false} ms/BooleanValue]]
    request]
   (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
-  (let [viz-settings                  (-> visualization-settings
-                                          (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
-                                          mb.viz/norm->db)
+  (let [viz-settings                  (lib/normalize ::lib.schema.visualization-settings/visualization-settings
+                                                     visualization-settings)
         query                         (-> query
                                           (dissoc :constraints :cache-strategy)
                                           (assoc :viz-settings viz-settings)

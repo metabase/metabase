@@ -14,7 +14,7 @@
 
 (defn- single-rule [column operator value & {:as overrides}]
   (merge {:columns       [column]
-          :type          :single
+          :type          "single"
           :operator      operator
           :value         value
           :color         "#ff0000"

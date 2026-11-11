@@ -22,7 +22,6 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util :as lib.util]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
@@ -285,12 +284,9 @@
                                  (comp (filter (some-fn :lib/breakout? #(= (:lib/source %) :source/aggregations)))
                                        (map-indexed (fn [i column] [(:name column) i])))
                                  (lib/returned-columns query))]
-    (-> (or (:column_settings viz-settings)
-            (::mb.viz/column-settings viz-settings))
+    (-> (:column_settings viz-settings)
         (update-keys (fn [k]
-                       (if (string? k)
-                         (-> k json/decode last index-in-breakouts)
-                         (->> k ::mb.viz/column-name index-in-breakouts))))
+                       (-> k json/decode last index-in-breakouts)))
         (update-vals (comp keyword :pivot_table.column_sort_order)))))
 
 (mu/defn- field-ref-pivot-options :- ::pivot-opts
