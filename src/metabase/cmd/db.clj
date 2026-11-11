@@ -2,9 +2,9 @@
   "Application database queries for the command-line module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (mu/defn user-id-and-active-by-email
   "The `:id` and `:is_active` of the User whose email matches `email` case-insensitively, or nil."

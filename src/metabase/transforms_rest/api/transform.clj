@@ -5,6 +5,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.request.core :as request]
+   [metabase.toucan.core :as t2]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
    [metabase.transforms-rest.api.transform-job]
@@ -19,8 +20,7 @@
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.time OffsetDateTime)))
 

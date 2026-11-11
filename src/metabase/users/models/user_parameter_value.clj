@@ -5,16 +5,15 @@
    [metabase.batch-processing.core :as grouper]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
+   [metabase.toucan.core :as t2]
    [metabase.users.db :as users.db]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(methodical/defmethod t2/table-name :model/UserParameterValue [_model] :user_parameter_value)
+(t2/define-table-name :model/UserParameterValue [_model] :user_parameter_value)
 
 (doto :model/UserParameterValue
   (derive :metabase/model))
@@ -78,7 +77,7 @@
 
 ;; hydration
 
-(methodical/defmethod t2/batched-hydrate [:model/Dashboard :last_used_param_values]
+(t2/define-batched-hydrate [:model/Dashboard :last_used_param_values]
   "Hydrate a map of parameter-id->last-used-value for the dashboards."
   [_model _k dashboards]
   (if-let [user-id (and (setting/get :dashboards-save-last-used-parameters) api/*current-user-id*)]

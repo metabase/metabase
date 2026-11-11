@@ -6,6 +6,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
@@ -23,15 +24,14 @@
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
    [potemkin :as p]
-   [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
    [toucan2.realize :as t2.realize]))
 
@@ -279,9 +279,9 @@
     (run! grant-library-collection-permissions! [library data metrics])
     library))
 
-(methodical/defmethod t2/table-name :model/Collection [_model] :collection)
+(t2/define-table-name :model/Collection [_model] :collection)
 
-(methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]
+(t2/define-model-for-automagic-hydration [#_model :default #_k :collection]
   [_original-model _k]
   :model/Collection)
 
@@ -926,14 +926,95 @@
     ;; we're not looking for a particular `archive_operation_id`
     (not (:archive-operation-id visibility-config)))))
 
-(def ^:private visible-union-columns
-  [:c.id
-   :c.location
-   :c.archived
-   :c.archive_operation_id
-   :c.archived_directly
-   :c.type
-   :c.namespace])
+(defn- visible-union-branch
+  "A fragment selecting the Collection columns the visible union needs from the Collections matching fragment `where`."
+  [where]
+  (t2/fragment {:select [:c.id
+                         :c.location
+                         :c.archived
+                         :c.archive_operation_id
+                         :c.archived_directly
+                         :c.type
+                         :c.namespace]
+                :from   [[:collection :c]]
+                :where  where}))
+
+(mu/defn- visible-collection-ids
+  "Given a `CollectionVisibilityConfig`, return a fragment that selects all visible Collection IDs."
+  ([visibility-config :- CollectionVisibilityConfig]
+   (visible-collection-ids visibility-config
+                           {:current-user-id api/*current-user-id*
+                            :is-superuser?   api/*is-superuser?*}))
+
+  ([visibility-config :- CollectionVisibilityConfig
+    {:keys [current-user-id is-superuser?]} :- UserScope]
+   (let [source        (if is-superuser?
+                         (t2/fragment [:collection :c])
+                         (let [personal-ids (seq (user->personal-collection-and-descendant-ids current-user-id))
+                               tenant-ids   (seq (perms/user->tenant-collection-and-descendant-ids current-user-id))
+                               read?        (= :read (:permission-level visibility-config))
+                               branches     (keep identity
+                                                  [(visible-union-branch
+                                                    (t2/fragment
+                                                     [:exists ^:allow-subquery {:select     [1]
+                                                                                :from       [[:permissions :p]]
+                                                                                :inner-join [[:permissions_group_membership :pgm] [:= :p.group_id :pgm.group_id]]
+                                                                                :where      [:and
+                                                                                             [:= :pgm.user_id current-user-id]
+                                                                                             [:= :c.id :p.collection_id]
+                                                                                             [:= :p.perm_type "perms/collection-access"]
+                                                                                             [:or
+                                                                                              [:= :p.perm_value "read-and-write"]
+                                                                                              (when read?
+                                                                                                (t2/fragment [:= :p.perm_value "read"]))]]}]))
+                                                   (visible-union-branch (t2/fragment [:= :type trash-collection-type]))
+                                                   (when personal-ids
+                                                     (visible-union-branch (t2/fragment [:in :id personal-ids])))
+                                                   (when tenant-ids
+                                                     (visible-union-branch (t2/fragment [:in :id tenant-ids])))
+                                                   (when (perms/is-data-analyst? current-user-id)
+                                                     (visible-union-branch (t2/fragment [:= :namespace "transforms"])))])
+                               union        (reduce (fn [acc branch] (t2/fragment {:union-all [acc branch]})) (first branches) (rest branches))]
+                           (t2/fragment [union :c])))
+         trash-id      (trash-collection-id)
+         op-id         (:archive-operation-id visibility-config)]
+     (t2/fragment
+      {:select :id
+       :from   [source]
+       :where  [:and
+                (when-not (:include-trash-collection? visibility-config)
+                  (t2/fragment [:not= :c.id trash-id]))
+                (when (= :exclude (:include-archived-items visibility-config))
+                  (t2/fragment [:= :c.archived false]))
+                (when (= :only (:include-archived-items visibility-config))
+                  (t2/fragment [:or
+                                [:= :c.archived true]
+                                [:= :id trash-id]]))
+                (when-not (perms/use-tenants)
+                  (t2/fragment [:not [:exists ^:allow-subquery {:select [1]
+                                                                :from   [[:collection :sub_c]]
+                                                                :where  [:and
+                                                                         [:= :c.id :sub_c.id]
+                                                                         [:= :sub_c.namespace "shared-tenant-collection"]]}]]))
+                (when op-id
+                  (t2/fragment [:or
+                                [:= :c.archive_operation_id op-id]
+                                [:= :id trash-id]]))]}))))
+
+(defn- unlift-markers
+  "`form` with every `[:auto/param x]` marker replaced by `x`, and every number, number list and string spliced into
+  the SQL: a query reached by a `WITH` clause cannot bind them, since H2 mixes up the parameters of a CTE read twice."
+  [form]
+  (walk/postwalk (fn [x]
+                   (cond
+                     (string? x)                                                     (h2x/literal x)
+                     (and (vector? x) (= 2 (count x)) (= :auto/param (first x)))
+                     (let [v (second x)]
+                       (if (or (integer? v) (and (coll? v) (seq v) (every? integer? v)))
+                         [:inline v]
+                         v))
+                     :else                                                           x))
+                 form))
 
 (mu/defn visible-collection-query
   "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs."
@@ -943,81 +1024,23 @@
                               :is-superuser?   api/*is-superuser?*}))
 
   ([visibility-config :- CollectionVisibilityConfig
-    {:keys [current-user-id is-superuser?]} :- UserScope]
-   ;; This giant query looks scary, but it's actually only moderately terrifying! Let's walk through it step by
-   ;; step. What we're doing here is adding a filter clause to a surrounding query, to make sure that
-   ;; `collection-id-field` matches the criteria passed by the user. The criteria we use are:
-   ;;
-   ;; - your permissions (we don't show you something you don't have the right to see)
-   ;; - the desired permission level you need (if you're looking for stuff you can WRITE, we don't show you stuff you can READ)
-   ;; - trash (you can show/hide the trash)
-   ;; - archived (you can show/hide archived collections or select *only* archived collections)
-   ;; - archive operation id (when we archive a collection and subcollections together, we mark the whole archived
-   ;;   tree so you can look at it in isolation)
-   ;; - effective child (if you're only interested in things that are an effective child of another collection, we can do that)
-   ^:allow-subquery {:select :id
-                     ;; the `FROM` clause is where we limit the collections to the ones we have permissions on. For a superuser,
-                     ;; that's all of them. For regular users, it's:
-                     ;; a) the collections they have permission in the DB for,
-                     ;; b) the trash collection, and
-                     ;; c) their personal collection and its descendants
-                     :from [(if is-superuser?
-                              [:collection :c]
-                              [^:allow-subquery {:union-all (keep identity [^:allow-subquery {:select visible-union-columns
-                                                                                              :from   [[:collection :c]]
-                                                                                              :where [:and [:exists ^:allow-subquery {:select [1]
-                                                                                                                                      :from [[:permissions :p]]
-                                                                                                                                      :inner-join [[:permissions_group_membership :pgm] [:= :p.group_id :pgm.group_id]]
-                                                                                                                                      :where [:and
-                                                                                                                                              [:= :pgm.user_id [:inline current-user-id]]
-                                                                                                                                              [:= :c.id :p.collection_id]
-                                                                                                                                              [:= :p.perm_type (h2x/literal "perms/collection-access")]
-                                                                                                                                              [:or
-                                                                                                                                               [:= :p.perm_value (h2x/literal "read-and-write")]
-                                                                                                                                               (when (= :read (:permission-level visibility-config))
-                                                                                                                                                 [:= :p.perm_value (h2x/literal "read")])]]}]]}
-                                                                            ^:allow-subquery {:select visible-union-columns
-                                                                                              :from   [[:collection :c]]
-                                                                                              :where  [:= :type (h2x/literal trash-collection-type)]}
-                                                                            (when-let [personal-collection-and-descendant-ids
-                                                                                       (seq (user->personal-collection-and-descendant-ids current-user-id))]
-                                                                              ^:allow-subquery {:select visible-union-columns
-                                                                                                :from   [[:collection :c]]
-                                                                                                :where  [:in :id [:inline personal-collection-and-descendant-ids]]})
-                                                                            (when-let [tenant-collection-and-descendant-ids (seq (perms/user->tenant-collection-and-descendant-ids current-user-id))]
-                                                                              ^:allow-subquery {:select visible-union-columns
-                                                                                                :from [[:collection :c]]
-                                                                                                :where [:in :id [:inline tenant-collection-and-descendant-ids]]})
-                                                                            (when (perms/is-data-analyst? current-user-id)
-                                                                              ^:allow-subquery {:select visible-union-columns
-                                                                                                :from [[:collection :c]]
-                                                                                                :where [:= :namespace "transforms"]})])}
-                               :c])]
-                     ;; The `WHERE` clause is where we apply the other criteria we were given:
-                     :where [:and
-                             ;; hiding the trash collection when desired...
-                             (when-not (:include-trash-collection? visibility-config)
-                               [:not= [:inline (trash-collection-id)] :c.id])
-                             ;; hiding archived items when desired...
-                             (when (= :exclude (:include-archived-items visibility-config))
-                               [:= :c.archived false])
-                             ;; (or showing them, if that's what you want)
-                             (when (= :only (:include-archived-items visibility-config))
-                               [:or
-                                [:= :c.archived true]
-                                ;; the trash collection is included when viewing archived-only
-                                [:= :id [:inline (trash-collection-id)]]])
-                             (when-not (perms/use-tenants)
-                               [:not [:exists ^:allow-subquery {:select [1]
-                                                                :from [[:collection :sub_c]]
-                                                                :where [:and [:= :c.id :sub_c.id]
-                                                                        [:= :sub_c.namespace (h2x/literal "shared-tenant-collection")]]}]])
-                             ;; excluding things outside of the `archive_operation_id` you wanted...
-                             (when-let [op-id (:archive-operation-id visibility-config)]
-                               [:or
-                                [:= :c.archive_operation_id op-id]
-                                ;; the trash collection is part of every `archive_operation`
-                                [:= :id (trash-collection-id)]])]}))
+    user-scope :- UserScope]
+   (unlift-markers (visible-collection-ids visibility-config user-scope))))
+
+(mu/defn visible-collection-scope
+  "Given a `CollectionVisibilityConfig`, return `{:root? ..., :ids ...}`: whether the root Collection (a nil Collection id)
+  is visible, and a fragment selecting the visible Collection IDs."
+  ([]
+   (visible-collection-scope {}))
+  ([visibility-config :- CollectionVisibilityConfig]
+   (visible-collection-scope visibility-config
+                             {:current-user-id api/*current-user-id*
+                              :is-superuser?   api/*is-superuser?*}))
+  ([visibility-config :- CollectionVisibilityConfig
+    user-scope :- UserScope]
+   (let [visibility-config (merge default-visibility-config visibility-config)]
+     {:root? (boolean (should-display-root-collection? user-scope visibility-config))
+      :ids   (visible-collection-ids visibility-config user-scope)})))
 
 (mu/defn visible-collection-filter-clause
   "Given a `CollectionVisibilityConfig`, return a HoneySQL filter clause ready for use in queries. Takes an optional
@@ -1207,7 +1230,7 @@
   [{:keys [location]} :- CollectionWithLocationOrRoot]
   (some-> location location-path->parent-id))
 
-(methodical/defmethod t2/simple-hydrate [:default :parent_id]
+(t2/define-simple-hydrate [:default :parent_id]
   "Get the immediate parent `collection` id, if set."
   [_model k collection]
   (assoc collection k (parent-id* collection)))
@@ -1347,7 +1370,7 @@
   (binding [*clearing-remote-sync* true]
     (collections.db/set-subtree-remote-synced-flags! (:id collection) (children-location collection) remote-synced?)))
 
-(methodical/defmethod t2/batched-hydrate [:default :is_remote_synced]
+(t2/define-batched-hydrate [:default :is_remote_synced]
   "Batch hydration for whether an item is remote synced"
   [_model k items]
   (mi/instances-with-hydrated-data items k
@@ -1357,7 +1380,7 @@
                                    :id
                                    {:default false}))
 
-(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :is_remote_synced]
+(t2/define-batched-hydrate [:perms/use-parent-collection-perms :is_remote_synced]
   "Batch hydration for whether an item is in a remote-synced Collection."
   [model k items]
   (mi/instances-with-hydrated-data items k
@@ -1367,7 +1390,7 @@
                                    :id
                                    {:default false}))
 
-(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :collection_namespace]
+(t2/define-batched-hydrate [:perms/use-parent-collection-perms :collection_namespace]
   "Batch hydration for whether an item is remote synced"
   [model k items]
   (mi/instances-with-hydrated-data items k
@@ -1930,16 +1953,16 @@
   "instance-analytics")
 
 (defmethod mi/exclude-internal-content-hsql :model/Collection
-  [_model & {:keys [table-alias]}]
-  (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
-    [:and
-     [:or [:= (maybe-alias :type) nil]
-      [:and
-       [:not= (maybe-alias :type) instance-analytics-collection-type]
-       [:not= (maybe-alias :type) trash-collection-type]]]
-     [:or [:= (maybe-alias :namespace) nil]
-      [:not= (maybe-alias :namespace) "analytics"]]
-     [:not (maybe-alias :is_sample)]]))
+  [_model]
+  (t2/fragment
+   [:and
+    [:or [:= :type nil]
+     [:and
+      [:not= :type instance-analytics-collection-type]
+      [:not= :type trash-collection-type]]]
+    [:or [:= :namespace nil]
+     [:not= :namespace "analytics"]]
+    [:not :is_sample]]))
 
 (defmethod serialization/storage-paths :model/Collection [_ entities {:keys [collections]}]
   (mapv (fn [coll]

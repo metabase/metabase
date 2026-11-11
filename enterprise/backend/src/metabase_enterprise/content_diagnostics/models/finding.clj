@@ -6,10 +6,9 @@
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/ContentDiagnosticsFinding [_model] :content_diagnostics_finding)
+(t2/define-table-name :model/ContentDiagnosticsFinding [_model] :content_diagnostics_finding)
 
 (doto :model/ContentDiagnosticsFinding
   (derive :metabase/model))

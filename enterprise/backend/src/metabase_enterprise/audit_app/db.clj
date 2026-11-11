@@ -5,10 +5,10 @@
    [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [metabase.warehouses.schema :as warehouses.schema]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.schema :as warehouses.schema]))
 
 (mu/defn audit-database
   "The audit Database, or nil."
@@ -82,16 +82,16 @@
                             [:not= :table.name "DATABASECHANGELOG_VERSION"]
                             [:not= :table.name "DATABASECHANGELOG_FIRST_RUN"]
                             [:not [:like :table.name "QRTZ_%"]]
-                            [:not [:exists ^:allow-subquery {:select [1]
-                                                             :from   [[(t2/table-name :model/Table) :self_table]]
-                                                             :where  [:and
-                                                                      [:= :self_table.db_id :table.db_id]
-                                                                      [:or
-                                                                       [:= :self_table.schema [:lower :table.schema]]
-                                                                       [:and
-                                                                        [:= :self_table.schema "public"]
-                                                                        [:= :table.schema nil]]]
-                                                                      [:= :self_table.name [:lower :table.name]]]}]]]})))
+                            [:not [:exists (t2/fragment {:select [1]
+                                                         :from   [[(t2/table-name :model/Table) :self_table]]
+                                                         :where  [:and
+                                                                  [:= :self_table.db_id :table.db_id]
+                                                                  [:or
+                                                                   [:= :self_table.schema [:lower :table.schema]]
+                                                                   [:and
+                                                                    [:= :self_table.schema "public"]
+                                                                    [:= :table.schema nil]]]
+                                                                  [:= :self_table.name [:lower :table.name]]]})]]]})))
 
 (mu/defn downcase-tables!
   "Move the Tables with `table-ids` to the `public` schema and lower-case their names."
@@ -112,18 +112,18 @@
                                 [:not= :table.name "DATABASECHANGELOG_VERSION"]
                                 [:not= :table.name "DATABASECHANGELOG_FIRST_RUN"]
                                 [:not [:like :table.name "QRTZ_%"]]
-                                [:not [:exists ^:allow-subquery {:select     [1]
-                                                                 :from       [[(t2/table-name :model/Field) :self_field]]
-                                                                 :inner-join [[(t2/table-name :model/Table) :self_table]
-                                                                              [:= :self_table.id :self_field.table_id]]
-                                                                 :where      [:and
-                                                                              [:= :self_table.db_id :table.db_id]
-                                                                              [:or
-                                                                               [:= :self_table.schema [:lower :table.schema]]
-                                                                               [:and
-                                                                                [:= :self_table.schema "public"]
-                                                                                [:= :table.schema nil]]]
-                                                                              [:= :self_field.name [:lower :field.name]]]}]]]})))
+                                [:not [:exists (t2/fragment {:select     [1]
+                                                             :from       [[(t2/table-name :model/Field) :self_field]]
+                                                             :inner-join [[(t2/table-name :model/Table) :self_table]
+                                                                          [:= :self_table.id :self_field.table_id]]
+                                                             :where      [:and
+                                                                          [:= :self_table.db_id :table.db_id]
+                                                                          [:or
+                                                                           [:= :self_table.schema [:lower :table.schema]]
+                                                                           [:and
+                                                                            [:= :self_table.schema "public"]
+                                                                            [:= :table.schema nil]]]
+                                                                          [:= :self_field.name [:lower :field.name]]]})]]]})))
 
 (mu/defn downcase-fields!
   "Lower-case the names of the Fields with `field-ids`."
@@ -146,9 +146,9 @@
   (t2/update! :model/Field
               {:table_id
                [:in
-                ^:allow-subquery {:select [:id]
-                                  :from   [(t2/table-name :model/Table)]
-                                  :where  [:= :db_id database-id]}]}
+                (t2/fragment {:select [:id]
+                              :from   [(t2/table-name :model/Table)]
+                              :where  [:= :db_id database-id]})]}
               {:name [:upper :name]}))
 
 (mu/defn update-table!

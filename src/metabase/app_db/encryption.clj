@@ -8,12 +8,12 @@
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (java.sql Blob)))
 

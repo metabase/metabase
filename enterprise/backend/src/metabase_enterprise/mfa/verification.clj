@@ -17,8 +17,8 @@
    [metabase-enterprise.mfa.recovery-codes :as recovery-codes]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.util.password :as u.password]
-   [toucan2.core :as t2])
+   [metabase.toucan.core :as t2]
+   [metabase.util.password :as u.password])
   (:import
    (java.security SecureRandom)))
 

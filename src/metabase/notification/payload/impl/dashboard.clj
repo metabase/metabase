@@ -8,9 +8,9 @@
    [metabase.notification.send :as notification.send]
    [metabase.parameters.shared :as shared.params]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.toucan.core :as t2]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (defenterprise the-parameters
   "OSS way of getting filter parameters for a dashboard subscription"

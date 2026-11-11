@@ -6,6 +6,7 @@
    ;; legacy usage, do not use legacy MBQL stuff in new code.
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -13,8 +14,7 @@
    [metabase.util.match :as match]
    [metabase.warehouse-schema.schema]
    [metabase.xrays.domain-entities.hierarchy :as domain-entities.hierarchy]
-   [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* MBQL]]
-   [toucan2.core :as t2]))
+   [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* MBQL]]))
 
 (mr/def ::field-or-column
   "A Field row, or the column metadata of a Card's `:result_metadata` or a query's expected columns."

@@ -5,10 +5,10 @@
    [metabase.classloader.core :as classloader]
    [metabase.models.interface :as mi]
    [metabase.parameters.db :as parameters.db]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.field-values :as field-values]))
 
 (declare get-or-create-field-values! get-or-create-field-values-with-hash-input!)
 

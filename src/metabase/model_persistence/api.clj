@@ -17,13 +17,13 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.workspaces.core :as workspaces]
-   [toucan2.core :as t2]))
+   [metabase.workspaces.core :as workspaces]))
 
 (set! *warn-on-reflection* true)
 

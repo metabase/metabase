@@ -3,7 +3,7 @@
   (:require
    [metabase.analytics-interface.core :as analytics]
    [metabase.run-tracking.db :as run-tracking.db]
-   [toucan2.core :as t2])
+   [metabase.toucan.core :as t2])
   (:import
    (java.time OffsetDateTime)))
 

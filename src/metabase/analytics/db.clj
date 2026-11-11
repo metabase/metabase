@@ -78,7 +78,9 @@
   (t2/query {:select :dc.*
              :from [[(t2/table-name :model/DashboardCard) :dc]]
              :join [[(t2/table-name :model/Dashboard) :d] [:= :d.id :dc.dashboard_id]]
-             :where (mi/exclude-internal-content-hsql :model/Dashboard :table-alias :d)}))
+             :where [:in :d.id ^:allow-subquery {:select [:id]
+                                                 :from   [(t2/table-name :model/Dashboard)]
+                                                 :where  (mi/exclude-internal-content-hsql :model/Dashboard)}]}))
 
 (defn- notification-frequencies-by-column*
   [model column alerts? left-join?]
@@ -163,7 +165,9 @@
   (t2/query {:select [:t.db_id :t.schema]
              :from      [[(t2/table-name :model/Table) :t]]
              :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
-             :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)}))
+             :where  [:in :d.id ^:allow-subquery {:select [:id]
+                                                  :from   [(t2/table-name :model/Database)]
+                                                  :where  (mi/exclude-internal-content-hsql :model/Database)}]}))
 
 (mu/defn field-table-ids
   "The Table id of the Fields of the non-internal Databases."
@@ -172,7 +176,9 @@
              :from      [[(t2/table-name :model/Field) :f]]
              :join [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]
                     [(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
-             :where (mi/exclude-internal-content-hsql :model/Database :table-alias :d)}))
+             :where [:in :d.id ^:allow-subquery {:select [:id]
+                                                 :from   [(t2/table-name :model/Database)]
+                                                 :where  (mi/exclude-internal-content-hsql :model/Database)}]}))
 
 (mu/defn segment-count
   "The number of Segments."

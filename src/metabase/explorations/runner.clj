@@ -23,8 +23,8 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.request.core :as request]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.toucan.core :as t2]
+   [metabase.util.log :as log])
   (:import
    (java.time Duration OffsetDateTime)))
 

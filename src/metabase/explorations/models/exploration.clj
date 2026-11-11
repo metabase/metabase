@@ -5,11 +5,10 @@
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
    [metabase.search.spec :as search.spec]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (defn hydrate-can-write-from-parents
   "The `instances` with `k` set to whether the current user can write the row of `parent-model` that `parent-key` of
@@ -39,7 +38,7 @@
      (complement str/blank?)]]
    (deferred-tru "value must be a non-blank string between 1 and 254 characters.")))
 
-(methodical/defmethod t2/table-name :model/Exploration [_model] :exploration)
+(t2/define-table-name :model/Exploration [_model] :exploration)
 
 (doto :model/Exploration
   (derive :metabase/model)
@@ -47,7 +46,7 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
+(t2/define-batched-hydrate [:model/Exploration :creator]
   [_model k explorations]
   (mi/instances-with-hydrated-data
    explorations k
@@ -55,7 +54,7 @@
    :creator_id
    {:default {}}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Exploration :threads]
+(t2/define-batched-hydrate [:model/Exploration :threads]
   [_model k explorations]
   (mi/instances-with-hydrated-data
    explorations k
@@ -64,7 +63,7 @@
    :id
    {:default []}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Exploration :document]
+(t2/define-batched-hydrate [:model/Exploration :document]
   "Hydrate the Summary document attached to each exploration (at most one)."
   [_model k explorations]
   (mi/instances-with-hydrated-data
@@ -79,7 +78,7 @@
 ;; `:document` is a Toucan automagic-hydration key (FK `document_id` → `:model/Document`).
 ;; Explorations have no such FK; without this override the automagic path wins and always
 ;; returns nil, shadowing [[batched-hydrate]] above.
-(methodical/defmethod t2/model-for-automagic-hydration [:model/Exploration :document]
+(t2/define-model-for-automagic-hydration [:model/Exploration :document]
   [_model _k]
   nil)
 

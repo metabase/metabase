@@ -6,16 +6,15 @@
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.provider :as provider]
    [metabase.models.interface :as mi]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.password :as u.password]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.password :as u.password]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/AuthIdentity
+(t2/define-table-name :model/AuthIdentity
   [_model]
   :auth_identity)
 

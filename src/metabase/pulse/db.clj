@@ -5,14 +5,14 @@
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.schema :as pulse.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id [:auto/param card-id]))
+  (t2/select-one :model/Card :id card-id))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
@@ -23,7 +23,7 @@
   (t2/select-one-fn :dataset_query
                     [:model/Card :id :dataset_query :card_schema :type :entity_id
                      :result_metadata :dimensions :dimension_mappings]
-                    :id [:auto/param card-id]))
+                    :id card-id))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil. `dashboard-id` may be nil (e.g. a legacy Pulse with no Dashboard), in
@@ -117,19 +117,19 @@
   [archived? :- :boolean
    user-id   :- [:maybe ::lib.schema.id/user]]
   (t2/select :model/Pulse
-             (merge {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
-                     :from            [[:pulse :p]]
-                     :where           [:and
-                                       [:not= :p.alert_condition nil]
-                                       [:= :p.archived archived?]
-                                       (when user-id
-                                         [:or
-                                          [:= :p.creator_id user-id]
-                                          [:= :pcr.user_id user-id]])]
-                     :order-by        [[:lower-name :asc]]}
-                    (when user-id
-                      {:left-join [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
-                                   [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]}))))
+             {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
+              :from            [[:pulse :p]]
+              :left-join       (when user-id
+                                 (t2/fragment [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
+                                               [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
+              :where           [:and
+                                [:not= :p.alert_condition nil]
+                                [:= :p.archived archived?]
+                                (when user-id
+                                  (t2/fragment [:or
+                                                [:= :p.creator_id user-id]
+                                                [:= :pcr.user_id user-id]]))]
+              :order-by        [[:lower-name :asc]]}))
 
 (mu/defn pulses
   "The dashboard-subscription Pulses (unarchived unless `archived?`), optionally narrowed to `dashboard-id` and/or
@@ -140,11 +140,11 @@
   (t2/select :model/Pulse
              {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
               :from            [[:pulse :p]]
-              :left-join       (concat
-                                [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
-                                (when user-id
-                                  [[:pulse_channel :pchan]         [:= :p.id :pchan.pulse_id]
-                                   [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
+              :left-join       (if user-id
+                                 (t2/fragment [[:report_dashboard :d] [:= :p.dashboard_id :d.id]
+                                               [:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
+                                               [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]])
+                                 (t2/fragment [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]))
               :where           [:and
                                 [:= :p.alert_condition nil]
                                 [:= :p.archived archived?]
@@ -152,13 +152,13 @@
                                  [:= :p.dashboard_id nil]
                                  [:= :d.archived false]]
                                 (when dashboard-id
-                                  [:= :p.dashboard_id dashboard-id])
+                                  (t2/fragment [:= :p.dashboard_id dashboard-id]))
                                 (when user-id
-                                  [:and
-                                   [:not= :p.dashboard_id nil]
-                                   [:or
-                                    [:= :p.creator_id user-id]
-                                    [:= :pcr.user_id user-id]]])]
+                                  (t2/fragment [:and
+                                                [:not= :p.dashboard_id nil]
+                                                [:or
+                                                 [:= :p.creator_id user-id]
+                                                 [:= :pcr.user_id user-id]]]))]
               :order-by        [[:lower-name :asc]]}))
 
 (mu/defn alerts-for-card-and-user
@@ -289,11 +289,10 @@
   (t2/select [:model/PulseChannel :id :details :channel_id :channel_type]
              {:where [:and
                       [:= :pulse_id pulse-id]
-                      [:not [:exists ^:allow-subquery
-                             {:select [1]
-                              :from   [:pulse_channel_recipient]
-                              :where  [:= :pulse_channel_recipient.pulse_channel_id
-                                       :pulse_channel.id]}]]]}))
+                      [:not [:exists (t2/fragment {:select [1]
+                                                   :from   [:pulse_channel_recipient]
+                                                   :where  [:= :pulse_channel_recipient.pulse_channel_id
+                                                            :pulse_channel.id]})]]]}))
 
 (mu/defn enabled-pulse-channel-ids
   "The ids among `channel-ids` of enabled PulseChannels, or nil."
@@ -411,7 +410,7 @@
 (defn user-name-and-email
   "The first name, last name, and email of the User with `user-id`, or nil."
   [user-id]
-  (t2/select-one [:model/User :first_name :last_name :email] :id [:auto/param user-id]))
+  (t2/select-one [:model/User :first_name :last_name :email] :id user-id))
 
 (defn users-names-and-emails
   "The first names, last names, and emails of the Users with `user-ids`."
@@ -431,12 +430,12 @@
 (defn dashboard-parameters
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
-  (t2/select-one [:model/Dashboard :id :parameters] :id [:auto/param dashboard-id]))
+  (t2/select-one [:model/Dashboard :id :parameters] :id dashboard-id))
 
 (defn dashboard-name-description-creator
   "The name, description, and creator id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
-  (t2/select-one [:model/Dashboard :name :description :creator_id] :id [:auto/param dashboard-id]))
+  (t2/select-one [:model/Dashboard :name :description :creator_id] :id dashboard-id))
 
 (defn unarchived-pulses-for-dashboard
   "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."

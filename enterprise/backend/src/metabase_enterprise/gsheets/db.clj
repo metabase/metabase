@@ -3,9 +3,9 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.schema :as warehouses.schema]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.schema :as warehouses.schema]))
 
 (mu/defn attached-dwh-database-id
   "The ID of the attached data warehouse Database, or nil."

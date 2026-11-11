@@ -6,12 +6,11 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.warehouse-schema.models.field :as field]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.field :as field]))
 
-(methodical/defmethod t2/table-name :model/DatabaseRouter [_model] :db_router)
+(t2/define-table-name :model/DatabaseRouter [_model] :db_router)
 
 (doto :model/DatabaseRouter
   (derive :metabase/model))

@@ -25,6 +25,7 @@
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
+   [metabase.toucan.core :as t2]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
@@ -40,8 +41,7 @@
    [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
-   [metabase.warehouses.schema :as warehouses.schema]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.schema :as warehouses.schema]))
 
 (set! *warn-on-reflection* true)
 

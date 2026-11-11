@@ -12,26 +12,24 @@
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
+   [metabase.toucan.core :as t2]
    [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.tools.default-fields :as t2.default-fields]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(methodical/defmethod t2/table-name :model/User [_model] :core_user)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :creator]    [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :updated_by] [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :user]       [_original-model _k] :model/User)
+(t2/define-table-name :model/User [_model] :core_user)
+(t2/define-model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)
+(t2/define-model-for-automagic-hydration [:default :creator]    [_original-model _k] :model/User)
+(t2/define-model-for-automagic-hydration [:default :updated_by] [_original-model _k] :model/User)
+(t2/define-model-for-automagic-hydration [:default :user]       [_original-model _k] :model/User)
 
 (doto :model/User
   (derive :metabase/model)
@@ -291,8 +289,8 @@
     (users.db/user-group-ids (u/the-id user-or-id))))
 
 (defmethod mi/exclude-internal-content-hsql :model/User
-  [_model & {:keys [table-alias]}]
-  [:and [:not= (h2x/identifier :field table-alias :type) "internal"]])
+  [_model]
+  (t2/fragment [:and [:not= :type "internal"]]))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 

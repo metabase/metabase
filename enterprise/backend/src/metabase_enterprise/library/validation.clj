@@ -4,7 +4,7 @@
    [metabase-enterprise.library.db :as library.db]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :refer [defenterprise]]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 (def ^:private library-collection-content-specs
   "A map from the `:type` of the parent collection to a spec for what contents it permits."

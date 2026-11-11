@@ -6,10 +6,10 @@
     :as advanced-config.file.i]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.setup.core :as setup]
+   [metabase.toucan.core :as t2]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/first_name
   string?)

@@ -12,6 +12,7 @@
    [metabase.parameters.field :as parameters.field]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
+   [metabase.toucan.core :as t2]
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -24,8 +25,7 @@
    [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.table :as schema.table]
-   [metabase.xrays.core :as xrays]
-   [toucan2.core :as t2]))
+   [metabase.xrays.core :as xrays]))
 
 (set! *warn-on-reflection* true)
 

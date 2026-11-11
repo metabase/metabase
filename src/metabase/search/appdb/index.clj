@@ -14,13 +14,13 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
+   [metabase.toucan.core :as t2]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.string :as string]
-   [toucan2.core :as t2]))
+   [metabase.util.string :as string]))
 
 (comment
   h2/keep-me

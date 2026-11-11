@@ -28,9 +28,9 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.notification.api :as notification.api]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.cron :as u.cron]
-   [toucan2.core :as t2]))
+   [metabase.util.cron :as u.cron]))
 
 (set! *warn-on-reflection* true)
 

@@ -9,9 +9,9 @@
    [metabase.queries.core :as queries]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru deferred-trun]]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (def ^:private excluded-columns-for-dashboard-revision

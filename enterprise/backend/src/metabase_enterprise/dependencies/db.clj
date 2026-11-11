@@ -439,7 +439,9 @@
                                                       :card      :model/Card
                                                       :dashboard :model/Dashboard
                                                       nil))]
-                                {:expr (mi/exclude-internal-content-hsql model :table-alias :entity)
+                                {:expr [:in :entity.id ^:allow-subquery {:select [:id]
+                                                                         :from   [(t2/table-name model)]
+                                                                         :where  (mi/exclude-internal-content-hsql model)}]
                                  :joins #{}})
         ;; note that tables are not filtered by active/visibility_type, so that dependencies
         ;; broken by dropped tables stay visible
@@ -927,8 +929,9 @@
                                       [:and [:= :status.terminal false] [:or [:> :status.stale 0] outdated]]]]
                          user-mbql-only?    (conj [:or [:= :report_card.query_type nil]
                                                    [:not= :report_card.query_type "native"]]
-                                                  (mi/exclude-internal-content-hsql :model/Card
-                                                                                    :table-alias :report_card))
+                                                  [:in :report_card.id ^:allow-subquery {:select [:id]
+                                                                                         :from   [(t2/table-name :model/Card)]
+                                                                                         :where  (mi/exclude-internal-content-hsql :model/Card)}])
                          dependency-version (conj (current-dependencies-clause
                                                    entity-type id-field dependency-version)))
             :order-by  [[[:case outdated [:inline 1] :else [:inline 0]]]]

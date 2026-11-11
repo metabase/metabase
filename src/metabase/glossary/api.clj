@@ -6,8 +6,8 @@
    [metabase.glossary.core :as glossary.core]
    [metabase.glossary.db :as glossary.db]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli.schema :as ms]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

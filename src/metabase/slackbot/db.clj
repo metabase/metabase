@@ -3,8 +3,8 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli :as mu]))
 
 (mu/defn active-slack-connect-identity
   "The user id and metadata of the newest Slack Connect AuthIdentity of an active User for `slack-user-id`, or nil."

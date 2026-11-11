@@ -5,10 +5,9 @@
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/SecurityAdvisory [_model] :security_advisory)
+(t2/define-table-name :model/SecurityAdvisory [_model] :security_advisory)
 
 (doto :model/SecurityAdvisory
   (derive :metabase/model))
@@ -36,7 +35,7 @@
       (and (some? (:acknowledged_by changes)) (not (contains? changes :acknowledged_at)))
       (assoc :acknowledged_at (mi/now)))))
 
-(methodical/defmethod t2/batched-hydrate [:model/SecurityAdvisory :acknowledged_by_user]
+(t2/define-batched-hydrate [:model/SecurityAdvisory :acknowledged_by_user]
   "Hydrate `:acknowledged_by_user` from the `:acknowledged_by` FK to a User map with `:id`, `:common_name`, and `:email`."
   [_model k advisories]
   (let [user-ids (keep :acknowledged_by advisories)

@@ -4,18 +4,17 @@
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [metabase.warehouse-schema.user-settings :as user-settings]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.user-settings :as user-settings]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/FieldUserSettings [_model] :metabase_field_user_settings)
+(t2/define-table-name :model/FieldUserSettings [_model] :metabase_field_user_settings)
 
 (t2/deftransforms :model/FieldUserSettings
   {:effective_type    field/transform-field-effective-type
@@ -41,7 +40,7 @@
              settings
              user-settings/field-set-flags))
 
-(methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
+(t2/define-primary-keys :model/FieldUserSettings [_model] [:field_id])
 
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."

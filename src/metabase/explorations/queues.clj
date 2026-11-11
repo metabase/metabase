@@ -20,9 +20,9 @@
    [metabase.explorations.runner :as runner]
    [metabase.explorations.settings :as explorations.settings]
    [metabase.mq.core :as mq]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 

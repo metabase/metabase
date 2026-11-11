@@ -11,8 +11,8 @@
    [metabase.metabot.usage :as metabot.usage]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.i18n :refer [tru]]))
 
 ;; TODO: Eventually this should be paged but since we are just going to hardcode two models for now
 ;; lets not

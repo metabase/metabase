@@ -19,11 +19,10 @@
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util :as u]))
 
-(methodical/defmethod t2/table-name :model/OsiAiContext [_model] :osi_ai_context)
+(t2/define-table-name :model/OsiAiContext [_model] :osi_ai_context)
 
 (doto :model/OsiAiContext
   (derive :metabase/model)
@@ -31,7 +30,7 @@
   (derive :hook/timestamped?))
 
 ;; The logical (entity_type, entity_local_id) pair is the primary key — no surrogate id.
-(methodical/defmethod t2/primary-keys :model/OsiAiContext [_model] [:entity_type :entity_local_id])
+(t2/define-primary-keys :model/OsiAiContext [_model] [:entity_type :entity_local_id])
 
 (defn ->ai-context
   "Coerce the OSI `ai_context` oneOf into the object form we store.

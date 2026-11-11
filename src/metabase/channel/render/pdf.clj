@@ -57,10 +57,10 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
+   [metabase.toucan.core :as t2]
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.log :as log]
-   [metabase.util.memoize :as memo]
-   [toucan2.core :as t2])
+   [metabase.util.memoize :as memo])
   (:import
    (java.awt Color)
    (java.awt.geom AffineTransform PathIterator)

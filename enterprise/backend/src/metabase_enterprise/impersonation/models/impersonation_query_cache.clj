@@ -5,11 +5,10 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [metabase.models.interface :as mi]
-   [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli :as mu]))
 
-(methodical/defmethod t2/table-name :model/ImpersonationQueryCache [_model] :impersonation_query_cache)
+(t2/define-table-name :model/ImpersonationQueryCache [_model] :impersonation_query_cache)
 
 (doto :model/ImpersonationQueryCache
   (derive :metabase/model)

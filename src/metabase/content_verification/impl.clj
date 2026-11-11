@@ -3,8 +3,8 @@
    [medley.core :as m]
    [metabase.content-verification.db :as content-verification.db]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util :as u]))
 
 (def moderated-item-types
   "Schema enum of the acceptable values for the `moderated_item_type` column"

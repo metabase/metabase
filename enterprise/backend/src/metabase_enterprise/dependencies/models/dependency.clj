@@ -6,13 +6,12 @@
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase.graph.core :as graph]
    [metabase.models.interface :as mi]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (def current-dependency-analysis-version
   "Current version of the dependency analysis logic.
@@ -29,7 +28,7 @@
        they name tables that match nothing"
   7)
 
-(methodical/defmethod t2/table-name :model/Dependency [_model] :dependency)
+(t2/define-table-name :model/Dependency [_model] :dependency)
 
 (derive :model/Dependency :metabase/model)
 

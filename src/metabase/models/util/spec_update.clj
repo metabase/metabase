@@ -7,11 +7,11 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.models.db :as models.db]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (defn- format-path
   [path]

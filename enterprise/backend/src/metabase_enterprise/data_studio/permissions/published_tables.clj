@@ -7,8 +7,8 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.honey-sql-2 :as h2x]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (defenterprise user-published-table-permission
   "Returns :query-builder permission if table is published and user has collection access.

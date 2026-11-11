@@ -37,15 +37,14 @@
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 (set! *warn-on-reflection* true)
 
@@ -360,7 +359,7 @@
                          supported-series-display-type
                          last-cursor
                          exclude-ids
-                         (when query (h2x/like-substring query))
+                         query
                          ;; add a little buffer to the page to account for cards that are not
                          ;; compatible + do not have permissions to read
                          ;; this is just a heuristic, but it should be good enough

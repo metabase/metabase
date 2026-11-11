@@ -7,14 +7,14 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [metabase.toucan.core :as t2]
+   [methodical.core :as methodical])
   (:import
    (java.sql Blob)))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/CustomVizPlugin [_model] :custom_viz_plugin)
+(t2/define-table-name :model/CustomVizPlugin [_model] :custom_viz_plugin)
 
 (defn- blob->bytes ^bytes [v]
   (cond

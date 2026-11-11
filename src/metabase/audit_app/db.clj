@@ -4,9 +4,9 @@
   (:require
    [metabase.audit-app.schema :as audit-app.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn cards
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
@@ -58,14 +58,30 @@
    time-column :- :keyword
    cutoff      :- ms/TemporalInstant
    batch-size  :- ms/PositiveInt]
-  (t2/query-one {:delete-from table
-                 :where [:in
-                         :id
-                         ^:allow-subquery {:select [:id]
-                                           :from table
-                                           :where [:<= time-column cutoff]
-                                           :order-by [[:id :asc]]
-                                           :limit batch-size}]}))
+  (case [table time-column]
+    [:query_execution :started_at]
+    (t2/query-one {:delete-from :query_execution
+                   :where       [:in :id (t2/fragment {:select   [:id]
+                                                       :from     :query_execution
+                                                       :where    [:<= :started_at cutoff]
+                                                       :order-by [[:id :asc]]
+                                                       :limit    batch-size})]})
+
+    [:audit_log :timestamp]
+    (t2/query-one {:delete-from :audit_log
+                   :where       [:in :id (t2/fragment {:select   [:id]
+                                                       :from     :audit_log
+                                                       :where    [:<= :timestamp cutoff]
+                                                       :order-by [[:id :asc]]
+                                                       :limit    batch-size})]})
+
+    [:view_log :timestamp]
+    (t2/query-one {:delete-from :view_log
+                   :where       [:in :id (t2/fragment {:select   [:id]
+                                                       :from     :view_log
+                                                       :where    [:<= :timestamp cutoff]
+                                                       :order-by [[:id :asc]]
+                                                       :limit    batch-size})]})))
 
 (mu/defn delete-oldest-with-limit!
   "Delete up to `batch-size` of the `table` rows whose `time-column` is at or before `cutoff`."
@@ -73,6 +89,18 @@
    time-column :- :keyword
    cutoff      :- ms/TemporalInstant
    batch-size  :- ms/PositiveInt]
-  (t2/query-one {:delete-from table
-                 :where [:<= time-column cutoff]
-                 :limit batch-size}))
+  (case [table time-column]
+    [:query_execution :started_at]
+    (t2/query-one {:delete-from :query_execution
+                   :where       [:<= :started_at cutoff]
+                   :limit       batch-size})
+
+    [:audit_log :timestamp]
+    (t2/query-one {:delete-from :audit_log
+                   :where       [:<= :timestamp cutoff]
+                   :limit       batch-size})
+
+    [:view_log :timestamp]
+    (t2/query-one {:delete-from :view_log
+                   :where       [:<= :timestamp cutoff]
+                   :limit       batch-size})))

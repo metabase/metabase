@@ -5,16 +5,15 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
 
 ;;; Possible values for Dimension.type :
 ;;;
 ;;; :internal
 ;;; :external
 
-(methodical/defmethod t2/table-name :model/Dimension [_model] :dimension)
+(t2/define-table-name :model/Dimension [_model] :dimension)
 
 (doto :model/Dimension
   (derive :metabase/model)

@@ -3,13 +3,12 @@
    [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase.models.interface :as mi]
-   [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/ReplacementRun [_model] :source_replacement_run)
+(t2/define-table-name :model/ReplacementRun [_model] :source_replacement_run)
 
 (derive :model/ReplacementRun :metabase/model)
 

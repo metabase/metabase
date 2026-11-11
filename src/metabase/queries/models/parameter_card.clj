@@ -4,15 +4,14 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.db :as queries.db]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
-(methodical/defmethod t2/table-name :model/ParameterCard [_model] :parameter_card)
+(t2/define-table-name :model/ParameterCard [_model] :parameter_card)
 
 (doto :model/ParameterCard
   (derive :metabase/model)

@@ -5,9 +5,9 @@
    [clojure.data :as data]
    [metabase-enterprise.advanced-permissions.db :as advanced-permissions.db]
    [metabase.permissions.core :as perms]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 

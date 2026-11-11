@@ -1,8 +1,8 @@
 (ns metabase.queries.events.schema
   (:require
+   [metabase.toucan.core :as t2]
    [metabase.util.malli.registry :as mr]
-   [metabase.view-log.core :as view-log]
-   [toucan2.core :as t2]))
+   [metabase.view-log.core :as view-log]))
 
 (mr/def ::card
   [:map {:closed true}

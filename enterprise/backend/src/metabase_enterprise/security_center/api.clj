@@ -13,9 +13,9 @@
    [metabase.notification.models :as models.notification]
    [metabase.premium-features.core :as premium-features]
    [metabase.security-center.schema :as security-center.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.util.concurrent ExecutorService RejectedExecutionException
                          SynchronousQueue ThreadPoolExecutor ThreadPoolExecutor$AbortPolicy

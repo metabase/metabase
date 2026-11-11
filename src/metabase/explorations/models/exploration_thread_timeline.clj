@@ -3,17 +3,16 @@
    [metabase.explorations.db :as explorations.db]
    [metabase.models.interface :as mi]
    [metabase.timeline.core :as timeline]
-   [metabase.util.date-2 :as u.date]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.date-2 :as u.date]))
 
-(methodical/defmethod t2/table-name :model/ExplorationThreadTimeline [_model] :exploration_thread_timeline)
+(t2/define-table-name :model/ExplorationThreadTimeline [_model] :exploration_thread_timeline)
 
 (doto :model/ExplorationThreadTimeline
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(methodical/defmethod t2/batched-hydrate [:model/ExplorationThreadTimeline :timeline]
+(t2/define-batched-hydrate [:model/ExplorationThreadTimeline :timeline]
   [_model k join-rows]
   (mi/instances-with-hydrated-data
    join-rows k

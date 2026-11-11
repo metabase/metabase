@@ -5,6 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -15,8 +16,7 @@
    [metabase.xrays.domain-entities.core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* DomainEntitySpec]]
    [metabase.xrays.transforms.materialize :as tf.materialize]
-   [metabase.xrays.transforms.specs :as transforms.specs :refer [*transform-specs* Step TransformSpec]]
-   [toucan2.core :as t2]))
+   [metabase.xrays.transforms.specs :as transforms.specs :refer [*transform-specs* Step TransformSpec]]))
 
 (mu/defn- add-bindings :- Bindings
   [bindings     :- Bindings

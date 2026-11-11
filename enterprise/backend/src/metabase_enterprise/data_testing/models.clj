@@ -13,14 +13,13 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
-(methodical/defmethod t2/table-name :model/TransformTest [_model] :transform_test)
+(t2/define-table-name :model/TransformTest [_model] :transform_test)
 
 ;; `::saved-test` is the parent of every saved test model, for the methods they share.
 (doto :model/TransformTest
@@ -36,7 +35,7 @@
   {:in  (comp mi/json-in #(mu/validate-throw schema %) #(lib/normalize schema %))
    :out (comp #(lib/normalize schema %) mi/json-out-with-keywordization)})
 
-(methodical/defmethod t2/model-for-automagic-hydration [:model/TransformTest :transform]
+(t2/define-model-for-automagic-hydration [:model/TransformTest :transform]
   [_original-model _k]
   :model/Transform)
 
@@ -55,7 +54,7 @@
       (for [saved-test tests]
         (assoc saved-test :last_run (get id->run (:id saved-test)))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformTest :last_run]
+(t2/define-batched-hydrate [:model/TransformTest :last_run]
   "Add the newest run, or nil, to each transform test."
   [_model _k transform-tests]
   (with-last-runs :transform transform-tests))
@@ -114,7 +113,7 @@
    (when-let [transform-test (data-testing.db/transform-test pk)]
      (mi/can-write? transform-test))))
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_write]
+(t2/define-batched-hydrate [:model/TransformTest :can_write]
   "Add whether the current user can write each transform test, loading their transforms at once and checking each
   source Database once."
   [_model k transform-tests]

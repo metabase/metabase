@@ -5,12 +5,10 @@
    [java-time.api :as t]
    [malli.util :as mut]
    [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
-   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn active-field-counts-by-table
   "Rows of `:table_id` and `:field_count` of active Fields for `table-ids`."
@@ -83,8 +81,7 @@
   (t2/select-one :model/DataComplexityScore :id id))
 
 (mu/defn scored-within-hours?
-  "Whether a DataComplexityScore of `source` for `fingerprint` was created within the last `hours` hours of
-  database time."
+  "Whether a DataComplexityScore of `source` for `fingerprint` was created within the last `hours` hours."
   [fingerprint :- :string
    source      :- :string
    hours       :- number?]
@@ -92,7 +89,7 @@
               {:where [:and
                        [:= :fingerprint fingerprint]
                        [:= :source source]
-                       [:>= :created_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- hours) :hour)]]}))
+                       [:>= :created_at (t/minus (t/offset-date-time) (t/millis (long (* hours 3600000))))]]}))
 
 (mu/defn insert-score!
   "Insert `score-entry` and return its ID."

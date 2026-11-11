@@ -2,9 +2,9 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Statement)))
 

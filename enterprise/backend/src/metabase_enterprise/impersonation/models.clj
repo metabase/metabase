@@ -7,9 +7,8 @@
    [metabase.audit-app.core :as audit]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.log :as log]))
 
 (doto :model/ConnectionImpersonation
   (derive :metabase/model)
@@ -17,7 +16,7 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
-(methodical/defmethod t2/table-name :model/ConnectionImpersonation [_model] :connection_impersonations)
+(t2/define-table-name :model/ConnectionImpersonation [_model] :connection_impersonations)
 
 (defenterprise add-impersonations-to-permissions-graph
   "Augment a provided permissions graph with active connection impersonation policies."

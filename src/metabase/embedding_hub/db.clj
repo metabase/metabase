@@ -2,7 +2,7 @@
   "Application database queries for the embedding hub module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 (defn user-added-database?
   "Whether a database other than the sample and audit ones exists."
@@ -27,12 +27,14 @@
 (defn user-created-dashboard?
   "Whether an unarchived dashboard exists outside `example-dashboard-id` and `audit-collection-ids`."
   [example-dashboard-id audit-collection-ids]
-  (t2/exists? :model/Dashboard {:where (cond-> [:and
-                                                [:= :archived false]]
-                                         example-dashboard-id (conj [:not= :id example-dashboard-id])
-                                         (seq audit-collection-ids) (conj [:or
-                                                                           [:is :collection_id nil]
-                                                                           [:not-in :collection_id audit-collection-ids]]))}))
+  (t2/exists? :model/Dashboard {:where [:and
+                                        [:= :archived false]
+                                        (when example-dashboard-id
+                                          (t2/fragment [:not= :id example-dashboard-id]))
+                                        (when (seq audit-collection-ids)
+                                          (t2/fragment [:or
+                                                        [:is :collection_id nil]
+                                                        [:not-in :collection_id audit-collection-ids]]))]}))
 
 (defn user-created-model?
   "Whether an unarchived model exists outside the audit collection with `audit-collection-id` and the sample

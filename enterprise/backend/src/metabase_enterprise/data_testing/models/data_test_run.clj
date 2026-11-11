@@ -3,10 +3,9 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase.audit-app.core :as audit-app]
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/DataTestRun [_model] :data_test_run)
+(t2/define-table-name :model/DataTestRun [_model] :data_test_run)
 
 (derive :model/DataTestRun :metabase/model)
 
@@ -18,7 +17,7 @@
   {:status    mi/transform-keyword
    :test_type mi/transform-keyword})
 
-(methodical/defmethod t2/batched-hydrate [:model/DataTestRun :initiated_by_user]
+(t2/define-batched-hydrate [:model/DataTestRun :initiated_by_user]
   "Add the user who started each run, or nil."
   [_model _k runs]
   (let [user-ids (into #{} (keep :initiated_by) runs)

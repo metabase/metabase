@@ -6,10 +6,9 @@
   `:fingerprint`."
   (:require
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/SourceDimensionProfileDaily [_model] :source_dimension_profile_daily)
+(t2/define-table-name :model/SourceDimensionProfileDaily [_model] :source_dimension_profile_daily)
 
 (t2/deftransforms :model/SourceDimensionProfileDaily
   {:source_type      mi/transform-keyword

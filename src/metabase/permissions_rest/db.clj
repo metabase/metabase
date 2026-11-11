@@ -3,32 +3,32 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
-(defn- managed-groups-clause
-  [group-id-column manager-user-id]
-  (when manager-user-id
-    [:in group-id-column ^:allow-subquery {:select [:group_id]
-                                           :from   [:permissions_group_membership]
-                                           :where  [:and
-                                                    [:= :user_id manager-user-id]
-                                                    [:= :is_group_manager true]]}]))
+(defn- managed-group-ids
+  [manager-user-id]
+  (t2/fragment {:select [:group_id]
+                :from   [:permissions_group_membership]
+                :where  [:and
+                         [:= :user_id manager-user-id]
+                         [:= :is_group_manager true]]}))
 
 (defn- data-analyst-visibility-clause
   "Clause over a `permissions_group` query keeping every group except the data-analyst magic group, unless it has at least one active member."
   []
-  [:or
-   [:= nil :magic_group_type]
-   [:not= "data-analyst" :magic_group_type]
-   [:exists ^:allow-subquery {:select [1]
-                              :from   [[:permissions_group_membership :pgm]]
-                              :join   [[:core_user :member] [:= :member.id :pgm.user_id]]
-                              :where  [:and
-                                       [:= :pgm.group_id :permissions_group.id]
-                                       [:= :member.is_active true]]}]])
+  (t2/fragment
+   [:or
+    [:= nil :magic_group_type]
+    [:not= "data-analyst" :magic_group_type]
+    [:exists (t2/fragment {:select [1]
+                           :from   [[:permissions_group_membership :pgm]]
+                           :join   [[:core_user :member] [:= :member.id :pgm.user_id]]
+                           :where  [:and
+                                    [:= :pgm.group_id :permissions_group.id]
+                                    [:= :member.is_active true]]})]]))
 
 (mu/defn permissions-groups
   "Up to `limit` PermissionsGroups starting at `offset` (both optional), ordered by lower-cased name.
@@ -46,20 +46,21 @@
        [:manager-user-id                {:optional true} [:maybe ::lib.schema.id/user]]
        [:tenants-enabled?               {:optional true} :boolean]
        [:advanced-permissions-enabled?  {:optional true} :boolean]]]
-  (let [base-where [:and
-                    (managed-groups-clause :id manager-user-id)
-                    (when-not tenants-enabled? [:not :is_tenant_group])
-                    (when-not advanced-permissions-enabled? (data-analyst-visibility-clause))]
+  (let [base-where (t2/fragment [:and
+                                 (when manager-user-id (t2/fragment [:in :id (managed-group-ids manager-user-id)]))
+                                 (when-not tenants-enabled? (t2/fragment [:not :is_tenant_group]))
+                                 (when-not advanced-permissions-enabled? (data-analyst-visibility-clause))])
         where (case tenancy
                 "external" (if tenants-enabled?
-                             [:and base-where [:= :is_tenant_group true]]
-                             [:= 1 0])
-                "internal" [:and base-where [:or [:= :is_tenant_group false] [:= :is_tenant_group nil]]]
+                             (t2/fragment [:and base-where [:= :is_tenant_group true]])
+                             (t2/fragment [:= 1 0]))
+                "internal" (t2/fragment [:and base-where [:or [:= :is_tenant_group false] [:= :is_tenant_group nil]]])
                 base-where)]
     (t2/select :model/PermissionsGroup
-               (cond-> {:where where :order-by [:%lower.name]}
-                 limit  (assoc :limit limit)
-                 offset (assoc :offset offset)))))
+               {:where    where
+                :order-by [:%lower.name]
+                :limit    (or limit Integer/MAX_VALUE)
+                :offset   (or offset 0)})))
 
 (mu/defn permissions-group
   "The PermissionsGroup with `id`, or nil."
@@ -96,13 +97,12 @@
        [:manager-user-id          {:optional true} [:maybe ::lib.schema.id/user]]
        [:exclude-tenant-groups?   {:optional true} :boolean]]]
   (t2/select [:model/PermissionsGroupMembership [:id :membership_id] :group_id :user_id :is_group_manager]
-             {:where (into [:and]
-                           (keep identity)
-                           [(managed-groups-clause :group_id manager-user-id)
-                            (when exclude-tenant-groups?
-                              [:not-in :group_id ^:allow-subquery {:select [:id]
-                                                                   :from   [:permissions_group]
-                                                                   :where  [:= :is_tenant_group true]}])])}))
+             {:where [:and
+                      (when manager-user-id (t2/fragment [:in :group_id (managed-group-ids manager-user-id)]))
+                      (when exclude-tenant-groups?
+                        (t2/fragment [:not-in :group_id (t2/fragment {:select [:id]
+                                                                      :from   [:permissions_group]
+                                                                      :where  [:= :is_tenant_group true]})]))]}))
 
 (mu/defn non-admin-user-exists?
   "Whether the User with `user-id` exists and is not a superuser."
@@ -125,7 +125,7 @@
   exclusion)."
   [excluded-database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-pks-vec :model/Database {:where [:and
-                                              (when excluded-database-id [:not= :id excluded-database-id])
+                                              (when excluded-database-id (t2/fragment [:not= :id excluded-database-id]))
                                               [:= :router_database_id nil]]}))
 
 (mu/defn data-permissions-reducible
@@ -147,18 +147,17 @@
                [:schema_name :schema]
                [:table_id :table-id]]
     :from     [(t2/table-name :model/DataPermissions)]
-    :where    (conj (into [:and]
-                          (keep identity)
-                          [(when perm-type [:= :perm_type (u/qualified-name perm-type)])
-                           (when db-id [:= :db_id db-id])
-                           (when group-id [:= :group_id group-id])
-                           (when group-ids [:in :group_id group-ids])
-                           (when excluded-database-id [:not= :db_id excluded-database-id])])
-                    [:not [:exists ^:allow-subquery {:select [1]
-                                                     :from   [[(t2/table-name :model/Database) :router_db]]
-                                                     :where  [:and
-                                                              [:not= :router_db.router_database_id nil]
-                                                              [:= :router_db.id :db_id]]}]])
+    :where    [:and
+               (when perm-type (t2/fragment [:= :perm_type (u/qualified-name perm-type)]))
+               (when db-id (t2/fragment [:= :db_id db-id]))
+               (when group-id (t2/fragment [:= :group_id group-id]))
+               (when group-ids (t2/fragment [:in :group_id group-ids]))
+               (when excluded-database-id (t2/fragment [:not= :db_id excluded-database-id]))
+               [:not [:exists (t2/fragment {:select [1]
+                                            :from   [[(t2/table-name :model/Database) :router_db]]
+                                            :where  [:and
+                                                     [:not= :router_db.router_database_id nil]
+                                                     [:= :router_db.id :db_id]]})]]]
     :order-by [:group_id :db_id]}))
 
 (mu/defn tables-for-databases

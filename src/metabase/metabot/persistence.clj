@@ -15,11 +15,11 @@
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.used-tables :as used-tables]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (java.time Instant LocalDateTime OffsetDateTime ZoneOffset)))
 

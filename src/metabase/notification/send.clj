@@ -11,12 +11,12 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.settings :as notification.settings]
    [metabase.task-history.core :as task-history]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.retry :as retry]
-   [toucan2.core :as t2])
+   [metabase.util.retry :as retry])
   (:import
    (java.util.concurrent ArrayBlockingQueue Callable Executors ThreadPoolExecutor)
    (org.apache.commons.lang3.concurrent BasicThreadFactory)

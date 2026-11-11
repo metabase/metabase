@@ -4,9 +4,9 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.schema :as warehouses.schema]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.schema :as warehouses.schema]))
 
 (mu/defn router-database-id
   "The router Database id of the Database with `database-id`, or nil."
@@ -59,7 +59,7 @@
 
 (defn- table-ids-of-database-query
   [database-id]
-  ^:allow-subquery {:from [(t2/table-name :model/Table)], :select [:id], :where [:= :db_id database-id]})
+  (t2/fragment {:from [(t2/table-name :model/Table)], :select [:id], :where [:= :db_id database-id]}))
 
 (mu/defn fields-exist-for-database?
   "Whether any Field belongs to a Table of the Database with `database-id`."
@@ -73,16 +73,16 @@
         extra-clause    (if (= (mdb/db-type) :mysql)
                           ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
                           ;; DELETE target
-                          [:not-in :id ^:allow-subquery {:select [:parent_id]
-                                                         :from   [[^:allow-subquery {:select [:parent_id]
-                                                                                     :from   [(t2/table-name :model/Field)]
-                                                                                     :where  [:and
-                                                                                              [:not= :parent_id nil]
-                                                                                              [:in :table_id table-ids-query]]}
-                                                                   :parent_fields]]}]
-                          [:not [:exists ^:allow-subquery {:select [1]
-                                                           :from   [[(t2/table-name :model/Field) :child_field]]
-                                                           :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+                          (t2/fragment [:not-in :id (t2/fragment {:select [:parent_id]
+                                                                  :from   [[^:allow-subquery {:select [:parent_id]
+                                                                                              :from   [(t2/table-name :model/Field)]
+                                                                                              :where  [:and
+                                                                                                       [:not= :parent_id nil]
+                                                                                                       [:in :table_id table-ids-query]]}
+                                                                            :parent_fields]]})])
+                          (t2/fragment [:not [:exists (t2/fragment {:select [1]
+                                                                    :from   [[(t2/table-name :model/Field) :child_field]]
+                                                                    :where  [:= :child_field.parent_id :metabase_field.id]})]]))]
     (t2/query-one {:delete-from (t2/table-name :model/Field)
                    :where       [:and
                                  [:in :table_id table-ids-query]
@@ -152,7 +152,7 @@
 (mu/defn pk-fields-for-tables
   "The primary-key Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK)))
+  (t2/select :model/Field :table_id [:in table-ids] :semantic_type [:in (mdb/type-keyword->descendants :type/PK)]))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."

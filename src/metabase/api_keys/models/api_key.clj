@@ -14,6 +14,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.toucan.core :as t2]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -23,12 +24,11 @@
    [metabase.util.random :as u.random]
    [metabase.util.secret :as u.secret]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/ApiKey [_model] :api_key)
+(t2/define-table-name :model/ApiKey [_model] :api_key)
 
 (methodical/defmethod t2.hydrate/batched-hydrate [:model/ApiKey :group]
   "Add to each ApiKey a single group. Assume that each ApiKey is a member of either zero or one groups other than the

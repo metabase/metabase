@@ -33,7 +33,7 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as cheshire]
    [clojure.set :as set]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 (defn- parse-json [s] (cheshire/parse-string s false))
 (defn- to-json [o] (cheshire/generate-string o))

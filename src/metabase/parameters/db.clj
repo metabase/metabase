@@ -4,15 +4,15 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- nested
   "Wrap a subselect in parens so it can be used as a `:union` arm. Each arm here has its own `:limit`, which Postgres
   rejects unless the arm is parenthesized."
   [query]
-  ^:allow-subquery {:nest query})
+  (t2/fragment {:nest query}))
 
 (def ^:private mapping-type-code->name
   "Each `:union` arm in [[remapped-field]] tags its row with the kind of remapping it found. The tag is a small integer
@@ -22,21 +22,50 @@
    2 "fk->pk->name"
    3 "pk->name"})
 
-(def ^:private mapping-type-name->code
-  (into {} (map (fn [[code mapping-type]] [mapping-type code])) mapping-type-code->name))
-
 (defn- implicit-pk->name-mapping-query
   [field-id mapping-type]
-  ^:allow-subquery
-  {:select    [[:dest.id :id] [(mapping-type-name->code mapping-type) :mapping_type]]
-   :from      [[(t2/table-name :model/Field) :source]]
-   :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
-               [(t2/table-name :model/Field) :dest] [:= :dest.table_id :table.id]]
-   :where     [:and
-               [:= :source.id field-id]
-               (mdb/isa :source.semantic_type :type/PK)
-               (mdb/isa :dest.semantic_type :type/Name)]
-   :limit     1})
+  (t2/fragment
+   {:select    [[:dest.id :id] [(case mapping-type
+                                  "fk->pk->name" (t2/fragment [:inline 2])
+                                  "pk->name"     (t2/fragment [:inline 3]))
+                                :mapping_type]]
+    :from      [[(t2/table-name :model/Field) :source]]
+    :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
+                [(t2/table-name :model/Field) :dest] [:= :dest.table_id :table.id]]
+    :where     [:and
+                [:= :source.id field-id]
+                [:in :source.semantic_type (mdb/type-keyword->descendants :type/PK)]
+                [:in :dest.semantic_type (mdb/type-keyword->descendants :type/Name)]]
+    :limit     1}))
+
+(defn- explicit-fk-remapping-query
+  [field-id]
+  (nested
+   (t2/fragment
+    {:select [[:dimension.human_readable_field_id :id]
+              [[:inline 1] :mapping_type]]
+     :from   [[:dimension :dimension]]
+     :where  [:and
+              [:= :dimension.field_id field-id]
+              [:not= :dimension.human_readable_field_id nil]]
+     :limit  1})))
+
+(defn- implicit-fk-remapping-query
+  [field-id]
+  (nested
+   (implicit-pk->name-mapping-query
+    (t2/fragment
+     {:select [:fk_target_field_id]
+      :from   [(t2/table-name :model/Field)]
+      :where  [:and
+               [:= :id field-id]
+               [:in :semantic_type (mdb/type-keyword->descendants :type/FK)]]
+      :limit  1})
+    "fk->pk->name")))
+
+(defn- implicit-pk-remapping-query
+  [field-id]
+  (nested (implicit-pk->name-mapping-query field-id "pk->name")))
 
 (mu/defn remapped-field
   "The id and mapping-type of the Field that `field-id` remaps to via an explicit Field->Field Dimension, or —
@@ -45,31 +74,11 @@
    allow-implicit-uuid-remapping? :- :boolean]
   (some-> (t2/query-one
            {:select [[:mapping.id :id] [:mapping.mapping_type :mapping_type]]
-            :from   [[^:allow-subquery
-                      {:union (into [;; Explicit FK Field->Field remapping
-                                     (nested
-                                      ^:allow-subquery
-                                      {:select [[:dimension.human_readable_field_id :id]
-                                                [(mapping-type-name->code "fk->field") :mapping_type]]
-                                       :from   [[:dimension :dimension]]
-                                       :where  [:and
-                                                [:= :dimension.field_id field-id]
-                                                [:not= :dimension.human_readable_field_id nil]]
-                                       :limit  1})]
-                                    (when allow-implicit-uuid-remapping?
-                                      [;; Implicit FK Field -> PK Field -> [Name] Field remapping
-                                       (nested
-                                        (implicit-pk->name-mapping-query
-                                         ^:allow-subquery
-                                         {:select [:fk_target_field_id]
-                                          :from   [(t2/table-name :model/Field)]
-                                          :where  [:and
-                                                   [:= :id field-id]
-                                                   (mdb/isa :semantic_type :type/FK)]
-                                          :limit  1}
-                                         "fk->pk->name"))
-                                       ;; Implicit PK Field-> [Name] Field remapping
-                                       (nested (implicit-pk->name-mapping-query field-id "pk->name"))]))}
+            :from   [[(if allow-implicit-uuid-remapping?
+                        (t2/fragment {:union [(explicit-fk-remapping-query field-id)
+                                              (implicit-fk-remapping-query field-id)
+                                              (implicit-pk-remapping-query field-id)]})
+                        (t2/fragment {:union [(explicit-fk-remapping-query field-id)]}))
                       :mapping]]
             :limit  1})
           (update :mapping_type mapping-type-code->name)))
@@ -149,7 +158,7 @@
    table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select (into [:model/Field] columns)
              :table_id      [:in table-ids]
-             :semantic_type (mdb/isa :type/Name)
+             :semantic_type [:in (mdb/type-keyword->descendants :type/Name)]
              :active        true))
 
 (mu/defn fields-with-columns

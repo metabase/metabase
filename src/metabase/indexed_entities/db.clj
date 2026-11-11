@@ -5,9 +5,9 @@
    [malli.util :as mut]
    [metabase.indexed-entities.schema :as indexed-entities.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn model-index
   "The ModelIndex with `id`, or nil."

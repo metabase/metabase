@@ -4,21 +4,24 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- visible-metric-cards-where
   "The `:where` clause selecting the unarchived metric Cards the current user can read. Mirrors
   `metabase.queries.core/visible-metric-cards-where-clause`, which this namespace cannot call: the queries module
   requires the metrics module, so requiring it back here would close a load cycle."
   []
-  [:and
-   [:= :type "metric"]
-   [:= :archived false]
-   (collection/visible-collection-filter-clause :collection_id {:include-trash-collection? false
-                                                                :include-archived-items    :exclude
-                                                                :permission-level          :read})])
+  (let [{:keys [root? ids]} (collection/visible-collection-scope {:include-trash-collection? false
+                                                                  :include-archived-items    :exclude
+                                                                  :permission-level          :read})]
+    (t2/fragment [:and
+                  [:= :type "metric"]
+                  [:= :archived false]
+                  [:or
+                   (when root? (t2/fragment [:= :collection_id nil]))
+                   [:in :collection_id ids]]])))
 
 (mu/defn visible-metric-card-count
   "The number of unarchived metric Cards the current user can read."

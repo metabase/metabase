@@ -3,9 +3,9 @@
   no additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; ------------------------------------------------------ Cards -------------------------------------------------------
 
@@ -19,7 +19,7 @@
                  {:where [:and
                           [:= :id card-id]
                           [:= :archived false]
-                          (when enable-embedding? [:= :enable_embedding true])]}))
+                          (when enable-embedding? (t2/fragment [:= :enable_embedding true]))]}))
 
 (mu/defn active-card
   "The non-archived Card with `card-id`, or nil."
@@ -43,7 +43,7 @@
                  {:where [:and
                           [:= :id dashboard-id]
                           [:= :archived false]
-                          (when enable-embedding? [:= :enable_embedding true])]}))
+                          (when enable-embedding? (t2/fragment [:= :enable_embedding true]))]}))
 
 (mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."

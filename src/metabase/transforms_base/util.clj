@@ -30,6 +30,7 @@
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
+   [metabase.toucan.core :as t2]
    [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
@@ -40,8 +41,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.workspaces.table-remapping :as ws.table-remapping]
-   [toucan2.core :as t2])
+   [metabase.workspaces.table-remapping :as ws.table-remapping])
   (:import
    (clojure.lang Keyword)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -567,7 +567,7 @@
    target      :- ::transforms-base.schema/synced-target
    & kv-args   :- [:* [:or :keyword :string :int :boolean]]]
   (when database-id
-    (some-> (apply transforms-base.db/target-table database-id (:schema target) (:name target) kv-args)
+    (some-> (transforms-base.db/target-table database-id (:schema target) (:name target) (:active (apply hash-map kv-args)))
             (t2/hydrate :db))))
 
 (mu/defn target-table-exists? :- :boolean

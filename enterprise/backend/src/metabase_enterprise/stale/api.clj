@@ -14,9 +14,9 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
+   [metabase.toucan.core :as t2]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- effective-children-ids
   "Returns effective children ids for collection."

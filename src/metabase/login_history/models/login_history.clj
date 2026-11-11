@@ -4,12 +4,11 @@
    [metabase.login-history.db :as login-history.db]
    [metabase.login-history.settings :as login-history.settings]
    [metabase.request.core :as request]
+   [metabase.toucan.core :as t2]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -40,7 +39,7 @@
                                  timestamp)))
           (update :device_description request/describe-user-agent)))))
 
-(methodical/defmethod t2/table-name :model/LoginHistory [_model] :login_history)
+(t2/define-table-name :model/LoginHistory [_model] :login_history)
 
 (doto :model/LoginHistory
   (derive :metabase/model))

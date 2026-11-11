@@ -3,13 +3,12 @@
    [java-time.api :as t]
    [metabase.models.interface :as mi]
    [metabase.search.db :as search.db]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
-(methodical/defmethod t2/table-name :model/SearchIndexMetadata [_model] :search_index_metadata)
+(t2/define-table-name :model/SearchIndexMetadata [_model] :search_index_metadata)
 
 (doto :model/SearchIndexMetadata
   (derive :metabase/model)

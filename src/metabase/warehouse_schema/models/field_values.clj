@@ -35,6 +35,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -44,9 +45,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
 
 (set! *warn-on-reflection* true)
 
@@ -103,7 +102,7 @@
 ;;; |                                             Entity & Lifecycle                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(methodical/defmethod t2/table-name :model/FieldValues [_model] :metabase_fieldvalues)
+(t2/define-table-name :model/FieldValues [_model] :metabase_fieldvalues)
 
 (doto :model/FieldValues
   (derive :metabase/model)

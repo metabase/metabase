@@ -10,18 +10,18 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/Channel         [_model] :channel)
-(methodical/defmethod t2/table-name :model/ChannelTemplate [_model] :channel_template)
+(t2/define-table-name :model/Channel         [_model] :channel)
+(t2/define-table-name :model/ChannelTemplate [_model] :channel_template)
 
 (doto :model/Channel
   (derive :metabase/model)

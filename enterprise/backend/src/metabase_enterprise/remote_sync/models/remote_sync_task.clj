@@ -5,20 +5,19 @@
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
+   [metabase.toucan.core :as t2]
    [metabase.util.i18n :refer [trun]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
 (mr/def ::remote-sync-task-type
   [:enum "import" "export"])
 
-(methodical/defmethod t2/table-name :model/RemoteSyncTask [_model] :remote_sync_task)
+(t2/define-table-name :model/RemoteSyncTask [_model] :remote_sync_task)
 
 (derive :model/RemoteSyncTask :metabase/model)
 
@@ -183,14 +182,14 @@
        (nil? (:error_message task))
        (some? (:conflicts task))))
 
-(methodical/defmethod t2/batched-hydrate [:model/RemoteSyncTask :initiated_by_user]
+(t2/define-batched-hydrate [:model/RemoteSyncTask :initiated_by_user]
   [_model k tasks]
   (mi/instances-with-hydrated-data
    tasks k
    #(remote-sync.db/users-by-id (map :initiated_by tasks))
    :initiated_by))
 
-(methodical/defmethod t2/batched-hydrate [:model/RemoteSyncTask :status]
+(t2/define-batched-hydrate [:model/RemoteSyncTask :status]
   [_model _k tasks]
   (for [task tasks]
     (assoc task :status (cond

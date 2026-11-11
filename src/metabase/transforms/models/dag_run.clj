@@ -7,16 +7,15 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.toucan.core :as t2]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/TransformDagRun [_model] :transform_dag_run)
+(t2/define-table-name :model/TransformDagRun [_model] :transform_dag_run)
 
 (derive :model/TransformDagRun :metabase/model)
 (derive :model/TransformDagRun :hook/timestamped?)

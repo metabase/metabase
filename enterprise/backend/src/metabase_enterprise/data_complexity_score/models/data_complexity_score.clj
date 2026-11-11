@@ -6,10 +6,9 @@
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/DataComplexityScore [_model] :data_complexity_score)
+(t2/define-table-name :model/DataComplexityScore [_model] :data_complexity_score)
 
 (doto :model/DataComplexityScore
   (derive :metabase/model))

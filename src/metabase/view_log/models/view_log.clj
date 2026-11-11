@@ -3,14 +3,13 @@
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.models.interface :as mi]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
    [metabase.util.malli.registry :as mr]
-   [metabase.view-log.models.view-log-impl :as view-log-impl]
-   [methodical.core :as m]
-   [toucan2.core :as t2]))
+   [metabase.view-log.models.view-log-impl :as view-log-impl]))
 
-(m/defmethod t2/table-name :model/ViewLog [_model] :view_log)
+(t2/define-table-name :model/ViewLog [_model] :view_log)
 
 (doto :model/ViewLog
   (derive :metabase/model)

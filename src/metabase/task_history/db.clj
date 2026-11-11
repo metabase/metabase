@@ -3,10 +3,9 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.task-history.schema :as task-history.schema]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn database-names-by-id
   "A map of id to name for the Databases with `ids`."
@@ -28,54 +27,60 @@
   [run-ids :- [:sequential ms/PositiveInt]]
   (t2/query {:select   [:run_id
                         [[:count :id] :task_count]
-                        [[:sum [:case [:= :status (h2x/literal "success")] [:inline 1] :else [:inline 0]]] :success_count]
-                        [[:sum [:case [:= :status (h2x/literal "failed")] [:inline 1] :else [:inline 0]]] :failed_count]]
+                        [[:sum [:case [:= :status "success"] [:inline 1] :else [:inline 0]]] :success_count]
+                        [[:sum [:case [:= :status "failed"] [:inline 1] :else [:inline 0]]] :failed_count]]
              :from     :task_history
              :where    [:in :run_id run-ids]
              :group-by [:run_id]}))
 
 (defn- run-where
-  ;; columns are qualified because the entity_name/task_count sorts add joins whose tables may share column names
-  ;; (e.g. report_card.entity_id)
+  "The `:where` for the TaskRuns matching `filters`, with qualified columns because the entity_name/task_count sorts add
+  joins whose tables may share column names (e.g. report_card.entity_id)."
   [{:keys [run-type entity-type entity-id status started-at-start started-at-end]}]
-  (let [conditions (cond-> []
-                     run-type          (conj [:= :task_run.run_type run-type])
-                     entity-type       (conj [:= :task_run.entity_type entity-type])
-                     entity-id         (conj [:= :task_run.entity_id entity-id])
-                     status            (conj [:= :task_run.status status])
-                     started-at-start  (conj [:>= :task_run.started_at started-at-start])
-                     started-at-end    (conj [:< :task_run.started_at started-at-end]))]
-    (when (seq conditions)
-      {:where (into [:and] conditions)})))
+  (t2/fragment [:and
+                (when run-type (t2/fragment [:= :task_run.run_type run-type]))
+                (when entity-type (t2/fragment [:= :task_run.entity_type entity-type]))
+                (when entity-id (t2/fragment [:= :task_run.entity_id entity-id]))
+                (when status (t2/fragment [:= :task_run.status status]))
+                (when started-at-start (t2/fragment [:>= :task_run.started_at started-at-start]))
+                (when started-at-end (t2/fragment [:< :task_run.started_at started-at-end]))]))
 
-(defn- runs-order-by
-  "Build the honeysql fragment used to order the task runs list. Direct columns order in place; `:entity_name`
-  LEFT JOINs the three entity tables and orders by the coalesced name; `:task_count` LEFT JOINs a grouped
-  `task_history` subquery. Derived-column variants keep the selected shape to `task_run.*` and add a
-  deterministic `[:id :desc]` secondary key."
-  [sort-column sort-direction]
-  (let [secondary [:task_run.id :desc]]
-    (case sort-column
-      :entity_name
-      {:select    [:task_run.*]
-       :left-join [[:metabase_database :sort_db]
-                   [:and [:= :task_run.entity_type "database"]  [:= :task_run.entity_id :sort_db.id]]
-                   [:report_card :sort_card]
-                   [:and [:= :task_run.entity_type "card"]      [:= :task_run.entity_id :sort_card.id]]
-                   [:report_dashboard :sort_dash]
-                   [:and [:= :task_run.entity_type "dashboard"] [:= :task_run.entity_id :sort_dash.id]]]
-       :order-by  [[[:coalesce :sort_db.name :sort_card.name :sort_dash.name] sort-direction] secondary]}
+(defn- runs-left-join
+  "The `:left-join` the TaskRuns list needs to sort by `sort-column`: `:entity_name` LEFT JOINs the three entity tables
+  and `:task_count` LEFT JOINs a grouped `task_history` subquery."
+  [sort-column]
+  (case sort-column
+    :entity_name
+    (t2/fragment [[:metabase_database :sort_db]
+                  [:and [:= :task_run.entity_type "database"]  [:= :task_run.entity_id :sort_db.id]]
+                  [:report_card :sort_card]
+                  [:and [:= :task_run.entity_type "card"]      [:= :task_run.entity_id :sort_card.id]]
+                  [:report_dashboard :sort_dash]
+                  [:and [:= :task_run.entity_type "dashboard"] [:= :task_run.entity_id :sort_dash.id]]])
 
-      :task_count
-      {:select    [:task_run.*]
-       :left-join [[^:allow-subquery {:select   [:run_id [[:count :*] :task_count]]
-                                      :from     [:task_history]
-                                      :group-by [:run_id]}
-                    :sort_tc]
-                   [:= :sort_tc.run_id :task_run.id]]
-       :order-by  [[[:coalesce :sort_tc.task_count [:inline 0]] sort-direction] secondary]}
+    :task_count
+    (t2/fragment [[^:allow-subquery {:select   [:run_id [[:count :*] :task_count]]
+                                     :from     [:task_history]
+                                     :group-by [:run_id]}
+                   :sort_tc]
+                  [:= :sort_tc.run_id :task_run.id]])
 
-      {:order-by [[sort-column sort-direction] secondary]})))
+    (t2/fragment [])))
+
+(defn- runs-sort-item
+  "The `:order-by` item sorting the TaskRuns list by `sort-column`, descending when `desc?`."
+  [sort-column desc?]
+  (case sort-column
+    :entity_name (if desc?
+                   (t2/fragment [[:coalesce :sort_db.name :sort_card.name :sort_dash.name] :desc])
+                   (t2/fragment [[:coalesce :sort_db.name :sort_card.name :sort_dash.name] :asc]))
+    :task_count  (if desc?
+                   (t2/fragment [[:coalesce :sort_tc.task_count [:inline 0]] :desc])
+                   (t2/fragment [[:coalesce :sort_tc.task_count [:inline 0]] :asc]))
+    :started_at  (if desc? (t2/fragment [:started_at :desc]) (t2/fragment [:started_at :asc]))
+    :ended_at    (if desc? (t2/fragment [:ended_at :desc]) (t2/fragment [:ended_at :asc]))
+    :run_type    (if desc? (t2/fragment [:run_type :desc]) (t2/fragment [:run_type :asc]))
+    :status      (if desc? (t2/fragment [:status :desc]) (t2/fragment [:status :asc]))))
 
 (def ^:private RunFilters
   [:map {:closed true}
@@ -95,15 +100,17 @@
    limit          :- [:maybe ms/PositiveInt]
    offset         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/TaskRun
-             (h2x/assert-map-or-nil!
-              (cond-> (merge (run-where filters) (runs-order-by sort-column sort-direction))
-                limit  (assoc :limit limit)
-                offset (assoc :offset offset)))))
+             {:select    [:task_run.*]
+              :left-join (runs-left-join sort-column)
+              :where     (run-where filters)
+              :order-by  [(runs-sort-item sort-column (= sort-direction :desc)) [:task_run.id :desc]]
+              :limit     (or limit Integer/MAX_VALUE)
+              :offset    (or offset 0)}))
 
 (mu/defn task-run-count
   "The number of TaskRuns matching `filters` (see [[run-where]] for the supported keys)."
   [filters :- RunFilters]
-  (t2/count :model/TaskRun (h2x/assert-map-or-nil! (or (run-where filters) {}))))
+  (t2/count :model/TaskRun {:where (run-where filters)}))
 
 (mu/defn task-run
   "The TaskRun with `id`, or nil."
@@ -122,10 +129,10 @@
    started-at-end    :- [:maybe ms/TemporalInstant]]
   (t2/query {:select-distinct [:entity_type :entity_id]
              :from            :task_run
-             :where           (into [:and [:= :run_type run-type]]
-                                    (keep identity)
-                                    [(when started-at-start [:>= :started_at started-at-start])
-                                     (when started-at-end [:< :started_at started-at-end])])}))
+             :where           [:and
+                               [:= :run_type run-type]
+                               (when started-at-start (t2/fragment [:>= :started_at started-at-start]))
+                               (when started-at-end (t2/fragment [:< :started_at started-at-end]))]}))
 
 (mu/defn nth-newest-task-history-ended-at
   "The `ended_at` of the TaskHistory row `offset` rows from the most recently ended, or nil."
@@ -139,18 +146,33 @@
   [ended-before :- ms/TemporalInstant]
   (t2/delete! (t2/table-name :model/TaskHistory) :ended_at [:<= ended-before]))
 
-(def ^:private join-sort-columns
-  "Sort columns that require a LEFT JOIN to `metabase_database`, mapped to the joined column to order by."
-  {:db_name   :metabase_database.name
-   :db_engine :metabase_database.engine})
-
 (defn- task-history-where
-  ;; qualified so filters stay unambiguous when the db_name/db_engine sorts join metabase_database
+  "The `:where` for the TaskHistory rows narrowed to `status` and/or `task`, with qualified columns so filters stay
+  unambiguous when the db_name/db_engine sorts join metabase_database."
   [status task]
-  (when (or status task)
-    (cond-> [:and]
-      task   (conj [:= :task_history.task task])
-      status (conj [:= :task_history.status (name status)]))))
+  (t2/fragment [:and
+                (when task (t2/fragment [:= :task_history.task task]))
+                (when status (t2/fragment [:= :task_history.status (name status)]))]))
+
+(defn- task-histories-left-join
+  "The `:left-join` the TaskHistory list needs to sort by `sort-column`: `:db_name` and `:db_engine` LEFT JOIN
+  `metabase_database`."
+  [sort-column]
+  (case sort-column
+    (:db_name :db_engine) (t2/fragment [:metabase_database [:= :task_history.db_id :metabase_database.id]])
+    (t2/fragment [])))
+
+(defn- task-histories-sort-item
+  "The `:order-by` item sorting the TaskHistory list by `sort-column`, descending when `desc?`."
+  [sort-column desc?]
+  (case sort-column
+    :db_name    (if desc? (t2/fragment [:metabase_database.name :desc]) (t2/fragment [:metabase_database.name :asc]))
+    :db_engine  (if desc? (t2/fragment [:metabase_database.engine :desc]) (t2/fragment [:metabase_database.engine :asc]))
+    :started_at (if desc? (t2/fragment [:started_at :desc]) (t2/fragment [:started_at :asc]))
+    :ended_at   (if desc? (t2/fragment [:ended_at :desc]) (t2/fragment [:ended_at :asc]))
+    :duration   (if desc? (t2/fragment [:duration :desc]) (t2/fragment [:duration :asc]))
+    :task       (if desc? (t2/fragment [:task :desc]) (t2/fragment [:task :asc]))
+    :status     (if desc? (t2/fragment [:status :desc]) (t2/fragment [:status :asc]))))
 
 (mu/defn task-histories
   "Up to `limit` (offset by `offset`) TaskHistory rows, optionally narrowed to `status` and/or `task`, sorted by
@@ -163,25 +185,18 @@
    limit          :- [:maybe ms/PositiveInt]
    offset         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/TaskHistory
-             (cond-> (if-let [where (task-history-where status task)]
-                       {:where where}
-                       {})
-               (join-sort-columns sort-column)
-               (merge {:select    [:task_history.*]
-                       :left-join [:metabase_database [:= :task_history.db_id :metabase_database.id]]
-                       :order-by  [[(join-sort-columns sort-column) sort-direction] [:task_history.id :desc]]})
-
-               (not (join-sort-columns sort-column))
-               (assoc :order-by [[sort-column sort-direction] [:id :desc]])
-
-               limit  (assoc :limit limit)
-               offset (assoc :offset offset))))
+             {:select    [:task_history.*]
+              :left-join (task-histories-left-join sort-column)
+              :where     (task-history-where status task)
+              :order-by  [(task-histories-sort-item sort-column (= sort-direction :desc)) [:task_history.id :desc]]
+              :limit     (or limit Integer/MAX_VALUE)
+              :offset    (or offset 0)}))
 
 (mu/defn task-history-count
   "The number of TaskHistory rows, optionally narrowed to `status` and/or `task`."
   [status :- [:maybe [:enum :started :success :failed :unknown]]
    task   :- [:maybe ms/NonBlankString]]
-  (t2/count :model/TaskHistory (if-let [where (task-history-where status task)] {:where where} {})))
+  (t2/count :model/TaskHistory {:where (task-history-where status task)}))
 
 (mu/defn distinct-task-names
   "The distinct task names of the TaskHistory rows, in alphabetical order."

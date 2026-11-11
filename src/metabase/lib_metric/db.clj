@@ -2,12 +2,10 @@
   "Application database queries for the lib metric module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [honey.sql.helpers :as sql.helpers]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn fields
   "The Fields with `field-ids`."
@@ -17,7 +15,7 @@
 (mu/defn card-table-and-database-id
   "The `:table_id` and `:database_id` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :table_id :database_id] :id [:auto/param card-id]))
+  (t2/select-one [:model/Card :table_id :database_id] :id card-id))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
@@ -25,18 +23,19 @@
   (t2/select-one-fn :db_id :model/Table :id table-id))
 
 (defn- metric-where
-  "The `:where` map for the metric Cards picked out by `metadata-spec` (its `:id`, `:name`,
+  "The `:where` clause for the metric Cards picked out by `metadata-spec` (its `:id`, `:name`,
   `:table-ids`, and `:card-ids` keys), or unarchived ones when neither `:id` nor `:name` is given."
   [{id-set :id, name-set :name, :keys [table-ids card-ids]}]
   (let [active-only? (not (or id-set name-set))]
-    (reduce sql.helpers/where {}
-            (cond-> [[:= :type "metric"]]
-              id-set       (conj [:in :id id-set])
-              name-set     (conj [:in :name name-set])
-              table-ids    (conj [:in :table_id table-ids])
-              table-ids    (conj [:= :source_card_id nil])
-              card-ids     (conj [:in :source_card_id card-ids])
-              active-only? (conj [:= :archived false])))))
+    (t2/fragment
+     [:and
+      [:= :type "metric"]
+      (when id-set (t2/fragment [:in :id id-set]))
+      (when name-set (t2/fragment [:in :name name-set]))
+      (when table-ids (t2/fragment [:in :table_id table-ids]))
+      (when table-ids (t2/fragment [:= :source_card_id nil]))
+      (when card-ids (t2/fragment [:in :source_card_id card-ids]))
+      (when active-only? (t2/fragment [:= :archived false]))])))
 
 (mu/defn metrics
   "The metric Cards (`:metadata/metric`) picked out by `metadata-spec`."
@@ -46,19 +45,19 @@
                      [:name      {:optional true} [:maybe [:set :string]]]
                      [:table-ids {:optional true} [:maybe [:set ::lib.schema.id/table]]]
                      [:card-ids  {:optional true} [:maybe [:set ::lib.schema.id/card]]]]]
-  (t2/select :metadata/metric (h2x/assert-map-or-nil! (metric-where metadata-spec))))
+  (t2/select :metadata/metric {:where (metric-where metadata-spec)}))
 
 (defn- measure-where
-  "The `:where` map for the `:metadata/measure` rows picked out by `metadata-spec` (its `:id`, `:name`, and
+  "The `:where` clause for the `:metadata/measure` rows picked out by `metadata-spec` (its `:id`, `:name`, and
   `:table-ids` keys), or unarchived ones when neither `:id` nor `:name` is given."
   [{id-set :id, name-set :name, :keys [table-ids]}]
   (let [active-only? (not (or id-set name-set))]
-    (reduce sql.helpers/where {}
-            (cond-> []
-              id-set       (conj [:in :measure/id id-set])
-              name-set     (conj [:in :measure/name name-set])
-              table-ids    (conj [:in :measure/table_id table-ids])
-              active-only? (conj [:= :measure/archived false])))))
+    (t2/fragment
+     [:and
+      (when id-set (t2/fragment [:in :measure/id id-set]))
+      (when name-set (t2/fragment [:in :measure/name name-set]))
+      (when table-ids (t2/fragment [:in :measure/table_id table-ids]))
+      (when active-only? (t2/fragment [:= :measure/archived false]))])))
 
 (mu/defn measures
   "The `:metadata/measure` rows picked out by `metadata-spec`."
@@ -67,4 +66,4 @@
                      [:id        {:optional true} [:maybe [:set ms/PositiveInt]]]
                      [:name      {:optional true} [:maybe [:set :string]]]
                      [:table-ids {:optional true} [:maybe [:set ::lib.schema.id/table]]]]]
-  (t2/select :metadata/measure (h2x/assert-map-or-nil! (measure-where metadata-spec))))
+  (t2/select :metadata/measure {:where (measure-where metadata-spec)}))

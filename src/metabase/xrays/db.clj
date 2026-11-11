@@ -5,9 +5,9 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -55,26 +55,26 @@
               [[:and
                 [:>= :ts.count 2]
                 [:= :ts.count_non_pks 1]] :list-like?]]
-             {:inner-join [[^:allow-subquery {:select   [:f.table_id
-                                                         [:%count.* :count]
-                                                         [[:count [:case [:or [:not= :semantic_type "type/PK"]
-                                                                          [:= :f.semantic_type nil]]
-                                                                   [:inline 1] :else [:inline nil]]]
-                                                          :count_non_pks]
-                                                         [[:count [:case [:in :f.semantic_type ["type/PK" "type/FK"]]
-                                                                   [:inline 1] :else [:inline nil]]]
-                                                          :count_pks_and_fks]]
-                                              :from     [[(t2/table-name :model/Field) :f]]
-                                              :where    [:= :f.active true]
-                                              :group-by [:f.table_id]} :ts]
+             {:inner-join [[(t2/fragment {:select   [:f.table_id
+                                                     [:%count.* :count]
+                                                     [[:count [:case [:or [:not= :semantic_type "type/PK"]
+                                                                      [:= :f.semantic_type nil]]
+                                                               [:inline 1] :else [:inline nil]]]
+                                                      :count_non_pks]
+                                                     [[:count [:case [:in :f.semantic_type ["type/PK" "type/FK"]]
+                                                               [:inline 1] :else [:inline nil]]]
+                                                      :count_pks_and_fks]]
+                                          :from     [[(t2/table-name :model/Field) :f]]
+                                          :where    [:= :f.active true]
+                                          :group-by [:f.table_id]}) :ts]
                            [:and [:= :ts.table_id :id]
                             [:> :ts.count 0]
                             [:!= :ts.count :ts.count_pks_and_fks]]]
-              :where (cond-> [:and
-                              [:= :db_id database-id]
-                              [:= :visibility_type nil]
-                              [:= :active true]]
-                       schema (conj [:= :schema schema]))}))
+              :where [:and
+                      [:= :db_id database-id]
+                      [:= :visibility_type nil]
+                      [:= :active true]
+                      (when schema (t2/fragment [:= :schema schema]))]}))
 
 (mu/defn field
   "The Field with `field-id`, or nil."
@@ -261,11 +261,12 @@
   `excluded-dashboard-ids`."
   [card-ids                :- [:maybe [:sequential ::lib.schema.id/card]]
    excluded-dashboard-ids  :- [:maybe [:sequential ::lib.schema.id/dashboard]]]
-  (apply t2/select [:model/DashboardCard :card_id :dashboard_id]
-         (concat (when (seq card-ids) [:card_id [:in card-ids]])
-                 (when (seq excluded-dashboard-ids) [:dashboard_id [:not-in excluded-dashboard-ids]]))))
+  (t2/select [:model/DashboardCard :card_id :dashboard_id]
+             {:where [:and
+                      (when (seq card-ids) (t2/fragment [:in :card_id card-ids]))
+                      (when (seq excluded-dashboard-ids) (t2/fragment [:not-in :dashboard_id excluded-dashboard-ids]))]}))
 
 (mu/defn model-index
   "The ModelIndex with `model-index-id`, or nil."
   [model-index-id :- ms/PositiveInt]
-  (t2/select-one :model/ModelIndex :id [:auto/param model-index-id]))
+  (t2/select-one :model/ModelIndex :id model-index-id))

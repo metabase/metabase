@@ -4,16 +4,15 @@
    [metabase-enterprise.action-v2.db :as action-v2.db]
    [metabase.actions.core :as actions]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util :as u]))
 
 (def ^:private retention-total-batches 100)
 (def ^:private retention-total-rows 1000)
 (def ^:private retention-batches-per-scope 100)
 (def ^:private retention-batches-per-user 50)
 
-(methodical/defmethod t2/table-name :model/Undo [_model] :data_edit_undo_chain)
+(t2/define-table-name :model/Undo [_model] :data_edit_undo_chain)
 
 (t2/deftransforms :model/Undo
   {:row_pk     mi/transform-json

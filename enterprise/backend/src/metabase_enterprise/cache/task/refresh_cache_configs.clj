@@ -9,8 +9,8 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.core :as qp]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.toucan.core :as t2]
+   [metabase.util.log :as log])
   (:import
    (java.util.concurrent Callable ExecutorService SynchronousQueue ThreadPoolExecutor TimeUnit)
    (org.apache.commons.lang3.concurrent BasicThreadFactory)

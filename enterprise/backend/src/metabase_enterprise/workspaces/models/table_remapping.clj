@@ -14,10 +14,9 @@
    identifier result post-remap would silently breach workspace isolation."
   (:require
    [metabase.cache.core :as cache]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/TableRemapping [_model] :table_remapping)
+(t2/define-table-name :model/TableRemapping [_model] :table_remapping)
 
 (doto :model/TableRemapping
   (derive :metabase/model)

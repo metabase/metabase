@@ -6,14 +6,14 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
-   [metabase.util.secret :as u.secret]
-   [toucan2.core :as t2]))
+   [metabase.util.secret :as u.secret]))
 
 (set! *warn-on-reflection* true)
 

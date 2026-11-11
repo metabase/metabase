@@ -7,16 +7,15 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.task-history.db :as task-history.db]
+   [metabase.toucan.core :as t2]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/TaskRun [_model] :task_run)
+(t2/define-table-name :model/TaskRun [_model] :task_run)
 
 (doto :model/TaskRun
   (derive :metabase/model)

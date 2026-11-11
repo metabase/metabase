@@ -4,13 +4,13 @@
    [metabase.app-db.core :as app-db]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
+   ;; the QueryCache table belongs to this backend; the QP rule is about reading metadata
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.toucan.core :as t2]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   ;; the QueryCache table belongs to this backend; the QP rule is about reading metadata
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (java.io ByteArrayInputStream)))
 

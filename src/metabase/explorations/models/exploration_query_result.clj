@@ -8,15 +8,14 @@
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
-   [metabase.util.i18n :refer [tru]]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [metabase.toucan.core :as t2]
+   [metabase.util.i18n :refer [tru]])
   (:import
    (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/ExplorationQueryResult [_model]
+(t2/define-table-name :model/ExplorationQueryResult [_model]
   :exploration_query_result)
 
 (doto :model/ExplorationQueryResult

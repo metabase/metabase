@@ -23,12 +23,12 @@
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 

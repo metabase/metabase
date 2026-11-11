@@ -5,10 +5,9 @@
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/ExplorationPage [_model] :exploration_page)
+(t2/define-table-name :model/ExplorationPage [_model] :exploration_page)
 
 (doto :model/ExplorationPage
   (derive :metabase/model)
@@ -29,7 +28,7 @@
    (when-let [p (explorations.db/page-block-id-row pk)]
      (mi/can-write? :model/ExplorationBlock (:exploration_block_id p)))))
 
-(methodical/defmethod t2/batched-hydrate [:model/ExplorationPage :can_write]
+(t2/define-batched-hydrate [:model/ExplorationPage :can_write]
   "Add whether the current user can write each ExplorationPage, which is whether they can write its parent."
   [_model k instances]
   (exploration/hydrate-can-write-from-parents k instances :exploration_block_id :model/ExplorationBlock))

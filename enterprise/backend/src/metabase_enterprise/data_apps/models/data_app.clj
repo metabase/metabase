@@ -11,10 +11,10 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.tools.default-fields :as t2.default-fields])
   (:import
    (java.nio.charset StandardCharsets)
@@ -24,7 +24,7 @@
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/DataApp [_model] :data_app)
+(t2/define-table-name :model/DataApp [_model] :data_app)
 
 (defn- blob->bytes ^bytes [v]
   (cond

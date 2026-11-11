@@ -156,6 +156,7 @@
    [metabase.permissions.core :as perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.segments.schema :as segments.schema]
+   [metabase.toucan.core :as t2]
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru trun]]
@@ -173,8 +174,7 @@
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.db :as xrays.db]
-   [metabase.xrays.related :as related]
-   [toucan2.core :as t2]))
+   [metabase.xrays.related :as related]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
 

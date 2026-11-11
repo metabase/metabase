@@ -5,10 +5,10 @@
    [metabase.app-db.core :as mdb]
    [metabase.internal-stats.util :as u]
    [metabase.models.interface :as mi]
+   [metabase.toucan.core :as t2]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn enabled-data-app-count
   "The number of enabled data apps."
@@ -206,8 +206,8 @@
   "The `:count` of distinct email domains of active personal Users."
   []
   (let [domain-expr (condp contains? (mdb/db-type)
-                      #{:postgres}  [:split_part :email "@" [:inline 2]]
-                      #{:h2 :mysql} [:substring :email [:locate "@" :email]])]
+                      #{:postgres}  (t2/fragment [:split_part :email "@" [:inline 2]])
+                      #{:h2 :mysql} (t2/fragment [:substring :email [:locate "@" :email]]))]
     (t2/query-one {:select [[:%count.* :count]]
                    :from [[^:allow-subquery
                            {:select-distinct [[domain-expr]]

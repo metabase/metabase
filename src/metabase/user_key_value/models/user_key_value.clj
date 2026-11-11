@@ -34,15 +34,14 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.toucan.core :as t2]
    [metabase.user-key-value.db :as user-key-value.db]
    [metabase.user-key-value.models.user-key-value.types :as types]
-   [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/UserKeyValue [_model] :user_key_value)
+(t2/define-table-name :model/UserKeyValue [_model] :user_key_value)
 
 (doto :model/UserKeyValue
   (derive :metabase/model)

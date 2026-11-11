@@ -39,13 +39,13 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
-   [throttle.core :as throttle]
-   [toucan2.core :as t2])
+   [throttle.core :as throttle])
   (:import
    (clojure.lang ExceptionInfo)))
 

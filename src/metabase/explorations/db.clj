@@ -12,11 +12,10 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; ----------------------------------------------- Exploration -----------------------------------------------
 
@@ -26,7 +25,7 @@
   (t2/select-one :model/Exploration :id exploration-id))
 
 (defn- my-explorations-query
-  "The query for the Explorations `user-id` created or edited, ordered by that user's most-recent
+  "The Explorations `user-id` created or edited, ordered by that user's most-recent
   touch (descending). \"Touch\" is the union of three streams, all attributed to the user:
 
     1. the user's `Exploration` revisions (metadata / structure edits),
@@ -38,45 +37,45 @@
 
   An exploration appears iff the user produced at least one touch, and `archived`/unreadable ones
   are excluded — so the `COUNT(*) OVER ()` total matches what the caller sees.
-  `current_user_last_touched_at` is non-null on every row. `limit`/`offset` are appended only when
-  paged."
+  `current_user_last_touched_at` is non-null on every row. `limit`/`offset` page the result when given."
   [user-id limit offset]
-  (let [my-touches ^:allow-subquery
-        {:union-all
-         [^:allow-subquery
-          {:select [[:model_id :eid] [:timestamp :ts]]
-           :from   [:revision]
-           :where  [:and [:= :model "Exploration"] [:= :user_id user-id]]}
-          ^:allow-subquery
-          {:select [[:d.exploration_id :eid] [:dr.timestamp :ts]]
-           :from   [[:revision :dr]]
-           :join   [[:document :d] [:= :d.id :dr.model_id]]
-           :where  [:and
-                    [:= :dr.model "Document"]
-                    [:= :dr.user_id user-id]
-                    [:not= :d.exploration_id nil]]}
-          ^:allow-subquery
-          {:select [[:id :eid] [:created_at :ts]]
-           :from   [:exploration]
-           :where  [:= :creator_id user-id]}]}
-        ;; MAX rather than GREATEST — the latter's NULL semantics differ across app DBs. And
-        ;; `my-touches` is a derived table here rather than a sibling CTE: a second `:with` binding
-        ;; that selects from the first silently returns no rows under our HoneySQL/H2 stack.
-        agg        ^:allow-subquery
-        {:select   [:eid [[:max :ts] :max_ts]]
-         :from     [[my-touches :my_touches]]
-         :group-by [:eid]}]
-    (cond-> {:select   [:exploration.*
-                        [:agg.max_ts :current_user_last_touched_at]
-                        [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
-             :from     [:exploration]
-             :join     [[agg :agg] [:= :agg.eid :exploration.id]]
-             :where    [:and
-                        [:= :exploration.archived false]
-                        (collection/visible-collection-filter-clause :exploration.collection_id)]
-             :order-by [[:current_user_last_touched_at :desc] [:exploration.id :desc]]}
-      limit  (assoc :limit limit)
-      offset (assoc :offset offset))))
+  (let [my-touches (t2/fragment
+                    {:union-all
+                     [^:allow-subquery
+                      {:select [[:model_id :eid] [:timestamp :ts]]
+                       :from   [:revision]
+                       :where  [:and [:= :model "Exploration"] [:= :user_id user-id]]}
+                      ^:allow-subquery
+                      {:select [[:d.exploration_id :eid] [:dr.timestamp :ts]]
+                       :from   [[:revision :dr]]
+                       :join   [[:document :d] [:= :d.id :dr.model_id]]
+                       :where  [:and
+                                [:= :dr.model "Document"]
+                                [:= :dr.user_id user-id]
+                                [:not= :d.exploration_id nil]]}
+                      ^:allow-subquery
+                      {:select [[:id :eid] [:created_at :ts]]
+                       :from   [:exploration]
+                       :where  [:= :creator_id user-id]}]})
+        agg        (t2/fragment
+                    {:select   [:eid [[:max :ts] :max_ts]]
+                     :from     [[my-touches :my_touches]]
+                     :group-by [:eid]})
+        {:keys [root? ids]} (collection/visible-collection-scope)]
+    (t2/select :model/Exploration
+               {:select   [:exploration.*
+                           [:agg.max_ts :current_user_last_touched_at]
+                           [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
+                :from     [:exploration]
+                :join     [[agg :agg] [:= :agg.eid :exploration.id]]
+                :where    [:and
+                           [:= :exploration.archived false]
+                           (t2/fragment [:or
+                                         (when root? (t2/fragment [:= :exploration.collection_id nil]))
+                                         [:in :exploration.collection_id ids]])]
+                :order-by [[:current_user_last_touched_at :desc] [:exploration.id :desc]]
+                :limit    (or limit Integer/MAX_VALUE)
+                :offset   (or offset 0)})))
 
 (mu/defn my-explorations
   "The Explorations `user-id` created or edited, most-recently-touched first, each carrying
@@ -84,7 +83,7 @@
   [user-id :- ::lib.schema.id/user
    limit   :- [:maybe ms/PositiveInt]
    offset  :- [:maybe ms/IntGreaterThanOrEqualToZero]]
-  (t2/select :model/Exploration (h2x/assert-map-or-nil! (my-explorations-query user-id limit offset))))
+  (my-explorations-query user-id limit offset))
 
 (mu/defn exploration-creator-id-for-thread
   "The creator of the Exploration owning the ExplorationThread with `thread-id`."
@@ -488,12 +487,18 @@
   "The ids of the pending ExplorationQueries of the ExplorationThread with `thread-id`, locked for
   update (`SKIP LOCKED` outside H2, whose single-worker model neither needs nor supports it)."
   [thread-id :- ms/PositiveInt]
-  (map :id (t2/query (cond-> {:select [:id]
-                              :from   [:exploration_query]
-                              :where  [:and
-                                       [:= :exploration_thread_id thread-id]
-                                       [:= :status "pending"]]}
-                       (not= :h2 (mdb/db-type)) (assoc :for [:update :skip-locked])))))
+  (map :id (if (= :h2 (mdb/db-type))
+             (t2/query {:select [:id]
+                        :from   [:exploration_query]
+                        :where  [:and
+                                 [:= :exploration_thread_id thread-id]
+                                 [:= :status "pending"]]})
+             (t2/query {:select [:id]
+                        :from   [:exploration_query]
+                        :where  [:and
+                                 [:= :exploration_thread_id thread-id]
+                                 [:= :status "pending"]]
+                        :for    [:update :skip-locked]}))))
 
 (mu/defn page-ids-with-queries
   "The subset of `page-ids` that some ExplorationQuery points at."
@@ -799,13 +804,22 @@
   non-empty, with those in `library-collection-ids` sorted first and then alphabetically by name."
   [metric-ids             :- [:maybe [:sequential ::lib.schema.id/metric]]
    library-collection-ids :- [:maybe [:set ::lib.schema.id/collection]]]
-  (t2/select [:model/Card :id]
-             {:where    (cond-> (queries/visible-metric-cards-where-clause)
-                          (seq metric-ids) (as-> where [:and where [:in :id (vec metric-ids)]]))
-              :order-by [[[:case
-                           [:in :collection_id (if (seq library-collection-ids) library-collection-ids [-1])] 0
-                           :else 1] :asc]
-                         [:name :asc]]}))
+  (let [{:keys [root? ids]} (collection/visible-collection-scope {:include-trash-collection? false
+                                                                  :include-archived-items    :exclude
+                                                                  :permission-level          :read})]
+    (t2/select [:model/Card :id]
+               {:where    [:and
+                           [:= :type "metric"]
+                           [:= :archived false]
+                           (t2/fragment [:or
+                                         (when root? (t2/fragment [:= :collection_id nil]))
+                                         [:in :collection_id ids]])
+                           (when (seq metric-ids)
+                             (t2/fragment [:in :id (vec metric-ids)]))]
+                :order-by [[[:case
+                             [:in :collection_id (if (seq library-collection-ids) library-collection-ids [-1])] 0
+                             :else 1] :asc]
+                           [:name :asc]]})))
 
 ;;; Columns we actually need from `Card` for the two functions below. We deliberately avoid pulling the full row
 ;;; (which includes large blobs like `:result_metadata`, `:visualization_settings`, `:parameter_mappings`, etc.) so

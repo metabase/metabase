@@ -5,8 +5,8 @@
    [metabase.models.interface :as mi]
    [metabase.queries-rest.api.card :as api.card]
    [metabase.queries-rest.db :as queries-rest.db]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli.schema :as ms]))
 
 (defn- present-dashboard [dashboard]
   (-> (cond

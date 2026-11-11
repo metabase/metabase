@@ -24,16 +24,15 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.models.database :as database]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.models.database :as database]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/Sandbox [_model] :sandboxes)
+(t2/define-table-name :model/Sandbox [_model] :sandboxes)
 
 (doto :model/Sandbox
   (derive :metabase/model)

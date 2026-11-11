@@ -14,11 +14,10 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
-   [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli :as mu]))
 
-(methodical/defmethod t2/table-name :model/CardTest [_model] :card_test)
+(t2/define-table-name :model/CardTest [_model] :card_test)
 
 (doto :model/CardTest
   (derive :metabase/model)
@@ -26,7 +25,7 @@
   (derive :hook/timestamped?)
   (derive ::data-testing.models/saved-test))
 
-(methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]
+(t2/define-model-for-automagic-hydration [:model/CardTest :card]
   [_original-model _k]
   :model/Card)
 
@@ -34,7 +33,7 @@
   {:inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
 
-(methodical/defmethod t2/batched-hydrate [:model/CardTest :last_run]
+(t2/define-batched-hydrate [:model/CardTest :last_run]
   "Add the newest run, or nil, to each card test."
   [_model _k card-tests]
   (data-testing.models/with-last-runs :card card-tests))

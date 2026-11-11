@@ -35,20 +35,19 @@
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (doto :model/RecentViews (derive :metabase/model))
 
 (t2/deftransforms :model/RecentViews
   {:context mi/transform-keyword})
 
-(methodical/defmethod t2/table-name :model/RecentViews [_model] :recent_views)
+(t2/define-table-name :model/RecentViews [_model] :recent_views)
 
 (t2/define-before-insert :model/RecentViews
   [log-entry]

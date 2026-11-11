@@ -5,10 +5,9 @@
    [metabase.activity-feed.schema :as activity-feed.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn recent-cards
   "The recently viewed Cards with `ids`, with their Collection and Dashboard names."
@@ -82,7 +81,7 @@
               [:%max.started_at :max_ts]]
              {:group-by [:query_execution.card_id :context]
               :where    [:and
-                         [:= :context (h2x/literal :question)]]
+                         [:= :context "question"]]
               :order-by [[:max_ts :desc]]
               :limit    limit}))
 
@@ -162,15 +161,14 @@
                      :where [:and
                              [:= :rv.model db-model]
                              [:= :rv.user_id user-id]
-                             [:= :rv.context (h2x/literal context)]
+                             [:= :rv.context context]
                              (when card-type
-                               [:= :rc.type (h2x/literal card-type)])]
+                               (t2/fragment [:= :rc.type card-type]))]
                      :left-join [[:report_card :rc]
                                  [:and
                                   [:= :rc.id :rv.model_id]
-                                  [:= :rv.model (h2x/literal "card")]]]
+                                  [:= :rv.model "card"]]]
                      :order-by [[:rv.timestamp :desc]]
-                     ;; mysql doesn't support offset without limit :derp:
                      :limit 100000
                      :offset keep}))
 
@@ -193,7 +191,7 @@
    :model/RecentViews
    {:where    [:and
                [:= :user_id user-id]
-               [:= :model (h2x/literal "dashboard")]
+               [:= :model "dashboard"]
                [:> :timestamp since]
                [:not= :d.archived true]]
     :order-by [[:recent_views.id :desc]]
@@ -309,30 +307,23 @@
                           [:= :rv.user_id user-id]
                           [:in :rv.context contexts]
                           (when (seq db-models)
-                            [:in :rv.model db-models])
-                          ;; Additionally filter by card type to distinguish questions/models/metrics
+                            (t2/fragment [:in :rv.model db-models]))
                           (when (seq card-types)
-                            [:or
-                             [:!= :rv.model "card"]
-                             [:in :rc.type (map h2x/literal card-types)]])
-                          ;; include non-collections, or collections without a namespace/type.
+                            (t2/fragment [:or
+                                          [:!= :rv.model "card"]
+                                          [:in :rc.type card-types]]))
                           [:or
                            [:= :coll.id nil]
                            [:and
-                            ;; trash collection is never returned
                             [:or [:= nil :coll.type] [:not= :coll.type collection/trash-collection-type]]
-                            ;; collections in a different namespace can't interact with collections
-                            ;; in the normal NULL namespace.
                             [:= nil :coll.namespace]
-                            ;; exclude instance analytics for selects
                             (when selections?
-                              [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]
-                          ;; exploration documents are accessible only through their owning Exploration;
-                          ;; hide them from recents to match search and collection-listing behavior.
+                              (t2/fragment [:or
+                                            [:= nil :coll.type]
+                                            [:not= :coll.type collection/instance-analytics-collection-type]]))]]
                           [:or [:!= :rv.model "document"] [:= :doc.exploration_id nil]]]
               :left-join [[:report_card :rc]
                           [:and
-                           ;; only want to join on card_type if it's a card
                            [:= :rv.model "card"]
                            [:= :rc.id :rv.model_id]]
                           [:collection :coll]

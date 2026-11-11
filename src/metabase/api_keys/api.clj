@@ -8,9 +8,9 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.secret :as u.secret]
-   [toucan2.core :as t2]))
+   [metabase.util.secret :as u.secret]))
 
 (defn- maybe-expose-key [api-key]
   (if (contains? api-key :unmasked_key)

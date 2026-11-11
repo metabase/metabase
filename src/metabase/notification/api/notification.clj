@@ -14,11 +14,11 @@
    [metabase.notification.core :as notification]
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)

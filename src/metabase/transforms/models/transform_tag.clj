@@ -5,20 +5,19 @@
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform :as transform]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (events/derive! :event/transform-tag-create :metabase/event)
 (events/derive! :event/transform-tag-update :metabase/event)
 (events/derive! :event/transform-tag-delete :metabase/event)
 
-(methodical/defmethod t2/table-name :model/TransformTag [_model] :transform_tag)
+(t2/define-table-name :model/TransformTag [_model] :transform_tag)
 
 (doto :model/TransformTag
   (derive :metabase/model)
@@ -82,7 +81,7 @@
                (t2/changes tag))    ;; include user edits
         (update :name str)))) ;; convert deferred to string
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformTag :can_run]
+(t2/define-batched-hydrate [:model/TransformTag :can_run]
   "Add :can_run to transform tags. Returns true if all transforms associated with the tag can be written by the current user."
   [_model _k tags]
   (if-not (seq tags)

@@ -12,10 +12,10 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.toucan.core :as t2]
    [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 

@@ -8,8 +8,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.nest-query :as nest-query]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util :as u]))
 
 ;;; replacement for the old [[metabase.query-processor.store/cached]] macro, deprecated in 57
 ;;;

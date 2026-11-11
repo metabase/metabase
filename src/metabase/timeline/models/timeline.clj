@@ -7,10 +7,9 @@
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/Timeline  [_model] :timeline)
+(t2/define-table-name :model/Timeline  [_model] :timeline)
 
 (doto :model/Timeline
   (derive :metabase/model)

@@ -1,7 +1,7 @@
 (ns metabase.search.models
   (:require
    [metabase.search.core :as search]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 ;; Models must derive from :hook/search-index if their state can influence the contents of the Search Index.
 ;; Note that it might not be the model itself that depends on it, for example, Dashcards are used in Card entries.

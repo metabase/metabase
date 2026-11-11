@@ -7,15 +7,14 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
-(methodical/defmethod t2/table-name :model/Tenant [_model] :tenant)
+(t2/define-table-name :model/Tenant [_model] :tenant)
 
 (defmethod audit-app/model-details :model/Tenant
   [entity _event-type]
@@ -47,7 +46,7 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(methodical/defmethod t2/batched-hydrate [:model/Tenant :member_count]
+(t2/define-batched-hydrate [:model/Tenant :member_count]
   [_model k tenants]
   (mi/instances-with-hydrated-data
    tenants k

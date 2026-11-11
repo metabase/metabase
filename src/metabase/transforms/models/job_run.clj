@@ -1,19 +1,18 @@
 (ns metabase.transforms.models.job-run
   (:require
    [metabase.models.interface :as mi]
+   [metabase.toucan.core :as t2]
    [metabase.transforms.coordinated-run :as coordinated-run]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.util :as transforms.models.u]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/TransformJobRun [_model] :transform_job_run)
+(t2/define-table-name :model/TransformJobRun [_model] :transform_job_run)
 
 (derive :model/TransformJobRun :metabase/model)
 (derive :model/TransformJobRun :hook/timestamped?)

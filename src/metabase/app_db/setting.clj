@@ -7,9 +7,9 @@
   (:require
    [buddy.core.codecs :as codecs]
    [metabase.app-db.db :as mdb.db]
+   [metabase.toucan.core :as t2]
    [metabase.util.encryption :as encryption]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 

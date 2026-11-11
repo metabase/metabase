@@ -2,17 +2,22 @@
   "Application database queries for the model persistence module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    [malli.util :as mut]
-   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.schema :as model-persistence.schema]
+   [metabase.toucan.core :as t2]
    [metabase.tracing.core :as tracing]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.schema :as warehouses.schema]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.schema :as warehouses.schema]))
+
+(defmacro ^:private select-in-span
+  "`t2/select` of `model` and the literal `query` map inside a tracing span named `span-name`, with `attrs` and the
+  compiled statement as attributes."
+  [span-name attrs model query]
+  `(tracing/with-span :tasks ~span-name (assoc ~attrs :db/statement (first (t2/compile (t2/select ~model ~query))))
+     (t2/select ~model ~query)))
 
 (mu/defn persisted-info-listing
   "Up to `limit` PersistedInfo listing rows (id, database, definition, active, state, error, refresh window,
@@ -25,67 +30,60 @@
    limit             :- [:maybe ms/PositiveInt]
    offset            :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/PersistedInfo
-             (cond-> {:select    [:p.id :p.database_id :p.definition
-                                  :p.active :p.state :p.error
-                                  :p.refresh_begin :p.refresh_end
-                                  :p.table_name :p.creator_id
-                                  :p.card_id [:c.name :card_name]
-                                  [:c.archived :card_archived]
-                                  [:c.type :card_type]
-                                  [:db.name :database_name]
-                                  [:col.id :collection_id] [:col.name :collection_name]
-                                  [:col.authority_level :collection_authority_level]]
-                      :from      [[:persisted_info :p]]
-                      :left-join [[:metabase_database :db] [:= :db.id :p.database_id]
-                                  [:report_card :c]        [:= :c.id :p.card_id]
-                                  [:collection :col]       [:= :c.collection_id :col.id]]
-                      :where     [:and
-                                  [:= :c.type "model"]
-                                  [:= :c.archived false]]
-                      :order-by  [[:p.refresh_begin :desc]]}
-               persisted-info-id (sql.helpers/where [:= :p.id persisted-info-id])
-               (seq db-ids)      (sql.helpers/where [:in :p.database_id db-ids])
-               card-id           (sql.helpers/where [:= :p.card_id card-id])
-               limit             (sql.helpers/limit limit)
-               offset            (sql.helpers/offset offset))))
+             {:select    [:p.id :p.database_id :p.definition
+                          :p.active :p.state :p.error
+                          :p.refresh_begin :p.refresh_end
+                          :p.table_name :p.creator_id
+                          :p.card_id [:c.name :card_name]
+                          [:c.archived :card_archived]
+                          [:c.type :card_type]
+                          [:db.name :database_name]
+                          [:col.id :collection_id] [:col.name :collection_name]
+                          [:col.authority_level :collection_authority_level]]
+              :from      [[:persisted_info :p]]
+              :left-join [[:metabase_database :db] [:= :db.id :p.database_id]
+                          [:report_card :c]        [:= :c.id :p.card_id]
+                          [:collection :col]       [:= :c.collection_id :col.id]]
+              :where     [:and
+                          [:= :c.type "model"]
+                          [:= :c.archived false]
+                          (when persisted-info-id (t2/fragment [:= :p.id persisted-info-id]))
+                          (when (seq db-ids) (t2/fragment [:in :p.database_id db-ids]))
+                          (when card-id (t2/fragment [:= :p.card_id card-id]))]
+              :order-by  [[:p.refresh_begin :desc]]
+              :limit     (or limit Integer/MAX_VALUE)
+              :offset    (or offset 0)}))
 
 (mu/defn deletable-prunable-persisted-infos
   "The PersistedInfos in one of `states` for over an hour, or attached to an archived question, or whose
   Card has been deleted — the records [[metabase.model-persistence.task.persist-refresh]] may unpersist."
   [states :- [:set :string]]
-  (let [hsql {:select    [:p.*]
-              :from      [[:persisted_info :p]]
-              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
-              :where     [:or
-                          [:and
-                           [:in :state states]
-                           ;; Buffer deletions for an hour if the prune job happens soon after setting
-                           ;; state: 1. so people have a chance to change their mind, 2. so a query
-                           ;; running against the cache doesn't get ripped out.
-                           [:< :state_change_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
-                          [:= :c.type "question"]
-                          [:= :c.archived true]
-                          ;; card_id is set to null when the corresponding card is deleted
-                          [:= :p.card_id nil]]}]
-    (tracing/with-span :tasks "task.persist.find-deletable" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
-      (t2/select :model/PersistedInfo (h2x/assert-map-or-nil! hsql)))))
+  (select-in-span "task.persist.find-deletable" {} :model/PersistedInfo
+                  {:select    [:p.*]
+                   :from      [[:persisted_info :p]]
+                   :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+                   :where     [:or
+                               [:and
+                                [:in :state states]
+                                [:< :state_change_at (t/minus (t/offset-date-time) (t/hours 1))]]
+                               [:= :c.type "question"]
+                               [:= :c.archived true]
+                               [:= :p.card_id nil]]}))
 
 (mu/defn refreshable-persisted-infos
   "The PersistedInfos of the Database with `database-id` in one of `states` whose Card is an unarchived
   model, plus the Card's `:type`, `:archived`, and `:name`."
   [database-id :- ::lib.schema.id/database
    states      :- [:set :string]]
-  (let [hsql {:select    [:p.* :c.type :c.archived :c.name]
-              :from      [[:persisted_info :p]]
-              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
-              :where     [:and
-                          [:= :p.database_id database-id]
-                          [:in :p.state states]
-                          [:= :c.archived false]
-                          [:= :c.type "model"]]}]
-    (tracing/with-span :tasks "task.persist.find-refreshable" {:db/id database-id
-                                                               :db/statement (tracing/best-effort-sanitize-sql hsql)}
-      (t2/select :model/PersistedInfo (h2x/assert-map-or-nil! hsql)))))
+  (select-in-span "task.persist.find-refreshable" {:db/id database-id} :model/PersistedInfo
+                  {:select    [:p.* :c.type :c.archived :c.name]
+                   :from      [[:persisted_info :p]]
+                   :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+                   :where     [:and
+                               [:= :p.database_id database-id]
+                               [:in :p.state states]
+                               [:= :c.archived false]
+                               [:= :c.type "model"]]}))
 
 (mu/defn persisted-infos-by-ids
   "The PersistedInfos with `ids`."

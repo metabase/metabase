@@ -6,10 +6,10 @@
    [metabase.app-db.core :as app-db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn dashboards
   "The archived or unarchived (`archived?`) Dashboards, restricted to those created by `creator-id` when given, in
@@ -17,7 +17,7 @@
   [archived?  :- :boolean
    creator-id :- [:maybe ::lib.schema.id/user]]
   (t2/select :model/Dashboard {:where    [:and
-                                          (when creator-id [:= :creator_id creator-id])
+                                          (when creator-id (t2/fragment [:= :creator_id creator-id]))
                                           [:= :archived archived?]]
                                :order-by [:%lower.name]}))
 
@@ -29,12 +29,12 @@
 (mu/defn dashboard-parameters
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :parameters] :id [:auto/param dashboard-id]))
+  (t2/select-one [:model/Dashboard :id :parameters] :id dashboard-id))
 
 (mu/defn dashboard-name-columns
   "The name, description, and creator of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :name :description :creator_id] :id [:auto/param dashboard-id]))
+  (t2/select-one [:model/Dashboard :name :description :creator_id] :id dashboard-id))
 
 (mu/defn dashboard-public-uuid
   "The public uuid of the Dashboard with `dashboard-id`, or nil."
@@ -119,9 +119,9 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-fn-vec :card_id :model/DashboardCardSeries
                     {:where [:in :dashboardcard_id
-                             ^:allow-subquery {:select [:id]
-                                               :from   [(t2/table-name :model/DashboardCard)]
-                                               :where  [:= :dashboard_id dashboard-id]}]}))
+                             (t2/fragment {:select [:id]
+                                           :from   [(t2/table-name :model/DashboardCard)]
+                                           :where  [:= :dashboard_id dashboard-id]})]}))
 
 (mu/defn dashboard-action-ids
   "The Action ids of the DashboardCards of the Dashboard with `dashboard-id`."
@@ -181,7 +181,7 @@
 (mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id]))
+  (t2/select-one :model/DashboardCard :id dashcard-id))
 
 (mu/defn dashcard-in-dashboard
   "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
@@ -209,7 +209,7 @@
 (mu/defn user-name-and-email
   "The name and email of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :first_name :last_name :email] :id [:auto/param user-id]))
+  (t2/select-one [:model/User :first_name :last_name :email] :id user-id))
 
 (mu/defn user-names-and-emails
   "The names and emails of the Users with `user-ids`."

@@ -3,11 +3,10 @@
   (:require
    [metabase.embedding.schema :as embedding.schema]
    [metabase.models.interface :as mi]
-   [metabase.util.malli.registry :as mr]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli.registry :as mr]))
 
-(methodical/defmethod t2/table-name :model/EmbeddingSdkReact18Host [_model] :embedding_sdk_react_18_host)
+(t2/define-table-name :model/EmbeddingSdkReact18Host [_model] :embedding_sdk_react_18_host)
 
 (doto :model/EmbeddingSdkReact18Host
   (derive :metabase/model)

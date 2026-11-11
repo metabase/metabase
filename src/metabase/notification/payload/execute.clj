@@ -17,12 +17,12 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn is-card-empty?
   "Check if the card is empty"

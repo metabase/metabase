@@ -3,9 +3,9 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn library-cards-in-collections
   "The ID, name, description, and type of the unarchived metric and model Cards in the Collections with
@@ -17,7 +17,7 @@
                       [:in :collection_id collection-ids]
                       [:= :archived false]
                       [:in :type ["metric" "model"]]
-                      (when id [:= :id id])]}))
+                      (when id (t2/fragment [:= :id id]))]}))
 
 (mu/defn library-tables-in-collections
   "The ID, names, and description of the active published Tables in the Collections with `collection-ids`, optionally
@@ -29,7 +29,7 @@
                       [:in :collection_id collection-ids]
                       [:= :is_published true]
                       [:= :active true]
-                      (when id [:= :id id])]}))
+                      (when id (t2/fragment [:= :id id]))]}))
 
 (mu/defn library-measures-of-tables
   "The ID, name, and description of the unarchived Measures on the Tables with `table-ids`, optionally narrowed to
@@ -40,7 +40,7 @@
              {:where [:and
                       [:in :table_id table-ids]
                       [:= :archived false]
-                      (when id [:= :id id])]}))
+                      (when id (t2/fragment [:= :id id]))]}))
 
 (mu/defn library-segments-of-tables
   "The ID, name, and description of the unarchived Segments on the Tables with `table-ids`, optionally narrowed to
@@ -51,7 +51,7 @@
              {:where [:and
                       [:in :table_id table-ids]
                       [:= :archived false]
-                      (when id [:= :id id])]}))
+                      (when id (t2/fragment [:= :id id]))]}))
 
 (mu/defn measure-table-id
   "The Table ID of the Measure with `id`."

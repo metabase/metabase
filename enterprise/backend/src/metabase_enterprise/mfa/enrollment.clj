@@ -18,8 +18,8 @@
    [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.appearance.core :as appearance]
-   [metabase.util.password :as u.password]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.password :as u.password]))
 
 (set! *warn-on-reflection* true)
 

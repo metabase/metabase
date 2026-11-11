@@ -11,18 +11,17 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(methodical/defmethod t2/table-name :model/NativeQuerySnippet [_model] :native_query_snippet)
+(t2/define-table-name :model/NativeQuerySnippet [_model] :native_query_snippet)
 
 (doto :model/NativeQuerySnippet
   (derive :metabase/model)
@@ -151,7 +150,7 @@
        (or (not (remote-sync/synced-changes? :model/NativeQuerySnippet snippet changes))
            (remote-sync/can-write? :model/NativeQuerySnippet (:id snippet)))))
 
-(methodical/defmethod t2/batched-hydrate [:model/NativeQuerySnippet :can_write]
+(t2/define-batched-hydrate [:model/NativeQuerySnippet :can_write]
   [_model k snippets]
   (let [non-nil-snippets (remove nil? snippets)
         snippets-with-collections (t2/hydrate non-nil-snippets :collection)

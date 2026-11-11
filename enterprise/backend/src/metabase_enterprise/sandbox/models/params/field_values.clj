@@ -5,8 +5,8 @@
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.warehouse-schema.models.field :as field]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.warehouse-schema.models.field :as field]))
 
 (comment api/keep-me)
 

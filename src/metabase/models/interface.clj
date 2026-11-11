@@ -27,6 +27,7 @@
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
@@ -39,7 +40,6 @@
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
-   [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
@@ -711,7 +711,7 @@
   [instance]
   (can-write? instance))
 
-(methodical/defmethod t2/simple-hydrate [:default :can_query]
+(t2/define-simple-hydrate [:default :can_query]
   "Hydration method for `:can_query`. Returns whether the current user can execute queries against this object."
   [_model k instance]
   (assoc instance k (can-query? instance)))
@@ -914,12 +914,11 @@
           (assoc item hydration-key (get key->hydrated-items (get item instance-key) default)))))))
 
 (defmulti exclude-internal-content-hsql
-  "Returns a HoneySQL expression to exclude instances of the model that were created automatically as part of internally
-   used content, such as Metabase Analytics, the sample database, or the sample dashboard. If a `table-alias` (string
-   or keyword) is provided any columns will have a table alias in the returned expression."
-  {:arglists '([model & {:keys [table-alias]}])}
+  "Returns a fragment excluding instances of the model that were created automatically as part of internally
+   used content, such as Metabase Analytics, the sample database, or the sample dashboard."
+  {:arglists '([model])}
   dispatch-on-model)
 
 (defmethod exclude-internal-content-hsql :default
-  [_model & _]
-  [:= [:inline 1] [:inline 1]])
+  [_model]
+  (t2/fragment [:= [:inline 1] [:inline 1]]))

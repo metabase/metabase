@@ -3,15 +3,14 @@
   (:require
    [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/MetabotFeedback [_model] :metabot_feedback)
+(t2/define-table-name :model/MetabotFeedback [_model] :metabot_feedback)
 
 (doto :model/MetabotFeedback
   (derive :metabase/model))
 
-(methodical/defmethod t2/batched-hydrate [:model/MetabotFeedback :user]
+(t2/define-batched-hydrate [:model/MetabotFeedback :user]
   "Batch-hydrate `:user` (id/email/name only) — the feedback submitter."
   [_model k feedbacks]
   (mi/instances-with-hydrated-data

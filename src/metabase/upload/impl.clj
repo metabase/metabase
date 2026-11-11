@@ -24,6 +24,7 @@
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.sync.core :as sync]
+   [metabase.toucan.core :as t2]
    [metabase.upload.db :as upload.db]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.settings :as upload.settings]
@@ -35,8 +36,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
-   [metabase.workspaces.core :as workspaces]
-   [toucan2.core :as t2])
+   [metabase.workspaces.core :as workspaces])
   (:import
    (com.ibm.icu.text Transliterator)
    (java.io File InputStreamReader Reader)

@@ -2,10 +2,9 @@
   (:require
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.serialization.core :as serialization]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/DashboardCardSeries [_model] :dashboardcard_series)
+(t2/define-table-name :model/DashboardCardSeries [_model] :dashboardcard_series)
 
 (doto :model/DashboardCardSeries
   (derive :metabase/model)

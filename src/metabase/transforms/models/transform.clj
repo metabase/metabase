@@ -17,6 +17,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
    [metabase.staleness.core :as staleness]
+   [metabase.toucan.core :as t2]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
@@ -30,8 +31,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
 
 (set! *warn-on-reflection* true)
@@ -39,7 +38,7 @@
 (events/derive! :event/create-transform :metabase/event)
 (events/derive! :event/delete-transform :metabase/event)
 
-(methodical/defmethod t2/table-name :model/Transform [_model] :transform)
+(t2/define-table-name :model/Transform [_model] :transform)
 
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/dependencies]]
   (derive :model/Transform trait))
@@ -255,22 +254,22 @@
      :id
      {:default false})))
 
-(methodical/defmethod t2/batched-hydrate [:model/Transform :can_read]
+(t2/define-batched-hydrate [:model/Transform :can_read]
   "Add can_read to transforms."
   [_model k transforms]
   (hydrate-permission k transforms transform-readable?))
 
-(methodical/defmethod t2/batched-hydrate [:model/Transform :can_write]
+(t2/define-batched-hydrate [:model/Transform :can_write]
   "Add can_write to transforms."
   [_model k transforms]
   (hydrate-permission k transforms transform-deletable?))
 
-(methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
+(t2/define-batched-hydrate [:model/Transform :can_execute]
   "Add can_execute to transforms. Executing a transform requires write permission."
   [_model k transforms]
   (hydrate-permission k transforms transform-writable?))
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
+(t2/define-batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun. For orphaned runs (where transform was deleted),
    returns a map with :name from the denormalized transform_name and :deleted true."
   [_model _k runs]
@@ -287,7 +286,7 @@
                  (when-let [name (:transform_name run)]
                    (t2.instance/instance :model/Transform {:name name :deleted true}))))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Transform :last_run]
+(t2/define-batched-hydrate [:model/Transform :last_run]
   "Add last_run to a transform"
   [_model _k transforms]
   (if-not (seq transforms)
@@ -306,7 +305,7 @@
                      (transforms.db/transform-last-checkpoint-value transform-id)))
             transform))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Transform :transform_tag_ids]
+(t2/define-batched-hydrate [:model/Transform :transform_tag_ids]
   "Add tag_ids to a transform, preserving the order defined by position"
   [_model _k transforms]
   (if-not (seq transforms)
@@ -320,7 +319,7 @@
                                  tag-associations)]
       (for [transform transforms] (assoc transform :tag_ids (vec (get transform-id->tag-ids (:id transform) [])))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Transform :creator]
+(t2/define-batched-hydrate [:model/Transform :creator]
   "Add creator (user) to a transform"
   [_model _k transforms]
   (if-not (seq transforms)
@@ -330,7 +329,7 @@
       (for [transform transforms]
         (assoc transform :creator (get id->creator (:creator_id transform)))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Transform :owner]
+(t2/define-batched-hydrate [:model/Transform :owner]
   "Add owner (user) to a transform. If owner_user_id is set, fetches the user.
    If owner_email is set instead, returns a map with just the email."
   [_model _k transforms]

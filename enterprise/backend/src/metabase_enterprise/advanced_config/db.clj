@@ -5,20 +5,21 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.schema :as warehouses.schema]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.schema :as warehouses.schema]))
 
 (mu/defn query-executions-in-month
   "The raw query execution rows started in `month` of `year`, newest first."
   [year :- ms/PositiveInt
    month :- ms/PositiveInt]
   (let [date-part (fn [part-key part-value]
-                    (if (= (mdb/db-type) :postgres)
-                      [:= [:date_part (name part-key) :started_at] part-value]
-                      [:= [part-key :started_at] part-value]))]
+                    (cond
+                      (= (mdb/db-type) :postgres) (t2/fragment [:= [:date_part (name part-key) :started_at] part-value])
+                      (= part-key :year)          (t2/fragment [:= [:year :started_at] part-value])
+                      :else                       (t2/fragment [:= [:month :started_at] part-value])))]
     (t2/select :query_execution
                {:order-by [[:started_at :desc]]
                 :where    [:and
@@ -76,7 +77,7 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id [:auto/param database-id]))
+  (t2/select-one :model/Database :id database-id))
 
 (mu/defn insert-database!
   "Insert `database` and return the new instance."

@@ -3,10 +3,9 @@
    Source cards / models / metrics are recursively expanded to their underlying
    tables by [[metabase.metabot.used-tables]] before insertion."
   (:require
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/MetabotUsedTable [_model] :metabot_used_table)
+(t2/define-table-name :model/MetabotUsedTable [_model] :metabot_used_table)
 
 (doto :model/MetabotUsedTable
   (derive :metabase/model))

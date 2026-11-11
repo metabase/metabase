@@ -2,18 +2,15 @@
   "Application database queries for the comments module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [honey.sql.helpers :as sql.helpers]
    [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.comments.schema :as comments.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.core :as users]
+   [metabase.toucan.core :as t2]
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn comments-for-target
   "The Comments on the target with `target-type` and `target-id`, oldest first."
@@ -75,14 +72,14 @@
   (t2/select-fn-set :email [:model/User :email]
                     {:where [:or
                              (if parent-comment-id
-                               [:in :id ^:allow-subquery {:from   [:comment]
-                                                          :select [:creator_id]
-                                                          :where  [:or
-                                                                   [:= :id parent-comment-id]
-                                                                   [:= :parent_comment_id parent-comment-id]]}]
-                               [:= :id creator-id])
+                               (t2/fragment [:in :id ^:allow-subquery {:from   [:comment]
+                                                                       :select [:creator_id]
+                                                                       :where  [:or
+                                                                                [:= :id parent-comment-id]
+                                                                                [:= :parent_comment_id parent-comment-id]]}])
+                               (t2/fragment [:= :id creator-id]))
                              (when (seq mention-ids)
-                               [:in :id mention-ids])]}))
+                               (t2/fragment [:in :id mention-ids]))]}))
 
 (mu/defn insert-comment!
   "Insert the Comment `row` and return the inserted instance."
@@ -101,41 +98,43 @@
   (t2/update! :model/Comment :id id {:deleted_at [:now]}))
 
 (defn- restrict-to-visible-users
-  "Narrow `clauses` (from `user/filter-clauses`) to the users the current user should see: superusers see
+  "Narrow the fragment `where` (from `user/filter-clauses`) to the users the current user should see: superusers see
   everyone; everyone else is limited to their own tenant and further narrowed by the `user-visibility`
   setting."
-  [clauses]
+  [where]
   (if api/*is-superuser?*
-    clauses
-    (let [clauses (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])]
+    where
+    (let [where (t2/fragment [:and where [:= :tenant_id (:tenant_id @api/*current-user*)]])]
       (case (users.settings/user-visibility)
-        :all   clauses
-        :group (sql.helpers/where clauses [:in :core_user.id (-> (user/same-groups-user-ids api/*current-user-id*)
-                                                                 set
-                                                                 (conj api/*current-user-id*))])
-        :none  (sql.helpers/where clauses [:= :core_user.id api/*current-user-id*])))))
+        :all   where
+        :group (t2/fragment [:and where [:in :core_user.id (-> (user/same-groups-user-ids api/*current-user-id*)
+                                                               set
+                                                               (conj api/*current-user-id*))]])
+        :none  (t2/fragment [:and where [:= :core_user.id api/*current-user-id*]])))))
 
 (mu/defn mentionable-users
   "The id, first name, last name, and email of the active Users the current user may @mention, ordered by name
   then id, limited to `limit` starting at `offset`."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]]
-  (t2/select [:model/User :id :first_name :last_name :email]
-             (h2x/assert-map-or-nil!
-              (-> (user/filter-clauses {:limit limit :offset offset})
-                  restrict-to-visible-users
-                  (sql.helpers/order-by [:%lower.first_name :asc]
-                                        [:%lower.last_name :asc]
-                                        [:id :asc])))))
+  (let [clauses (user/filter-clauses {:limit limit :offset offset})]
+    (t2/select [:model/User :id :first_name :last_name :email]
+               {:where      (restrict-to-visible-users (:where clauses))
+                :right-join (:right-join clauses)
+                :order-by   [[:%lower.first_name :asc]
+                             [:%lower.last_name :asc]
+                             [:id :asc]]
+                :limit      (:limit clauses)
+                :offset     (:offset clauses)})))
 
 (mu/defn mentionable-user-count
   "The `:count` of the active Users the current user may @mention."
   []
-  (t2/query-one (merge {:select [[[:count [:distinct :core_user.id]] :count]]
-                        :from   :core_user}
-                       (-> (user/filter-clauses {})
-                           restrict-to-visible-users
-                           users/filter-clauses-without-paging))))
+  (let [clauses (user/filter-clauses {})]
+    (t2/query-one {:select     [[[:count [:distinct :core_user.id]] :count]]
+                   :from       :core_user
+                   :where      (restrict-to-visible-users (:where clauses))
+                   :right-join (:right-join clauses)})))
 
 (mu/defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."

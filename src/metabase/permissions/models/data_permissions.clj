@@ -13,15 +13,14 @@
    [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema]
-   [metabase.warehouses.schema]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [metabase.warehouses.schema])
   (:import
    (clojure.lang PersistentVector)))
 
@@ -30,7 +29,7 @@
 (doto :model/DataPermissions
   (derive :metabase/model))
 
-(methodical/defmethod t2/table-name :model/DataPermissions [_model] :data_permissions)
+(t2/define-table-name :model/DataPermissions [_model] :data_permissions)
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *skip-cluster-locks*

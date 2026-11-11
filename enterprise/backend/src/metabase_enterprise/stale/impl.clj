@@ -2,8 +2,8 @@
   (:require
    [metabase-enterprise.stale.db :as stale.db]
    [metabase.staleness.core :as staleness]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 

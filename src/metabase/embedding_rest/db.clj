@@ -5,9 +5,9 @@
    [malli.util :as mut]
    [metabase.embedding.schema :as embedding.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."

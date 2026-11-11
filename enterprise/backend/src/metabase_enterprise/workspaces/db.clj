@@ -4,10 +4,10 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::status
   [:enum :unprovisioned :provisioning :provisioned :deprovisioning])
@@ -73,9 +73,8 @@
                       [:= :is_sample false]
                       [:= :is_audit  false]
                       [:= :router_database_id nil]
-                      (if (seq excluded-ids)
-                        [:not-in :id excluded-ids]
-                        true)]}))
+                      (when (seq excluded-ids)
+                        (t2/fragment [:not-in :id excluded-ids]))]}))
 
 ;;; ------------------------------------------------- Workspace ------------------------------------------------
 

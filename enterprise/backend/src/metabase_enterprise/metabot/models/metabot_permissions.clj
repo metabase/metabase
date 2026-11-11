@@ -4,10 +4,9 @@
    [metabase-enterprise.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/MetabotPermissions [_model] :metabot_permissions)
+(t2/define-table-name :model/MetabotPermissions [_model] :metabot_permissions)
 
 (doto :model/MetabotPermissions
   (derive :metabase/model)

@@ -45,6 +45,7 @@
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.sync.field-values :as sync.field-values]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -53,13 +54,12 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/Card [_model] :report_card)
+(t2/define-table-name :model/Card [_model] :report_card)
 
 (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
   [_original-model _k]
@@ -242,7 +242,7 @@
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
-(methodical/defmethod t2/batched-hydrate [:model/Card :dashboard_count]
+(t2/define-batched-hydrate [:model/Card :dashboard_count]
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
@@ -253,7 +253,7 @@
    :id
    {:default 0}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Card :in_dashboards]
+(t2/define-batched-hydrate [:model/Card :in_dashboards]
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
@@ -275,7 +275,7 @@
   [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
   (some-> query not-empty lib/primary-source-card-id))
 
-(methodical/defmethod t2/batched-hydrate [:model/Card :can_manage_db]
+(t2/define-batched-hydrate [:model/Card :can_manage_db]
   "Hydrate can_manage_db onto cards. Indicates whether the current user has access to the database admin page for the
   database powering this card."
   [_model _k cards]
@@ -286,7 +286,7 @@
             (perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes (:database_id card))))
    cards))
 
-(methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
+(t2/define-batched-hydrate [:model/Card :parameter_usage_count]
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
@@ -296,7 +296,7 @@
    :id
    {:default 0}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Card :average_query_time]
+(t2/define-batched-hydrate [:model/Card :average_query_time]
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
@@ -305,7 +305,7 @@
          (into {}))
    :id))
 
-(methodical/defmethod t2/batched-hydrate [:model/Card :last_query_start]
+(t2/define-batched-hydrate [:model/Card :last_query_start]
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
@@ -314,7 +314,7 @@
          (into {}))
    :id))
 
-(methodical/defmethod t2/batched-hydrate [:model/Card :metrics]
+(t2/define-batched-hydrate [:model/Card :metrics]
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
@@ -1167,8 +1167,8 @@
     (queries.db/delete-notifications! notification-ids)))
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
-  [_model & {:keys [table-alias]}]
-  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
+  [_model]
+  (t2/fragment [:not= :creator_id config/internal-mb-user-id]))
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 

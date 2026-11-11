@@ -4,10 +4,9 @@
    [metabase.embedding.schema :as embedding.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/EmbeddingTheme [_model] :embedding_theme)
+(t2/define-table-name :model/EmbeddingTheme [_model] :embedding_theme)
 
 (doto :model/EmbeddingTheme
   (derive :metabase/model)

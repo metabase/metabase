@@ -12,14 +12,13 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
@@ -86,7 +85,7 @@
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(methodical/defmethod t2/table-name :model/Table [_model] :metabase_table)
+(t2/define-table-name :model/Table [_model] :metabase_table)
 
 (doto :model/Table
   (derive :metabase/model)
@@ -389,12 +388,12 @@
   ([_ pk]
    (mi/can-write? (warehouse-schema.db/table pk))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :can_write]
+(t2/define-batched-hydrate [:model/Table :can_write]
   "Batched hydration for :can_write on tables."
   [_model k tables]
   (mi/instances-with-hydrated-data tables k #(u/index-by :id mi/can-write? tables) :id {:default false}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :owner]
+(t2/define-batched-hydrate [:model/Table :owner]
   "Add owner (user) to a table. If owner_user_id is set, fetches the user.
    If owner_email is set instead, returns a map with just the email."
   [_model _k tables]
@@ -447,7 +446,7 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :field_values]
+(t2/define-batched-hydrate [:model/Table :field_values]
   "Return the FieldValues for all Fields belonging to a single `table`."
   [_model k tables]
   (mi/instances-with-hydrated-data
@@ -456,7 +455,7 @@
         (update-vals (fn [fvs] (->> fvs (map (juxt :field_id :values)) (into {})))))
    :id))
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :transform]
+(t2/define-batched-hydrate [:model/Table :transform]
   "Hydrate transforms that created the tables."
   [_model k tables]
   (mi/instances-with-hydrated-data
@@ -472,7 +471,7 @@
    :id
    {:default nil}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
+(t2/define-batched-hydrate [:model/Table :pk_field]
   [_model k tables]
   (mi/instances-with-hydrated-data
    tables k

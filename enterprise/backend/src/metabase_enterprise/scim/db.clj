@@ -6,11 +6,11 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.schema :as permissions.schema]
+   [metabase.toucan.core :as t2]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private user-columns
   "Required columns when fetching users for SCIM."
@@ -37,8 +37,8 @@
 
 (defn- personal-user-expr
   [email]
-  [:and [:= :type "personal"]
-   (when email [:= :%lower.email (u/lower-case-en email)])])
+  (t2/fragment [:and [:= :type "personal"]
+                (when email (t2/fragment [:= :%lower.email (u/lower-case-en email)]))]))
 
 (mu/defn scim-user-by-entity-id
   "The SCIM columns of the personal User with `entity-id`, or nil."
@@ -96,15 +96,16 @@
   (t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
              {:from  [[:permissions_group_membership :pgm]]
               :join  [[:permissions_group :pg] [:= :pg.id :group_id]]
-              :where (into [:and [:in :user_id user-ids]]
-                           (map (fn [group-id] [:not= :pg.id group-id]))
-                           excluded-group-ids)}))
+              :where [:and
+                      [:in :user_id user-ids]
+                      (when (seq excluded-group-ids)
+                        (t2/fragment [:not-in :pg.id excluded-group-ids]))]}))
 
 (defn- manageable-group-expr
   [excluded-group-ids group-name]
-  (into [:and (when group-name [:= :name group-name])]
-        (map (fn [group-id] [:not= :id group-id]))
-        excluded-group-ids))
+  (t2/fragment [:and
+                (when group-name (t2/fragment [:= :name group-name]))
+                (when (seq excluded-group-ids) (t2/fragment [:not-in :id excluded-group-ids]))]))
 
 (mu/defn scim-group-by-entity-id
   "The SCIM columns of the PermissionsGroup with `entity-id` other than `excluded-group-ids`, or nil."

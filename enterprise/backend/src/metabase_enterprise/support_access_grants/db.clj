@@ -6,10 +6,10 @@
    [metabase-enterprise.support-access-grants.schema :as support-access-grants.schema]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn active-grant-exists?
   "Whether a SupportAccessGrantLog is unrevoked and ends after `now`."
@@ -32,12 +32,10 @@
 
 (defn- grants-where
   [include-revoked? ticket-number user-id]
-  (let [conditions (cond-> []
-                     (not include-revoked?) (conj [:= :revoked_at nil])
-                     ticket-number          (conj [:= :ticket_number ticket-number])
-                     user-id                (conj [:= :user_id user-id]))]
-    (when (seq conditions)
-      (into [:and] conditions))))
+  (t2/fragment [:and
+                (when-not include-revoked? (t2/fragment [:= :revoked_at nil]))
+                (when ticket-number (t2/fragment [:= :ticket_number ticket-number]))
+                (when user-id (t2/fragment [:= :user_id user-id]))]))
 
 (mu/defn grants-page
   "The newest-first SupportAccessGrantLogs, optionally narrowed to `ticket-number` and `user-id` and excluding revoked
@@ -47,22 +45,18 @@
    user-id          :- [:maybe ::lib.schema.id/user]
    limit            :- ms/PositiveInt
    offset           :- ms/IntGreaterThanOrEqualToZero]
-  (let [where (grants-where include-revoked? ticket-number user-id)]
-    (t2/select :model/SupportAccessGrantLog
-               (cond-> {:limit    limit
-                        :offset   offset
-                        :order-by [[:created_at :desc]]}
-                 where (assoc :where where)))))
+  (t2/select :model/SupportAccessGrantLog
+             {:where    (grants-where include-revoked? ticket-number user-id)
+              :limit    limit
+              :offset   offset
+              :order-by [[:created_at :desc]]}))
 
 (mu/defn grant-count
   "The number of SupportAccessGrantLogs [[grants-page]] would page through."
   [include-revoked? :- [:maybe :boolean]
    ticket-number    :- [:maybe :string]
    user-id          :- [:maybe ::lib.schema.id/user]]
-  (let [where (grants-where include-revoked? ticket-number user-id)]
-    (t2/count :model/SupportAccessGrantLog
-              (cond-> {}
-                where (assoc :where where)))))
+  (t2/count :model/SupportAccessGrantLog {:where (grants-where include-revoked? ticket-number user-id)}))
 
 (mu/defn insert-grant!
   "Insert `grant` and return the new instance."
@@ -78,7 +72,7 @@
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id [:auto/param user-id]))
+  (t2/select-one :model/User :id user-id))
 
 (mu/defn user-by-email
   "The User with `email`, or nil."

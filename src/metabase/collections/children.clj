@@ -30,14 +30,14 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.schema :as revisions.schema]
+   [metabase.toucan.core :as t2]
    [metabase.tracing.core :as tracing]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 

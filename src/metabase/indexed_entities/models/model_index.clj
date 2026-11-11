@@ -16,16 +16,15 @@
    [metabase.search.core :as search]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.task.core :as task]
+   [metabase.toucan.core :as t2]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; model lifecycle ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(methodical/defmethod t2/table-name :model/ModelIndex [_model] :model_index)
-(methodical/defmethod t2/table-name :model/ModelIndexValue [_model] :model_index_value)
+(t2/define-table-name :model/ModelIndex [_model] :model_index)
+(t2/define-table-name :model/ModelIndexValue [_model] :model_index_value)
 (derive :model/ModelIndex :metabase/model)
 (derive :model/ModelIndexValue :metabase/model)
 

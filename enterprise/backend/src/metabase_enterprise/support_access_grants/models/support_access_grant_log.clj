@@ -5,12 +5,11 @@
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
    [metabase.models.interface :as mi]
    [metabase.session.core :as session]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
-(methodical/defmethod t2/table-name :model/SupportAccessGrantLog
+(t2/define-table-name :model/SupportAccessGrantLog
   [_model]
   :support_access_grant_log)
 
@@ -35,7 +34,7 @@
                                             :last_name (sag.settings/support-access-grant-last-name)
                                             :is_superuser true})))
 
-(methodical/defmethod t2/batched-hydrate [:model/SupportAccessGrantLog :user_info]
+(t2/define-batched-hydrate [:model/SupportAccessGrantLog :user_info]
   [_model _k grants]
   (let [user-ids   (keep :user_id grants)
         user-info  (when (seq user-ids)

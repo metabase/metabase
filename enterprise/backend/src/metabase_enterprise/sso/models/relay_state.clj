@@ -10,15 +10,14 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.sso.db :as sso.db]
-   [metabase.util.random :as random]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [metabase.toucan.core :as t2]
+   [metabase.util.random :as random])
   (:import
    (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/SsoRelayState [_model] :sso_relay_state)
+(t2/define-table-name :model/SsoRelayState [_model] :sso_relay_state)
 
 (doto :model/SsoRelayState
   (derive :metabase/model)

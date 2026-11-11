@@ -3,9 +3,9 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (mu/defn active-visible-table-ids-by-name
   "Ids of the active, non-hidden Tables of Database `database-id` whose name case-insensitively matches one of
