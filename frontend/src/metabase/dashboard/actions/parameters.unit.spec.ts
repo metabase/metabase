@@ -231,6 +231,35 @@ describe("removeParameter", () => {
       payload: { id: "123" },
     });
   });
+
+  it("should unlink the removed parameter from the parameters it filtered (metabase#49556)", async () => {
+    const store = setup(
+      createMockState({
+        dashboard: createMockDashboardState({
+          dashboardId: 1,
+          dashboards: {
+            "1": createMockStoreDashboard({
+              id: 1,
+              parameters: [
+                createMockParameter({
+                  id: "target",
+                  filteringParameters: ["source", "other"],
+                }),
+                createMockParameter({ id: "source" }),
+                createMockParameter({ id: "other" }),
+              ],
+            }),
+          },
+        }),
+      }),
+    );
+
+    await store.dispatch(removeParameter("source"));
+
+    const parameters = getParameters(store.getState());
+    expect(parameters.map(({ id }) => id)).toEqual(["target", "other"]);
+    expect(parameters[0].filteringParameters).toEqual(["other"]);
+  });
 });
 
 describe("setParameterMapping", () => {
