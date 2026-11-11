@@ -23,6 +23,7 @@
                                          {:ticket_number "SUPPORT-12345"
                                           :grant_duration_minutes 240})]
       (is (some? response))
+      (is (not (contains? response :token)))
       (is (= (mt/user->id :crowberto) (:user_id response)))
       (is (= "SUPPORT-12345" (:ticket_number response)))
       (is (some? (:grant_start_timestamp response)))

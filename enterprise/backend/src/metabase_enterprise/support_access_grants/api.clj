@@ -23,10 +23,11 @@
    body :- ::grants.schema/create-grant-request]
   (api/check-superuser)
   (api/create-check :model/SupportAccessGrantLog body)
-  (grants/create-grant! api/*current-user-id*
-                        (:grant_duration_minutes body)
-                        (:ticket_number body)
-                        (:notes body)))
+  (-> (grants/create-grant! api/*current-user-id*
+                            (:grant_duration_minutes body)
+                            (:ticket_number body)
+                            (:notes body))
+      (dissoc :token)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
