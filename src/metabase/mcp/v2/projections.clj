@@ -150,7 +150,7 @@
 ;; The one canonical card projection. Shared by browse_collection's model list and get_content's
 ;; question/model reads — registered here (the namespace both load) so it has a single definition
 ;; rather than one tool silently overwriting another's at load time. `query_summary`/`template_tags`
-;; are enrichments get_content computes; browse rows lack them and `compact` drops them.
+;; are enrichments get_content computes; browse rows lack them and `:compact?` drops them.
 (def ^:private question-concise-keys
   [:id :name :type :description :display :collection_id :collection_path :database_id :database_name
    :table_id :source_card_id :archived :query_summary :template_tags :parameters])

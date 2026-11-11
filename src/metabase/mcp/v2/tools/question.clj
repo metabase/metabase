@@ -88,7 +88,7 @@
   [query template_tags]
   (if (empty? template_tags)
     query
-    (let [extracted (get-in query [:stages 0 :template-tags])
+    (let [extracted        (get-in query [:stages 0 :template-tags])
           existing-by-name (u/index-by :name extracted)]
       (doseq [tag-name (keys template_tags)]
         (when-not (contains? existing-by-name (name tag-name))

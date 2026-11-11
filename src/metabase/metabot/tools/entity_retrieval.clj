@@ -73,8 +73,7 @@
   (or (some (fn [s] (when (= :similarity (:name s)) (double (:score s)))) (:scores score)) 0.0))
 
 (defn- dedupe-by-entity
-  "Collapse raw per-document results (sorted best-first) to distinct entities, keeping the best-scoring
-  document for each."
+  "Collapse results (sorted best-first) to one per entity, keeping the best-scoring document."
   [results]
   (into []
         ;; collapse every card flavor (question/metric/model) to one class so aliases of the same
