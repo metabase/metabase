@@ -248,7 +248,7 @@ paths:
         database has no value is refused with 400.
       x-status: hardening
       x-pr: 86735
-      x-source: src/metabase/warehouses_rest/api.clj:965, EE/settings.clj:39, EE/events.clj:11
+      x-source: src/metabase/warehouses_rest/api.clj:833, EE/settings.clj:39, EE/events.clj:11
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
       requestBody:
@@ -421,7 +421,7 @@ components:
           description: The id of the parent workspace this sidecar serves. Null when not set.
         parent_url:
           type: [string, "null"]
-          minLength: 1
+          pattern: "\\S"
           x-status: hardening
           x-pr: 86792
           description: The parent Metabase's site URL. Null when not set.

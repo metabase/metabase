@@ -6,8 +6,9 @@ info:
     The API a caller (MB Code desktop, CI) uses to get an isolated warehouse login from the parent Metabase.
 
     Tagging:
-    - Every operation carries `x-status`: `master` (on metabase/metabase master, 061dee78c2d) or `proposed`
-      (needed by MB Code, not built; a sketch, not a commitment).
+    - Every operation carries `x-status`: `master` (on metabase/metabase master, 061dee78c2d), `hardening` (added
+      by an open hardening PR, named in `x-pr`) or `proposed` (needed by MB Code, not built; a sketch, not a
+      commitment).
     - A response or field that an open hardening PR adds carries `x-status: hardening` and `x-pr`.
     - A response or field that exists on master but that an open PR changes carries `x-pr`; its description says
       what changes. Not on master until the PR merges.
