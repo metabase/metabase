@@ -42,7 +42,7 @@ You can also [set up alerts](../questions/alerts.md) to get notified when your d
 
 There are two main ways to create questions: the query builder, and the native code editor. (Or, optionally, just ask [Metabot](#ai-in-metabase).)
 
-### Query Builder
+### Query builder
 
 ![Query builder](./images/query-builder.png)
 
@@ -132,7 +132,7 @@ To compare metrics side by side, check out the [Metrics Explorer](../questions/m
 
 ## Data Studio
 
-![The schema viewer in data studio](./images/schema-viewer.png)
+![The schema viewer in Data Studio](./images/schema-viewer.png)
 
 [Data Studio](../data-modeling/data-studio.md) is the workbench where data teams can prep data so that everyone else (including AI agents like Metabot) gets the numbers right.
 

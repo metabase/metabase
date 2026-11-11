@@ -15,6 +15,7 @@ This guide will help you set up Metabase once you’ve gotten it installed.
 If you don't have Metabase yet, you'll need to install it first. The easiest way to get going is [Metabase Cloud](https://www.metabase.com/cloud), where we run Metabase for you. If you'd rather host Metabase yourself, you can run it with Docker or as a JAR file. See [Installing Metabase](../installation-and-operation/installing-metabase.md) for all your options.
 
 Once Metabase is installed, start it up for the first time and you’ll see this screen:
+
 ![Welcome Screen](images/WelcomeScreen.png)
 
 Go ahead and click **Let’s get started**.
@@ -58,7 +59,7 @@ If you don't have this information handy, the person responsible for administeri
 
 Now that you have your database info you can connect to your database. Sweet, sweet data at last. Just go ahead and put your info into this form and click **Next**.
 
-![adddatabase](images/AddDatabaseInfo.png)
+![Add database form](images/AddDatabaseInfo.png)
 
 For more on connecting to databases, see [Adding and managing databases](../databases/connecting.md).
 
