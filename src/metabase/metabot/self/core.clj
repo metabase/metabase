@@ -4,7 +4,6 @@
    [clj-http.conn-mgr :as conn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.ai-tracing.core :as ait]
    [metabase.analytics-interface.core :as analytics]
@@ -23,7 +22,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
-   [metabase.util.o11y :refer [with-span]])
+   [metabase.util.o11y :refer [with-span]]
+   [metabase.util.performance :as perf])
   (:import
    (java.io BufferedReader Closeable FilterInputStream InputStream IOException)
    (java.util.concurrent CompletableFuture Executor Executors ThreadPoolExecutor)
@@ -641,7 +641,7 @@
                                     (get tools (:function part)))]
            (if title-fn
              (let [title (try
-                           (title-fn (walk/keywordize-keys (coerce-stringified-json (:arguments part))))
+                           (title-fn (perf/keywordize-keys (coerce-stringified-json (:arguments part))))
                            (catch Throwable e
                              (log/debug e "tool title-fn failed" {:tool (:function part)})
                              nil))]
@@ -1112,7 +1112,7 @@
                            ;; garble the message.
                            (or
                             (unparsed-arguments-outcome arguments)
-                            (let [arguments (walk/keywordize-keys
+                            (let [arguments (perf/keywordize-keys
                                              (or (coerce-stringified-json arguments) {}))]
                               (log/debug "Executing tool" {:tool-name safe-name})
                               (when (ait/capture-active?)
