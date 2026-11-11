@@ -427,4 +427,72 @@ describe("IFrameViz", () => {
       expect(iframe).toHaveAttribute("src", "https://example.com/pb%26j");
     });
   });
+  describe("allowed-iframe-hosts", () => {
+    const ALLOWED_HOSTS = ["youtube.com", "player.videos.com"].join("\n");
+
+    // As in the edit mode after clicking "Done"
+    const setupPreview = (iframe: string) => {
+      const dashcard = createMockIFrameDashboardCard({
+        visualization_settings: { iframe },
+      });
+      renderWithProviders(
+        <IFrameViz
+          dashcard={dashcard}
+          dashboard={createMockDashboard()}
+          isEditing={true}
+          isPreviewing={true}
+          onUpdateVisualizationSettings={jest.fn()}
+          settings={dashcard.visualization_settings}
+          width={800}
+          height={600}
+          gridSize={{ width: 18, height: 6 }}
+          onTogglePreviewing={jest.fn()}
+        />,
+        {
+          storeInitialState: {
+            settings: createMockSettingsState({
+              "allowed-iframe-hosts": ALLOWED_HOSTS,
+            }),
+          },
+        },
+      );
+    };
+
+    it.each([
+      [
+        "https://youtube.com/watch?v=dQw4w9WgXcQ",
+        "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      ],
+      [
+        "player.videos.com/video/123456789",
+        "https://player.videos.com/video/123456789",
+      ],
+    ])("should render an iframe for an allowed host: %s", (input, src) => {
+      setupPreview(input);
+
+      expect(screen.getByTestId("iframe-visualization")).toHaveAttribute(
+        "src",
+        src,
+      );
+      expect(
+        screen.queryByText(/can not be embedded in iframe cards/),
+      ).not.toBeInTheDocument();
+    });
+
+    it.each([
+      "videos.com/video/123456789",
+      "www.videos.com/video",
+      "https://example.com",
+      "www.example.com",
+    ])("should show an error for a forbidden host: %s", (input) => {
+      setupPreview(input);
+
+      expect(
+        screen.queryByTestId("iframe-visualization"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/can not be embedded in iframe cards/),
+      ).toBeInTheDocument();
+    });
+  });
 });
