@@ -11,6 +11,7 @@
    [metabase.serialization.protocol.app-db :as protocol.app-db]
    [metabase.serialization.spec :as serialization.spec]
    [metabase.serialization.util :as serialization.util]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log])
   (:import
    (java.time OffsetDateTime ZonedDateTime)))
@@ -58,10 +59,13 @@
 
 (defn- comparable
   "`x` as an import compares it with a value of the store: without the uuids and metadata providers of MBQL clauses,
-  which every import of a query regenerates, and with temporals as instants."
+  which every import of a query regenerates, with temporals as instants, localized strings as their text, and byte
+  arrays as their bytes."
   [x]
   (walk/postwalk (fn [y]
                    (cond
+                     (i18n/localized-string? y)     (str y)
+                     (bytes? y)                     (vec y)
                      (map? y)                       (dissoc y :lib/uuid :lib/metadata)
                      (instance? OffsetDateTime y)   (.toInstant ^OffsetDateTime y)
                      (instance? ZonedDateTime y)    (.toInstant ^ZonedDateTime y)

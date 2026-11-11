@@ -3,7 +3,7 @@ import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { getSdkStore } from "embedding-sdk-bundle/store";
-import { getEmbeddedAppNameFromPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
+import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
@@ -15,7 +15,7 @@ import type { SdkIframeEmbedSettings } from "metabase/embedding/embedding-iframe
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data-apps/sandbox/types";
 
-import { readNameFromUrl } from "../../lib/read-name-from-url";
+import { readSlugFromUrl } from "../../lib/read-slug-from-url";
 
 import { DataAppEmbedContent } from "./DataAppEmbedContent";
 
@@ -23,7 +23,7 @@ import { DataAppEmbedContent } from "./DataAppEmbedContent";
 const store = getSdkStore();
 
 export function DataAppEmbed() {
-  const name = useMemo(() => readNameFromUrl(), []);
+  const slug = useMemo(() => readSlugFromUrl(), []);
 
   const { embedSettings, dataAppPathNavigationRequest } =
     useSdkIframeEmbedEventBus({
@@ -85,12 +85,12 @@ export function DataAppEmbed() {
   // Parent settings must match the app loaded by this iframe.
   // This can happen if embed.js's path state is stale due to a bug.
   if (
-    !name ||
+    !slug ||
     embedSettings.componentName !== "metabase-data-app" ||
-    getEmbeddedAppNameFromPath(embedSettings.path) !== name
+    getEmbeddedAppSlugFromPath(embedSettings.path) !== slug
   ) {
     console.error(
-      "SDK component changed or data app name does not match the path.",
+      "SDK component changed or data app slug does not match the path.",
     );
 
     return (
@@ -107,7 +107,7 @@ export function DataAppEmbed() {
       isLocalHost={embedSettings._isLocalhost}
     >
       <DataAppEmbedContent
-        name={name}
+        slug={slug}
         path={embedSettings.path}
         navigationRequest={dataAppPathNavigationRequest}
         onProviderPropsLoaded={setMetabaseProviderProps}

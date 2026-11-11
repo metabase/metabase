@@ -55,6 +55,7 @@
   api-call?
   auth-call?
   cacheable?
+  cookie-header-entries
   data-app-embed-prefix
   data-app-url-segment
   data-app?
@@ -65,6 +66,7 @@
   embed?
   embedded?
   geocode-ip-addresses
+  host-names
   https-state
   internal-data-app?
   public?

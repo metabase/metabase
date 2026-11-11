@@ -1,6 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -12,6 +11,8 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import { updateTestConversation } from "metabase/metabot/tests/utils";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
@@ -66,11 +67,15 @@ const setup = (
     }),
   );
 
+  const initialMetabotState = getMetabotInitialState();
+  const omnibotConversationId = checkNotNull(
+    initialMetabotState.agents.omnibot,
+  ).conversationId;
   const metabot = conversationCharts
-    ? assocIn(getMetabotInitialState(), ["conversations", "omnibot", "state"], {
-        charts: conversationCharts,
+    ? updateTestConversation(initialMetabotState, omnibotConversationId, {
+        state: { charts: conversationCharts },
       })
-    : getMetabotInitialState();
+    : initialMetabotState;
 
   return renderWithProviders(<AIMarkdown {...props} />, {
     storeInitialState: createMockState({ settings, metabot }),

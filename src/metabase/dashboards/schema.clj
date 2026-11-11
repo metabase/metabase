@@ -4,8 +4,10 @@
    [metabase.collections.schema]
    [metabase.content-verification.schema]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.schema :as models.schema]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
@@ -83,7 +85,7 @@
    [:view_count              {:optional true} [:maybe :int]]
    [:archived_directly       {:optional true} [:maybe :boolean]]
    [:last_viewed_at          {:optional true} [:maybe ms/TemporalInstant]]
-   [:embedding_type          {:optional true} [:maybe [:or :keyword :string]]]
+   [:embedding_type          {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:public_uuid_prefix      {:optional true} [:maybe :string]]])
 
 (mr/def ::dashboard-card.parameter-mapping
@@ -92,7 +94,7 @@
 
 (mr/def ::dashboard-card.visualization-settings
   "The `:visualization_settings` column of a DashboardCard, decoded."
-  ms/VisualizationSettings)
+  ::lib.schema.visualization-settings/visualization-settings)
 
 (mr/def ::dashboard-card
   "A DashboardCard as selected from the app DB: every column of `:report_dashboardcard`, plus the keys some callers
