@@ -47,6 +47,18 @@
     [:re #"\A[A-Za-z0-9 _./-]+\z"]
     (deferred-tru "Column types can only have letters, digits, spaces and _ . / -"))])
 
+(mr/def ::escaped-reference
+  [:and
+   ::capped-non-blank-string
+   (mu/with-api-error-message
+    ;; Match a bracketed reference with no unescaped brackets, backslashes or control characters that
+    ;; `formatIdentifier` escapes.
+    [:re #"\A\[(?:[^\[\]\\\x08\t\n\f\r\x0B]|\\[^\n\r])+\]\z"]
+    (deferred-tru "Column, metric and measure names must be references like [Total], with any [ or ] escaped."))])
+
+(mr/def ::escaped-references
+  [:maybe [:sequential {:max max-seq-items} ::escaped-reference]])
+
 (mr/def ::request-schema
   ;; The rules on which inputs each mode needs are in [[check-inputs!]], so that their errors have a message.
   [:map {:closed true}
@@ -54,12 +66,10 @@
    [:prompt      [:and ms/NonBlankString [:string {:max max-prompt-chars}]]]
    [:columns     [:sequential {:max max-seq-items}
                   [:map {:closed true}
-                   [:name ::capped-non-blank-string]
+                   [:name ::escaped-reference]
                    [:type {:optional true} [:maybe ::column-type]]]]]
-   [:metrics     {:optional true}
-    [:maybe [:sequential {:max max-seq-items} ::capped-non-blank-string]]]
-   [:measures    {:optional true}
-    [:maybe [:sequential {:max max-seq-items} ::capped-non-blank-string]]]
+   [:metrics     {:optional true} ::escaped-references]
+   [:measures    {:optional true} ::escaped-references]
    [:table_name  {:optional true} [:maybe ::capped-non-blank-string]]
    [:database_id ms/PositiveInt]])
 
@@ -81,7 +91,8 @@
 (def ^:private shared-rules
   (str
    "Metabase custom expression syntax:\n"
-   "- Reference columns as [Column Name], exactly as listed, including any \" → \" for related tables.\n"
+   "- Reference columns as [Column Name], exactly as listed, including any \" → \" for related tables and any "
+   "backslash escapes, like \\[ and \\] inside a name.\n"
    "- Strings use double quotes. Numbers are bare. Operators: + - * / = != < > <= >= and or not.\n"
    "- case(condition, value, condition, value, ..., default) for conditional values.\n"
    "- Useful functions: coalesce, concat, lower, upper, trim, length, substring, contains, startsWith, "
@@ -163,8 +174,10 @@
 
 (defn- format-column
   [{column-name :name column-type :type}]
-  (str "[" column-name "]" (when-not (str/blank? column-type)
-                             (str " (" (llm-shape/escape-xml-content column-type) ")"))))
+  (str column-name
+       (when column-type
+         ;; The [[::column-type]] schema rejects < and >, but escape anyway just in case.
+         (str " (" (llm-shape/escape-xml-content column-type) ")"))))
 
 (defn- user-message
   [{:keys [prompt columns metrics measures table_name]}]
@@ -173,7 +186,7 @@
   (->> [(format-xml "table-name" (when-not (str/blank? table_name)
                                    [(llm-shape/escape-xml-content table_name)]))
         (format-xml "columns" (map format-column columns))
-        (format-xml "metrics" (map #(str "[" % "]") (concat metrics measures)))
+        (format-xml "metrics" (concat metrics measures))
         (format-xml "user-request" [(llm-shape/escape-xml-content prompt)])]
        (remove nil?)
        (str/join "\n")))
@@ -279,18 +292,24 @@
    {:role "user" :content (user-message request)}])
 
 (mu/defn suggest-formula :- ::response-schema
-  "Draft a custom expression for `prompt`, a natural-language phrase typed into a summary well. `mode` is
-  `\"aggregation\"` for Values or `\"expression\"` for the custom columns Rows and Columns group by. `columns` are maps
-  of `:name` and an optional `:type`, a short hint like `number` made of letters, digits, spaces and `_./-`. Column,
-  metric and measure names are the names the expression editor resolves, without brackets, like `User → Name`.
-  `database_id` is the database of the query being summarized, which the current user must be able to query.
+  "Draft a custom expression and result-column name for `request`.
 
-  Returns `{:expression <source> :name <name>}`. Throws an HTTP error with a plain-text message when the request can't
-  be served, including when nothing in the columns, metrics or measures fits or the LLM call fails. The managed AI
-  lock's error propagates as it is. Metrics and measures are aggregations, so expression mode rejects them
-  and needs at least one column. The prompt, table name and column types are XML-escaped, and a column, metric or
-  measure whose name contains a prompt block tag is left out with a warning, before checking that enough inputs are
-  left."
+  The request map follows `::request-schema`:
+
+  - `:prompt` is the natural-language phrase entered in a summary well.
+  - `:mode` is `\"aggregation\"` for Values or `\"expression\"` for a custom column used to group Rows or Columns.
+  - `:columns` contains maps with `:name` and an optional `:type` hint, such as `number` or `type/Integer`.
+  - `:metrics` and `:measures` are optional lists of named aggregation references, allowed only in aggregation mode.
+  - `:table_name` is an optional table name for context.
+  - `:database_id` identifies the query's database, which the current user must be allowed to query.
+
+  Column, metric and measure references must use escaped expression syntax, such as `[User → Name]` or `[Foo\\]]`.
+  Inputs whose names contain a prompt block tag are dropped. Expression mode then requires at least one column, and
+  aggregation mode at least one column, metric or measure.
+
+  Returns `{:expression <source> :name <name>}`, with both strings nonblank.
+
+  Throws an HTTP exception when params are invalid, AI is unavailable, access is denied, or the LLM call fails."
   [request :- ::request-schema]
   ;; Drop tagged inputs before checking that enough are left.
   (let [{:keys [database_id prompt] :as request} (remove-tagged-inputs request)]
