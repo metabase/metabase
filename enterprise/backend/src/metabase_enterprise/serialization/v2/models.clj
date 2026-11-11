@@ -43,7 +43,8 @@
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
           content
-          [:model/CustomVizPlugin
+          [:model/CardTest
+           :model/CustomVizPlugin
            :model/DataApp
            :model/EmbeddingTheme
            :model/FieldValues
@@ -183,7 +184,7 @@
    :model/TransformJobRun
    :model/TransformRun
    :model/TransformRunCancelation
-   :model/TransformTestRun
+   :model/DataTestRun
    :model/Undo
    :model/User
    :model/UserKeyValue

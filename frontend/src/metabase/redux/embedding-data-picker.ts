@@ -15,6 +15,8 @@ import type {
 export const DEFAULT_EMBEDDING_ENTITY_TYPES: EmbeddingEntityType[] = [
   "model",
   "table",
+  "metric",
+  "semantic-layer",
 ];
 
 export const DEFAULT_EMBEDDING_DATA_PICKER_STATE: EmbeddingDataPickerState = {
@@ -64,6 +66,8 @@ export function normalizeEntityTypes(
     "model",
     "table",
     "question",
+    "metric",
+    "semantic-layer",
   ];
 
   const filteredEntityTypes = entityTypes.filter((type) =>

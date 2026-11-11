@@ -110,7 +110,9 @@
             (testing "unchanged schema, after trimming, keeps the rows"
               (mt/user-http-request :crowberto :put 200 (str "database/" db-id)
                                     {:settings {:database-workspace-schema " ws_old "}})
-              (is (= 1 (t2/count :model/TableRemapping :database_id db-id))))
+              (is (= 1 (t2/count :model/TableRemapping :database_id db-id)))
+              (testing "and transforms write to the trimmed schema, the one the rows point at"
+                (is (= {:schema "ws_old"} (ws/db-workspace-namespace db-id)))))
             (testing "changed schema deletes them"
               (mt/user-http-request :crowberto :put 200 (str "database/" db-id)
                                     {:settings {:database-workspace-schema "ws_new"}})

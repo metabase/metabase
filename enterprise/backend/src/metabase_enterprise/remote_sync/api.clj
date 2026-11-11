@@ -77,25 +77,32 @@
              :name        (remote-sync.merge/label key doc)
              :model       (u/lower-case-en (name model))
              :sync_status (if (and (= "delete" status) removed-row) "removed" status)}
-      collection-id                 (assoc :collection_id collection-id)
-      parent                        (assoc :parent parent))))
+      collection-id                                    (assoc :collection_id collection-id)
+      parent                                           (assoc :parent parent)
+      (remote-sync/synced-collection-from-parent? model) (assoc ::collection-from-parent? true))))
 
 (defn- with-parents
   "The `items` with the `[model pk]` of their parent replaced by the parent as the client names it, by the label the
-  spec of its model gives its exported entity."
+  spec of its model gives its exported entity, and, for an item whose collection is its parent's, with the collection
+  of its parent."
   [items]
-  (let [names (into {}
-                    (for [[model parents] (group-by first (into [] (comp (keep :parent) (distinct)) items))
-                          :let [pk   (first (t2/primary-keys model))
-                                rows (remote-sync.db/exported-rows model (mapv second parents))]
-                          [row entity] (map vector rows (serialization/export-batch model rows))
-                          :when (not (instance? Exception entity))]
-                      [[model (get row pk)] (remote-sync/synced-label model entity)]))]
+  (let [parents (into {}
+                      (for [[model parents] (group-by first (into [] (comp (keep :parent) (distinct)) items))
+                            :let [pk   (first (t2/primary-keys model))
+                                  rows (remote-sync.db/exported-rows model (mapv second parents))]
+                            [row entity] (map vector rows (serialization/export-batch model rows))]
+                        [[model (get row pk)]
+                         {:name          (when-not (instance? Exception entity)
+                                           (remote-sync/synced-label model entity))
+                          :collection-id (remote-sync/synced-collection-id model row)}]))]
     (mapv (fn [{[model id :as parent] :parent :as item}]
-            (cond-> item
-              parent (assoc :parent {:model (u/lower-case-en (name model))
-                                     :id    id
-                                     :name  (get names parent)})))
+            (let [collection-id (when (::collection-from-parent? item)
+                                  (get-in parents [parent :collection-id]))]
+              (cond-> (dissoc item ::collection-from-parent?)
+                parent        (assoc :parent {:model (u/lower-case-en (name model))
+                                              :id    id
+                                              :name  (get-in parents [parent :name])})
+                collection-id (assoc :collection_id collection-id))))
           items)))
 
 (defn- with-collections
@@ -121,12 +128,26 @@
    :name  (or (remote-sync/synced-label model row) "")
    :model (u/lower-case-en (name model))})
 
+(defn- name-key
+  "What sorts the client-named entity `entity` by its name, ignoring case."
+  [{entity-name :name id :id}]
+  [(u/lower-case-en entity-name) (str id)])
+
 (defn- unsynced-dependency
   "The unsynced dependency `dependency` as the client lists it."
   [{:keys [model row used-by]}]
   (assoc (entity-ref model row)
          :collection_id (remote-sync/synced-collection-id model row)
-         :used_by       (mapv #(apply entity-ref %) used-by)))
+         :used_by       (vec (sort-by name-key (map #(apply entity-ref %) used-by)))))
+
+(defn- sorted-dependencies
+  "The unsynced `dependencies` with their collections, by the name of their top-level collection, those in no collection
+  last, then by name."
+  [dependencies]
+  (vec (sort-by (fn [{:keys [collection] :as dependency}]
+                  (let [top-level (or (first (:effective_ancestors collection)) collection)]
+                    [(nil? top-level) (some-> top-level name-key) (name-key dependency)]))
+                (with-collections (map unsynced-dependency dependencies)))))
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
   "Pull the synced content of the remote branch, or of `branch` to switch to it, into this instance, keeping its local
@@ -241,7 +262,7 @@
   (some-> (remote-sync.task/most-recent-task) present-task))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
-  "Cancel the running task."
+  "Ask the running task to stop. A task that already started to change content finishes."
   []
   (api/check-superuser)
   (let [task (remote-sync.task/most-recent-task)]
@@ -285,7 +306,7 @@
                       (if-let [dependencies (:unsynced-dependencies (ex-data e))]
                         {:status-code           400
                          :error-code            "unsynced-dependencies"
-                         :unsynced_dependencies (with-collections (map unsynced-dependency dependencies))
+                         :unsynced_dependencies (sorted-dependencies dependencies)
                          :response/keys         #{:unsynced_dependencies}}
                         (merge {:status-code 400} (ex-data e)))
                       e))))

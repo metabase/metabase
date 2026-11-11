@@ -961,6 +961,29 @@ Maximum number of fields per database to score for dimension interestingness in 
   `scan-max-fields-per-table` and `fingerprint-max-fields-per-table` the skipped fields are not abandoned -- they stay
   NULL and so are picked up by the following sync, which is why this can be set far higher than those two.
 
+### `MB_ISOLATED_ORIGIN`
+
+- Type: string
+- Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+A second address for this Metabase, such as https://example-isolated.com, that the browser keeps apart from the session: it never sends the session cookie there. Metabase serves data apps from it, so a data app reaches Metabase only through the page that shows it.
+
+Point this address at the same Metabase. The browser never sends the session cookie to it, so Metabase
+  serves content there that must stay apart from the session. Data apps run on it, and every request they make to
+  Metabase goes through the page that shows them. The address must meet these requirements:
+
+  - A site URL is set. Only pages at the site URL can show content from this address.
+  - It is only a scheme, host and port, with no path, query or fragment.
+  - Its host name differs from the site URL's host name. A different port isn't enough.
+  - It uses https when the site URL does.
+  - A reverse proxy in front of Metabase passes the original host name (`Host` or `X-Forwarded-Host`).
+  - If Metabase runs under a path, both addresses serve it under that path; leave the path out of this value.
+
+  If the value breaks one of the first four requirements, Metabase turns data apps off until you fix it. A separate
+  domain (such as `example-isolated.com` rather than `isolated.example.com`) isolates best while the session cookie's
+  `SameSite` is `lax` or `strict`.
+
 ### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_CHECKOUT_TIMEOUT_MS`
 
 - Type: integer
@@ -2241,83 +2264,83 @@ Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
 
 ### `MB_REMOTE_SYNC_AUTO_IMPORT`
 
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
 - Type: boolean
 - Default: `false`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import`
 
-Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only.
+Whether a read-only instance pulls changes from the repository on a schedule.
 
 ### `MB_REMOTE_SYNC_AUTO_IMPORT_RATE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `5`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import-rate`
 
-If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
+How often, in minutes, a read-only instance that pulls automatically checks the repository for changes.
 
 ### `MB_REMOTE_SYNC_BRANCH`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-branch`
 
-The remote branch to sync with, e.g. `main`.
-
-### `MB_REMOTE_SYNC_CHECK_CHANGES_CACHE_TTL_SECONDS`
-
-- Type: integer
-- Default: `60`
-- [Configuration file name](./config-file.md): `remote-sync-check-changes-cache-ttl-seconds`
-
-Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
+The branch of the repository to sync with, such as `main`.
 
 ### `MB_REMOTE_SYNC_GIT_TIMEOUT_SECONDS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `60`
 - [Configuration file name](./config-file.md): `remote-sync-git-timeout-seconds`
 
-Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely.
+How long, in seconds, remote sync waits for the git repository to respond.
 
 ### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `300000`
 - [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
 
-How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit.
+How long, in milliseconds, a remote sync task can go without a sign that it is still running before Metabase ends it.
 
 ### `MB_REMOTE_SYNC_TOKEN`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-token`
 
-An Authorization Bearer token allowing access to the git repo over HTTP.
-
-### `MB_REMOTE_SYNC_TRANSFORMS`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `remote-sync-transforms`
-
-Whether to sync transforms via remote-sync. When enabled, transforms, transform tags, transform tests, Python libraries, and transforms folders are synced.
+An access token for the git repository, such as a personal access token.
 
 ### `MB_REMOTE_SYNC_TYPE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: keyword
 - Default: `read-only`
 - [Configuration file name](./config-file.md): `remote-sync-type`
 
-Git synchronization type - :read-write or :read-only.
+Whether this instance pushes synced content to the repository (read-write) or only pulls it (read-only).
 
 ### `MB_REMOTE_SYNC_URL`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-url`
 
-The location of your git repository, e.g. `https://github.com/acme-inco/metabase.git`.
+The URL of the git repository to sync with, such as `https://github.com/acme-inco/metabase.git`.
 
 ### `MB_REPORT_TIMEZONE`
 
@@ -3122,7 +3145,7 @@ Set this when Metabase must reach a warehouse on a private network (allow-privat
 - Default: `false`
 - [Configuration file name](./config-file.md): `workspaces-enabled`
 
-Whether this instance is a workspace: transforms on a database with a `database-workspace-schema` write there instead of to production, and later reads of their output follow. Not the per-database switch a parent uses to offer workspaces (`database-enable-workspaces`). Turning it off deletes every table remapping.
+Whether this instance is a workspace: transforms on a database with a `database-workspace-schema` write there instead of to production, and later reads of their output follow. Not the per-database switch a parent uses to offer workspaces (`database-enable-workspaces`). Turning it off through the settings API, `config.yml`, or `DELETE /api/ee/workspace-instance/current` deletes every table remapping; unsetting this env var does not.
 
 ## Other environment variables
 

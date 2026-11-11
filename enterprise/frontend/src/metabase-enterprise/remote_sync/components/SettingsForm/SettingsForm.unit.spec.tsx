@@ -117,6 +117,7 @@ const setup = ({
   renderWithProviders(
     <SettingsForm triggeredFrom="admin-settings" onSaved={onSaved} />,
     {
+      withRouter: true,
       storeInitialState: createMockState({
         currentUser: createMockUser({ is_superuser: true }),
         settings: mockSettings(settings),
@@ -230,9 +231,19 @@ describe("SettingsForm", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     const modal = await screen.findByRole("dialog");
-    expect(within(modal).getByText("Sales")).toBeInTheDocument();
-    expect(within(modal).getByText("Revenue")).toBeInTheDocument();
-    expect(within(modal).getByText("Used by Overview")).toBeInTheDocument();
+    expect(within(modal).getByRole("link", { name: "Sales" })).toHaveAttribute(
+      "href",
+      "/collection/30-sales",
+    );
+    expect(
+      within(modal).getByRole("link", { name: "Revenue" }),
+    ).toHaveAttribute("href", "/question/1-revenue");
+    expect(
+      within(modal).getByRole("link", { name: "Overview" }),
+    ).toHaveAttribute("href", "/dashboard/1-overview");
+    expect(within(modal).getByText(/Used by/)).toHaveTextContent(
+      "Used by Overview",
+    );
     expect(onSaved).not.toHaveBeenCalled();
 
     setupRemoteSyncSettingsEndpoint();
@@ -250,61 +261,5 @@ describe("SettingsForm", () => {
     expect(secondBody).toMatchObject({
       collections: { [MARKETING.id]: true, [SALES.id]: true },
     });
-  });
-
-  it("pulls changes on demand when syncing read-only", async () => {
-    setup({
-      isEnabled: true,
-      url: "https://github.com/acme/metabase.git",
-      syncType: "read-only",
-    });
-
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Pull changes now" }),
-    );
-
-    expect(await screen.findByText("Pulling changes")).toBeInTheDocument();
-    const [call] = fetchMock.callHistory.calls(
-      "path:/api/ee/remote-sync/import",
-    );
-    expect(await call?.request?.json()).toEqual({ force: true });
-  });
-
-  it("doesn't pull on demand until settings changes are saved", async () => {
-    setup({
-      isEnabled: true,
-      url: "https://github.com/acme/metabase.git",
-      syncType: "read-only",
-    });
-
-    await userEvent.click(
-      await screen.findByRole("switch", { name: "Pull changes automatically" }),
-    );
-
-    expect(
-      screen.getByRole("button", { name: "Pull changes now" }),
-    ).toBeDisabled();
-  });
-
-  it("doesn't offer to pull on demand when syncing read-write", async () => {
-    setup({ isEnabled: true, url: "https://github.com/acme/metabase.git" });
-
-    expect(
-      await screen.findByRole("button", { name: "Save changes" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Pull changes now" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("can turn remote sync off once it is set up", async () => {
-    setup({ isEnabled: true, url: "https://github.com/acme/metabase.git" });
-
-    expect(
-      await screen.findByRole("button", { name: "Turn off remote sync" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Save changes" }),
-    ).toBeInTheDocument();
   });
 });

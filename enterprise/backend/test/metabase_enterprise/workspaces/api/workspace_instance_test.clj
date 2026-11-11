@@ -178,6 +178,21 @@
       (mt/user-http-request :crowberto :delete 204 "ee/workspace-instance/current")
       (is (not (t2/exists? :model/TableRemapping :database_id (mt/id)))))))
 
+(deftest post-current-repeat-with-padded-schema-keeps-table-remappings-test
+  (testing "A repeat POST /ee/workspace-instance/current with a padded schema stores it trimmed and keeps the remap rows"
+    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {}}
+      (mt/with-model-cleanup [:model/TableRemapping]
+        (let [body {:databases [{:database_id (mt/id) :schema " ws "}]}]
+          (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current" body)
+          (is (= "ws" (:database-workspace-schema (t2/select-one-fn :settings :model/Database :id (mt/id)))))
+          (t2/insert! :model/TableRemapping {:database_id     (mt/id)
+                                             :from_schema     "public"
+                                             :from_table_name "orders"
+                                             :to_schema       "ws"
+                                             :to_table_name   "orders"})
+          (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current" body)
+          (is (t2/exists? :model/TableRemapping :database_id (mt/id))))))))
+
 (deftest table-remappings-superuser-only-test
   (testing "GET /ee/workspace-instance/table-remappings requires data analyst or superuser"
     (is (= "You don't have permissions to do that."

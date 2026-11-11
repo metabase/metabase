@@ -22,9 +22,9 @@
     (let [hash #(t2/select-one-fn :bundle_hash :model/DataApp :id id)
           v1   (hash)]
       (is (= 64 (count v1)) "the insert computes the hash from the bundle")
-      (t2/update! :model/DataApp :id id {:display_name "Renamed"})
+      (t2/update! :model/DataApp :id id {:name "Renamed"})
       (is (= v1 (hash)) "a change that leaves the bundle alone keeps its hash")
-      (t2/update! :model/DataApp :id id {:display_name "Renamed"})
+      (t2/update! :model/DataApp :id id {:name "Renamed"})
       (is (= v1 (hash)) "an update that changes nothing is a no-op")
       (t2/update! :model/DataApp :id id {:bundle (.getBytes "OTHER" "UTF-8")})
       (is (not= v1 (hash)))
@@ -36,7 +36,7 @@
 
 (deftest insert-creates-resource-collection-test
   (testing "an app inserted without a collection gets a top-level collection of data apps of its own"
-    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:name "m"}]
+    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:slug "m"}]
       (is (=? {:name "Data App: m" :namespace :data-apps :location "/"}
               (t2/select-one :model/Collection :id collection-id))))))
 
@@ -49,8 +49,8 @@
                           (t2/update! :model/DataApp :id id {:resource_collection_id nil})))
     (is (= collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))
     (testing "an update that names the same collection is not a change"
-      (t2/update! :model/DataApp :id id {:resource_collection_id collection-id :display_name "Renamed"})
-      (is (= "Renamed" (t2/select-one-fn :display_name :model/DataApp :id id))))))
+      (t2/update! :model/DataApp :id id {:resource_collection_id collection-id :name "Renamed"})
+      (is (= "Renamed" (t2/select-one-fn :name :model/DataApp :id id))))))
 
 (deftest app-without-collection-can-be-given-one-test
   (mt/with-temp [:model/DataApp    {id :id collection-id :resource_collection_id} {}
@@ -70,10 +70,10 @@
     (is (not (t2/exists? :model/Collection :id collection-id)))))
 
 (deftest writes-are-normalized-and-validated-against-the-schema-test
-  (mt/with-temp [:model/DataApp {id :id} {:display_name  "  M  "
+  (mt/with-temp [:model/DataApp {id :id} {:name          "  M  "
                                           :bundle_path   "./dist/index.js"
                                           :allowed_hosts ["https://API.example.com/"]}]
-    (is (=? {:display_name "M" :bundle_path "dist/index.js" :version 1 :allowed_hosts ["https://api.example.com"]}
+    (is (=? {:name "M" :bundle_path "dist/index.js" :version 1 :allowed_hosts ["https://api.example.com"]}
             (t2/select-one :model/DataApp :id id)))
     (testing "an update with an invalid column is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not match schema"
@@ -81,22 +81,22 @@
       (is (= "dist/index.js" (t2/select-one-fn :bundle_path :model/DataApp :id id)))))
   (testing "an insert without a required manifest column is refused"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not match schema"
-                          (t2/insert! :model/DataApp {:name "x" :bundle_path "i.js"}))))
+                          (t2/insert! :model/DataApp {:slug "x" :bundle_path "i.js"}))))
   (testing "an insert with an invalid slug is refused"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not match schema"
-                          (mt/with-temp [:model/DataApp _ {:name "Not A Slug"}])))))
+                          (mt/with-temp [:model/DataApp _ {:slug "Not A Slug"}])))))
 
 (deftest to-json-never-includes-the-bundle-bytes-test
-  (mt/with-temp [:model/DataApp {id :id} {:display_name "M" :bundle bundle-bytes}]
-    (let [app     (t2/select-one [:model/DataApp :bundle :display_name] :id id)
+  (mt/with-temp [:model/DataApp {id :id} {:name "M" :bundle bundle-bytes}]
+    (let [app     (t2/select-one [:model/DataApp :bundle :name] :id id)
           decoded (json/decode (json/encode app))]
       (is (contains? app :bundle) "the instance selected with its bundle carries the raw bytes")
       (is (not (contains? decoded "bundle"))
           "but the JSON representation omits it")
-      (is (= "M" (get decoded "display_name"))))))
+      (is (= "M" (get decoded "name"))))))
 
 (deftest default-selects-exclude-the-bundle-test
-  (mt/with-temp [:model/DataApp {id :id app-name :name} {:display_name  "M"
+  (mt/with-temp [:model/DataApp {id :id app-name :slug} {:name          "M"
                                                          :bundle        bundle-bytes
                                                          :allowed_hosts ["https://api.example.com"]}]
     (is (not (contains? (t2/select-one :model/DataApp :id id) :bundle)))
@@ -104,7 +104,7 @@
     (testing "data-app-by-slug returns metadata without the bundle blob"
       (let [app (data-apps.db/data-app-by-slug app-name)]
         (is (not (contains? app :bundle)))
-        (is (= "M" (:display_name app)))
+        (is (= "M" (:name app)))
         (is (= ["https://api.example.com"] (:allowed_hosts app)))))))
 
 (deftest allowed-hosts-reads-as-a-vector-never-nil-test
@@ -140,8 +140,8 @@
       (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {}]
         (let [insert! (fn [slug collection-id]
                         (t2/query-one {:insert-into :data_app
-                                       :values      [{:name                   slug
-                                                      :display_name           slug
+                                       :values      [{:slug                   slug
+                                                      :name                   slug
                                                       :bundle_path            "index.js"
                                                       :entity_id              (subs (str slug "-" (apply str (repeat 21 "a"))) 0 21)
                                                       :resource_collection_id collection-id
@@ -150,10 +150,10 @@
           (mt/with-temp [:model/Collection {free-id :id} {:namespace :data-apps}]
             (testing "the same row on a collection no app owns goes in"
               (insert! "sparrows" free-id)
-              (is (t2/exists? :model/DataApp :name "sparrows")))
+              (is (t2/exists? :model/DataApp :slug "sparrows")))
             (is (thrown? Exception (t2/with-transaction [_conn]
                                      (insert! "finches" collection-id))))
-            (is (not (t2/exists? :model/DataApp :name "finches")))))))))
+            (is (not (t2/exists? :model/DataApp :slug "finches")))))))))
 
 (deftest data-apps-collection-is-root-collection-of-its-namespace-test
   (testing "an app given an existing collection gets it only when it is a plain top-level collection of data apps that
@@ -166,8 +166,8 @@
                        :model/Collection {official-id :id} {:name "Official" :namespace :data-apps :authority_level "official"}
                        :model/Collection {synced-id :id}   {:name "Synced" :namespace :data-apps :is_remote_synced true}]
           (let [app! (fn [slug collection-id]
-                       (t2/insert-returning-pk! :model/DataApp {:name                   slug
-                                                                :display_name           slug
+                       (t2/insert-returning-pk! :model/DataApp {:slug                   slug
+                                                                :name                   slug
                                                                 :bundle_path            "index.js"
                                                                 :resource_collection_id collection-id}))]
             (doseq [[label collection-id] [["a default-namespace collection" default-id]

@@ -126,8 +126,7 @@
                  (str "The library entity index is unavailable: it needs the library entity-retrieval "
                       "feature plus a configured pgvector store and embedding backend.")))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:entity-type/:entity-local-id"
+(api.macros/defendpoint :delete "/:entity-type/:entity-local-id" :- ::api/generic-204-no-content
   "Delete the ai_context entry for an entity by its logical key."
   [{:keys [entity-type entity-local-id]} :- logical-key-route-schema
    _query-params]

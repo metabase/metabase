@@ -101,11 +101,10 @@
       (assoc :db schema))))
 
 (defn- database-workspace-schema
-  "The non-blank `database-workspace-schema` database-local setting of `database`, or nil."
+  "The trimmed, non-blank `database-workspace-schema` database-local setting of `database`,
+   or nil. `PUT /api/database/:id` stores the value untrimmed, so every reader trims here."
   [database]
-  (let [schema (get-in database [:settings :database-workspace-schema])]
-    (when-not (str/blank? schema)
-      schema)))
+  (some-> (get-in database [:settings :database-workspace-schema]) str/trim not-empty))
 
 (defn instance-workspace
   "The workspace this instance is, as `{:workspace-id <id> :parent-url <url> :databases
@@ -136,11 +135,14 @@
    `schemas`, a map of database id to schema, then turn `workspaces-enabled` on. Clears
    the schema, and the remap rows, of every database not in `schemas`. One transaction,
    flag last, so no transform sees workspace mode with a schema missing. Throws a 400
-   for an unknown database id, on a parent, or when `MB_WORKSPACES_ENABLED=false`."
+   for an unknown database id, on a parent, or when `MB_WORKSPACES_ENABLED=false`.
+   Trims each schema, so a repeat call with `\" ws \"` matches the stored `\"ws\"`
+   and keeps the remap rows."
   [schemas :- [:map-of ::lib.schema.id/database ms/NonBlankString]]
   (check-not-set-by-env-var! true)
   (t2/with-transaction [_conn]
-    (let [databases (ws.db/all-databases)]
+    (let [schemas   (update-vals schemas str/trim)
+          databases (ws.db/all-databases)]
       (when-let [unknown (seq (remove (set (map :id databases)) (keys schemas)))]
         (throw (ex-info (str "Unknown database ids: " (pr-str (vec unknown)))
                         {:status-code 400 :database_ids (vec unknown)})))
@@ -182,14 +184,13 @@
   nil)
 
 (defn delete-stale-table-remappings!
-  "Delete the remap rows of `database` when its trimmed `database-workspace-schema`
+  "Delete the remap rows of `database` when its `database-workspace-schema`
    differs from that of `previous-database`, the same row before the write. Those rows
    point at the old schema and would keep redirecting reads there. For writes that skip
    [[set-instance-workspace!]]: `PUT /api/database/:id` and the `config.yml` loader."
   [previous-database database]
-  (let [schema (comp #(some-> % str/trim) database-workspace-schema)]
-    (when (not= (schema previous-database) (schema database))
-      (ws.db/delete-table-remappings-of-database! (:id database))))
+  (when (not= (database-workspace-schema previous-database) (database-workspace-schema database))
+    (ws.db/delete-table-remappings-of-database! (:id database)))
   nil)
 
 (defn clear-instance-workspace!
@@ -284,13 +285,14 @@
   on one throwable). The message is the messages the databases returned, joined
   into one line. The ex-data is shaped so the API error middleware returns just
   that message — without it, an uncaught 500 dumps the full `Throwable->map`
-  cause chain into the response."
-  ^Throwable [throwables]
+  cause chain into the response. `data` is merged in, and must carry the
+  `:status-code`."
+  ^Throwable [throwables data]
   (let [message       (str/join "; " (map #(or (ex-message %) (str (class %))) throwables))
         ^Throwable ex (ex-info message
-                               {:status-code 500
-                                :message     message
-                                :errors      {:_error message}}
+                               (merge {:message message
+                                       :errors  {:_error message}}
+                                      data)
                                (first throwables))]
     (run! #(.addSuppressed ex ^Throwable %) (rest throwables))
     ex))
@@ -308,7 +310,8 @@
   row gets its attempt: rows whose teardown succeeds are deleted immediately
   (progress is persisted per row, so an instance crash midway loses nothing);
   rows whose teardown fails are kept. Throws the combined failures when any
-  teardown failed."
+  teardown failed: with the failure's own `:status-code` when there is one
+  failure, else 500."
   [workspace-id]
   (let [failures (into []
                        (keep (fn [wsd]
@@ -318,7 +321,11 @@
                                  (catch Throwable t t))))
                        (ws.db/workspace-databases workspace-id))]
     (when (seq failures)
-      (throw (combined-exception failures)))))
+      ;; a single failure keeps its status, such as a driver's 409 naming what must happen before a retry
+      (throw (combined-exception failures
+                                 {:status-code (or (when (= 1 (count failures))
+                                                     (:status-code (ex-data (first failures))))
+                                                   500)})))))
 
 (defn create-workspace!
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
@@ -365,7 +372,7 @@
               (workspace/delete-workspace! (:id ws))
               (catch Throwable delete-t
                 (.addSuppressed t delete-t)))
-            (throw (combined-exception [t]))))))
+            (throw (combined-exception [t] {:status-code 500}))))))
     (workspace/get-workspace (:id ws))))
 
 (defn delete-workspace!

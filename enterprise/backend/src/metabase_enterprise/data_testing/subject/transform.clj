@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.subject.transform
-  "The `:transform` subject: a query transform, whose output expectations name by its target table."
+  "The `:transform` subject: a saved query transform, whose output expectations name by its target table."
   (:require
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
@@ -13,7 +13,7 @@
 
 (mu/defmethod data-testing.subject/subject-plan :transform :- ::data-testing.subject/subject-plan
   [_subject-type
-   transform :- ::transforms.schema/transform.definition]
+   transform :- ::transforms.schema/transform]
   (when-not (transforms-base.u/query-transform? transform)
     (throw (data-testing.errors/ex
             ::data-testing.errors/unsupported-transform
@@ -26,4 +26,5 @@
     {:database      database
      :compiled      {:query query :params params}
      :output-tables [target]
+     :output-token  nil
      :output-label  (data-testing.validator/table-label target)}))
