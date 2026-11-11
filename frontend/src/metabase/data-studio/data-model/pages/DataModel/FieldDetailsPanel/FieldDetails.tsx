@@ -96,7 +96,9 @@ export function FieldDetails({ field, table }: FieldDetailsProps) {
       {/* Bleeds into the panel's padding so the border spans the drawer */}
       <Tabs.List mb="xl" mx="-xl" px="xl">
         <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
-        {hasValuesTab && <Tabs.Tab value="values">{t`Values`}</Tabs.Tab>}
+        {hasValuesTab && (
+          <Tabs.Tab value="values">{t`Value grouping`}</Tabs.Tab>
+        )}
         <Tabs.Tab value="behavior">{t`Behavior`}</Tabs.Tab>
         <Tabs.Tab value="formatting">{t`Formatting`}</Tabs.Tab>
       </Tabs.List>

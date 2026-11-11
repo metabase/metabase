@@ -7,10 +7,11 @@ import {
   getMeasureGroupProposals,
   useMeasureGroups,
 } from "metabase/metadata/measure-groups";
-import { Button, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
+import { Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import type { Measure, Table } from "metabase-types/api";
 
 import { GroupMemberPills } from "../GroupMemberList";
+import { ProposalActions } from "../ListSection";
 
 import S from "./MeasureItem/MeasureItem.module.css";
 
@@ -103,12 +104,15 @@ export function MeasureGroupProposalItem({
   proposal,
   measures,
   canAccept,
+  isMuted = false,
   onAccept,
   onDismiss,
 }: {
   proposal: MeasureGroupProposal;
   measures: Measure[];
   canAccept: boolean;
+  /** Secondary colors, to tell a proposal apart in a list of real groups */
+  isMuted?: boolean;
   onAccept: () => void;
   onDismiss: () => void;
 }) {
@@ -125,26 +129,23 @@ export function MeasureGroupProposalItem({
       <Group justify="space-between" wrap="nowrap" gap="md">
         <Stack gap="xxs" miw={0}>
           <Flex align="center" gap="sm">
-            <Icon name="folder" c="text-secondary" />
-            <Text fw="bold">{proposal.name}</Text>
+            <Icon
+              name="folder"
+              c={isMuted ? "icon-secondary" : "text-secondary"}
+            />
+            <Text fw="bold" c={isMuted ? "text-secondary" : undefined}>
+              {proposal.name}
+            </Text>
           </Flex>
-          <Text lh="lg">
+          <Text lh="lg" c={isMuted ? "text-secondary" : undefined}>
             {getMemberNames(proposal.measureIds, measures).join(" · ")}
           </Text>
-          <Text size="sm" c="text-secondary">
-            {proposal.signal}
-          </Text>
         </Stack>
-        {canAccept && (
-          <Group gap="xs" wrap="nowrap" flex="0 0 auto">
-            <Button size="sm" variant="filled" onClick={onAccept}>
-              {t`Accept`}
-            </Button>
-            <Button size="sm" onClick={onDismiss}>
-              {t`Dismiss`}
-            </Button>
-          </Group>
-        )}
+        <ProposalActions
+          canAccept={canAccept}
+          onAccept={onAccept}
+          onDismiss={onDismiss}
+        />
       </Group>
     </Card>
   );

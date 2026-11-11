@@ -4,7 +4,7 @@ import { DatabaseInfoSection } from "metabase/admin/databases/components/Databas
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
-import { TableFiltering } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableFiltering";
+import { TableRequiredFilter } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableFiltering";
 import { useParams } from "metabase/router";
 import { Box, Center, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -52,12 +52,12 @@ export function TableMetadataPage() {
             <TableSubjectFields table={table} readOnly={readOnly} />
           </DatabaseInfoSection>
           <DatabaseInfoSection
-            name={t`Default segment and filter`}
-            description={t`These are helpful for very large tables to prevent users from accidentally querying more data than they intend to.`}
+            name={t`Required filter`}
+            description={t`Helpful for very large tables to prevent users from accidentally querying more data than they intend to.`}
             contentPx="xxxl"
             cardRadius="lg"
           >
-            <TableFiltering table={table} readOnly={readOnly} />
+            <TableRequiredFilter table={table} readOnly={readOnly} />
           </DatabaseInfoSection>
           <TableStructureSections table={table} />
         </Flex>

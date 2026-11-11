@@ -189,20 +189,3 @@ export function getSegmentGroupKindLabel(
 ): string {
   return kind === "partition" ? t`Partition` : t`Overlapping`;
 }
-
-export function getSegmentGroupSourceLabel(
-  source: SegmentGroupSource,
-  sourceField: Pick<Field, "display_name"> | undefined,
-): string | null {
-  const name = sourceField?.display_name;
-  switch (source) {
-    case "process":
-      return name ? t`From the order of ${name}` : t`From the process`;
-    case "flag":
-      return name ? t`From the ${name} flag` : null;
-    // A group named after its column already says where it comes from
-    case "kind":
-    case "admin":
-      return null;
-  }
-}

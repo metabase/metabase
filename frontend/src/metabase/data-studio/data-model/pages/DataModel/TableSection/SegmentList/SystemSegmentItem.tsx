@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { Card, Flex, Icon, Stack, Text, rem } from "metabase/ui";
+import { getSystemSegmentRoleLabel } from "metabase/metadata/table-segments";
+import { Badge, Card, Flex, Icon, Stack, Text, rem } from "metabase/ui";
 
 import { ClausePills } from "../ClausePills";
 import type { ResolvedSystemSegment } from "../table-segments";
@@ -47,6 +48,9 @@ export function SystemSegmentItem({
           {segment.isEdited && (
             <Text size="sm" c="text-secondary">{t`Edited`}</Text>
           )}
+          <Badge variant="light" color="neutral" ml="auto" flex="0 0 auto">
+            {getSystemSegmentRoleLabel(segment.role)}
+          </Badge>
         </Flex>
         {hasFilters ? (
           <ClausePills

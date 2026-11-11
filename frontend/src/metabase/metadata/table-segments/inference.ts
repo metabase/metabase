@@ -1,20 +1,33 @@
 import { t } from "ttag";
 
-import { isMilestoneField } from "metabase/metadata/lifecycle";
+import {
+  type OrderedValue,
+  VALUE_BUCKETS,
+  getValueBucketLabel,
+  isMilestoneField,
+} from "metabase/metadata/lifecycle";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isBoolean, isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, SegmentId, Table } from "metabase-types/api";
 
-/** The segments every table has, built from its row-lifecycle columns */
+/** The segments sync builds from a table's row-lifecycle columns */
 export type SystemSegmentRole =
   | "exclude_deleted"
   | "current_rows"
-  | "exclude_test";
+  | "exclude_test"
+  /** The AND of the others; the table's default segment */
+  | "default_scope";
 
-export const SYSTEM_SEGMENT_ROLES: SystemSegmentRole[] = [
+/** One segment per lifecycle condition, in the order they're listed */
+export const CONDITION_SEGMENT_ROLES: SystemSegmentRole[] = [
   "exclude_deleted",
   "current_rows",
   "exclude_test",
+];
+
+export const SYSTEM_SEGMENT_ROLES: SystemSegmentRole[] = [
+  ...CONDITION_SEGMENT_ROLES,
+  "default_scope",
 ];
 
 export type Confidence = "high" | "low";
@@ -28,7 +41,19 @@ export type FieldCondition =
   /** Any of several values, like a status bucket's */
   | { fieldId: FieldId; operator: "in"; values: string[] }
   | { fieldId: FieldId; operator: "is-null" | "not-null" }
-  | { fieldId: FieldId; operator: "last-days"; days: number };
+  | { fieldId: FieldId; operator: "last-days"; days: number }
+  /** The latest complete period at the column's grain */
+  | { fieldId: FieldId; operator: "last-period"; unit: PeriodUnit };
+
+/** A period key's grain */
+export type PeriodUnit =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "month"
+  | "quarter"
+  | "year";
 
 export type SystemSegmentInference = {
   conditions: FieldCondition[];
@@ -59,8 +84,8 @@ export type RequiredFilterInference = {
 export type CohortProposal = {
   /** Stable across syncs, so a dismissal sticks */
   key: string;
-  /** A milestone date or flag; status buckets are segment group proposals */
-  kind: "milestone";
+  /** A status column's bucket, or a milestone date that's set */
+  kind: "status" | "milestone";
   name: string;
   condition: FieldCondition;
   signal: string;
@@ -69,11 +94,27 @@ export type CohortProposal = {
 export function getSystemSegmentLabel(role: SystemSegmentRole): string {
   switch (role) {
     case "exclude_deleted":
-      return t`Excluding deleted`;
+      return t`Not deleted`;
     case "current_rows":
-      return t`Current records only`;
+      return t`Current records`;
     case "exclude_test":
-      return t`Excluding test data`;
+      return t`No test data`;
+    case "default_scope":
+      return t`Default rows`;
+  }
+}
+
+/** The segment's role in a word or two, for its badge */
+export function getSystemSegmentRoleLabel(role: SystemSegmentRole): string {
+  switch (role) {
+    case "exclude_deleted":
+      return t`Exclude deleted`;
+    case "current_rows":
+      return t`Current rows`;
+    case "exclude_test":
+      return t`Exclude test`;
+    case "default_scope":
+      return t`Default scope`;
   }
 }
 
@@ -85,6 +126,8 @@ export function getSystemSegmentDescription(role: SystemSegmentRole): string {
       return t`Keeps only the current version of each record`;
     case "exclude_test":
       return t`Leaves out test and sandbox rows`;
+    case "default_scope":
+      return t`All of this table's other system segments together. Its questions start from it.`;
   }
 }
 
@@ -213,6 +256,34 @@ function inferCurrentRowsFromHistory(
   };
 }
 
+/** Every lifecycle condition the table has, ANDed into one segment */
+function inferDefaultScope(
+  fields: Field[],
+  history?: CurrentVersionBinding,
+): SystemSegmentInference {
+  const members = CONDITION_SEGMENT_ROLES.map((role) => ({
+    role,
+    inference: inferSystemSegment(fields, role, history),
+  })).filter(({ inference }) => inference.conditions.length > 0);
+  if (members.length === 0) {
+    return {
+      conditions: [],
+      signal: t`No deleted, current-version, or test-data column`,
+      confidence: "high",
+    };
+  }
+  const memberLabels = members
+    .map(({ role }) => getSystemSegmentLabel(role))
+    .join(", ");
+  return {
+    conditions: members.flatMap(({ inference }) => inference.conditions),
+    signal: t`Combines ${memberLabels}`,
+    confidence: members.some(({ inference }) => inference.confidence === "low")
+      ? "low"
+      : "high",
+  };
+}
+
 /**
  * A system segment's conditions from the table's lifecycle columns, ANDed.
  * On a history table, its binding decides the current rows instead.
@@ -222,6 +293,9 @@ export function inferSystemSegment(
   role: SystemSegmentRole,
   history?: CurrentVersionBinding,
 ): SystemSegmentInference {
+  if (role === "default_scope") {
+    return inferDefaultScope(fields, history);
+  }
   if (role === "current_rows" && history != null) {
     return inferCurrentRowsFromHistory(fields, history);
   }
@@ -252,27 +326,20 @@ export function inferSystemSegment(
 }
 
 /**
- * Current versions first, since a history table's old versions would double
- * count; then deleted rows; then test data, a weaker guess as a default.
+ * Sync points the table's default at its default scope segment, the AND of
+ * every lifecycle condition it found. A table with none starts from all rows.
  */
 export function inferDefaultSegment(
   fields: Field[],
   history?: CurrentVersionBinding,
 ): DefaultSegmentInference {
-  const roles: SystemSegmentRole[] = [
-    "current_rows",
-    "exclude_deleted",
-    "exclude_test",
-  ];
-  for (const role of roles) {
-    const inference = inferSystemSegment(fields, role, history);
-    if (inference.conditions.length > 0) {
-      return {
-        segment: { type: "system", role },
-        signal: inference.signal,
-        confidence: role === "exclude_test" ? "low" : inference.confidence,
-      };
-    }
+  const scope = inferSystemSegment(fields, "default_scope", history);
+  if (scope.conditions.length > 0) {
+    return {
+      segment: { type: "system", role: "default_scope" },
+      signal: scope.signal,
+      confidence: scope.confidence,
+    };
   }
   return {
     segment: { type: "all" },
@@ -289,13 +356,25 @@ export const DEFAULT_REQUIRED_FILTER_ROW_THRESHOLD = 100_000_000;
 
 const REQUIRED_FILTER_DAYS = 30;
 
+/** What the main date is, for the required filter's default range */
+export type MainDateKind = "event" | "period";
+
+export type RequiredFilterMainDate = {
+  field: Field;
+  /** `null` when it's neither an event time nor a snapshot period */
+  kind: MainDateKind | null;
+  /** A period key's grain, for its finest period */
+  periodUnit: PeriodUnit;
+};
+
 /**
- * Tables at or over the row threshold get a required filter on their main
- * date: the last 30 days
+ * Tables over the row threshold whose main date is an event time or snapshot
+ * period get a required filter on it: the last 30 days of an event time, or
+ * the latest period of a period key
  */
 export function inferRequiredFilter(
   table: Pick<Table, "estimated_row_count">,
-  mainDateField: Field | undefined,
+  mainDate: RequiredFilterMainDate | undefined,
   rowThreshold: number,
 ): RequiredFilterInference {
   const rowCount = table.estimated_row_count;
@@ -308,60 +387,51 @@ export function inferRequiredFilter(
   }
   const rows = rowCount.toLocaleString();
   const threshold = rowThreshold.toLocaleString();
-  if (rowCount < rowThreshold) {
+  if (rowCount <= rowThreshold) {
     return {
       condition: null,
-      signal: t`${rows} rows is under the ${threshold}-row threshold`,
+      signal: t`${rows} rows isn't over the ${threshold}-row threshold`,
       confidence: "high",
     };
   }
-  if (!mainDateField) {
+  if (!mainDate) {
     return {
       condition: null,
       signal: t`${rows} rows is over the ${threshold}-row threshold, but there's no main date to filter on`,
       confidence: "low",
     };
   }
-  return {
-    condition: {
-      fieldId: idOf(mainDateField),
-      operator: "last-days",
-      days: REQUIRED_FILTER_DAYS,
-    },
-    signal: t`${rows} rows is over the ${threshold}-row threshold, so questions start from the last ${REQUIRED_FILTER_DAYS} days of ${mainDateField.display_name}`,
-    confidence: "low",
-  };
+  const { field, kind, periodUnit } = mainDate;
+  switch (kind) {
+    case "event":
+      return {
+        condition: {
+          fieldId: idOf(field),
+          operator: "last-days",
+          days: REQUIRED_FILTER_DAYS,
+        },
+        signal: t`${rows} rows is over the ${threshold}-row threshold, so questions start from the last ${REQUIRED_FILTER_DAYS} days of ${field.display_name}`,
+        confidence: "low",
+      };
+    case "period":
+      return {
+        condition: {
+          fieldId: idOf(field),
+          operator: "last-period",
+          unit: periodUnit,
+        },
+        signal: t`${rows} rows is over the ${threshold}-row threshold, so questions start from the latest ${periodUnit} of ${field.display_name}`,
+        confidence: "low",
+      };
+    case null:
+      return {
+        condition: null,
+        signal: t`${rows} rows is over the ${threshold}-row threshold, but ${field.display_name} isn't an event time or snapshot period`,
+        confidence: "low",
+      };
+  }
 }
 
-// Past-tense steps a milestone flag can name; milestone dates use the shared
-// MilestoneTimestamp rule instead
-const MILESTONE_FLAG_VERBS = [
-  "canceled",
-  "cancelled",
-  "churned",
-  "converted",
-  "trial_converted",
-  "completed",
-  "shipped",
-  "delivered",
-  "paid",
-  "closed",
-  "won",
-  "lost",
-  "activated",
-  "onboarded",
-  "refunded",
-  "approved",
-  "rejected",
-  "resolved",
-  "signed_up",
-  "subscribed",
-  "verified",
-  "confirmed",
-];
-const MILESTONE_FLAG_RE = new RegExp(
-  `^(is_|has_)?(${MILESTONE_FLAG_VERBS.join("|")})$`,
-);
 const MILESTONE_DATE_SUFFIX_RE = /_(at|on|date|time)$/;
 
 const humanize = (words: string) => {
@@ -370,37 +440,48 @@ const humanize = (words: string) => {
 };
 
 /**
- * Cohorts from milestones: a milestone date that's set, or a milestone flag
- * that's true. A status column's buckets are proposed as one partition
- * instead; see `getProcessPartitionProposal` in segment-groups.
+ * PROTOTYPE: mocked. Cohorts from milestones: rows whose milestone date is
+ * set (MilestoneTimestamp is not null). Proposed, never applied by default.
  */
 export function getMilestoneCohortProposals(fields: Field[]): CohortProposal[] {
-  return fields.flatMap((field): CohortProposal[] => {
-    if (isMilestoneField(field)) {
+  return fields.filter(isMilestoneField).map((field) => ({
+    key: `milestone:${idOf(field)}`,
+    kind: "milestone",
+    name: humanize(nameOf(field).replace(MILESTONE_DATE_SUFFIX_RE, "")),
+    condition: { fieldId: idOf(field), operator: "not-null" },
+    signal: t`${field.display_name} is a milestone date`,
+  }));
+}
+
+/**
+ * PROTOTYPE: mocked. Cohorts from a status column: one per bucket of its value
+ * order (Open, Won, Lost, Cancelled), each the bucket's values. Values still in
+ * Other make no cohort. Proposed, never applied by default.
+ */
+export function getStatusCohortProposals(
+  table: Pick<Table, "display_name">,
+  statusField: Field,
+  orderedValues: OrderedValue[],
+): CohortProposal[] {
+  const rows = table.display_name.toLowerCase();
+  return VALUE_BUCKETS.filter((bucket) => bucket !== "other").flatMap(
+    (bucket): CohortProposal[] => {
+      const values = orderedValues
+        .filter((value) => value.bucket === bucket)
+        .map(({ value }) => value);
+      if (values.length === 0) {
+        return [];
+      }
+      const bucketLabel = getValueBucketLabel(bucket);
       return [
         {
-          key: `milestone:${idOf(field)}`,
-          kind: "milestone",
-          name: humanize(nameOf(field).replace(MILESTONE_DATE_SUFFIX_RE, "")),
-          condition: { fieldId: idOf(field), operator: "not-null" },
-          signal: t`${field.display_name} is a milestone date`,
+          key: `status:${idOf(statusField)}:${bucket}`,
+          kind: "status",
+          name: t`${bucketLabel} ${rows}`,
+          condition: { fieldId: idOf(statusField), operator: "in", values },
+          signal: t`${statusField.display_name} values in its ${bucketLabel} bucket`,
         },
       ];
-    }
-    const flagMatch = isBoolean(field)
-      ? MILESTONE_FLAG_RE.exec(nameOf(field))
-      : null;
-    if (flagMatch) {
-      return [
-        {
-          key: `milestone:${idOf(field)}`,
-          kind: "milestone",
-          name: humanize(flagMatch[2]),
-          condition: { fieldId: idOf(field), operator: "=", value: true },
-          signal: t`${field.display_name} is a milestone flag`,
-        },
-      ];
-    }
-    return [];
-  });
+    },
+  );
 }

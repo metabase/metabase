@@ -9,7 +9,7 @@ import type { SystemSegmentRole } from "metabase/metadata/table-segments";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { useSelector } from "metabase/redux";
 import { useNavigate, useSearchParams } from "metabase/router";
-import { Button, Icon, Stack, Tabs, rem } from "metabase/ui";
+import { Box, Button, Icon, Stack, Tabs, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Segment, SegmentId, Table } from "metabase-types/api";
 
@@ -19,8 +19,13 @@ import {
   ListSearchEmptyState,
   matchesListSearch,
 } from "../ListSearchBar";
-import { ListEmptyItem, ListSection } from "../ListSection";
-import { useTableQuery, useTableSegmentsModel } from "../table-segments";
+import { ListEmptyItem, type ListLayout, ListSection } from "../ListSection";
+import { TableDefaultSegment } from "../TableFiltering";
+import {
+  isDefaultSegment,
+  useTableQuery,
+  useTableSegmentsModel,
+} from "../table-segments";
 
 import {
   CohortProposalItem,
@@ -55,6 +60,10 @@ type SegmentListProps = {
   isSearchable?: boolean;
   /** A full page: 17px section subheadings, and more room between sections */
   isFullPage?: boolean;
+  /** Shows the table's default segment setting above its segments */
+  hasDefaultSegmentSetting?: boolean;
+  /** Tabs for segments and groups, or one page of sections with proposals inline */
+  layout?: ListLayout;
 };
 
 function getDataModelSegmentUrls(table: Table): SegmentListUrls {
@@ -75,23 +84,25 @@ function getDataModelSegmentUrls(table: Table): SegmentListUrls {
   };
 }
 
-type SegmentView = "custom" | "groups" | "system";
+type SegmentView = "custom" | "groups";
 
 const getViewOptions = (): { value: SegmentView; label: string }[] => [
   { value: "custom", label: t`Segments` },
   { value: "groups", label: t`Groups` },
-  { value: "system", label: t`System segments` },
 ];
 
 /**
- * The table's segments, one view at a time: the ones people made, the groups
- * they form, what sync proposes, and the system segments every table has.
+ * The table's segments, one view at a time: the ones people made with the
+ * system segments every table has, and the groups they form, each with what
+ * sync proposes.
  */
 export function SegmentList({
   table,
   getUrls,
   isSearchable = true,
   isFullPage = false,
+  hasDefaultSegmentSetting = false,
+  layout = "tabs",
 }: SegmentListProps) {
   const [query, setQuery] = useState("");
   // Pages that return to the groups ask for them with `?view=groups`
@@ -115,7 +126,6 @@ export function SegmentList({
   const canCreateSegment = useSelector((state) =>
     getUserCanWriteSegments(state, table.is_published),
   );
-  const defaultSegment = model.defaultSegment.segment;
   const isSearching = query.trim() !== "";
   const tableSegments = table.segments ?? [];
   const { fromDefinition } = useTableQuery(table);
@@ -153,11 +163,11 @@ export function SegmentList({
   const hasGroupProposals =
     matchingGroupProposals.length > 0 || kindCandidates.length > 0;
   const hasViewMatches =
-    view === "system"
-      ? systemSegments.length > 0
-      : view === "groups"
-        ? segmentGroups.length > 0 || hasGroupProposals
-        : customSegments.length > 0 || matchingProposals.length > 0;
+    view === "groups"
+      ? segmentGroups.length > 0 || hasGroupProposals
+      : customSegments.length > 0 ||
+        systemSegments.length > 0 ||
+        matchingProposals.length > 0;
   const urls = getUrls?.(table) ?? getDataModelSegmentUrls(table);
   const viewControl = (
     <Tabs
@@ -178,6 +188,156 @@ export function SegmentList({
       </Tabs.List>
     </Tabs>
   );
+
+  const newSegmentButton = canCreateSegment && (
+    <Button
+      component={ForwardRefLink}
+      to={urls.newSegment}
+      variant="filled"
+      size="md"
+      leftSection={<Icon name="add" />}
+      onClick={() =>
+        trackSegmentCreateStarted("data_studio_segments", Number(table.id))
+      }
+    >
+      {t`New segment`}
+    </Button>
+  );
+  const newSegmentGroupButton = canCreateSegment && (
+    <Button
+      component={ForwardRefLink}
+      to={urls.newSegmentGroup}
+      variant="filled"
+      size="md"
+      leftSection={<Icon name="add" />}
+    >
+      {t`New group`}
+    </Button>
+  );
+
+  const segmentItems = [
+    ...systemSegments.map((segment) => (
+      <SystemSegmentItem
+        key={segment.role}
+        segment={segment}
+        href={urls.systemSegment(segment.role)}
+        isDefault={isDefaultSegment(model.defaultSegment, {
+          type: "system",
+          role: segment.role,
+        })}
+      />
+    )),
+    ...customSegments.map((segment) => (
+      <SegmentItem
+        key={segment.id}
+        segment={segment}
+        href={urls.segment(segment.id)}
+        clauses={getSegmentClauses(segment)}
+        isDefault={isDefaultSegment(model.defaultSegment, {
+          type: "custom",
+          segmentId: segment.id,
+        })}
+      />
+    )),
+  ];
+  const getProposedSegmentItems = (isMuted: boolean) =>
+    matchingProposals.map((proposal) => (
+      <CohortProposalItem
+        key={proposal.key}
+        proposal={proposal}
+        baseQuery={model.baseQuery}
+        canAccept={canCreateSegment}
+        isMuted={isMuted}
+        onAccept={() => accept(proposal)}
+        onDismiss={() => dismiss(proposal)}
+      />
+    ));
+  const groupItems = segmentGroups.map((group) => (
+    <SegmentGroupItem
+      key={group.id}
+      group={group}
+      table={table}
+      onOpen={
+        canCreateSegment
+          ? () => navigate(urls.segmentGroup(group.id))
+          : undefined
+      }
+    />
+  ));
+  const getProposedGroupItems = (isMuted: boolean) => [
+    ...matchingGroupProposals.map((proposal) => (
+      <SegmentGroupProposalItem
+        key={proposal.key}
+        proposal={proposal}
+        canAccept={canCreateSegment}
+        isMuted={isMuted}
+        onAccept={() => groupProposalActions.accept(proposal)}
+        onDismiss={() => groupProposalActions.dismiss(proposal)}
+      />
+    )),
+    ...kindCandidates.map((field) => (
+      <KindPartitionProposalItem
+        key={getRawTableFieldId(field)}
+        field={field}
+        query={query}
+        canAccept={canCreateSegment}
+        isMuted={isMuted}
+        onAccept={groupProposalActions.accept}
+        onDismiss={groupProposalActions.dismiss}
+      />
+    )),
+  ];
+  const segmentGroupsDescription = t`Named sets of segments, like Open, Won and Lost deals. When the segments don't overlap, people can group by, filter on and compare them side by side.`;
+  const defaultSegmentSetting = hasDefaultSegmentSetting && (
+    <TableDefaultSegment table={table} readOnly={!table.can_write} />
+  );
+
+  if (layout === "sections") {
+    // One page: segments, then groups, each with its proposals mixed in
+    const proposedSegmentItems = getProposedSegmentItems(true);
+    const proposedGroupItems = getProposedGroupItems(true);
+    return (
+      <Stack
+        gap={isFullPage ? rem(48) : "xl"}
+        data-testid="table-segments-page"
+      >
+        {isSearchable && (
+          <ListSearchBar
+            value={query}
+            placeholder={t`Search segments and groups`}
+            onChange={setQuery}
+          />
+        )}
+        {defaultSegmentSetting && (
+          // The page's 24px top padding plus this match the 48px gap below
+          <Box pt={isFullPage ? "xl" : 0}>{defaultSegmentSetting}</Box>
+        )}
+        <ListSection
+          title={t`Segments`}
+          isSubheading={isFullPage}
+          action={newSegmentButton}
+        >
+          {segmentItems}
+          {proposedSegmentItems}
+          {segmentItems.length === 0 && proposedSegmentItems.length === 0 && (
+            <ListEmptyItem>{t`No segments yet`}</ListEmptyItem>
+          )}
+        </ListSection>
+        <ListSection
+          title={t`Segment groups`}
+          isSubheading={isFullPage}
+          description={segmentGroupsDescription}
+          action={newSegmentGroupButton}
+        >
+          {groupItems}
+          {proposedGroupItems}
+          {groupItems.length === 0 && proposedGroupItems.length === 0 && (
+            <ListEmptyItem>{t`No segment groups yet`}</ListEmptyItem>
+          )}
+        </ListSection>
+      </Stack>
+    );
+  }
 
   return (
     <Stack
@@ -203,101 +363,39 @@ export function SegmentList({
         <ListSearchEmptyState>{t`No segments match "${query}"`}</ListSearchEmptyState>
       )}
 
-      {view === "system" && systemSegments.length > 0 && (
-        <ListSection>
-          {systemSegments.map((segment) => (
-            <SystemSegmentItem
-              key={segment.role}
-              segment={segment}
-              href={urls.systemSegment(segment.role)}
-              isDefault={
-                defaultSegment.type === "system" &&
-                defaultSegment.role === segment.role
-              }
-            />
-          ))}
-        </ListSection>
-      )}
-
       {view === "groups" && (!isSearching || segmentGroups.length > 0) && (
         <ListSection
           title={t`Segment groups`}
           isSubheading={isFullPage}
-          action={
-            canCreateSegment && (
-              <Button
-                component={ForwardRefLink}
-                to={urls.newSegmentGroup}
-                variant="filled"
-                size="md"
-                leftSection={<Icon name="add" />}
-              >
-                {t`New segment group`}
-              </Button>
-            )
-          }
+          description={segmentGroupsDescription}
+          action={newSegmentGroupButton}
         >
-          {segmentGroups.length > 0 ? (
-            segmentGroups.map((group) => (
-              <SegmentGroupItem
-                key={group.id}
-                group={group}
-                table={table}
-                onOpen={
-                  canCreateSegment
-                    ? () => navigate(urls.segmentGroup(group.id))
-                    : undefined
-                }
-              />
-            ))
+          {groupItems.length > 0 ? (
+            groupItems
           ) : (
             <ListEmptyItem>{t`No segment groups yet`}</ListEmptyItem>
           )}
         </ListSection>
       )}
 
-      {view === "custom" && (!isSearching || customSegments.length > 0) && (
-        <ListSection
-          title={t`Custom segments`}
-          isSubheading={isFullPage}
-          action={
-            canCreateSegment && (
-              <Button
-                component={ForwardRefLink}
-                to={urls.newSegment}
-                variant="filled"
-                size="md"
-                leftSection={<Icon name="add" />}
-                onClick={() =>
-                  trackSegmentCreateStarted(
-                    "data_studio_segments",
-                    Number(table.id),
-                  )
-                }
-              >
-                {t`New segment`}
-              </Button>
-            )
-          }
-        >
-          {customSegments.length > 0 ? (
-            customSegments.map((segment) => (
-              <SegmentItem
-                key={segment.id}
-                segment={segment}
-                href={urls.segment(segment.id)}
-                clauses={getSegmentClauses(segment)}
-                isDefault={
-                  defaultSegment.type === "custom" &&
-                  defaultSegment.segmentId === segment.id
-                }
-              />
-            ))
-          ) : (
-            <ListEmptyItem>{t`No custom segments yet`}</ListEmptyItem>
-          )}
-        </ListSection>
-      )}
+      {view === "custom" && defaultSegmentSetting}
+
+      {view === "custom" &&
+        (!isSearching ||
+          customSegments.length > 0 ||
+          systemSegments.length > 0) && (
+          <ListSection
+            title={t`Segments`}
+            isSubheading={isFullPage}
+            action={newSegmentButton}
+          >
+            {segmentItems.length > 0 ? (
+              segmentItems
+            ) : (
+              <ListEmptyItem>{t`No segments yet`}</ListEmptyItem>
+            )}
+          </ListSection>
+        )}
 
       {view === "groups" && hasGroupProposals && (
         <ListSection
@@ -305,25 +403,7 @@ export function SegmentList({
           isSubheading={isFullPage}
           description={t`Partitions from statuses, flags, and values. Accepting one makes a segment for each of its groups, and the group itself.`}
         >
-          {matchingGroupProposals.map((proposal) => (
-            <SegmentGroupProposalItem
-              key={proposal.key}
-              proposal={proposal}
-              canAccept={canCreateSegment}
-              onAccept={() => groupProposalActions.accept(proposal)}
-              onDismiss={() => groupProposalActions.dismiss(proposal)}
-            />
-          ))}
-          {kindCandidates.map((field) => (
-            <KindPartitionProposalItem
-              key={getRawTableFieldId(field)}
-              field={field}
-              query={query}
-              canAccept={canCreateSegment}
-              onAccept={groupProposalActions.accept}
-              onDismiss={groupProposalActions.dismiss}
-            />
-          ))}
+          {getProposedGroupItems(false)}
         </ListSection>
       )}
 
@@ -331,19 +411,10 @@ export function SegmentList({
         <ListSection
           title={t`Proposed segments`}
           isSubheading={isFullPage}
-          description={t`Rows that reached a milestone, like Activated or Converted, based on date or yes/no columns. Accepting one makes it a custom segment.`}
+          description={t`Rows in each bucket of a status, like Won or Lost, and rows that reached a milestone date, like Activated. Accepting one makes it a custom segment. None is a default segment unless you pick it.`}
         >
           {matchingProposals.length > 0 ? (
-            matchingProposals.map((proposal) => (
-              <CohortProposalItem
-                key={proposal.key}
-                proposal={proposal}
-                baseQuery={model.baseQuery}
-                canAccept={canCreateSegment}
-                onAccept={() => accept(proposal)}
-                onDismiss={() => dismiss(proposal)}
-              />
-            ))
+            getProposedSegmentItems(false)
           ) : (
             <ListEmptyItem>{t`No proposed segments`}</ListEmptyItem>
           )}

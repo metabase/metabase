@@ -7,9 +7,11 @@ import {
   getMeasureProposals,
   useMeasureGroups,
 } from "metabase/metadata/measure-groups";
-import { Button, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
+import { Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Table } from "metabase-types/api";
+
+import { ProposalActions } from "../ListSection";
 
 const STAGE_INDEX = -1;
 
@@ -95,11 +97,14 @@ export function useMeasureProposals(
 export function MeasureProposalItem({
   proposal,
   canAccept,
+  isMuted = false,
   onAccept,
   onDismiss,
 }: {
   proposal: MeasureProposal;
   canAccept: boolean;
+  /** Secondary colors, to tell a proposal apart in a list of real measures */
+  isMuted?: boolean;
   onAccept: () => void;
   onDismiss: () => void;
 }) {
@@ -116,23 +121,20 @@ export function MeasureProposalItem({
       <Group justify="space-between" wrap="nowrap" gap="md">
         <Stack gap="xxs" miw={0}>
           <Flex align="center" gap="sm">
-            <Icon name="ruler" c="text-secondary" />
-            <Text fw="bold">{proposal.name}</Text>
+            <Icon
+              name="ruler"
+              c={isMuted ? "icon-secondary" : "text-secondary"}
+            />
+            <Text fw="bold" c={isMuted ? "text-secondary" : undefined}>
+              {proposal.name}
+            </Text>
           </Flex>
-          <Text size="sm" c="text-secondary">
-            {proposal.signal}
-          </Text>
         </Stack>
-        {canAccept && (
-          <Group gap="xs" wrap="nowrap" flex="0 0 auto">
-            <Button size="sm" variant="filled" onClick={onAccept}>
-              {t`Accept`}
-            </Button>
-            <Button size="sm" onClick={onDismiss}>
-              {t`Dismiss`}
-            </Button>
-          </Group>
-        )}
+        <ProposalActions
+          canAccept={canAccept}
+          onAccept={onAccept}
+          onDismiss={onDismiss}
+        />
       </Group>
     </Card>
   );

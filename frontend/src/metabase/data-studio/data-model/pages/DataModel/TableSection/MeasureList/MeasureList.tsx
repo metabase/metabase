@@ -22,7 +22,7 @@ import {
   ListSearchEmptyState,
   matchesListSearch,
 } from "../ListSearchBar";
-import { ListEmptyItem, ListSection } from "../ListSection";
+import { ListEmptyItem, type ListLayout, ListSection } from "../ListSection";
 import { useTableQuery } from "../table-segments";
 
 import {
@@ -50,6 +50,8 @@ type MeasureListProps = {
   isSearchable?: boolean;
   /** A full page: 17px section subheadings, and more room between sections */
   isFullPage?: boolean;
+  /** Tabs for measures and groups, or one page of sections with proposals inline */
+  layout?: ListLayout;
 };
 
 function getDataModelMeasureUrls(table: Table): MeasureListUrls {
@@ -84,6 +86,7 @@ export function MeasureList({
   getUrls,
   isSearchable = true,
   isFullPage = false,
+  layout = "tabs",
 }: MeasureListProps) {
   const measures = table.measures ?? [];
   const { query: baseQuery, fromDefinition } = useTableQuery(table);
@@ -141,6 +144,118 @@ export function MeasureList({
     trackMeasureCreateStarted(table.id as ConcreteTableId);
   };
 
+  const newMeasureButton = canWriteMeasures && (
+    <Button
+      component={ForwardRefLink}
+      to={urls.newMeasure}
+      variant="filled"
+      size="md"
+      leftSection={<Icon name="add" />}
+      onAuxClick={onNewMeasureClick}
+      onClickCapture={onNewMeasureClick}
+    >
+      {t`New measure`}
+    </Button>
+  );
+  const newMeasureGroupButton = canWriteMeasures && (
+    <Button
+      component={ForwardRefLink}
+      to={urls.newMeasureGroup}
+      variant="filled"
+      size="md"
+      leftSection={<Icon name="add" />}
+    >
+      {t`New measure group`}
+    </Button>
+  );
+  const measureItems = matchingMeasures.map((measure) => (
+    <MeasureItem
+      key={measure.id}
+      measure={measure}
+      href={urls.measure(measure.id)}
+      clauses={getMeasureClauses(measure)}
+    />
+  ));
+  const getProposedMeasureItems = (isMuted: boolean) =>
+    matchingMeasureProposals.map((proposal) => (
+      <MeasureProposalItem
+        key={proposal.key}
+        proposal={proposal}
+        canAccept={canWriteMeasures}
+        isMuted={isMuted}
+        onAccept={() => measureProposals.accept(proposal)}
+        onDismiss={() => measureProposals.dismiss(proposal)}
+      />
+    ));
+  const groupItems = measureGroups.map((group) => (
+    <MeasureGroupItem
+      key={group.id}
+      group={group}
+      measures={measures}
+      onOpen={
+        canWriteMeasures
+          ? () => navigate(urls.measureGroup(group.id))
+          : undefined
+      }
+    />
+  ));
+  const getProposedGroupItems = (isMuted: boolean) =>
+    matchingGroupProposals.map((proposal) => (
+      <MeasureGroupProposalItem
+        key={proposal.key}
+        proposal={proposal}
+        measures={measures}
+        canAccept={canWriteMeasures}
+        isMuted={isMuted}
+        onAccept={() => groupProposals.accept(proposal)}
+        onDismiss={() => groupProposals.dismiss(proposal)}
+      />
+    ));
+
+  if (layout === "sections") {
+    // One page: measures, then groups, each with its proposals mixed in
+    const proposedMeasureItems = getProposedMeasureItems(true);
+    const proposedGroupItems = getProposedGroupItems(true);
+    return (
+      <Stack
+        gap={isFullPage ? rem(48) : "xl"}
+        // With the page's 24px top padding, matches the 48px gap below
+        pt={isFullPage ? "xl" : 0}
+        data-testid="table-measures-page"
+      >
+        {isSearchable && (
+          <ListSearchBar
+            value={query}
+            placeholder={t`Search measures and groups`}
+            onChange={setQuery}
+          />
+        )}
+        <ListSection
+          title={t`Measures`}
+          isSubheading={isFullPage}
+          action={newMeasureButton}
+        >
+          {measureItems}
+          {proposedMeasureItems}
+          {measureItems.length === 0 && proposedMeasureItems.length === 0 && (
+            <ListEmptyItem>{t`No measures yet`}</ListEmptyItem>
+          )}
+        </ListSection>
+        <ListSection
+          title={t`Measure groups`}
+          isSubheading={isFullPage}
+          action={newMeasureGroupButton}
+        >
+          {groupItems}
+          {proposedGroupItems}
+          {groupItems.length === 0 && proposedGroupItems.length === 0 && (
+            <ListEmptyItem>{t`No measure groups yet`}</ListEmptyItem>
+          )}
+        </ListSection>
+      </Stack>
+    );
+  }
+
   return (
     <Stack
       // A full page spaces its tabs and sections at twice the drawer's 24px
@@ -187,31 +302,10 @@ export function MeasureList({
         <ListSection
           title={t`Measures`}
           isSubheading={isFullPage}
-          action={
-            canWriteMeasures && (
-              <Button
-                component={ForwardRefLink}
-                to={urls.newMeasure}
-                variant="filled"
-                size="md"
-                leftSection={<Icon name="add" />}
-                onAuxClick={onNewMeasureClick}
-                onClickCapture={onNewMeasureClick}
-              >
-                {t`New measure`}
-              </Button>
-            )
-          }
+          action={newMeasureButton}
         >
-          {matchingMeasures.length > 0 ? (
-            matchingMeasures.map((measure) => (
-              <MeasureItem
-                key={measure.id}
-                measure={measure}
-                href={urls.measure(measure.id)}
-                clauses={getMeasureClauses(measure)}
-              />
-            ))
+          {measureItems.length > 0 ? (
+            measureItems
           ) : (
             <ListEmptyItem>{t`No measures yet`}</ListEmptyItem>
           )}
@@ -226,15 +320,7 @@ export function MeasureList({
             description={t`A row count, and the total of each amount column. Accepting one makes it a measure.`}
           >
             {matchingMeasureProposals.length > 0 ? (
-              matchingMeasureProposals.map((proposal) => (
-                <MeasureProposalItem
-                  key={proposal.key}
-                  proposal={proposal}
-                  canAccept={canWriteMeasures}
-                  onAccept={() => measureProposals.accept(proposal)}
-                  onDismiss={() => measureProposals.dismiss(proposal)}
-                />
-              ))
+              getProposedMeasureItems(false)
             ) : (
               <ListEmptyItem>{t`No proposed measures`}</ListEmptyItem>
             )}
@@ -245,33 +331,10 @@ export function MeasureList({
         <ListSection
           title={t`Measure groups`}
           isSubheading={isFullPage}
-          action={
-            canWriteMeasures && (
-              <Button
-                component={ForwardRefLink}
-                to={urls.newMeasureGroup}
-                variant="filled"
-                size="md"
-                leftSection={<Icon name="add" />}
-              >
-                {t`New measure group`}
-              </Button>
-            )
-          }
+          action={newMeasureGroupButton}
         >
-          {measureGroups.length > 0 ? (
-            measureGroups.map((group) => (
-              <MeasureGroupItem
-                key={group.id}
-                group={group}
-                measures={measures}
-                onOpen={
-                  canWriteMeasures
-                    ? () => navigate(urls.measureGroup(group.id))
-                    : undefined
-                }
-              />
-            ))
+          {groupItems.length > 0 ? (
+            groupItems
           ) : (
             <ListEmptyItem>{t`No measure groups yet`}</ListEmptyItem>
           )}
@@ -286,16 +349,7 @@ export function MeasureList({
             description={t`Measures grouped by what they measure. Accept one to make it a group.`}
           >
             {matchingGroupProposals.length > 0 ? (
-              matchingGroupProposals.map((proposal) => (
-                <MeasureGroupProposalItem
-                  key={proposal.key}
-                  proposal={proposal}
-                  measures={measures}
-                  canAccept={canWriteMeasures}
-                  onAccept={() => groupProposals.accept(proposal)}
-                  onDismiss={() => groupProposals.dismiss(proposal)}
-                />
-              ))
+              getProposedGroupItems(false)
             ) : (
               <ListEmptyItem>{t`No proposed measure groups`}</ListEmptyItem>
             )}

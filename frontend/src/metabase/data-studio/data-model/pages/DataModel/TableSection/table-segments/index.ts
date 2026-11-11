@@ -5,6 +5,7 @@ export {
   type TableSegmentsModel,
   applyConditions,
   getFilterNames,
+  isDefaultSegment,
   useTableQuery,
   useTableSegmentsModel,
 } from "./use-table-segments-model";

@@ -7,7 +7,6 @@ export {
   getKindPartitionProposal,
   getProcessPartitionProposal,
   getSegmentGroupKindLabel,
-  getSegmentGroupSourceLabel,
 } from "./inference";
 export {
   SEGMENT_GROUP_KINDS,

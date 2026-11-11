@@ -6,9 +6,15 @@ import {
   useMetadataProvider,
 } from "metabase/metadata-store";
 import {
+  type ResolvedFieldType,
+  isFieldTypeA,
+  useTableSemantics,
+} from "metabase/metadata/semantic-types";
+import {
   type DefaultSegment,
   type DefaultSegmentInference,
   type FieldCondition,
+  type MainDateKind,
   type RequiredFilterInference,
   type ResolvedSegmentSettings,
   SYSTEM_SEGMENT_ROLES,
@@ -23,6 +29,7 @@ import {
   useTableSegments,
 } from "metabase/metadata/table-segments";
 import { isRoleA, useTableStructures } from "metabase/metadata/table-structure";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, FieldId, Segment, Table } from "metabase-types/api";
 
@@ -138,6 +145,15 @@ function toFilterClause(
         offsetUnit: null,
         options: {},
       });
+    case "last-period":
+      return Lib.relativeDateFilterClause({
+        column,
+        value: -1,
+        unit: condition.unit,
+        offsetValue: null,
+        offsetUnit: null,
+        options: {},
+      });
   }
 }
 
@@ -191,6 +207,16 @@ function getDefaultSegmentLabel(
   }
 }
 
+/** Whether a segment is the one a table's questions start from */
+export function isDefaultSegment(
+  { segment: current }: ResolvedDefaultSegment,
+  segment: Exclude<DefaultSegment, { type: "all" }>,
+): boolean {
+  return segment.type === "system"
+    ? current.type === "system" && current.role === segment.role
+    : current.type === "custom" && current.segmentId === segment.segmentId;
+}
+
 /** Why sync generated nothing, when an admin turned generation off */
 export function getGenerationOffSignal({
   generateSegments,
@@ -201,6 +227,23 @@ export function getGenerationOffSignal({
   return generateSegments.source === "schema"
     ? t`Segment generation is off for this schema`
     : t`Segment generation is off for this database`;
+}
+
+/** Whether a main date is an event time, a snapshot period, or neither */
+function getMainDateKind(
+  fieldType: ResolvedFieldType | undefined,
+): MainDateKind | null {
+  if (!fieldType) {
+    return null;
+  }
+  const types = [fieldType.semanticType, fieldType.facets.time ?? null];
+  if (types.some((type) => isFieldTypeA(type, "type/PeriodKey"))) {
+    return "period";
+  }
+  if (types.some((type) => isFieldTypeA(type, "type/EventTimestamp"))) {
+    return "event";
+  }
+  return null;
 }
 
 /**
@@ -219,7 +262,13 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
   const fields = table.fields ?? [];
   const customSegments = table.segments ?? [];
   const overrides = getTableSegmentsOverrides(table);
-  const { mainDateField, role: tableRole, history } = getTableStructure(table);
+  const {
+    mainDateField,
+    periodGranularity,
+    role: tableRole,
+    history,
+  } = getTableStructure(table);
+  const { fieldTypes } = useTableSemantics(table);
   const currentVersion =
     tableRole != null && isRoleA(tableRole, "role/HistoryDimension")
       ? history
@@ -228,25 +277,32 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
   const settings = getSegmentSettings(table.db_id, table.schema);
   const generationOffSignal = getGenerationOffSignal(settings);
 
-  const systemSegments: ResolvedSystemSegment[] = SYSTEM_SEGMENT_ROLES.map(
+  // Sync makes a segment only for conditions the table has columns for, plus
+  // their AND; one an admin edited stays, as the admin's version wins
+  const systemSegments: ResolvedSystemSegment[] = SYSTEM_SEGMENT_ROLES.flatMap(
     (role) => {
       const inference: SystemSegmentInference =
         generationOffSignal == null
           ? inferSystemSegment(fields, role, currentVersion)
           : { conditions: [], signal: generationOffSignal, confidence: "high" };
       const definition = overrides.systemSegments[role];
+      if (definition == null && inference.conditions.length === 0) {
+        return [];
+      }
       const query = definition
         ? fromDefinition(definition)
         : baseQuery && applyConditions(baseQuery, inference.conditions);
-      return {
-        role,
-        label: getSystemSegmentLabel(role),
-        description: getSystemSegmentDescription(role),
-        query,
-        filterNames: query ? getFilterNames(query) : [],
-        isEdited: definition != null,
-        inference,
-      };
+      return [
+        {
+          role,
+          label: getSystemSegmentLabel(role),
+          description: getSystemSegmentDescription(role),
+          query,
+          filterNames: query ? getFilterNames(query) : [],
+          isEdited: definition != null,
+          inference,
+        },
+      ];
     },
   );
 
@@ -258,16 +314,15 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
           signal: generationOffSignal,
           confidence: "high",
         };
-  // A default pointing at a deleted segment falls back to the inferred one
-  const defaultOverride =
-    overrides.defaultSegment?.type === "custom" &&
-    !customSegments.some(
-      ({ id }) =>
-        overrides.defaultSegment?.type === "custom" &&
-        id === overrides.defaultSegment.segmentId,
-    )
-      ? undefined
-      : overrides.defaultSegment;
+  // A default pointing at a segment the table no longer has falls back to the
+  // inferred one
+  const storedDefault = overrides.defaultSegment;
+  const isStoredDefaultMissing =
+    (storedDefault?.type === "custom" &&
+      !customSegments.some(({ id }) => id === storedDefault.segmentId)) ||
+    (storedDefault?.type === "system" &&
+      !systemSegments.some(({ role }) => role === storedDefault.role));
+  const defaultOverride = isStoredDefaultMissing ? undefined : storedDefault;
   const defaultSegmentValue = defaultOverride ?? defaultInference.segment;
   const defaultSegment: ResolvedDefaultSegment = {
     segment: defaultSegmentValue,
@@ -280,9 +335,15 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
     isOverridden: defaultOverride != null,
   };
 
+  const mainDateType =
+    mainDateField && fieldTypes.get(getRawTableFieldId(mainDateField));
   const requiredInference = inferRequiredFilter(
     table,
-    mainDateField,
+    mainDateField && {
+      field: mainDateField,
+      kind: getMainDateKind(mainDateType),
+      periodUnit: periodGranularity,
+    },
     settings.requiredFilterRowThreshold.value,
   );
   const inferredRequiredQuery =

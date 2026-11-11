@@ -1,1 +1,1 @@
-export { TableFiltering } from "./TableFiltering";
+export { TableDefaultSegment, TableRequiredFilter } from "./TableFiltering";

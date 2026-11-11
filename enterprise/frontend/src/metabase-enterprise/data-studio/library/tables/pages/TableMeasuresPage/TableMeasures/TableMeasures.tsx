@@ -5,6 +5,11 @@ import {
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
+import {
+  ListLayoutToggle,
+  useListLayout,
+} from "../../../components/ListLayoutToggle";
+
 type TableMeasuresProps = {
   table: Table;
 };
@@ -14,13 +19,18 @@ type TableMeasuresProps = {
  * data shows, opening the Library's measure pages.
  */
 export function TableMeasures({ table }: TableMeasuresProps) {
+  const [layout, setLayout] = useListLayout();
   return (
-    <MeasureList
-      table={table}
-      getUrls={getPublishedMeasureUrls}
-      isSearchable={false}
-      isFullPage
-    />
+    <>
+      <MeasureList
+        table={table}
+        getUrls={getPublishedMeasureUrls}
+        isSearchable={false}
+        isFullPage
+        layout={layout}
+      />
+      <ListLayoutToggle layout={layout} onChange={setLayout} />
+    </>
   );
 }
 

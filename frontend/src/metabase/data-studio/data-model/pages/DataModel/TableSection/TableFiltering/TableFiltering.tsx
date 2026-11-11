@@ -1,20 +1,16 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  type DefaultSegment,
-  SYSTEM_SEGMENT_ROLES,
-  getSystemSegmentLabel,
-} from "metabase/metadata/table-segments";
-import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import { ActionIcon, Icon, Input, Menu, Popover, Stack } from "metabase/ui";
+import type { DefaultSegment } from "metabase/metadata/table-segments";
+import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
+import { Icon, Input, Menu, Popover, Select, Stack, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Segment, Table } from "metabase-types/api";
 
 import { InferredValue } from "../InferenceReview";
 import {
   type ResolvedDefaultSegment,
-  type ResolvedRequiredFilter,
+  type ResolvedSystemSegment,
   type TableSegmentsModel,
   useTableSegmentsModel,
 } from "../table-segments";
@@ -25,32 +21,38 @@ const STAGE_INDEX = -1;
 
 const BUTTON_INPUT_CLASS_NAMES = { input: S.buttonInput };
 
-interface TableFilteringProps {
+interface TableSettingProps {
   table: Table;
   readOnly: boolean;
 }
 
-/**
- * PROTOTYPE: mocked. The segment a table's questions start from, and the
- * filter every question on it must have before it runs, as labeled inputs.
- */
-export function TableFiltering({ table, readOnly }: TableFilteringProps) {
+/** PROTOTYPE: mocked. The segment a table's questions start from */
+export function TableDefaultSegment({ table, readOnly }: TableSettingProps) {
   const model = useTableSegmentsModel(table);
 
   return (
-    <Stack gap="xxl">
-      <Input.Wrapper label={t`Default segment`}>
-        <DefaultSegmentValue
-          model={model}
-          customSegments={table.segments ?? []}
-          disabled={readOnly}
-        />
-      </Input.Wrapper>
-      <Input.Wrapper label={t`Required filter`}>
-        <RequiredFilterValue model={model} disabled={readOnly} />
-      </Input.Wrapper>
-    </Stack>
+    <Input.Wrapper
+      label={t`Default segment`}
+      // Sized like the Segments tab's 17px section headings around it
+      labelProps={{ fz: "lg", lh: rem(20) }}
+      description={t`Questions on this table start from this segment. People can remove it from a question.`}
+    >
+      <DefaultSegmentValue
+        model={model}
+        customSegments={table.segments ?? []}
+        disabled={readOnly}
+      />
+    </Input.Wrapper>
   );
+}
+
+/**
+ * PROTOTYPE: mocked. The column every question on a table must filter on
+ * before it runs, and the value that filter starts with
+ */
+export function TableRequiredFilter({ table, readOnly }: TableSettingProps) {
+  const model = useTableSegmentsModel(table);
+  return <RequiredFilterFields model={model} disabled={readOnly} />;
 }
 
 /** Why sync picked the default segment; nothing once an admin has set it */
@@ -58,13 +60,6 @@ function getDefaultInference({
   inference,
   isOverridden,
 }: ResolvedDefaultSegment): string | null {
-  return isOverridden ? null : t`Inferred: ${inference.signal}`;
-}
-
-function getRequiredInference({
-  inference,
-  isOverridden,
-}: ResolvedRequiredFilter): string | null {
   return isOverridden ? null : t`Inferred: ${inference.signal}`;
 }
 
@@ -119,6 +114,7 @@ function DefaultSegmentValue({
     <DefaultSegmentPicker
       value={defaultSegment.segment}
       label={defaultSegment.label}
+      systemSegments={model.systemSegments}
       customSegments={customSegments}
       disabled={disabled}
       isOpenOnMount={isMenuOpenOnMount}
@@ -134,6 +130,7 @@ function DefaultSegmentValue({
 function DefaultSegmentPicker({
   value,
   label,
+  systemSegments,
   customSegments,
   disabled,
   isOpenOnMount,
@@ -141,6 +138,8 @@ function DefaultSegmentPicker({
 }: {
   value: DefaultSegment;
   label: string;
+  /** The ones sync generated for this table */
+  systemSegments: ResolvedSystemSegment[];
   customSegments: Segment[];
   disabled: boolean;
   isOpenOnMount: boolean;
@@ -149,9 +148,9 @@ function DefaultSegmentPicker({
   const [isShowingCustom, setIsShowingCustom] = useState(false);
   const builtInChoices: { segment: DefaultSegment; label: string }[] = [
     { segment: { type: "all" }, label: t`All records` },
-    ...SYSTEM_SEGMENT_ROLES.map((role) => ({
+    ...systemSegments.map(({ role, label }) => ({
       segment: { type: "system" as const, role },
-      label: getSystemSegmentLabel(role),
+      label,
     })),
   ];
   const checkIfSelected = (segment: DefaultSegment) =>
@@ -249,130 +248,155 @@ function DefaultSegmentPicker({
   );
 }
 
-/** The required filter, or sync's proposal to confirm or change */
-function RequiredFilterValue({
-  model,
-  disabled,
-}: {
-  model: TableSegmentsModel;
-  disabled: boolean;
-}) {
-  const [isPickerOpenOnMount, setIsPickerOpenOnMount] = useState(false);
-  const { requiredFilter, setRequiredFilterQuery } = model;
-  const { inferredQuery, inferredFilterName, isOverridden } = requiredFilter;
+/** A column of the table, and the id that matches it across queries */
+type ColumnChoice = { fieldId: string; column: Lib.ColumnMetadata };
 
-  // No proposal (or one still loading) isn't shown as a guess
-  if (!isOverridden && inferredQuery && inferredFilterName) {
-    return (
-      <InferredValue
-        value={inferredFilterName}
-        inference={getRequiredInference(requiredFilter)}
-        readOnly={disabled}
-        onConfirm={() => setRequiredFilterQuery(inferredQuery)}
-        onChange={() => {
-          setIsPickerOpenOnMount(true);
-          setRequiredFilterQuery(inferredQuery);
-        }}
-        isInset={false}
-        data-testid="table-required-filter-review"
-      />
+/** The table's own columns a filter can use, keyed by field id */
+function getColumnChoices(query: Lib.Query): ColumnChoice[] {
+  return Lib.filterableColumns(query, STAGE_INDEX).flatMap((column) => {
+    const { isImplicitlyJoinable } = Lib.displayInfo(
+      query,
+      STAGE_INDEX,
+      column,
     );
-  }
-
-  return (
-    <RequiredFilterPicker
-      model={model}
-      disabled={disabled}
-      isOpenOnMount={isPickerOpenOnMount}
-    />
-  );
+    const fieldId = Lib.fieldValuesSearchInfo(query, column).fieldId;
+    return !isImplicitlyJoinable && fieldId != null
+      ? [{ fieldId: String(fieldId), column }]
+      : [];
+  });
 }
 
 /**
- * Blank until set: a click opens the standard filter picker on the table's
- * columns. The ✕ clears it.
+ * The column every question must filter on, then the value that filter starts
+ * with, picked with the standard filter widget for that column. A column with
+ * no value yet isn't saved.
  */
-function RequiredFilterPicker({
+function RequiredFilterFields({
   model,
   disabled,
-  isOpenOnMount,
 }: {
   model: TableSegmentsModel;
   disabled: boolean;
-  isOpenOnMount: boolean;
 }) {
-  const [isOpen, setIsOpen] = useState(isOpenOnMount);
   const { baseQuery, requiredFilter, setRequiredFilterQuery } = model;
-  const filterQuery = requiredFilter.query ?? baseQuery;
-  const filter = requiredFilter.query
-    ? Lib.filters(requiredFilter.query, STAGE_INDEX)[0]
+  const savedQuery = requiredFilter.query ?? undefined;
+  const savedFilter = savedQuery
+    ? Lib.filters(savedQuery, STAGE_INDEX)[0]
     : undefined;
+  const savedColumn =
+    savedQuery && savedFilter
+      ? Lib.filterParts(savedQuery, STAGE_INDEX, savedFilter)?.column
+      : undefined;
+  const savedFieldId =
+    savedQuery && savedColumn
+      ? String(Lib.fieldValuesSearchInfo(savedQuery, savedColumn).fieldId)
+      : null;
+  // A column picked before its value, until the value is picked
+  const [pendingFieldId, setPendingFieldId] = useState<string | null>(null);
+  const [isValueOpen, setIsValueOpen] = useState(false);
+  const fieldId = pendingFieldId ?? savedFieldId;
+  const hasSavedValue = pendingFieldId == null && savedFilter != null;
+  // The value picker edits the saved filter, or starts one on the bare table
+  const valueQuery = hasSavedValue ? savedQuery : baseQuery;
+  const valueColumn = valueQuery
+    ? getColumnChoices(valueQuery).find((choice) => choice.fieldId === fieldId)
+        ?.column
+    : undefined;
+  const columnOptions = baseQuery
+    ? getColumnChoices(baseQuery).map(({ fieldId, column }) => ({
+        value: fieldId,
+        label: Lib.displayInfo(baseQuery, STAGE_INDEX, column).displayName,
+      }))
+    : [];
 
-  const handleSelect = (newFilter: Lib.Filterable) => {
-    if (requiredFilter.query && filter) {
-      setRequiredFilterQuery(
-        Lib.replaceClause(requiredFilter.query, STAGE_INDEX, filter, newFilter),
-      );
-    } else if (baseQuery) {
-      setRequiredFilterQuery(Lib.filter(baseQuery, STAGE_INDEX, newFilter));
+  const handleColumnChange = (nextFieldId: string | null) => {
+    if (nextFieldId == null) {
+      setPendingFieldId(null);
+      setRequiredFilterQuery(null);
+    } else if (nextFieldId !== savedFieldId) {
+      setPendingFieldId(nextFieldId);
+      setIsValueOpen(true);
+    } else {
+      setPendingFieldId(null);
     }
   };
 
+  const handleValueChange = (filter: Lib.ExpressionClause) => {
+    if (hasSavedValue && savedQuery && savedFilter) {
+      setRequiredFilterQuery(
+        Lib.replaceClause(savedQuery, STAGE_INDEX, savedFilter, filter),
+      );
+    } else if (baseQuery) {
+      setRequiredFilterQuery(Lib.filter(baseQuery, STAGE_INDEX, filter));
+    }
+    setPendingFieldId(null);
+    setIsValueOpen(false);
+  };
+
   return (
-    <Popover
-      opened={isOpen}
-      position="bottom-start"
-      disabled={disabled || filterQuery == null}
-      onChange={setIsOpen}
-    >
-      <Popover.Target>
-        <Input
-          component="button"
-          w="fit-content"
-          miw="12rem"
-          type="button"
-          aria-label={t`Required filter`}
-          classNames={BUTTON_INPUT_CLASS_NAMES}
-          disabled={disabled}
-          rightSection={
-            requiredFilter.filterName != null &&
-            !disabled && (
-              <ActionIcon
-                variant="subtle"
-                aria-label={t`Remove required filter`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setRequiredFilterQuery(null);
-                }}
-              >
-                <Icon name="close" />
-              </ActionIcon>
-            )
-          }
-          rightSectionPointerEvents="all"
-          onClick={() => setIsOpen((isOpen) => !isOpen)}
-          data-testid="table-required-filter-select"
+    <Stack gap="xl">
+      <Select
+        label={t`Column that must be filtered on`}
+        description={t`Every question on this table must filter on this column before it runs.`}
+        placeholder={t`No required filter`}
+        data={columnOptions}
+        value={fieldId}
+        disabled={disabled}
+        clearable
+        searchable
+        w="fit-content"
+        miw="16rem"
+        onChange={handleColumnChange}
+        data-testid="table-required-filter-column"
+      />
+      <Input.Wrapper
+        label={t`Default value`}
+        description={t`What the filter starts as. People can change it, but not remove it.`}
+      >
+        <Popover
+          opened={isValueOpen}
+          position="bottom-start"
+          disabled={disabled || valueColumn == null}
+          onChange={setIsValueOpen}
         >
-          {requiredFilter.filterName ?? (
-            // The color inputs use for their placeholders
-            <Input.Placeholder c="text-disabled">
-              {t`No required filter`}
-            </Input.Placeholder>
-          )}
-        </Input>
-      </Popover.Target>
-      <Popover.Dropdown p={0}>
-        {filterQuery && (
-          <FilterPicker
-            query={filterQuery}
-            stageIndex={STAGE_INDEX}
-            filter={filter}
-            filterIndex={filter ? 0 : undefined}
-            onSelect={handleSelect}
-            onClose={() => setIsOpen(false)}
-          />
-        )}
-      </Popover.Dropdown>
-    </Popover>
+          <Popover.Target>
+            <Input
+              component="button"
+              w="fit-content"
+              miw="16rem"
+              mt="xs"
+              type="button"
+              aria-label={t`Default value`}
+              classNames={BUTTON_INPUT_CLASS_NAMES}
+              disabled={disabled || valueColumn == null}
+              rightSection={<Icon name="chevrondown" />}
+              rightSectionPointerEvents="none"
+              onClick={() => setIsValueOpen((isOpen) => !isOpen)}
+              data-testid="table-required-filter-value"
+            >
+              {hasSavedValue && requiredFilter.filterName != null ? (
+                requiredFilter.filterName
+              ) : (
+                // The color inputs use for their placeholders
+                <Input.Placeholder c="text-disabled">
+                  {fieldId == null ? t`Pick a column first` : t`Pick a value`}
+                </Input.Placeholder>
+              )}
+            </Input>
+          </Popover.Target>
+          <Popover.Dropdown p={0}>
+            {valueQuery && valueColumn && (
+              <FilterPickerBody
+                query={valueQuery}
+                stageIndex={STAGE_INDEX}
+                column={valueColumn}
+                filter={hasSavedValue ? savedFilter : undefined}
+                onChange={handleValueChange}
+              />
+            )}
+          </Popover.Dropdown>
+        </Popover>
+      </Input.Wrapper>
+    </Stack>
   );
 }

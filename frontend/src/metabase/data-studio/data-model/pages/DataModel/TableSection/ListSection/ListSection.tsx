@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Group, Stack, Text, Title, rem } from "metabase/ui";
+import { Box, Group, Stack, Text, Title, rem } from "metabase/ui";
 
 /**
  * A list of cards on the Segments and Measures tabs, with an optional title,
@@ -25,22 +25,23 @@ export function ListSection({
   return (
     <Stack gap="sm">
       {hasHeader && (
-        <Group justify="space-between" align="center" wrap="nowrap">
-          <Stack gap={isSubheading ? "sm" : 0}>
+        <Stack gap={isSubheading ? "sm" : 0}>
+          {/* The title and its action share a row; the description runs below both */}
+          <Group justify="space-between" align="center" wrap="nowrap" gap="md">
             {title &&
               (isSubheading ? (
                 <Title order={4}>{title}</Title>
               ) : (
                 <Text fw="bold">{title}</Text>
               ))}
-            {description && (
-              <Text size="sm" c="text-secondary">
-                {description}
-              </Text>
-            )}
-          </Stack>
-          {action}
-        </Group>
+            {action && <Box flex="0 0 auto">{action}</Box>}
+          </Group>
+          {description && (
+            <Text size="sm" c="text-secondary">
+              {description}
+            </Text>
+          )}
+        </Stack>
       )}
       <Stack gap={rem(12)} role="list">
         {children}

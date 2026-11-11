@@ -5,6 +5,11 @@ import {
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
+import {
+  ListLayoutToggle,
+  useListLayout,
+} from "../../../components/ListLayoutToggle";
+
 type TableSegmentsProps = {
   table: Table;
 };
@@ -15,13 +20,19 @@ type TableSegmentsProps = {
  * list Connected data shows, opening the Library's segment pages.
  */
 export function TableSegments({ table }: TableSegmentsProps) {
+  const [layout, setLayout] = useListLayout();
   return (
-    <SegmentList
-      table={table}
-      getUrls={getPublishedSegmentUrls}
-      isSearchable={false}
-      isFullPage
-    />
+    <>
+      <SegmentList
+        table={table}
+        getUrls={getPublishedSegmentUrls}
+        isSearchable={false}
+        isFullPage
+        hasDefaultSegmentSetting
+        layout={layout}
+      />
+      <ListLayoutToggle layout={layout} onChange={setLayout} />
+    </>
   );
 }
 

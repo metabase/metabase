@@ -20,17 +20,17 @@ import {
   getKindPartitionCandidates,
   getKindPartitionProposal,
   getProcessPartitionProposal,
-  getSegmentGroupSourceLabel,
   useSegmentGroups,
 } from "metabase/metadata/segment-groups";
 import { useSegmentSettings } from "metabase/metadata/table-segments";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Button, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
+import { Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field, Segment, Table } from "metabase-types/api";
 
 import { GroupMemberPills } from "../GroupMemberList";
 import { matchesListSearch } from "../ListSearchBar";
+import { ProposalActions } from "../ListSection";
 import { applyConditions } from "../table-segments";
 
 import S from "./SegmentItem/SegmentItem.module.css";
@@ -154,13 +154,6 @@ export function SegmentGroupItem({
   /** Opens the editor; read-only tables don't get one */
   onOpen?: () => void;
 }) {
-  const sourceField = table.fields?.find(
-    (field) => getRawTableFieldId(field) === group.sourceFieldId,
-  );
-  const notes = [
-    getSegmentGroupSourceLabel(group.source, sourceField),
-    group.kind === "overlapping" ? t`Members can overlap` : null,
-  ].filter(Boolean);
   const segments = table.segments ?? [];
   // A deleted segment drops out of its groups
   const memberLabels = group.members
@@ -187,14 +180,13 @@ export function SegmentGroupItem({
           <Text fw="bold">{group.name}</Text>
         </Flex>
         {memberLabels.length > 0 ? (
-          <GroupMemberPills labels={memberLabels} hasOther={group.other} />
+          <GroupMemberPills
+            labels={memberLabels}
+            icon="segment"
+            hasOther={group.other}
+          />
         ) : (
           <Text lh="lg" c="text-disabled">{t`No segments yet`}</Text>
-        )}
-        {notes.length > 0 && (
-          <Text size="sm" c="text-secondary">
-            {notes.join(" · ")}
-          </Text>
         )}
       </Stack>
     </Card>
@@ -204,18 +196,17 @@ export function SegmentGroupItem({
 export function SegmentGroupProposalItem({
   proposal,
   canAccept,
+  isMuted = false,
   onAccept,
   onDismiss,
 }: {
   proposal: SegmentGroupProposal;
   canAccept: boolean;
+  /** Secondary colors, to tell a proposal apart in a list of real groups */
+  isMuted?: boolean;
   onAccept: () => void;
   onDismiss: () => void;
 }) {
-  const memberLabels = [
-    ...proposal.members.map(({ label }) => label),
-    ...(proposal.other ? [t`Other`] : []),
-  ];
   return (
     <Card
       role="listitem"
@@ -227,26 +218,27 @@ export function SegmentGroupProposalItem({
       withBorder
     >
       <Group justify="space-between" wrap="nowrap" gap="md">
-        <Stack gap="xxs" miw={0}>
+        <Stack gap="xs" miw={0}>
           <Flex align="center" gap="sm">
-            <Icon name="segment_group" c="text-secondary" />
-            <Text fw="bold">{proposal.name}</Text>
+            <Icon
+              name="segment_group"
+              c={isMuted ? "icon-secondary" : "text-secondary"}
+            />
+            <Text fw="bold" c={isMuted ? "text-secondary" : undefined}>
+              {proposal.name}
+            </Text>
           </Flex>
-          <Text lh="lg">{memberLabels.join(" · ")}</Text>
-          <Text size="sm" c="text-secondary">
-            {proposal.signal}
-          </Text>
+          <GroupMemberPills
+            labels={proposal.members.map(({ label }) => label)}
+            icon="segment"
+            hasOther={proposal.other}
+          />
         </Stack>
-        {canAccept && (
-          <Group gap="xs" wrap="nowrap" flex="0 0 auto">
-            <Button size="sm" variant="filled" onClick={onAccept}>
-              {t`Accept`}
-            </Button>
-            <Button size="sm" onClick={onDismiss}>
-              {t`Dismiss`}
-            </Button>
-          </Group>
-        )}
+        <ProposalActions
+          canAccept={canAccept}
+          onAccept={onAccept}
+          onDismiss={onDismiss}
+        />
       </Group>
     </Card>
   );
@@ -260,6 +252,7 @@ export function KindPartitionProposalItem({
   field,
   query,
   canAccept,
+  isMuted,
   onAccept,
   onDismiss,
 }: {
@@ -267,6 +260,7 @@ export function KindPartitionProposalItem({
   /** The list's search, which the proposal's name must match */
   query: string;
   canAccept: boolean;
+  isMuted?: boolean;
   onAccept: (proposal: SegmentGroupProposal) => void;
   onDismiss: (proposal: SegmentGroupProposal) => void;
 }) {
@@ -285,6 +279,7 @@ export function KindPartitionProposalItem({
     <SegmentGroupProposalItem
       proposal={proposal}
       canAccept={canAccept}
+      isMuted={isMuted}
       onAccept={() => onAccept(proposal)}
       onDismiss={() => onDismiss(proposal)}
     />
