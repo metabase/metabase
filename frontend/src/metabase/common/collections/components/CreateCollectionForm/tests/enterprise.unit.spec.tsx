@@ -9,6 +9,14 @@ describe("CreateCollectionForm", () => {
     expect(screen.queryByText("Collection type")).not.toBeInTheDocument();
   });
 
+  it("does not show authority level controls with the collections plugin but without the official_collections feature", () => {
+    setup({ enterprisePlugins: ["collections"] });
+    expect(screen.getByLabelText("Name")).toBeInTheDocument();
+    expect(screen.queryByText("Collection type")).not.toBeInTheDocument();
+    expect(screen.queryByText("Regular")).not.toBeInTheDocument();
+    expect(screen.queryByText("Official")).not.toBeInTheDocument();
+  });
+
   it("hides authority level picker when initial parent is a shared tenant collection", async () => {
     setup({
       showAuthorityLevelPicker: true,
