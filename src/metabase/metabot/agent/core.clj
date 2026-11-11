@@ -28,6 +28,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.runtime :as tools.runtime]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.util :as u]
    [metabase.util.async :as async.u]
    [metabase.util.i18n :refer [tru]]
@@ -970,7 +971,11 @@
                       scope/*current-user-metabot-permissions* perms
                       scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
                       scope/*current-loadable-skill-ids*       (atom #{})
-                      metabot.perms/*cache*                    (atom {})]
+                      metabot.perms/*cache*                    (atom {})
+                      ;; The tool runtime binds these for each tool call too. Bound for the whole turn, so the
+                      ;; viewing context built outside a tool call follows `use_verified_content` as the tools do.
+                      shared/*metabot*                         (:metabot opts)
+                      shared/*profile-id*                      profile-id]
               (try
                 ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
                 ;; inherited when an in-process `capture-reducible` already bound one). Spans stream

@@ -314,13 +314,18 @@
 
 (defn collection->xml
   "Format collection for LLM consumption.
-   Matches Python Collection.llm_representation exactly."
-  [{:keys [name description authority_level]}]
+   Matches Python Collection.llm_representation exactly, except we additionally say when the collection is in the
+   trash."
+  [{:keys [id name description authority_level path archived]}]
   (render-llm-template
    :collection
-   {:collection_name            (or name "Our analytics")
+   {:collection_id              (some-> id str)
+    :collection_name            (or name "Our analytics")
+    :collection_path            path
     :collection_description     description
-    :collection_authority_level authority_level}))
+    ;; A Collection read from the app DB has its authority level as a keyword.
+    :collection_authority_level (some-> authority_level u/qualified-name)
+    :collection_archived        (boolean archived)}))
 
 (defn- drill-in-location-context
   "The `<pfx>_database_name` / `<pfx>_base_table_fqn` keys a standalone measure/segment drill-in carries so
@@ -745,9 +750,28 @@
   "Cap on a dashboard filter's name."
   100)
 
+(def ^:private max-dashboard-filter-default-values
+  "Cap on the values listed for a dashboard filter's default."
+  10)
+
+(def ^:private max-dashboard-filter-default-length
+  "Cap on a dashboard filter's default, as written in the prompt."
+  500)
+
+(defn- dashboard-filter-default
+  "The text of a dashboard filter's `default`, with at most [[max-dashboard-filter-default-values]] of its values and
+  [[max-dashboard-filter-default-length]] characters, and a note of how many values were left out.
+  A string default is written as it is, anything else as JSON."
+  [default]
+  (let [shown (cond-> default (sequential? default) (->> (take max-dashboard-filter-default-values) vec))
+        more  (when (sequential? default) (- (count default) (count shown)))]
+    (str (truncate (if (string? shown) shown (json/encode shown)) max-dashboard-filter-default-length)
+         (when (pos-int? more) (str " (+" more " more)")))))
+
 (defn- dashboard-filters->xml
-  "The `<filters>` block for a dashboard's `parameters`, or nil when it has none. Lists at most
-  [[max-dashboard-filters]] of them and says how many were left out."
+  "The `<filters>` block for a dashboard's `parameters`, or nil when it has none.
+  Each filter shows its default value and the ids of the dashcards it filters, when it has them.
+  Lists at most [[max-dashboard-filters]] of them and says how many were left out."
   [parameters]
   (when (seq parameters)
     (let [total (count parameters)]
@@ -755,17 +779,31 @@
            (str/join (for [param (take max-dashboard-filters parameters)]
                        (str "    <filter id=\"" (escape-xml (:id param))
                             "\" name=\"" (escape-xml (truncate (:name param) max-dashboard-filter-name-length))
-                            "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\"/>\n")))
+                            "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\""
+                            (when-some [default (:default param)]
+                              (str " default=\"" (escape-xml (dashboard-filter-default default)) "\""))
+                            (when-let [dashcard-ids (seq (:connected_dashcards param))]
+                              (str " connected_dashcards=\"" (str/join ", " dashcard-ids) "\""))
+                            "/>\n")))
            (when (> total max-dashboard-filters)
              (str "    <truncation-note>Showing " max-dashboard-filters " of " total " filters; the other "
                   (- total max-dashboard-filters) " are not listed.</truncation-note>\n"))
            "  </filters>\n"))))
 
+(defn- dashboard-history->xml
+  "The lines saying who created the dashboard and who last edited it, and when, or nil when neither is known."
+  [{:keys [created_by created_at last_edited_by last_edited_at]}]
+  (not-empty
+   (str (when created_by
+          (str "  <created by=\"" (escape-xml created_by) "\" at=\"" created_at "\"/>\n"))
+        (when last_edited_by
+          (str "  <last_edited by=\"" (escape-xml last_edited_by) "\" at=\"" last_edited_at "\"/>\n")))))
+
 (defn dashboard->xml
   "Format dashboard for LLM consumption.
-   Matches Python Dashboard.llm_representation exactly, except we additionally surface the
-   dashboard's filters."
-  [{:keys [id name description verified collection parameters dashcards]}]
+   Matches Python Dashboard.llm_representation exactly, except we additionally surface who created and last edited
+   the dashboard, whether it is in the trash, its filters, and the tab the user has open."
+  [{:keys [id name description verified archived collection parameters dashcards open_tab] :as dashboard}]
   ;; Group cards by tab and sort
   ;; TODO (Chris 2026-07-09) -- tabs sort by raw id here but by position in
   ;; resources/fetch-dashboard-items; align on position
@@ -789,10 +827,15 @@
      :dashboard
      {:dashboard_id (str id)
       :dashboard_verified (boolean verified)
+      :dashboard_archived (boolean archived)
       :dashboard_name name
       :dashboard_description description
+      :dashboard_history_xml (dashboard-history->xml dashboard)
       :dashboard_collection_xml (when collection (collection->xml collection))
       :dashboard_filters_xml (dashboard-filters->xml parameters)
+      :dashboard_open_tab_xml (when open_tab
+                                (str "  <open_tab id=\"" (:id open_tab) "\" name=\"" (escape-xml (:name open_tab))
+                                     "\"/>\n"))
       :dashboard_tabs_xml tabs-xml})))
 
 (defn database-schema->xml
@@ -1064,7 +1107,8 @@
 
 (def ^:private item-attr-keys
   "Attributes rendered as XML attrs on each <item> element. Order matters for stable output."
-  [:type :id :dashcard_id :tab_id :name :uri :database_id :collection_id :table_id :can_write
+  [:type :id :dashcard_id :tab_id :all_tabs :row :col :size_x :size_y :name :uri
+   :database_id :collection_id :table_id :can_write
    :schema :display_name :authority_level :is_personal :path :location
    :engine :sql_unavailable :timestamp])
 
@@ -1097,7 +1141,8 @@
       :next-page-uri  \"metabase://databases?page=2\"}   ; present when truncated
 
    An optional `:tabs` vector of `{:id .. :name ..}` (dashboard items) renders as a `<tabs>`
-   block ahead of the items; items reference tabs via their `tab_id` attribute.
+   block ahead of the items; items reference tabs via their `tab_id` attribute, and an item on every tab has
+   `all_tabs`.
 
    Output shape:
      <list type=\"databases\" total=\"5\" page=\"1\" pages=\"1\" showing=\"5\" truncated=\"false\">

@@ -152,7 +152,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 **Best Practices:**
 - Treat dashboards as containers — when search returns a `<dashboard>` hit, use `/items` to list its cards instead of re-searching for the same concept.
-- Every dashcard entry carries a `dashcard_id`. Headings and text cards show as `virtual_heading`/`virtual_text` with their text as the description; action buttons show as `action` (with a `uri` to their backing model when readable). On multi-tab dashboards the list opens with a `<tabs>` block naming every tab — empty ones included — and dashcard entries carry their tab's `tab_id`, grouped in tab order.
+- Every dashcard entry carries a `dashcard_id`. Headings and text cards show as `virtual_heading`/`virtual_text` with their text as the description; action buttons show as `action` (with a `uri` to their backing model when readable). On multi-tab dashboards the list opens with a `<tabs>` block naming every tab — empty ones included — and dashcard entries carry their tab's `tab_id`, grouped in tab order. A dashcard with no tab shows on every tab, so it comes first with `all_tabs="true"` instead of a `tab_id`. Every entry also gives its `row`, `col`, `size_x` and `size_y`.
 - Fetch dashboard details to confirm it contains the information the user is looking for before recommending it.
 - Prefer verified dashboards when they match the user's request.
 
