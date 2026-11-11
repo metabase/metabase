@@ -882,7 +882,7 @@ describe("DashCard", () => {
       name: string;
       slug: string;
     }[])(
-      "should turn the $display chart title into a question link only on focus",
+      "should keep the $display chart title a placeholder link until it is focused",
       async ({ display, name, slug }) => {
         const card = createMockCard({
           id: 7,
@@ -916,7 +916,7 @@ describe("DashCard", () => {
       },
     );
 
-    it("should turn the map title into a question link only on hover", async () => {
+    it("should keep the map title a placeholder link until it is hovered", async () => {
       const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       const card = createMockCard({
         id: 10,
@@ -955,7 +955,7 @@ describe("DashCard", () => {
       expect(getTitle()).toHaveAttribute("href", "/question/10-map-chart");
     });
 
-    it("should turn the funnel chart title into a question link only on hover", async () => {
+    it("should keep the funnel chart title a placeholder link until it is hovered", async () => {
       const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       const card = createMockCard({
         id: 8,
