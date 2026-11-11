@@ -15,7 +15,7 @@
         venues-name (lib.metadata/field mp (mt/id :venues :name))]
     (-> (lib/query mp venues)
         (lib/with-fields [venues-name])
-        (lib.tu.notebook/add-order-by "Venues" "ID"))))
+        (lib.tu.notebook/add-order-by "ID"))))
 
 (defn- native-query []
   (qp.compile/compile (mbql-query)))

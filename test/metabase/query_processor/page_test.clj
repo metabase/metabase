@@ -13,7 +13,7 @@
   (let [mp         (mt/metadata-provider)
         categories (lib.metadata/table mp (mt/id :categories))
         query      (-> (lib/query mp categories)
-                       (lib.tu.notebook/add-order-by "Categories" "ID")
+                       (lib.tu.notebook/add-order-by "ID")
                        (lib/with-page {:page page-num, :items 5}))]
     (mt/with-native-query-testing-context query
       (is (= expected

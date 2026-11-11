@@ -201,7 +201,7 @@
             query      (-> (lib/query mp orders)
                            (lib/breakout (lib/with-temporal-bucket created-at :month))
                            (lib/aggregate (lib/with-expression-name (lib/offset (lib/sum total) -1) "X"))
-                           (lib.tu.notebook/add-order-by "Orders" "X")
+                           (lib.tu.notebook/add-order-by "X")
                            (lib/limit 3)
                            (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query

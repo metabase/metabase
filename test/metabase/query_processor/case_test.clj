@@ -181,7 +181,7 @@
                                                                      (lib/case [[(lib/> products-rating 4) 1]] 0)))
                                   (as-> $q (lib/with-fields $q [(lib/expression-ref $q "two-cases")]))
                                   (lib/limit 2)
-                                  (lib.tu.notebook/add-order-by "Products" "ID"))]
+                                  (lib.tu.notebook/add-order-by "ID"))]
         (mt/with-native-query-testing-context query
           (is (= [[1] [0]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
@@ -214,7 +214,7 @@
                             (as-> $q (-> $q
                                          (lib/with-fields [products-id (lib/expression-ref $q "If")])
                                          (lib/filter (lib/= (lib/expression-ref $q "If") "Other"))))
-                            (lib.tu.notebook/add-order-by "Products" "ID")
+                            (lib.tu.notebook/add-order-by "ID")
                             (lib/limit 2))]
         (is (= [[3 "Other"]
                 [4 "Other"]]

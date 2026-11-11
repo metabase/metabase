@@ -18,9 +18,9 @@
           checkins-id       (lib.metadata/field mp (mt/id :checkins :id))
           query             (-> (lib/query mp checkins)
                                 (lib/with-fields [checkins-venue-id checkins-user-id checkins-id])
-                                (lib.tu.notebook/add-order-by "Checkins" "Venue ID")
-                                (lib.tu.notebook/add-order-by "Checkins" "User ID" {:direction :desc})
-                                (lib.tu.notebook/add-order-by "Checkins" "ID")
+                                (lib.tu.notebook/add-order-by "Venue ID")
+                                (lib.tu.notebook/add-order-by {:is-main-group true} "User ID" {:direction :desc})
+                                (lib.tu.notebook/add-order-by "ID")
                                 (lib/limit 10))]
       (mt/with-native-query-testing-context query
         (is (= [[1 12 375]
@@ -73,7 +73,7 @@
             query        (-> (lib/query mp venues)
                              (lib/aggregate (lib/count))
                              (lib/breakout venues-price)
-                             (lib.tu.notebook/add-order-by "Venues" "Count"))]
+                             (lib.tu.notebook/add-order-by "Count"))]
         (mt/with-native-query-testing-context query
           (is (= [[4  6]
                   [3 13]
@@ -93,7 +93,7 @@
             query        (-> (lib/query mp venues)
                              (lib/aggregate (lib/sum venues-id))
                              (lib/breakout venues-price)
-                             (lib.tu.notebook/add-order-by "Venues" "Sum of ID" {:direction :desc}))]
+                             (lib.tu.notebook/add-order-by {:is-main-group true} "Sum of ID" {:direction :desc}))]
         (mt/with-native-query-testing-context query
           (is (= [[2 2855]
                   [1 1211]
@@ -113,7 +113,7 @@
             query        (-> (lib/query mp venues)
                              (lib/aggregate (lib/distinct venues-id))
                              (lib/breakout venues-price)
-                             (lib.tu.notebook/add-order-by "Venues" "Distinct values of ID"))]
+                             (lib.tu.notebook/add-order-by "Distinct values of ID"))]
         (mt/with-native-query-testing-context query
           (is (= [[4  6]
                   [3 13]
@@ -133,7 +133,7 @@
             query              (-> (lib/query mp venues)
                                    (lib/aggregate (lib/avg venues-category-id))
                                    (lib/breakout venues-price)
-                                   (lib.tu.notebook/add-order-by "Venues" "Average of Category ID"))]
+                                   (lib.tu.notebook/add-order-by "Average of Category ID"))]
         (mt/with-native-query-testing-context query
           (is (= [[3 22.0]
                   [2 28.3]
@@ -161,7 +161,7 @@
               query              (-> (lib/query mp venues)
                                      (lib/aggregate (lib/stddev venues-category-id))
                                      (lib/breakout venues-price)
-                                     (lib.tu.notebook/add-order-by "Venues" "Standard deviation of Category ID" {:direction :desc}))]
+                                     (lib.tu.notebook/add-order-by {:is-main-group true} "Standard deviation of Category ID" {:direction :desc}))]
           (mt/with-native-query-testing-context query
             (is (malli= [:tuple
                          (row-schema 3 23.0 27.0)

@@ -21,7 +21,7 @@
   (let [mp        (mt/metadata-provider)
         venues    (lib.metadata/table mp (mt/id :venues))
         query     (-> (lib/query mp venues)
-                      (lib.tu.notebook/add-order-by "Venues" "ID")
+                      (lib.tu.notebook/add-order-by "ID")
                       (lib/limit 1))]
     (mt/with-native-query-testing-context query
       (-> (qp/process-query query)
@@ -47,7 +47,7 @@
       (let [mp       (mt/metadata-provider)
             users    (lib.metadata/table mp (mt/id :users))
             query    (-> (lib/query mp users)
-                         (lib.tu.notebook/add-order-by "Users" "ID"))]
+                         (lib.tu.notebook/add-order-by "ID"))]
         (mt/with-native-query-testing-context query
           (is (=? {:cols (qp.test-util/expected-cols :users [:id :name :last_login])
                    :rows [[1 "Plato Yeshua"]

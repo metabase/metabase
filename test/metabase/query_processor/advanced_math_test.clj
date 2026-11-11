@@ -16,7 +16,7 @@
                       (lib/expression "test" expr)
                       (as-> q (lib/with-fields q [(lib/expression-ref q "test")]))
                       ;; To ensure stable ordering
-                      (lib.tu.notebook/add-order-by "Venues" "ID")
+                      (lib.tu.notebook/add-order-by "ID")
                       (lib/limit 1))]
     (mt/with-native-query-testing-context query
       (->> (mt/process-query query)

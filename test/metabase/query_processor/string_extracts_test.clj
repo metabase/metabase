@@ -19,7 +19,7 @@
                     ;; filter clause is optional
                     (cond-> q filter (lib/filter filter))
                     ;; To ensure stable ordering
-                    (lib.tu.notebook/add-order-by q "Venues" "ID")
+                    (lib.tu.notebook/add-order-by q "ID")
                     (lib/limit q 1))]
     (mt/with-native-query-testing-context query
       (->> query
@@ -185,7 +185,7 @@
                                                                (lib/with-join-alias "Products")))])
                                                   (lib/with-join-fields :all)))
                                     (lib/expression "regex" (lib/regex-match-first products-category ".*"))
-                                    (lib.tu.notebook/add-order-by "Orders" "ID")
+                                    (lib.tu.notebook/add-order-by "ID")
                                     (lib/limit 2))]
           (mt/with-native-query-testing-context query
             (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2

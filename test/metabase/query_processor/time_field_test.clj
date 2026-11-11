@@ -23,7 +23,7 @@
            ;; `lib/expression-clause` escape hatch rather than a static builder.
            query                 (-> (lib/query mp users)
                                      (lib/with-fields [users-id users-name users-last-login-time])
-                                     (notebook-helpers/add-order-by "Users" "ID")
+                                     (notebook-helpers/add-order-by "ID")
                                      (lib/filter (lib/expression-clause
                                                   filter-type
                                                   (into [users-last-login-time] filter-args)
