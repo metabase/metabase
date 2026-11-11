@@ -8,6 +8,21 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- retarget
+  "Point `target` at the workspace to-spec. Shared by [[resolve-transform-target]] and
+   [[workspace-transform-target]] so the existence check and the write cannot drift."
+  [target {to-db :db to-schema :schema to-name :name}]
+  ;; **Replace** `:db` and `:schema` on the target with the to-spec's values
+  ;; — not just merge in the populated ones. The canonical target carries the
+  ;; input namespace; after rewriting, the target points at the iso namespace
+  ;; which on MySQL lives at `:db`, not `:schema`. Failing to clear the
+  ;; canonical `:schema` leaves the SQL compiler with two competing
+  ;; qualifiers and the output lands in the wrong place.
+  ;;
+  ;; The to-spec arrives denormalized (`""` sentinels already converted to nil),
+  ;; so we can `assoc` directly without a per-call shim.
+  (assoc target :db to-db :schema to-schema :name to-name))
+
 (defenterprise resolve-transform-target
   "Enterprise impl of the transform-target rewrite hook.
 
@@ -41,19 +56,18 @@
                          " refusing to write the transform's output to production.")
                     {:status-code 400 :database-id db-id})))
   (if (some? (ws/db-workspace-namespace db-id))
-    (let [{to-db :db to-schema :schema to-name :name}
-          (ws.table-remapping/add-transform-target-mapping! db-id target)]
-      ;; **Replace** `:db` and `:schema` on the target with the to-spec's values
-      ;; — not just merge in the populated ones. The canonical target carries the
-      ;; input namespace; after rewriting, the target points at the iso namespace
-      ;; which on MySQL lives at `:db`, not `:schema`. Failing to clear the
-      ;; canonical `:schema` leaves the SQL compiler with two competing
-      ;; qualifiers and the output lands in the wrong place.
-      ;;
-      ;; `add-transform-target-mapping!` returns the to-side denormalized (`""`
-      ;; sentinels already converted to nil), so we can `assoc` directly without
-      ;; a per-call shim.
-      (assoc target :db to-db :schema to-schema :name to-name))
+    (retarget target (ws.table-remapping/add-transform-target-mapping! db-id target))
+    target))
+
+(defenterprise workspace-transform-target
+  "Enterprise impl of the read-only transform-target hook: the target
+   [[resolve-transform-target]] would return, computed via
+   [[ws.table-remapping/transform-target-remapping]] so no `TableRemapping` is recorded.
+   Ungated on premium features for the same reason as [[resolve-transform-target]]."
+  :feature :none
+  [db-id target]
+  (if (some? (ws/db-workspace-namespace db-id))
+    (retarget target (ws.table-remapping/transform-target-remapping db-id target))
     target))
 
 (defenterprise rewrite-native-sql-for-workspace

@@ -6,9 +6,8 @@
    [[*remapping-store*]] with a simple map-backed implementation to avoid DB access."
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
-   [metabase-enterprise.workspaces.models.table-remapping]))
-
-(comment metabase-enterprise.workspaces.models.table-remapping/keep-me)
+   [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
+   [metabase.workspaces.core :as ws]))
 
 (set! *warn-on-reflection* true)
 
@@ -60,15 +59,39 @@
   [{:db (:from_db row) :schema (:from_schema row) :table (:from_table_name row)}
    {:db (:to_db row)   :schema (:to_schema row)   :table (:to_table_name row)}])
 
+(defn- may-have-remappings?
+  "False when `db-id` has no TableRemapping as far as this process's cache of the Database ids with remappings
+  knows. Every QP run and every synced table asks, so on an instance without remappings the answer must usually cost
+  no query; see [[table-remapping/database-ids-with-remappings]] for when it queries.
+
+  In workspace mode the answer is always true and the caller queries: transforms on any node insert rows, and a
+  node does not see another node's write.
+
+  Outside workspace mode the cache can miss rows that another node inserted, for at most one minute after this node
+  last filled it. Rows can exist outside workspace mode: a restart that drops `MB_WORKSPACES_ENABLED`, which is
+  never stored in the app DB; a `workspaces-enabled` change or a `DELETE /current` that turns the setting off and
+  then fails to delete the rows; and a run that records its row while `DELETE /current` runs. The same window
+  applies while another node is in workspace mode and this one is not yet: until this node's settings cache picks up
+  a runtime change, or during a rolling restart that adds or removes `MB_WORKSPACES_ENABLED`. A change of the
+  `workspaces-enabled` setting that this node sees drops the cache, and so does a change of a database's
+  `database-workspace-schema` made on this node."
+  [db-id]
+  (or (ws/workspace-mode?)
+      (contains? (table-remapping/database-ids-with-remappings) db-id)))
+
 (defrecord AppDBRemappingStore []
   RemappingStore
   (enabled-for-db?* [_ db-id]
-    (ws.db/table-remappings-exist? db-id))
+    (and (may-have-remappings? db-id)
+         (ws.db/table-remappings-exist? db-id)))
   (remappings-for-db* [_ db-id]
-    (into {} (map row->spec-pair) (ws.db/table-remappings-of-database db-id)))
+    (if (may-have-remappings? db-id)
+      (into {} (map row->spec-pair) (ws.db/table-remappings-of-database db-id))
+      {}))
   (get-mapping* [_ db-id {:keys [db schema table]}]
-    (when-let [row (ws.db/table-remapping db-id {:db db :schema schema :table table})]
-      {:db (:to_db row) :schema (:to_schema row) :table (:to_table_name row)}))
+    (when (may-have-remappings? db-id)
+      (when-let [row (ws.db/table-remapping db-id {:db db :schema schema :table table})]
+        {:db (:to_db row) :schema (:to_schema row) :table (:to_table_name row)})))
   (insert-mapping!* [_ db-id from-spec to-spec]
     (ws.db/upsert-table-remapping! db-id from-spec to-spec))
   (remove-mapping!* [_ db-id {:keys [db schema table]}]

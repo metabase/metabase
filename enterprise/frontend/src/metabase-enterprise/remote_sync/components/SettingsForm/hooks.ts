@@ -30,14 +30,15 @@ type CollectionLike = {
   is_remote_synced?: boolean;
 };
 
-const toSyncableCollections = (
+function toSyncableCollections(
   collections: CollectionLike[],
-): SyncableCollection[] =>
-  collections.flatMap(({ id, name, is_remote_synced }) =>
+): SyncableCollection[] {
+  return collections.flatMap(({ id, name, is_remote_synced }) =>
     typeof id === "number"
       ? [{ id, name, isRemoteSynced: Boolean(is_remote_synced) }]
       : [],
   );
+}
 
 export type SyncableCollections = {
   isLoading: boolean;
@@ -46,7 +47,7 @@ export type SyncableCollections = {
   tenantCollections: SyncableCollection[];
 };
 
-export const useSyncableCollections = (): SyncableCollections => {
+export function useSyncableCollections(): SyncableCollections {
   const isTenantsEnabled = useSetting("use-tenants");
   const { data: rootItems, isLoading: isLoadingCollections } =
     useListCollectionItemsQuery(ROOT_COLLECTIONS_REQUEST);
@@ -76,15 +77,15 @@ export const useSyncableCollections = (): SyncableCollections => {
     isLoadingCollections,
     isLoadingTenantCollections,
   ]);
-};
+}
 
-export const useSettingsFormValues = (
+export function useSettingsFormValues(
   collections: SyncableCollection[],
-): SettingsFormValues => {
+): SettingsFormValues {
   const settings = useSelector(getSettings);
 
   return useMemo(
     () => getInitialValues(settings, collections),
     [settings, collections],
   );
-};
+}
