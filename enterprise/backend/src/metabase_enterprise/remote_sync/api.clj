@@ -77,25 +77,32 @@
              :name        (remote-sync.merge/label key doc)
              :model       (u/lower-case-en (name model))
              :sync_status (if (and (= "delete" status) removed-row) "removed" status)}
-      collection-id                 (assoc :collection_id collection-id)
-      parent                        (assoc :parent parent))))
+      collection-id                                    (assoc :collection_id collection-id)
+      parent                                           (assoc :parent parent)
+      (remote-sync/synced-collection-from-parent? model) (assoc ::collection-from-parent? true))))
 
 (defn- with-parents
   "The `items` with the `[model pk]` of their parent replaced by the parent as the client names it, by the label the
-  spec of its model gives its exported entity."
+  spec of its model gives its exported entity, and, for an item whose collection is its parent's, with the collection
+  of its parent."
   [items]
-  (let [names (into {}
-                    (for [[model parents] (group-by first (into [] (comp (keep :parent) (distinct)) items))
-                          :let [pk   (first (t2/primary-keys model))
-                                rows (remote-sync.db/exported-rows model (mapv second parents))]
-                          [row entity] (map vector rows (serialization/export-batch model rows))
-                          :when (not (instance? Exception entity))]
-                      [[model (get row pk)] (remote-sync/synced-label model entity)]))]
+  (let [parents (into {}
+                      (for [[model parents] (group-by first (into [] (comp (keep :parent) (distinct)) items))
+                            :let [pk   (first (t2/primary-keys model))
+                                  rows (remote-sync.db/exported-rows model (mapv second parents))]
+                            [row entity] (map vector rows (serialization/export-batch model rows))]
+                        [[model (get row pk)]
+                         {:name          (when-not (instance? Exception entity)
+                                           (remote-sync/synced-label model entity))
+                          :collection-id (remote-sync/synced-collection-id model row)}]))]
     (mapv (fn [{[model id :as parent] :parent :as item}]
-            (cond-> item
-              parent (assoc :parent {:model (u/lower-case-en (name model))
-                                     :id    id
-                                     :name  (get names parent)})))
+            (let [collection-id (when (::collection-from-parent? item)
+                                  (get-in parents [parent :collection-id]))]
+              (cond-> (dissoc item ::collection-from-parent?)
+                parent        (assoc :parent {:model (u/lower-case-en (name model))
+                                              :id    id
+                                              :name  (get-in parents [parent :name])})
+                collection-id (assoc :collection_id collection-id))))
           items)))
 
 (defn- with-collections

@@ -13,6 +13,7 @@ export type RemoteSyncEntityId = number;
 export type RemoteSyncEntityModel =
   | "action"
   | "card"
+  | "cardtest"
   | "collection"
   | "dashboard"
   | "dataapp"

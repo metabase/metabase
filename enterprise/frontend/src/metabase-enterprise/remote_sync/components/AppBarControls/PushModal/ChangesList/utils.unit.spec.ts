@@ -74,4 +74,44 @@ describe("groupChanges", () => {
       "Big orders",
     ]);
   });
+
+  it("shows a card test under the collection of its card", () => {
+    const groups = groupChanges([
+      createMockRemoteSyncEntity({
+        id: 3,
+        model: "cardtest",
+        name: "Row count",
+        collection: createMockRemoteSyncEntityCollection({
+          id: 1,
+          name: "Sales",
+        }),
+        parent: createMockRemoteSyncEntityParent({
+          model: "card",
+          id: 2,
+          name: "Orders",
+        }),
+      }),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].path).toEqual(["Sales"]);
+    expect(groups[0].items.map((item) => item.name)).toEqual(["Row count"]);
+  });
+
+  it("shows a card test without a collection under other content", () => {
+    const groups = groupChanges([
+      createMockRemoteSyncEntity({
+        id: 0,
+        model: "cardtest",
+        name: "Test of deleted card",
+        sync_status: "delete",
+      }),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].path).toEqual(["Other content"]);
+    expect(groups[0].items.map((item) => item.name)).toEqual([
+      "Test of deleted card",
+    ]);
+  });
 });

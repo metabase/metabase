@@ -23,16 +23,16 @@ describe("DataAppsNavbarSection", () => {
 
   it("shows every enabled, current data app as a link", async () => {
     fetchMock.get("path:/api/ee/apps", [
-      createMockDataApp({ name: "gizmo", display_name: "Gizmo" }),
-      createMockDataApp({ name: "gadget", display_name: "Gadget" }),
+      createMockDataApp({ slug: "gizmo", name: "Gizmo" }),
+      createMockDataApp({ slug: "gadget", name: "Gadget" }),
       createMockDataApp({
-        name: "disabled",
-        display_name: "Disabled",
+        slug: "disabled",
+        name: "Disabled",
         enabled: false,
       }),
       createMockDataApp({
-        name: "outdated",
-        display_name: "Outdated",
+        slug: "outdated",
+        name: "Outdated",
         outdated: true,
       }),
     ]);
@@ -80,7 +80,7 @@ describe("DataAppsNavbarSection", () => {
 
   it("links to the site-url origin when apps are served cross-origin", async () => {
     fetchMock.get("path:/api/ee/apps", [
-      createMockDataApp({ name: "gizmo", display_name: "Gizmo" }),
+      createMockDataApp({ slug: "gizmo", name: "Gizmo" }),
     ]);
 
     renderWithProviders(

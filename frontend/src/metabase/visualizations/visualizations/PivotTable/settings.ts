@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
-import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -45,8 +43,13 @@ export const getTitleForColumn = (
   column: DatasetColumn,
   settings: VisualizationSettings,
 ) => {
+  // `settings.column` is typed `any` via VisualizationSettings' index signature
+  const getColumnSettings = settings.column as (col: DatasetColumn) => {
+    column: DatasetColumn;
+    column_title?: string;
+  };
   const { column: _column, column_title: columnTitle } =
-    settings.column(column);
+    getColumnSettings(column);
   return columnTitle || displayNameForColumn(_column);
 };
 
@@ -121,8 +124,9 @@ export const settings = {
         // breakout order, so a card saved with `pivot_table.column_split`
         // (which the query builder persists on save) keeps its layout for
         // every viewer, while an unsaved split can differ between viewers.
-        const [first, second, ...rest] = _.sortBy(dimensions, (col) =>
-          getIn(col, ["fingerprint", "global", "distinct-count"]),
+        const [first, second, ...rest] = _.sortBy(
+          dimensions,
+          (col) => col.fingerprint?.global?.["distinct-count"],
         );
 
         let rows;

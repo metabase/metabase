@@ -55,7 +55,7 @@ const ISOLATED_ORIGIN_SETTINGS: Partial<Settings> = {
 };
 
 type SetupOpts = {
-  name?: string;
+  slug?: string;
   data?: ReturnType<typeof createMockDataApp>;
   isLoading?: boolean;
   error?: unknown;
@@ -66,7 +66,7 @@ type SetupOpts = {
 };
 
 function setup({
-  name = "sales",
+  slug = "sales",
   data,
   isLoading = false,
   error,
@@ -85,7 +85,7 @@ function setup({
 
   renderWithProviders(
     <>
-      {/* The empty-name case has no `:name` segment to match. */}
+      {/* The empty-name case has no `:slug` segment to match. */}
       <Route
         path="/"
         element={
@@ -96,7 +96,7 @@ function setup({
         }
       />
       <Route
-        path=":name"
+        path=":slug"
         element={
           <DataAppView
             enableDrafts={enableDrafts}
@@ -107,7 +107,7 @@ function setup({
     </>,
     {
       withRouter: true,
-      initialRoute: `/${name}`,
+      initialRoute: `/${slug}`,
       storeInitialState: createMockState({
         currentUser: createMockUser({ is_superuser: isAdmin }),
         settings: createMockSettingsState(settings),
@@ -119,8 +119,8 @@ function setup({
 describe("DataAppView", () => {
   afterEach(() => jest.clearAllMocks());
 
-  it("shows a not-found screen when the name is empty", () => {
-    setup({ name: "" });
+  it("shows a not-found screen when the slug is empty", () => {
+    setup({ slug: "" });
 
     expect(screen.getByText("Data app not found")).toBeInTheDocument();
   });
@@ -206,7 +206,7 @@ describe("DataAppView", () => {
 
     it("tells an admin at once which setting turned data apps off, instead of waiting for the load timeout", () => {
       setup({
-        data: createMockDataApp({ display_name: "Sales" }),
+        data: createMockDataApp({ name: "Sales" }),
         settings,
         isAdmin: true,
       });
@@ -217,7 +217,7 @@ describe("DataAppView", () => {
     });
 
     it("sends anyone else to an administrator, without naming the setting", () => {
-      setup({ data: createMockDataApp({ display_name: "Sales" }), settings });
+      setup({ data: createMockDataApp({ name: "Sales" }), settings });
 
       expect(screen.getByText("Data apps are unavailable")).toBeInTheDocument();
       expect(
@@ -229,7 +229,7 @@ describe("DataAppView", () => {
   });
 
   it("renders the app inside an iframe once metadata resolves", () => {
-    setup({ data: createMockDataApp({ display_name: "Sales" }) });
+    setup({ data: createMockDataApp({ name: "Sales" }) });
 
     const iframe = screen.getByTitle("Sales");
     expect(iframe).toBeInTheDocument();
@@ -252,7 +252,7 @@ describe("DataAppView", () => {
   }
 
   function setupIframe({ settings }: Pick<SetupOpts, "settings"> = {}) {
-    setup({ data: createMockDataApp({ display_name: "Sales" }), settings });
+    setup({ data: createMockDataApp({ name: "Sales" }), settings });
     return screen.getByTitle<HTMLIFrameElement>("Sales");
   }
 
@@ -483,7 +483,7 @@ describe("DataAppView", () => {
 
     it("mirrors the route the app reports into the page URL", () => {
       setup({
-        data: createMockDataApp({ display_name: "Sales" }),
+        data: createMockDataApp({ name: "Sales" }),
         enableUrlMirroring: true,
         settings,
       });
@@ -503,7 +503,7 @@ describe("DataAppView", () => {
 
     it("ignores a route report from another origin", () => {
       setup({
-        data: createMockDataApp({ display_name: "Sales" }),
+        data: createMockDataApp({ name: "Sales" }),
         enableUrlMirroring: true,
         settings,
       });
@@ -529,7 +529,7 @@ describe("DataAppView", () => {
       });
 
       setup({
-        data: createMockDataApp({ display_name: "Sales" }),
+        data: createMockDataApp({ name: "Sales" }),
         settings,
       });
 
@@ -551,7 +551,7 @@ describe("DataAppView", () => {
       });
 
       setup({
-        data: createMockDataApp({ display_name: "Sales" }),
+        data: createMockDataApp({ name: "Sales" }),
         settings,
       });
 

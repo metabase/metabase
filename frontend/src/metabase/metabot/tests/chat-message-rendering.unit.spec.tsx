@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { assocIn } from "icepick";
 import type { ComponentProps } from "react";
 
 import {
@@ -32,7 +31,9 @@ import {
   setup as renderMetabotChat,
   thumbsDown,
   thumbsUp,
+  updateTestConversation,
 } from "metabase/metabot/tests/utils";
+import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -457,14 +458,20 @@ describe("UserMessage chart mentions", () => {
       SAMPLE_PROVIDER,
       DEFAULT_TEST_QUERY,
     );
-    const metabotState = assocIn(
-      getMetabotInitialState(),
-      ["conversations", "omnibot", "state"],
+    const initialState = getMetabotInitialState();
+    const omnibotConversationId = checkNotNull(
+      initialState.agents.omnibot,
+    ).conversationId;
+    const metabotState = updateTestConversation(
+      initialState,
+      omnibotConversationId,
       {
-        charts: {
-          "chart-1": {
-            queries: [datasetQuery],
-            visualization_settings: { chart_type: "bar" },
+        state: {
+          charts: {
+            "chart-1": {
+              queries: [datasetQuery],
+              visualization_settings: { chart_type: "bar" },
+            },
           },
         },
       },

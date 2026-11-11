@@ -4,12 +4,12 @@ import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
 /**
- * The URL that opens data app `name` in a new tab in cross-origin mode: the app page on
+ * The URL that opens data app `slug` in a new tab in cross-origin mode: the app page on
  * the site URL's origin, the only origin that may frame the app. Null in same-origin
  * mode, or when `siteUrl` is missing or unparseable.
  */
 export function getCrossOriginDataAppHref(
-  name: string,
+  slug: string,
   isolatedOrigin: string | null,
   siteUrl: string | null,
 ): string | null {
@@ -18,19 +18,19 @@ export function getCrossOriginDataAppHref(
   }
 
   try {
-    return new URL(Urls.getSubpathSafeUrl(Urls.dataApp(name)), siteUrl).href;
+    return new URL(Urls.getSubpathSafeUrl(Urls.dataApp(slug)), siteUrl).href;
   } catch {
     return null;
   }
 }
 
 /** [[getCrossOriginDataAppHref]] with this instance's settings. */
-export function useCrossOriginDataAppHref(): (name: string) => string | null {
+export function useCrossOriginDataAppHref(): (slug: string) => string | null {
   const isolatedOrigin = useSetting("isolated-origin");
   const siteUrl = useSetting("site-url");
 
   return useCallback(
-    (name: string) => getCrossOriginDataAppHref(name, isolatedOrigin, siteUrl),
+    (slug: string) => getCrossOriginDataAppHref(slug, isolatedOrigin, siteUrl),
     [isolatedOrigin, siteUrl],
   );
 }
