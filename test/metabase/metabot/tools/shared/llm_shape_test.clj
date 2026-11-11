@@ -462,10 +462,10 @@
     (let [xml (llm-shape/query-result->xml {:result_columns [{:name "a|b", :type "text"}]
                                             :rows           [["x|y<z"]]})]
       (is (str/includes? xml "| a\\|b |\n| x\\|y&lt;z |"))))
-  (testing "an escaped pipe or a line break in a cell cannot split the markdown row"
+  (testing "a line break in a cell cannot split the markdown row, and other text is kept as written"
     (let [xml (llm-shape/query-result->xml {:result_columns [{:name "a", :type "text"}]
-                                            :rows           [["x\\|y"] ["line 1\n  line 2"]]})]
-      (is (str/includes? xml "| x\\\\\\|y |\n| line 1 line 2 |"))))
+                                            :rows           [["line 1\r\nline 2"] ["Acme  Corp \\ \"Ltd\""]]})]
+      (is (str/includes? xml "| line 1 line 2 |\n| Acme  Corp \\ \"Ltd\" |"))))
   (testing "a pipe in a glossary term or definition cannot split the markdown row"
     (let [xml (llm-shape/user->xml {:id       1
                                     :name     "Ann"

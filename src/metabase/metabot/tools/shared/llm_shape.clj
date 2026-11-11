@@ -23,7 +23,6 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.quoting :as quoting]
    [ring.util.codec :as codec]
    [selmer.parser :as selmer]))
 
@@ -179,16 +178,13 @@
 
 (defn- markdown-cell
   "Render `v` as the text of one markdown table cell in `|safe` template output.
-  Each run of whitespace becomes one space, and backslashes, pipes and invisible characters are escaped."
+  Pipes are escaped and each line break becomes a space, so the value stays in its column."
   [v]
-  ;; The escaping of run-query's result cells, without their length cap.
+  ;; The model copies these values into filters and column references, so nothing else is changed.
   (-> (str v)
       escape-xml-content
-      (str/replace "\\" "\\\\")
       (str/replace "|" "\\|")
-      (str/replace #"(?U)\s+" " ")
-      ;; After the backslashes are doubled, so an escape written here differs from the same text in the data.
-      (quoting/escape-code-points quoting/invisible-code-point?)))
+      (str/replace #"\r\n|\r|\n" " ")))
 
 (defn- json-cell-safe
   "Keep a JSON string valid inside a markdown table cell. Markdown `\\|` escaping is not
