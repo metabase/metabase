@@ -285,9 +285,9 @@
       (mt/with-temp [:model/CustomVizPlugin plugin {:identifier   "tampered-viz"
                                                     :display_name "tampered-viz"
                                                     :status       :active
-                                                    :bundle       (cvp.tu/valid-bundle-bytes "tampered-viz")
-                                                    :bundle_hash  "deadbeef"}]
-        (is (nil? (cache/get-bundle plugin))
+                                                    :bundle       (cvp.tu/valid-bundle-bytes "tampered-viz")}]
+        (t2/update! :custom_viz_plugin :id (:id plugin) {:bundle_hash "deadbeef"})
+        (is (nil? (cache/get-bundle (assoc plugin :bundle_hash "deadbeef")))
             "mismatch between bundle bytes and bundle_hash must not be served")))))
 
 ;;; ------------------------------------------------ resolve-bundle precedence ------------------------------------------------

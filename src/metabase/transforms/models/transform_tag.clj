@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform :as transform]
@@ -12,6 +13,10 @@
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(events/derive! :event/transform-tag-create :metabase/event)
+(events/derive! :event/transform-tag-update :metabase/event)
+(events/derive! :event/transform-tag-delete :metabase/event)
 
 (methodical/defmethod t2/table-name :model/TransformTag [_model] :transform_tag)
 
@@ -28,17 +33,19 @@
 
 (defmethod mi/can-write? :model/TransformTag
   ([instance]
-   (or api/*is-superuser?*
-       (and (api/entitled-data-analyst?)
-            (let [transforms (transform/transforms-with-tags [(:id instance)])]
-              (every? mi/can-write? transforms)))))
+   (and (remote-sync/can-write? :model/TransformTag (:id instance))
+        (or api/*is-superuser?*
+            (and (api/entitled-data-analyst?)
+                 (let [transforms (transform/transforms-with-tags [(:id instance)])]
+                   (every? mi/can-write? transforms))))))
   ([_model pk]
    (when-let [tag (transforms.db/tag pk)]
      (mi/can-write? tag))))
 
 (defmethod mi/can-create? :model/TransformTag
   [_model _instance]
-  (api/entitled-data-analyst?))
+  (and (not (remote-sync/read-only?))
+       (api/entitled-data-analyst?)))
 
 (mu/defn tag-name-exists? :- :boolean
   "Check if a tag with the given name already exists"
@@ -122,3 +129,8 @@
 (t2/define-before-delete :model/TransformTag [tag]
   (events/publish-event! :event/transform-tag-delete {:object tag})
   tag)
+
+(defmethod remote-sync/spec :model/TransformTag
+  [_model]
+  {:synced-filter-clause   transforms.db/synced-transform-tags-clause
+   :built-in-filter-clause transforms.db/built-in-transform-tags-clause})

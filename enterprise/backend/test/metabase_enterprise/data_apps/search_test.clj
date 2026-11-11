@@ -65,8 +65,8 @@
 
 (deftest search-finds-the-data-apps-the-user-can-read-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {slug-match-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"}
-                   :model/DataApp {granted-id :id} {:name "plovers" :display_name "Sandpiper counts"}
+    (mt/with-temp [:model/DataApp {slug-match-id :id} {:slug "sandpiper-sightings" :name "Shorebirds"}
+                   :model/DataApp {granted-id :id} {:slug "plovers" :name "Sandpiper counts"}
                    :model/PermissionsGroup {group-id :id} {}
                    :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
       (grant-app-access! group-id granted-id)
@@ -86,9 +86,9 @@
 
 (deftest search-finds-disabled-and-outdated-data-apps-the-user-can-read-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {current-id :id} {:name "sandpiper-dunlin" :display_name "Dunlin" :version 2}
-                   :model/DataApp {outdated-id :id} {:name "sandpiper-knot" :display_name "Knot" :version 1}
-                   :model/DataApp {disabled-id :id} {:name "sandpiper-sanderling" :display_name "Sanderling" :version 2 :enabled false}
+    (mt/with-temp [:model/DataApp {current-id :id} {:slug "sandpiper-dunlin" :name "Dunlin" :version 2}
+                   :model/DataApp {outdated-id :id} {:slug "sandpiper-knot" :name "Knot" :version 1}
+                   :model/DataApp {disabled-id :id} {:slug "sandpiper-sanderling" :name "Sanderling" :version 2 :enabled false}
                    :model/PermissionsGroup {group-id :id} {}
                    :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
       (grant-app-access! group-id current-id)
@@ -110,10 +110,10 @@
     (mt/with-temporary-setting-values [use-tenants true]
       (mt/with-temp [:model/Tenant tenant {:name "Tenant"}
                      :model/User tenant-user {:tenant_id (:id tenant)}
-                     :model/DataApp {enabled-id :id} {:name "plovers" :display_name "Sandpiper counts"}
-                     :model/DataApp {disabled-id :id} {:name "sandpiper-drafts" :display_name "Drafts"
+                     :model/DataApp {enabled-id :id} {:slug "plovers" :name "Sandpiper counts"}
+                     :model/DataApp {disabled-id :id} {:slug "sandpiper-drafts" :name "Drafts"
                                                        :enabled false}
-                     :model/DataApp {ungranted-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"}
+                     :model/DataApp {ungranted-id :id} {:slug "sandpiper-sightings" :name "Shorebirds"}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
         (grant-app-access! group-id enabled-id)
@@ -131,8 +131,8 @@
 
 (deftest type-filter-offers-data-apps-only-to-users-who-can-read-one-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {enabled-id :id} {:name "plovers" :display_name "Sandpiper counts"}
-                   :model/DataApp {disabled-id :id} {:name "sandpiper-drafts" :display_name "Drafts"
+    (mt/with-temp [:model/DataApp {enabled-id :id} {:slug "plovers" :name "Sandpiper counts"}
+                   :model/DataApp {disabled-id :id} {:slug "sandpiper-drafts" :name "Drafts"
                                                      :enabled false}
                    :model/PermissionsGroup {other-group-id :id} {}
                    :model/PermissionsGroup {group-id :id} {}
@@ -150,7 +150,7 @@
 
 (deftest type-filter-offers-no-data-apps-without-the-feature-test
   (mt/with-premium-features #{}
-    (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"}
+    (mt/with-temp [:model/DataApp {app-id :id} {:slug "sandpiper-sightings" :name "Shorebirds"}
                    :model/PermissionsGroup {group-id :id} {}
                    :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
       (grant-app-access! group-id app-id)
@@ -169,7 +169,7 @@
 
 (deftest semantic-type-filter-offers-data-apps-only-to-users-who-can-read-one-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"}
+    (mt/with-temp [:model/DataApp {app-id :id} {:slug "sandpiper-sightings" :name "Shorebirds"}
                    :model/PermissionsGroup {group-id :id} {}
                    :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
       (grant-app-access! group-id app-id)
@@ -187,8 +187,8 @@
 
 (deftest search-by-ids-finds-the-requested-data-app-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"}
-                   :model/DataApp {other-id :id} {:name "plovers" :display_name "Sandpiper counts"}
+    (mt/with-temp [:model/DataApp {app-id :id} {:slug "sandpiper-sightings" :name "Shorebirds"}
+                   :model/DataApp {other-id :id} {:slug "plovers" :name "Sandpiper counts"}
                    :model/PermissionsGroup {group-id :id} {}
                    :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
       (grant-app-access! group-id app-id)
@@ -202,13 +202,13 @@
 
 (deftest search-finds-no-data-apps-without-the-feature-test
   (mt/with-premium-features #{}
-    (mt/with-temp [:model/DataApp _ {:name "sandpiper-sightings" :display_name "Shorebirds"}]
+    (mt/with-temp [:model/DataApp _ {:slug "sandpiper-sightings" :name "Shorebirds"}]
       (with-each-engine
         #(is (= {} (found-data-apps :crowberto :models "data-app")))))))
 
 (deftest deleting-a-data-app-removes-it-from-the-index-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"}]
+    (mt/with-temp [:model/DataApp {app-id :id} {:slug "sandpiper-sightings" :name "Shorebirds"}]
       (is (contains? (found-data-apps :crowberto :models "data-app") app-id))
       (t2/delete! :model/DataApp :id app-id)
       (is (= {} (found-data-apps :crowberto :models "data-app"))))))

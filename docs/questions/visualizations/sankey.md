@@ -1,5 +1,6 @@
 ---
 title: Sankey charts
+summary: Show how values flow through multiple steps, with the thickness of each link showing its volume.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/sankey
 ---

@@ -207,6 +207,36 @@
                       "only the simple-mode groups keep their rows")
                   (is (=? {"permission/metabot-sql-generation" "no"} (group-perm-values response group-id))))))))))))
 
+(deftest simple-mode-all-users-metabot-round-trip-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "in simple mode, the All Users `permission/metabot` value set by PUT is the value a user in All Users gets"
+      (with-metabot-permissions-snapshot
+        (mt/with-temporary-setting-values [metabot-advanced-permissions false]
+          (let [all-users-id   (u/the-id (perms/all-users-group))
+                set-all-users! (fn [perm-value]
+                                 (mt/user-http-request :crowberto :put 200 "ee/ai-controls/permissions"
+                                                       {:permissions [{:group_id   all-users-id
+                                                                       :perm_type  "permission/metabot"
+                                                                       :perm_value perm-value}]}))]
+            ;; Simple mode hides the custom group, so its :yes must not override All Users.
+            (mt/with-temp [:model/User                       {user-id :id}  {}
+                           :model/PermissionsGroup           {group-id :id} {:name "Hidden Metabot Group"}
+                           :model/PermissionsGroupMembership _              {:user_id user-id :group_id group-id}
+                           :model/MetabotPermissions         _              {:group_id   group-id
+                                                                             :perm_type  :permission/metabot
+                                                                             :perm_value :yes}]
+              (let [metabot-perm (fn []
+                                   (-> (mt/user-http-request user-id :get 200 "metabot/permissions/user-permissions")
+                                       (get-in [:permissions :metabot])))]
+                (testing "the migration-seeded All Users row gives yes"
+                  (is (= "yes" (metabot-perm))))
+                (testing "after the admin turns Metabot off for All Users"
+                  (set-all-users! "no")
+                  (is (= "no" (metabot-perm))))
+                (testing "after the admin turns Metabot on again"
+                  (set-all-users! "yes")
+                  (is (= "yes" (metabot-perm))))))))))))
+
 (deftest mode-switch-is-atomic-test
   (mt/with-premium-features #{:ai-controls}
     (testing "a mode switch that fails part way through leaves both the mode and the rows alone"

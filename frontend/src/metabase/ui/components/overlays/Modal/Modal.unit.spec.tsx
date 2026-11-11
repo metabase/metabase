@@ -1,9 +1,20 @@
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
+import { useState } from "react";
 
-import { render, screen, within } from "__support__/ui";
+import {
+  render,
+  screen,
+  waitFor,
+  waitForElementToBeRemoved,
+  within,
+} from "__support__/ui";
 
-import { Modal } from "./index";
+import {
+  Modal,
+  type ModalRootProps,
+  SIDESHEET_TRANSITION_PROPS,
+} from "./index";
 
 interface SetupOpts {
   headerActions?: ReactNode;
@@ -86,5 +97,69 @@ describe("Modal", () => {
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onBack).not.toHaveBeenCalled();
+  });
+});
+
+type ModalRootSetupOpts = Pick<ModalRootProps, "transitionProps">;
+
+function ModalRootWithTrigger({ transitionProps }: ModalRootSetupOpts) {
+  const [opened, setOpened] = useState(false);
+
+  return (
+    <>
+      <button onClick={() => setOpened(true)}>Open</button>
+      <Modal.Root
+        opened={opened}
+        transitionProps={transitionProps}
+        onClose={() => setOpened(false)}
+      >
+        <Modal.Overlay />
+        <Modal.Content>
+          <Modal.Body>Modal body</Modal.Body>
+        </Modal.Content>
+      </Modal.Root>
+    </>
+  );
+}
+
+async function setupModalRoot({ transitionProps }: ModalRootSetupOpts = {}) {
+  render(<ModalRootWithTrigger transitionProps={transitionProps} />);
+  await userEvent.click(screen.getByRole("button", { name: "Open" }));
+  await screen.findByRole("dialog");
+}
+
+describe("Modal.Root", () => {
+  it.each<{ name: string } & ModalRootSetupOpts>([
+    { name: "with the default transition" },
+    {
+      name: "with a call site's own transition",
+      transitionProps: { transition: "fade", duration: 200 },
+    },
+  ])("closes without an exit transition $name", async ({ transitionProps }) => {
+    await setupModalRoot({ transitionProps });
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByText("Modal body")).not.toBeInTheDocument();
+  });
+
+  it("keeps the exit transition when a call site sets its own exitDuration", async () => {
+    await setupModalRoot({ transitionProps: SIDESHEET_TRANSITION_PROPS });
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await waitForElementToBeRemoved(() => screen.queryByRole("dialog"));
+  });
+
+  it("returns focus to the trigger when it closes", async () => {
+    await setupModalRoot();
+
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Open" })).toHaveFocus(),
+    );
   });
 });

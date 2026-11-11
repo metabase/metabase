@@ -25,6 +25,7 @@
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.cache.models.cache-config
     :model/Card                              metabase.queries.models.card
+    :model/CardTest                          metabase-enterprise.data-testing.models.card-test
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
@@ -45,6 +46,7 @@
     :model/DashboardCardSeries               metabase.dashboards.models.dashboard-card-series
     :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
+    :model/DataTestRun                       metabase-enterprise.data-testing.models.data-test-run
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.models
     :model/Dependency                        metabase-enterprise.dependencies.models.dependency
@@ -124,7 +126,6 @@
     :model/QueryField                        metabase.queries.models.query-field
     :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
-    :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
     :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
     :model/ResultMetadataStatus              metabase-enterprise.dependencies.models.result-metadata-status
@@ -155,8 +156,7 @@
     :model/TransformRun                      metabase.transforms.models.transform-run
     :model/TransformRunCancelation           metabase.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase.transforms.models.transform-tag
-    :model/TransformTest                     metabase-enterprise.transform-testing.models
-    :model/TransformTestRun                  metabase-enterprise.transform-testing.models.transform-test-run
+    :model/TransformTest                     metabase-enterprise.data-testing.models
     :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily

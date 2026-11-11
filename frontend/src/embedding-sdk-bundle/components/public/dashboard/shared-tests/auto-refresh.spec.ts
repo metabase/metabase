@@ -1,7 +1,6 @@
-import { waitFor } from "@testing-library/react";
+import fetchMock from "fetch-mock";
 
-import { findRequests } from "__support__/server-mocks";
-import { screen } from "__support__/ui";
+import { act, screen, waitFor } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import type { SetupSdkDashboardOptions } from "../tests/setup";
@@ -24,33 +23,18 @@ export function addEnterpriseAutoRefreshTests(
       await setup({ props: { autoRefreshInterval: 10 } });
 
       // Wait for initial dashboard load
-      await waitFor(async () => {
-        const initialRequests = await getDashboardQueryRequests();
-        expect(initialRequests.length).toBe(
-          1 * DASHBOARD_CARD_QUERY_REQUEST_COUNT,
-        );
-      });
+      await waitForQueryRequests(1 * DASHBOARD_CARD_QUERY_REQUEST_COUNT);
 
       // Advance time by the auto-refresh interval (10 seconds)
-      jest.advanceTimersByTime(10_000);
+      act(() => jest.advanceTimersByTime(10_000));
 
       // Wait for the auto-refresh request to be made
-      await waitFor(async () => {
-        const requestsAfterRefresh = await getDashboardQueryRequests();
-        expect(requestsAfterRefresh.length).toBe(
-          2 * DASHBOARD_CARD_QUERY_REQUEST_COUNT,
-        );
-      });
+      await waitForQueryRequests(2 * DASHBOARD_CARD_QUERY_REQUEST_COUNT);
 
       // Advance time again to test multiple refresh cycles
-      jest.advanceTimersByTime(10_000);
+      act(() => jest.advanceTimersByTime(10_000));
 
-      await waitFor(async () => {
-        const requestsAfterSecondRefresh = await getDashboardQueryRequests();
-        expect(requestsAfterSecondRefresh.length).toBe(
-          3 * DASHBOARD_CARD_QUERY_REQUEST_COUNT,
-        );
-      });
+      await waitForQueryRequests(3 * DASHBOARD_CARD_QUERY_REQUEST_COUNT);
     });
 
     it("should show the auto-refresh indicator in the dashboard header for positive integers", async () => {
@@ -74,18 +58,13 @@ export function addEnterpriseAutoRefreshTests(
         await setup({ props: { autoRefreshInterval: value as number } });
 
         // Wait for initial dashboard load
-        await waitFor(async () => {
-          const initialRequests = await getDashboardQueryRequests();
-          expect(initialRequests.length).toBe(
-            DASHBOARD_CARD_QUERY_REQUEST_COUNT,
-          );
-        });
+        await waitForQueryRequests(DASHBOARD_CARD_QUERY_REQUEST_COUNT);
 
         // Advance time significantly
-        jest.advanceTimersByTime(30_000);
+        act(() => jest.advanceTimersByTime(30_000));
 
         // Verify no additional requests were made
-        const finalRequests = await getDashboardQueryRequests();
+        const finalRequests = getDashboardQueryRequests();
         expect(finalRequests.length).toBe(DASHBOARD_CARD_QUERY_REQUEST_COUNT);
       });
 
@@ -103,14 +82,25 @@ export function addEnterpriseAutoRefreshTests(
 
 export const addPremiumAutoRefreshTests = addEnterpriseAutoRefreshTests;
 
-async function getDashboardQueryRequests() {
-  return findRequests("POST").then((requests) =>
-    requests.filter((req) =>
-      req.url.match(
-        new RegExp(
-          "^http://localhost/api/dashboard/\\d+/dashcard/\\d+/card/\\d+/query",
-        ),
-      ),
-    ),
-  );
+const DASHBOARD_CARD_QUERY_URL =
+  /^http:\/\/localhost\/api\/dashboard\/\d+\/dashcard\/\d+\/card\/\d+\/query/;
+
+// A waitFor with an async callback under fake timers resolves while its own
+// last act() is still running, so the requests are counted synchronously and
+// their responses land afterwards, inside act().
+async function waitForQueryRequests(count: number) {
+  await waitFor(() => {
+    expect(getDashboardQueryRequests()).toHaveLength(count);
+  });
+  await act(() => fetchMock.callHistory.flush());
+}
+
+function getDashboardQueryRequests() {
+  return fetchMock.callHistory
+    .calls()
+    .filter(
+      (call) =>
+        call.request?.method === "POST" &&
+        DASHBOARD_CARD_QUERY_URL.test(call.url),
+    );
 }

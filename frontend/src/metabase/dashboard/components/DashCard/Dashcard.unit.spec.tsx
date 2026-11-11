@@ -849,6 +849,7 @@ describe("DashCard", () => {
     const { hash } = parse(href ?? "");
     const linkedQuestion = new Question(
       hash ? deserializeCardFromUrl(hash) : undefined,
+      createMockMetadata(),
     );
     expect(linkedQuestion.card().original_card_id).toBe(secondCard.id);
     expect(Lib.filters(linkedQuestion.query(), -1)).toHaveLength(1);

@@ -3,6 +3,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
@@ -93,14 +94,31 @@
                                          {:serdes/meta [{:model "CustomVizPlugin"}] :identifier "absent-viz"}]))))))
 
 (deftest spec-test
-  (testing "spec copies identity fields and bundle_hash, skips dev/error state"
+  (testing "spec copies identity fields, skips dev/error state and the bundle_hash its hooks compute"
     (let [spec (serialization/spec-of :model/CustomVizPlugin)]
       (is (contains? (set (:copy spec)) :identifier))
       (is (contains? (set (:copy spec)) :display_name))
       (is (contains? (set (:copy spec)) :manifest))
-      (is (contains? (set (:copy spec)) :bundle_hash))
+      (is (contains? (set (:skip spec)) :bundle_hash))
       (is (contains? (set (:skip spec)) :dev_bundle_url))
       (is (contains? (set (:skip spec)) :error_message)))))
+
+(deftest bundle-hash-on-bundle-change-test
+  (testing "an update hashes the bundle only when it sets one"
+    (let [bundle (fn [s] (.getBytes ^String s "UTF-8"))]
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "hash-viz"
+                                                      :display_name "hash-viz"
+                                                      :status       :active
+                                                      :bundle       (bundle "old")}]
+        (let [hashed   (atom 0)
+              original cache/bytes-hash]
+          (mt/with-dynamic-fn-redefs [cache/bytes-hash (fn [b] (swap! hashed inc) (original b))]
+            (t2/update! :model/CustomVizPlugin :id id {:enabled false})
+            (is (zero? @hashed))
+            (t2/update! :model/CustomVizPlugin :id id {:bundle (bundle "new")})
+            (is (= 1 @hashed))))
+        (is (= (cache/bytes-hash (bundle "new"))
+               (t2/select-one-fn :bundle_hash :model/CustomVizPlugin :id id)))))))
 
 (deftest bundle-b64-round-trip-test
   (testing "bundle bytes base64-encode on export and decode back to bytes on import"

@@ -18,8 +18,8 @@
     "INSERT INTO v VALUES ('CREATE VIEW x')"                                       false
     "CREATE MATERIALIZED VIEW v AS SELECT 1"                                       false))
 
-(defn- statements [text]
-  (dump-util/lines->statements (str/split-lines text)))
+(defn- statements [text & opts]
+  (apply dump-util/lines->statements (str/split-lines text) opts))
 
 (deftest lines->statements-test
   (testing "statements end on a line ending in a semicolon, which is dropped"
@@ -42,7 +42,10 @@
   (testing "backslash escapes, as MySQL writes them"
     (testing "a backslashed quote stays inside the string"
       (is (= ["INSERT INTO t VALUES ('it\\'s;\nfine')"]
-             (statements "INSERT INTO t VALUES ('it\\'s;\nfine');"))))
+             (statements "INSERT INTO t VALUES ('it\\'s;\nfine');" :backslash-escapes? true))))
     (testing "a string ending in an escaped backslash still closes"
       (is (= ["INSERT INTO t VALUES ('C:\\\\')" "INSERT INTO t VALUES (2)"]
-             (statements "INSERT INTO t VALUES ('C:\\\\');\nINSERT INTO t VALUES (2);"))))))
+             (statements "INSERT INTO t VALUES ('C:\\\\');\nINSERT INTO t VALUES (2);" :backslash-escapes? true)))))
+  (testing "without backslash escapes, as Postgres writes strings, a string ending in a backslash still closes"
+    (is (= ["INSERT INTO t VALUES ('C:\\')" "INSERT INTO t VALUES (2)"]
+           (statements "INSERT INTO t VALUES ('C:\\');\nINSERT INTO t VALUES (2);")))))

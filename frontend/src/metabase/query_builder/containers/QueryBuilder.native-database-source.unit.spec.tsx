@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   findRequests,
   setupAdhocQueryMetadataEndpoint,
@@ -27,6 +28,7 @@ import {
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import Question from "metabase-lib/v1/Question";
 import type { Database, DatabaseId } from "metabase-types/api";
 import {
   createMockCardQueryMetadata,
@@ -119,13 +121,15 @@ const setup = async ({
 
 // The "Use a native query" link of NewModelOptions, which its own spec pins.
 const getNewNativeModelUrl = (databaseId: DatabaseId | null) =>
-  Urls.newQuestion({
-    mode: "query",
-    DEPRECATED_RAW_MBQL_type: "native",
-    creationType: "native_question",
-    cardType: "model",
-    DEPRECATED_RAW_MBQL_databaseId: databaseId ?? undefined,
-  });
+  Urls.newQuestion(
+    Question.create({
+      metadata: createMockMetadata(),
+      DEPRECATED_RAW_MBQL_type: "native",
+      cardType: "model",
+      DEPRECATED_RAW_MBQL_databaseId: databaseId ?? undefined,
+    }),
+    { mode: "query", creationType: "native_question" },
+  );
 
 const selectDatabase = async (name: string) => {
   await userEvent.click(

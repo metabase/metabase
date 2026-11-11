@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
@@ -52,7 +53,6 @@ const WRITABLE_CARD_PROPERTIES = [
   "dashboard_id",
   "dashboard_tab_id",
   "collection_position",
-  "collection_preview",
   "result_metadata",
   "delete_old_dashcards",
   "size",

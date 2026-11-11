@@ -1,5 +1,6 @@
 ---
 title: Scatterplots and bubble charts
+summary: Plot the relationship between two numbers, and add a third as the size of each bubble.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/scatterplot-or-bubble-chart
 ---

@@ -6,6 +6,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.metabot.agent.core :as metabot.agent]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
@@ -28,7 +29,7 @@
                          [:dataset_query ::lib-be.schema/maybe-legacy-query]
                          [:database_id ms/PositiveInt]
                          [:parameters [:maybe ::parameters.schema/parameters]]
-                         [:visualization_settings ms/VisualizationSettings]]]]
+                         [:visualization_settings ::lib.schema.visualization-settings/visualization-settings]]]]
    [:error [:maybe ms/NonBlankString]]
    [:description [:maybe ms/NonBlankString]]])
 

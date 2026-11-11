@@ -73,8 +73,8 @@
 
 (defmethod searchable-columns "data-app"
   [_ _]
-  [:name
-   :display_name
+  [:slug
+   :name
    :description])
 
 (defmethod searchable-columns "transform"

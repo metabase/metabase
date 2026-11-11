@@ -9,7 +9,6 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard :as dashboard]
@@ -21,6 +20,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -253,7 +253,7 @@
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe int?]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series                 {:optional true} [:maybe [:sequential [:map [:id ms/PositiveInt]]]]]])
 
@@ -377,8 +377,7 @@
                (reset! changes-stats
                        (merge
                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
-                        (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
-           (collections/check-for-remote-sync-update current-dash))
+                        (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
          true))
       (let [dashboard (dashboards.db/dashboard id)]
         ;; skip publishing the event if it's just a change in its collection position
@@ -616,12 +615,9 @@
                                                                             id->referenced-card
                                                                             id->new-tab-id))]
                              (api/check-500 (dashboard/add-dashcards! dash dashcards)))
-                           (u/prog1 (cond-> dash
-                                      (seq uncopied)
-                                      (assoc :uncopied uncopied))
-                             (when (collections/moving-into-remote-synced? (:collection_id existing-dashboard)
-                                                                           collection_id)
-                               (collections/check-non-remote-synced-dependencies <>)))))]
+                           (cond-> dash
+                             (seq uncopied)
+                             (assoc :uncopied uncopied))))]
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
                              :dashboard-id (u/the-id dashboard)})

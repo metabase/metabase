@@ -26,6 +26,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
   canDeleteAction,
@@ -58,8 +59,8 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
 
-  const database = model.database();
-  const hasActionsEnabled = database != null && database.hasActionsEnabled();
+  const databaseInfo = Lib.databaseDisplayInfo(model.query());
+  const hasActionsEnabled = databaseInfo?.isActionsEnabled ?? false;
   const isAdmin = useSelector(getUserIsAdmin);
   const canWrite = isAdmin && model.canWriteActions();
   const hasImplicitActionsSupport = supportsImplicitActions(model.query());
@@ -149,14 +150,14 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
           )}
         </Flex>
       )}
-      {database && !hasActionsEnabled && (
+      {databaseInfo && !hasActionsEnabled && (
         <Alert
           size="compact"
           w="70%"
           icon={<Icon name="warning" />}
           color="error"
         >
-          {t`Running Actions is not enabled for database ${database.displayName()}`}
+          {t`Running Actions is not enabled for database ${databaseInfo.displayName}`}
         </Alert>
       )}
       {actions.length > 0 ? (
