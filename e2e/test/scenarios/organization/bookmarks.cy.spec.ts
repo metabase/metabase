@@ -1,16 +1,13 @@
 const { H } = cy;
-import { SAMPLE_DB_TABLES, USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 import {
-  ADMIN_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-
-const adminFullName = USERS.admin.first_name + " " + USERS.admin.last_name;
-const adminPersonalCollectionName = adminFullName + "'s Personal Collection";
 
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
-describe("scenarios > organization > bookmarks > collection", () => {
+describe("scenarios > organization > bookmarks", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -18,248 +15,145 @@ describe("scenarios > organization > bookmarks > collection", () => {
     H.enableTracking();
   });
 
-  it("cannot add bookmark to root collection", () => {
-    H.visitCollection("root");
-
-    H.getSidebarSectionTitle("Collections");
-    cy.icon("bookmark").should("not.exist");
-  });
-
-  it("can add, update bookmark name when collection name is updated, and remove bookmarks from collection from its page", () => {
-    H.visitCollection(FIRST_COLLECTION_ID);
-
-    // Add bookmark
-    cy.icon("bookmark").click();
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "bookmark_added",
-      event_detail: "collection",
-      triggered_from: "collection_header",
+  describe("question", () => {
+    beforeEach(() => {
+      cy.intercept("/api/bookmark/card/*").as("toggleBookmark");
     });
 
-    H.navigationSidebar().within(() => {
-      H.getSidebarSectionTitle(/Bookmarks/);
-      cy.findAllByText("First collection").should("have.length", 2);
-
-      // Once there is a list of bookmarks,
-      // we add a heading to the list of collections below the list of bookmarks
-      H.getSidebarSectionTitle("Collections");
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
     });
 
-    // Rename bookmarked collection
-    cy.findByTestId("collection-name-heading").click().type(" 2").blur();
+    it("should add, update bookmark name when question name is updated, then remove bookmark from question page", () => {
+      H.visitQuestion(ORDERS_QUESTION_ID);
+      toggleQuestionBookmarkStatus();
 
-    H.navigationSidebar()
-      .findAllByText("First collection 2")
-      .should("have.length", 2);
-
-    // Remove bookmark
-    cy.findByTestId("collection-menu").icon("bookmark_filled").click();
-
-    H.navigationSidebar()
-      .findAllByText("First collection 2")
-      .should("have.length", 1);
-
-    cy.findByTestId("collection-menu")
-      .icon("bookmark_filled")
-      .should("not.exist");
-    cy.findByTestId("collection-menu").icon("bookmark").should("exist");
-  });
-
-  it("removes items from bookmarks list when they are archived", () => {
-    // A question
-    bookmarkThenArchive("Orders");
-
-    // A dashboard
-    bookmarkThenArchive("Orders in a dashboard");
-  });
-
-  it("should update bookmarks list when restoring a collection containing bookmarked items (metabase#44499)", () => {
-    const collectionName = "First collection";
-    const questionName = "Orders in First Collection";
-
-    // Create a question in the collection and bookmark it
-    H.createQuestion({
-      name: questionName,
-      query: { "source-table": STATIC_ORDERS_ID },
-      collection_id: FIRST_COLLECTION_ID,
-    }).then(({ body: { id: questionId } }) => {
-      cy.request("POST", `/api/bookmark/card/${questionId}`);
-    });
-
-    H.visitCollection("root");
-
-    // Verify bookmark appears in sidebar
-    H.navigationSidebar()
-      .findByRole("section", { name: "Bookmarks" })
-      .should("contain", questionName);
-
-    // Archive the collection
-    H.openCollectionItemMenu(collectionName);
-    H.popover().findByTextEnsureVisible("Move to trash").click();
-
-    // The bookmarked question should be removed from bookmarks
-    H.navigationSidebar()
-      .findByRole("section", { name: "Bookmarks" })
-      .should("not.exist");
-
-    // Restore the collection
-    cy.visit("/trash");
-    H.openCollectionItemMenu(collectionName);
-    H.popover().findByTextEnsureVisible("Restore").click();
-
-    // The bookmarked question should reappear in bookmarks
-    H.navigationSidebar()
-      .findByRole("section", { name: "Bookmarks" })
-      .should("contain", questionName);
-  });
-
-  it("can remove bookmark from item in sidebar", () => {
-    H.visitCollection(ADMIN_PERSONAL_COLLECTION_ID);
-
-    // Add bookmark
-    cy.findByTestId("collection-menu").icon("bookmark").click();
-
-    H.navigationSidebar().within(() => {
-      cy.icon("bookmark_filled").click({ force: true });
-    });
-
-    H.getSidebarSectionTitle(/Bookmarks/).should("not.exist");
-  });
-
-  it("can toggle bookmark list visibility", () => {
-    H.visitCollection(ADMIN_PERSONAL_COLLECTION_ID);
-
-    // Add bookmark
-    cy.icon("bookmark").click();
-
-    H.navigationSidebar().within(() => {
-      H.getSidebarSectionTitle(/Bookmarks/).click();
-
-      cy.findByText(adminPersonalCollectionName).should("not.exist");
-
-      H.getSidebarSectionTitle(/Bookmarks/).click();
-
-      cy.findByText(adminPersonalCollectionName);
-    });
-  });
-
-  describe("collection items", () => {
-    it("can add/remove bookmark from unpinned Question in collection", () => {
-      addBookmarkTo("Orders");
       H.expectUnstructuredSnowplowEvent({
         event: "bookmark_added",
         event_detail: "question",
-        triggered_from: "collection_list",
+        triggered_from: "qb_action_panel",
       });
-      removeBookmarkFrom("Orders");
+
+      H.openNavigationSidebar();
+      H.navigationSidebar().within(() => {
+        H.getSidebarSectionTitle(/Bookmarks/);
+        cy.findByText("Orders");
+      });
+
+      // Rename bookmarked question
+      cy.findByTestId("saved-question-header-title").click().type(" 2").blur();
+
+      H.navigationSidebar().within(() => {
+        cy.findByText("Orders 2");
+      });
+
+      cy.log("Turn the question into a model");
+      H.openQuestionActions();
+      cy.findByRole("menu").contains("Turn into a model").click();
+      cy.findByRole("dialog").contains("Turn this into a model").click();
+
+      H.undoToastList().findByText("This is a model now.");
+      // Close this toast as soon we confim it exists!
+      // It lingers in the UI far too long which is causing flakiness later on
+      // when we assert on the next toast (when we turn the model back to the question).
+      H.undoToastList().icon("close").click();
+
+      H.openNavigationSidebar();
+      H.navigationSidebar().within(() => {
+        cy.findByRole("section", { name: "Bookmarks" })
+          .icon("model")
+          .should("exist");
+      });
+
+      cy.log("Turn the model back into a question");
+      H.openQuestionActions();
+      cy.findByRole("menu").contains("Turn back to saved question").click();
+      H.undoToastList().should("contain", "This is a question now.");
+
+      H.openNavigationSidebar();
+      cy.log("Should not find bookmark");
+      H.navigationSidebar().within(() => {
+        cy.findByRole("section", { name: "Bookmarks" })
+          .icon("model")
+          .should("not.exist");
+      });
+
+      // Remove bookmark
+      toggleQuestionBookmarkStatus({ wasSelected: true });
       H.expectUnstructuredSnowplowEvent(
         {
           event: "bookmark_added",
           event_detail: "question",
-          triggered_from: "collection_list",
+          triggered_from: "qb_action_panel",
         },
         1,
       );
-    });
 
-    it("can add/remove bookmark from pinned Question in collection", () => {
-      const name = "Orders";
-      H.visitCollection("root");
-
-      pin(name);
-      H.getPinnedSection().findByText("A question");
-      bookmarkPinnedItem(name);
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "bookmark_added",
-        event_detail: "question",
-        triggered_from: "collection_list",
+      H.navigationSidebar().within(() => {
+        H.getSidebarSectionTitle(/Bookmarks/).should("not.exist");
+        cy.findByText("Orders 2").should("not.exist");
       });
     });
+  });
 
-    it("can add/remove bookmark from unpinned Dashboard in collection", () => {
-      addBookmarkTo("Orders in a dashboard");
-      H.expectUnstructuredSnowplowEvent({
-        event: "bookmark_added",
-        event_detail: "dashboard",
-        triggered_from: "collection_list",
-      });
-      removeBookmarkFrom("Orders in a dashboard");
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "bookmark_added",
-          event_detail: "dashboard",
-          triggered_from: "collection_list",
-        },
-        1,
-      );
+  describe("archiving", () => {
+    it("removes items from bookmarks list when they are archived", () => {
+      // A question
+      bookmarkThenArchive("Orders");
+
+      // A dashboard
+      bookmarkThenArchive("Orders in a dashboard");
     });
 
-    it("can add/remove bookmark from pinned Dashboard in collection", () => {
-      const name = "Orders in a dashboard";
-      H.visitCollection("root");
-
-      pin(name);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("A dashboard");
-      bookmarkPinnedItem(name);
-      H.expectUnstructuredSnowplowEvent({
-        event: "bookmark_added",
-        event_detail: "dashboard",
-        triggered_from: "collection_list",
-      });
-    });
-
-    it("adds and removes bookmarks from Model in collection", () => {
-      H.createQuestion({
-        name: "Orders Model",
-        query: { "source-table": STATIC_ORDERS_ID, aggregation: [["count"]] },
-        type: "model",
-      });
-
-      addBookmarkTo("Orders Model");
-      H.expectUnstructuredSnowplowEvent({
-        event: "bookmark_added",
-        event_detail: "model",
-        triggered_from: "collection_list",
-      });
-
-      removeBookmarkFrom("Orders Model");
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "bookmark_added",
-          event_detail: "model",
-          triggered_from: "collection_list",
-        },
-        1,
-      );
-    });
-
-    it("can bookmark a collection", () => {
+    it("should update bookmarks list when restoring a collection containing bookmarked items (metabase#44499)", () => {
       const collectionName = "First collection";
+      const questionName = "Orders in First Collection";
 
-      addBookmarkTo(collectionName);
-      H.expectUnstructuredSnowplowEvent({
-        event: "bookmark_added",
-        event_detail: "collection",
-        triggered_from: "collection_list",
+      // Create a question in the collection and bookmark it
+      H.createQuestion({
+        name: questionName,
+        query: { "source-table": STATIC_ORDERS_ID },
+        collection_id: FIRST_COLLECTION_ID,
+      }).then(({ body: { id: questionId } }) => {
+        cy.request("POST", `/api/bookmark/card/${questionId}`);
       });
 
-      removeBookmarkFrom(collectionName);
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "bookmark_added",
-          event_detail: "collection",
-          triggered_from: "collection_list",
-        },
-        1,
-      );
+      H.visitCollection("root");
+
+      // Verify bookmark appears in sidebar
+      H.navigationSidebar()
+        .findByRole("section", { name: "Bookmarks" })
+        .should("contain", questionName);
+
+      // Archive the collection
+      H.openCollectionItemMenu(collectionName);
+      H.popover().findByTextEnsureVisible("Move to trash").click();
+
+      // The bookmarked question should be removed from bookmarks
+      H.navigationSidebar()
+        .findByRole("section", { name: "Bookmarks" })
+        .should("not.exist");
+
+      // Restore the collection
+      cy.visit("/trash");
+      H.openCollectionItemMenu(collectionName);
+      H.popover().findByTextEnsureVisible("Restore").click();
+
+      // The bookmarked question should reappear in bookmarks
+      H.navigationSidebar()
+        .findByRole("section", { name: "Bookmarks" })
+        .should("contain", questionName);
     });
   });
 });
 
-function addBookmarkTo(name) {
+function toggleQuestionBookmarkStatus({ wasSelected = false } = {}) {
+  const labelText = wasSelected ? "Remove from bookmarks" : "Bookmark";
+  cy.findByTestId("qb-header-action-panel").findByLabelText(labelText).click();
+  cy.wait("@toggleBookmark");
+}
+
+function addBookmarkTo(name: string) {
   H.visitCollection("root");
 
   H.openCollectionItemMenu(name);
@@ -270,42 +164,12 @@ function addBookmarkTo(name) {
     .should("contain", name);
 }
 
-function removeBookmarkFrom(name) {
-  H.openCollectionItemMenu(name);
-
-  H.popover().findByTextEnsureVisible("Remove from bookmarks").click();
-
-  H.navigationSidebar()
-    .findByRole("section", { name: "Bookmarks" })
-    .should("not.exist");
-}
-
-function bookmarkThenArchive(name) {
-  addBookmarkTo(name);
-  archive(name);
-}
-
-function pin(name) {
-  H.openCollectionItemMenu(name);
-  H.popover().findByTextEnsureVisible("Pin this").click();
-}
-
-function archive(name) {
+function archive(name: string) {
   H.openCollectionItemMenu(name);
   H.popover().findByTextEnsureVisible("Move to trash").click();
 }
 
-function bookmarkPinnedItem(name) {
-  H.getPinnedSection()
-    .findByText(name)
-    .closest("a")
-    .find(".Icon-ellipsis")
-    .click({ force: true });
-
-  cy.findByText("Bookmark").click();
-
-  H.navigationSidebar().within(() => {
-    H.getSidebarSectionTitle(/Bookmarks/);
-    cy.findByText(name);
-  });
+function bookmarkThenArchive(name: string) {
+  addBookmarkTo(name);
+  archive(name);
 }
