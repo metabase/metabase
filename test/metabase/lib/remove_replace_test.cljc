@@ -642,15 +642,35 @@
                   (lib/replace-clause 0 expr-a 999)))))))
 
 (deftest ^:parallel replace-clause-expression-used-in-breakout-test
-  (let [query    (-> (lib.tu/venues-query)
-                     (lib/expression "a" (lib/+ (meta/field-metadata :venues :name) 7))
-                     (as-> $q (lib/breakout $q -1 (lib/expression-ref $q -1 "a"))))
-        [expr]   (lib/expressions query)
-        edited   (lib/replace-clause query -1 expr (lib/with-expression-name expr "b"))]
+  (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
+                      (lib/expression "a" (meta/field-metadata :users :last-login)))
+        column    (m/find-first (comp #{"a"} :name) (lib/breakoutable-columns query))
+        year-col  (lib/with-temporal-bucket column :year)
+        month-col (lib/with-temporal-bucket column :month)
+        query     (-> query
+                      (lib/breakout year-col)
+                      (lib/breakout month-col)
+                      (lib/order-by year-col :desc)
+                      (lib/order-by month-col :asc)
+                      (lib/filter (lib/= month-col "2025-01-01")))
+        [expr]    (lib/expressions query)
+        edited    (lib/replace-clause query -1 expr (lib/with-expression-name expr "b"))]
     (is (=? [{:lib/expression-name "b"}]
             (map lib.options/options (lib/expressions edited))))
-    (is (=? [[:expression {} "b"]]
-            (lib/breakouts edited)))))
+    (is (=? [[:expression {:temporal-unit :year} "b"]
+             [:expression {:temporal-unit :month} "b"]]
+            (lib/breakouts edited)))
+    (is (=? [[:desc {} [:expression {:temporal-unit :year} "b"]]
+             [:asc {} [:expression {:temporal-unit :month} "b"]]]
+            (lib/order-bys edited)))
+    (is (=? [[:= {} [:expression {:temporal-unit :month} "b"] "2025-01-01"]]
+            (lib/filters edited)))
+    (testing "changing the expression body does not retain its temporal unit"
+      (is (=? [[:expression (complement :temporal-unit) "b"]]
+              (-> query
+                  (lib/remove-clause (second (lib/breakouts query)))
+                  (lib/replace-clause expr (lib/with-expression-name "text" "b"))
+                  lib/breakouts))))))
 
 (deftest ^:parallel replace-order-by-breakout-col-test
   (testing "issue #30980"

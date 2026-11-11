@@ -1,6 +1,8 @@
+import { useMergedRef } from "@mantine/hooks";
 import {
   type KeyboardEvent,
   type ReactNode,
+  type Ref,
   useEffect,
   useMemo,
   useRef,
@@ -36,6 +38,7 @@ type SummaryWellInputProps = {
   hasItems: boolean;
   autoFocus?: boolean;
   formulaInput?: SummaryFormulaInput;
+  inputRef?: Ref<HTMLInputElement>;
   onPick: (field: SummaryField) => void;
   onRemoveLast: () => void;
 };
@@ -47,11 +50,13 @@ export function SummaryWellInput({
   hasItems,
   autoFocus = false,
   formulaInput,
+  inputRef: externalInputRef,
   onPick,
   onRemoveLast,
 }: SummaryWellInputProps) {
   const fieldRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const mergedInputRef = useMergedRef(inputRef, externalInputRef);
   const [dropdownFrame, setDropdownFrame] = useState<DropdownFrame | null>(
     null,
   );
@@ -168,7 +173,7 @@ export function SummaryWellInput({
           {children}
           <Combobox.EventsTarget>
             <PillsInput.Field
-              ref={inputRef}
+              ref={mergedInputRef}
               className={S.wellFieldInput}
               placeholder={texts.placeholder}
               value={searchText}

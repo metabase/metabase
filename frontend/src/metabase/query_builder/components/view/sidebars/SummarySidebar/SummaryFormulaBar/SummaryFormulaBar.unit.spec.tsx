@@ -171,12 +171,20 @@ describe("summary formula handoff", () => {
     await screen.findByRole("textbox", { name: "Formula" });
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
     await expectClosed();
+    await userEvent.dblClick(
+      screen.getByRole("button", { name: "Rename Total + 10" }),
+    );
+    const nameInput = screen.getByRole("textbox", {
+      name: "Name of Total + 10",
+    });
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, "Generated{Enter}");
     reloadQuestion();
     await userEvent.click(
-      screen.getByRole("button", { name: "Remove Total + 10" }),
+      screen.getByRole("button", { name: "Remove Generated" }),
     );
-    expect(onQueryChange).toHaveBeenCalledTimes(2);
-    const [afterFormulaRemoval] = onQueryChange.mock.calls[1];
+    expect(onQueryChange).toHaveBeenCalledTimes(3);
+    const [afterFormulaRemoval] = onQueryChange.mock.calls[2];
     expect(Lib.expressions(afterFormulaRemoval, -1)).toHaveLength(1);
     expect(
       Lib.displayInfo(
@@ -186,8 +194,8 @@ describe("summary formula handoff", () => {
       ).displayName,
     ).toBe("Manual");
     await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
-    expect(onQueryChange).toHaveBeenCalledTimes(3);
-    const [afterClear] = onQueryChange.mock.calls[2];
+    expect(onQueryChange).toHaveBeenCalledTimes(4);
+    const [afterClear] = onQueryChange.mock.calls[3];
     expect(Lib.breakouts(afterClear, -1)).toHaveLength(0);
     expect(Lib.expressions(afterClear, -1)).toHaveLength(1);
   });

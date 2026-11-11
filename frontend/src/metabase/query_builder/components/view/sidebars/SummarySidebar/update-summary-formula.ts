@@ -24,11 +24,29 @@ export function updateSummaryFormula({
   stageIndex,
   generatedExpressions,
   createdFormula,
+  renamedExpression,
 }: Options) {
   const index =
     stageIndex < 0 ? Lib.stageCount(query) + stageIndex : stageIndex;
   const owned = reconcileSummaryFormulas(query, generatedExpressions);
-  let formulas = owned;
+  let formulas = owned
+    .map((formula) => {
+      if (
+        formula.stageIndex === index &&
+        formula.name === renamedExpression?.from
+      ) {
+        const renamed = makeSummaryFormula(
+          nextQuery,
+          index,
+          renamedExpression.to,
+        );
+        return (
+          renamed && { ...renamed, breakoutOptions: formula.breakoutOptions }
+        );
+      }
+      return formula;
+    })
+    .filter(isNotNull);
 
   if (createdFormula) {
     const existingNames = Lib.expressions(query, index).map(

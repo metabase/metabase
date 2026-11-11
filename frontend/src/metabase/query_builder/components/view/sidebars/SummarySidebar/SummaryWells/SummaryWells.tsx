@@ -1,15 +1,21 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { SummaryGeneratedExpression } from "metabase-types/api";
 
+import {
+  getSummaryBreakout,
+  reconcileSummaryFormulas,
+} from "../../../../../utils/summary-formulas";
 import type { SummaryFormulaInput } from "../SummaryFormulaBar";
 import S from "../SummarySidebar.module.css";
 import type {
   SummaryDragItem,
   SummaryField,
   SummaryFieldSection,
+  SummaryQueryChangeOptions,
   SummaryWellId,
 } from "../types";
 import {
@@ -19,6 +25,7 @@ import {
   getWellFieldSections,
 } from "../utils";
 
+import { DimensionChip } from "./DimensionChip";
 import {
   DraftFormulaChip,
   type DraftFormulaChipProps,
@@ -26,7 +33,6 @@ import {
 import { SummaryWell, type WellDropState } from "./SummaryWell";
 import { SummaryWellInput } from "./SummaryWellInput";
 import { ValueChip } from "./ValueChip";
-import { WellChip } from "./WellChip";
 
 type SummaryWellsProps = {
   query: Lib.Query;
@@ -34,9 +40,10 @@ type SummaryWellsProps = {
   sections: SummaryFieldSection[];
   formulaInputs?: Partial<Record<SummaryWellId, SummaryFormulaInput>>;
   draftFormula?: (DraftFormulaChipProps & { wellId: SummaryWellId }) | null;
+  generatedExpressions?: SummaryGeneratedExpression[];
   draggedItem: SummaryDragItem | null;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
-  onChange: (nextQuery: Lib.Query) => void;
+  onChange: (nextQuery: Lib.Query, options?: SummaryQueryChangeOptions) => void;
 };
 
 export function SummaryWells({
@@ -45,10 +52,21 @@ export function SummaryWells({
   sections,
   formulaInputs,
   draftFormula,
+  generatedExpressions = [],
   draggedItem,
   onPick,
   onChange,
 }: SummaryWellsProps) {
+  const valueInputRef = useRef<HTMLInputElement>(null);
+  const columnInputRef = useRef<HTMLInputElement>(null);
+  const formulas = useMemo(
+    () =>
+      reconcileSummaryFormulas(query, generatedExpressions).filter(
+        (formula) =>
+          formula.stageIndex === Lib.stageIndexes(query).at(stageIndex),
+      ),
+    [query, stageIndex, generatedExpressions],
+  );
   const valueItems = useMemo(
     () => getValueItems(query, stageIndex),
     [query, stageIndex],
@@ -89,6 +107,7 @@ export function SummaryWells({
       >
         <SummaryWellInput
           wellId="values"
+          inputRef={valueInputRef}
           formulaInput={formulaInputs?.values}
           sections={valueSections}
           hasItems={valueItems.length > 0}
@@ -108,6 +127,7 @@ export function SummaryWells({
               stageIndex={stageIndex}
               item={item}
               onChange={onChange}
+              onFocusInput={() => valueInputRef.current?.focus()}
               onRemove={() => handleRemove(item.clause)}
             />
           ))}
@@ -123,6 +143,7 @@ export function SummaryWells({
       >
         <SummaryWellInput
           wellId="columns"
+          inputRef={columnInputRef}
           formulaInput={formulaInputs?.columns}
           sections={columnSections}
           hasItems={dimensionItems.length > 0}
@@ -134,15 +155,25 @@ export function SummaryWells({
             }
           }}
         >
-          {dimensionItems.map((item) => (
-            <WellChip
-              key={item.key}
-              drag={{ kind: "dimension", item }}
-              onRemove={() => handleRemove(item.clause)}
-            >
-              <span className={S.chipLabel}>{item.label}</span>
-            </WellChip>
-          ))}
+          {dimensionItems.map((item) => {
+            const breakout = getSummaryBreakout(query, stageIndex, item.clause);
+            return (
+              <DimensionChip
+                key={item.key}
+                query={query}
+                stageIndex={stageIndex}
+                item={item}
+                canRename={formulas.some(
+                  (formula) =>
+                    formula.name === breakout?.name &&
+                    formula.breakoutOptions === breakout?.options,
+                )}
+                onChange={onChange}
+                onFocusInput={() => columnInputRef.current?.focus()}
+                onRemove={() => handleRemove(item.clause)}
+              />
+            );
+          })}
           {draftFormula?.wellId === "columns" && (
             <DraftFormulaChip {...draftFormula} />
           )}

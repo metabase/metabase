@@ -37,12 +37,17 @@ it("preserves formula ownership across query serialization but rejects a changed
     stageIndex: 0,
     name: "Generated",
     expression: expect.any(String),
+    breakoutOptions: expect.any(String),
   });
   if (!formula) {
     return;
   }
   const reloadedQuery = Lib.fromJsQuery(SAMPLE_PROVIDER, Lib.toJsQuery(query));
   expect(reconcileSummaryFormulas(reloadedQuery, [formula])).toEqual([formula]);
+  const { breakoutOptions, ...previousFormula } = formula;
+  expect(reconcileSummaryFormulas(reloadedQuery, [previousFormula])).toEqual([
+    formula,
+  ]);
   const [expression] = Lib.expressions(reloadedQuery, 0);
   const changedQuery = Lib.replaceClause(
     reloadedQuery,

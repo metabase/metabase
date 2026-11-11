@@ -183,6 +183,7 @@ export function SummarySidebar({
             draggedItem={draggedItem}
             formulaInputs={formulaInputs}
             draftFormula={draftFormula}
+            generatedExpressions={generatedExpressions}
             onPick={handleAdd}
             onChange={handleQueryChange}
           />

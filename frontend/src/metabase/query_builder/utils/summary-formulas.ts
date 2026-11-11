@@ -3,6 +3,18 @@ import * as Lib from "metabase-lib";
 import type { SummaryGeneratedExpression } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
+export function getSummaryBreakout(
+  query: Lib.Query,
+  stageIndex: number,
+  clause: Lib.BreakoutClause,
+) {
+  const column = Lib.breakoutColumn(query, stageIndex, clause);
+  const ref = column && Lib.legacyRef(query, stageIndex, column);
+  return ref?.[0] === "expression"
+    ? { name: ref[1], options: stableStringify(ref[2] ?? {}) }
+    : undefined;
+}
+
 export function makeSummaryFormula(
   query: Lib.Query,
   stageIndex: number,
@@ -32,10 +44,14 @@ export function makeSummaryFormula(
   if (!isObject(stage.expressions) || !Object.hasOwn(stage.expressions, name)) {
     return;
   }
+  const breakout = Lib.breakouts(query, index)
+    .map((clause) => getSummaryBreakout(query, index, clause))
+    .find((info) => info?.name === name);
   return {
     stageIndex: index,
     name,
     expression: stableStringify(stage.expressions[name]),
+    breakoutOptions: breakout?.options,
   };
 }
 
@@ -43,18 +59,19 @@ export function reconcileSummaryFormulas(
   query: Lib.Query,
   formulas: SummaryGeneratedExpression[],
 ): SummaryGeneratedExpression[] {
-  return formulas.filter((formula) => {
+  return formulas.flatMap((formula) => {
     const current = makeSummaryFormula(query, formula.stageIndex, formula.name);
     if (!current || current.expression !== formula.expression) {
-      return false;
+      return [];
     }
-    return Lib.breakouts(query, formula.stageIndex).some((breakout) => {
-      const column = Lib.breakoutColumn(query, formula.stageIndex, breakout);
-      if (!column) {
-        return false;
-      }
-      const info = Lib.displayInfo(query, formula.stageIndex, column);
-      return info.isCalculated && info.name === formula.name;
-    });
+    const breakouts = Lib.breakouts(query, formula.stageIndex)
+      .map((clause) => getSummaryBreakout(query, formula.stageIndex, clause))
+      .filter((info) => info?.name === formula.name);
+    const options =
+      formula.breakoutOptions ??
+      (breakouts.length === 1 ? breakouts[0]?.options : undefined);
+    return options && breakouts.some((info) => info?.options === options)
+      ? [{ ...formula, breakoutOptions: options }]
+      : [];
   });
 }

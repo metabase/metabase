@@ -332,11 +332,12 @@
   [reference]
   (lib.options/update-options reference assoc :lib/uuid (str (random-uuid))))
 
-(defn- local-replace-expression-references [stage target-ref-id replacement-ref]
+(defn- local-replace-expression-references [stage target-ref-id replacement-ref preserve-options?]
   (let [replace-embedded-refs (fn replace-refs [stage]
                                 (match/replace stage
                                   [:expression _ (id :guard (= id target-ref-id))]
-                                  (-> replacement-ref
+                                  (-> (cond-> replacement-ref
+                                        preserve-options? (lib.options/update-options merge (second &match)))
                                       fresh-ref)))]
     (replace-embedded-refs stage)))
 
@@ -350,8 +351,10 @@
         replaced (update stage :expressions (fn [exprs] (mapv #(if (= % target) top-level-replacement %) exprs)))
         target-name (lib.util/expression-name target)
         replacement-type (-> replacement lib.options/options :effective-type)
-        replacement-ref [:expression {:effective-type replacement-type} replacement-name]]
-    (local-replace-expression-references replaced target-name replacement-ref)))
+        replacement-ref [:expression {:effective-type replacement-type} replacement-name]
+        rename? (= (lib.options/update-options target dissoc :lib/uuid :lib/expression-name :effective-type)
+                   (lib.options/update-options replacement dissoc :lib/uuid :lib/expression-name :effective-type))]
+    (local-replace-expression-references replaced target-name replacement-ref rename?)))
 
 (defn- local-replace
   [stage target replacement]

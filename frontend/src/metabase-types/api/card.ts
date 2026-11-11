@@ -338,6 +338,7 @@ export type SummaryGeneratedExpression = {
   stageIndex: number;
   name: string;
   expression: string;
+  breakoutOptions?: string;
 };
 
 /**

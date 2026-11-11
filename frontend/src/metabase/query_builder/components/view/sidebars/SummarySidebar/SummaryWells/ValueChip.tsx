@@ -1,21 +1,21 @@
 import { Icon } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
 import S from "../SummarySidebar.module.css";
 import type { SummaryValueItem } from "../types";
 
 import { ColumnValueMenu } from "./ColumnValueMenu";
+import { FormulaChip } from "./FormulaChip";
 import { WellChip } from "./WellChip";
 
 const VALUE_ICONS: Record<
-  Exclude<SummaryValueItem["kind"], "column">,
+  Exclude<SummaryValueItem["kind"], "column" | "expression">,
   IconName
 > = {
   count: "sum",
   metric: "metric",
   measure: "ruler",
-  expression: "function",
 };
 
 type ValueChipProps = {
@@ -24,6 +24,7 @@ type ValueChipProps = {
   item: SummaryValueItem;
   onChange: (nextQuery: Lib.Query) => void;
   onRemove: () => void;
+  onFocusInput: () => void;
 };
 
 export function ValueChip({
@@ -32,7 +33,28 @@ export function ValueChip({
   item,
   onChange,
   onRemove,
+  onFocusInput,
 }: ValueChipProps) {
+  if (item.kind === "expression") {
+    return (
+      <FormulaChip
+        drag={{ kind: "value", item }}
+        onRemove={onRemove}
+        onFocusInput={onFocusInput}
+        onRename={(name) =>
+          onChange(
+            Lib.replaceClause(
+              query,
+              stageIndex,
+              item.clause,
+              Lib.withExpressionName(item.clause, name),
+            ),
+          )
+        }
+      />
+    );
+  }
+
   return (
     <WellChip drag={{ kind: "value", item }} onRemove={onRemove}>
       {item.kind === "column" ? (
