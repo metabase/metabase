@@ -1,5 +1,6 @@
 (ns metabase.toucan.impl
   "Toucan 2 call macros that bind every runtime value with `[:auto/param ...]` unless it is a [[fragment]]."
+  (:refer-clojure :exclude [count])
   (:require
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -36,7 +37,7 @@
 
 (defn- marker? [x]
   (and (vector? x)
-       (= 2 (count x))
+       (= 2 (clojure.core/count x))
        (= :auto/param (first x))))
 
 (defn- nested-marker-paths
@@ -45,7 +46,7 @@
   (letfn [(paths [x path]
             (cond
               (marker? x) [path]
-              (vector? x) (into [] (mapcat (fn [i] (paths (nth x i) (conj path i)))) (range (count x)))
+              (vector? x) (into [] (mapcat (fn [i] (paths (nth x i) (conj path i)))) (range (clojure.core/count x)))
               :else       []))]
     (when (and (vector? v) (not (marker? v)))
       (paths v []))))
@@ -115,7 +116,7 @@
   "`[modelable & args]` with the kv-arg values and the trailing query map handled by [[wrap-dynamic]]; throws when the
   trailing arg is not a literal map, since Toucan runs a string or vector there as raw SQL."
   [[modelable & args]]
-  (let [[kvs tail] (if (odd? (count args))
+  (let [[kvs tail] (if (odd? (clojure.core/count args))
                      [(butlast args) [(last args)]]
                      [args []])]
     (doseq [q tail]
@@ -126,6 +127,14 @@
     (concat [modelable]
             (mapcat (fn [[k v]] [k (wrap-dynamic v)]) (partition 2 kvs))
             (map wrap-dynamic tail))))
+
+(defn- wrap-query
+  "Literal query map `m` handled by [[wrap-dynamic]]; throws for anything else, since Toucan runs a string or vector as raw
+  SQL."
+  [m]
+  (when-not (map? m)
+    (throw (ex-info (str "The query must be a literal query map: " (pr-str m)) {:form m})))
+  (wrap-dynamic m))
 
 (defmacro select
   "`t2/select` with every runtime value bound."
@@ -142,15 +151,65 @@
   [& args]
   `(t2/select-one-pk ~@(wrap-args args)))
 
+(defmacro select-pks-set
+  "`t2/select-pks-set` with every runtime value bound."
+  [& args]
+  `(t2/select-pks-set ~@(wrap-args args)))
+
+(defmacro select-pks-vec
+  "`t2/select-pks-vec` with every runtime value bound."
+  [& args]
+  `(t2/select-pks-vec ~@(wrap-args args)))
+
+(defmacro reducible-select
+  "`t2/reducible-select` with every runtime value bound."
+  [& args]
+  `(t2/reducible-select ~@(wrap-args args)))
+
 (defmacro exists?
   "`t2/exists?` with every runtime value bound."
   [& args]
   `(t2/exists? ~@(wrap-args args)))
 
+(defmacro count
+  "`t2/count` with every runtime value bound."
+  [& args]
+  `(t2/count ~@(wrap-args args)))
+
+(defmacro select-fn-set
+  "`t2/select-fn-set` with every runtime value bound."
+  [f & args]
+  `(t2/select-fn-set ~f ~@(wrap-args args)))
+
+(defmacro select-fn-vec
+  "`t2/select-fn-vec` with every runtime value bound."
+  [f & args]
+  `(t2/select-fn-vec ~f ~@(wrap-args args)))
+
+(defmacro select-fn-reducible
+  "`t2/select-fn-reducible` with every runtime value bound."
+  [f & args]
+  `(t2/select-fn-reducible ~f ~@(wrap-args args)))
+
+(defmacro select-one-fn
+  "`t2/select-one-fn` with every runtime value bound."
+  [f & args]
+  `(t2/select-one-fn ~f ~@(wrap-args args)))
+
 (defmacro select-pk->fn
   "`t2/select-pk->fn` with every runtime value bound."
   [f & args]
   `(t2/select-pk->fn ~f ~@(wrap-args args)))
+
+(defmacro select-fn->pk
+  "`t2/select-fn->pk` with every runtime value bound."
+  [f & args]
+  `(t2/select-fn->pk ~f ~@(wrap-args args)))
+
+(defmacro select-fn->fn
+  "`t2/select-fn->fn` with every runtime value bound."
+  [f1 f2 & args]
+  `(t2/select-fn->fn ~f1 ~f2 ~@(wrap-args args)))
 
 (defmacro delete!
   "`t2/delete!` with every runtime value bound."
@@ -162,12 +221,23 @@
   [& args]
   `(t2/update! ~@(wrap-args (butlast args)) ~(last args)))
 
-(defmacro insert!
-  "`t2/insert!`, with the rows left to Toucan's transforms."
+(defmacro update-returning-pks!
+  "`t2/update-returning-pks!` with every runtime value in its conditions bound; the changes map is left to Toucan's
+  transforms."
   [& args]
-  `(t2/insert! ~@args))
+  `(t2/update-returning-pks! ~@(wrap-args (butlast args)) ~(last args)))
 
 (defmacro query
   "`t2/query` on literal query map `m` with every runtime value bound."
   [m]
-  `(t2/query ~(wrap-dynamic m)))
+  `(t2/query ~(wrap-query m)))
+
+(defmacro query-one
+  "`t2/query-one` on literal query map `m` with every runtime value bound."
+  [m]
+  `(t2/query-one ~(wrap-query m)))
+
+(defmacro reducible-query
+  "`t2/reducible-query` on literal query map `m` with every runtime value bound."
+  [m]
+  `(t2/reducible-query ~(wrap-query m)))

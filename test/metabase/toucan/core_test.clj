@@ -27,10 +27,6 @@
                                 {:first_name first-name})
          (macroexpand-1 '(metabase.toucan.core/update! :model/User :id id {:first_name first-name})))))
 
-(deftest insert-rows-passed-through-test
-  (is (= '(toucan2.core/insert! :model/User {:email email})
-         (macroexpand-1 '(metabase.toucan.core/insert! :model/User {:email email})))))
-
 (defn- expansion-error
   "The message of the error thrown while macroexpanding `form`, or an empty string when it expands."
   [form]
