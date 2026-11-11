@@ -96,14 +96,14 @@
                  @probes)))
         (testing "falls back to least permissive value without probing it"
           (reset! probes [])
-          (is (= :no (data-perms/most-permissive-database-permission-for-user user-id :perms/manage-database)))
-          (is (= [[:perms/manage-database :yes nil]] @probes)))
+          (is (= :no (data-perms/most-permissive-database-permission-for-user user-id :perms/manage-table-metadata)))
+          (is (= [[:perms/manage-table-metadata :yes nil]] @probes)))
         (testing "repeated questions read cache, false answers included"
           (reset! probes [])
           (is (= :query-builder
                  (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries)))
           (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries)))
-          (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/manage-database)))
+          (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/manage-table-metadata)))
           (is (= [] @probes)))
         (testing "exclude-db-ids is its own question"
           (is (false? (data-perms/user-has-any-perms-of-type? user-id :perms/create-queries
@@ -577,6 +577,7 @@
                  :model/Table                      {table-id-2 :id}    {:db_id database-id}
                  :model/Database                   {database-id-2 :id} {}]
     (mt/with-no-data-perms-for-all-users!
+      (t2/delete! :model/DataPermissions :group_id group-id)
       (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
       (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
       (data-perms/set-database-permission! group-id database-id-2 :perms/create-queries :no)
