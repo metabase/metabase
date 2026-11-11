@@ -13,30 +13,39 @@ A transform test runs your transform on test data you provide, then checks the o
 
 Use transform tests to verify that your transforms work as expected, and to catch problems before a scheduled job writes wrong data to your warehouse.
 
+## Prerequisites and permissions
+
+Transform tests are supported on a subset of [databases that support transforms](./transforms-overview.md#databases-that-support-transforms): ClickHouse, MySQL/MariaDB, PostgreSQL, Redshift, and SQL Server. You can test [query-based transforms](query.md), but not currently [Python transforms](python.md).
+
+Transform tests follow the permissions of the transform they belong to. To see a transform's tests, you need to be able to see the transform. To run a test, you need to be able to run the transform. See [Permissions for transforms](transforms-overview.md#permissions-for-transforms) for more.
+
+## Components of a test
+
+Each test has a name, an optional description, inputs, and checks.
+
+**Inputs** are the test data that stands in for the tables the transform reads. You can write out the rows column by column, or use the results of a SQL query that runs against the transform's source database. Every table the transform reads needs an input, or the test won't run.
+
+**Checks** describe the output you expect. A check can require the output to contain exactly the rows you list (or the rows a query returns), or it can require a query against the output to return no rows.
+
 ## See a transform's tests
 
 _Data Studio > Data transformation > [transform name] > Tests_
 
 The **Tests** tab lists the transform's tests, their checks, and the time and status of each test's last run. Click a test to open its page.
 
-On the test's **Overview** tab, you'll see:
-
-- **Run this test**: the last run's status, plus buttons to run the test and see all its runs.
-- **Inputs**: the test data that stands in for each source table.
-- **Output**: the checks on the transform's target table.
+On the test's **Overview** tab, you'll see the status of the last run, a button to run the test, and a link to see all its runs. The **Inputs** and **Output** sections show the test data and the checks.
 
 ## Run a test
 
-To run a test, either:
+_Data Studio > Data transformation > [transform name] > Tests > [test name]_
 
-- Open the test and click **Run now** on the **Overview** tab.
-- On the transform's **Tests** tab, click the **...** menu next to the test and select **Run test**.
+To run a test, open it and click **Run now** on the **Overview** tab. You can also run a test from the transform's **Tests** tab: click the **...** menu next to the test and select **Run test**.
 
 A test run can end with one of these statuses:
 
 - **Passed**: every check passed.
-- **Failed**: at least one check didn't pass.
-- **Error**: Metabase couldn't evaluate a check, for example because its SQL query has a mistake.
+- **Failed**: at least one check didn't pass, including a check that couldn't run, for example because its SQL query has a mistake.
+- **Error**: the test itself couldn't finish, for example because the database couldn't load the test data or run the transform's query.
 - **Timeout**: the run took too long and Metabase stopped it.
 
 ## Review past test runs
@@ -45,51 +54,31 @@ _Data Studio > Data transformation > [transform name] > Tests > [test name] > Ru
 
 The test's **Runs** tab lists every run of the test, newest first. You can filter runs by **Started at**, **Ended at**, and **Status**. Click a run to see when it started and ended, its status, and who ran it.
 
-## Transform tests work on query transforms
+## Use an AI agent to write transforms and tests
 
-You can test [query-based transforms](query.md), but not currently [Python transforms](python.md).
+To create a test, ask an AI agent to write it with the Metabase CLI. If you haven't already, install the [Metabase CLI](../../installation-and-operation/metabase-cli.md) and its [`/metabase-cli` skill](../../installation-and-operation/metabase-cli.md#the-metabase-cli-skill). The CLI comes with instructions that teach the agent how to plan and write transform tests.
 
-The transform's database also needs to support tests. Currently, you can run transform tests on ClickHouse, MySQL/MariaDB, PostgreSQL, Redshift, and SQL Server.
+Here's an example prompt that creates a transform and a test for the **Orders** table in a database similar to the **Sample** database included in Metabase:
 
-## Create tests using the CLI or remote sync
+> Write a new transform for the Orders table in the Warehouse database
+> that keeps only orders with a positive discount. Add a test to
+> check that only orders with a discount are returned, and that all
+> of them are in the result. Also add tests for any edge cases that make
+> sense. Add it to a new folder called "Warehouse." Run the test and iterate
+> if necessary until the tests pass.
 
-To add a test, either:
+Using this prompt, the agent creates a transform that writes a table with the same columns as **Orders**, and a test whose input includes **Discount** values of 0, 0.0001, -2, 5, and `null`. The test has a separate check for each condition: _no order without a positive discount_; _every order with a positive discount is in the output, unchanged_; _no order that is not in the input_; _each order at most once_; and _as many orders as the input has with a positive discount_. Agents don't produce the same result every time, so your test will probably look different.
 
-- Write the test into the YAML files in your [Remote Sync](../../installation-and-operation/remote-sync.md#8-configure-transforms-syncing-optional) repository, then pull the changes into Metabase.
-- Create the test with the [API](../../api.html) (`POST /api/ee/transform-test`).
+To review the checks the agent wrote, open the transform's **Tests** tab and click the test's name.
 
-The specification has to adhere to [the TransformTest YAML specification](https://github.com/metabase/representations/blob/main/core-spec/v1/spec.md#transformtest). Our [`@metabase/representations` npm package](https://github.com/metabase/representations) can validate the schema and lint the test.
+## Version your tests with Remote Sync
 
-## Components of a test
+If you use [Remote Sync](../../installation-and-operation/remote-sync.md#8-configure-transforms-syncing-optional), your transform tests live in your Git repository as YAML files, next to the transforms they test. How you add tests depends on your Metabase's sync mode.
 
-Each test has:
+- In **read-write mode**, create tests with an agent and the Metabase CLI, as described above. Then push them to your repository like any other synced content.
+- In **read-only mode**, write tests as files in your repository. A read-only Metabase won't allow edits to transforms or tests. Instead, run your agent in a local checkout of the repository to write transforms and tests as YAML files. If the agent tries to edit Metabase directly, tell it to use the [`@metabase/representations`](https://github.com/metabase/representations) package to write the files. Once the files are written, commit them, push, and open a pull request. After the pull request is merged, Metabase picks up the new tests the next time it pulls changes.
 
-- A **name** and an optional description.
-- **Inputs**: test data for the tables the transform reads.
-- **Checks**: what the transform's output table should look like.
-
-### Test inputs
-
-Each input replaces one of the transform's source tables. You can give an input as:
-
-- **Rows**: a list of columns, each with the type its values should be cast to, and the rows themselves.
-- **Rows returned by a query**: a SQL query that Metabase runs against the transform's source database. The query's results become the test data.
-
-If your transform reads a table the test doesn't provide an input for, Metabase won't run the test. That way, a test can't quietly read your production data and pass. Metabase also refuses an input for a table the transform doesn't read.
-
-### Output checks
-
-A test can have one or more checks, each with a unique name. There are two kinds of checks:
-
-- **Must hold exactly these rows**: the output table has to contain exactly the rows you list (or the rows a SQL query returns), over exactly the columns you list.
-- **This query must return no rows**: you write a SQL query against the output table, and the check passes if it returns nothing. For example, a query that selects rows where `order_total` is negative.
-
-## Permissions for transform tests
-
-Transform tests follow the permissions of the transform they belong to:
-
-- To **see** a transform's tests, you need to be able to see the transform.
-- To **run** a test, you need to be able to run the transform. See [Permissions for transforms](transforms-overview.md#permissions-for-transforms).
+In either mode, you can have CI run your transform tests before changes reach production. For example, a GitHub Action can start a temporary Metabase in Docker, import the content from the pull request's commit, and use the Metabase CLI to run every test.
 
 ## Further reading
 
@@ -97,3 +86,4 @@ Transform tests follow the permissions of the transform they belong to:
 - [Query transforms](query.md)
 - [Transform inspector](inspector.md)
 - [Remote Sync](../../installation-and-operation/remote-sync.md)
+- [Agent-driven development](../../ai/agent-driven-development.md)
