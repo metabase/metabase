@@ -6,6 +6,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -378,7 +379,7 @@
 (defn- next-stage-replacement
   [query next-stage-number [col replaced-col]]
   (let [target-ref-id (:lib/desired-column-alias col)
-        replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))]
+        replaced-ref (lib.ref/ref (lib.field.util/update-keys-for-col-from-previous-stage replaced-col))]
     (mapv (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
           (match/match-many (lib.util/query-stage query next-stage-number)
             [:field _ (id :guard (= id target-ref-id))] &match))))

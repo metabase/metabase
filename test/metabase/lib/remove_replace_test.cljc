@@ -672,6 +672,26 @@
                   (lib/replace-clause expr (lib/with-expression-name "text" "b"))
                   lib/breakouts))))))
 
+(deftest ^:parallel replace-clause-expression-name-next-stage-bucket-test
+  (testing "renaming a bucketed expression keeps next-stage references on the same column and bucket"
+    (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
+                      (lib/expression "a" (meta/field-metadata :users :last-login)))
+          column  (m/find-first (comp #{"a"} :name) (lib/breakoutable-columns query))
+          query   (-> query
+                      (lib/breakout (lib/with-temporal-bucket column :month))
+                      (lib/breakout (lib/with-temporal-bucket column :day))
+                      (lib/aggregate (lib/count))
+                      lib/append-stage)
+          day-col (m/find-first (comp #{:day} :inherited-temporal-unit) (lib/filterable-columns query 1))
+          query   (lib/filter query 1 (lib/= day-col "2025-03-15"))
+          [expr]  (lib/expressions query 0)
+          edited  (lib/replace-clause query 0 expr (lib/with-expression-name expr "b"))]
+      (is (=? [[:= {} [:field {:inherited-temporal-unit :day
+                               :temporal-unit           (symbol "nil #_\"key is not present.\"")}
+                       "b_2"]
+                "2025-03-15"]]
+              (lib/filters edited 1))))))
+
 (deftest ^:parallel replace-order-by-breakout-col-test
   (testing "issue #30980"
     (testing "Bucketing should keep order-by in sync"
