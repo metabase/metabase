@@ -1,4 +1,4 @@
-# 0006. The SSH tunnel credential ships to the sidecar
+# 0005. The SSH tunnel credential ships to the sidecar
 
 - Status: proposed
 - Lands with: #86584

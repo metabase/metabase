@@ -1,4 +1,4 @@
-# 0011. Don't act on remap rows that point at an old namespace
+# 0010. Don't act on remap rows that point at an old namespace
 
 - Status: proposed
 - Lands with: #86609

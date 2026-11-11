@@ -1,4 +1,4 @@
-# 0010. Refuse undo and redo in workspace mode
+# 0009. Refuse undo and redo in workspace mode
 
 - Status: proposed
 - Lands with: #86603

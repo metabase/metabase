@@ -1,4 +1,4 @@
-# 0009. DELETE during a create returns 409 `workspace_busy`
+# 0008. DELETE during a create returns 409 `workspace_busy`
 
 - Status: proposed
 - Lands with: #86789 (after #86601)

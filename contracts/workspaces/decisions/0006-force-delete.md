@@ -1,4 +1,4 @@
-# 0007. `?force=true` on DELETE only for `teardown_failed`
+# 0006. `?force=true` on DELETE only for `teardown_failed`
 
 - Status: proposed
 - Lands with: #86788

@@ -1,4 +1,4 @@
-# 0005. 422 when an admin must fix something; 409 only for "not provisioned"
+# 0004. 422 when an admin must fix something; 409 only for "not provisioned"
 
 - Status: proposed
 - Lands with: #86584, #86585, #86787

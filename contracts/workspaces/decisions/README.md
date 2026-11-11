@@ -56,13 +56,13 @@ What this makes easier or harder, including the bad parts.
 | # | Decision | Status | Date |
 |---|---|---|---|
 | [0001](0001-build-on-restored-backend.md) | Build on the backend restored on master, not the earlier design | accepted | 2026-11-09 |
-| [0002](0002-staging-warehouses.md) | A staging warehouse is an ordinary Database, owned by the customer | proposed | 2026-11-10 |
-| [0003](0003-refuse-default-open-warehouses.md) | Refuse warehouses that are open by default | proposed | 2026-11-10 |
-| [0004](0004-socket-timeout.md) | Keep the 60 s socket timeout on other-database connections | accepted | 2026-11-10 |
-| [0005](0005-config-status-codes.md) | 422 when an admin must fix something; 409 only for "not provisioned" | proposed | 2026-11-10 |
-| [0006](0006-ssh-tunnel-credential.md) | The SSH tunnel credential ships to the sidecar | proposed | 2026-11-10 |
-| [0007](0007-force-delete.md) | `?force=true` on DELETE only for `teardown_failed` | proposed | 2026-11-10 |
-| [0008](0008-replayed-failed-create.md) | A replayed failed create returns 500 with the workspace id | proposed | 2026-11-10 |
-| [0009](0009-delete-during-create.md) | DELETE during a create returns 409 `workspace_busy` | proposed | 2026-11-11 |
-| [0010](0010-refuse-undo-redo.md) | Refuse undo and redo in workspace mode | proposed | 2026-11-10 |
-| [0011](0011-stale-remap-rows.md) | Don't act on remap rows that point at an old namespace | proposed | 2026-11-10 |
+| [0002](0002-refuse-default-open-warehouses.md) | Refuse warehouses that are open by default | proposed | 2026-11-10 |
+| [0003](0003-socket-timeout.md) | Keep the 60 s socket timeout on other-database connections | accepted | 2026-11-10 |
+| [0004](0004-config-status-codes.md) | 422 when an admin must fix something; 409 only for "not provisioned" | proposed | 2026-11-10 |
+| [0005](0005-ssh-tunnel-credential.md) | The SSH tunnel credential ships to the sidecar | proposed | 2026-11-10 |
+| [0006](0006-force-delete.md) | `?force=true` on DELETE only for `teardown_failed` | proposed | 2026-11-10 |
+| [0007](0007-replayed-failed-create.md) | A replayed failed create returns 500 with the workspace id | proposed | 2026-11-10 |
+| [0008](0008-delete-during-create.md) | DELETE during a create returns 409 `workspace_busy` | proposed | 2026-11-11 |
+| [0009](0009-refuse-undo-redo.md) | Refuse undo and redo in workspace mode | proposed | 2026-11-10 |
+| [0010](0010-stale-remap-rows.md) | Don't act on remap rows that point at an old namespace | proposed | 2026-11-10 |
+| [0011](0011-staging-warehouses.md) | A staging warehouse is an ordinary Database, owned by the customer | proposed | 2026-11-10 |

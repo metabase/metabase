@@ -1,4 +1,4 @@
-# 0008. A replayed failed create returns 500 with the workspace id
+# 0007. A replayed failed create returns 500 with the workspace id
 
 - Status: proposed
 - Lands with: #86825 (with #86601)

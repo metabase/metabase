@@ -1,4 +1,4 @@
-# 0003. Refuse warehouses that are open by default
+# 0002. Refuse warehouses that are open by default
 
 - Status: proposed
 - Lands with: #86588, #86798, #86799

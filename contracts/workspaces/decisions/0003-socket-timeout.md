@@ -1,4 +1,4 @@
-# 0004. Keep the 60 s socket timeout on other-database connections
+# 0003. Keep the 60 s socket timeout on other-database connections
 
 - Status: accepted
 - Date: 2026-11-10
