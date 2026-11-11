@@ -96,6 +96,18 @@
   (is (re-find #"The model must be a literal keyword"
                (expansion-error '(metabase.toucan.core/table-name model)))))
 
+(deftest ^:parallel changed-fragment-not-fragment-test
+  (let [email    "a@b.c"
+        fragment (t2/fragment {:select [:id] :from [:core_user] :where [:= :email email]})]
+    (is (t2/fragment? fragment))
+    (is (not (t2/fragment? (assoc fragment :where [:= :email "x"]))))
+    (is (not (t2/fragment? (update fragment :select conj :password))))
+    (is (not (t2/fragment? (with-meta {:select [:password] :from [:core_user]} (meta fragment)))))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"would reach SQL unlifted"
+                          (toucan2.core/compile
+                            (t2/select :model/User {:where [:in :id (assoc fragment :select [:password])]}))))))
+
 (deftest ^:parallel plain-honeysql-value-rejected-test
   (letfn [(email-is [email] [:= :email email])]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

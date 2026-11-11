@@ -1,6 +1,5 @@
 (ns metabase.app-db.honeysql-guard
   (:require
-   [metabase.toucan.core :as t2]
    [metabase.util.honey-sql-2 :as h2x]
    [methodical.core :as methodical]
    [toucan2.pipeline :as t2.pipeline]
@@ -14,8 +13,7 @@
 
 (defn- allow-subquery?
   [x]
-  (boolean (or (some-> x meta :allow-subquery)
-               (t2/fragment? x))))
+  (boolean (some-> x meta :allow-subquery)))
 
 (defn- raw-honeysql-map?
   [x]

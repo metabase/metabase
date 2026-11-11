@@ -9,14 +9,17 @@
   (Object.))
 
 (defn fragment?
-  "Whether `x` was built by [[fragment]]; parsed data never is, since only this namespace holds the metadata key."
+  "Whether `x` is exactly what [[fragment]] built: its metadata holds the built form under a key only this namespace
+  has, and `assoc`, `conj` or a copied `meta` all leave `x` unequal to it."
   [x]
-  (contains? (meta x) fragment-key))
+  (let [m (meta x)]
+    (and (contains? m fragment-key)
+         (= x (get m fragment-key)))))
 
-(defn ->fragment
-  "`form` marked as a [[fragment]]."
+(defn- ->fragment
+  "`form` marked as a [[fragment]] and, for the app-DB guards, as an allowed subquery."
   [form]
-  (vary-meta form assoc fragment-key true))
+  (vary-meta form assoc fragment-key form :allow-subquery true))
 
 (defn value
   "`x` where a macro here found a runtime form: a [[fragment]] or an integer as is, anything else as
@@ -56,10 +59,9 @@
   `(t2/table-name ~model))
 
 (defmacro fragment
-  "Literal `form` marked as a fragment, with every runtime value inside it handled by [[value]]; the app-DB guard
-  accepts a fragment map as a subquery."
+  "Literal `form` marked as a fragment, with every runtime value inside it handled by [[value]]."
   [form]
-  `(->fragment ~(wrap-dynamic form)))
+  `(#'->fragment ~(wrap-dynamic form)))
 
 (defn- wrap-args
   "`[modelable & args]` with the kv-arg values and the trailing query map handled by [[wrap-dynamic]]; throws when the
