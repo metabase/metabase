@@ -24,7 +24,7 @@
    [metabase.util.o11y :refer [with-span]])
   (:import
    (java.io BufferedReader Closeable FilterInputStream InputStream IOException)
-   (java.util.concurrent CompletableFuture Executors ExecutorService ThreadPoolExecutor)
+   (java.util.concurrent CompletableFuture Executor Executors ThreadPoolExecutor)
    (java.util.function BiFunction Supplier)))
 
 (set! *warn-on-reflection* true)
@@ -988,31 +988,33 @@
    20
    (.. (Thread/ofVirtual) (name "tool-executor-") factory)))
 
+(def ^:private ^Executor observed-tool-executor
+  "Runs each task on [[tool-executor]]. Observes the pool utilization and queue depth the task finds when it reaches
+  the pool, and the time it then waits for a free thread."
+  (let [^ThreadPoolExecutor pool tool-executor]
+    (reify Executor
+      (execute [_ task]
+        (analytics/observe! :metabase-metabot/tool-executor-utilization
+                            (/ (.getActiveCount pool) (double (.getMaximumPoolSize pool))))
+        (analytics/observe! :metabase-metabot/tool-executor-queue-depth (.size (.getQueue pool)))
+        (let [submitted (u/start-timer)]
+          (.execute pool
+                    ^Runnable (fn []
+                                (analytics/observe! :metabase-metabot/tool-executor-wait-ms
+                                                    (u/since-ms submitted))
+                                (.run task))))))))
+
 (defn- submit-virtual
   "Submit a thunk to run on a virtual thread, bounded by pool size, once every future in `after` has completed.
-  Waiting takes no thread from the pool. Returns a CompletableFuture of the thunk's value.
-
-  An independent call, one with no `after`, goes straight to the pool, so its submission is a fair sample of what
-  an arriving call sees. For independent calls only, observes the pool utilization and queue depth at submission,
-  and the wait from submission to the thunk's start as `tool-executor-wait-ms`. A call with `after` enters the pool
-  only once `after` completes, inside `handleAsync`, so there is no clean arrival point to sample; it is not
-  observed."
+  Waiting takes no thread from the pool. Returns a CompletableFuture of the thunk's value."
   [after thunk]
   (if (seq after)
+    ;; `handleAsync` hands the thunk to the executor only when `after` completes, so the executor observes it as it
+    ;; reaches the pool and the wait on `after` is in no metric.
     (.handleAsync (CompletableFuture/allOf (into-array CompletableFuture after))
                   (reify BiFunction (apply [_ _ _] (thunk)))
-                  ^ExecutorService tool-executor)
-    (let [^ThreadPoolExecutor pool tool-executor]
-      (analytics/observe! :metabase-metabot/tool-executor-utilization
-                          (/ (.getActiveCount pool) (double (.getMaximumPoolSize pool))))
-      (analytics/observe! :metabase-metabot/tool-executor-queue-depth (.size (.getQueue pool)))
-      (let [submitted (u/start-timer)]
-        (CompletableFuture/supplyAsync
-         (reify Supplier
-           (get [_]
-             (analytics/observe! :metabase-metabot/tool-executor-wait-ms (u/since-ms submitted))
-             (thunk)))
-         ^ExecutorService tool-executor)))))
+                  observed-tool-executor)
+    (CompletableFuture/supplyAsync (reify Supplier (get [_] (thunk))) observed-tool-executor)))
 
 (defn- collect-tool-result
   "Normalize tool result into a vector of output chunks.

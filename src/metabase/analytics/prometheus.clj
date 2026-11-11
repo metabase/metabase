@@ -847,20 +847,20 @@
                           ;; 1ms -> 30s
                           :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
    ;; Tool executor: one fixed pool of 20 virtual threads, shared by every metabot conversation on the instance.
-   ;; An independent tool call is one with no ordering dependency on an earlier runs-alone call. It goes straight
-   ;; to the pool, so its submission is a fair sample of what an arriving call sees. Only independent calls are
-   ;; observed.
+   ;; Every tool call is observed when it reaches the pool. A call that waits on earlier calls reaches the pool when
+   ;; the last of them finishes, on that call's thread, which still counts as active.
    (prometheus/histogram :metabase-metabot/tool-executor-utilization
-                         {:description (str "Share of the tool executor pool in use when an independent metabot tool "
-                                            "call is submitted: active threads over pool size.")
+                         {:description (str "Share of the tool executor pool in use when a metabot tool call reaches "
+                                            "the pool: active threads over pool size.")
                           :buckets [0.25 0.5 0.75 0.9 1.0]})
    (prometheus/histogram :metabase-metabot/tool-executor-queue-depth
-                         {:description (str "Metabot tool calls waiting for a free tool executor thread when an "
-                                            "independent metabot tool call is submitted.")
+                         {:description (str "Metabot tool calls waiting for a free tool executor thread when a "
+                                            "metabot tool call reaches the pool.")
                           :buckets [0 1 2 5 10 20 50 100]})
    (prometheus/histogram :metabase-metabot/tool-executor-wait-ms
-                         {:description (str "Time in milliseconds an independent metabot tool call waits for a free "
-                                            "tool executor thread, from submission to start.")
+                         {:description (str "Time in milliseconds a metabot tool call waits for a free tool executor "
+                                            "thread, from reaching the pool to start. Excludes the wait on earlier "
+                                            "calls.")
                           ;; 1ms -> 5 minutes
                           :buckets [1 10 50 100 250 500 1000 2500 5000 10000 30000 60000 120000 300000]})
    ;; messaging metrics
