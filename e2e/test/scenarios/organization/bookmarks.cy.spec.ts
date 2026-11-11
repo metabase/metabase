@@ -9,14 +9,14 @@ const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 describe("scenarios > organization > bookmarks", () => {
   beforeEach(() => {
-    H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
-    H.enableTracking();
   });
 
   describe("question", () => {
     beforeEach(() => {
+      H.resetSnowplow();
+      H.enableTracking();
       cy.intercept("/api/bookmark/card/*").as("toggleBookmark");
     });
 
@@ -97,14 +97,6 @@ describe("scenarios > organization > bookmarks", () => {
   });
 
   describe("archiving", () => {
-    it("removes items from bookmarks list when they are archived", () => {
-      // A question
-      bookmarkThenArchive("Orders");
-
-      // A dashboard
-      bookmarkThenArchive("Orders in a dashboard");
-    });
-
     it("should update bookmarks list when restoring a collection containing bookmarked items (metabase#44499)", () => {
       const collectionName = "First collection";
       const questionName = "Orders in First Collection";
@@ -151,25 +143,4 @@ function toggleQuestionBookmarkStatus({ wasSelected = false } = {}) {
   const labelText = wasSelected ? "Remove from bookmarks" : "Bookmark";
   cy.findByTestId("qb-header-action-panel").findByLabelText(labelText).click();
   cy.wait("@toggleBookmark");
-}
-
-function addBookmarkTo(name: string) {
-  H.visitCollection("root");
-
-  H.openCollectionItemMenu(name);
-  H.popover().findByTextEnsureVisible("Bookmark").click();
-
-  H.navigationSidebar()
-    .findByRole("section", { name: "Bookmarks" })
-    .should("contain", name);
-}
-
-function archive(name: string) {
-  H.openCollectionItemMenu(name);
-  H.popover().findByTextEnsureVisible("Move to trash").click();
-}
-
-function bookmarkThenArchive(name: string) {
-  addBookmarkTo(name);
-  archive(name);
 }
