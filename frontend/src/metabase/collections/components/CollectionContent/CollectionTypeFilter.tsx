@@ -64,7 +64,7 @@ export function CollectionTypeFilter({
         disabled={!isFiltering}
         size={7}
         data-testid="type-filter-indicator"
-        offset={12}
+        offset={9}
       >
         <Popover.Target>
           <Button

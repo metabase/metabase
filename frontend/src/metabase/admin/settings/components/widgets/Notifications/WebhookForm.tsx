@@ -253,10 +253,7 @@ export const WebhookForm = ({
                   {...styles}
                   maw="21rem"
                 />
-                <Button
-                  size="lg"
-                  onClick={() => handleTest(values, setFieldError)}
-                >
+                <Button onClick={() => handleTest(values, setFieldError)}>
                   {testButtonLabel}
                 </Button>
               </Flex>

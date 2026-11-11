@@ -39,11 +39,7 @@ export function LibraryPageMenu({
   return (
     <Menu position="bottom-end">
       <Menu.Target>
-        <Button
-          size="lg"
-          aria-label={label}
-          leftSection={<Icon name="ellipsis" />}
-        />
+        <Button aria-label={label} leftSection={<Icon name="ellipsis" />} />
       </Menu.Target>
       <Menu.Dropdown>
         {editablePermissionsCollection != null && (
