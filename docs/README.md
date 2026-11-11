@@ -24,11 +24,11 @@ The easiest way to get started with Metabase is to sign up for a free trial of [
 
 Run as a JAR, using Docker, or on [Metabase Cloud](https://store.metabase.com/checkout).
 
-### [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
+### [Setting up Metabase](./getting-started/setting-up-metabase.md)
 
 Once installed, set up your Metabase and connect to your data.
 
-### [Getting started](https://www.metabase.com/learn/metabase-basics/getting-started)
+### [Getting started](./getting-started/start.md)
 
 With your data connected, get started asking questions, creating dashboards, and sharing your work.
 
@@ -241,7 +241,7 @@ Metabase's reference documentation.
 ### Configuration
 
 - [Configuration overview](./configuring-metabase/start.md)
-- [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
+- [Setting up Metabase](./getting-started/setting-up-metabase.md)
 - [General settings](./configuring-metabase/settings.md)
 - [Allow iframes and images from other domains](./configuring-metabase/domains.md)
 - [Email](./configuring-metabase/email.md)
