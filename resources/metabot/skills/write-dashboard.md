@@ -16,7 +16,7 @@ priority: 50
 **Creating a dashboard**
 - Omit `dashboard_id` and pass `name`: the user's name for it, or a short one that says what it shows. It goes to the user's personal collection unless the user names a collection; then pass its `collection_id`, or `"root"` for the top level.
 - For a dashboard about a topic, build the charts that answer the main questions about it, then create the dashboard with all of them in one call. Don't ask the user which charts to include.
-- Build all of the charts in a single response, one tool call per chart, not a few at a time. Each response is a step, and a turn has a limited number of steps. A `construct_notebook_query` call returns the `chart_id` you add, whether or not the user is shown the chart. A SQL query needs `create_chart` to get one.
+- Build all of the charts in a single response, one tool call per chart, not a few at a time. Each response is a step, and a turn has a limited number of steps. Each `construct_notebook_query` or `create_sql_query` call returns the `chart_id` you add, whether or not the user is shown the chart. Pass `visualization` to choose the chart type.
 - Each chart becomes a question saved on the dashboard. Pass its `chart_id` and a `name` on `add_card`.
 
 **Layout**

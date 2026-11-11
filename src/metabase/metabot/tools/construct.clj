@@ -51,10 +51,6 @@
 
 ;;; ------------------------------------------------ Schema ------------------------------------------------
 
-(def ^:private construct-visualization-schema
-  [:map {:closed true}
-   [:chart_type (into [:enum] shared/chart-types)]])
-
 (def ^:private source-table-description
   "How [[construct-notebook-query-json-schema]] describes a stage's `source-table`."
   (str "Portable FK `[<db-name>, <schema>, <table-name>]`. "
@@ -143,7 +139,7 @@
   [:map {:closed true}
    [:reasoning {:optional true} :string]
    [:query LLMQueryArgument]
-   [:visualization {:optional true} construct-visualization-schema]
+   shared/visualization-arg
    shared/show-chart-arg
    [:title :string]
    [:description :string]])
@@ -1460,13 +1456,6 @@
                 (with-recovery-hint e recovery-hint)
                 e))))))
 
-(defn- chart-type->keyword
-  [chart-type]
-  (cond
-    (keyword? chart-type) chart-type
-    (string? chart-type)  (keyword chart-type)
-    :else                 chart-type))
-
 (defn- query-json->llm-content
   "Render the portable repr-form `query-json` map as the JSON code block embedded inside
   `<query>` for the LLM. The wire format is `::lib.schema/external-query` JSON; we serialize
@@ -1550,7 +1539,7 @@
    ""
    (instructions/query-hidden-instructions-for query-id)
    (when (shared/tool-offered? "write_dashboard")
-     (str "- To add it to a dashboard, pass `chart_id` `" chart-id "` to `write_dashboard`."))))
+     (instructions/add-to-dashboard-instruction chart-id))))
 
 (defrecord ConstructNotebookQueryTool []
   tools/Tool
@@ -1561,11 +1550,7 @@
      :args        construct-notebook-query-args-schema})
 
   (handle [_ {:keys [query visualization show_chart title description]} _ctx]
-    (let [chart-type (or (-> visualization
-                             (some-> (update-keys (comp keyword u/->kebab-case-en name)))
-                             :chart-type
-                             chart-type->keyword)
-                         :table)
+    (let [chart-type (shared/visualization-chart-type visualization)
           ;; Declared pipeline errors and refusals are recoverable; anything else is `:internal`.
           structured (:structured-output (tools/with-pipeline-errors
                                            (execute-representations-query query {:preprocess-check? true})))

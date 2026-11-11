@@ -39,7 +39,7 @@
       ((get-in entries [tool-name :fn])
        (merge {:title "Birds"}
               (case tool-name
-                "create_sql_query" (merge {:sql_query "SELECT 1"} (select-keys args [:sql_query :database_id :title :show_chart]))
+                "create_sql_query" (merge {:sql_query "SELECT 1"} (select-keys args [:sql_query :database_id :title :visualization :show_chart]))
                 (merge {:query_id "q1" :checklist "Checked"}
                        (select-keys args (if (= tool-name "edit_sql_query")
                                            [:query_id :edits :title :checklist :show_chart]
@@ -98,6 +98,38 @@
                     (is (= [readable? (not readable?)]
                            [(str/includes? instructions "Run the query with `run_query`")
                             (str/includes? instructions "you cannot view the results directly yourself")]))))))))))))
+
+;; A dashboard needs a `chart_id` for each chart, so create_sql_query makes a chart for every query, shown or not.
+(deftest create-sql-query-chart-for-dashboards-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                     :model/MetabotConversation {own :id} {:user_id (mt/user->id :crowberto)}]
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true
+                                           metabot-sql-execution-enabled?   true]
+          (let [create!  (fn [tool-names args]
+                           (binding [shared/*memory-atom*                     (atom {:tool-names      tool-names
+                                                                                     :conversation-id own})
+                                     scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+                             (let [result   (invoke-sql-tool :internal @shared/*memory-atom* "create_sql_query"
+                                                             (merge {:database_id db-id :sql_query "SELECT 1"} args))
+                                   chart-id (get-in result [:structured-output :chart-id])
+                                   shown    (get-in result [:data-parts 0 :data])]
+                               {:chart-id?  (string? chart-id)
+                                :chart-type (get-in result [:structured-output :chart-type])
+                                :shown-as   (when shown [(= chart-id (:id shown)) (:display shown)])
+                                :add-it?    (str/includes? (:output result)
+                                                           (str "pass `chart_id` `" chart-id "` to `write_dashboard`"))})))
+                readable #{"create_sql_query" "run_query"}]
+            (testing "a shown query is drawn as its chart, with the display left to the frontend"
+              (is (= {:chart-id? true, :chart-type :table, :shown-as [true nil], :add-it? false}
+                     (create! readable {}))))
+            (testing "a chosen chart type is the chart's and the display's"
+              (is (=? {:chart-type :bar, :shown-as [true "bar"]}
+                      (create! readable {:visualization {:chart_type "bar"}}))))
+            (testing "a hidden query still gets a chart, and its chart_id is named when write_dashboard is offered"
+              (is (= {:chart-id? true, :chart-type :table, :shown-as nil, :add-it? true}
+                     (create! (conj readable "write_dashboard") {:show_chart false}))))))))))
 
 (deftest edit-sql-query-output-test
   (testing "edit_sql_query output includes edit-specific instructions with query ID"

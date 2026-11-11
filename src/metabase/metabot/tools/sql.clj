@@ -7,6 +7,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
+   [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.run-query :as tools.run-query]
@@ -96,10 +97,13 @@
         (throw e)))))
 
 (defn- query-viz-part
-  [{:keys [query-id query]} title]
-  (streaming/viz-part {:entity-id (str (random-uuid))
+  "The chart part that shows `action-result` in the conversation, under its chart's id when it has one. Without a
+  `display` the frontend picks one from the results."
+  [{:keys [query-id query chart-id]} title display]
+  (streaming/viz-part {:entity-id (or chart-id (str (random-uuid)))
                        :query-id query-id
                        :query (links/->frontend-query query)
+                       :display display
                        :title title}))
 
 (defn- query-delivery
@@ -116,10 +120,10 @@
 (defn- delivery-parts
   "Returns the data parts that deliver `action-result` by `delivery`, as [[query-delivery]] returns it, or nil for
    `:hidden`."
-  [delivery buffer-id {:keys [query-content] :as action-result} title]
+  [delivery buffer-id {:keys [query-content] :as action-result} title & {:keys [display]}]
   (case delivery
     :editor [(code-edit-part buffer-id query-content)]
-    :link   [(query-viz-part action-result title)]
+    :link   [(query-viz-part action-result title display)]
     :hidden nil))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -143,8 +147,8 @@
      :metabot/capabilities #{:permission-write-sql-queries}
      ;; The editor variant proposes the query in the open buffer and never shows a chart.
      :args (cond-> create-sql-schema
-             (not code-edit?) (conj shared/show-chart-arg))})
-  (handle [_ {database-id :database_id sql-query :sql_query :keys [title show_chart]} ctx]
+             (not code-edit?) (conj shared/visualization-arg shared/show-chart-arg))})
+  (handle [_ {database-id :database_id sql-query :sql_query :keys [title visualization show_chart]} ctx]
     (let [buffer-id     (when code-edit?
                           (or (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
                               (tools/unrecoverable!
@@ -155,17 +159,28 @@
                          (do-with-notebook-fallback
                           ctx #(create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query})))
           query-id      (:query-id action-result)
-          structured    (assoc action-result :result-type :query)
+          ;; Outside the editor the query gets a chart, shown or not, so its `chart_id` can go on a dashboard.
+          chart         (when-not code-edit?
+                          (create-chart-tools/create-chart
+                           {:query-id      query-id
+                            :chart-type    (shared/visualization-chart-type visualization)
+                            :queries-state {query-id (:query action-result)}}))
+          structured    (cond-> (assoc action-result :result-type :query)
+                          chart (assoc :chart-id (:chart-id chart) :chart-type (:chart-type chart)))
           readable?     (and (not code-edit?) (tools.run-query/sql-results-readable?))
           ;; Where the model cannot read the results, the chart is the one way the user sees anything.
           delivery      (query-delivery buffer-id (and (false? show_chart) readable?))
           instr         (case delivery
                           :editor instructions/query-loaded-in-editor-instructions
                           :hidden (instructions/query-hidden-instructions-for query-id)
-                          :link   (instructions/query-created-instructions-for query-id readable?))]
+                          :link   (instructions/query-created-instructions-for query-id readable?))
+          instr         (cond-> instr
+                          (and chart (shared/tool-offered? "write_dashboard"))
+                          (str "\n" (instructions/add-to-dashboard-instruction (:chart-id chart))))]
       (m/assoc-some {:output            (format-query-output structured instr {:preamble? true})
                      :structured-output structured}
-                    :data-parts (delivery-parts delivery buffer-id action-result title)))))
+                    :data-parts (delivery-parts delivery buffer-id structured title
+                                                :display (when visualization (:chart-type chart)))))))
 
 (def create-sql-query-tool
   "The Chat tool that creates a SQL query and shows its visualization."

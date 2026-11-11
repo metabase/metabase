@@ -113,6 +113,11 @@ Reference items using: [name](metabase://type/id)")
        "- If the user wants to open the query, link it using `[Link text](metabase://query/" query-id ")`.\n"
        not-saved-instruction))
 
+(defn add-to-dashboard-instruction
+  "The line telling the model how to put the chart `chart-id` on a dashboard with `write_dashboard`."
+  [chart-id]
+  (str "- To add it to a dashboard, pass `chart_id` `" chart-id "` to `write_dashboard`."))
+
 (defn- delivery-instruction
   "The delivery line for an updated query, by how it reached the user.
    That is `:editor` when it is proposed in their open editor buffer for them to accept or reject.
