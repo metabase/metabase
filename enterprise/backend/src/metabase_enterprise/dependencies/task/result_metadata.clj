@@ -48,7 +48,7 @@
 
 (mu/defn run-batch-in-place! :- ::task.util/batch-outcome
   "Run a batch of the UpdateResultMetadata job now rather than on its schedule; with `reported-only?`, of only the cards
-  the findings report lists or something depends on."
+  something depends on."
   ([]
    (run-batch-in-place! {}))
   ([opts :- [:map {:closed true} [:reported-only? {:optional true} :boolean]]]

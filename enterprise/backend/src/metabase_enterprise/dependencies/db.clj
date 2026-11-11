@@ -711,17 +711,17 @@
   given up on and that counts a write or records a version of the job's logic below `current-version`, those last,
   with their `stale` counts, nil without a status; `user-mbql-only?` narrows cards to MBQL ones that Metabase did not create itself, and `dependency-version`
   to the entities whose dependencies are current. `reported-only?` narrows them to the ones the findings report lists,
-  and `reported-or-depended-on?` to those and the ones something depends on."
+  and `depended-on-only?` to the ones something depends on."
   [entity-type     :- ::deps.dependency-types/dependency-types
    status-model    :- StatusModel
    batch-size      :- ms/PositiveInt
    current-version :- ms/PositiveInt
-   {:keys [user-mbql-only? dependency-version reported-only? reported-or-depended-on?]}
+   {:keys [user-mbql-only? dependency-version reported-only? depended-on-only?]}
    :- [:map {:closed true}
-       [:user-mbql-only?          {:optional true} :boolean]
-       [:dependency-version       {:optional true} ms/PositiveInt]
-       [:reported-only?           {:optional true} :boolean]
-       [:reported-or-depended-on? {:optional true} :boolean]]]
+       [:user-mbql-only?    {:optional true} :boolean]
+       [:dependency-version {:optional true} ms/PositiveInt]
+       [:reported-only?     {:optional true} :boolean]
+       [:depended-on-only?  {:optional true} :boolean]]]
   (let [table-name (t2/table-name (dependencies/entity-model entity-type))
         id-field   (u/qualified-key table-name :id)
         outdated   [:< :status.analysis_version current-version]]
@@ -740,9 +740,7 @@
                          dependency-version (conj (current-dependencies-clause
                                                    entity-type id-field dependency-version))
                          reported-only?     (conj (reported-clause entity-type table-name))
-                         reported-or-depended-on? (conj [:or
-                                                         (reported-clause entity-type table-name)
-                                                         (depended-on-clause entity-type id-field)]))
+                         depended-on-only?  (conj (depended-on-clause entity-type id-field)))
             :order-by  [[[:case outdated [:inline 1] :else [:inline 0]]]]
             :limit     batch-size}))))
 
@@ -754,10 +752,10 @@
    batch-size      :- ms/PositiveInt
    current-version :- ms/PositiveInt
    opts            :- [:map {:closed true}
-                       [:user-mbql-only?          {:optional true} :boolean]
-                       [:dependency-version       {:optional true} ms/PositiveInt]
-                       [:reported-only?           {:optional true} :boolean]
-                       [:reported-or-depended-on? {:optional true} :boolean]]]
+                       [:user-mbql-only?    {:optional true} :boolean]
+                       [:dependency-version {:optional true} ms/PositiveInt]
+                       [:reported-only?     {:optional true} :boolean]
+                       [:depended-on-only?  {:optional true} :boolean]]]
   (let [statuses (pending-statuses entity-type status-model batch-size current-version opts)
         missing  (remove :stale statuses)]
     (when (seq missing)
@@ -850,7 +848,8 @@
   "Up to `batch-size` MBQL cards Metabase did not create itself without a ResultMetadataStatus, or whose status counts a
   write or records a version of the logic below `current-version`, and whose dependencies the dependency logic of
   `dependency-version` computed, outdated ones last, with the `stale` count the job clears afterwards; with
-  `reported-only?`, only the ones the findings report lists or something depends on."
+  `reported-only?`, only the ones whose metadata the findings report reads: those something depends on, since an
+  entity's analysis reads its upstreams' metadata and never its own."
   [batch-size               :- ms/PositiveInt
    current-version          :- ms/PositiveInt
    dependency-version       :- ms/PositiveInt
@@ -858,7 +857,7 @@
   (take-pending-statuses! :card :model/ResultMetadataStatus batch-size current-version
                           (cond-> {:user-mbql-only?    true
                                    :dependency-version dependency-version}
-                            reported-only? (assoc :reported-or-depended-on? true))))
+                            reported-only? (assoc :depended-on-only? true))))
 
 (mu/defn record-result-metadata-failure! :- :boolean
   "Record that the result metadata job failed to re-derive the Card with `card-id`, giving up on it until a write
