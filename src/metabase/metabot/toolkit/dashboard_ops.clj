@@ -639,17 +639,17 @@
    it."
   [{:keys [tabs dashcards] :as state}]
   ;; With one tab, a card with no tab shows on it; with more, [[check-tab-coverage!]] has refused such a card.
-  (let [tab-of  #(or (:dashboard_tab_id %) (:id (first tabs)))
+  (let [tab-of      #(or (:dashboard_tab_id %) (:id (first tabs)))
         ;; A card an op placed and a later op removed is gone.
-        placed  (select-keys (::placed state) (map :id dashcards))
-        ;; A new tab's copies of another tab's cards are never placed, but their layout is the call's to make valid.
-        touched (into (into #{} (comp (map :id) (filter neg?)) tabs)
-                      (comp (filter (comp placed :id)) (map tab-of))
-                      dashcards)
+        placed      (select-keys (::placed state) (map :id dashcards))
+        ;; A new tab's copies may hold no placed card, but their layout is the call's to make valid.
+        new-tabs    (into #{} (comp (map :id) (filter neg?)) tabs)
+        placed-tabs (into #{} (comp (filter (comp placed :id)) (map tab-of)) dashcards)
+        touched     (into new-tabs placed-tabs)
         ;; `contains?`, as a dashboard without tabs keeps its cards under the tab nil.
-        by-tab  (vals (group-by tab-of (filter #(contains? touched (tab-of %)) dashcards)))
-        _       (run! (partial check-placements! placed) by-tab)
-        rows    (into {} (mapcat (partial settle-tab placed)) by-tab)]
+        by-tab      (vals (group-by tab-of (filter #(contains? touched (tab-of %)) dashcards)))
+        _           (run! (partial check-placements! placed) by-tab)
+        rows        (into {} (mapcat (partial settle-tab placed)) by-tab)]
     (-> state
         (map-rows :dashcards #(if-let [row (get rows (:id %))] (assoc % :row row) %))
         (assoc ::pushed (into [] (comp (map :id) (filter #(and (pos-int? %) (contains? rows %)))) dashcards)))))
