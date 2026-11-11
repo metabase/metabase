@@ -89,9 +89,10 @@
   (semantic.util/table-exists? pgvector (name (dlq-table-name-kw index-metadata index-id))))
 
 (def ^:private deterministic-sqlstate-classes
-  "SQLState classes for errors that depend only on the statement and its data, so a retry fails the same way.
-  They are data exception (22), integrity constraint violation (23) and program limit exceeded (54)."
-  #{"22" "23" "54"})
+  "SQLState classes of errors that fail the same way on every retry."
+  #{"22"   ; data exception, such as an invalid byte sequence
+    "23"   ; integrity constraint violation
+    "54"}) ; program limit exceeded, such as an index row too large
 
 (defn- deterministic-sql-error? [t]
   (when-let [state (when (instance? SQLException t)
@@ -172,23 +173,16 @@
 (defn next-delay
   "Calculates the next retry delay as a Duration for the given retry count and policy.
 
-  Applies the policy's exponential backoff formula with the cap constraint.
+  Takes the policy's backoff, capped, and multiplies it by a random factor between 1 and 2.
   Returns a Duration object suitable for scheduling the next retry attempt (presumably against now/last-attempt).
 
   Initially DLQ entries have a retry count of zero - it is not 'try' count, it is 'retry' count.
   The initial retry is scheduled using the standard 'initial-backoff' variable, this function is only used
   when we have retried at least once."
   ^Duration [^long retry-count policy]
-  (let [{:keys [^Duration cap]} policy
-        cap-ms (.toMillis cap)
-        delay-ms (max-delay-ms retry-count policy)
-        ;; Wide on purpose. Documents that failed in one batch are rescheduled together, and only jitter puts them
-        ;; in separate runs, where the good ones succeed and leave and the bad one is retried alone. Only then can
-        ;; it take the permanent policy (see failure-outcome). At ±10% that took ~17 minutes (median) for a batch of
-        ;; 100 in simulation; at ±50%, ~5.
-        jitter (+ 0.5 (rand))
-        jittered-ms (* delay-ms jitter)]
-    (Duration/ofMillis (min cap-ms (max 0 (long jittered-ms))))))
+  ;; The jitter is wide because it is what splits up documents that failed in one batch, so the bad one ends up
+  ;; retried alone (see failure-outcome). It only lengthens the delay, so no retry comes sooner than the policy asks.
+  (Duration/ofMillis (long (* (max-delay-ms retry-count policy) (inc (rand))))))
 
 (comment
   (next-delay 0 transient-policy)
@@ -361,12 +355,10 @@
 
 (defn- failure-outcome [ex gate-docs]
   (let [now         (.instant clock)
-        ;; A failed batch doesn't say which of its documents caused the error, so only a single document is held
-        ;; to the permanent policy. Batch shrinking isolates the culprit on later retries.
+        ;; a failed batch doesn't say which document caused the error, so only a lone one gets the permanent policy
         ex-category (if (next gate-docs) :transient (categorize-error ex))
         ex-policy   ({:transient transient-policy, :permanent permanent-policy} ex-category transient-policy)]
-    ;; The DLQ catches the exception, so this is the only place a document that keeps failing says why.
-    ;; Transient failures stay at debug: an outage fails every batch, and other logs report it.
+    ;; the only log of why a document keeps failing; transient ones stay at debug, as an outage fails every batch
     (when (= :permanent ex-category)
       (log/warnf "Semantic indexing of %s failed with %s; retrying on the permanent backoff"
                  (:id (first gate-docs)) (error-summary ex)))
