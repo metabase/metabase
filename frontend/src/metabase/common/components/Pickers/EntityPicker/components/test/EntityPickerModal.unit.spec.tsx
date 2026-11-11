@@ -268,6 +268,35 @@ describe("EntityPickerModal", () => {
       await expectInactiveItem("Question in Nested Coll"); // level 3
     });
 
+    it.each<{ pickerName: string; models: OmniPickerItem["model"][] }>([
+      { pickerName: "collection picker", models: ["collection"] },
+      {
+        pickerName: "data picker",
+        models: ["table", "card", "dataset", "metric"],
+      },
+    ])(
+      "should not list the trash in Our analytics in the $pickerName",
+      async ({ models }) => {
+        await setup({
+          models,
+          value: { id: "root", model: "collection" },
+          archivedRootCollectionItems: [
+            createMockCollectionItem({
+              id: 20000000,
+              model: "collection",
+              name: "Trash",
+              type: "trash",
+              collection_id: null,
+            }),
+          ],
+        });
+
+        await expectActiveItem("Our analytics");
+        expect(await screen.findByText("First Collection")).toBeInTheDocument();
+        expect(screen.queryByText("Trash")).not.toBeInTheDocument();
+      },
+    );
+
     it("should navigate back", async () => {
       await setup({ value: { id: 33, model: "collection" } });
 

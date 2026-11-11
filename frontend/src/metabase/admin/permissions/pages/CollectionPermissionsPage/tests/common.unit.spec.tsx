@@ -2,8 +2,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, within } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
+import { createMockCollection } from "metabase-types/api/mocks";
 
-import { defaultPermissionsGraph, setup } from "./setup";
+import { defaultCollections, defaultPermissionsGraph, setup } from "./setup";
 
 describe("Admin > CollectionPermissionsPage", () => {
   describe("CollectionPermissionsPage", () => {
@@ -45,6 +47,33 @@ describe("Admin > CollectionPermissionsPage", () => {
       expect(
         screen.queryByRole("menuitem", { name: /Personal/ }),
       ).not.toBeInTheDocument();
+    });
+
+    it("should not show the trash", async () => {
+      // The collection tree mock, like the API, drops the trash only when the
+      // request excludes archived collections.
+      const trashCollection = createMockCollection({
+        id: 20000000,
+        name: "Trash",
+        type: "trash",
+        archived: true,
+      });
+      await setup({ collections: [...defaultCollections, trashCollection] });
+
+      expect(
+        await screen.findByRole("menuitem", { name: /Collection One/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /Trash/ }),
+      ).not.toBeInTheDocument();
+      const treeRequestUrl = fetchMock.callHistory.lastCall(
+        "path:/api/collection/tree",
+      )?.url;
+      expect(
+        new URL(checkNotNull(treeRequestUrl)).searchParams.get(
+          "exclude-archived",
+        ),
+      ).toBe("true");
     });
 
     it("should show a permissions table for the selected collection", async () => {
