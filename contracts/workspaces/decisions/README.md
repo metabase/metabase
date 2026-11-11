@@ -2,7 +2,7 @@
 
 One file per decision: why the Workspaces API and provisioning work the way they do. Format after Nygard (https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions) and MADR (https://github.com/adr/madr).
 
-Entries 0001-0011 were written after the fact on 2026-11-11 from the PRs, Slack threads and decision forms they link. Those sources are the authority on detail.
+Entries 0001-0010 and 0012 were written after the fact on 2026-11-11 from the PRs, Slack threads and decision forms they link. Those sources are the authority on detail.
 
 ## Rules
 
@@ -66,4 +66,5 @@ What this makes easier or harder, including the bad parts.
 | [0008](0008-delete-during-create.md) | DELETE during a create returns 409 `workspace_busy` | accepted | in review (#86789, after #86601) | 2026-11-11 |
 | [0009](0009-refuse-undo-redo.md) | Refuse undo and redo in workspace mode | accepted | in review (#86603) | 2026-11-10 |
 | [0010](0010-stale-remap-rows.md) | Don't act on remap rows that point at an old namespace | accepted | in review (#86609) | 2026-11-10 |
-| [0011](0011-staging-warehouses.md) | A staging warehouse is an ordinary Database, owned by the customer | proposed | not started | 2026-11-10 |
+| [0011](0011-widen-narrow-input-schemas.md) | A live workspace can widen and narrow its input schemas | accepted | not started (ENG-14550) | 2026-11-11 |
+| [0012](0012-staging-warehouses.md) | A staging warehouse is an ordinary Database, owned by the customer | proposed | not started | 2026-11-10 |

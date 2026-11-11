@@ -1,4 +1,4 @@
-# 0011. A staging warehouse is an ordinary Database, owned by the customer
+# 0012. A staging warehouse is an ordinary Database, owned by the customer
 
 - Status: proposed
 - Implemented: not started
