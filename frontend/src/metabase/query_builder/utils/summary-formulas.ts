@@ -55,23 +55,23 @@ export function makeSummaryFormula(
   };
 }
 
+/**
+ * Keeps the formulas whose expression is unchanged and still used by a grouping.
+ * Their `breakoutOptions` only decide which grouping can be renamed.
+ */
 export function reconcileSummaryFormulas(
   query: Lib.Query,
   formulas: SummaryGeneratedExpression[],
 ): SummaryGeneratedExpression[] {
-  return formulas.flatMap((formula) => {
+  return formulas.filter((formula) => {
     const current = makeSummaryFormula(query, formula.stageIndex, formula.name);
     if (!current || current.expression !== formula.expression) {
-      return [];
+      return false;
     }
-    const breakouts = Lib.breakouts(query, formula.stageIndex)
-      .map((clause) => getSummaryBreakout(query, formula.stageIndex, clause))
-      .filter((info) => info?.name === formula.name);
-    const options =
-      formula.breakoutOptions ??
-      (breakouts.length === 1 ? breakouts[0]?.options : undefined);
-    return options && breakouts.some((info) => info?.options === options)
-      ? [{ ...formula, breakoutOptions: options }]
-      : [];
+    return Lib.breakouts(query, formula.stageIndex).some(
+      (clause) =>
+        getSummaryBreakout(query, formula.stageIndex, clause)?.name ===
+        formula.name,
+    );
   });
 }
