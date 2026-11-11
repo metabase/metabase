@@ -162,6 +162,11 @@
           ""
           in))
 
+(defn- code
+  "The argument path `in`, written as [[argument-path]] does, in backticks."
+  [in]
+  (str "`" (argument-path in) "`"))
+
 (defn- compare-paths
   "Orders two argument paths part by part, so that list indexes compare as numbers: `ops[2]` comes before `ops[10]`."
   [a b]
@@ -177,7 +182,17 @@
   "The fields below the argument at the path `in` that `errors` are about, such as `` `hour`, `day_of_week` ``."
   [in errors]
   (str/join ", " (for [error-in (distinct (map :in errors))]
-                   (str "`" (argument-path (subvec error-in (count in))) "`"))))
+                   (code (subvec error-in (count in))))))
+
+(defn- agreeing
+  "The predicate `text` for one argument as `:one`, and its form for several as `:many`."
+  [text]
+  {:one text, :many (str/replace-first text #"^is " "are ")})
+
+(defn- clause
+  "The predicate `text` after the verb `one` for one argument and `many` for several."
+  [one many text]
+  {:one (str one " " text), :many (str many " " text)})
 
 (defn- problem
   "What is wrong with the argument at the path `in`, given the Malli `errors` reported under it, as a predicate for one
@@ -185,18 +200,16 @@
   [arguments in errors]
   ;; Errors reported deeper than `in` come from inside a value of the right type, under an `:or`.
   (let [about-value? (every? #(= in (:in %)) errors)
-        texts        (vec (distinct (map :text errors)))]
+        texts        (distinct (map :text errors))]
     (cond
       (and about-value? (= texts ["disallowed key"]))
-      {:one "is not a supported argument." :many "are not supported arguments."}
+      {:one "is not a supported argument.", :many "are not supported arguments."}
 
       (and about-value? (= texts ["missing required key"]))
-      {:one "is required." :many "are required."}
+      {:one "is required.", :many "are required."}
 
       about-value?
-      (let [text (str (str/join "; " texts) "; received " (json-type-name (get-in arguments in)) ".")]
-        {:one  text
-         :many (str/replace-first text #"^is " "are ")})
+      (agreeing (str (str/join "; " texts) "; received " (json-type-name (get-in arguments in)) "."))
 
       :else
       ;; One clause per kind of error, naming the fields that missing and unsupported keys are about.
@@ -205,16 +218,23 @@
                       (case text
                         ;; The alternatives of an `:or` each need some of these fields, not all of them.
                         "missing required key"
-                        (let [fields (str "missing required fields, from among " (field-names in text-errors))]
-                          {:one (str "is " fields) :many (str "are " fields)})
+                        (clause "is" "are" (str "missing required fields, from among " (field-names in text-errors)))
 
                         "disallowed key"
-                        (let [fields (str "unsupported fields: " (field-names in text-errors))]
-                          {:one (str "has " fields) :many (str "have " fields)})
+                        (clause "has" "have" (str "unsupported fields: " (field-names in text-errors)))
 
-                        {:one text :many (str/replace-first text #"^is " "are ")}))]
+                        (agreeing text)))]
         {:one  (str (str/join "; " (map :one clauses)) ".")
          :many (str (str/join "; " (map :many clauses)) ".")}))))
+
+(defn- enumerate
+  "Two or more `labels` written as a list, such as \"a, b and c\".
+  Past three, it names the first three and counts the rest: \"a, b, c and 4 more\"."
+  [labels]
+  (let [n (count labels)]
+    (if (< 3 n)
+      (str (str/join ", " (take 3 labels)) " and " (- n 3) " more")
+      (str (str/join ", " (butlast labels)) " and " (last labels)))))
 
 (defn- problem-sentences
   "One sentence per problem in `problems`, each a map of an argument path `:in` and its [[problem]].
@@ -231,19 +251,16 @@
     (for [[{:keys [in problem]} & more :as group] (sort-by (comp :in first) compare-paths
                                                            (vals (group-by group-key problems)))]
       (if (empty? more)
-        (str "`" (argument-path in) "` " (:one problem))
+        (str (code in) " " (:one problem))
         ;; The first by its full path. The rest by index alone when they are elements of the same list, and by full
         ;; path when the problem is inside each element.
-        (let [same-list? (and (int? (peek in)) (apply = (map (comp pop :in) group)))
-              names      (cons (str "`" (argument-path in) "`")
-                               (for [p more]
-                                 (if same-list?
-                                   (str "`[" (peek (:in p)) "]`")
-                                   (str "`" (argument-path (:in p)) "`"))))
-              names (if (< 3 (count group))
-                      (str (str/join ", " (take 3 names)) " and " (- (count group) 3) " more")
-                      (str (str/join ", " (butlast names)) " and " (last names)))]
-          (str names " " (:many problem)))))))
+        (let [same-list? (and (int? (peek in)) (apply = (map (comp pop :in) group)))]
+          (str (enumerate (cons (code in)
+                                (for [{other :in} more]
+                                  (if same-list?
+                                    (str "`[" (peek other) "]`")
+                                    (code other)))))
+               " " (:many problem)))))))
 
 (def ^:private max-sentences-per-argument
   "How many sentences the errors of one top-level argument get, so that one bad argument cannot push the others past
@@ -251,12 +268,13 @@
   5)
 
 (defn- capped-sentences
-  "`sentences` for the top-level argument `argument`, with those past [[max-sentences-per-argument]] counted instead."
-  [argument sentences]
-  (let [[kept dropped] (split-at max-sentences-per-argument sentences)]
+  "The [[problem-sentences]] for `problems`, which are all about one top-level argument.
+  Those past [[max-sentences-per-argument]] are counted instead."
+  [problems]
+  (let [[kept dropped] (split-at max-sentences-per-argument (problem-sentences problems))]
     (cond-> (vec kept)
       (seq dropped) (conj (str "And " (count dropped) (if (= 1 (count dropped)) " more problem" " more problems")
-                               " in `" (argument-path [argument]) "`.")))))
+                               " in " (code [(-> problems first :in first)]) ".")))))
 
 (defn- reported-path
   "The argument path to report the Malli `error` under: the data path of the outermost `:or` the error is inside, with
@@ -264,14 +282,15 @@
   [schema {:keys [in path]}]
   ;; An `:or` that fails reports the errors of every alternative, which contradict each other below it, so they all
   ;; go under the `:or`'s own path.
-  (or (some (fn [n]
-              (let [prefix (subvec (vec path) 0 n)]
-                (when (#{:or :orn} (some-> (mut/get-in schema prefix) mc/type))
-                  ;; The schema path has no list indexes, so the error's own data path is cut to the `:or`'s depth.
-                  (let [in (vec in)]
-                    (subvec in 0 (min (count in) (count (mut/path->in schema prefix))))))))
-            (range (inc (count path))))
-      in))
+  (let [in   (vec in)
+        path (vec path)]
+    (or (some (fn [n]
+                (let [prefix (subvec path 0 n)]
+                  (when (#{:or :orn} (some-> (mut/get-in schema prefix) mc/type))
+                    ;; The schema path has no list indexes, so the error's own data path is cut to the `:or`'s depth.
+                    (subvec in 0 (min (count in) (count (mut/path->in schema prefix)))))))
+              (range (inc (count path))))
+        in)))
 
 (defn- problems
   "The problems in `arguments` that the Malli `explanation` describes, one per argument path, sorted by path. Each is a
@@ -279,11 +298,11 @@
   [arguments {:keys [schema errors]}]
   (let [by-path (group-by :reported
                           (for [error errors]
-                            {:reported (vec (reported-path schema error))
+                            {:reported (reported-path schema error)
                              :in       (vec (:in error))
                              :text     (or (me/error-message error {:unknown false}) "is not valid")}))]
     (for [in (sort compare-paths (keys by-path))]
-      {:in in :problem (problem arguments in (by-path in))})))
+      {:in in, :problem (problem arguments in (by-path in))})))
 
 (defn- invalid-arguments-message
   "A repair-oriented message describing how `arguments` violate `schema`, or nil when they match.
@@ -292,10 +311,8 @@
   (when-let [explanation (mr/explain schema arguments)]
     (str "Invalid tool arguments: "
          (if (map? arguments)
-           (str/join " " (for [argument-problems (partition-by (comp first :in) (problems arguments explanation))
-                               sentence          (capped-sentences (first (:in (first argument-problems)))
-                                                                   (problem-sentences argument-problems))]
-                           sentence))
+           (str/join " " (mapcat capped-sentences
+                                 (partition-by (comp first :in) (problems arguments explanation))))
            (str "expected an object of named arguments; received " (json-type-name arguments) ".")))))
 
 ;;; ------------------------------------------------ Rendering -----------------------------------------------------
