@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
 import {
@@ -25,6 +26,9 @@ import {
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
   createMockDashboardTab,
+  createMockDataset,
+  createMockParameter,
+  createMockParameterMapping,
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
@@ -624,6 +628,75 @@ describe("fetchDashboardCardData", () => {
     // Before the fix, the batch cancellation loop would cancel Tab 1's
     // in-flight request, causing a re-execution on return.
     expect(tab1QueryCount).toBe(1);
+  });
+});
+
+describe("fetchCardDataAction", () => {
+  it("should not rerun a query when the last result lists the same parameters in another order (metabase#39863)", async () => {
+    const dashboardId = 400;
+    // Clojure keeps maps with 9 or more entries unordered, so the backend can
+    // return the parameters of `json_query` in a different order
+    const parameters = _.range(1, 10).map((index) =>
+      createMockParameter({
+        id: String(index),
+        slug: `filter-${index}`,
+        type: "number/<=",
+      }),
+    );
+    const card = createMockCard({ id: 40 });
+    const dashcard = createMockDashboardCard({
+      id: 41,
+      card_id: card.id,
+      dashboard_id: dashboardId,
+      card,
+      parameter_mappings: parameters.map((parameter, index) =>
+        createMockParameterMapping({
+          parameter_id: parameter.id,
+          card_id: card.id,
+          target: ["dimension", ["field", index + 1, null]],
+        }),
+      ),
+    });
+    const store = setup({
+      dashboard: createMockDashboardState({
+        dashboardId,
+        dashboards: {
+          [dashboardId]: createMockStoreDashboard({
+            id: dashboardId,
+            dashcards: [dashcard.id],
+            parameters,
+          }),
+        },
+        dashcards: { [dashcard.id]: dashcard },
+        parameterValues: Object.fromEntries(
+          parameters.map((parameter) => [parameter.id, [10]]),
+        ),
+      }),
+    });
+
+    const queryUrl = `path:/api/dashboard/${dashboardId}/dashcard/${dashcard.id}/card/${card.id}/query`;
+    fetchMock.post(queryUrl, ({ options }) => {
+      const body: unknown = JSON.parse(String(options.body));
+      const requestParameters =
+        body != null &&
+        typeof body === "object" &&
+        "parameters" in body &&
+        Array.isArray(body.parameters)
+          ? body.parameters
+          : [];
+      return createMockDataset({
+        json_query: {
+          ...card.dataset_query,
+          parameters: [...requestParameters].reverse(),
+        },
+      });
+    });
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard }));
+    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(1);
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard }));
+    expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(1);
   });
 });
 
