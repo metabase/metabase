@@ -8,7 +8,6 @@
   when the feature is not available."
   (:require
    [malli.error :as me]
-   [medley.core :as m]
    [metabase.api-scope.core :as api-scope]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.scope :as scope]
@@ -104,14 +103,8 @@
         tool-names (into #{} (map :name) decls)]
     (doseq [tool-var tool-vars]
       (validate-tool-var! tool-var))
-    ;; A name may repeat only across alternatives: tools that each declare `:metabot/available?`, of which
-    ;; [[resolve-tools]] serves at most one (e.g. the `substring_search` variants for in-place and for app-db on H2).
-    (let [dups (->> (group-by :name decls)
-                    (filter (fn [[_ ds]]
-                              (and (< 1 (count ds))
-                                   (not-every? :metabot/available? ds)))))]
-      (when (seq dups)
-        (throw (ex-info "Duplicate tool names in profile" {:tool-names (map first dups)}))))
+    (when-let [dups (seq (for [[name' n] (frequencies (map :name decls)) :when (< 1 n)] name'))]
+      (throw (ex-info "Duplicate tool names in profile" {:tool-names dups})))
     (when (and (false? (:skills? profile)) (seq (:always-on-skills profile)))
       (throw (ex-info "Profile disables skills but lists :always-on-skills"
                       {:profile (:name profile) :always-on-skills (:always-on-skills profile)})))
@@ -147,8 +140,7 @@
   :tools           [#'tools/retrieve-library-entities-tool
                     #'tools/nlq-semantic-search-tool
                     #'tools/nlq-fulltext-search-tool
-                    #'tools/nlq-substring-or-search-tool
-                    #'tools/nlq-substring-and-search-tool
+                    #'tools/nlq-substring-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/create-chart-tool
@@ -159,8 +151,7 @@
   [#'tools/retrieve-library-entities-tool
    #'tools/semantic-search-tool
    #'tools/fulltext-search-tool
-   #'tools/substring-or-search-tool
-   #'tools/substring-and-search-tool
+   #'tools/substring-search-tool
    #'tools/construct-notebook-query-tool
    #'tools/run-query-tool
    #'tools/read-resource-tool
@@ -220,8 +211,7 @@
                          "ask_for_sql_clarification"}
   :tools               [#'tools/sql-semantic-search-tool
                         #'tools/sql-fulltext-search-tool
-                        #'tools/sql-substring-or-search-tool
-                        #'tools/sql-substring-and-search-tool
+                        #'tools/sql-substring-search-tool
                         #'tools/read-resource-tool
                         #'tools/list-snippets-tool
                         #'tools/get-snippet-details-tool
@@ -237,8 +227,7 @@
   :tools           [#'tools/retrieve-library-entities-tool
                     #'tools/nlq-semantic-search-tool
                     #'tools/nlq-fulltext-search-tool
-                    #'tools/nlq-substring-or-search-tool
-                    #'tools/nlq-substring-and-search-tool
+                    #'tools/nlq-substring-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/run-query-tool
@@ -272,8 +261,7 @@
   :tools           [#'tools/retrieve-library-entities-tool
                     #'tools/semantic-search-tool
                     #'tools/fulltext-search-tool
-                    #'tools/substring-or-search-tool
-                    #'tools/substring-and-search-tool
+                    #'tools/substring-search-tool
                     #'tools/slackbot-construct-notebook-query-tool
                     #'tools/list-available-fields-tool
                     #'tools/get-field-values-tool
@@ -291,8 +279,7 @@
   :tools           [#'tools/retrieve-library-entities-tool
                     #'tools/semantic-search-tool
                     #'tools/fulltext-search-tool
-                    #'tools/substring-or-search-tool
-                    #'tools/substring-and-search-tool
+                    #'tools/substring-search-tool
                     #'tools/read-resource-tool
                     #'tools/list-research-metrics-tool
                     #'tools/get-research-candidates-tool
@@ -413,7 +400,6 @@
                                (keep (fn [{name' :name, note :metabot/unavailable-note}]
                                        (when note
                                          (assoc (note ctx) :name name'))))
-                               (m/distinct-by :name)
                                (sort-by :name)
                                vec)})))
 

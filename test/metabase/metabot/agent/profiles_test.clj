@@ -333,8 +333,7 @@
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "the keyword search tool follows the keyword engine's flavour"
       (doseq [[flavour tool-name tool-var] [[:fulltext "fulltext_search" #'tools/fulltext-search-tool]
-                                            [:substring-or "substring_search" #'tools/substring-or-search-tool]
-                                            [:substring-and "substring_search" #'tools/substring-and-search-tool]]]
+                                            [:substring "substring_search" #'tools/substring-search-tool]]]
         (mt/with-dynamic-fn-redefs [search.engine/keyword-flavour (constantly flavour)]
           (let [tools (profiles/get-tools-for-profile :internal [])]
             (is (= tool-var (get tools tool-name)) (str flavour))
@@ -360,28 +359,19 @@
         (is (=? [{:name "semantic_search", :reason "semantic search isn't available on this instance"}]
                 (filter #(= "semantic_search" (:name %))
                         (:unavailable-tools (profiles/resolve-tools (profiles/get-profile :internal) [] {})))))))
-    (testing "an available tool, or a keyword variant whose sibling serves, is not listed"
+    (testing "an available tool is not listed"
       (mt/with-dynamic-fn-redefs [search.engine/engine-status (constantly :ok)]
         (is (not-any? #(#{"semantic_search" "fulltext_search" "substring_search"} (:name %))
                       (:unavailable-tools (profiles/resolve-tools (profiles/get-profile :internal) [] {}))))))))
 
-(deftest register-profile-alternatives-test
-  (testing "tools may share a name only as alternatives that each declare :available?"
+(deftest register-profile-rejects-duplicate-names-test
+  (testing "a profile can't offer two tools with the same name"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Duplicate tool names"
                           (#'profiles/register-profile! {:name            ::duplicate
                                                          :prompt-template "internal.selmer"
                                                          :max-iterations  1
                                                          :tools           [#'tools/read-resource-tool
-                                                                           #'tools/read-resource-tool]})))
-    (try
-      (#'profiles/register-profile! {:name            ::alternatives
-                                     :prompt-template "internal.selmer"
-                                     :max-iterations  1
-                                     :tools           [#'tools/substring-or-search-tool
-                                                       #'tools/substring-and-search-tool]})
-      (is (some? (profiles/get-profile ::alternatives)))
-      (finally
-        (swap! @#'profiles/*profiles dissoc ::alternatives)))))
+                                                                           #'tools/read-resource-tool]})))))
 
 (deftest resolve-tools-checks-availability-once-test
   (testing "the offered tools and the unavailable list come from one availability check per tool"

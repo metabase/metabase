@@ -151,7 +151,7 @@
         (search-results** (search/query-expr-search-string expr) (assoc raw-ctx :search-expr expr))))
 
 (deftest ^:parallel search-expr-matching-test
-  (when (= :postgres (mdb/db-type))
+  (when (search.engine/supported-engine? :search.engine/appdb)
     (with-index-contents
       [{:model "card" :id 1 :name "revenue forecast"}
        {:model "card" :id 2 :name "income statement"}

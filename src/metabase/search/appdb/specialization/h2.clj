@@ -5,6 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.db :as search.db]
+   [metabase.search.query-expr :as query-expr]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -43,10 +44,15 @@
   [active-table search-term search-ctx select-items]
   (let [search-column (if (:search-native-query search-ctx)
                         :search_index.native_search_terms
-                        :search_index.search_terms)]
+                        :search_index.search_terms)
+        search-expr   (:search-expr search-ctx)]
     (cond-> {:select select-items
              :from   [[active-table :search_index]]}
-      (not (str/blank? search-term))
+      search-expr
+      (sql.helpers/where (query-expr/->like-predicate search-expr search-column))
+
+      ;; a plain string requires every word
+      (and (nil? search-expr) (not (str/blank? search-term)))
       (sql.helpers/where (into [:and] (for [pattern (wildcard-tokens search-term)]
                                         [:like [:lower search-column] pattern]))))))
 

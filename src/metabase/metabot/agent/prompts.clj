@@ -13,7 +13,6 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.skills :as skills]
-   [metabase.search.engine :as search.engine]
    [metabase.util.log :as log]
    [selmer.parser :as selmer]))
 
@@ -163,9 +162,7 @@
                                      (get context :sql-dialect))
             {:keys [always-on catalog]} (skills/build-skill-manifest profile (keys tools) capabilities)
             ;; Search guidance follows the search tools actually offered this turn, so the prompt never describes a
-            ;; matcher the model wasn't given. `substring_search` has a variant per engine (in-place ORs its terms,
-            ;; app-db on H2 ANDs them), told apart by the same keyword flavour that chose the variant.
-            flavour              (search.engine/keyword-flavour)
+            ;; matcher the model wasn't given.
             has-semantic?        (contains? tools "semantic_search")
             has-fulltext?        (contains? tools "fulltext_search")
             has-substring?       (contains? tools "substring_search")
@@ -193,8 +190,7 @@
                                                                  (some? (skills/dialect-skill sql-dialect)))
                                   :has_semantic_search      has-semantic?
                                   :has_fulltext_search      has-fulltext?
-                                  :has_substring_or_search  (and has-substring? (= :substring-or flavour))
-                                  :has_substring_and_search (and has-substring? (= :substring-and flavour))
+                                  :has_substring_search     has-substring?
                                   :has_keyword_search       (or has-fulltext? has-substring?)
                                   :has_library_retrieval    has-library?
                                   ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats

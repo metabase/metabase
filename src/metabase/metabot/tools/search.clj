@@ -1171,16 +1171,10 @@
         "idea, never to join different ideas. Terms match whole words after stemming, so `orders` finds `order` but "
         "`cust` finds nothing unless it is a `prefix`. Very common words such as `the` match nothing.")))
 
-(def ^:private substring-or-query-schema
+(def ^:private substring-query-schema
   (keyword-query-schema
    #{"or"}
    (str "Text to find in names and descriptions: one term, or an `or` of terms of which any may match. A term "
-        "matches anywhere inside a word, so `cust` finds `customers`.")))
-
-(def ^:private substring-and-query-schema
-  (keyword-query-schema
-   #{"and"}
-   (str "Text to find in names and descriptions: one term, or an `and` of terms that must all appear. A term "
         "matches anywhere inside a word, so `cust` finds `customers`.")))
 
 ;; Metabot reads a short ranked list and pairs it with keyword search, so it casts a wider net than the semantic
@@ -1206,16 +1200,11 @@
                    :validate-tsquery? true
                    :query-schema      fulltext-query-schema
                    :available?        (keyword-flavour? :fulltext)}
-   :substring-or  {:tool-name    "substring_search"
+   :substring     {:tool-name    "substring_search"
                    :engine       search.engine/keyword-engine
                    :expr?        true
-                   :query-schema substring-or-query-schema
-                   :available?   (keyword-flavour? :substring-or)}
-   :substring-and {:tool-name    "substring_search"
-                   :engine       search.engine/keyword-engine
-                   :expr?        true
-                   :query-schema substring-and-query-schema
-                   :available?   (keyword-flavour? :substring-and)}})
+                   :query-schema substring-query-schema
+                   :available?   (keyword-flavour? :substring)}})
 
 (def ^:private general-entity-types
   "The entity types the general and NLQ search tools accept."
@@ -1350,18 +1339,11 @@
         "words (stemmed). Join the key words of one idea with `and` or a `phrase`, use `or` only for other words for "
         "the same idea, and exclude with `not`. " general-entity-types-sentence)))
 
-(def substring-or-search-tool
-  "The `substring_search` tool for the general profiles, on the in-place engine."
+(def substring-search-tool
+  "The `substring_search` tool for the general profiles."
   (->SearchTool
-   :general :substring-or
+   :general :substring
    (str "Find data and content whose name or description contains the given text. Give alternatives with `or`. "
-        general-entity-types-sentence)))
-
-(def substring-and-search-tool
-  "The `substring_search` tool for the general profiles, on app-db over H2."
-  (->SearchTool
-   :general :substring-and
-   (str "Find data and content whose name or description contains the given text. Require several terms with `and`. "
         general-entity-types-sentence)))
 
 ;;; SQL profile: tables and models in the database the user has open
@@ -1381,19 +1363,12 @@
         "whole words (stemmed). Join the key words of one idea with `and` or a `phrase`, and use `or` only for other "
         "words for the same idea.")))
 
-(def sql-substring-or-search-tool
-  "The `substring_search` tool for the SQL profile, on the in-place engine."
+(def sql-substring-search-tool
+  "The `substring_search` tool for the SQL profile."
   (->SearchTool
-   :sql :substring-or
+   :sql :substring
    (str "Find SQL-queryable tables and models in a database whose name or description contains the given text. "
         "Give alternatives with `or`.")))
-
-(def sql-substring-and-search-tool
-  "The `substring_search` tool for the SQL profile, on app-db over H2."
-  (->SearchTool
-   :sql :substring-and
-   (str "Find SQL-queryable tables and models in a database whose name or description contains the given text. "
-        "Require several terms with `and`.")))
 
 ;;; NLQ profiles (NLQ, embedded): queryable data by default, dashboards and documents as save destinations
 
@@ -1414,18 +1389,10 @@
         "body is searched too. Matches whole words (stemmed). Join the key words of one idea with `and` or a "
         "`phrase`, and use `or` only for other words for the same idea.")))
 
-(def nlq-substring-or-search-tool
-  "The `substring_search` tool for the NLQ profiles, on the in-place engine."
+(def nlq-substring-search-tool
+  "The `substring_search` tool for the NLQ profiles."
   (->SearchTool
-   :nlq :substring-or
+   :nlq :substring
    (str "Find data to answer a question whose name or description contains the given text: tables, models, metrics, "
         "measures, segments, questions, and collections, or dashboards and documents as save destinations. Give "
         "alternatives with `or`.")))
-
-(def nlq-substring-and-search-tool
-  "The `substring_search` tool for the NLQ profiles, on app-db over H2."
-  (->SearchTool
-   :nlq :substring-and
-   (str "Find data to answer a question whose name or description contains the given text: tables, models, metrics, "
-        "measures, segments, questions, and collections, or dashboards and documents as save destinations. Require "
-        "several terms with `and`.")))

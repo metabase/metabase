@@ -39,15 +39,12 @@
   "The keyword search tool `profile` offers on this instance: full-text on a Postgres app DB, substring elsewhere.
   A single-word `query` is valid for all of them."
   [profile]
-  (get-in {:general {:fulltext      #'search/fulltext-search-tool
-                     :substring-or  #'search/substring-or-search-tool
-                     :substring-and #'search/substring-and-search-tool}
-           :sql     {:fulltext      #'search/sql-fulltext-search-tool
-                     :substring-or  #'search/sql-substring-or-search-tool
-                     :substring-and #'search/sql-substring-and-search-tool}
-           :nlq     {:fulltext      #'search/nlq-fulltext-search-tool
-                     :substring-or  #'search/nlq-substring-or-search-tool
-                     :substring-and #'search/nlq-substring-and-search-tool}}
+  (get-in {:general {:fulltext  #'search/fulltext-search-tool
+                     :substring #'search/substring-search-tool}
+           :sql     {:fulltext  #'search/sql-fulltext-search-tool
+                     :substring #'search/sql-substring-search-tool}
+           :nlq     {:fulltext  #'search/nlq-fulltext-search-tool
+                     :substring #'search/nlq-substring-search-tool}}
           [profile (search.engine/keyword-flavour)]))
 
 (defn- do-with-search-stub!
@@ -696,23 +693,20 @@
               "Invalid tool arguments: `entity_types` must be an array of supported entity type strings; received a string."]]]
       (testing (str "a scalar " field)
         (is (= message
-               (test-util/tool-boundary-error "substring_search" #'metabot.tools/substring-or-search-tool
+               (test-util/tool-boundary-error "substring_search" #'metabot.tools/substring-search-tool
                                               {:query "x" field value})))))))
 
 (deftest ^:parallel scalar-search-args-every-variant-test
   (testing "every search tool variant rejects a scalar the same way"
     (doseq [[tool-var extra-args] [[#'metabot.tools/semantic-search-tool {}]
                                    [#'metabot.tools/fulltext-search-tool {}]
-                                   [#'metabot.tools/substring-or-search-tool {}]
-                                   [#'metabot.tools/substring-and-search-tool {}]
+                                   [#'metabot.tools/substring-search-tool {}]
                                    [#'metabot.tools/sql-semantic-search-tool {:database_id 1}]
                                    [#'metabot.tools/sql-fulltext-search-tool {:database_id 1}]
-                                   [#'metabot.tools/sql-substring-or-search-tool {:database_id 1}]
-                                   [#'metabot.tools/sql-substring-and-search-tool {:database_id 1}]
+                                   [#'metabot.tools/sql-substring-search-tool {:database_id 1}]
                                    [#'metabot.tools/nlq-semantic-search-tool {}]
                                    [#'metabot.tools/nlq-fulltext-search-tool {}]
-                                   [#'metabot.tools/nlq-substring-or-search-tool {}]
-                                   [#'metabot.tools/nlq-substring-and-search-tool {}]]]
+                                   [#'metabot.tools/nlq-substring-search-tool {}]]]
       (testing (str tool-var)
         (is (= "Invalid tool arguments: `entity_types` must be an array of supported entity type strings; received a string."
                (test-util/tool-boundary-error (:name (tools.legacy/declaration-of tool-var)) tool-var
@@ -1882,8 +1876,7 @@
       (mt/with-dynamic-fn-redefs [perms/impersonated-user? (fn [] false)
                                   perms/sandboxed-user?    (fn [] false)]
         (let [captured (atom nil)
-              op       (if (= :substring-or (search.engine/keyword-flavour)) "or" "and")
-              expr     {:op op :args ["revenue" "income"]}]
+              expr     {:op "or" :args ["revenue" "income"]}]
           (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                            (reset! captured context)
                                                            {:data []})]
@@ -1898,7 +1891,7 @@
   (testing "each profile's keyword search tools are alternatives: exactly one serves this instance"
     (doseq [profile [:general :sql :nlq]
             :let [prefix (case profile :general "" :sql "sql-" :nlq "nlq-")
-                  vars   (for [matcher ["fulltext" "substring-or" "substring-and"]]
+                  vars   (for [matcher ["fulltext" "substring"]]
                            (ns-resolve 'metabase.metabot.tools.search (symbol (str prefix matcher "-search-tool"))))]]
       (testing profile
         (is (= [(keyword-tool profile)]
@@ -1907,10 +1900,9 @@
 (deftest keyword-query-limit-test
   (testing "a structured query with too many leaves is a recoverable error, and nothing is searched"
     (mt/with-dynamic-fn-redefs [search/search-by-query (fn [_] (throw (ex-info "should not search" {})))]
-      (let [op (if (= :substring-or (search.engine/keyword-flavour)) "or" "and")]
-        (is (=? {:error  {:class :recoverable :code ::search/query-too-large}
-                 :output #"(?s)The query has 17 leaves; the most is 16\..*"}
-                (invoke-search [(keyword-tool :general)] {:query {:op op :args (mapv #(str "t" %) (range 17))}})))))))
+      (is (=? {:error  {:class :recoverable :code ::search/query-too-large}
+               :output #"(?s)The query has 17 leaves; the most is 16\..*"}
+              (invoke-search [(keyword-tool :general)] {:query {:op "or" :args (mapv #(str "t" %) (range 17))}}))))))
 
 (deftest fulltext-validation-test
   (when (= :postgres (mdb/db-type))

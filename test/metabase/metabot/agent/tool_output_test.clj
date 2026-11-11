@@ -206,9 +206,8 @@
   "The keyword search tool this instance advertises."
   []
   (case (search.engine/keyword-flavour)
-    :fulltext      search-tools/fulltext-search-tool
-    :substring-or  search-tools/substring-or-search-tool
-    :substring-and search-tools/substring-and-search-tool))
+    :fulltext  search-tools/fulltext-search-tool
+    :substring search-tools/substring-search-tool))
 
 (deftest search-tool-structured-output-formats-correctly-test
   (testing "search tool :structured-output formats to clean XML via format-structured-result"

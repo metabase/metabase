@@ -259,12 +259,11 @@
 
   - `:fulltext`: app-db on Postgres. Lexemes, with stemming and stopwords from the text-search language, and boolean
     tsquery operators.
-  - `:substring-and`: app-db on H2. Every term must appear somewhere as a substring.
-  - `:substring-or`: in-place. Any term may appear as a substring in any searched column."
+  - `:substring`: in-place, or app-db on H2. A term matches as a substring of any searched column."
   []
   (case (keyword-engine)
-    :search.engine/appdb    (if (= :postgres (mdb/db-type)) :fulltext :substring-and)
-    :search.engine/in-place :substring-or
+    :search.engine/appdb    (if (= :postgres (mdb/db-type)) :fulltext :substring)
+    :search.engine/in-place :substring
     nil))
 
 (defmethod disjunction :default [_ terms] terms)

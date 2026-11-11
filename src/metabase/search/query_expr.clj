@@ -152,9 +152,8 @@
     :else                (mapcat positive-leaves (:args expr))))
 
 (defn search-string
-  "The texts of the leaves outside any `not`, joined with spaces. Engines that match a plain string get this: the
-  in-place engine ORs its words and app-db on H2 ANDs them, which is exactly what their `or`-only and `and`-only
-  queries mean."
+  "The texts of the leaves outside any `not`, joined with spaces.
+  The in-place engine gets this and matches any of its words, which is what its `or`-only query means."
   [expr]
   (str/join " " (map leaf-text (positive-leaves expr))))
 
@@ -177,6 +176,18 @@
 
     :else
     []))
+
+(defn ->like-predicate
+  "Compile `expr` to a HoneySQL predicate that finds each leaf's text, case-insensitively, anywhere in `column`.
+  Every leaf matches as a literal substring, so a phrase matches its text as written."
+  [expr column]
+  (let [go (fn go [e]
+             (cond
+               (leaf? e)         [:like [:lower column] (h2x/like-substring (leaf-text e))]
+               (= "and" (:op e)) (into [:and] (map go) (:args e))
+               (= "or" (:op e))  (into [:or] (map go) (:args e))
+               (= "not" (:op e)) [:not (go (first (:args e)))]))]
+    (go expr)))
 
 (defn- prefix-tsquery-text
   "The `to_tsquery` text that matches `term` as the start of a word: the term as one quoted lexeme, marked `:*`."

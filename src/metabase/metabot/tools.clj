@@ -45,16 +45,13 @@
  [tools.search
   semantic-search-tool
   fulltext-search-tool
-  substring-or-search-tool
-  substring-and-search-tool
+  substring-search-tool
   sql-semantic-search-tool
   sql-fulltext-search-tool
-  sql-substring-or-search-tool
-  sql-substring-and-search-tool
+  sql-substring-search-tool
   nlq-semantic-search-tool
   nlq-fulltext-search-tool
-  nlq-substring-or-search-tool
-  nlq-substring-and-search-tool]
+  nlq-substring-search-tool]
  [tools.entity-retrieval
   retrieve-library-entities-tool]
  [tools.construct
@@ -149,19 +146,6 @@
   [tool-name]
   (contains? @query-result-tool-names tool-name))
 
-(defn- available-alternatives
-  "`tool-list` with each set of tools that share a name narrowed to the one whose `:metabot/available?` check passes
-  for `ctx`, such as the `substring_search` variants for in-place and for app-db on H2. A tool whose name no other
-  tool in the list carries is kept as it is: offering it or not is the profile's decision."
-  [tool-list ctx]
-  (let [tool-name (comp :name tools.legacy/declaration-of)
-        shared?   (into #{} (keep (fn [[k n]] (when (< 1 n) k))) (frequencies (map tool-name tool-list)))]
-    (filterv (fn [tool]
-               (or (not (shared? (tool-name tool)))
-                   (when-let [available? (:metabot/available? (tools.legacy/declaration-of tool))]
-                     (boolean (available? ctx)))))
-             tool-list)))
-
 (defn ->entries
   "The agent's tool entries for one turn: a map of model-facing tool name to entry.
 
@@ -175,13 +159,9 @@
   check, the result check and error rendering all happen in one place, and `:fn` never throws.
 
   `:schema` is synthesised as `[:=> [:cat args] :any]` because that is the shape
-  `metabase.metabot.self.schema/tool-function` reads. It is the declaration's `:args` either way.
-
-  Of tools in `tool-list` that share a name, only the one available this turn gets an entry; see
-  [[available-alternatives]]."
+  `metabase.metabot.self.schema/tool-function` reads. It is the declaration's `:args` either way."
   [tool-list memory-atom metabot profile-id]
-  (let [entries (tools.core/entries (tools.legacy/adapt-all
-                                     (available-alternatives tool-list {:metabot metabot :profile-id profile-id})))
+  (let [entries (tools.core/entries (tools.legacy/adapt-all tool-list))
         ;; `*current-user-scope*` is read here, once per turn and inside the request, rather than by
         ;; the runtime: `metabase.metabot.scope` reaches the provider adapters through
         ;; `metabot.settings`, and those require `metabase.metabot.self.core`, which requires the

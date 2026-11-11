@@ -179,8 +179,7 @@
   (testing "the search tools declare their names, schemas, availability checks, and the name they replaced"
     (doseq [[tool-var tool-name] [[#'agent-tools/semantic-search-tool "semantic_search"]
                                   [#'agent-tools/fulltext-search-tool "fulltext_search"]
-                                  [#'agent-tools/substring-or-search-tool "substring_search"]
-                                  [#'agent-tools/substring-and-search-tool "substring_search"]]]
+                                  [#'agent-tools/substring-search-tool "substring_search"]]]
       (let [declared (tools.legacy/declaration-of tool-var)]
         (is (= tool-name (:name declared)))
         (is (= #{"search"} (:metabot/replaces declared)))
@@ -1012,18 +1011,3 @@
                       (is (=? {:output #"^Created (alert|subscription) \d+ .*"}
                               (tools.core/call @tool (assoc args :schedule schedule) ctx)))
                       (is (= [expected] (stored-schedules))))))))))))))
-
-(deftest entries-keep-the-available-alternative-test
-  (testing "of tools that share a name, ->entries keeps the one available this turn, and keeps a lone tool as listed"
-    (doseq [[flavour expected] [[:substring-or #'agent-tools/substring-or-search-tool]
-                                [:substring-and #'agent-tools/substring-and-search-tool]
-                                [:fulltext nil]]]
-      (mt/with-dynamic-fn-redefs [search.engine/keyword-flavour (constantly flavour)]
-        (let [entries (agent-tools/->entries [#'agent-tools/substring-or-search-tool
-                                              #'agent-tools/substring-and-search-tool
-                                              #'agent-tools/fulltext-search-tool]
-                                             (atom {}) nil nil)]
-          (testing flavour
-            (is (contains? entries "fulltext_search"))
-            (is (= (some-> expected tools.legacy/declaration-of :description)
-                   (get-in entries ["substring_search" :doc])))))))))
