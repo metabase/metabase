@@ -417,7 +417,9 @@
                                                            tab-id
                                                            :table)
                                                 [:row :col])))))
-      position (mark-placed dashcard_id :position))))
+      position       (mark-placed dashcard_id :position)
+      ;; Autoplace chose the slot, so an earlier op's mark no longer says where the card belongs.
+      (not position) (update ::placed dissoc dashcard_id))))
 
 (defmethod apply-op "resize"
   [state {:keys [dashcard_id size]}]

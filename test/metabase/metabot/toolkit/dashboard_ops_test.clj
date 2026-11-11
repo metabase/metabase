@@ -549,6 +549,17 @@
                       [(:card_id dc) [(:row dc) (:col dc)]]))]
       (is (= {21 [0 12], 20 [6 12]} (on-tab 1) (on-tab -5))))))
 
+(deftest ^:parallel autoplaced-move-drops-an-earlier-position-test
+  (testing "a card positioned and then moved without a position yields to a later resize"
+    (let [dash (assoc empty-dash
+                      :tabs      [{:id 1 :name "A"} {:id 2 :name "B"}]
+                      :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id 1}
+                                  {:id 8 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id 2}])]
+      (is (= {7 [6 12 12 6], 8 [0 0 24 6]}
+             (layout (compile-with-stub-cards dash [{:op "move" :dashcard_id 7 :position {:row 0 :col 12}}
+                                                    {:op "move" :dashcard_id 7 :tab 2}
+                                                    {:op "resize" :dashcard_id 8 :size {:size_x 24 :size_y 6}}])))))))
+
 (deftest ^:parallel reused-new-id-is-not-placed-test
   (testing "a removed card's id reused by an autoplaced card doesn't keep the removed card's position"
     (is (= {-1 [1 0 12 4], -2 [0 0 24 1]}
