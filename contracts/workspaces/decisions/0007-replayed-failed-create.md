@@ -1,7 +1,7 @@
 # 0007. A replayed failed create returns 500 with the workspace id
 
-- Status: proposed
-- Lands with: #86825 (with #86601)
+- Status: accepted
+- Implemented: in review (#86825, with #86601)
 - Date: 2026-11-10
 
 ## Context

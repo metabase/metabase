@@ -1,6 +1,7 @@
 # 0003. Keep the 60 s socket timeout on other-database connections
 
 - Status: accepted
+- Implemented: on master (#86587)
 - Date: 2026-11-10
 
 ## Context

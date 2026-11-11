@@ -1,6 +1,7 @@
 # 0001. Build on the backend restored on master, not the earlier design
 
 - Status: accepted
+- Implemented: on master (#86563)
 - Date: 2026-11-09
 
 ## Context

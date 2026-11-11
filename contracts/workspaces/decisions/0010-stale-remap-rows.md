@@ -1,7 +1,7 @@
 # 0010. Don't act on remap rows that point at an old namespace
 
-- Status: proposed
-- Lands with: #86609
+- Status: accepted
+- Implemented: in review (#86609)
 - Date: 2026-11-10
 
 ## Context

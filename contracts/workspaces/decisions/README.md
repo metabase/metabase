@@ -6,7 +6,8 @@ Entries 0001-0011 were written after the fact on 2026-11-11 from the PRs, Slack 
 
 ## Rules
 
-- **Status binds.** `accepted` means the code on master behaves this way, and changes must keep it so. `proposed` is agreed or under discussion but not on master yet: context only. `superseded by NNNN` is history: don't apply it.
+- **Two fields, two questions.** `Status` is about the decision: `proposed` (under discussion), `accepted` (decided), `superseded by NNNN` (replaced). `Implemented` is about the code: `on master (#PR)`, `in review (#PR)` or `not started`.
+- **What binds.** `accepted` + `on master`: master does this, and changes must keep it so. `accepted` + `in review`: the target for that PR, not yet true of master. `proposed`: context only. `superseded`: history, don't apply it.
 - **Never edit an accepted decision's ruling. Supersede it.** Add a new file, mark the old one `superseded by NNNN (date)`, and have the new one say `Supersedes: NNNN`.
 - **Same PR.** A change that makes or alters a decision adds or supersedes its file in that PR.
 - **Record what was rejected,** so nobody (person or agent) re-proposes it.
@@ -17,7 +18,7 @@ Entries 0001-0011 were written after the fact on 2026-11-11 from the PRs, Slack 
 1. Copy the template below into `NNNN-short-slug.md`, using the next free number.
 2. Fill it in. Keep it to a page. Write the Context so a reader who wasn't there understands the constraint.
 3. Add a row to the Index.
-4. Put the file in the same PR as the code that makes the decision, as `proposed`, with `- Lands with: #PR`. Flip it to `accepted` in the PR that puts the code on master (or right after it merges). A record never says `accepted` before its code is on master.
+4. Put the file in the same PR as the code that implements it, with `- Implemented: in review (#PR)`. Set `Status` to `accepted` once the decision is agreed (that can be before the code merges). Flip `Implemented` to `on master (#PR)` when the PR merges.
 5. To change a decision, add a new file with `- Supersedes: NNNN`, and change the old file's status to `superseded by NNNN (date)`. Leave the rest of the old file as it was.
 
 Agents drafting a record: set status `proposed`, and check that every Resources link exists. A person accepts it.
@@ -27,7 +28,7 @@ Agents drafting a record: set status `proposed`, and check that every Resources 
 
 - Status: proposed | accepted | superseded by NNNN (YYYY-MM-DD)
 - Date: YYYY-MM-DD
-- Lands with: #PR (while proposed)
+- Implemented: on master (#PR) | in review (#PR) | not started
 - Supersedes: NNNN (only if it does)
 
 ## Context
@@ -53,16 +54,16 @@ What this makes easier or harder, including the bad parts.
 
 ## Index
 
-| # | Decision | Status | Date |
-|---|---|---|---|
-| [0001](0001-build-on-restored-backend.md) | Build on the backend restored on master, not the earlier design | accepted | 2026-11-09 |
-| [0002](0002-refuse-default-open-warehouses.md) | Refuse warehouses that are open by default | proposed | 2026-11-10 |
-| [0003](0003-socket-timeout.md) | Keep the 60 s socket timeout on other-database connections | accepted | 2026-11-10 |
-| [0004](0004-config-status-codes.md) | 422 when an admin must fix something; 409 only for "not provisioned" | proposed | 2026-11-10 |
-| [0005](0005-ssh-tunnel-credential.md) | The SSH tunnel credential ships to the sidecar | proposed | 2026-11-10 |
-| [0006](0006-force-delete.md) | `?force=true` on DELETE only for `teardown_failed` | proposed | 2026-11-10 |
-| [0007](0007-replayed-failed-create.md) | A replayed failed create returns 500 with the workspace id | proposed | 2026-11-10 |
-| [0008](0008-delete-during-create.md) | DELETE during a create returns 409 `workspace_busy` | proposed | 2026-11-11 |
-| [0009](0009-refuse-undo-redo.md) | Refuse undo and redo in workspace mode | proposed | 2026-11-10 |
-| [0010](0010-stale-remap-rows.md) | Don't act on remap rows that point at an old namespace | proposed | 2026-11-10 |
-| [0011](0011-staging-warehouses.md) | A staging warehouse is an ordinary Database, owned by the customer | proposed | 2026-11-10 |
+| # | Decision | Status | Implemented | Date |
+|---|---|---|---|---|
+| [0001](0001-build-on-restored-backend.md) | Build on the backend restored on master, not the earlier design | accepted | on master (#86563) | 2026-11-09 |
+| [0002](0002-refuse-default-open-warehouses.md) | Refuse warehouses that are open by default | accepted | in review (#86588, #86798, #86799) | 2026-11-10 |
+| [0003](0003-socket-timeout.md) | Keep the 60 s socket timeout on other-database connections | accepted | on master (#86587) | 2026-11-10 |
+| [0004](0004-config-status-codes.md) | 422 when an admin must fix something; 409 only for "not provisioned" | accepted | in review (#86584 incl. #86585, #86787) | 2026-11-10 |
+| [0005](0005-ssh-tunnel-credential.md) | The SSH tunnel credential ships to the sidecar | accepted | in review (#86584) | 2026-11-10 |
+| [0006](0006-force-delete.md) | `?force=true` on DELETE only for `teardown_failed` | accepted | in review (#86788) | 2026-11-10 |
+| [0007](0007-replayed-failed-create.md) | A replayed failed create returns 500 with the workspace id | accepted | in review (#86825, with #86601) | 2026-11-10 |
+| [0008](0008-delete-during-create.md) | DELETE during a create returns 409 `workspace_busy` | accepted | in review (#86789, after #86601) | 2026-11-11 |
+| [0009](0009-refuse-undo-redo.md) | Refuse undo and redo in workspace mode | accepted | in review (#86603) | 2026-11-10 |
+| [0010](0010-stale-remap-rows.md) | Don't act on remap rows that point at an old namespace | accepted | in review (#86609) | 2026-11-10 |
+| [0011](0011-staging-warehouses.md) | A staging warehouse is an ordinary Database, owned by the customer | proposed | not started | 2026-11-10 |

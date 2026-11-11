@@ -1,7 +1,7 @@
 # 0005. The SSH tunnel credential ships to the sidecar
 
-- Status: proposed
-- Lands with: #86584
+- Status: accepted
+- Implemented: in review (#86584)
 - Date: 2026-11-10
 
 ## Context
