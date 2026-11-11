@@ -12,23 +12,17 @@ describe("scenarios > binning", () => {
     cy.signInAsAdmin();
   });
 
-  // TODO (excel-mode): the summary sidebar has no bucket picker yet; this comes back with it
-  it.skip("should bin a breakout, change its bucket and keep it after a save", () => {
+  it("should bin a breakout, change its bucket and keep it after a save", () => {
     H.openOrdersTable();
     H.summarize();
     cy.intercept("POST", "/api/dataset").as("breakoutQuery");
 
     cy.log("temporal bucket");
-    H.getDimensionByName({ name: "Created At" }).click();
+    H.clickSummaryField("Created At", { section: "Orders" });
     cy.wait("@breakoutQuery")
       .its("request.body.stages.0.breakout.0.1.temporal-unit")
       .should("eq", "month");
-    H.changeBinningForDimension({
-      name: "Created At",
-      fromBinning: "by month",
-      toBinning: "Year",
-      isSelected: true,
-    });
+    H.changeSummaryGroupingBucket("Created At: Month", "Year");
     cy.wait("@breakoutQuery").then(({ request, response }) => {
       expect(request.body.stages[0].breakout[0][1]["temporal-unit"]).to.eq(
         "year",
@@ -42,7 +36,7 @@ describe("scenarios > binning", () => {
     });
 
     cy.log("default binning");
-    H.getDimensionByName({ name: "Total" }).click();
+    H.clickSummaryField("Total", { section: "Orders" });
     cy.wait("@breakoutQuery")
       .its("request.body.stages.0.breakout.0.1.binning")
       .should("include", { strategy: "default" });
@@ -52,12 +46,7 @@ describe("scenarios > binning", () => {
     H.chartPathWithFillColor(BAR_COLOR).should("have.length.greaterThan", 1);
 
     cy.log("explicit binning strategy");
-    H.changeBinningForDimension({
-      name: "Total",
-      fromBinning: "Auto binned",
-      toBinning: "10 bins",
-      isSelected: true,
-    });
+    H.changeSummaryGroupingBucket("Total: Auto binned", "10 bins");
     cy.wait("@breakoutQuery")
       .its("request.body.stages.0.breakout.0.1.binning")
       .should("include", { strategy: "num-bins", "num-bins": 10 });
@@ -67,7 +56,8 @@ describe("scenarios > binning", () => {
     H.chartPathWithFillColor(BAR_COLOR)
       .should("have.length.greaterThan", 1)
       .and("have.length.at.most", 10);
-    H.rightSidebar().button("Done").click();
+    H.summarize();
+    H.summarySidebar().should("not.exist");
 
     cy.log("the binning survives a save and a reload");
     H.saveQuestionToCollection("Binned totals");
@@ -83,6 +73,14 @@ describe("scenarios > binning", () => {
     H.chartPathWithFillColor(BAR_COLOR)
       .should("have.length.greaterThan", 1)
       .and("have.length.at.most", 10);
+
+    cy.log("the reopened sidebar shows the saved binning as the one in use");
+    H.summarize();
+    H.openSummaryGroupingMenu("Total: 10 bins");
+    H.menu()
+      .findByRole("menuitem", { name: "10 bins" })
+      .icon("check")
+      .should("be.visible");
   });
 
   it("should run a query that breaks out by a temporal column of a joined native question (metabase#18646)", () => {

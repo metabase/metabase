@@ -5,6 +5,7 @@ import {
   mockTextOverflow,
   renderWithProviders,
   screen,
+  waitFor,
   within,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
@@ -309,6 +310,71 @@ describe("SummaryWells", () => {
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("menuitem", { name: "More…" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("marks the unit in use", async () => {
+      setup();
+
+      await openBucketMenu("Created At: Month");
+
+      const month = await screen.findByRole("menuitem", { name: "Month" });
+      expect(within(month).getByLabelText("check icon")).toBeInTheDocument();
+      expect(
+        within(screen.getByRole("menuitem", { name: "Year" })).queryByLabelText(
+          "check icon",
+        ),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps Don't bin behind More even while it's the one in use", async () => {
+      setup({
+        spec: {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts: [{ type: "column", name: "CREATED_AT" }],
+            },
+          ],
+        },
+      });
+
+      await openBucketMenu("Created At");
+      await screen.findByRole("menuitem", { name: "Month" });
+      expect(screen.queryByLabelText("check icon")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("menuitem", { name: "More…" }));
+
+      expect(
+        within(
+          screen.getByRole("menuitem", { name: "Don't bin" }),
+        ).getByLabelText("check icon"),
+      ).toBeInTheDocument();
+    });
+
+    it("folds the list back up once the menu closes", async () => {
+      setup();
+
+      await openBucketMenu("Created At: Month");
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "More…" }),
+      );
+      expect(
+        screen.getByRole("menuitem", { name: "Day of week" }),
+      ).toBeInTheDocument();
+
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(screen.queryByRole("menu")).not.toBeInTheDocument(),
+      );
+      await openBucketMenu("Created At: Month");
+
+      expect(
+        await screen.findByRole("menuitem", { name: "More…" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: "Day of week" }),
       ).not.toBeInTheDocument();
     });
 
@@ -682,6 +748,20 @@ describe("SummaryWells", () => {
       const tooltip = await screen.findByRole("tooltip");
       expect(tooltip).toHaveTextContent("Revenue after discounts");
       expect(tooltip).not.toHaveTextContent("Count()");
+    });
+
+    it("shows a cut-off typeahead option in full on hover", async () => {
+      mockTextOverflow();
+      setup({ spec });
+      await userEvent.type(getGroupingField(), "vend");
+
+      await userEvent.hover(
+        within(await findOption("Vendor")).getByText("Vend"),
+      );
+
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent("Vendor");
+      expect(within(tooltip).queryByText("Vend")).not.toBeInTheDocument();
     });
 
     it("shows no tooltip for a label that fits", async () => {

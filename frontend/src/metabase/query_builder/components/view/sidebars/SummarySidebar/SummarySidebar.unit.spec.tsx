@@ -17,6 +17,7 @@ import {
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
+import type { TestStageSpec } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -446,6 +447,97 @@ describe("SummarySidebar", () => {
     expect(screen.getByRole("button", { name: "Clear all" })).toBeDisabled();
   });
 
+  it("keeps Clear all disabled while the summary is empty", () => {
+    setup();
+
+    expect(screen.getByRole("button", { name: "Clear all" })).toBeDisabled();
+  });
+
+  it.each<[string, TestStageSpec]>([
+    ["values", { aggregations: [{ type: "operator", operator: "count" }] }],
+    [
+      "groupings",
+      { breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }] },
+    ],
+  ])(
+    "clears a summary that has only %s, in one change",
+    async (_well, stage) => {
+      const { onQueryChange, getLastQuery } = setup({
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: ORDERS_ID }, ...stage }],
+        }),
+      });
+      const clearAll = screen.getByRole("button", { name: "Clear all" });
+      expect(clearAll).toBeEnabled();
+
+      await userEvent.click(clearAll);
+
+      expect(onQueryChange).toHaveBeenCalledTimes(1);
+      expect(getLastQuery()).toEqual({ values: [], dimensions: [] });
+      expect(getChipLabels("values")).toEqual([]);
+      expect(getChipLabels("columns")).toEqual([]);
+      expect(clearAll).toBeDisabled();
+    },
+  );
+
+  it("groups by a field found through the search, and adds another on alt-click", async () => {
+    const { getLastQuery } = setup();
+    const search = screen.getByLabelText("Search fields");
+
+    await userEvent.type(search, "categ");
+    await userEvent.click(getFieldButton("Product", "Category"));
+    expect(getLastQuery()).toEqual({
+      values: ["Count"],
+      dimensions: ["Product → Category"],
+    });
+
+    await userEvent.clear(search);
+    await userEvent.type(search, "vend");
+    fireEvent.click(getFieldButton("Product", "Vendor"), { altKey: true });
+    expect(getLastQuery()).toEqual({
+      values: ["Count"],
+      dimensions: ["Product → Category", "Product → Vendor"],
+    });
+  });
+
+  it("replaces the values with a metric found through the search", async () => {
+    const { getLastQuery } = setup({ query: createQueryWithMetric() });
+
+    await userEvent.type(screen.getByLabelText("Search fields"), "reven");
+    await userEvent.click(getFieldButton("Metrics", "Revenue"));
+
+    expect(getLastQuery()).toEqual({ values: ["Revenue"], dimensions: [] });
+  });
+
+  it("relabels a grouping chip and marks its new unit once the unit changes", async () => {
+    const { onQueryChange, getLastQuery } = setup({ query: SUMMARIZED_QUERY });
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Change how Created At: Month is grouped",
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Year" }),
+    );
+
+    expect(onQueryChange).toHaveBeenCalledTimes(1);
+    expect(getLastQuery().dimensions).toEqual(["Created At: Year"]);
+    expect(getChipLabels("columns")).toEqual(["Created At: Year"]);
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Change how Created At: Year is grouped",
+      }),
+    );
+
+    expect(
+      within(
+        await screen.findByRole("menuitem", { name: "Year" }),
+      ).getByLabelText("check icon"),
+    ).toBeInTheDocument();
+  });
+
   describe("drag and drop", () => {
     it("adds a dragged field to the well it's dropped on", () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
@@ -579,5 +671,31 @@ describe("SummarySidebar", () => {
     await userEvent.click(screen.getByLabelText("Show fields"));
     expect(drawer).toHaveAttribute("data-open");
     expect(screen.getByLabelText("Hide fields")).toBeInTheDocument();
+  });
+
+  it("keeps the search and the collapsed sections while the field list is hidden", async () => {
+    setup();
+    const getUserToggle = () =>
+      within(screen.getByRole("region", { name: "User" })).getByRole("button", {
+        name: "User",
+      });
+    const hideAndShowFields = async () => {
+      await userEvent.click(screen.getByLabelText("Hide fields"));
+      await userEvent.click(screen.getByLabelText("Show fields"));
+    };
+
+    await userEvent.click(getUserToggle());
+    expect(getUserToggle()).toHaveAttribute("aria-expanded", "false");
+    await hideAndShowFields();
+    expect(getUserToggle()).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.type(screen.getByLabelText("Search fields"), "tota");
+    await hideAndShowFields();
+    expect(screen.getByLabelText("Search fields")).toHaveValue("tota");
+    expect(
+      within(screen.getByRole("region", { name: "Orders" }))
+        .getAllByTestId("summary-field-item")
+        .map((item) => item.textContent),
+    ).toEqual(["Subtotal", "Total"]);
   });
 });

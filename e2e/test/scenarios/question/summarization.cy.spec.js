@@ -58,28 +58,71 @@ describe("scenarios > question > summarize sidebar", () => {
     cy.button("Clear all").should("be.disabled");
   });
 
-  // the summary sidebar has no bucket picker yet; this comes back with it
-  it.skip("selecting a binning adds a dimension", () => {
-    H.getDimensionByName({ name: "Total" }).click({ position: "left" });
+  it("changes the date unit and the bins of groupings from their chips and keeps them across a reload", () => {
+    H.clickSummaryField("Created At", { section: "Orders" });
+    cy.wait("@dataset");
+    H.clickSummaryField("Total", { section: "Orders", add: true });
+    cy.wait("@dataset");
+    H.clickSummaryField("Category", { section: "Product", add: true });
+    cy.wait("@dataset");
+    H.assertSummaryWellItems("columns", [
+      "Created At: Month",
+      "Total: Auto binned",
+      "Product → Category",
+    ]);
 
-    H.changeBinningForDimension({
-      name: "Quantity",
-      toBinning: "10 bins",
-    });
+    cy.log("a grouping without units or bins has no menu");
+    H.summaryWellItem("columns", "Product → Category")
+      .findByRole("button", { name: /Change how/ })
+      .should("not.exist");
 
-    H.getDimensionByName({ name: "Total" })
-      .scrollIntoView()
-      .should("have.attr", "aria-selected", "true")
-      .findByLabelText("Binning strategy")
-      .should("be.visible");
-    H.getDimensionByName({ name: "Quantity" })
-      .should("have.attr", "aria-selected", "true")
-      .findByLabelText("Binning strategy")
-      .should("be.visible");
-    H.getDimensionByName({ name: "Discount" }).within(() => {
-      cy.button("Add dimension").realHover();
-      cy.findByLabelText("Binning strategy").should("be.visible");
+    cy.log("the options shown up front");
+    H.changeSummaryGroupingBucket("Created At: Month", "Quarter");
+    cy.wait("@dataset")
+      .its("request.body.stages.0.breakout.0.1.temporal-unit")
+      .should("eq", "quarter");
+    H.changeSummaryGroupingBucket("Total: Auto binned", "50 bins");
+    cy.wait("@dataset")
+      .its("request.body.stages.0.breakout.1.1.binning")
+      .should("include", { strategy: "num-bins", "num-bins": 50 });
+    H.assertSummaryWellItems("columns", [
+      "Created At: Quarter",
+      "Total: 50 bins",
+      "Product → Category",
+    ]);
+
+    cy.log("the less common units and Don't bin sit behind More");
+    H.openSummaryGroupingMenu("Created At: Quarter");
+    H.menu().within(() => {
+      cy.findByRole("menuitem", { name: "Quarter" })
+        .icon("check")
+        .should("be.visible");
+      cy.findByRole("menuitem", { name: "Don't bin" }).should("not.exist");
+      cy.findByRole("menuitem", { name: "More…" }).click();
+      cy.findByRole("menuitem", { name: "Day of week" }).should("be.visible");
+      cy.findByRole("menuitem", { name: "Don't bin" }).click();
     });
+    cy.wait("@dataset");
+    H.assertSummaryWellItems("columns", [
+      "Created At",
+      "Total: 50 bins",
+      "Product → Category",
+    ]);
+
+    cy.log("the choices live in the URL, so a reload keeps them");
+    cy.reload();
+    cy.wait("@dataset");
+    H.summarize();
+    H.assertSummaryWellItems("columns", [
+      "Created At",
+      "Total: 50 bins",
+      "Product → Category",
+    ]);
+    H.openSummaryGroupingMenu("Total: 50 bins");
+    H.menu()
+      .findByRole("menuitem", { name: "50 bins" })
+      .icon("check")
+      .should("be.visible");
   });
 
   it("should only scroll the field list in the summarize sidebar and not show the run button overlay when an error occurs (metabase#45452, metabase#12586)", () => {
@@ -138,6 +181,60 @@ describe("scenarios > question > summarize", () => {
     H.getNotebookStep("summarize")
       .findByText("Distinct values of Created At: Hour of day")
       .should("be.visible");
+  });
+
+  it("summarizes the results of a SQL question, with a date unit and a cut-off column name shown in full", () => {
+    const longColumnName =
+      "Customer state of residence at the time of their signup";
+
+    H.createNativeQuestion(
+      {
+        name: "SQL orders",
+        native: {
+          query: `SELECT o.CREATED_AT AS CREATED_AT, o.TOTAL AS TOTAL, pe.STATE AS "${longColumnName}" FROM ORDERS o JOIN PEOPLE pe ON pe.ID = o.USER_ID`,
+        },
+      },
+      { visitQuestion: true },
+    );
+    cy.findByTestId("qb-header-action-panel")
+      .findByText("Explore results")
+      .click();
+    cy.wait("@dataset");
+    H.summarize();
+
+    H.addSummaryValue("TOTAL");
+    cy.wait("@dataset");
+    H.clickSummaryField("CREATED_AT");
+    cy.wait("@dataset");
+    H.clickSummaryField(longColumnName, { add: true });
+    cy.wait("@dataset");
+    H.summaryWellItem("values", "Sum of TOTAL").should("be.visible");
+    H.assertSummaryWellItems("columns", ["CREATED_AT: Month", longColumnName]);
+
+    H.changeSummaryGroupingBucket("CREATED_AT: Month", "Year");
+    cy.wait("@dataset").then(({ request, response }) => {
+      expect(request.body.stages[0].breakout[0][1]["temporal-unit"]).to.eq(
+        "year",
+      );
+      expect(response.body.data.cols.map((col) => col.display_name)).to.eql([
+        "CREATED_AT: Year",
+        longColumnName,
+        "Sum of TOTAL",
+      ]);
+    });
+    H.assertSummaryWellItems("columns", ["CREATED_AT: Year", longColumnName]);
+
+    cy.log("a name too long for its chip or its row shows in full on hover");
+    H.summaryWellItem("columns", longColumnName)
+      .findByText(longColumnName)
+      .realHover();
+    H.tooltip().should("have.text", longColumnName);
+
+    H.summaryWellItem("values", "Sum of TOTAL").realHover();
+    H.tooltip().should("not.exist");
+
+    H.summaryField(longColumnName).findByText(longColumnName).realHover();
+    H.tooltip().should("have.text", longColumnName);
   });
 
   it("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {

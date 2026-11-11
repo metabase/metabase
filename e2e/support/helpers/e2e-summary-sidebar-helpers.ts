@@ -16,6 +16,14 @@ export function summaryWellItem(wellId: SummaryWellId, name: string) {
   );
 }
 
+/** Checks the chips a well holds, in order. */
+export function assertSummaryWellItems(wellId: SummaryWellId, names: string[]) {
+  summaryWell(wellId).should(($well) => {
+    const chips = $well.find('[data-testid="summary-well-item"]').toArray();
+    expect(chips.map((chip) => chip.textContent)).to.deep.equal(names);
+  });
+}
+
 export function summaryFieldList() {
   return cy.findByTestId("summary-field-list");
 }
@@ -60,4 +68,17 @@ export function openSummaryValueMenu(name: string) {
   summaryWell("values")
     .findByLabelText(`Change how ${name} is calculated`)
     .click();
+}
+
+/** `name` is the grouping chip's label, like "Created At: Month". */
+export function openSummaryGroupingMenu(name: string) {
+  summaryWell("columns")
+    .findByLabelText(`Change how ${name} is grouped`)
+    .click();
+}
+
+/** Picks a date unit or binning the menu shows up front; the rest sit behind "More…". */
+export function changeSummaryGroupingBucket(name: string, bucket: string) {
+  openSummaryGroupingMenu(name);
+  cy.findByRole("menu").findByRole("menuitem", { name: bucket }).click();
 }

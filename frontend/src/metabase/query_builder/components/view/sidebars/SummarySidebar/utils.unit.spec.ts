@@ -483,6 +483,43 @@ describe("grouping buckets", () => {
     expect(getSelectedBucketNames(total)).toEqual(["Auto bin"]);
   });
 
+  it("offers a coordinate grouping its degree bins, the first five up front", () => {
+    const [latitude] = getDimensionItems(
+      createOrdersQuery({
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [
+              {
+                type: "column",
+                sourceFieldId: ORDERS.USER_ID,
+                name: "LATITUDE",
+                binning: { strategy: "default" },
+              },
+            ],
+          },
+        ],
+      }),
+      STAGE_INDEX,
+    );
+
+    expect(latitude.label).toBe("User → Latitude: Auto binned");
+    expect(getBucketNames(latitude)).toEqual([
+      "Auto bin",
+      "Bin every 0.1 degrees",
+      "Bin every 1 degree",
+      "Bin every 10 degrees",
+      "Bin every 20 degrees",
+      "Bin every 0.05 degrees",
+      "Bin every 0.01 degrees",
+      "Bin every 0.005 degrees",
+      "Don't bin",
+    ]);
+    expect(latitude.initialBucketOptionCount).toBe(5);
+    expect(getSelectedBucketNames(latitude)).toEqual(["Auto bin"]);
+  });
+
   it("offers nothing to a grouping that has no units or bins", () => {
     const [, , category] = getDimensionItems(query, STAGE_INDEX);
 
