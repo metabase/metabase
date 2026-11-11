@@ -24,7 +24,7 @@ import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";
 import { Box, type BoxProps, Flex, Text } from "metabase/ui";
-import { getScheduleExplanation } from "metabase/utils/cron";
+import { getScheduleExplanation, useCronLibraries } from "metabase/utils/cron";
 import type { NotificationCronSubscription } from "metabase-types/api";
 
 import styles from "./NotificationSchedule.module.css";
@@ -58,6 +58,7 @@ export const NotificationSchedule = ({
   });
 
   const actionText = t`Alerts will be sent`;
+  const isCronLibrariesLoaded = useCronLibraries();
   const applicationName = useSelector(getApplicationName);
   const renderScheduleDescription = useMemo(() => {
     // No description is necessary for schedule types, which recur periodically.
@@ -71,6 +72,9 @@ export const NotificationSchedule = ({
       }
 
       if (isScheduleCronValue(value)) {
+        if (!isCronLibrariesLoaded) {
+          return null;
+        }
         return (
           <Text className={styles.customScheduleExplainer}>
             {`${actionText} ${getScheduleExplanation(cronExpression)}${c("An additional clarification for a human-readable schedule description").t`, according to your ${applicationName} timezone (${timezone}).`}`}
@@ -93,7 +97,7 @@ export const NotificationSchedule = ({
         </Text>
       );
     };
-  }, [actionText, applicationName, timezone]);
+  }, [actionText, applicationName, timezone, isCronLibrariesLoaded]);
 
   const handleScheduleChange = useCallback(
     ({ value: nextValue, cronString }: ScheduleChangeEvent) => {

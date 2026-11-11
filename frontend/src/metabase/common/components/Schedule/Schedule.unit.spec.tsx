@@ -8,6 +8,7 @@ import {
   getDefaultsWithoutHour,
   setup,
 } from "metabase/common/components/Schedule/test-utils";
+import { loadCronLibraries } from "metabase/utils/cron";
 import { setLocalization } from "metabase/utils/i18n";
 import { checkNotNull } from "metabase/utils/types";
 
@@ -28,6 +29,9 @@ const expectAmPmToBe = (label: string) =>
   ).toBeChecked();
 
 describe("Schedule", () => {
+  // The cron libraries are lazy-loaded; load them so the first render can use them.
+  beforeAll(() => loadCronLibraries());
+
   it("shows time when schedule is daily", () => {
     setup({ value: scheduleFromCron("0 0 8 * * ? *") });
     expect(getInputValues()).toEqual(["daily", "8:00"]);

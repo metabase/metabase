@@ -1,9 +1,33 @@
-import { isValidCronExpression } from "cron-expression-validator";
-import cronstrue from "cronstrue";
 import { t } from "ttag";
 
+import { createLazyModule, useLazyModule } from "metabase/utils/lazy-module";
 import MetabaseSettings from "metabase/utils/settings";
 import { has24HourModeSetting } from "metabase/utils/time-dayjs";
+
+// The cron libraries are only needed by schedule UIs, so they load on demand
+// rather than with the app.
+const cronLibraries = createLazyModule(() =>
+  Promise.all([import("cronstrue"), import("cron-expression-validator")]).then(
+    ([cronstrue, validator]) => ({
+      cronstrue: cronstrue.default,
+      isValidCronExpression: validator.isValidCronExpression,
+    }),
+  ),
+);
+
+/**
+ * Loads the cron libraries and re-renders once they're ready. Call it in a
+ * component that explains or validates cron expressions: until then,
+ * `getScheduleExplanation` returns `null` and `validateCronExpression` returns
+ * no error.
+ */
+export function useCronLibraries(): boolean {
+  return useLazyModule(cronLibraries) !== undefined;
+}
+
+export function loadCronLibraries(): Promise<unknown> {
+  return cronLibraries.load();
+}
 
 function translateErrorMessage(message: string) {
   const errorMessageMap: Record<string, string> = {
@@ -29,7 +53,11 @@ function translateErrorMessage(message: string) {
 export function validateCronExpression(
   cronExpression: string,
 ): string | undefined {
-  const result = isValidCronExpression<boolean>(cronExpression, {
+  const libraries = cronLibraries.get();
+  if (!libraries) {
+    return;
+  }
+  const result = libraries.isValidCronExpression<boolean>(cronExpression, {
     error: true,
   });
 
@@ -59,8 +87,13 @@ export function validateCronExpression(
   return lastErrorMessage || t`Invalid cron expression`;
 }
 
+/** Throws if the expression is invalid or the cron libraries haven't loaded yet. */
 export function explainCronExpression(cronExpression: string) {
-  return cronstrue.toString(cronExpression, {
+  const libraries = cronLibraries.get();
+  if (!libraries) {
+    throw new Error("The cron libraries haven't loaded yet");
+  }
+  return libraries.cronstrue.toString(cronExpression, {
     verbose: false,
     locale: MetabaseSettings.get("site-locale"),
     use24HourTimeFormat: has24HourModeSetting(),

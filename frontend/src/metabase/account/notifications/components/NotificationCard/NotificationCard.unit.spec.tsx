@@ -2,6 +2,7 @@ import { fireEvent, screen } from "@testing-library/react";
 
 import { renderWithTheme } from "__support__/ui";
 import type { QuestionNotificationListItem } from "metabase/notifications/types";
+import { loadCronLibraries } from "metabase/utils/cron";
 import type { Notification } from "metabase-types/api";
 import {
   createMockNotification,
@@ -22,6 +23,9 @@ const getQuestionAlertItem = (
 });
 
 describe("NotificationCard", () => {
+  // The cron libraries are lazy-loaded; load them so the first render can use them.
+  beforeAll(() => loadCronLibraries());
+
   it("should render a question alert", () => {
     const alert = getQuestionAlertItem();
     const user = createMockUser();

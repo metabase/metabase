@@ -12,6 +12,7 @@ import {
 } from "metabase/notifications/utils";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { useCronLibraries } from "metabase/utils/cron";
 import type { User } from "metabase-types/api";
 
 import S from "./DashboardNotificationCard.module.css";
@@ -31,6 +32,8 @@ export const NotificationCard = ({
   onUnsubscribe,
   onArchive,
 }: NotificationCardProps): JSX.Element => {
+  // Custom (cron) schedules are explained once the cron libraries load.
+  useCronLibraries();
   const { item } = listItem;
   const hasArchive = canArchive(listItem.item, user);
 
