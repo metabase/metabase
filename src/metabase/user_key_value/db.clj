@@ -3,16 +3,16 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.toucan2 :as t2x]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn user-key-value
   "The UserKeyValue of the User with `user-id` for `k` in `namespace`, or nil."
   [user-id   :- ::lib.schema.id/user
    namespace :- :string
    k         :- :string]
-  (t2x/select-one :model/UserKeyValue
+  (t2/select-one :model/UserKeyValue
                   :user_id   user-id
                   :namespace namespace
                   :key       k))
@@ -25,7 +25,7 @@
    k          :- :string
    value      :- :string
    expires-at :- [:maybe ms/TemporalInstant]]
-  (t2x/update! :model/UserKeyValue
+  (t2/update! :model/UserKeyValue
                :user_id   user-id
                :namespace namespace
                :key       k
@@ -38,7 +38,7 @@
    k          :- :string
    value      :- :string
    expires-at :- [:maybe ms/TemporalInstant]]
-  (t2x/insert! :model/UserKeyValue {:user_id    user-id
+  (t2/insert! :model/UserKeyValue {:user_id    user-id
                                     :namespace  namespace
                                     :key        k
                                     :value      value
@@ -49,7 +49,7 @@
   [user-id   :- ::lib.schema.id/user
    namespace :- :string
    k         :- :string]
-  (t2x/delete! :model/UserKeyValue
+  (t2/delete! :model/UserKeyValue
                :namespace namespace
                :user_id   user-id
                :key       k))
@@ -59,7 +59,7 @@
   [user-id   :- ::lib.schema.id/user
    namespace :- :string
    k         :- :string]
-  (t2x/select-one :model/UserKeyValue
+  (t2/select-one :model/UserKeyValue
                   {:where [:and
                            [:= :user_id user-id]
                            [:= :namespace namespace]
@@ -72,7 +72,7 @@
   "The unexpired UserKeyValues of the User with `user-id` in `namespace`."
   [user-id   :- ::lib.schema.id/user
    namespace :- :string]
-  (t2x/select :model/UserKeyValue
+  (t2/select :model/UserKeyValue
               {:where [:and
                        [:= :user_id user-id]
                        [:= :namespace namespace]

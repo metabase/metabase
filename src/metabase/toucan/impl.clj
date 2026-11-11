@@ -1,4 +1,4 @@
-(ns metabase.util.toucan2
+(ns metabase.toucan.impl
   "Toucan 2 call macros that bind every runtime value with `[:auto/param ...]` unless it is a [[Fragment]]."
   (:require
    [toucan2.core :as t2]))
@@ -62,6 +62,16 @@
   "`t2/select-one` with every runtime value bound."
   [& args]
   `(t2/select-one ~@(wrap-args args)))
+
+(defmacro select-one-pk
+  "`t2/select-one-pk` with every runtime value bound."
+  [& args]
+  `(t2/select-one-pk ~@(wrap-args args)))
+
+(defmacro exists?
+  "`t2/exists?` with every runtime value bound."
+  [& args]
+  `(t2/exists? ~@(wrap-args args)))
 
 (defmacro select-pk->fn
   "`t2/select-pk->fn` with every runtime value bound."

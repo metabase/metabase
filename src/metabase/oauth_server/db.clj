@@ -4,23 +4,22 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.oauth-server.schema :as oauth-server.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.toucan2 :as t2x]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- client-event-where
   "The `:where` clause for OAuthClientEvents narrowed by `client-id` and/or `event-type`."
   [client-id event-type]
-  (t2x/fragment [:and
-                 (when client-id (t2x/fragment [:= :c.client_id client-id]))
-                 (when event-type (t2x/fragment [:= :e.event_type event-type]))]))
+  (t2/fragment [:and
+                 (when client-id (t2/fragment [:= :c.client_id client-id]))
+                 (when event-type (t2/fragment [:= :e.event_type event-type]))]))
 
 (mu/defn client-event-count
   "The number of OAuthClientEvents matching `client-id` and/or `event-type` (all of them when both nil)."
   [client-id  :- [:maybe :string]
    event-type :- [:maybe :string]]
-  (t2x/query {:select    [[[:count :*] :count]]
+  (t2/query {:select    [[[:count :*] :count]]
               :from      [[:oauth_client_event :e]]
               :left-join [[:oauth_client :c] [:= :e.oauth_client_id :c.id]]
               :where     (client-event-where client-id event-type)}))
@@ -32,7 +31,7 @@
    event-type :- [:maybe :string]
    limit      :- ms/PositiveInt
    offset     :- ms/IntGreaterThanOrEqualToZero]
-  (t2x/query {:select    [:e.id :e.oauth_client_id :e.user_id :e.event_type :e.created_at
+  (t2/query {:select    [:e.id :e.oauth_client_id :e.user_id :e.event_type :e.created_at
                           [:c.client_id :client_id]
                           [:c.client_name :client_name]
                           [:c.client_uri :client_uri]

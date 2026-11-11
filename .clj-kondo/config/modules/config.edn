@@ -1515,6 +1515,7 @@
            sso.auth-identity
            system
            task
+           toucan
            tracing
            util}
    :model-imports #{:model/User}
@@ -3091,6 +3092,11 @@
    :model-exports #{:model/Timeline :model/TimelineEvent}
    :model-imports #{:model/Collection}}
 
+  toucan
+  {:team "DevEx"
+   :api  #{metabase.toucan.core}
+   :uses #{}}
+
   tracing
   {:team "DevEx"
    :api  #{metabase.tracing.core
@@ -3304,6 +3310,7 @@
    :uses #{api
            api-scope
            lib.schema
+           toucan
            util
            util.config}}
 
