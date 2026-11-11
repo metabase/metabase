@@ -719,8 +719,11 @@
 (defn- dashboard-lines
   "The lines of the saved dashboard `dash`: its tabs, dashcards with their layout, and filters with the dashcards
   they connect to. The `saved-charts` are the charts this call saved, which [[card-shown-fn]] shows.
-  A dashcard with no tab is listed before the tabs, marked `all_tabs`, as in the frontend and `read_resource`."
-  ;; Attribute names and the filter element match the dashboard reads in `read_resource`, so the model reads one shape.
+  When the dashboard has tabs, a dashcard with no tab is listed before them, marked `all_tabs`, as in the frontend
+  and `read_resource`'s items read."
+  ;; The `dashcard_id`, `tab_id` and `all_tabs` attributes and the `<filter>` element match `read_resource`'s items
+  ;; read. The layout differs: dashcards nest under their `<tab>`, and a question's id is `card_id`, the name the ops
+  ;; take.
   [{:keys [id name description tabs dashcards parameters]} saved-charts]
   (let [by-tab      (group-by :dashboard_tab_id (sort-by (juxt :row :col) dashcards))
         card-shown? (card-shown-fn dashcards saved-charts)

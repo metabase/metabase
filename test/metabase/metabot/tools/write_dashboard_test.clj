@@ -154,7 +154,7 @@
                           {:op "add_card", :id -3, :chart_id "C", :name "Venues C"
                            :position {:row 6, :col 0}, :size {:size_x 24, :size_y 6}}
                           {:op "add_parameter", :parameter_id "price", :name "Price"
-                           :type "number/=", :sectionId "number"}
+                           :type "number/=", :sectionId "number", :default "2"}
                           {:op "wire_parameter", :parameter_id "price", :dashcard_id -1
                            :target_field (mt/id :venues :price), :autowire true}]
                   result (binding [shared/*memory-atom* (chart-memory convo-id)]
@@ -180,9 +180,9 @@
                 (is (= (map :id cards) (map :card_id dcs)))
                 (is (= [[0 0 12 6] [0 12 12 6] [6 0 24 6]] (map (juxt :row :col :size_x :size_y) dcs)))
                 (is (not-any? true? (for [a dcs b dcs :when (not= a b)] (overlap? a b)))))
-              (testing "connects the filter to every card with the field"
+              (testing "connects the filter to every card with the field, and shows its default"
                 (is (every? (fn [dc] (some #(= "price" (:parameter_id %)) (:parameter_mappings dc))) dcs))
-                (is (re-find (re-pattern (str "<filter id=\"price\" name=\"Price\" type=\"number/=\""
+                (is (re-find (re-pattern (str "<filter id=\"price\" name=\"Price\" type=\"number/=\" default=\"2\""
                                               " connected_dashcards=\"\\d+, \\d+, \\d+\"/>"))
                              (:output result))))
               (testing "opens the dashboard only in internal Metabot"
