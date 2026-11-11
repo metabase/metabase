@@ -1,6 +1,7 @@
 # 0008. A replayed failed create returns 500 with the workspace id
 
-- Status: accepted
+- Status: proposed
+- Lands with: #86825 (with #86601)
 - Date: 2026-11-10
 
 ## Context

@@ -1,6 +1,7 @@
 # 0002. A staging warehouse is an ordinary Database, owned by the customer
 
 - Status: proposed
+- Lands with: not built
 - Date: 2026-11-10
 
 ## Context

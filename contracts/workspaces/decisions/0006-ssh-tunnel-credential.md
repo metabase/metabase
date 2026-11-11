@@ -1,6 +1,7 @@
 # 0006. The SSH tunnel credential ships to the sidecar
 
-- Status: accepted
+- Status: proposed
+- Lands with: #86584
 - Date: 2026-11-10
 
 ## Context

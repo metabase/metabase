@@ -1,6 +1,7 @@
 # 0010. Refuse undo and redo in workspace mode
 
-- Status: accepted
+- Status: proposed
+- Lands with: #86603
 - Date: 2026-11-10
 
 ## Context

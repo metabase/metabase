@@ -1,6 +1,7 @@
 # 0007. `?force=true` on DELETE only for `teardown_failed`
 
-- Status: accepted
+- Status: proposed
+- Lands with: #86788
 - Date: 2026-11-10
 
 ## Context

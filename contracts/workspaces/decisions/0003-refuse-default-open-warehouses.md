@@ -1,6 +1,7 @@
 # 0003. Refuse warehouses that are open by default
 
-- Status: accepted
+- Status: proposed
+- Lands with: #86588, #86798, #86799
 - Date: 2026-11-10
 
 ## Context
