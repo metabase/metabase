@@ -618,11 +618,21 @@ export function changeValueOperator(
     : query;
 }
 
+/**
+ * Returns `query` itself when the bucket changes nothing: it's the one in use, or another
+ * grouping of the column already has it and the change is dropped.
+ */
 export function changeDimensionBucket(
   query: Lib.Query,
   stageIndex: number,
   item: SummaryDimensionItem,
   option: SummaryBucketOption,
 ): Lib.Query {
-  return Lib.replaceClause(query, stageIndex, item.clause, option.column);
+  const nextQuery = Lib.replaceClause(
+    query,
+    stageIndex,
+    item.clause,
+    option.column,
+  );
+  return areQueriesEqual(query, nextQuery) ? query : nextQuery;
 }

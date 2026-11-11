@@ -131,11 +131,17 @@ export function SummaryWells({
               {item.bucketOptions.length > 0 ? (
                 <DimensionBucketMenu
                   item={item}
-                  onSelect={(option) =>
-                    onChange(
-                      changeDimensionBucket(query, stageIndex, item, option),
-                    )
-                  }
+                  onSelect={(option) => {
+                    const nextQuery = changeDimensionBucket(
+                      query,
+                      stageIndex,
+                      item,
+                      option,
+                    );
+                    if (nextQuery !== query) {
+                      onChange(nextQuery);
+                    }
+                  }}
                 />
               ) : (
                 <Ellipsified fw="inherit">{item.label}</Ellipsified>

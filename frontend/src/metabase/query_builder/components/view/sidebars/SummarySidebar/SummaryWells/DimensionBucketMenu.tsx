@@ -48,11 +48,7 @@ export function DimensionBucketMenu({
             rightSection={
               option.isSelected ? <Icon name="check" aria-hidden /> : null
             }
-            onClick={() => {
-              if (!option.isSelected) {
-                onSelect(option);
-              }
-            }}
+            onClick={() => onSelect(option)}
           >
             {option.displayName}
           </Menu.Item>

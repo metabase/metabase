@@ -211,6 +211,34 @@ describe("SummaryWells", () => {
       expect(onChange).not.toHaveBeenCalled();
     });
 
+    it("doesn't rerun when another grouping of the column already has the unit", async () => {
+      const { onChange } = setup({
+        spec: {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "year" },
+                { type: "column", name: "CREATED_AT", unit: "month" },
+              ],
+            },
+          ],
+        },
+      });
+
+      await openBucketMenu("Created At: Year");
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Month" }),
+      );
+
+      expect(onChange).not.toHaveBeenCalled();
+      expect(getChipLabels("columns")).toEqual([
+        "Created At: Year",
+        "Created At: Month",
+      ]);
+    });
+
     it("changes a number grouping's bins from its menu", async () => {
       const { getLastChange } = setup({
         spec: {

@@ -511,6 +511,32 @@ describe("grouping buckets", () => {
     expect(getSelectedBucketNames(total)).toEqual(["50 bins"]);
   });
 
+  it("hands the query back when the change would leave it as it is", () => {
+    const groupedTwice = createOrdersQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count" }],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit: "year" },
+            { type: "column", name: "CREATED_AT", unit: "month" },
+          ],
+        },
+      ],
+    });
+
+    expect(
+      isSameQuery(changeBucket(groupedTwice, 0, "Year"), groupedTwice),
+    ).toBe(true);
+    // another grouping of the column already has the unit, so the change is dropped
+    expect(
+      isSameQuery(changeBucket(groupedTwice, 0, "Month"), groupedTwice),
+    ).toBe(true);
+    expect(
+      getDimensionLabels(changeBucket(groupedTwice, 0, "Quarter")),
+    ).toEqual(["Created At: Quarter", "Created At: Month"]);
+  });
+
   it("takes the unit and the bins off", () => {
     const unbinned = changeBucket(
       changeBucket(query, 0, "Don't bin"),
