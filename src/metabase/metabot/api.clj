@@ -466,9 +466,9 @@
                                                      [:expression [:maybe :string]]
                                                      [:name       [:maybe :string]]
                                                      [:error      [:maybe :string]]]
-  "Prototype (DSN-754): draft a custom expression for `prompt`, a natural-language phrase typed into a summarize
-  sidebar well. `mode` is `aggregation` for Values and `expression` for Rows and Columns. `expression` is nil, with
-  an `error`, when no LLM is available or nothing in `columns` fits; the client compiles and validates the formula."
+  "Draft a custom expression for `prompt`, a natural-language phrase typed into a summarize sidebar well. `mode` is
+  `aggregation` for Values and `expression` for Rows and Columns. `expression` is nil, with an `error`, when no LLM is
+  available or nothing in `columns` fits; the client compiles and validates the formula."
   [_route-params
    _query-params
    body :- [:map {:closed true}
