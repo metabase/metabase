@@ -754,6 +754,7 @@ describe("scenarios > dashboard > title drill", () => {
         // make sure the results match
         H.queryBuilderMain().findByText("42").should("be.visible");
         cy.location("href").should("include", "/question#");
+        cy.title().should("eq", "GUI Question · Metabase");
 
         cy.log("as a user without access to underlying data");
         cy.signIn("nodata");
