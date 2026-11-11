@@ -85,6 +85,17 @@
   (is (not (t2/fragment? (with-meta [:= :email "a@b.c"] {:allow-subquery true}))))
   (is (not (t2/fragment? (edn/read-string "^{:fragment true} [:= :email \"a@b.c\"]")))))
 
+(deftest ^:parallel table-name-left-unbound-test
+  (is (= '(toucan2.core/query {:select [:id] :from [(metabase.toucan.core/table-name :model/User)]})
+         (macroexpand-1 '(metabase.toucan.core/query {:select [:id] :from [(metabase.toucan.core/table-name :model/User)]}))))
+  (let [[sql & args] (toucan2.core/compile (t2/select :model/User {:from [(t2/table-name :model/User)]}))]
+    (is (re-find #"(?i)FROM \W?core_user\W?$" sql))
+    (is (empty? args))))
+
+(deftest ^:parallel table-name-requires-literal-model-test
+  (is (re-find #"The model must be a literal keyword"
+               (expansion-error '(metabase.toucan.core/table-name model)))))
+
 (deftest ^:parallel plain-honeysql-value-rejected-test
   (letfn [(email-is [email] [:= :email email])]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

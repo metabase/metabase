@@ -18,5 +18,6 @@
   select-one
   select-one-pk
   select-pk->fn
+  table-name
   update!
   value])

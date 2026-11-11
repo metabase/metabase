@@ -29,15 +29,31 @@
 (defn- dynamic? [form]
   (or (symbol? form) (seq? form)))
 
+(defn- table-name-call?
+  "Whether `form` calls the [[table-name]] macro, whose literal model makes the result safe to leave unbound."
+  [form]
+  (and (seq? form)
+       (symbol? (first form))
+       (contains? '#{metabase.toucan.core/table-name metabase.toucan.impl/table-name}
+                  (some-> (resolve (first form)) symbol))))
+
 (defn- wrap-dynamic
   "`form` with every symbol or call inside its literal maps, vectors and sets wrapped in a [[value]] call."
   [form]
   (cond
-    (dynamic? form) (list `value form)
-    (map? form)     (into {} (map (fn [[k v]] [k (wrap-dynamic v)])) form)
-    (vector? form)  (mapv wrap-dynamic form)
-    (set? form)     (into #{} (map wrap-dynamic) form)
-    :else           form))
+    (table-name-call? form) form
+    (dynamic? form)         (list `value form)
+    (map? form)             (into {} (map (fn [[k v]] [k (wrap-dynamic v)])) form)
+    (vector? form)          (mapv wrap-dynamic form)
+    (set? form)             (into #{} (map wrap-dynamic) form)
+    :else                   form))
+
+(defmacro table-name
+  "`t2/table-name` of literal model keyword `model`, which the macros here leave unbound."
+  [model]
+  (when-not (keyword? model)
+    (throw (ex-info (str "The model must be a literal keyword: " (pr-str model)) {:form model})))
+  `(t2/table-name ~model))
 
 (defmacro fragment
   "Literal `form` marked as a fragment, with every runtime value inside it handled by [[value]]; the app-DB guard
