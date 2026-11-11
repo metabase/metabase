@@ -10,6 +10,7 @@
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.slackbot-query :as slackbot-query]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
@@ -189,3 +190,32 @@
                               [:structured-output :query])))
             (is (= expected-executions @executions))
             (is (seq (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))
+
+(deftest source-card-on-a-sandboxed-table-builds-test
+  (testing "a sandboxed user builds a query on a model over the sandboxed table, with only the sandbox's columns"
+    (met/with-gtaps! {:gtaps {:venues {:query (sandbox.tu/restricted-column-query (mt/id))}}}
+      (mt/with-temp [:model/Card {model-eid :entity_id} {:name          "Venues model"
+                                                         :type          :model
+                                                         :database_id   (mt/id)
+                                                         :table_id      (mt/id :venues)
+                                                         :dataset_query {:database (mt/id)
+                                                                         :type     :query
+                                                                         :query    {:source-table (mt/id :venues)}}}]
+        (is (not (contains? (get (metabot.perms/sandbox-restricted-fields #{(mt/id :venues)}) (mt/id :venues))
+                            (mt/id :venues :price)))
+            "precondition: the sandbox hides PRICE")
+        (let [calls (atom 0)
+              built (mt/with-dynamic-fn-redefs [shared.content-store/card-sources-accessible?
+                                                (fn [& args]
+                                                  (swap! calls inc)
+                                                  (apply (mt/original-fn
+                                                          #'shared.content-store/card-sources-accessible?)
+                                                         args))]
+                      (construct/execute-representations-query
+                       {:lib/type "mbql/query"
+                        :stages   [{:lib/type "mbql.stage/mbql" :source-card model-eid}]}))
+              names (into #{} (map :name) (get-in built [:structured-output :result-columns]))]
+          (is (= 1 @calls) "the card source check ran, and cleared the model")
+          (is (contains? names "NAME"))
+          (doseq [hidden ["PRICE" "LATITUDE" "LONGITUDE"]]
+            (is (not (contains? names hidden)) hidden)))))))

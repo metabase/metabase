@@ -36,3 +36,12 @@
     (is (nil? (recovery-hints/recovery-hint {:error          :metric-as-source-card
                                              :metric-ids     [7]
                                              :usable-sources {}})))))
+
+(deftest ^:parallel card-source-hints-test
+  (testing "a card that the user cannot run gives a step that says not to retry"
+    (is (= (str "Tell the user that they need data access to the tables under it. "
+                "Do not retry with other columns or with another query on it.")
+           (some-> (recovery-hints/recovery-hint {:error :card-source-not-runnable}) message/render)))
+    (is (= (str "Tell the user that Metabase cannot run a query on it. "
+                "Do not retry with other columns or with another query on it.")
+           (some-> (recovery-hints/recovery-hint {:error :card-source-preprocessing-failed}) message/render)))))

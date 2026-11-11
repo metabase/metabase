@@ -737,6 +737,11 @@
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
   (t2/select :model/Card :id [:in card-ids] :dashboard_id [:not= nil]))
 
+(mu/defn card-result-metadata
+  "A map of Card ID to `result_metadata` for `card-ids`."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select-pk->fn :result_metadata :model/Card :id [:in card-ids]))
+
 (mu/defn card-by-entity-id
   "The Card with `entity-id`, or nil."
   [entity-id :- :string]

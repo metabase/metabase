@@ -435,6 +435,18 @@
               "Tell the user about the ambiguous column name.")
          (pipeline-error-text! :ambiguous-field))))
 
+(deftest ^:parallel card-source-not-runnable-recovery-test
+  (is (= (str "Query failed.\n"
+              "Tell the user that they need data access to the tables under it. "
+              "Do not retry with other columns or with another query on it.")
+         (pipeline-error-text! :card-source-not-runnable))))
+
+(deftest ^:parallel card-source-preprocessing-failed-recovery-test
+  (is (= (str "Query failed.\n"
+              "Tell the user that Metabase cannot run a query on it. "
+              "Do not retry with other columns or with another query on it.")
+         (pipeline-error-text! :card-source-preprocessing-failed))))
+
 (deftest ^:parallel cross-database-recovery-test
   (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table]]
     (testing error
