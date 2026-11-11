@@ -88,9 +88,13 @@
     (let [now-ns (now)
           stale? (fn [{:keys [next-sync-at]}]
                    (or (nil? next-sync-at) (> now-ns next-sync-at)))
-          ;; Only the thread whose swap moves the time on syncs, so a stale state is synced once.
-          [old]  (mc/swap-vals! indexes-component #(cond-> % (stale? %) (assoc :next-sync-at (+ now-ns sync-tracking-period))))]
-      (when (stale? old)
+          ;; A write waits for the slot lock, so a fresh state is read without one. Of the threads that see a stale
+          ;; state, only the one whose swap moves the time on syncs.
+          claimed? #(stale? (first (mc/swap-vals! indexes-component
+                                                  (fn [state]
+                                                    (cond-> state
+                                                      (stale? state) (assoc :next-sync-at (+ now-ns sync-tracking-period)))))))]
+      (when (and (stale? @indexes-component) (claimed?))
         (sync-tracking-atoms!)))))
 
 (defn active-table

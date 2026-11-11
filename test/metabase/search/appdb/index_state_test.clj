@@ -4,9 +4,13 @@
    [metabase.global-system.mutable-component :as mc]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.engine :as search.engine]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+;; a read of the index state syncs it from the app DB
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:synchronized reset-tracking-in-a-binding-test
   (testing "resetting tracking inside a binding of the index state clears only the bound state, sync time included"
@@ -45,3 +49,20 @@
                           @holder
                           (is (= {:pending @creator, :created [@creator]}
                                  {:pending (:pending @handle), :created @created}))))))))))
+
+(deftest ^:synchronized a-fresh-read-does-not-wait-for-the-slot-lock-test
+  (testing "reading tables whose sync is not due takes no lock, so it does not wait behind a writer"
+    (let [handle  (search.index/indexes-handle)
+          release (promise)
+          held    (promise)]
+      (mc/binding handle {:active ::active, :pending nil, :next-sync-at Long/MAX_VALUE}
+                  (fn []
+                    (let [holder (future (mc/with-slot-lock handle
+                                           (deliver held true)
+                                           @release))]
+                      @held
+                      (try
+                        (is (= ::active (deref (future (search.index/active-table)) 1000 ::waited)))
+                        (finally
+                          (deliver release true)
+                          @holder))))))))
