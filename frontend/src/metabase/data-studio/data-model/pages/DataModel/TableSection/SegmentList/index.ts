@@ -1,1 +1,1 @@
-export { SegmentList } from "./SegmentList";
+export { SegmentList, type SegmentListUrls } from "./SegmentList";

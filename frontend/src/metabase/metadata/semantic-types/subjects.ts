@@ -165,14 +165,14 @@ const SUBJECT_DEFINITIONS: Record<TableSubject, SubjectDefinition> = {
     parent: null,
     group: "sales",
     label: () => t`Deals and opportunities`,
-    icon: "trend_up",
+    icon: "handshake",
     isNew: true,
   },
   "entity/TicketTable": {
     parent: null,
     group: "work",
     label: () => t`Tickets and issues`,
-    icon: "clipboard",
+    icon: "tickets",
     isNew: true,
   },
   "entity/ProjectTable": {
@@ -193,7 +193,7 @@ const SUBJECT_DEFINITIONS: Record<TableSubject, SubjectDefinition> = {
     parent: null,
     group: "things",
     label: () => t`Devices and assets`,
-    icon: "io",
+    icon: "server",
     isNew: true,
   },
   "entity/CalendarTable": {

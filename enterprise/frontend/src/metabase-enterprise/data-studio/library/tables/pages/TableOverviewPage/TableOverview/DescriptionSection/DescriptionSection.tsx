@@ -9,17 +9,7 @@ import { useMetadataToasts } from "metabase/common/hooks";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import { DataSourceInput, UserInput } from "metabase/metadata/components";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import {
-  Box,
-  Card,
-  Divider,
-  Flex,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  rem,
-} from "metabase/ui";
+import { Box, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { Table, TableDataSource, UserId } from "metabase-types/api";
@@ -27,7 +17,6 @@ import type { Table, TableDataSource, UserId } from "metabase-types/api";
 import { PublishingInfo } from "../PublishingInfo";
 
 import S from "./DescriptionSection.module.css";
-import { SubjectSection } from "./SubjectSection";
 
 type DescriptionSectionProps = {
   table: Table;
@@ -134,10 +123,6 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
 
   return (
     <Stack gap={0} align="stretch" data-testid="table-description-sidebar">
-      <SubjectSection table={table} />
-
-      <Divider />
-
       {/* Description */}
       <Box data-testid="table-description-section" p={rem(20)}>
         <EditableText

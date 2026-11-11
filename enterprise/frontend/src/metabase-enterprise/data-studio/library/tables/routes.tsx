@@ -30,6 +30,11 @@ const tableOverviewPage = () =>
     /* webpackChunkName: "data-studio-tables" */ "./pages/TableOverviewPage"
   ).then(({ TableOverviewPage }) => ({ Component: TableOverviewPage }));
 
+const tableMetadataPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "./pages/TableMetadataPage"
+  ).then(({ TableMetadataPage }) => ({ Component: TableMetadataPage }));
+
 const tableFieldsPage = () =>
   import(
     /* webpackChunkName: "data-studio-tables" */ "./pages/TableFieldsPage"
@@ -62,6 +67,20 @@ const newSegmentPage = () =>
     Component: PublishedTableNewSegmentPage,
   }));
 
+const systemSegmentPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "metabase/data-studio/segments/pages/PublishedTableSystemSegmentPage"
+  ).then(({ PublishedTableSystemSegmentPage }) => ({
+    Component: PublishedTableSystemSegmentPage,
+  }));
+
+const segmentGroupPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "metabase/data-studio/segments/pages/SegmentGroupPage"
+  ).then(({ PublishedTableSegmentGroupPage }) => ({
+    Component: PublishedTableSegmentGroupPage,
+  }));
+
 const segmentDetailPage = () =>
   import(
     /* webpackChunkName: "data-studio-tables" */ "metabase/data-studio/segments/pages/PublishedTableSegmentDetailPage"
@@ -81,6 +100,13 @@ const segmentDependenciesPage = () =>
     /* webpackChunkName: "data-studio-tables" */ "metabase/data-studio/segments/pages/PublishedTableSegmentDependenciesPage"
   ).then(({ PublishedTableSegmentDependenciesPage }) => ({
     Component: PublishedTableSegmentDependenciesPage,
+  }));
+
+const measureGroupPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-tables" */ "metabase/data-studio/measures/pages/MeasureGroupPage"
+  ).then(({ PublishedTableMeasureGroupPage }) => ({
+    Component: PublishedTableMeasureGroupPage,
   }));
 
 const newMeasurePage = () =>
@@ -117,12 +143,20 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
       <Route index lazy={publishedDataPage} />
       <Route path="suggested" lazy={suggestedTablesPage} />
       <Route path=":tableId" lazy={tableOverviewPage} />
+      <Route path=":tableId/metadata" lazy={tableMetadataPage} />
       <Route path=":tableId/fields" lazy={tableFieldsPage} />
       <Route path=":tableId/fields/:fieldId" lazy={tableFieldsPage} />
       <Route path=":tableId/history" lazy={tableHistoryPage} />
       <Route path=":tableId/segments" lazy={tableSegmentsPage} />
       <Route path=":tableId/segments/new" element={<IsAdmin />}>
         <Route index lazy={newSegmentPage} />
+      </Route>
+      <Route path=":tableId/segments/system/:role" lazy={systemSegmentPage} />
+      <Route path=":tableId/segments/groups/new" element={<IsAdmin />}>
+        <Route index lazy={segmentGroupPage} />
+      </Route>
+      <Route path=":tableId/segments/groups/:groupId" element={<IsAdmin />}>
+        <Route index lazy={segmentGroupPage} />
       </Route>
       <Route path=":tableId/segments/:segmentId" lazy={segmentDetailPage} />
       <Route
@@ -140,6 +174,12 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
       <Route path=":tableId/measures" lazy={tableMeasuresPage} />
       <Route path=":tableId/measures/new" element={<IsAdmin />}>
         <Route index lazy={newMeasurePage} />
+      </Route>
+      <Route path=":tableId/measures/groups/new" element={<IsAdmin />}>
+        <Route index lazy={measureGroupPage} />
+      </Route>
+      <Route path=":tableId/measures/groups/:groupId" element={<IsAdmin />}>
+        <Route index lazy={measureGroupPage} />
       </Route>
       <Route path=":tableId/measures/:measureId" lazy={measureDetailPage} />
       <Route

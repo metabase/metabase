@@ -282,9 +282,7 @@ function SuggestedTablesPageContent() {
   return (
     <SectionLayout>
       <PaneHeader
-        breadcrumbs={
-          <DataStudioBreadcrumbs>{t`Published data`}</DataStudioBreadcrumbs>
-        }
+        breadcrumbs={<DataStudioBreadcrumbs>{t`Data`}</DataStudioBreadcrumbs>}
         tabs={<PublishedDataTabs />}
         px="3.5rem"
         py={0}

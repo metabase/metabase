@@ -5,17 +5,13 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
 import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import { useSegmentGroups } from "metabase/metadata/segment-groups";
+import type { SystemSegmentRole } from "metabase/metadata/table-segments";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { useSelector } from "metabase/redux";
-import {
-  Button,
-  Icon,
-  SegmentedControl,
-  type SegmentedControlItem,
-  Stack,
-} from "metabase/ui";
+import { useNavigate, useSearchParams } from "metabase/router";
+import { Button, Icon, Stack, Tabs, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Segment, Table } from "metabase-types/api";
+import type { Segment, SegmentId, Table } from "metabase-types/api";
 
 import { getQueryClauses } from "../ClausePills";
 import {
@@ -31,7 +27,6 @@ import {
   useCohortProposalActions,
   useCohortProposals,
 } from "./CohortProposals";
-import { SegmentGroupModal } from "./SegmentGroupModal";
 import {
   KindPartitionProposalItem,
   SegmentGroupItem,
@@ -43,27 +38,71 @@ import {
 import { SegmentItem } from "./SegmentItem";
 import { SystemSegmentItem } from "./SystemSegmentItem";
 
-type SegmentListProps = {
-  table: Table;
+/** Where the list's segments open; the Library and Connected data differ */
+export type SegmentListUrls = {
+  segment: (segmentId: SegmentId) => string;
+  systemSegment: (role: SystemSegmentRole) => string;
+  newSegment: string;
+  segmentGroup: (groupId: string) => string;
+  newSegmentGroup: string;
 };
 
-type SegmentView = "system" | "custom" | "proposed";
+type SegmentListProps = {
+  table: Table;
+  /** Defaults to Connected data's segment pages */
+  getUrls?: (table: Table) => SegmentListUrls;
+  /** Off hides the search box; the lists then show everything */
+  isSearchable?: boolean;
+  /** A full page: 17px section subheadings, and more room between sections */
+  isFullPage?: boolean;
+};
 
-const getViewOptions = (): SegmentedControlItem<SegmentView>[] => [
-  { value: "custom", label: t`Custom` },
-  { value: "system", label: t`System` },
-  { value: "proposed", label: t`Proposed` },
+function getDataModelSegmentUrls(table: Table): SegmentListUrls {
+  const tableParams = {
+    databaseId: table.db_id,
+    schemaName: table.schema,
+    tableId: table.id,
+  };
+  return {
+    segment: (segmentId) =>
+      Urls.dataStudioDataModelSegment({ ...tableParams, segmentId }),
+    systemSegment: (role) =>
+      Urls.dataStudioDataModelSystemSegment({ ...tableParams, role }),
+    newSegment: Urls.newDataStudioDataModelSegment(tableParams),
+    segmentGroup: (groupId) =>
+      Urls.dataStudioDataModelSegmentGroup({ ...tableParams, groupId }),
+    newSegmentGroup: Urls.newDataStudioDataModelSegmentGroup(tableParams),
+  };
+}
+
+type SegmentView = "custom" | "groups" | "system";
+
+const getViewOptions = (): { value: SegmentView; label: string }[] => [
+  { value: "custom", label: t`Segments` },
+  { value: "groups", label: t`Groups` },
+  { value: "system", label: t`System segments` },
 ];
 
 /**
- * The table's segments, one view at a time: the system segments every table
- * has, the ones people made with the groups they form, and what sync proposes.
+ * The table's segments, one view at a time: the ones people made, the groups
+ * they form, what sync proposes, and the system segments every table has.
  */
-export function SegmentList({ table }: SegmentListProps) {
+export function SegmentList({
+  table,
+  getUrls,
+  isSearchable = true,
+  isFullPage = false,
+}: SegmentListProps) {
   const [query, setQuery] = useState("");
-  const [view, setView] = useState<SegmentView>("custom");
-  // `null` is a new group; `undefined` means the editor is closed
-  const [editingGroupId, setEditingGroupId] = useState<string | null>();
+  // Pages that return to the groups ask for them with `?view=groups`
+  const [searchParams] = useSearchParams();
+  const [view, setView] = useState<SegmentView>(
+    () =>
+      getViewOptions().find(
+        (option) => option.value === searchParams.get("view"),
+      )?.value ?? "custom",
+  );
+  const navigate = useNavigate();
   const model = useTableSegmentsModel(table);
   const proposals = useCohortProposals(table);
   const { accept, dismiss } = useCohortProposalActions(table, model.baseQuery);
@@ -72,8 +111,7 @@ export function SegmentList({ table }: SegmentListProps) {
     table,
     model.baseQuery,
   );
-  const { getSegmentGroups, saveSegmentGroup, deleteSegmentGroup } =
-    useSegmentGroups();
+  const { getSegmentGroups } = useSegmentGroups();
   const canCreateSegment = useSelector((state) =>
     getUserCanWriteSegments(state, table.is_published),
   );
@@ -114,45 +152,51 @@ export function SegmentList({ table }: SegmentListProps) {
   const kindCandidates = groupProposals.kindCandidates;
   const hasGroupProposals =
     matchingGroupProposals.length > 0 || kindCandidates.length > 0;
-  const hasProposals = hasGroupProposals || matchingProposals.length > 0;
   const hasViewMatches =
     view === "system"
       ? systemSegments.length > 0
-      : view === "custom"
-        ? segmentGroups.length > 0 || customSegments.length > 0
-        : hasProposals;
-  const editingGroup =
-    editingGroupId != null
-      ? getSegmentGroups(table).find(({ id }) => id === editingGroupId)
-      : undefined;
-
-  const getSegmentHref = (segmentId: number) =>
-    Urls.dataStudioDataModelSegment({
-      databaseId: table.db_id,
-      schemaName: table.schema,
-      tableId: table.id,
-      segmentId,
-    });
+      : view === "groups"
+        ? segmentGroups.length > 0 || hasGroupProposals
+        : customSegments.length > 0 || matchingProposals.length > 0;
+  const urls = getUrls?.(table) ?? getDataModelSegmentUrls(table);
+  const viewControl = (
+    <Tabs
+      value={view}
+      onChange={(value) => {
+        const next = getViewOptions().find((option) => option.value === value);
+        if (next) {
+          setView(next.value);
+        }
+      }}
+    >
+      <Tabs.List>
+        {getViewOptions().map((option) => (
+          <Tabs.Tab key={option.value} value={option.value}>
+            {option.label}
+          </Tabs.Tab>
+        ))}
+      </Tabs.List>
+    </Tabs>
+  );
 
   return (
-    <Stack gap="xl" data-testid="table-segments-page">
+    <Stack
+      // A full page spaces its tabs and sections at twice the drawer's 24px
+      gap={isFullPage ? rem(48) : "xl"}
+      data-testid="table-segments-page"
+    >
       {/* The view control belongs to the search, so it sits closer than the lists */}
       <Stack gap="md">
-        <ListSearchBar
-          value={query}
-          placeholder={
-            view === "custom"
-              ? t`Search segments and groups`
-              : t`Search segments`
-          }
-          onChange={setQuery}
-        />
-        <SegmentedControl<SegmentView>
-          fullWidth
-          data={getViewOptions()}
-          value={view}
-          onChange={setView}
-        />
+        {isSearchable && (
+          <ListSearchBar
+            value={query}
+            placeholder={
+              view === "groups" ? t`Search segment groups` : t`Search segments`
+            }
+            onChange={setQuery}
+          />
+        )}
+        {viewControl}
       </Stack>
 
       {isSearching && !hasViewMatches && (
@@ -165,12 +209,7 @@ export function SegmentList({ table }: SegmentListProps) {
             <SystemSegmentItem
               key={segment.role}
               segment={segment}
-              href={Urls.dataStudioDataModelSystemSegment({
-                databaseId: table.db_id,
-                schemaName: table.schema,
-                tableId: table.id,
-                role: segment.role,
-              })}
+              href={urls.systemSegment(segment.role)}
               isDefault={
                 defaultSegment.type === "system" &&
                 defaultSegment.role === segment.role
@@ -180,19 +219,20 @@ export function SegmentList({ table }: SegmentListProps) {
         </ListSection>
       )}
 
-      {view === "custom" && (!isSearching || segmentGroups.length > 0) && (
+      {view === "groups" && (!isSearching || segmentGroups.length > 0) && (
         <ListSection
           title={t`Segment groups`}
-          description={t`Named sets of custom segments. When they don't overlap, they split rows into groups to compare.`}
+          isSubheading={isFullPage}
           action={
             canCreateSegment && (
               <Button
-                size="compact-sm"
-                variant="subtle"
+                component={ForwardRefLink}
+                to={urls.newSegmentGroup}
+                variant="filled"
+                size="md"
                 leftSection={<Icon name="add" />}
-                onClick={() => setEditingGroupId(null)}
               >
-                {t`New group`}
+                {t`New segment group`}
               </Button>
             )
           }
@@ -205,7 +245,7 @@ export function SegmentList({ table }: SegmentListProps) {
                 table={table}
                 onOpen={
                   canCreateSegment
-                    ? () => setEditingGroupId(group.id)
+                    ? () => navigate(urls.segmentGroup(group.id))
                     : undefined
                 }
               />
@@ -219,17 +259,14 @@ export function SegmentList({ table }: SegmentListProps) {
       {view === "custom" && (!isSearching || customSegments.length > 0) && (
         <ListSection
           title={t`Custom segments`}
+          isSubheading={isFullPage}
           action={
             canCreateSegment && (
               <Button
                 component={ForwardRefLink}
-                to={Urls.newDataStudioDataModelSegment({
-                  databaseId: table.db_id,
-                  schemaName: table.schema,
-                  tableId: table.id,
-                })}
-                size="compact-sm"
-                variant="subtle"
+                to={urls.newSegment}
+                variant="filled"
+                size="md"
                 leftSection={<Icon name="add" />}
                 onClick={() =>
                   trackSegmentCreateStarted(
@@ -248,7 +285,7 @@ export function SegmentList({ table }: SegmentListProps) {
               <SegmentItem
                 key={segment.id}
                 segment={segment}
-                href={getSegmentHref(segment.id)}
+                href={urls.segment(segment.id)}
                 clauses={getSegmentClauses(segment)}
                 isDefault={
                   defaultSegment.type === "custom" &&
@@ -262,9 +299,10 @@ export function SegmentList({ table }: SegmentListProps) {
         </ListSection>
       )}
 
-      {view === "proposed" && hasGroupProposals && (
+      {view === "groups" && hasGroupProposals && (
         <ListSection
           title={t`Proposed segment groups`}
+          isSubheading={isFullPage}
           description={t`Partitions from statuses, flags, and values. Accepting one makes a segment for each of its groups, and the group itself.`}
         >
           {matchingGroupProposals.map((proposal) => (
@@ -289,45 +327,27 @@ export function SegmentList({ table }: SegmentListProps) {
         </ListSection>
       )}
 
-      {view === "proposed" &&
-        (!isSearching || matchingProposals.length > 0) && (
-          <ListSection
-            title={t`Proposed segments`}
-            description={t`Rows that reached a milestone, like Activated or Converted, based on date or yes/no columns. Accepting one makes it a custom segment.`}
-          >
-            {matchingProposals.length > 0 ? (
-              matchingProposals.map((proposal) => (
-                <CohortProposalItem
-                  key={proposal.key}
-                  proposal={proposal}
-                  baseQuery={model.baseQuery}
-                  canAccept={canCreateSegment}
-                  onAccept={() => accept(proposal)}
-                  onDismiss={() => dismiss(proposal)}
-                />
-              ))
-            ) : (
-              <ListEmptyItem>{t`No proposed segments`}</ListEmptyItem>
-            )}
-          </ListSection>
-        )}
-
-      {editingGroupId !== undefined && (
-        <SegmentGroupModal
-          // Fresh state per group
-          key={editingGroupId ?? "new"}
-          group={editingGroup}
-          segments={tableSegments}
-          onSave={(group) => {
-            saveSegmentGroup(table, group);
-            setEditingGroupId(undefined);
-          }}
-          onDelete={(groupId) => {
-            deleteSegmentGroup(table, groupId);
-            setEditingGroupId(undefined);
-          }}
-          onClose={() => setEditingGroupId(undefined)}
-        />
+      {view === "custom" && (!isSearching || matchingProposals.length > 0) && (
+        <ListSection
+          title={t`Proposed segments`}
+          isSubheading={isFullPage}
+          description={t`Rows that reached a milestone, like Activated or Converted, based on date or yes/no columns. Accepting one makes it a custom segment.`}
+        >
+          {matchingProposals.length > 0 ? (
+            matchingProposals.map((proposal) => (
+              <CohortProposalItem
+                key={proposal.key}
+                proposal={proposal}
+                baseQuery={model.baseQuery}
+                canAccept={canCreateSegment}
+                onAccept={() => accept(proposal)}
+                onDismiss={() => dismiss(proposal)}
+              />
+            ))
+          ) : (
+            <ListEmptyItem>{t`No proposed segments`}</ListEmptyItem>
+          )}
+        </ListSection>
       )}
     </Stack>
   );

@@ -171,6 +171,10 @@ export function dataStudioTable(tableId: TableId) {
   return `${dataStudioLibrary()}/tables/${tableId}`;
 }
 
+export function dataStudioTableMetadata(tableId: TableId) {
+  return `${dataStudioTable(tableId)}/metadata`;
+}
+
 export function dataStudioTableFields(tableId: TableId, fieldId?: FieldId) {
   const baseUrl = `${dataStudioLibrary()}/tables/${tableId}/fields`;
   return fieldId != null ? `${baseUrl}/${fieldId}` : baseUrl;
@@ -197,6 +201,28 @@ export function dataStudioPublishedTableSegment(
   segmentId: SegmentId,
 ) {
   return `${dataStudioTableSegments(tableId)}/${segmentId}`;
+}
+
+export function dataStudioPublishedTableSystemSegment(
+  tableId: TableId,
+  role: string,
+) {
+  return `${dataStudioTableSegments(tableId)}/system/${role}`;
+}
+
+export function dataStudioPublishedTableSegmentGroups(tableId: TableId) {
+  return `${dataStudioTableSegments(tableId)}?view=groups`;
+}
+
+export function dataStudioPublishedTableSegmentGroupNew(tableId: TableId) {
+  return `${dataStudioTableSegments(tableId)}/groups/new`;
+}
+
+export function dataStudioPublishedTableSegmentGroup(
+  tableId: TableId,
+  groupId: string,
+) {
+  return `${dataStudioTableSegments(tableId)}/groups/${groupId}`;
 }
 
 export function dataStudioPublishedTableSegmentRevisions(
@@ -259,6 +285,25 @@ export function newDataStudioDataModelSegment({
   return `${dataStudioData({ databaseId, schemaName, tableId, tab: "segments" })}/new`;
 }
 
+type DataModelTableParams = Omit<DataModelSegmentParams, "segmentId">;
+
+export function dataStudioDataModelSegmentGroups(params: DataModelTableParams) {
+  return `${dataStudioData({ ...params, tab: "segments" })}?view=groups`;
+}
+
+export function newDataStudioDataModelSegmentGroup(
+  params: DataModelTableParams,
+) {
+  return `${dataStudioData({ ...params, tab: "segments" })}/groups/new`;
+}
+
+export function dataStudioDataModelSegmentGroup({
+  groupId,
+  ...params
+}: DataModelTableParams & { groupId: string }) {
+  return `${dataStudioData({ ...params, tab: "segments" })}/groups/${groupId}`;
+}
+
 export function dataStudioTableMeasures(tableId: TableId) {
   return `${dataStudioTable(tableId)}/measures`;
 }
@@ -272,6 +317,21 @@ export function dataStudioPublishedTableMeasure(
   measureId: MeasureId,
 ) {
   return `${dataStudioTableMeasures(tableId)}/${measureId}`;
+}
+
+export function dataStudioPublishedTableMeasureGroups(tableId: TableId) {
+  return `${dataStudioTableMeasures(tableId)}?view=groups`;
+}
+
+export function dataStudioPublishedTableMeasureGroupNew(tableId: TableId) {
+  return `${dataStudioTableMeasures(tableId)}/groups/new`;
+}
+
+export function dataStudioPublishedTableMeasureGroup(
+  tableId: TableId,
+  groupId: string,
+) {
+  return `${dataStudioTableMeasures(tableId)}/groups/${groupId}`;
 }
 
 export function dataStudioPublishedTableMeasureDependencies(
@@ -322,6 +382,23 @@ export function newDataStudioDataModelMeasure({
   tableId,
 }: Omit<DataModelMeasureParams, "measureId">) {
   return `${dataStudioData({ databaseId, schemaName, tableId, tab: "measures" })}/new`;
+}
+
+export function dataStudioDataModelMeasureGroups(params: DataModelTableParams) {
+  return `${dataStudioData({ ...params, tab: "measures" })}?view=groups`;
+}
+
+export function newDataStudioDataModelMeasureGroup(
+  params: DataModelTableParams,
+) {
+  return `${dataStudioData({ ...params, tab: "measures" })}/groups/new`;
+}
+
+export function dataStudioDataModelMeasureGroup({
+  groupId,
+  ...params
+}: DataModelTableParams & { groupId: string }) {
+  return `${dataStudioData({ ...params, tab: "measures" })}/groups/${groupId}`;
 }
 
 export type NewDataStudioMetricProps = {

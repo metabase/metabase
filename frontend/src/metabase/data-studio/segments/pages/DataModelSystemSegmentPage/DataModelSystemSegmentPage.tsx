@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -56,16 +56,41 @@ export function DataModelSystemSegmentPage() {
     );
   }
 
-  return <SystemSegmentDetailPage key={role} table={table} role={role} />;
+  return (
+    <SystemSegmentDetailPage
+      key={role}
+      table={table}
+      role={role}
+      breadcrumbs={(segmentName) => (
+        <DataModelBreadcrumbs
+          table={table}
+          entityName={segmentName}
+          newEntityLabel={t`New segment`}
+          tableListUrl={Urls.dataStudioData({
+            databaseId: table.db_id,
+            schemaName: table.schema,
+            tableId: table.id,
+            tab: "segments",
+          })}
+        />
+      )}
+    />
+  );
 }
 
-function SystemSegmentDetailPage({
-  table,
-  role,
-}: {
+type SystemSegmentDetailPageProps = {
   table: Table;
   role: SystemSegmentRole;
-}) {
+  /** The header's breadcrumbs, given the segment's name */
+  breadcrumbs: (segmentName: string) => ReactNode;
+};
+
+/** PROTOTYPE: mocked. A table's built-in segment, with its filters editable */
+export function SystemSegmentDetailPage({
+  table,
+  role,
+  breadcrumbs,
+}: SystemSegmentDetailPageProps) {
   const model = useTableSegmentsModel(table);
   const segment = model.systemSegments.find(
     (systemSegment) => systemSegment.role === role,
@@ -116,19 +141,7 @@ function SystemSegmentDetailPage({
         }
         icon={modelIconMap.segment}
         menu={<SegmentMoreMenu previewUrl={previewUrl} />}
-        breadcrumbs={
-          <DataModelBreadcrumbs
-            table={table}
-            entityName={segment.label}
-            newEntityLabel={t`New segment`}
-            tableListUrl={Urls.dataStudioData({
-              databaseId: table.db_id,
-              schemaName: table.schema,
-              tableId: table.id,
-              tab: "segments",
-            })}
-          />
-        }
+        breadcrumbs={breadcrumbs(segment.label)}
         actions={
           readOnly ? null : isDirty ? (
             <Group gap="sm">

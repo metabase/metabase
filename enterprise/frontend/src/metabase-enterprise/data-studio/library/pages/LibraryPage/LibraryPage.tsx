@@ -209,7 +209,7 @@ function LibrarySectionPage({ section }: { section: LibrarySectionPageType }) {
 
   return (
     <LibraryTreePage
-      title={isDataSection ? t`Published data` : t`Metrics`}
+      title={isDataSection ? t`Data` : t`Metrics`}
       tabs={isDataSection ? <PublishedDataTabs /> : undefined}
       tree={isSearchActive ? searchItems : (sectionItems ?? NO_ITEMS)}
       isLoading={isLoadingCollections || isLoadingItems || isSearchLoading}

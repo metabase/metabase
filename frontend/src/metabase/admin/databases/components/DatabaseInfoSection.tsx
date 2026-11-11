@@ -3,6 +3,7 @@ import type { PropsWithChildren } from "react";
 import { Markdown } from "metabase/common/components/Markdown";
 import {
   Box,
+  type BoxProps,
   Card,
   Divider,
   Flex,
@@ -15,6 +16,8 @@ interface DatabaseInfoSectionProps extends FlexProps {
   name: string;
   description: string;
   condensed?: boolean;
+  /** Side padding inside the content card */
+  contentPx?: BoxProps["px"];
 }
 
 export const DatabaseInfoSection = ({
@@ -22,6 +25,7 @@ export const DatabaseInfoSection = ({
   description,
   children,
   condensed = false,
+  contentPx = "xl",
   ...props
 }: PropsWithChildren<DatabaseInfoSectionProps>) => (
   <Flex gap="xl" w="100%" direction={{ sm: "row", base: "column" }} {...props}>
@@ -37,7 +41,7 @@ export const DatabaseInfoSection = ({
         bg="background_page-secondary"
         shadow="none"
         style={{ flexGrow: 0 }}
-        px="xl"
+        px={contentPx}
         py={condensed ? "1.125rem" : "1.875rem"}
       >
         {children}

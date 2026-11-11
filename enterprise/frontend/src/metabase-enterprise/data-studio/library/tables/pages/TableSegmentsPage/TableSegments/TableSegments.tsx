@@ -1,60 +1,39 @@
-import { t } from "ttag";
-
-import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
-import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import {
-  EntityList,
-  EntityListItem,
-} from "metabase/data-studio/common/components/EntityList";
-import { useSelector } from "metabase/redux";
-import { Flex } from "metabase/ui";
+  SegmentList,
+  type SegmentListUrls,
+} from "metabase/data-studio/data-model/pages/DataModel/TableSection/SegmentList";
 import * as Urls from "metabase/urls";
-import type { ConcreteTableId, Table } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 type TableSegmentsProps = {
   table: Table;
 };
 
+/**
+ * The published table's segments: its custom segments and segment groups,
+ * the system segments every table has, and what sync proposes, the same
+ * list Connected data shows, opening the Library's segment pages.
+ */
 export function TableSegments({ table }: TableSegmentsProps) {
-  const canWriteSegments = useSelector((state) =>
-    getUserCanWriteSegments(state, table.is_published),
-  );
-  const segments = table.segments ?? [];
-
   return (
-    <Flex direction="column" flex={1}>
-      <EntityList
-        items={segments}
-        title={t`Segments`}
-        emptyState={{
-          icon: "segment",
-          title: t`No segments yet`,
-          message: t`Create a segment to filter rows in this table.`,
-        }}
-        newButtonProps={
-          canWriteSegments
-            ? {
-                label: t`New segment`,
-                url: Urls.dataStudioPublishedTableSegmentNew(table.id),
-                trackClickEvent: () =>
-                  trackSegmentCreateStarted(
-                    "data_studio_segments",
-                    // Unjustified type cast. FIXME
-                    table.id as ConcreteTableId,
-                  ),
-              }
-            : undefined
-        }
-        renderItem={(segment) => (
-          <EntityListItem
-            key={segment.id}
-            name={segment.name}
-            description={segment.definition_description}
-            icon="segment"
-            href={Urls.dataStudioPublishedTableSegment(table.id, segment.id)}
-          />
-        )}
-      />
-    </Flex>
+    <SegmentList
+      table={table}
+      getUrls={getPublishedSegmentUrls}
+      isSearchable={false}
+      isFullPage
+    />
   );
+}
+
+function getPublishedSegmentUrls(table: Table): SegmentListUrls {
+  return {
+    segment: (segmentId) =>
+      Urls.dataStudioPublishedTableSegment(table.id, segmentId),
+    systemSegment: (role) =>
+      Urls.dataStudioPublishedTableSystemSegment(table.id, role),
+    newSegment: Urls.dataStudioPublishedTableSegmentNew(table.id),
+    segmentGroup: (groupId) =>
+      Urls.dataStudioPublishedTableSegmentGroup(table.id, groupId),
+    newSegmentGroup: Urls.dataStudioPublishedTableSegmentGroupNew(table.id),
+  };
 }

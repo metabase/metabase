@@ -1,23 +1,16 @@
-import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  DetailsRow,
-  DetailsTable,
-  SidebarSection,
-} from "metabase/common/components/DetailSidebar";
 import {
   type DefaultSegment,
   SYSTEM_SEGMENT_ROLES,
   getSystemSegmentLabel,
 } from "metabase/metadata/table-segments";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import { ActionIcon, Icon, Input, Menu, Popover } from "metabase/ui";
+import { ActionIcon, Icon, Input, Menu, Popover, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Segment, Table } from "metabase-types/api";
 
-import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
 import { InferredValue } from "../InferenceReview";
 import {
   type ResolvedDefaultSegment,
@@ -30,10 +23,7 @@ import S from "./TableFiltering.module.css";
 
 const STAGE_INDEX = -1;
 
-const BUTTON_INPUT_CLASS_NAMES = {
-  ...DETAILS_CELL_INPUT_CLASS_NAMES,
-  input: cx(DETAILS_CELL_INPUT_CLASS_NAMES.input, S.buttonInput),
-};
+const BUTTON_INPUT_CLASS_NAMES = { input: S.buttonInput };
 
 interface TableFilteringProps {
   table: Table;
@@ -42,32 +32,24 @@ interface TableFilteringProps {
 
 /**
  * PROTOTYPE: mocked. The segment a table's questions start from, and the
- * filter every question on it must have before it runs.
+ * filter every question on it must have before it runs, as labeled inputs.
  */
 export function TableFiltering({ table, readOnly }: TableFilteringProps) {
   const model = useTableSegmentsModel(table);
 
   return (
-    <SidebarSection title={t`Filtering`}>
-      <DetailsTable>
-        <DetailsRow
-          label={t`Default segment`}
-          fillValue
-          value={
-            <DefaultSegmentValue
-              model={model}
-              customSegments={table.segments ?? []}
-              disabled={readOnly}
-            />
-          }
+    <Stack gap="xxl">
+      <Input.Wrapper label={t`Default segment`}>
+        <DefaultSegmentValue
+          model={model}
+          customSegments={table.segments ?? []}
+          disabled={readOnly}
         />
-        <DetailsRow
-          label={t`Required filter`}
-          fillValue
-          value={<RequiredFilterValue model={model} disabled={readOnly} />}
-        />
-      </DetailsTable>
-    </SidebarSection>
+      </Input.Wrapper>
+      <Input.Wrapper label={t`Required filter`}>
+        <RequiredFilterValue model={model} disabled={readOnly} />
+      </Input.Wrapper>
+    </Stack>
   );
 }
 
@@ -127,6 +109,7 @@ function DefaultSegmentValue({
           setIsMenuOpenOnMount(true);
           setDefaultSegment(inferredSegment);
         }}
+        isInset={false}
         data-testid="table-default-segment-review"
       />
     );
@@ -185,9 +168,15 @@ function DefaultSegmentPicker({
       <Menu.Target>
         <Input
           component="button"
+          w="fit-content"
+          miw="12rem"
           type="button"
           aria-label={t`Default segment`}
           classNames={BUTTON_INPUT_CLASS_NAMES}
+          leftSection={
+            value.type !== "all" ? <Icon name="segment" /> : undefined
+          }
+          leftSectionPointerEvents="none"
           rightSection={<Icon name="chevrondown" />}
           rightSectionPointerEvents="none"
           disabled={disabled}
@@ -234,6 +223,11 @@ function DefaultSegmentPicker({
             {builtInChoices.map((choice) => (
               <Menu.Item
                 key={choice.label}
+                leftSection={
+                  choice.segment.type === "system" ? (
+                    <Icon name="segment" />
+                  ) : undefined
+                }
                 rightSection={checkIfSelected(choice.segment)}
                 onClick={() => onChange(choice.segment)}
               >
@@ -279,6 +273,7 @@ function RequiredFilterValue({
           setIsPickerOpenOnMount(true);
           setRequiredFilterQuery(inferredQuery);
         }}
+        isInset={false}
         data-testid="table-required-filter-review"
       />
     );
@@ -333,6 +328,8 @@ function RequiredFilterPicker({
       <Popover.Target>
         <Input
           component="button"
+          w="fit-content"
+          miw="12rem"
           type="button"
           aria-label={t`Required filter`}
           classNames={BUTTON_INPUT_CLASS_NAMES}

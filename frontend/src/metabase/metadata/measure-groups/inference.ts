@@ -1,6 +1,8 @@
 import { msgid, ngettext, t } from "ttag";
 
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { TYPE } from "metabase-lib/v1/types/constants";
+import { isa } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Measure, MeasureId } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -165,4 +167,76 @@ export function getMeasureGroupProposals(
       },
     ];
   });
+}
+
+/** A measure sync suggests; accepting creates it */
+export type MeasureProposal = {
+  /** Stable across syncs, so a dismissal sticks */
+  key: string;
+  name: string;
+  operator: "count" | "sum";
+  /** The column a sum adds up */
+  field?: Field;
+  signal: string;
+};
+
+const AMOUNT_NAME_RE =
+  /(amount|total|price|revenue|cost|subtotal|tax|discount|quantity|fee)/;
+
+function isAmountField(field: Field): boolean {
+  if (isa(field.semantic_type, TYPE.PK) || isa(field.semantic_type, TYPE.FK)) {
+    return false;
+  }
+  return (
+    isa(field.semantic_type, TYPE.Currency) ||
+    isa(field.semantic_type, TYPE.Quantity) ||
+    (isa(field.base_type, TYPE.Number) &&
+      AMOUNT_NAME_RE.test(field.name.toLowerCase()))
+  );
+}
+
+/**
+ * PROTOTYPE: mocked. A row count, and a total of each amount column, unless a
+ * measure already computes it.
+ */
+export function getMeasureProposals(
+  measures: Measure[],
+  fields: Field[],
+): MeasureProposal[] {
+  const aggregations = measures.map(({ definition }) =>
+    getAggregation(definition),
+  );
+  const hasCount = aggregations.some(
+    (aggregation) => aggregation?.[0] === "count",
+  );
+  const summedFieldIds = aggregations
+    .filter((aggregation) => aggregation?.[0] === "sum")
+    .map(findFieldId);
+
+  const countProposal: MeasureProposal[] = hasCount
+    ? []
+    : [
+        {
+          key: "measure:count",
+          name: t`Count`,
+          operator: "count",
+          signal: t`How many rows there are: the measure most questions start from.`,
+        },
+      ];
+  const sumProposals = fields
+    .filter(
+      (field) =>
+        isAmountField(field) &&
+        !summedFieldIds.includes(getRawTableFieldId(field)),
+    )
+    .map(
+      (field): MeasureProposal => ({
+        key: `measure:sum:${getRawTableFieldId(field)}`,
+        name: t`Total ${field.display_name}`,
+        operator: "sum",
+        field,
+        signal: t`${field.display_name} is an amount, so its total is a common measure.`,
+      }),
+    );
+  return [...countProposal, ...sumProposals];
 }
