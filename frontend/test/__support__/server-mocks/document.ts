@@ -108,3 +108,10 @@ export function setupPublicDocumentErrorEndpoint(
 export function setupCopyDocumentEndpoint(id: DocumentId, copy: Document) {
   fetchMock.post(`path:/api/document/${id}/copy`, copy);
 }
+
+export function setupCopyDocumentErrorEndpoint(
+  id: DocumentId,
+  { status }: { status: number },
+) {
+  fetchMock.post(`path:/api/document/${id}/copy`, { status });
+}

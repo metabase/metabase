@@ -8,6 +8,7 @@ import {
   setupCollectionsEndpoints,
   setupCommentEndpoints,
   setupCopyDocumentEndpoint,
+  setupCopyDocumentErrorEndpoint,
   setupCreateBookmarkEndpoint,
   setupCreateDocumentEndpoint,
   setupCreateDocumentErrorEndpoint,
@@ -321,6 +322,39 @@ describe("DocumentPage lifecycle", () => {
         event: "document_duplicated",
         target_id: COPY.id,
       });
+    });
+
+    it("keeps the duplicate modal open and stays on the document when duplicating fails", async () => {
+      setupCopyDocumentErrorEndpoint(DOCUMENT_ID, { status: 500 });
+      const { router } = setup();
+
+      await waitFor(() => expect(getTitleInput()).toHaveValue("Test Document"));
+      await openMoreOptions();
+      await clickMenuItem(/Duplicate/);
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Duplicate" }),
+      );
+
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(
+            `path:/api/document/${DOCUMENT_ID}/copy`,
+            {
+              method: "POST",
+            },
+          ),
+        ).toHaveLength(1),
+      );
+      expect(
+        await screen.findByRole("button", { name: "Failed" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: 'Duplicate "Test Document"' }),
+      ).toBeInTheDocument();
+      expect(router?.location.pathname).toBe(`/document/${DOCUMENT_ID}`);
+      expect(trackSimpleEvent).not.toHaveBeenCalledWith(
+        expect.objectContaining({ event: "document_duplicated" }),
+      );
     });
   });
 
