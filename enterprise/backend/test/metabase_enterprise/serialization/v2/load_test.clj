@@ -1983,8 +1983,8 @@
             (let [action-serialized (first (filter (fn [entity] (= [:model/Action eid] (serialization/key-of entity)))
                                                    @serialized))]
               (is (some? action-serialized))
-              (testing ":type should be a string"
-                (is (string? (:type action-serialized))))))))
+              (testing ":type is the keyword the Action stores, which the YAML writes as its name"
+                (is (= :query (:type action-serialized))))))))
       (testing "loading succeeds"
         (ts/with-db dest-db
           (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))

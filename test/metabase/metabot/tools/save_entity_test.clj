@@ -239,9 +239,9 @@
 
 (deftest ^:parallel arguments-the-schema-refuses-test
   (testing "a document destination needs a document_id"
-    (is (=? #"Invalid tool arguments: `destination` .*"
-            (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
-                                           (assoc chart-args :destination {:target_type "document"})))))
+    (is (= "Invalid tool arguments: `destination.document_id` is required."
+           (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
+                                          (assoc chart-args :destination {:target_type "document"})))))
   (testing "a name must fit the application database column"
     (is (=? #"Invalid tool arguments: `name` must contain 1 to 254 .*"
             (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool

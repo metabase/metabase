@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
-import { assoc } from "icepick";
 import {
   type PropsWithChildren,
   createContext,
@@ -402,11 +400,10 @@ const DashboardContextProviderInner = forwardRef(
     // functionality in the SDK in the future, which is why it's a generic prop
     const dashboardWithFilteredCards = useMemo(() => {
       if (dashboard && isDashcardVisible) {
-        return assoc(
-          dashboard,
-          "dashcards",
-          dashboard.dashcards.filter(isDashcardVisible),
-        );
+        return {
+          ...dashboard,
+          dashcards: dashboard.dashcards.filter(isDashcardVisible),
+        };
       }
       return dashboard;
     }, [dashboard, isDashcardVisible]);

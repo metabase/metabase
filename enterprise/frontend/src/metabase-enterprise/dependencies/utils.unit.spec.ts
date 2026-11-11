@@ -236,7 +236,7 @@ describe("getNodeLink", () => {
     },
     {
       node: createMockDataAppDependencyNode({
-        data: createMockDataAppDependencyNodeData({ name: "bird-sightings" }),
+        data: createMockDataAppDependencyNodeData({ slug: "bird-sightings" }),
       }),
       expectedLink: {
         label: "View this data app",
@@ -392,8 +392,8 @@ describe("getNodeLabel", () => {
     {
       node: createMockDataAppDependencyNode({
         data: createMockDataAppDependencyNodeData({
-          name: "bird-sightings",
-          display_name: "Bird sightings",
+          slug: "bird-sightings",
+          name: "Bird sightings",
         }),
       }),
       expected: "Bird sightings",

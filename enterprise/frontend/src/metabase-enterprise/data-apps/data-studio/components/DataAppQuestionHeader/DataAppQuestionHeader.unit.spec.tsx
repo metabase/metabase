@@ -7,8 +7,8 @@ function setup() {
   renderWithProviders(
     <DataAppQuestionHeader
       app={createMockDataApp({
-        name: "order-desk",
-        display_name: "Order desk",
+        slug: "order-desk",
+        name: "Order desk",
       })}
       card={createMockCard({ id: 7, name: "Recent orders" })}
     />,

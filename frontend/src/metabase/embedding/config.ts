@@ -46,7 +46,7 @@ export function setIsStaticEmbedding() {
 }
 
 export function setDataApp(
-  dataAppName: string,
+  dataAppSlug: string,
   { isDev = false }: { isDev?: boolean } = {},
 ) {
   const sdkPackageVersion = getSdkPackageVersion();
@@ -55,7 +55,7 @@ export function setDataApp(
   EMBEDDING_SDK_CONFIG.isDataApp = true;
   EMBEDDING_SDK_CONFIG.isDataAppDev = isDev;
   EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "data-app";
-  EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier = dataAppName;
+  EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier = dataAppSlug;
 
   PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
     setRequestClientHeaders({

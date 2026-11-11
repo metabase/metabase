@@ -1,3 +1,3 @@
 ```ts
-type EntityTypeFilterKeys = "table" | "model";
+type EntityTypeFilterKeys = "table" | "model" | "metric" | "semantic-layer";
 ```
