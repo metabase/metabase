@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms-python.schema
   "Malli schemas for the transforms-python module."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
@@ -17,7 +18,7 @@
   "What an update (or insert) of a PythonLibrary accepts: every column of `:python_library` except `id`, all optional."
   [:map {:closed true}
    [:path       {:optional true} [:maybe :string]]
-   [:source     {:optional true} [:maybe [:or :keyword :string]]]
+   [:source     {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id  {:optional true} [:maybe :string]]

@@ -13,6 +13,7 @@ export type RemoteSyncEntityId = number;
 export type RemoteSyncEntityModel =
   | "action"
   | "card"
+  | "cardtest"
   | "collection"
   | "dashboard"
   | "dataapp"
@@ -233,6 +234,8 @@ export type RemoteSyncTask = {
   progress: number | null;
   started_at: string;
   ended_at?: string | null;
+  last_progress_report_at?: string | null;
+  last_heartbeat_at?: string | null;
   error_message?: string | null;
   outcome?: RemoteSyncOutcome | null;
   conflicts?: string[] | null;

@@ -1,4 +1,3 @@
-import { assocIn } from "icepick";
 import { useCallback, useMemo } from "react";
 
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
@@ -69,7 +68,15 @@ export const useChartSettingsState = ({
   );
 
   const chartSettingsRawSeries = useMemo(
-    () => assocIn(series, [0, "card", "visualization_settings"], chartSettings),
+    () =>
+      series.map((s, i) =>
+        i === 0
+          ? {
+              ...s,
+              card: { ...s.card, visualization_settings: chartSettings },
+            }
+          : s,
+      ),
     [chartSettings, series],
   );
 

@@ -68,10 +68,11 @@
     (when (and (:name db) (:name table))
       [(:name db) (:schema table) (:name table)])))
 
-(defn- column-portable-fk
-  "Build the portable FK path `[db-name, schema-or-null, table-name, field-name …]` for a column
-  that has a real numeric `:id`. Returns nil for expression / aggregation columns that don't
-  correspond to a database field."
+(defn column-portable-fk
+  "Return the portable FK path `[db-name, schema-or-null, table-name, field-name …]` of `column`, or nil.
+
+  The path exists only for a column with a real numeric `:id`. Expression and aggregation columns
+  don't correspond to a database field, so they get nil."
   [query column]
   (when (and (:id column) (:table-id column))
     (let [;; walk the `:parent-id` chain in case this is a JSON-unfolded nested field

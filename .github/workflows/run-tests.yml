@@ -52,6 +52,10 @@ jobs:
     if: >-
       ${{ needs.gate.outputs.verdict != 'force-skip'
       && contains(fromJSON(needs.gate.outputs.matched), 'build_uberjar') }}
+    # `actions: write` lets the build delete an uploaded JAR that turns out not to start.
+    permissions:
+      contents: read
+      actions: write
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
 

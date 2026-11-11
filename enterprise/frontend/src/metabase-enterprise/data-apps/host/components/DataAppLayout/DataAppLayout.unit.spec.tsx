@@ -7,7 +7,7 @@ describe("DataAppLayout", () => {
   it("renders the data-app content", () => {
     renderWithProviders(
       <Route
-        path=":name"
+        path=":slug"
         element={
           <DataAppLayout>
             <div>app content</div>

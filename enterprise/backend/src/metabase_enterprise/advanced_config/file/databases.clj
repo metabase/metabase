@@ -8,11 +8,13 @@
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.sample-data.core :as sample-data]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.quick-task :as quick-task]))
+   [metabase.util.quick-task :as quick-task]
+   [metabase.warehouses.schema :as warehouses.schema]))
 
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
   string?)
@@ -121,7 +123,7 @@
     (init-sample-database! database)
 
     :else
-    (do
+    (let [database (lib/normalize ::warehouses.schema/database.update database)]
       ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
       ;; Stubs are placeholders with no usable details, so we skip the connection test.
       (when-not (:is_stub database)
