@@ -919,6 +919,38 @@
               (is (= [["table" (mt/id :orders)]]
                      (:uncurated (error-of (query {:breakout [bad-field]}))))))))))))
 
+(deftest null-schema-fill-in-prefers-curated-tables-test
+  (testing "under curated-only, a null schema resolves among the curated tables by that name when there are any"
+    (mt/with-temp [:model/Database db {:name           (str "Analytics " (random-uuid))
+                                       :engine         :h2
+                                       :default_schema "raw"}
+                   :model/Table    _  {:name "orders" :schema "raw" :db_id (:id db)}
+                   :model/Table    _  {:name "orders" :schema "clean" :db_id (:id db)
+                                       :data_authority :authoritative}
+                   :model/Table    _  {:name "events" :schema "raw" :db_id (:id db)}
+                   :model/Table    _  {:name "events" :schema "staging" :db_id (:id db)}]
+      (let [db-name   (:name db)
+            construct (fn [metabot table-name]
+                        (try
+                          (-> (as-metabot metabot :internal
+                                          #(construct/execute-representations-query
+                                            {:lib/type "mbql/query"
+                                             :stages   [{:lib/type     "mbql.stage/mbql"
+                                                         :source-table [db-name nil table-name]
+                                                         :aggregation  [["count" {}]]}]}))
+                              (get-in [:structured-output :query-json "stages" 0 "source-table"]))
+                          (catch clojure.lang.ExceptionInfo e
+                            (:error (ex-data e)))))
+            curated   {:use_verified_content true}]
+        (is (= {:curated-only [db-name "clean" "orders"]
+                :unrestricted [db-name "raw" "orders"]
+                ;; Neither events table is curated, so the default schema is picked and the gate refuses it.
+                :none-curated :uncurated-source}
+               (mt/with-current-user (mt/user->id :crowberto)
+                 {:curated-only (construct curated "orders")
+                  :unrestricted (construct nil "orders")
+                  :none-curated (construct curated "events")})))))))
+
 (deftest construct-coarse-gate-agrees-with-the-full-rule-test
   (testing "the gate before repair and the rule after resolve share one coverage computation: a table the full rule
             denies is refused before repair can list its columns"

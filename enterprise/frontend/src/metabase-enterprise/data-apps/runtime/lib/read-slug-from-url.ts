@@ -3,13 +3,13 @@ import { getMetabaseRootPath } from "embedding-sdk-shared/lib/get-current-metaba
 import { DATA_APP_EMBED_PREFIX } from "metabase/urls/data-apps";
 
 /**
- * Reads the requested data-app name from the iframe URL.
+ * Reads the requested data-app slug from the iframe URL.
  *
- * The BE serves this iframe at `/embed/(apps|embedded-apps)/:name(/sub/route)`. Anything
- * after the `:name` segment is owned by the bundle's own router and mirrored
+ * The BE serves this iframe at `/embed/(apps|embedded-apps)/:slug(/sub/route)`. Anything
+ * after the `:slug` segment is owned by the bundle's own router and mirrored
  * back to the parent by `attachIframeUrlMirror` in `AppView`.
  */
-export function readNameFromUrl(): string | null {
+export function readSlugFromUrl(): string | null {
   const root = getMetabaseRootPath();
   const pathname = window.location.pathname;
 
@@ -21,14 +21,14 @@ export function readNameFromUrl(): string | null {
     return null;
   }
 
-  const encodedName = pathname.slice(dataAppPrefix.length).split("/")[0];
+  const encodedSlug = pathname.slice(dataAppPrefix.length).split("/")[0];
 
-  if (!encodedName) {
+  if (!encodedSlug) {
     return null;
   }
 
   try {
-    return decodeURIComponent(encodedName);
+    return decodeURIComponent(encodedSlug);
   } catch {
     return null;
   }

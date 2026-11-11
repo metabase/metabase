@@ -13,7 +13,7 @@ import { BundleErrorBoundary } from "../DataAppIframeApp/DataAppIframeApp";
 import { useDataAppPathNavigation } from "./hooks/use-data-app-path-navigation";
 
 type Props = {
-  name: string;
+  slug: string;
   path: string;
 
   onProviderPropsLoaded: (props: DataAppMetabaseProviderProps) => void;
@@ -21,7 +21,7 @@ type Props = {
 };
 
 export function DataAppEmbedContent({
-  name,
+  slug,
   path,
 
   onProviderPropsLoaded,
@@ -43,7 +43,7 @@ export function DataAppEmbedContent({
 
   return (
     <DataAppEmbedAuthenticatedView
-      name={name}
+      slug={slug}
       path={path}
       navigationRequest={navigationRequest}
       onProviderPropsLoaded={onProviderPropsLoaded}
@@ -52,14 +52,14 @@ export function DataAppEmbedContent({
 }
 
 function DataAppEmbedAuthenticatedView({
-  name,
+  slug,
   path,
   navigationRequest,
   onProviderPropsLoaded,
 }: Props) {
-  const { data, failed, error } = useDataAppBundle(name, { embedded: true });
+  const { data, failed, error } = useDataAppBundle(slug, { embedded: true });
 
-  useDataAppPathNavigation({ name, path, navigationRequest });
+  useDataAppPathNavigation({ slug, path, navigationRequest });
 
   useEffect(() => {
     if (data) {

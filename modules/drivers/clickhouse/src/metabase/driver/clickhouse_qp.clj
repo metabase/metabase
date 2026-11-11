@@ -17,8 +17,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.performance :refer [some]]
-   [metabase.util.string :as string])
+   [metabase.util.performance :refer [some]])
   (:import
    [java.net Inet4Address Inet6Address]
    [java.sql ResultSet ResultSetMetaData Types]
@@ -425,7 +424,7 @@
       ;; If the string is not a valid UUID (ie due to is-empty desugaring),
       ;; then direct comparison will cause an error, so just return false
       (uuid-comp? field value)
-      (if (string/valid-uuid? hsql-value)
+      (if (u/uuid-string? hsql-value)
         [:= hsql-field hsql-value]
         false)
 
@@ -442,7 +441,7 @@
        [:= [:'notEmpty hsql-field] 1]]
 
       (uuid-comp? field value)
-      (if (string/valid-uuid? hsql-value)
+      (if (u/uuid-string? hsql-value)
         [:or [:!= hsql-field hsql-value]
          [:isNull hsql-field]]
         true)

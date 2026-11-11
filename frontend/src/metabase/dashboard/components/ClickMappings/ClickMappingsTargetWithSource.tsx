@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
-import { dissocIn, getIn } from "icepick";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -8,6 +6,21 @@ import { Icon } from "metabase/ui";
 import type { ClickBehavior } from "metabase-types/api";
 
 import type { SourceType, TargetItem } from "./types";
+
+function removeParameterMapping(
+  clickBehavior: ClickBehavior,
+  id: string,
+): ClickBehavior {
+  if (
+    !("parameterMapping" in clickBehavior) ||
+    !clickBehavior.parameterMapping
+  ) {
+    return clickBehavior;
+  }
+  const { [id]: _removed, ...parameterMapping } =
+    clickBehavior.parameterMapping;
+  return { ...clickBehavior, parameterMapping };
+}
 
 export function ClickMappingsTargetWithSource({
   target,
@@ -22,7 +35,9 @@ export function ClickMappingsTargetWithSource({
 }) {
   const { name, id } = target;
   const source: { name?: string; type?: SourceType } =
-    getIn(clickBehavior, ["parameterMapping", id, "source"]) ?? {};
+    ("parameterMapping" in clickBehavior
+      ? clickBehavior.parameterMapping?.[id]?.source
+      : undefined) ?? {};
 
   return (
     <div className={CS.mb2}>
@@ -79,7 +94,7 @@ export function ClickMappingsTargetWithSource({
         <div
           className={cx(CS.cursorPointer, CS.mlAuto)}
           onClick={() =>
-            updateSettings(dissocIn(clickBehavior, ["parameterMapping", id]))
+            updateSettings(removeParameterMapping(clickBehavior, id))
           }
         >
           <Icon name="close" size={12} />

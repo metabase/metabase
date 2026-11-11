@@ -1,4 +1,3 @@
-import { assocIn } from "icepick";
 import { P, isMatching } from "ts-pattern";
 
 const { H } = cy;
@@ -138,7 +137,7 @@ describe("scenarios > collections > clean up", () => {
               // trip is_sample flag
               cy.intercept("GET", `/api/collection/${id}`, (req) => {
                 req.on("response", (res) => {
-                  res.send(assocIn(res.body, ["is_sample"], true));
+                  res.send({ ...res.body, is_sample: true });
                 });
               }).as("sampleCollection");
 

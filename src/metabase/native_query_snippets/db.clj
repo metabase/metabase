@@ -6,14 +6,18 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (mu/defn synced-snippets-clause :- [:fn vector?]
   "The clause over the NativeQuerySnippet table aliased `alias` selecting the snippets remote sync syncs."
-  [alias :- :keyword]
-  [:= (u/qualified-key alias :archived) false])
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (if (:include-archived? opts)
+    [:= 1 1]
+    [:= (u/qualified-key alias :archived) false]))
 
 (mu/defn snippets-by-archived
   "The NativeQuerySnippets whose archived flag is `archived`, in case-insensitive name order."

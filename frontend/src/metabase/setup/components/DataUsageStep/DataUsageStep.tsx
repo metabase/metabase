@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
-import { getIn } from "icepick";
 import { type JSX, useState } from "react";
 import { jt, t } from "ttag";
 
@@ -8,6 +6,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Flex, Switch } from "metabase/ui";
+import { isObject } from "metabase-types/guards/common";
 
 import { goToNextStep, updateTracking } from "../../actions";
 import { getIsTrackingAllowed } from "../../selectors";
@@ -134,12 +133,13 @@ const getStepTitle = (
 };
 
 const getSubmitError = (error: unknown): string => {
-  const message = getIn(error, ["data", "message"]);
-  const errors = getIn(error, ["data", "errors"]);
+  const data = isObject(error) && isObject(error.data) ? error.data : null;
+  const message = data?.message;
+  const errors = data?.errors;
 
   if (message) {
     return String(message);
-  } else if (errors) {
+  } else if (isObject(errors)) {
     return String(Object.values(errors)[0]);
   } else {
     return t`An error occurred`;
