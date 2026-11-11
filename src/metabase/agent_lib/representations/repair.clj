@@ -1319,20 +1319,16 @@
     (let [operands   (subvec node 3)
           literals   (mapv redundant-bucket-literal operands)
           timestamp? #(and % (not (re-matches date-only-pattern %)))]
-      (cond
-        (every? whole-day-bound? operands)
+      (if (every? whole-day-bound? operands)
         (if (contains? #{"!=" "not-in"} (first node))
           node
           (expand-day-comparison (into (subvec node 0 3) literals)))
-
-        (not-any? timestamp? literals)
-        (unwrap-whole-day-start node)
-
-        :else
         (unwrap-whole-day-start
-         (into (subvec node 0 3)
-               (map (fn [operand literal] (if (timestamp? literal) (t-separated literal) operand))
-                    operands literals)))))
+         (if (some timestamp? literals)
+           (into (subvec node 0 3)
+                 (map (fn [operand literal] (if (timestamp? literal) (t-separated literal) operand))
+                      operands literals))
+           node))))
     node))
 
 (def ^:private day-comparison-skipped-keys
