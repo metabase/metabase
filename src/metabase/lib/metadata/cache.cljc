@@ -39,7 +39,8 @@
   (let [query-map-schema (first (mc/children (mr/resolve-schema ::lib.schema/query)))]
     (mut/merge query-map-schema [:map {:closed true} [:lib/metadata {:optional true} [:maybe :int]]])))
 
-(mr/def ::query-with-hashed-metadata (query-with-hashed-metadata-schema))
+;;; built on first use, so loading this namespace doesn't resolve the whole query schema
+(mr/def ::query-with-hashed-metadata (delay (query-with-hashed-metadata-schema)))
 
 (mr/def ::element
   "A single element of a [[cache-key]]: any of the pieces of data [[cache-key-for-table-or-card]]

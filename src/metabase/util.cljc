@@ -13,7 +13,8 @@
              [metabase.util.string :as u.str]
              [potemkin :as p]
              [puget.printer]
-             [ring.util.codec :as codec])
+             [ring.util.codec :as codec]
+             [taoensso.encore :as encore])
        :cljs-dev ([clojure.pprint :as pprint]))
    [camel-snake-kebab.internals.macros :as csk.macros]
    [clojure.data :refer [diff]]
@@ -32,7 +33,6 @@
    [metabase.util.performance :as perf :refer [#?(:clj for)]]
    [metabase.util.polyfills]
    [net.cgrand.macrovich :as macros]
-   [taoensso.encore :as encore]
    [weavejester.dependency :as dep])
   #?(:clj (:import
            (clojure.core.protocols CollReduce)
@@ -1321,7 +1321,11 @@
   If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
   producing the same value every time. This is only supported on the JVM!"
   ([]
-   (encore/nanoid false 21))
+   #?(:clj  (encore/nanoid false 21)
+      ;; `taoensso.encore` is a large library, and its load-time setup slows down the frontend's startup, so CLJS
+      ;; generates the ID itself, like `encore/nanoid` does: 21 random characters from the URL-safe NanoID alphabet.
+      :cljs (let [alphabet "useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict"]
+              (apply str (repeatedly 21 #(.charAt alphabet (rand-int 64)))))))
   ([seed-str]
    #?(:clj  (let [seed (Long/parseLong seed-str 16)
                   rnd  (Random. seed)

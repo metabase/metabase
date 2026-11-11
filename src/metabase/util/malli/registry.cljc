@@ -181,12 +181,29 @@
                (mut/schemas)
                #?(:clj (malli.time/schemas)))))
 
-(defonce ^:private registry (malli.registry/mutable-registry registry*))
+(defn- force-definition
+  "Registered definitions can be `delay`s (see [[register!]]); return the actual definition."
+  [definition]
+  (if (delay? definition)
+    @definition
+    definition))
+
+;;; Like [[malli.registry/mutable-registry]], but forces definitions registered as `delay`s.
+(defonce ^:private registry
+  (reify malli.registry/Registry
+    (-schema [_ type]
+      (force-definition (get @registry* type)))
+    (-schemas [_]
+      (update-vals @registry* force-definition))))
 
 (malli.registry/set-default-registry! registry)
 
 (defn register!
-  "Register a spec with our Malli spec registry."
+  "Register a spec with our Malli spec registry.
+
+  `definition` can be a `delay`, which is forced the first time the schema is used. Use this for definitions that are
+  expensive to build, e.g. ones derived from other registered schemas with [[resolve-schema]], so loading the
+  namespace doesn't build them. This matters most in CLJS, where it slows down the frontend's startup."
   [schema definition]
   (swap! registry* assoc schema definition)
   (reset! cache {})
@@ -195,7 +212,7 @@
 (defn registered-schema
   "Get the schema registered for `k`, if any."
   [k]
-  (get @registry* k))
+  (force-definition (get @registry* k)))
 
 (defn schema
   "Get the Malli schema for `type` from the registry."
@@ -209,6 +226,9 @@
   indirection."
   [schema docstring]
   (cond
+    (delay? schema)
+    (delay (-with-doc @schema docstring))
+
     (and (vector? schema)
          (map? (second schema)))
     (let [[tag opts & args] schema]
@@ -223,7 +243,7 @@
 
 #?(:clj
    (defmacro def
-     "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry."
+     "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry. `schema` can be a `delay`; see [[register!]]."
      ([type schema]
       `(register! ~type ~schema))
      ([type docstring schema]

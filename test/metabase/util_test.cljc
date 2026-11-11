@@ -744,3 +744,8 @@
      (testing "the states a caller adding protection accepts, and the one it does not"
        (is (#{:https :unknown} (u/https-state {:scheme :http :headers {"origin" "https://example.com"}})))
        (is (nil? (#{:https :unknown} (u/https-state {:scheme :http :headers {}})))))))
+
+(deftest ^:parallel generate-nano-id-test
+  (let [ids (repeatedly 100 u/generate-nano-id)]
+    (is (every? #(re-matches #"[A-Za-z0-9_-]{21}" %) ids))
+    (is (= 100 (count (set ids))))))
