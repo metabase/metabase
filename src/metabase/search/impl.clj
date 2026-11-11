@@ -166,7 +166,7 @@
   [search-results]
   (let [collections    (filter #(mi/instance-of? :model/Collection %) search-results)
         hydrated-colls (t2/hydrate collections :effective_parent)
-        idx->coll      (into {} (map (juxt :id identity) hydrated-colls))]
+        idx->coll      (u/index-by :id hydrated-colls)]
     (map (fn [search-result]
            (if (mi/instance-of? :model/Collection search-result)
              (idx->coll (:id search-result))

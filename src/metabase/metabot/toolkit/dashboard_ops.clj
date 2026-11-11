@@ -805,7 +805,7 @@
    They also include the card in each config a parameter op sends or touches, since the op may make it the source.
    The caller resolves these into the `cards` map, leaving out the ones its user cannot read."
   [dash ops]
-  (let [id->parameter (into {} (map (juxt :id identity)) (:parameters dash))
+  (let [id->parameter (u/index-by :id (:parameters dash))
         op-card-ids   (fn [op]
                         (concat (placed-card-ids op)
                                 (when (contains? parameter-ops (:op op))

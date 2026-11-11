@@ -141,7 +141,7 @@
     (let [colls                (semantic-search.db/collection-owners-and-locations collection-ids)
           {personal     true
            non-personal false} (group-by (comp some? :personal_owner_id) colls)
-          direct               (into {} (map (juxt :id :personal_owner_id)) personal)
+          direct               (u/index-by :id :personal_owner_id personal)
           roots                (keep (fn [{:keys [id location]}]
                                        (when-let [root-id (some-> location (str/split #"/" 3) second parse-long)]
                                          [id root-id]))
@@ -1020,8 +1020,7 @@
   [docs collection-id]
   (let [collection-ids (keep :collection_id docs)
         collections-map (when (seq collection-ids)
-                          (->> (semantic-search.db/collection-locations collection-ids)
-                               (into {} (map (juxt :id identity)))))]
+                          (u/index-by :id (semantic-search.db/collection-locations collection-ids)))]
     (filterv (fn [doc]
                (let [doc-collection-id (:collection_id doc)]
                  (or (= doc-collection-id collection-id)

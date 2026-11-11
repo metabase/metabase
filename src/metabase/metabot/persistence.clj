@@ -71,7 +71,7 @@
   [parts]
   (let [outputs (into {}
                       (comp (filter #(= :tool-output (:type %)))
-                            (map (juxt :id identity)))
+                            (u/index-by :id))
                       parts)]
     (->> parts
          (remove #(= :tool-output (:type %)))

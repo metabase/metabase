@@ -583,7 +583,7 @@
         colls    (->> (metabot.db/navigable-collections tree?)
                       (filter mi/can-read?))
         ;; For tree mode, compute path names by chaining ancestor names.
-        id->name (when tree? (into {} (map (juxt :id :name)) colls))
+        id->name (when tree? (u/index-by :id :name colls))
         ancestors (fn [{:keys [location]}]
                     (when (and location (not= "/" location))
                       (->> (str/split location #"/")
@@ -1012,7 +1012,7 @@
         readable     (when (seq card-ids)
                        (->> (metabot.db/unarchived-card-summaries card-ids)
                             (filter mi/can-read?)
-                            (into {} (map (juxt :id identity)))))
+                            (u/index-by :id)))
         ;; An action button's uri points at its backing model, which [[list-result]]'s curation filter can't see
         ;; through, so under [[shared/curated-only?]] only curated models keep their uri.
         linkable     (if (shared/curated-only?)
