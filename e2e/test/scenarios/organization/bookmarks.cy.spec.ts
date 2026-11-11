@@ -96,6 +96,49 @@ describe("scenarios > organization > bookmarks", () => {
     });
   });
 
+  describe("reordering", () => {
+    it("should reorder bookmarks by dragging them in the navigation sidebar", () => {
+      createQuestionIds(["Question 1", "Question 2"]).then(
+        ([question1Id, question2Id]) => {
+          [question1Id, question2Id].forEach((id) =>
+            cy.request("POST", `/api/bookmark/card/${id}`),
+          );
+          // Bookmarks created in the same second have no defined order
+          cy.request("PUT", "/api/bookmark/ordering", {
+            orderings: [
+              { type: "card", item_id: question1Id },
+              { type: "card", item_id: question2Id },
+            ],
+          });
+          cy.intercept("PUT", "/api/bookmark/ordering").as("reorderBookmarks");
+
+          H.visitCollection("root");
+          verifyBookmarksOrder(["Question 1", "Question 2"]);
+
+          H.navigationSidebar()
+            .findByRole("section", { name: "Bookmarks" })
+            .findByText("Question 2")
+            .as("dragElement");
+          H.moveDnDKitElementByAlias("@dragElement", { vertical: -100 });
+
+          cy.wait("@reorderBookmarks")
+            .its("request.body")
+            .should("deep.equal", {
+              orderings: [
+                { type: "card", item_id: question2Id },
+                { type: "card", item_id: question1Id },
+              ],
+            });
+          verifyBookmarksOrder(["Question 2", "Question 1"]);
+
+          cy.log("The new order is saved");
+          cy.reload();
+          verifyBookmarksOrder(["Question 2", "Question 1"]);
+        },
+      );
+    });
+  });
+
   describe("archiving", () => {
     it("should update bookmarks list when restoring a collection containing bookmarked items (metabase#44499)", () => {
       const collectionName = "First collection";
@@ -143,4 +186,29 @@ function toggleQuestionBookmarkStatus({ wasSelected = false } = {}) {
   const labelText = wasSelected ? "Remove from bookmarks" : "Bookmark";
   cy.findByTestId("qb-header-action-panel").findByLabelText(labelText).click();
   cy.wait("@toggleBookmark");
+}
+
+function createQuestionIds(names: string[]): Cypress.Chainable<number[]> {
+  const ids: number[] = [];
+  names.forEach((name) =>
+    H.createQuestion({
+      name,
+      query: { "source-table": STATIC_ORDERS_ID },
+    }).then(({ body: { id } }) => {
+      ids.push(id);
+    }),
+  );
+  return cy.wrap(ids);
+}
+
+function verifyBookmarksOrder(expectedOrder: string[]) {
+  H.navigationSidebar()
+    .findByRole("section", { name: "Bookmarks" })
+    .within(() => {
+      cy.get("li")
+        .should("have.length", expectedOrder.length)
+        .each((bookmark, index) => {
+          cy.wrap(bookmark).should("contain", expectedOrder[index]);
+        });
+    });
 }
