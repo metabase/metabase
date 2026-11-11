@@ -53,6 +53,31 @@ env:
   DOCRUNNER_MAX_TURNS: "100"
   SCREENSHOTS_MODEL: claude-sonnet-5-5
   SCREENSHOTS_MAX_TURNS: "150"
+  # The cost limit of one agent run, in USD. Claude Code calculates the cost from the token counts at list price,
+  # thus the cost is an estimate, not the bill. Claude Code compares the cost with the limit after each model
+  # response, thus a run can go above the limit by the cost of one response. Each limit is for one run: this
+  # workflow has no limit for the total of all runs.
+  DOCRUNNER_MAX_BUDGET_USD: "10"
+  SCREENSHOTS_MAX_BUDGET_USD: "5"
+  # `run_usage` reads an agent transcript, and gives the data of its last `result` message: why the agent stopped,
+  # and what the run cost. A failed run also has this message. `modelUsage` and `total_cost_usd` include the
+  # response that got to the cost limit, and `usage` does not. `usage_table` makes the table for the run summary.
+  USAGE_JQ: |
+    def num: if type == "number" then . else 0 end;
+    def run_usage:
+      ([.[] | select(.type == "result")] | last // {}) as $r
+      | [$r.modelUsage // {} | .[]] as $m
+      | {stop: ($r.subtype // "none" | tostring | gsub("[^A-Za-z_]"; "")),
+         turns: ($r.num_turns | num),
+         cost_usd: ($r.total_cost_usd | num),
+         input: ($m | map(.inputTokens | num) | add // 0),
+         cache_write: ($m | map(.cacheCreationInputTokens | num) | add // 0),
+         cache_read: ($m | map(.cacheReadInputTokens | num) | add // 0),
+         output: ($m | map(.outputTokens | num) | add // 0)};
+    def usage_table($agent):
+      "| Agent | Result | Turns | Cost (USD, estimate) | Input tokens | Cache write tokens | Cache read tokens | Output tokens |\n"
+      + "| --- | --- | --- | --- | --- | --- | --- | --- |\n"
+      + "| \($agent) | \(.stop) | \(.turns) | \((.cost_usd * 10000 | round) / 10000) | \(.input) | \(.cache_write) | \(.cache_read) | \(.output) |";
   # The bot posts text from the agents, and no person reviews it first. `sanitize` makes this text safer.
   # It adds zero-width spaces, not code spans: a zero-width space has the same effect in each Markdown context.
   # If the filter puts a URL in backticks, and the URL is already in a code span, the URL comes out of the span.
@@ -363,6 +388,7 @@ jobs:
           claude_args: |
             --model ${{ env.DOCRUNNER_MODEL }}
             --max-turns ${{ env.DOCRUNNER_MAX_TURNS }}
+            --max-budget-usd ${{ env.DOCRUNNER_MAX_BUDGET_USD }}
             --permission-mode dontAsk
             --allowedTools "Edit(docs/**/*.md),Skill(docs-write),Skill(docs-review)"
             --disallowedTools "Bash,NotebookEdit,WebFetch,WebSearch,Agent,Workflow,SendMessage,Monitor,Read(//proc/**),Read(./.git/**),Edit(docs/**/CLAUDE.md),Edit(docs/**/CLAUDE.local.md),Edit(docs/**/AGENTS.md),Edit(docs/**/.claude/**)"
@@ -432,10 +458,36 @@ jobs:
           mkdir -p "$OUT"
           changed=$(git ls-files --modified --others --exclude-standard -- 'docs/*.md')
 
+          # Why the agent stopped, and what the run cost. See USAGE_JQ. The action also gives the transcript of a
+          # failed run.
+          stop=""
+          if [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ] \
+              && jq -c "$USAGE_JQ"' run_usage' "$EXEC_FILE" > "$OUT/usage.json" 2> /dev/null; then
+            stop=$(jq -r '.stop' "$OUT/usage.json")
+            jq -r "$USAGE_JQ"' usage_table("Docs")' "$OUT/usage.json" >> "$GITHUB_STEP_SUMMARY"
+            echo "Agent usage: $(cat "$OUT/usage.json")"
+          else
+            rm -f "$OUT/usage.json"
+          fi
+
           if [ -n "$EXISTING_URL" ]; then
             status=exists
           elif [ "$AGENT_OUTCOME" != success ] || ! jq -e 'type == "object"' <<< "$RESULT" > /dev/null 2>&1; then
             status=failed
+            # A stop at a limit gives no result JSON, thus Docrunner opens no PR. The artifact has the partial change.
+            limit=""
+            case "$stop" in
+              error_max_budget_usd) limit="the cost limit of one run ($DOCRUNNER_MAX_BUDGET_USD USD, \`DOCRUNNER_MAX_BUDGET_USD\`)" ;;
+              error_max_turns) limit="the limit of $DOCRUNNER_MAX_TURNS turns (\`DOCRUNNER_MAX_TURNS\`)" ;;
+            esac
+            if [ -n "$limit" ]; then
+              {
+                echo "Docrunner stopped, because the agent got to $limit before it finished. It opened no PR. The partial change is in the artifact of the run (\`changes.diff\`)."
+                echo
+                echo "Make the request in the issue smaller, or increase the limit in \`.github/workflows/docrunner.yml\`."
+              } > "$T/reason.md"
+              echo "::error::The agent got to a limit: $stop."
+            fi
           elif [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ] && ! jq -e \
               '(["Glob", "Grep"] - [.[] | select(.type == "system" and .subtype == "init") | .tools[]?]) == []' \
               "$EXEC_FILE" > /dev/null 2>&1; then
@@ -826,6 +878,7 @@ jobs:
           claude_args: |
             --model ${{ env.SCREENSHOTS_MODEL }}
             --max-turns ${{ env.SCREENSHOTS_MAX_TURNS }}
+            --max-budget-usd ${{ env.SCREENSHOTS_MAX_BUDGET_USD }}
             --permission-mode dontAsk
             --mcp-config ${{ runner.temp }}/docrunner/mcp.json
             --strict-mcp-config
@@ -853,6 +906,20 @@ jobs:
             echo '{}' > "$OUT/agent-result.json"
           fi
           if [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ]; then cp "$EXEC_FILE" "$OUT/transcript.json"; fi
+
+          # Why the agent stopped, and what the run cost. See USAGE_JQ. Only the two limit values go to the step
+          # output, thus no other text from the transcript gets to "Report on the PR".
+          if [ -f "$OUT/transcript.json" ] \
+              && jq -c "$USAGE_JQ"' run_usage' "$OUT/transcript.json" > "$OUT/usage.json" 2> /dev/null; then
+            jq -r "$USAGE_JQ"' usage_table("Screenshots")' "$OUT/usage.json" >> "$GITHUB_STEP_SUMMARY"
+            echo "Agent usage: $(cat "$OUT/usage.json")"
+            case "$(jq -r '.stop' "$OUT/usage.json")" in
+              error_max_budget_usd) echo "stop=error_max_budget_usd" >> "$GITHUB_OUTPUT" ;;
+              error_max_turns) echo "stop=error_max_turns" >> "$GITHUB_OUTPUT" ;;
+            esac
+          else
+            rm -f "$OUT/usage.json"
+          fi
 
           results='[]'
           while IFS= read -r item; do
@@ -948,6 +1015,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
           SHA: ${{ steps.push.outputs.sha }}
+          STOP: ${{ steps.check.outputs.stop }}
         run: |
           f="$T/pr-comment.md"
           {
@@ -962,6 +1030,16 @@ jobs:
                 echo "Commit: $SHA. Examine each image: the state, the crop, and the size."
               else
                 echo "Docrunner pushed no image."
+              fi
+              # A stop at a limit gives no result JSON, thus the agent confirmed no image.
+              limit=""
+              case "$STOP" in
+                error_max_budget_usd) limit="the cost limit of one run ($SCREENSHOTS_MAX_BUDGET_USD USD, \`SCREENSHOTS_MAX_BUDGET_USD\`)" ;;
+                error_max_turns) limit="the limit of $SCREENSHOTS_MAX_TURNS turns (\`SCREENSHOTS_MAX_TURNS\`)" ;;
+              esac
+              if [ -n "$limit" ]; then
+                echo
+                echo "The screenshot agent got to $limit before it finished, thus it confirmed no image. The screenshots that it took are in the artifact of the run (\`all-shots/\`)."
               fi
             else
               echo "The Docrunner screenshots job failed."

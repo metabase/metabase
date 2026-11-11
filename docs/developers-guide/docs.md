@@ -65,6 +65,14 @@ The agent prompts are in `dev/bot/docrunner-agent.md` and `dev/bot/docrunner-scr
 
 Each run uploads its results as workflow artifacts: the docs change, the PR description, the screenshots, and the agent transcripts. A dry run does only that. It doesn't open a PR, push commits, or comment.
 
+### Limit what a run costs
+
+Each agent run has a cost limit and a turn limit, set at the top of `.github/workflows/docrunner.yml`. The limits apply to one run, not to the total across runs.
+
+If the docs agent reaches a limit before it finishes, Docrunner doesn't open a PR, and its comment on the issue says which limit it reached. Narrow the request in the issue or raise the limit, then remove the label and add it again. If the screenshot agent reaches a limit, the job doesn't add images, and its comment on the PR says why.
+
+To see what a run cost, go to the run's summary page. It shows a table for each agent with the turns, the token counts, and the cost in USD. Claude Code calculates the cost from the token counts, so it's an estimate, not the bill.
+
 ## Regenerate docs built from source
 
 Some docs pages are generated from the source code. A scheduled GitHub workflow regenerates them every weekday and opens a PR with any changes.
