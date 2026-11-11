@@ -39,7 +39,7 @@ export function getAllDashboardCardsWithUnmappedParameters({
   dashcards: DashboardState["dashcards"];
   dashboardId: DashboardId;
   parameterId: ParameterId;
-  selectedTabId: DashboardTabId;
+  selectedTabId: DashboardTabId | null;
 }): QuestionDashboardCard[] {
   const existingDashcards = getExistingDashCards(
     dashboards,

@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { createSelector } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
 
 import type { State } from "metabase/redux/store";
+import type { Revision } from "metabase-types/api";
 
 // A `type`, not an `interface`, so `useParams<ReferenceRouteParams>()` accepts
 // it: the hook's constraint needs an implicit index signature.
@@ -28,7 +27,7 @@ interface ReferenceSliceState {
 // so we widen locally here instead.
 export type StateWithReference = State & {
   reference: ReferenceSliceState;
-  revisions?: Record<string, Record<string | number, unknown>>;
+  revisions?: Record<string, Record<string | number, Record<string, Revision>>>;
 };
 
 export { getUser } from "metabase/current-user";
@@ -50,7 +49,7 @@ const getRevisions = (state: State) =>
 
 export const getSegmentRevisions = createSelector(
   [getSegmentId, getRevisions],
-  (segmentId, revisions) => getIn(revisions, ["segment", segmentId]) || {},
+  (segmentId, revisions) => revisions?.segment?.[segmentId] || {},
 );
 
 export const getIsEditing = (state: State) =>

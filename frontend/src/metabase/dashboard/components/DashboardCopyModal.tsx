@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
-import { dissoc } from "icepick";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -10,6 +8,7 @@ import { CopyModal } from "metabase/common/components/CopyModal";
 import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 import type { Dashboard } from "metabase-types/api";
 
 import { getDashboardComplete } from "../selectors";
@@ -65,10 +64,15 @@ const DashboardCopyModal = ({ onClose }: DashboardCopyModalProps) => {
       }}
       title={title}
       overwriteOnInitialValuesChange
-      copy={async (object) => {
-        const { is_shallow_copy, ...overrides } = dissoc(object, "id");
+      copy={async (
+        object: CopyDashboardFormProperties & {
+          id?: unknown;
+          is_shallow_copy?: boolean;
+        },
+      ) => {
+        const { id: _id, is_shallow_copy, ...overrides } = object;
         return await copyDashboard({
-          id: dashboardIdFromSlug,
+          id: checkNotNull(dashboardIdFromSlug),
           ...overrides,
           is_deep_copy: !is_shallow_copy,
         }).unwrap();

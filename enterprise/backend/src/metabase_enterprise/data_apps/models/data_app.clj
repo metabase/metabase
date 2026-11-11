@@ -92,7 +92,7 @@
 
 (t2/define-before-insert :model/DataApp
   [data-app]
-  (let [row (prepare ::data-apps.schema/data-app.insert data-app)]
+  (let [row (prepare ::data-apps.schema/data-app.create data-app)]
     (if-let [collection-id (:resource_collection_id row)]
       (do (check-resource-collection collection-id nil)
           row)
@@ -129,12 +129,20 @@
                  (data-apps.db/data-app-readable? api/*current-user-id* pk))))))
 
 (defmethod mi/can-write? :model/DataApp
-  ([_instance]   api/*is-superuser?*)
-  ([_model _pk]  api/*is-superuser?*))
+  ([app]       (mi/can-write? :model/DataApp (:id app)))
+  ([_model pk] (and api/*is-superuser?*
+                    (remote-sync/can-write? :model/DataApp pk))))
 
 (defmethod mi/can-create? :model/DataApp
   [_model _instance]
-  api/*is-superuser?*)
+  (and api/*is-superuser?*
+       (not (remote-sync/read-only?))))
+
+(defmethod mi/can-update? :model/DataApp
+  [app changes]
+  (and api/*is-superuser?*
+       (or (not (remote-sync/synced-changes? :model/DataApp app changes))
+           (remote-sync/can-write? :model/DataApp (:id app)))))
 
 ;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
 ;; it, and the collection's own hooks delete what it holds and the grants on it.

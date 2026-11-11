@@ -1,4 +1,4 @@
-import icepick from "icepick";
+import { freeze } from "immer";
 
 import {
   DateTimeColumn,
@@ -195,7 +195,7 @@ describe("computed settings for series", () => {
       });
       const data = createMockDatasetData({ rows: [] });
       const settings = getStoredSettingsForSeries(
-        icepick.freeze([{ card, data }]),
+        freeze([{ card, data }], true),
       );
       expect(settings).toEqual({
         column_settings: {
