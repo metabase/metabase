@@ -5,9 +5,10 @@
    [clojure.test :refer :all]))
 
 (defn- findings!
-  "Rows and columns of `:metabase/dynamic-redefs-captured-proxy` findings from a real kondo run over `body-lines`.
+  "The `:metabase/dynamic-redefs-captured-proxy` findings from a real kondo run over `body-lines`.
    They follow an `ns` form that requires `metabase.test` as `mt`, `metabase.test.util.dynamic-redefs` as `dr` and
-   `example.ns` as `ex`. That form takes four rows, so the first body line is row 5."
+   `example.ns` as `ex`.
+   That form takes four rows, so the first body line is row 5."
   [& body-lines]
   (let [src (str/join "\n" (concat ["(ns example-test"
                                     "  (:require [metabase.test :as mt]"
@@ -20,24 +21,38 @@
                         :config-dir ".clj-kondo"
                         :cache      false}))
          :findings
-         (filter #(= :metabase/dynamic-redefs-captured-proxy (:type %)))
-         (mapv (juxt :row :col)))))
+         (filterv #(= :metabase/dynamic-redefs-captured-proxy (:type %))))))
 
 (deftest flags-captured-var-test
   (testing "a let binding that captures a var the body redefines"
-    (is (= [[5 12]]
-           (findings! "(let [orig ex/f]"
-                      "  (mt/with-dynamic-fn-redefs [ex/f (fn [x] (orig x))]"
-                      "    (ex/f 1)))")))))
+    (is (=? [{:row 5, :col 12}]
+            (findings! "(let [orig ex/f]"
+                       "  (mt/with-dynamic-fn-redefs [ex/f (fn [x] (orig x))]"
+                       "    (ex/f 1)))")))))
 
 (deftest flags-nested-redefs-test
   (testing "the redefinition can sit anywhere in the body, under the macro's own name too"
-    (is (= [[5 12]]
-           (findings! "(let [orig ex/f]"
-                      "  (testing \"x\""
-                      "    (dr/with-dynamic-fn-redefs [ex/g identity"
-                      "                                ex/f (fn [x] (orig x))]"
-                      "      (ex/f 1))))")))))
+    (is (=? [{:row 5, :col 12}]
+            (findings! "(let [orig ex/f]"
+                       "  (testing \"x\""
+                       "    (dr/with-dynamic-fn-redefs [ex/g identity"
+                       "                                ex/f (fn [x] (orig x))]"
+                       "      (ex/f 1))))")))))
+
+(deftest flags-redefs-in-later-binding-test
+  (testing "a redefinition in a later binding counts"
+    (is (=? [{:row 5, :col 12}]
+            (findings! "(let [orig ex/f"
+                       "      r    (mt/with-dynamic-fn-redefs [ex/f (fn [x] (orig x))]"
+                       "             (ex/f 1))]"
+                       "  r)")))))
+
+(deftest message-test
+  (testing "the message names the fix with the symbol as written"
+    (is (=? [{:message #".*\(mt/original-fn #'ex/f\) instead.*"}]
+            (findings! "(let [orig ex/f]"
+                       "  (mt/with-dynamic-fn-redefs [ex/f (fn [x] (orig x))]"
+                       "    (ex/f 1)))")))))
 
 (deftest ignores-original-fn-test
   (testing "`original-fn` is the fix"
@@ -59,3 +74,19 @@
            (findings! "(let [orig ex/f]"
                       "  (with-redefs [ex/f (fn [x] (orig x))]"
                       "    (ex/f 1)))")))))
+
+(deftest ignores-capture-used-outside-redefs-test
+  (testing "outside the redefinition, the proxy calls the original"
+    (is (= []
+           (findings! "(let [orig ex/f]"
+                      "  (mt/with-dynamic-fn-redefs [ex/f (constantly 2)]"
+                      "    (ex/f 1))"
+                      "  (orig 1))")))))
+
+(deftest ignores-redefs-before-capture-test
+  (testing "a redefinition in an earlier binding can't see the capture"
+    (is (= []
+           (findings! "(let [r    (mt/with-dynamic-fn-redefs [ex/f (constantly 2)]"
+                      "             (ex/f 1))"
+                      "      orig ex/f]"
+                      "  (orig r))")))))
