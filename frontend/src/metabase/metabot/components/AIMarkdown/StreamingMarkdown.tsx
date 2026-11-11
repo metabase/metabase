@@ -3,10 +3,11 @@ import remend from "remend";
 
 import type { MarkdownProps } from "metabase/common/components/Markdown";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
+import { useLazyModule } from "metabase/utils/lazy-module";
 
 import { MarkdownBlock } from "./MarkdownBlock";
 import { createRehypeStreamWords } from "./rehypeStreamWords";
-import { splitMarkdownBlocks } from "./splitMarkdownBlocks";
+import { markedModule, splitMarkdownBlocks } from "./splitMarkdownBlocks";
 import { useCoalescedSource } from "./useCoalescedSource";
 
 type StreamingMarkdownProps = {
@@ -35,7 +36,11 @@ export const StreamingMarkdown = ({
 }: StreamingMarkdownProps) => {
   const animate = isStreaming && !isReducedMotionPreferred();
   const coalesced = useCoalescedSource(source, animate);
-  const blocks = useMemo(() => splitMarkdownBlocks(coalesced), [coalesced]);
+  const marked = useLazyModule(markedModule);
+  const blocks = useMemo(
+    () => splitMarkdownBlocks(coalesced, marked?.Lexer),
+    [coalesced, marked],
+  );
 
   // reuse each block's plugin so its animation boundary stays consistent across renders
   const pluginsByBlock = useRef(
