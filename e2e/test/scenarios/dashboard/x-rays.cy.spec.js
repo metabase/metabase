@@ -248,39 +248,6 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     });
   });
 
-  it("should start loading cards from top to bottom", () => {
-    // to check the order of loaded cards this test lets the first intercepted
-    // request to be resolved successfully and then it fails all others
-
-    const totalRequests = 8;
-    const successfullyLoadedCards = 1;
-    const failedCards = totalRequests - successfullyLoadedCards;
-
-    // Cypress runs the newest matching intercept first, so the stub for the
-    // failed requests is registered before the pass-through for the first one
-    cy.intercept(
-      { method: "POST", url: "/api/dataset", times: failedCards },
-      { statusCode: 500 },
-    ).as("datasetFailed");
-
-    cy.intercept(
-      { method: "POST", url: "/api/dataset", times: successfullyLoadedCards },
-      (req) => req.continue(),
-    ).as("dataset");
-
-    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
-
-    cy.wait("@dataset");
-    cy.wait("@datasetFailed");
-
-    getDashcardByTitle("Total transactions")
-      .findByText("18,760")
-      .should("be.visible");
-    getDashcardByTitle("Transactions in the last 30 days")
-      .icon("warning")
-      .should("be.visible");
-  });
-
   // TODO - this is a legitimate failure because `param_fields` are not returned for x-ray dashboards
   it("should be able to click the title of an x-ray dashcard to see it in the query builder (metabase#19405)", () => {
     const timeout = { timeout: 10000 };

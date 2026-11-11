@@ -18,6 +18,8 @@ import { Api } from "metabase/api";
 import type { DashboardState, State } from "metabase/redux/store";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import { defer } from "metabase/utils/promise";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -496,6 +498,67 @@ function setupConcurrencyTest(dashboardId: number, cardCount: number) {
 }
 
 describe("fetchDashboardCardData", () => {
+  it("should fetch the cards of an x-ray dashboard from top to bottom", async () => {
+    const dashboardId = "/auto/dashboard/table/1";
+    // Cards are stored in id order, but laid out in a different order
+    const positions = [
+      { row: 8, col: 0 },
+      { row: 0, col: 6 },
+      { row: 4, col: 12 },
+      { row: 0, col: 0 },
+      { row: 12, col: 0 },
+      { row: 4, col: 0 },
+      { row: 8, col: 12 },
+      { row: 0, col: 12 },
+    ];
+    const dashcards = positions.map(({ row, col }, index) =>
+      createMockDashboardCard({
+        id: index + 1,
+        card_id: index + 1,
+        dashboard_id: dashboardId,
+        row,
+        col,
+        card: createMockCard({
+          id: index + 1,
+          dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+            query: `SELECT 'card-${index + 1}'`,
+          }),
+        }),
+      }),
+    );
+
+    const requestedCardIds: number[] = [];
+    fetchMock.post("path:/api/dataset", ({ options }) => {
+      const match = String(options.body).match(/card-(\d+)/);
+      requestedCardIds.push(Number(match?.[1]));
+      return { data: { rows: [], cols: [] } };
+    });
+
+    const DASHBOARD = createMockDashboard({ id: dashboardId, dashcards });
+    const state: Partial<StoreSeedState> = {
+      dashboard: createMockDashboardState({
+        dashboardId: DASHBOARD.id,
+        dashboards: {
+          [DASHBOARD.id]: createMockStoreDashboard({
+            ...DASHBOARD,
+            dashcards: dashcards.map((dc) => dc.id),
+          }),
+        },
+        dashcards: Object.fromEntries(dashcards.map((dc) => [dc.id, dc])),
+      }),
+      entities: createMockEntitiesState({
+        databases: [createSampleDatabase()],
+      }),
+      settings: createMockSettingsState(),
+    };
+    const { dispatch, getState } = createMockDispatch(() => state);
+
+    // Unjustified type cast. FIXME
+    await fetchDashboardCardData()(dispatch as never, getState as never);
+
+    expect(requestedCardIds).toEqual([4, 2, 8, 6, 3, 1, 7, 5]);
+  });
+
   it("should make at most 5 api calls simultaneously", async () => {
     const { dispatch, getState, getMaxConcurrent } = setupConcurrencyTest(
       100,
