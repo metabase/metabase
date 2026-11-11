@@ -38,8 +38,9 @@
    Values from an op have the types [[dashboard-op-schema/op-schema]] gives them, or `:any` where it leaves them open.
    Values read from the dashboard have their types.
    Errors thrown while checking or applying an op also carry `:op-index` (0-based) and `:op-name` (as sent, or nil).
-   The `:cards-without-tab` check runs after the last op, and `:invalid-payload` checks the whole save, sent ops or not.
-   So those two errors carry neither."
+   The `:cards-without-tab`, `:overlapping-cards` and `:past-grid-edge` checks run after the last op.
+   The `:invalid-payload` check covers the whole save, sent ops or not.
+   So those errors carry neither."
   {:invalid-op                         [:map {:closed true} [:explanation :any]]
    :invalid-payload                    [:map {:closed true} [:explanation :any]]
    :duplicate-new-id                   [:map {:closed true} [:id :int]]
@@ -52,6 +53,8 @@
    :unknown-patch-key                  [:map {:closed true} [:key :string]]
    :tab-index-out-of-range             [:map {:closed true} [:index :int] [:tab-count :int]]
    :cards-without-tab                  [:map {:closed true} [:dashcard-ids [:sequential :int]]]
+   :overlapping-cards                  [:map {:closed true} [:dashcard-ids [:sequential :int]]]
+   :past-grid-edge                     [:map {:closed true} [:dashcard-id :int] [:col :int] [:size-x :int]]
    :unknown-parameter                  [:map {:closed true} [:parameter-id :string]]
    :parameter-exists                   [:map {:closed true} [:parameter-id :string]]
    :set-and-cleared                    [:map {:closed true} [:field :string]]
@@ -110,7 +113,20 @@
   {:dashcards  (vec (:dashcards current))
    :tabs       (vec (:tabs current))
    :parameters (vec (:parameters current))
-   ::cards     cards})
+   ::cards     cards
+   ::placed    {}})
+
+(defn- mark-placed
+  "Record that an op gave the dashcard `id` its `:position` or its `:size`, for [[settle-layout]].
+   A position outranks a size, so a card moved and then resized keeps its place."
+  [state id how]
+  (update-in state [::placed id] #(if (= :position %) % how)))
+
+(defn- shown-tab
+  "The id of the tab a dashcard with `tab-id` shows on, which for a nil `tab-id` is the dashboard's first tab, if any."
+  [state tab-id]
+  ;; The save puts a card with no tab on the sole tab, and [[check-tab-coverage!]] refuses one when there are more.
+  (or tab-id (:id (first (:tabs state)))))
 
 (defn- card-display
   "The display type keyword driving a new dashcard's default size; `:table` when the card is
@@ -140,9 +156,12 @@
   (update state coll (partial mapv #(if (= id (:id %)) (f %) %))))
 
 (defn- remove-row
-  "Drop the row with `id`, preserving the order of the rest."
+  "Drop the row with `id`, preserving the order of the rest.
+   A dashcard also loses the mark [[mark-placed]] gave it."
   [state coll id]
-  (update state coll (partial filterv #(not= id (:id %)))))
+  (cond-> (update state coll (partial filterv #(not= id (:id %))))
+    ;; A later op in the call may reuse a removed card's new id, and the new card must not inherit the mark.
+    (= :dashcards coll) (update ::placed dissoc id)))
 
 (defn- move-row
   "Move the row with `id` so it sits at `index` among the remaining rows.
@@ -186,7 +205,7 @@
    the display type's default and an omitted position autoplaces against the cards already on
    the target tab."
   [state {:keys [position size]} tab-id display-type]
-  (let [siblings   (filterv #(= tab-id (:dashboard_tab_id %)) (:dashcards state))
+  (let [siblings   (filterv #(= (shown-tab state tab-id) (shown-tab state (:dashboard_tab_id %))) (:dashcards state))
         ;; The display's default size, from `dashboards.constants` via the 2-arity. Resolved
         ;; against no siblings so it always yields a size — the search below can come up empty on
         ;; a full tab, and the default size must not vanish with it.
@@ -255,8 +274,9 @@
   [state op base display]
   (check-new-id! state (:id op))
   (check-tab-id! state (:dashboard_tab_id base))
-  (insert-row state :dashcards
-              (merge base (placement state op (:dashboard_tab_id base) display))))
+  (cond-> (insert-row state :dashcards
+                      (merge base (placement state op (:dashboard_tab_id base) display)))
+    (:position op) (mark-placed (:id op) :position)))
 
 ;;; ------------------------------------------------- Ops ----------------------------------------------------------
 
@@ -389,25 +409,29 @@
         tab-id (if (contains? op :tab) tab (:dashboard_tab_id dc))]
     (when (contains? op :tab)
       (check-tab-id! state tab))
-    (update-row state :dashcards dashcard_id
-                (fn [dc]
-                  (merge dc
-                         {:dashboard_tab_id tab-id}
-                         (if position
-                           {:row (:row position) :col (:col position)}
-                           ;; autoplace against the other cards on the tab: the card being moved is
-                           ;; not its own sibling, or the search can never return the slot it holds
-                           (select-keys (placement (update state :dashcards
-                                                           (partial filterv #(not= dashcard_id (:id %))))
-                                                   {:size (select-keys dc [:size_x :size_y])}
-                                                   tab-id
-                                                   :table)
-                                        [:row :col])))))))
+    (cond-> (update-row state :dashcards dashcard_id
+                        (fn [dc]
+                          (merge dc
+                                 {:dashboard_tab_id tab-id}
+                                 (if position
+                                   {:row (:row position) :col (:col position)}
+                                   ;; autoplace against the other cards on the tab: the card being moved is
+                                   ;; not its own sibling, or the search can never return the slot it holds
+                                   (select-keys (placement (update state :dashcards
+                                                                   (partial filterv #(not= dashcard_id (:id %))))
+                                                           {:size (select-keys dc [:size_x :size_y])}
+                                                           tab-id
+                                                           :table)
+                                                [:row :col])))))
+      position       (mark-placed dashcard_id :position)
+      ;; Autoplace chose the slot, so an earlier op's mark no longer says where the card belongs.
+      (not position) (update ::placed dissoc dashcard_id))))
 
 (defmethod apply-op "resize"
   [state {:keys [dashcard_id size]}]
   (resolve-dashcard! state dashcard_id)
-  (update-row state :dashcards dashcard_id #(merge % (select-keys size [:size_x :size_y]))))
+  (-> (update-row state :dashcards dashcard_id #(merge % (select-keys size [:size_x :size_y])))
+      (mark-placed dashcard_id :size)))
 
 (defmethod apply-op "remove"
   [state {:keys [dashcard_id]}]
@@ -529,12 +553,17 @@
         cards  (filterv #(= tab_id (:dashboard_tab_id %)) (:dashcards state))
         state  (insert-row state :tabs {:id id :name (:name source)})]
     (reduce (fn [st card]
-              (insert-row st :dashcards
-                          (-> card
-                              (dissoc :created_at :updated_at :card)
-                              clear-inline-parameters
-                              (assoc :id (next-temp-id st)
-                                     :dashboard_tab_id id))))
+              (let [copy-id (next-temp-id st)
+                    how     (get-in st [::placed (:id card)])]
+                ;; The tab is copied before [[settle-layout]] runs, so each copy carries its card's mark, and the copy
+                ;; settles the way the source tab does.
+                (cond-> (insert-row st :dashcards
+                                    (-> card
+                                        (dissoc :created_at :updated_at :card)
+                                        clear-inline-parameters
+                                        (assoc :id copy-id
+                                               :dashboard_tab_id id)))
+                  how (mark-placed copy-id how))))
             state
             cards)))
 
@@ -555,6 +584,82 @@
     (when-let [orphans (not-empty (filterv #(nil? (:dashboard_tab_id %)) dashcards))]
       (fail! :cards-without-tab {:dashcard-ids (mapv :id orphans)})))
   state)
+
+;;; ------------------------------------------------- Layout -------------------------------------------------------
+
+(defn- bottom
+  [dc]
+  (+ (:row dc) (:size_y dc)))
+
+(defn- overlap?
+  [a b]
+  (and (< (:col a) (+ (:col b) (:size_x b)))
+       (< (:col b) (+ (:col a) (:size_x a)))
+       (< (:row a) (bottom b))
+       (< (:row b) (bottom a))))
+
+(defn- push-below
+  "`dc` moved down until it overlaps none of `settled`."
+  [settled dc]
+  (if-let [hits (seq (filter (partial overlap? dc) settled))]
+    (recur settled (assoc dc :row (apply max (map bottom hits))))
+    dc))
+
+(defn- check-placements!
+  "Throws when a card in `dcs`, all on one tab, that an op placed runs past the grid's right edge, or when two cards
+   given positions overlap.
+   `placed` is as [[settle-tab]] takes it."
+  [placed dcs]
+  (doseq [{:keys [id col size_x]} (filter (comp placed :id) dcs)
+          :when (< autoplace/default-grid-width (+ col size_x))]
+    (fail! :past-grid-edge {:dashcard-id id, :col col, :size-x size_x}))
+  (let [positioned (filterv (comp #{:position} placed :id) dcs)]
+    (when-let [pair (first (for [[i a] (map-indexed vector positioned)
+                                 b     (drop (inc i) positioned)
+                                 :when (overlap? a b)]
+                             [(:id a) (:id b)]))]
+      (fail! :overlapping-cards {:dashcard-ids pair}))))
+
+(defn- settle-tab
+  "The new rows of the dashcards in `dcs`, all on one tab, that must move down, as `{id row}`.
+   `placed` maps the id of each card an op placed to `:position` or `:size`, as [[mark-placed]] records it.
+   Cards given a position stay where they are.
+   Resized cards settle next, then the rest, each group in reading order, and each card below whatever settled card
+   it overlaps.
+   So a pushed card pushes the cards it lands on in turn."
+  [placed dcs]
+  (let [{positioned :position resized :size others nil} (group-by (comp placed :id) dcs)
+        in-reading-order (partial sort-by (juxt :row :col))]
+    (second
+     (reduce (fn [[settled moved] dc]
+               (let [settled-dc (push-below settled dc)]
+                 [(conj settled settled-dc)
+                  (cond-> moved
+                    (not= (:row dc) (:row settled-dc)) (assoc (:id dc) (:row settled-dc)))]))
+             [(vec positioned) {}]
+             (concat (in-reading-order resized) (in-reading-order others))))))
+
+(defn- settle-layout
+  "Push down the cards that a card an op placed now covers, as the dashboard editor does, and record under
+   `::pushed` the ids of the stored dashcards that moved, in save order.
+   Only tabs holding a card an op placed, and tabs the call created, are settled.
+   Elsewhere a layout that already overlaps stays as it was, so an edit to a filter or another tab doesn't rearrange
+   it."
+  [{:keys [tabs dashcards] :as state}]
+  (let [tab-of      #(shown-tab state (:dashboard_tab_id %))
+        ;; A card an op placed and a later op removed is gone.
+        placed      (select-keys (::placed state) (map :id dashcards))
+        ;; A new tab's copies may hold no placed card, but their layout is the call's to make valid.
+        new-tabs    (into #{} (comp (map :id) (filter neg?)) tabs)
+        placed-tabs (into #{} (comp (filter (comp placed :id)) (map tab-of)) dashcards)
+        touched     (into new-tabs placed-tabs)
+        ;; `contains?`, as a dashboard without tabs keeps its cards under the tab nil.
+        by-tab      (vals (group-by tab-of (filter #(contains? touched (tab-of %)) dashcards)))
+        _           (run! (partial check-placements! placed) by-tab)
+        rows        (into {} (mapcat (partial settle-tab placed)) by-tab)]
+    (-> state
+        (map-rows :dashcards #(if-let [row (get rows (:id %))] (assoc % :row row) %))
+        (assoc ::pushed (into [] (comp (map :id) (filter #(and (pos-int? %) (contains? rows %)))) dashcards)))))
 
 ;;; --------------------------------------------- Parameter ops -----------------------------------------------------
 
@@ -908,11 +1013,26 @@
    It covers the cards [[referenced-card-ids]] finds, leaving out the ones the user cannot read.
    A card the dashboard already references needs no row, as the save leaves stored references alone.
    This namespace does no I/O, so the caller resolves them.
+   A card that an op gives a position stays where the op put it, and a resized card keeps its place unless such a
+   card covers it.
+   Either pushes down the cards it covers.
+   [[pushed-dashcard-ids]] reads which stored cards moved from the payload's metadata.
    Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."
   [current ops cards]
-  (-> (reduce-kv apply-op-at
-                 (assoc (init-state current cards) ::stored-card-ids (dashboard-card-ids current))
-                 (prepare-ops ops))
-      check-tab-coverage!
-      (select-keys [:dashcards :tabs :parameters])
-      (update :dashcards (partial mapv series-ids))))
+  (let [state (-> (reduce-kv apply-op-at
+                             (assoc (init-state current cards) ::stored-card-ids (dashboard-card-ids current))
+                             (prepare-ops ops))
+                  check-tab-coverage!
+                  settle-layout)]
+    (-> state
+        (select-keys [:dashcards :tabs :parameters])
+        (update :dashcards (partial mapv series-ids))
+        (with-meta {::pushed-dashcard-ids (::pushed state)}))))
+
+(defn pushed-dashcard-ids
+  "The ids of the stored dashcards [[compile-ops]] pushed down to make room for cards the ops placed, in save order.
+   `x` is the payload [[compile-ops]] returns, or a dashboard
+   [[metabase.metabot.toolkit.dashboard-write/write!]] returns, which carries them over.
+   Empty or nil when none moved."
+  [x]
+  (::pushed-dashcard-ids (meta x)))

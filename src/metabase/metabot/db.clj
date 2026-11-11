@@ -726,6 +726,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
+(mu/defn dashboard-questions
+  "The Cards among `card-ids` that are saved inside a dashboard, which is their `:dashboard_id`."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select :model/Card :id [:in card-ids] :dashboard_id [:not= nil]))
+
 (mu/defn card-by-entity-id
   "The Card with `entity-id`, or nil."
   [entity-id :- :string]
@@ -895,6 +900,19 @@
    chart-id :- :string]
   (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
                                                        :metabot_chart_id        chart-id}))
+
+(mu/defn conversation-dashboard-questions
+  "The unarchived dashboard questions of `dashboard-id` that were saved from `chart-id` in the conversation with
+  `conversation-id`, oldest first."
+  [conversation-id :- :string
+   chart-id        :- :string
+   dashboard-id    :- ::lib.schema.id/dashboard]
+  (t2/select :model/Card
+             :metabot_conversation_id conversation-id
+             :metabot_chart_id        chart-id
+             :dashboard_id            dashboard-id
+             :archived                false
+             {:order-by [[:id :asc]]}))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
