@@ -7,9 +7,9 @@
    [metabase.api.common :refer [*current-user-id* *is-superuser?*]]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.toucan.core :as t2]
    [metabase.users.models.user :as user]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [tru]]))
 
 (defn- enforce-sandbox?
   "Takes all the group-ids a user belongs to and a sandbox, and determines whether the sandbox should be enforced for the user.

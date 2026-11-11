@@ -173,13 +173,12 @@
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -316,7 +315,7 @@
     (perms-objects-set-for-parent-collection (:collection_id instance) read-or-write)
     #{"___no-remote-sync-access"}))
 
-(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
+(t2/define-batched-hydrate [:perms/use-parent-collection-perms :can_write]
   [_model k models]
   (mi/instances-with-hydrated-data
    models k
@@ -336,7 +335,7 @@
 ;;; |                                               ENTITY + LIFECYCLE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(methodical/defmethod t2/table-name :model/Permissions [_model] :permissions)
+(t2/define-table-name :model/Permissions [_model] :permissions)
 
 (derive :model/Permissions :metabase/model)
 

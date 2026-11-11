@@ -17,9 +17,9 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.schema :as queries.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
-   [toucan2.core :as t2]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (set! *warn-on-reflection* true)
 

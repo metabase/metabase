@@ -25,13 +25,12 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.parameters.db :as parameters.db]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -132,13 +131,13 @@
                               ;; `:list` instead of `:auto-list`.)
                               (t2/hydrate :has_field_values)))))
 
-(methodical/defmethod t2/simple-hydrate [nil :name_field]
+(t2/define-simple-hydrate [nil :name_field]
   "Not really 100% sure why this is even needed but when we do recursive hydration of `[:target :name_field]` it tries
   to hydrate for `nil`... I guess we have to explicitly tell it to do nothing."
   [_model _k _nil]
   nil)
 
-(methodical/defmethod t2/batched-hydrate [:model/Field :name_field]
+(t2/define-batched-hydrate [:model/Field :name_field]
   "For all `fields` that are `:type/PK` Fields, look for a `:type/Name` Field belonging to the same Table. For each
   Field, if a matching name Field exists, add it under the `:name_field` key. This is so the Fields can be used in
   public/embedded field values search widgets. This only includes the information needed to power those widgets, and
@@ -440,7 +439,7 @@
     (preload-param-filterable-columns! param-dashcard-infos)
     (into #{} cat (vals (transduce identity field-id-into-context-rf param-dashcard-infos)))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Dashboard :param_fields]
+(t2/define-batched-hydrate [:model/Dashboard :param_fields]
   "Add a `:param_fields` map (parameter or template-tag ID -> vector of Fields) for all of the Fields referenced by
   the parameters of a Dashboard."
   [_model k dashboards]
@@ -466,7 +465,7 @@
   [card :- [:maybe :metabase.queries.schema/card]]
   (some-> card :dataset_query not-empty lib-be/normalize-query lib/all-template-tags-id->field-ids))
 
-(methodical/defmethod t2/simple-hydrate [:model/Card :param_fields]
+(t2/define-simple-hydrate [:model/Card :param_fields]
   "Add a `:param_fields` map (template-tag ID -> vector of Fields) for all of the Fields referenced by the parameters
   of a Card."
   [_model k card]

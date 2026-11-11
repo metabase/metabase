@@ -4,12 +4,11 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(methodical/defmethod t2/table-name :model/Metabot [_model] :metabot)
+(t2/define-table-name :model/Metabot [_model] :metabot)
 
 (doto :model/Metabot
   (derive :metabase/model)
@@ -27,7 +26,7 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(methodical/defmethod t2/batched-hydrate [:model/Metabot :prompts]
+(t2/define-batched-hydrate [:model/Metabot :prompts]
   "Hydrate the list of prompts for a collection of metabots."
   [_model k metabots]
   (mi/instances-with-hydrated-data

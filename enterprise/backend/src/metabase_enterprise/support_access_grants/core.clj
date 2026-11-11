@@ -9,9 +9,9 @@
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.events.core :as events]
    [metabase.system.core :as system]
+   [metabase.toucan.core :as t2]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (def ^:private grant-lifecycle-lock
   ::grant-lifecycle)

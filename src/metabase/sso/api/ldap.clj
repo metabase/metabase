@@ -8,7 +8,7 @@
    [metabase.sso.ldap :as ldap]
    [metabase.sso.schema :as sso.schema]
    [metabase.sso.settings :as sso.settings]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

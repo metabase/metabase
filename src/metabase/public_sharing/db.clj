@@ -2,8 +2,8 @@
   "Application database queries for the public sharing module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli :as mu]))
 
 (mu/defn unarchived-card-ids-and-public-uuids-by-prefix
   "The `:id` and `:public_uuid` of the unarchived Cards whose public uuid prefix is `prefix`."

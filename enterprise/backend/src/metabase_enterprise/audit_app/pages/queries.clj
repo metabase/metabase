@@ -6,7 +6,7 @@
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 ;; List of all failing questions
 (defmethod audit.i/internal-query ::bad-table

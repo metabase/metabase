@@ -9,8 +9,8 @@
    [metabase.collections.core :as collections]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru tru]]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (set! *warn-on-reflection* true)
 

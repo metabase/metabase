@@ -7,13 +7,12 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
-(methodical/defmethod t2/table-name :model/AnalysisFindingError [_model] :analysis_finding_error)
+(t2/define-table-name :model/AnalysisFindingError [_model] :analysis_finding_error)
 
 (derive :model/AnalysisFindingError :metabase/model)
 

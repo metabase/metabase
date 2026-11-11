@@ -4,9 +4,9 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.schema :as warehouses.schema]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.schema :as warehouses.schema]))
 
 (mu/defn router-database-id
   "The router Database id of the Database with `database-id`, or nil."

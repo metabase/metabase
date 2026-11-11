@@ -134,6 +134,7 @@
            search
            serialization
            settings
+           toucan
            users.schema
            util
            warehouses
@@ -164,6 +165,7 @@
            models
            permissions
            public-sharing
+           toucan
            util}
    :model-imports #{:model/Action :model/Card :model/Database}}
 
@@ -179,6 +181,7 @@
            lib.schema
            models
            permissions
+           toucan
            util
            util.config}
    :model-imports #{:model/Card
@@ -225,6 +228,7 @@
            sso
            system
            task
+           toucan
            util
            util.config}
    :model-imports #{:model/CacheConfig
@@ -328,6 +332,7 @@
            models
            permissions
            premium-features
+           toucan
            users
            users.schema
            util}
@@ -355,6 +360,7 @@
            api-scope
            batch-processing
            settings
+           toucan
            util}
    :model-imports #{:model/Action
                     :model/Card
@@ -390,6 +396,7 @@
            connection-pool
            funnysql
            task.secure-delegate
+           toucan
            util
            util.classloader
            util.config}
@@ -399,7 +406,10 @@
   {:team "UX West"
    :api  #{metabase.appearance.core
            metabase.appearance.init}
-   :uses #{lib.schema settings util}
+   :uses #{lib.schema
+           settings
+           toucan
+           util}
    :model-imports #{:model/Dashboard}}
 
   audit-app
@@ -415,6 +425,7 @@
            settings
            task
            task.history
+           toucan
            tracing
            util}
    :model-exports #{:model/AuditLog}
@@ -455,6 +466,7 @@
            models
            premium-features
            query-permissions
+           toucan
            util}
    :model-exports #{:model/ViewLog}
    :model-imports #{:model/Card
@@ -492,6 +504,7 @@
            lib.schema
            permissions
            queries
+           toucan
            util}
    :model-exports #{:model/CardBookmark
                     :model/CollectionBookmark
@@ -512,6 +525,7 @@
            permissions
            premium-features
            settings
+           toucan
            util
            util.config}
    :model-imports #{:model/Database}}
@@ -530,6 +544,7 @@
            premium-features
            request
            settings
+           toucan
            util
            util.config}
    :model-exports #{:model/CacheConfig :model/QueryCache}
@@ -582,6 +597,7 @@
            task
            tiles
            timeline
+           toucan
            util
            util.config}
    :model-exports #{:model/Channel :model/ChannelTemplate}
@@ -621,6 +637,7 @@
            settings
            store-api
            task
+           toucan
            util
            util.config}
    :model-imports #{:model/AuditLog
@@ -664,6 +681,7 @@
            revisions.schema
            search
            serialization
+           toucan
            tracing
            transforms.feature-gating
            upload
@@ -702,6 +720,7 @@
            premium-features
            queries
            request
+           toucan
            util}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
@@ -716,6 +735,7 @@
            lib.schema
            models
            request
+           toucan
            users
            util}
    :model-exports #{:model/Comment}
@@ -730,8 +750,7 @@
   content-translation
   {:team "UX West"
    :api  #{metabase.content-translation.models}
-   :uses #{premium-features
-           util}
+   :uses #{premium-features toucan util}
    :model-exports #{:model/ContentTranslation}}
 
   content-verification
@@ -740,6 +759,7 @@
    :uses #{app-db
            lib.schema
            models
+           toucan
            users.schema
            util}
    :model-exports #{:model/ModerationReview}
@@ -768,6 +788,7 @@
            search
            settings
            sso.auth-identity
+           toucan
            util
            util.classloader
            util.config}
@@ -827,6 +848,7 @@
            staleness
            sync
            timeline
+           toucan
            util
            util.config}
    :model-exports #{:model/Dashboard
@@ -871,6 +893,7 @@
            query-processor
            request
            revisions
+           toucan
            util
            xrays}
    :model-imports #{:model/Action
@@ -960,6 +983,7 @@
            serialization
            settings
            staleness
+           toucan
            util}
    :model-exports #{:model/Document}
    :model-imports #{:model/Card
@@ -1010,6 +1034,7 @@
            sql-tools
            startup
            system
+           toucan
            tracing
            util
            util.classloader
@@ -1037,6 +1062,7 @@
            serialization
            server
            settings
+           toucan
            util}
    :model-imports #{:model/Card :model/Dashboard}
    :model-exports #{:model/EmbeddingSdkReact18Host :model/EmbeddingTheme}}
@@ -1083,6 +1109,7 @@
            query-processor
            request
            tiles
+           toucan
            util}
    :model-imports #{:model/Card
                     :model/Dashboard
@@ -1093,8 +1120,7 @@
   events
   {:team "DevEx"
    :api  #{metabase.events.core metabase.events.impl metabase.events.init}
-   :uses #{models
-           util}
+   :uses #{models toucan util}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
@@ -1141,6 +1167,7 @@
            task
            task.history
            timeline
+           toucan
            util}
    :model-exports #{:model/Exploration}
    :model-imports #{:model/Card
@@ -1208,6 +1235,7 @@
            models
            remote-sync
            serialization
+           toucan
            util}
    :model-exports #{:model/Glossary}
    :model-imports #{:model/User}}
@@ -1222,6 +1250,7 @@
            lib.schema
            settings
            task
+           toucan
            util}}
 
   indexed-entities
@@ -1240,6 +1269,7 @@
            search
            sync
            task
+           toucan
            util}
    :model-exports #{:model/ModelIndex :model/ModelIndexValue}
    :model-imports #{:model/Card :model/Collection}}
@@ -1303,6 +1333,7 @@
            lib.schema
            models
            settings
+           toucan
            util}
    :model-imports #{:model/Card
                     :model/Database
@@ -1474,6 +1505,7 @@
            sso.auth-identity
            system
            task
+           toucan
            users
            util
            util.config
@@ -1541,6 +1573,7 @@
            remote-sync
            search
            serialization
+           toucan
            users.schema
            util
            warehouses.schema}
@@ -1616,6 +1649,7 @@
               system
               task
               timeline
+              toucan
               transforms
               util
               util.config
@@ -1672,6 +1706,7 @@
               server
               settings
               sso.auth-identity
+              toucan
               util}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1742,6 +1777,7 @@
               settings
               sso
               system
+              toucan
               upload
               util}
    :model-imports #{:model/AuthIdentity :model/Card :model/MetabotMessage}}
@@ -1755,6 +1791,7 @@
            models
            parameters
            parameters.schema
+           toucan
            util}
    :model-imports #{:model/Card :model/Dashboard}}
 
@@ -1778,6 +1815,7 @@
            request
            serialization
            server
+           toucan
            util}
    :model-imports #{:model/Card
                     :model/Field
@@ -1811,6 +1849,7 @@
            system
            task
            task.history
+           toucan
            tracing
            util
            warehouses
@@ -1833,6 +1872,7 @@
            lib
            lib.legacy-mbql
            lib.schema
+           toucan
            util
            util.classloader}
    :model-imports #{:model/Action
@@ -1887,6 +1927,7 @@
            settings
            startup
            task
+           toucan
            util
            util.classloader}}
 
@@ -1904,6 +1945,7 @@
            premium-features
            remote-sync
            serialization
+           toucan
            users.schema
            util}
    :model-exports #{:model/NativeQuerySnippet}
@@ -1943,6 +1985,7 @@
            system
            task
            task.history
+           toucan
            tracing
            users
            users.schema
@@ -1973,6 +2016,7 @@
            request
            search.entity-retrieval
            serialization
+           toucan
            util}
    :model-exports #{:model/OsiAiContext}
    :model-imports #{:model/Card
@@ -2004,6 +2048,7 @@
            models
            parameters.schema
            query-processor
+           toucan
            util
            util.classloader
            warehouses.schema}
@@ -2039,6 +2084,7 @@
            premium-features
            remote-sync
            settings
+           toucan
            tracing
            users.schema
            util
@@ -2070,6 +2116,7 @@
            premium-features
            request
            settings
+           toucan
            util}
    :model-imports #{:model/Card
                     :model/Dashboard
@@ -2095,6 +2142,7 @@
            dependencies
            settings
            task
+           toucan
            tracing
            util
            util.classloader
@@ -2133,6 +2181,7 @@
            metabase.public-sharing.validation}
    :uses #{api
            settings
+           toucan
            util}
    :model-imports #{:model/Action
                     :model/Card
@@ -2161,6 +2210,7 @@
            query-processor
            request
            tiles
+           toucan
            util}
    :model-imports #{:model/Action
                     :model/Card
@@ -2194,6 +2244,7 @@
            request
            task
            task.history
+           toucan
            tracing
            util
            util.config}
@@ -2253,6 +2304,7 @@
            staleness
            sync
            sync.analyze
+           toucan
            util
            util.config
            util.graph
@@ -2304,6 +2356,7 @@
            request
            revisions
            search
+           toucan
            util}
    :model-imports #{:model/Action
                     :model/Card
@@ -2328,6 +2381,7 @@
            permissions
            query-processor
            request
+           toucan
            util}
    :model-imports #{:model/Card :model/Field :model/Table}}
 
@@ -2449,6 +2503,7 @@
            settings
            sync
            system
+           toucan
            upload
            util
            util.classloader
@@ -2485,6 +2540,7 @@
            request.schema
            session
            settings
+           toucan
            users
            util
            util.config}
@@ -2517,6 +2573,7 @@
            query-permissions
            revisions.schema
            segments
+           toucan
            transforms
            util
            util.config}
@@ -2547,6 +2604,7 @@
    :uses #{analytics.interface
            app-db
            task
+           toucan
            util}}
 
   sample-data
@@ -2558,6 +2616,7 @@
            plugins
            settings
            sync
+           toucan
            util
            warehouses}
    :model-imports #{:model/DataPermissions :model/Database :model/Table}}
@@ -2602,6 +2661,7 @@
            settings
            startup
            task
+           toucan
            tracing
            transforms.feature-gating
            util
@@ -2645,6 +2705,7 @@
            remote-sync
            search
            serialization
+           toucan
            users.schema
            util
            warehouses.schema}
@@ -2661,6 +2722,7 @@
            models
            permissions
            segments
+           toucan
            util
            xrays}
    :model-imports #{:model/Segment}}
@@ -2676,6 +2738,7 @@
            lib.schema
            models
            parameters.schema
+           toucan
            util
            util.config}
    :model-imports #{:model/Card
@@ -2736,6 +2799,7 @@
            session
            settings
            system
+           toucan
            tracing
            users
            util
@@ -2764,6 +2828,7 @@
            sso.auth-identity
            system
            task
+           toucan
            tracing
            util
            util.config}
@@ -2782,6 +2847,7 @@
            request
            session
            settings
+           toucan
            util}
    :model-exports #{:model/LoginHistory}}
 
@@ -2795,6 +2861,7 @@
            models
            premium-features
            serialization
+           toucan
            util
            util.config}
    :model-exports #{:model/Setting}
@@ -2816,6 +2883,7 @@
    :uses #{app-db
            lib.schema
            settings
+           toucan
            util
            util.config}
    :model-imports #{:model/User}}
@@ -2834,6 +2902,7 @@
            setup
            sso.auth-identity
            system
+           toucan
            util}
    :model-imports #{:model/User}}
 
@@ -2877,6 +2946,7 @@
               sso.auth-identity
               startup
               system
+              toucan
               util
               util.config}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
@@ -2898,6 +2968,7 @@
            request.schema
            session.login-history
            settings
+           toucan
            users.schema
            util}
    :model-exports #{:model/AuthIdentity}
@@ -3011,6 +3082,7 @@
            request
            run-tracking
            task
+           toucan
            tracing
            util
            util.config}
@@ -3043,6 +3115,7 @@
            security-center
            session
            settings
+           toucan
            util
            util.config}
    :model-imports #{:model/AiUsageLog
@@ -3074,6 +3147,7 @@
            query-processor
            settings
            startup
+           toucan
            util}
    :model-imports #{:model/Card :model/Dashboard :model/DashboardCard}}
 
@@ -3088,6 +3162,7 @@
            models
            remote-sync
            serialization
+           toucan
            util}
    :model-exports #{:model/Timeline :model/TimelineEvent}
    :model-imports #{:model/Collection}}
@@ -3146,6 +3221,7 @@
            staleness
            task
            task.history
+           toucan
            tracing
            transforms.base
            transforms.feature-gating
@@ -3195,6 +3271,7 @@
            premium-features
            query-processor
            sync
+           toucan
            transforms.indexes
            util
            workspaces}}
@@ -3213,6 +3290,7 @@
            models
            remote-sync
            serialization
+           toucan
            util
            warehouses}
    :model-exports #{:model/TableIndex}
@@ -3225,6 +3303,7 @@
    :uses #{api
            driver
            lib.schema
+           toucan
            transforms.base
            transforms.indexes
            util}
@@ -3246,6 +3325,7 @@
            lib.schema
            models
            request
+           toucan
            transforms
            transforms.base
            util}
@@ -3278,6 +3358,7 @@
            queries
            settings
            sync
+           toucan
            util
            warehouses.schema
            workspaces}
@@ -3302,6 +3383,7 @@
            models
            settings
            task
+           toucan
            util}}
 
   user-key-value
@@ -3337,6 +3419,7 @@
            setup
            sso.auth-identity
            system
+           toucan
            users.schema
            users.tenants
            util
@@ -3366,6 +3449,7 @@
            sso
            sso.auth-identity
            system
+           toucan
            users
            users.schema
            users.tenants
@@ -3395,7 +3479,7 @@
                      util.config
                      util.graph}
    :api  :any
-   :uses #{util.classloader util.config}}
+   :uses #{toucan util.classloader util.config}}
 
   util.classloader
   {:team "DevEx"
@@ -3436,6 +3520,7 @@
            serialization
            settings
            sync
+           toucan
            util
            warehouses.secrets}
    :model-exports #{:model/Database}
@@ -3466,6 +3551,7 @@
            sample-data
            settings
            sync
+           toucan
            upload
            util
            util.config
@@ -3516,6 +3602,7 @@
            serialization
            settings
            sync.analyze
+           toucan
            util
            warehouses}
    :model-exports #{:model/Dimension
@@ -3557,6 +3644,7 @@
            query-processor
            request
            sync
+           toucan
            upload
            util
            warehouses.schema
@@ -3578,6 +3666,7 @@
            models
            premium-features
            system
+           toucan
            util}}
 
   workspaces
@@ -3612,6 +3701,7 @@
            segments
            settings
            sync.analyze
+           toucan
            util
            warehouses.schema}
    :model-imports #{:model/Card
@@ -3641,6 +3731,7 @@
            models
            query-processor
            sync
+           toucan
            util}
    :model-imports #{:model/Database
                     :model/Field
@@ -3665,6 +3756,7 @@
            setup
            sso.auth-identity
            sync
+           toucan
            users
            users.schema
            util
@@ -3677,6 +3769,7 @@
    :api  #{}
    :uses #{driver
            premium-features
+           toucan
            util
            enterprise/advanced-config
            enterprise/mfa
@@ -3707,6 +3800,7 @@
            request
            startup
            task
+           toucan
            util}
    :model-imports #{:model/ApiKeyUsageLog}}
 
@@ -3738,6 +3832,7 @@
            setup
            startup
            sync
+           toucan
            users
            util
            util.classloader
@@ -3774,6 +3869,7 @@
            lib.schema
            premium-features
            store-api
+           toucan
            util}
    :model-imports #{:model/User}}
 
@@ -3791,6 +3887,7 @@
            query-processor
            query-processor.cache-backend
            task
+           toucan
            util}
    :model-imports #{:model/CacheConfig
                     :model/Card
@@ -3829,6 +3926,7 @@
            lib.schema
            premium-features
            settings
+           toucan
            util
            enterprise/cloud}
    :model-imports #{:model/Database}}
@@ -3843,6 +3941,7 @@
            lib.schema
            premium-features
            settings
+           toucan
            util
            warehouses
            enterprise/cloud}
@@ -3882,6 +3981,7 @@
            settings
            task
            task.history
+           toucan
            tracing
            util
            enterprise/staleness}
@@ -3900,6 +4000,7 @@
            content-translation
            embedding
            premium-features
+           toucan
            util
            enterprise/api}
    :model-imports #{:model/ContentTranslation}}
@@ -3910,6 +4011,7 @@
    :uses #{api
            content-verification
            lib.schema
+           toucan
            util
            enterprise/api}
    :model-imports #{:model/Card :model/Dashboard}}
@@ -3931,6 +4033,7 @@
            serialization
            server
            settings
+           toucan
            util
            util.config}
    :model-exports #{:model/CustomVizPlugin}}
@@ -3962,6 +4065,7 @@
            server
            settings
            system
+           toucan
            util
            util.graph
            enterprise/dependencies
@@ -3990,6 +4094,7 @@
            models
            permissions
            premium-features
+           toucan
            util
            warehouses.schema}
    :model-imports #{:model/AuditLog
@@ -4026,6 +4131,7 @@
            sql-tools
            sql-tools.parsing
            task
+           toucan
            transforms
            transforms.base
            util}
@@ -4051,6 +4157,7 @@
            premium-features
            query-processor
            settings
+           toucan
            util
            warehouses
            warehouses.schema
@@ -4091,6 +4198,7 @@
            settings
            sql-tools
            task
+           toucan
            transforms
            transforms.base
            util
@@ -4140,6 +4248,7 @@
            queries
            segments
            task
+           toucan
            transforms
            util
            warehouses.schema
@@ -4179,6 +4288,7 @@
            collections
            lib.schema
            premium-features
+           toucan
            util}
    :model-imports #{:model/Card
                     :model/Collection
@@ -4198,6 +4308,7 @@
               permissions
               premium-features
               task
+              toucan
               util}
    :model-imports #{:model/McpGroupPermission
                     :model/McpSessionLog
@@ -4234,6 +4345,7 @@
                      premium-features
                      settings
                      task
+                     toucan
                      util
                      enterprise/cloud.add-ons}
    :model-imports #{:model/AiUsageLog :model/PermissionsGroup :model/PermissionsGroupMembership}}
@@ -4248,6 +4360,7 @@
            metabot.agent-api.usage
            premium-features
            task
+           toucan
            util}
    :model-imports #{:model/AgentApiCallLog}}
 
@@ -4264,6 +4377,7 @@
            query-processor
            request
            sql-tools
+           toucan
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
 
@@ -4286,6 +4400,7 @@
            settings
            startup
            task
+           toucan
            util
            util.config
            enterprise/search.embeddings
@@ -4312,6 +4427,7 @@
            settings
            sso
            sso.auth-identity
+           toucan
            util
            util.config}
    :model-imports #{:model/AuthIdentity :model/User}}
@@ -4324,6 +4440,7 @@
            native-query-snippets
            permissions
            premium-features
+           toucan
            util}
    :model-imports #{:model/NativeQuerySnippet}}
 
@@ -4343,6 +4460,7 @@
            query-permissions
            query-processor
            remote-sync
+           toucan
            util
            warehouses
            enterprise/permissions.impersonation}
@@ -4384,6 +4502,7 @@
            query-processor
            settings
            task
+           toucan
            util
            util.config
            warehouses.schema
@@ -4412,6 +4531,7 @@
            queries
            query-processor
            request
+           toucan
            users
            users.schema
            users.tenants
@@ -4455,6 +4575,7 @@
            settings
            startup
            task
+           toucan
            util
            enterprise/serialization}
    :model-imports #{:model/Action
@@ -4545,6 +4666,7 @@
            search.embeddings
            settings
            task
+           toucan
            tracing
            util
            util.config}
@@ -4571,6 +4693,7 @@
            settings
            system
            task
+           toucan
            util
            util.config}
    :model-exports #{:model/SecurityAdvisory}
@@ -4599,6 +4722,7 @@
            server
            settings
            setup
+           toucan
            util}
    :model-imports :bypass}
 
@@ -4633,6 +4757,7 @@
            sso.auth-identity
            system
            task
+           toucan
            util
            enterprise/sso.scim}
    :model-imports #{:model/PermissionsGroup}}
@@ -4654,6 +4779,7 @@
            permissions
            settings
            system
+           toucan
            users.schema
            util}
    :model-imports #{:model/ApiKey
@@ -4674,6 +4800,7 @@
            request
            settings
            staleness
+           toucan
            util}
    :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 
@@ -4692,6 +4819,7 @@
            sso.auth-identity
            system
            task
+           toucan
            users.schema
            util}
    :model-imports #{:model/AuthIdentity :model/Session :model/User}}
@@ -4710,6 +4838,7 @@
            request
            settings
            sso.auth-identity
+           toucan
            util}
    :model-exports #{:model/Tenant}
    :model-imports #{:model/Collection :model/User}}
@@ -4721,6 +4850,7 @@
    :api  #{metabase-enterprise.transforms.api}
    :uses #{lib.schema
            premium-features
+           toucan
            util
            enterprise/transforms.inspector}
    :model-imports #{:model/Transform}}
@@ -4739,6 +4869,7 @@
            lib.schema
            query-processor
            sql-tools
+           toucan
            tracing
            transforms
            transforms.base
@@ -4767,6 +4898,7 @@
            remote-sync
            serialization
            settings
+           toucan
            tracing
            transforms
            transforms.base
@@ -4787,6 +4919,7 @@
            models
            permissions
            premium-features
+           toucan
            upload
            util}
    :model-imports #{:model/Database :model/Table}}
@@ -4799,6 +4932,7 @@
            lib.schema
            models
            permissions
+           toucan
            util
            warehouses.schema}
    :model-imports #{:model/Database :model/Field :model/Table}}
@@ -4822,6 +4956,7 @@
            sample-data
            settings
            sql-tools
+           toucan
            util
            workspaces}
    :model-exports #{:model/Workspace}

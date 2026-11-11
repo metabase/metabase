@@ -12,11 +12,11 @@
    [metabase.permissions.core :as perms]
    [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.field :as schema.field]
-   [metabase.warehouse-schema.table :as schema.table]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.table :as schema.table]))
 
 ;; This is similar to the function in [[metabase.warehouses-rest.api]], but we want to allow filtering the DBs in case
 ;; of audit database, we don't want to allow users to modify its queries.

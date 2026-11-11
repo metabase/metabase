@@ -8,7 +8,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

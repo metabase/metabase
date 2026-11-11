@@ -8,16 +8,15 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(methodical/defmethod t2/table-name :model/PersistedInfo [_model] :persisted_info)
+(t2/define-table-name :model/PersistedInfo [_model] :persisted_info)
 
 (derive :model/PersistedInfo :metabase/model)
 

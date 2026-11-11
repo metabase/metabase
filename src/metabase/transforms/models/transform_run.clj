@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.run-tracking.core :as rt]
+   [metabase.toucan.core :as t2]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform-run-cancelation :as cancel]
    [metabase.transforms.models.util :as transforms.models.u]
@@ -18,15 +19,13 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
    (java.time OffsetDateTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/TransformRun [_model] :transform_run)
+(t2/define-table-name :model/TransformRun [_model] :transform_run)
 
 (derive :model/TransformRun :metabase/model)
 

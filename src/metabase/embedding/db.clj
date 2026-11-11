@@ -3,9 +3,9 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn count-embedded-cards
   "Number of Cards that have embedding enabled."

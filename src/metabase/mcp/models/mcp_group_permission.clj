@@ -9,15 +9,14 @@
    [metabase.metabot.usage-controls :as usage-controls]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.registry :as mr]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/McpGroupPermission [_model] :mcp_group_permission)
+(t2/define-table-name :model/McpGroupPermission [_model] :mcp_group_permission)
 
 (doto :model/McpGroupPermission
   (derive :metabase/model)

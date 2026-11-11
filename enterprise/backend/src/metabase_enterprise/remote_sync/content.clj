@@ -9,8 +9,8 @@
    [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
 

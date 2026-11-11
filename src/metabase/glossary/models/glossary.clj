@@ -4,18 +4,17 @@
    [metabase.glossary.schema :as glossary.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli.schema :as ms]))
 
-(methodical/defmethod t2/table-name :model/Glossary [_model] :glossary)
+(t2/define-table-name :model/Glossary [_model] :glossary)
 
 (doto :model/Glossary
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(methodical/defmethod t2/batched-hydrate [:model/Glossary :creator]
+(t2/define-batched-hydrate [:model/Glossary :creator]
   "Add creator (user) to a glossary entry"
   [_model _k glossary-entries]
   (if-not (seq glossary-entries)

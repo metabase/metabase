@@ -32,8 +32,8 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.pulse.api :as pulse.api]
    [metabase.pulse.core :as pulse]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 

@@ -14,12 +14,12 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 

@@ -5,10 +5,10 @@
    [metabase.api.macros :as api.macros]
    [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.settings :as embedding.settings]
+   [metabase.toucan.core :as t2]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 

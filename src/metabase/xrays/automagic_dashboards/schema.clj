@@ -12,10 +12,10 @@
    [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.queries.schema]
    [metabase.segments.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::string-or-18n-string
   [:or :string [:fn {:error/message "localized string", :json-schema {:type "string"}} i18n/localized-string?]])

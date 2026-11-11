@@ -5,13 +5,12 @@
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase.models.interface :as mi]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
-(methodical/defmethod t2/table-name :model/DependencyStatus [_model] :dependency_status)
+(t2/define-table-name :model/DependencyStatus [_model] :dependency_status)
 
 (derive :model/DependencyStatus :metabase/model)
 

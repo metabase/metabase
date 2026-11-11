@@ -5,11 +5,10 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.util :as u]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util :as u]))
 
-(methodical/defmethod t2/table-name :model/ExplorationQuery [_model] :exploration_query)
+(t2/define-table-name :model/ExplorationQuery [_model] :exploration_query)
 
 (doto :model/ExplorationQuery
   (derive :metabase/model)
@@ -37,7 +36,7 @@
    (when-let [q (explorations.db/query-thread-id-row pk)]
      (mi/can-write? :model/ExplorationThread (:exploration_thread_id q)))))
 
-(methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :can_write]
+(t2/define-batched-hydrate [:model/ExplorationQuery :can_write]
   "Add whether the current user can write each ExplorationQuery, which is whether they can write its parent."
   [_model k instances]
   (exploration/hydrate-can-write-from-parents k instances :exploration_thread_id :model/ExplorationThread))
@@ -49,15 +48,15 @@
                 (explorations.db/query-result-scores score-key (map :id queries)))
    :id))
 
-(methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :interestingness_score]
+(t2/define-batched-hydrate [:model/ExplorationQuery :interestingness_score]
   [_model k queries]
   (hydrate-score-from-result k queries))
 
-(methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :contextual_interestingness_score]
+(t2/define-batched-hydrate [:model/ExplorationQuery :contextual_interestingness_score]
   [_model k queries]
   (hydrate-score-from-result k queries))
 
-(methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :row_count]
+(t2/define-batched-hydrate [:model/ExplorationQuery :row_count]
   [_model k queries]
   (mi/instances-with-hydrated-data
    queries k
@@ -65,7 +64,7 @@
                 (explorations.db/query-result-row-counts (map :id queries)))
    :id))
 
-(methodical/defmethod t2/batched-hydrate [:model/ExplorationQuery :segment_name]
+(t2/define-batched-hydrate [:model/ExplorationQuery :segment_name]
   [_model k queries]
   (mi/instances-with-hydrated-data
    queries k

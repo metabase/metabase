@@ -7,9 +7,9 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.segments.schema :as segments.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (mu/defn synced-segments-clause :- [:fn vector?]
   "The clause over the Segment table aliased `alias` selecting the segments of the tables remote sync syncs."

@@ -1,10 +1,9 @@
 (ns metabase.oauth-server.models.oauth-refresh-token
   (:require
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/OAuthRefreshToken [_model] :oauth_refresh_token)
+(t2/define-table-name :model/OAuthRefreshToken [_model] :oauth_refresh_token)
 
 (doto :model/OAuthRefreshToken
   (derive :metabase/model))

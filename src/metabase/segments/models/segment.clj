@@ -17,19 +17,19 @@
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/Segment [_model] :segment)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
+(t2/define-table-name :model/Segment [_model] :segment)
+(t2/define-model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 
 (defn- validate-mbql5-definition
   "Validate that an MBQL 5 segment definition has the correct structure. Normalizing a definition that cannot be made
@@ -128,7 +128,7 @@
                    (u/the-id table))))
          (remote-sync/can-write? :model/TableUserSettings (:id table)))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
+(t2/define-batched-hydrate [:model/Segment :can_write]
   "Batched hydration for :can_write on segments, hydrating their tables first."
   [_model k segments]
   (mi/instances-with-hydrated-data

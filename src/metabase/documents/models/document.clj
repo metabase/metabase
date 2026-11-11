@@ -22,6 +22,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -29,13 +30,11 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
 
-(methodical/defmethod t2/table-name :model/Document [_model] :document)
+(t2/define-table-name :model/Document [_model] :document)
 
-(methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :document]
+(t2/define-model-for-automagic-hydration [#_model :default #_k :document]
   [_original-model _k]
   :model/Document)
 
@@ -442,7 +441,7 @@
                                 :user-id api/*current-user-id*}))
       updated-document)))
 
-(methodical/defmethod t2/batched-hydrate [:model/Document :creator]
+(t2/define-batched-hydrate [:model/Document :creator]
   "Hydrate the creator (user) of a document based on the creator_id."
   [_model k documents]
   (mi/instances-with-hydrated-data
@@ -453,7 +452,7 @@
           (into {})))
    :creator_id {:default {}}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Document :cards]
+(t2/define-batched-hydrate [:model/Document :cards]
   "Hydrate cards associated with documents via document_id FK, returning as a map keyed by card ID.
   Fetches all cards for all documents in a single batched query to avoid N+1 queries."
   [_model k documents]

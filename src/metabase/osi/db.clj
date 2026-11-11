@@ -4,9 +4,9 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.osi.schema :as osi.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn ai-context
   "The OsiAiContext of the entity with `entity-type` and `entity-local-id`, or nil."

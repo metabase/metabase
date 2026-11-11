@@ -9,8 +9,8 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.metabot.scope :as scope]
    [metabase.settings.core :as setting]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.i18n :refer [tru]]))
 
 (def ^:private perm-type-enum
   "Malli enum of valid perm_type keywords."

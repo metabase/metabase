@@ -1,13 +1,12 @@
 (ns metabase.pulse.models.pulse-card
   (:require
    [metabase.pulse.db :as pulse.db]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
-(methodical/defmethod t2/table-name :model/PulseCard [_model] :pulse_card)
+(t2/define-table-name :model/PulseCard [_model] :pulse_card)
 
 (doto :model/PulseCard
   (derive :metabase/model)

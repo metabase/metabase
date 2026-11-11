@@ -7,14 +7,14 @@
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
-(methodical/defmethod t2/table-name :model/DashboardTab [_model] :dashboard_tab)
+(t2/define-table-name :model/DashboardTab [_model] :dashboard_tab)
 
 (doto :model/DashboardTab
   (derive :metabase/model)
@@ -24,7 +24,7 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
-(methodical/defmethod t2/model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]
+(t2/define-model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]
   [_original-model _k]
   :model/DashboardTab)
 

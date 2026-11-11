@@ -15,11 +15,11 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private type->model
   {"document"    :model/Document

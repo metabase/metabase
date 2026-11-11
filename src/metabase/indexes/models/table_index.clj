@@ -13,13 +13,12 @@
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/TableIndex [_model] :metabase_table_indexes)
+(t2/define-table-name :model/TableIndex [_model] :metabase_table_indexes)
 
 (doto :model/TableIndex
   (derive :metabase/model)

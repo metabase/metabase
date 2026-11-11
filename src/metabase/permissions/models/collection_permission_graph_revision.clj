@@ -2,10 +2,9 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/CollectionPermissionGraphRevision [_model] :collection_permission_graph_revision)
+(t2/define-table-name :model/CollectionPermissionGraphRevision [_model] :collection_permission_graph_revision)
 
 (doto :model/CollectionPermissionGraphRevision
   (derive :metabase/model)

@@ -3,15 +3,14 @@
   (:require
    [metabase.content-translation.db :as content-translation.db]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util.i18n :refer [tru]]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.i18n :refer [tru]]))
 
 (doto :model/ContentTranslation
   (derive :metabase/model)
   (derive :hook/labelled?))
 
-(methodical/defmethod t2/table-name :model/ContentTranslation [_model]
+(t2/define-table-name :model/ContentTranslation [_model]
   :content_translation)
 
 (defn get-translations

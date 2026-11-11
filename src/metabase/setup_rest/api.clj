@@ -11,12 +11,12 @@
    [metabase.setup-rest.db :as setup-rest.db]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.secret :as u.secret]
-   [toucan2.core :as t2]))
+   [metabase.util.secret :as u.secret]))
 
 (set! *warn-on-reflection* true)
 

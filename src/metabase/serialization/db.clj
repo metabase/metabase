@@ -1,9 +1,9 @@
 (ns metabase.serialization.db
   "Application database queries for the serialization module."
   (:require
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 

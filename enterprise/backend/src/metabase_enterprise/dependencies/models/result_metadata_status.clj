@@ -2,10 +2,9 @@
   "The ResultMetadataStatus model: one status per MBQL card, marked stale by the writes its result metadata reads."
   (:require
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/ResultMetadataStatus [_model] :result_metadata_status)
+(t2/define-table-name :model/ResultMetadataStatus [_model] :result_metadata_status)
 
 (derive :model/ResultMetadataStatus :metabase/model)
 

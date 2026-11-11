@@ -9,10 +9,10 @@
    [malli.error :as me]
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
 
 (def search-models

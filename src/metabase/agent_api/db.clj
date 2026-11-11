@@ -5,9 +5,9 @@
    [malli.util :as mut]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (mu/defn collection-breadcrumb-columns
   "The id, name, location, owner, namespace, and archival of the Collection with `collection-id`, or nil."

@@ -6,10 +6,9 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/ExplorationThread [_model] :exploration_thread)
+(t2/define-table-name :model/ExplorationThread [_model] :exploration_thread)
 
 (doto :model/ExplorationThread
   (derive :metabase/model)
@@ -36,12 +35,12 @@
    (when-let [thread (explorations.db/thread-exploration-id-row pk)]
      (mi/can-write? :model/Exploration (:exploration_id thread)))))
 
-(methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :can_write]
+(t2/define-batched-hydrate [:model/ExplorationThread :can_write]
   "Add whether the current user can write each ExplorationThread, which is whether they can write its parent."
   [_model k instances]
   (exploration/hydrate-can-write-from-parents k instances :exploration_id :model/Exploration))
 
-(methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :timelines]
+(t2/define-batched-hydrate [:model/ExplorationThread :timelines]
   [_model k threads]
   (mi/instances-with-hydrated-data
    threads k
@@ -50,7 +49,7 @@
    :id
    {:default []}))
 
-(methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :queries]
+(t2/define-batched-hydrate [:model/ExplorationThread :queries]
   [_model k threads]
   (mi/instances-with-hydrated-data
    threads k

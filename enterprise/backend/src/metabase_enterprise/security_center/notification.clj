@@ -20,9 +20,9 @@
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 

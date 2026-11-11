@@ -8,12 +8,12 @@
    [metabase.plugins.core :as plugins]
    [metabase.sample-data.db :as sample-data.db]
    [metabase.sync.core :as sync]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [ring.util.codec :as codec]
-   [toucan2.core :as t2])
+   [ring.util.codec :as codec])
   (:import
    (java.net URL)))
 

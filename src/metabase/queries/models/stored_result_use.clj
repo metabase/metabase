@@ -8,13 +8,12 @@
   (:require
    [metabase.queries.cached-result :as cached-result]
    [metabase.queries.db :as queries.db]
+   [metabase.toucan.core :as t2]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
-(methodical/defmethod t2/table-name :model/StoredResultUse [_model] :stored_result_use)
+(t2/define-table-name :model/StoredResultUse [_model] :stored_result_use)
 
 (doto :model/StoredResultUse
   (derive :metabase/model)

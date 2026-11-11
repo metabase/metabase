@@ -5,10 +5,9 @@
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.schema :as timeline.schema]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/TimelineEvent  [_model] :timeline_event)
+(t2/define-table-name :model/TimelineEvent  [_model] :timeline_event)
 
 (doto :model/TimelineEvent
   (derive :metabase/model)
@@ -58,7 +57,7 @@
 
 ;;;; hydration
 
-(methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :timeline]
+(t2/define-batched-hydrate [:model/TimelineEvent :timeline]
   [_model k events]
   (mi/instances-with-hydrated-data
    events k

@@ -7,11 +7,10 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;; TODO (Cam 10/3/25) -- change these to keywords and let API coercion convert them for us automatically
 (def CachingModel "Caching is configurable for those models" [:enum "root" "database" "dashboard" "question"])
@@ -30,7 +29,7 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(methodical/defmethod t2/table-name :model/CacheConfig [_model] :cache_config)
+(t2/define-table-name :model/CacheConfig [_model] :cache_config)
 
 (t2/deftransforms :model/CacheConfig
   {:strategy mi/transform-keyword
@@ -65,7 +64,7 @@
   ([_model pk]
    (mi/can-write? (cache.db/cache-config pk))))
 
-(methodical/defmethod t2/batched-hydrate [:model/CacheConfig :can_write]
+(t2/define-batched-hydrate [:model/CacheConfig :can_write]
   "Add whether the current user can write each CacheConfig, looking up the dashboards, cards, and databases they
   target at once."
   [_model k cache-configs]
@@ -104,7 +103,7 @@
                                                              u/lower-case-en)
                                                   :model_id model-id})))
 
-(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_set_cache_policy]
+(t2/define-batched-hydrate [:perms/use-parent-collection-perms :can_set_cache_policy]
   [_model k models]
   (mi/instances-with-hydrated-data
    models k

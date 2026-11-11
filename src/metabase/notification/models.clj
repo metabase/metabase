@@ -18,21 +18,20 @@
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.schema :as queries.schema]
+   [metabase.toucan.core :as t2]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/Notification             [_model] :notification)
-(methodical/defmethod t2/table-name :model/NotificationSubscription [_model] :notification_subscription)
-(methodical/defmethod t2/table-name :model/NotificationHandler      [_model] :notification_handler)
-(methodical/defmethod t2/table-name :model/NotificationRecipient    [_model] :notification_recipient)
-(methodical/defmethod t2/table-name :model/NotificationCard         [_model] :notification_card)
+(t2/define-table-name :model/Notification             [_model] :notification)
+(t2/define-table-name :model/NotificationSubscription [_model] :notification_subscription)
+(t2/define-table-name :model/NotificationHandler      [_model] :notification_handler)
+(t2/define-table-name :model/NotificationRecipient    [_model] :notification_recipient)
+(t2/define-table-name :model/NotificationCard         [_model] :notification_card)
 
 (doseq [model [:model/Notification
                :model/NotificationSubscription
@@ -78,7 +77,7 @@
   [notification]
   (dissoc notification :internal_id))
 
-(methodical/defmethod t2/batched-hydrate [:model/Notification :subscriptions]
+(t2/define-batched-hydrate [:model/Notification :subscriptions]
   "Batch hydration NotificationSubscriptions for a list of Notifications."
   [_model k notifications]
   (mi/instances-with-hydrated-data
@@ -88,7 +87,7 @@
    :id
    {:default []}))
 
-(methodical/defmethod t2/batched-hydrate [:default :payload]
+(t2/define-batched-hydrate [:default :payload]
   "Batch hydration payloads for a list of Notifications."
   [_model k notifications]
   (let [payload-type->ids        (u/group-by :payload_type :payload_id
@@ -107,7 +106,7 @@
              (get payload-type+id->payload [(:payload_type notification)
                                             (:payload_id notification)])))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Notification :handlers]
+(t2/define-batched-hydrate [:model/Notification :handlers]
   "Batch hydration NotificationHandlers for a list of Notifications"
   [_model k notifications]
   (mi/instances-with-hydrated-data
@@ -264,7 +263,7 @@
 (t2/deftransforms :model/NotificationHandler
   {:channel_type (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))})
 
-(methodical/defmethod t2/batched-hydrate [:default :channel]
+(t2/define-batched-hydrate [:default :channel]
   "Batch hydration Channels for a list of NotificationHandlers"
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
@@ -274,7 +273,7 @@
    :channel_id
    {:default nil}))
 
-(methodical/defmethod t2/batched-hydrate [:default :template]
+(t2/define-batched-hydrate [:default :template]
   "Batch hydration ChannelTemplates for a list of NotificationHandlers"
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
@@ -284,7 +283,7 @@
    :template_id
    {:default nil}))
 
-(methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :recipients]
+(t2/define-batched-hydrate [:model/NotificationHandler :recipients]
   "Batch hydration NotificationRecipients for a list of NotificationHandlers"
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
@@ -295,7 +294,7 @@
    :id
    {:default []}))
 
-(methodical/defmethod t2/batched-hydrate [:default :recipients-detail]
+(t2/define-batched-hydrate [:default :recipients-detail]
   "Batch hydration of details (user, group members) for NotificationRecipients.
   Only active users are attached as :user; deactivated users get :user nil so they
   don't receive notifications (GDGT-1927)."

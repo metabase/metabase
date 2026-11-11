@@ -5,13 +5,12 @@
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.models.interface :as mi]
-   [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.log :as log]))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(methodical/defmethod t2/table-name :model/MetabotMessage [_model] :metabot_message)
+(t2/define-table-name :model/MetabotMessage [_model] :metabot_message)
 
 (doto :model/MetabotMessage
   (derive :metabase/model))

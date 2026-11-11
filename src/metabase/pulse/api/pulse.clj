@@ -23,11 +23,11 @@
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.pulse.send :as pulse.send]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 

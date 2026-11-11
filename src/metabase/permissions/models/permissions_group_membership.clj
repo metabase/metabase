@@ -7,13 +7,12 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
-(methodical/defmethod t2/table-name :model/PermissionsGroupMembership [_model] :permissions_group_membership)
+(t2/define-table-name :model/PermissionsGroupMembership [_model] :permissions_group_membership)
 
 (derive :model/PermissionsGroupMembership :metabase/model)
 

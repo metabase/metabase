@@ -23,15 +23,14 @@
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
    [potemkin :as p]
-   [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
    [toucan2.realize :as t2.realize]))
 
@@ -279,9 +278,9 @@
     (run! grant-library-collection-permissions! [library data metrics])
     library))
 
-(methodical/defmethod t2/table-name :model/Collection [_model] :collection)
+(t2/define-table-name :model/Collection [_model] :collection)
 
-(methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]
+(t2/define-model-for-automagic-hydration [#_model :default #_k :collection]
   [_original-model _k]
   :model/Collection)
 
@@ -1207,7 +1206,7 @@
   [{:keys [location]} :- CollectionWithLocationOrRoot]
   (some-> location location-path->parent-id))
 
-(methodical/defmethod t2/simple-hydrate [:default :parent_id]
+(t2/define-simple-hydrate [:default :parent_id]
   "Get the immediate parent `collection` id, if set."
   [_model k collection]
   (assoc collection k (parent-id* collection)))
@@ -1347,7 +1346,7 @@
   (binding [*clearing-remote-sync* true]
     (collections.db/set-subtree-remote-synced-flags! (:id collection) (children-location collection) remote-synced?)))
 
-(methodical/defmethod t2/batched-hydrate [:default :is_remote_synced]
+(t2/define-batched-hydrate [:default :is_remote_synced]
   "Batch hydration for whether an item is remote synced"
   [_model k items]
   (mi/instances-with-hydrated-data items k
@@ -1357,7 +1356,7 @@
                                    :id
                                    {:default false}))
 
-(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :is_remote_synced]
+(t2/define-batched-hydrate [:perms/use-parent-collection-perms :is_remote_synced]
   "Batch hydration for whether an item is in a remote-synced Collection."
   [model k items]
   (mi/instances-with-hydrated-data items k
@@ -1367,7 +1366,7 @@
                                    :id
                                    {:default false}))
 
-(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :collection_namespace]
+(t2/define-batched-hydrate [:perms/use-parent-collection-perms :collection_namespace]
   "Batch hydration for whether an item is remote synced"
   [model k items]
   (mi/instances-with-hydrated-data items k

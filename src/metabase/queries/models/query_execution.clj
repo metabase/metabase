@@ -6,14 +6,13 @@
    [metabase.analytics.core :as analytics]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.tools.disallow :as t2.disallow]))
 
-(methodical/defmethod t2/table-name :model/QueryExecution [_model] :query_execution)
+(t2/define-table-name :model/QueryExecution [_model] :query_execution)
 
 (derive :model/QueryExecution :metabase/model)
 (derive :model/QueryExecution ::t2.disallow/update)

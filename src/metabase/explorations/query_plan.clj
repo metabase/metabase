@@ -20,9 +20,9 @@
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
    [metabase.explorations.query-plan.planner :as planner]
    [metabase.explorations.query-plan.variants :as qp.variants]
+   [metabase.toucan.core :as t2]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.time Instant OffsetDateTime)))
 

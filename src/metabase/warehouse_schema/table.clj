@@ -5,10 +5,10 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.toucan.core :as t2]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouses.core :as warehouses]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.core :as warehouses]))
 
 (set! *warn-on-reflection* true)
 

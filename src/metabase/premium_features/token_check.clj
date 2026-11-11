@@ -22,6 +22,7 @@
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.settings.core :as setting]
+   [metabase.toucan.core :as t2]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -32,8 +33,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
    [metabase.util.string :as u.str]
-   [toucan2.connection :as t2.conn]
-   [toucan2.core :as t2])
+   [toucan2.connection :as t2.conn])
   (:import
    (dev.failsafe CircuitBreakerOpenException FailsafeException TimeoutExceededException)
    (java.util.concurrent Executors RejectedExecutionException ScheduledExecutorService ThreadFactory TimeUnit)))

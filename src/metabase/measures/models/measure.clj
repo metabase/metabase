@@ -19,19 +19,19 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/Measure [_model] :measure)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :measure] [_original-model _k] :model/Measure)
+(t2/define-table-name :model/Measure [_model] :measure)
+(t2/define-model-for-automagic-hydration [:default :measure] [_original-model _k] :model/Measure)
 
 (defn- validate-mbql5-definition
   "Validate that a measure definition is in MBQL5 format.
@@ -103,7 +103,7 @@
                    (u/the-id table))))
          (remote-sync/can-write? :model/TableUserSettings (:id table)))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Measure :can_write]
+(t2/define-batched-hydrate [:model/Measure :can_write]
   "Batched hydration for :can_write on measures, hydrating their tables first."
   [_model k measures]
   (mi/instances-with-hydrated-data

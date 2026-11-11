@@ -12,11 +12,11 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.secrets.db :as secrets.db]
    [metabase.system.core :as system]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [methodical.core :as methodical])
   (:import
    (java.io File)))
 
@@ -24,7 +24,7 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(methodical/defmethod t2/table-name :model/Secret [_model] :secret)
+(t2/define-table-name :model/Secret [_model] :secret)
 
 (doto :model/Secret
   (derive :metabase/model)

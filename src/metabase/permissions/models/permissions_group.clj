@@ -15,16 +15,16 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/PermissionsGroup [_model] :permissions_group)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :permissions_group] [_original-model _k] :model/PermissionsGroup)
+(t2/define-table-name :model/PermissionsGroup [_model] :permissions_group)
+(t2/define-model-for-automagic-hydration [:default :permissions_group] [_original-model _k] :model/PermissionsGroup)
 (methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration [:default :permissions_group :default]
   [_original-model _dest-key _hydrating-model]
   [:permissions_group_id])
@@ -150,7 +150,7 @@
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
-(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroup :members]
+(t2/define-batched-hydrate [:model/PermissionsGroup :members]
   "Batch hydration Users for a list of PermissionsGroups"
   [_model k groups]
   (mi/instances-with-hydrated-data
@@ -201,7 +201,7 @@
   []
   (permissions.db/group-member-counts))
 
-(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroup :member_count]
+(t2/define-batched-hydrate [:model/PermissionsGroup :member_count]
   "Efficiently add `:member_count` to PermissionGroups."
   [_model _k groups]
   (let [group-id->num-members (group-id->num-members)]

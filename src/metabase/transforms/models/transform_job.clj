@@ -6,6 +6,7 @@
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform :as transform]
@@ -14,11 +15,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
-(methodical/defmethod t2/table-name :model/TransformJob [_model] :transform_job)
+(t2/define-table-name :model/TransformJob [_model] :transform_job)
 
 (doto :model/TransformJob
   (derive :metabase/model)
@@ -75,7 +74,7 @@
         (assoc job :tag_ids
                (mapv :tag_id (get sorted-mappings (:id job) [])))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformJob :last_run]
+(t2/define-batched-hydrate [:model/TransformJob :last_run]
   [_model _k jobs]
   (when (seq jobs)
     (let [job-ids         (into #{} (map :id) jobs)

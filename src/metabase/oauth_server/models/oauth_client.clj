@@ -1,10 +1,9 @@
 (ns metabase.oauth-server.models.oauth-client
   (:require
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/OAuthClient [_model] :oauth_client)
+(t2/define-table-name :model/OAuthClient [_model] :oauth_client)
 
 (doto :model/OAuthClient
   (derive :metabase/model)

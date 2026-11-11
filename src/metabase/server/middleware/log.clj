@@ -14,10 +14,10 @@
    [metabase.server.settings :as server.settings]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.async :as async.u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (com.mchange.v2.c3p0 PoolBackedDataSource)

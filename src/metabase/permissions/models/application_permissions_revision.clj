@@ -2,13 +2,12 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
-   [metabase.util.i18n :refer [tru]]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/ApplicationPermissionsRevision [_model] :application_permissions_revision)
+(t2/define-table-name :model/ApplicationPermissionsRevision [_model] :application_permissions_revision)
 
 (doto :model/ApplicationPermissionsRevision
   (derive :metabase/model)

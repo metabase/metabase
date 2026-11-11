@@ -2,9 +2,9 @@
   "Database-backed implementations of OAuth provider storage protocols."
   (:require
    [metabase.oauth-server.db :as oauth-server.db]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [oidc-provider.protocol :as proto]
-   [toucan2.core :as t2]))
+   [oidc-provider.protocol :as proto]))
 
 (set! *warn-on-reflection* true)
 

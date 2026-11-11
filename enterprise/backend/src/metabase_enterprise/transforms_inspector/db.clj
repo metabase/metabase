@@ -3,8 +3,8 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli :as mu]))
 
 (mu/defn table-source-rows
   "The ID, name, schema, and Database ID of the Tables with `table-ids`, as source info."

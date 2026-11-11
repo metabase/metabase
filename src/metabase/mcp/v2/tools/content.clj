@@ -39,9 +39,9 @@
    [metabase.models.interface :as mi]
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 

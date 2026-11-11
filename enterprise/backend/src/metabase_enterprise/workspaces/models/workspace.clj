@@ -4,13 +4,12 @@
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util :as u]))
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
-(methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
+(t2/define-table-name :model/Workspace [_model] :workspace)
 
 (doto :model/Workspace
   (derive :metabase/model)
@@ -32,7 +31,7 @@
   ([_instance] api/*is-superuser?*)
   ([_model _pk] api/*is-superuser?*))
 
-(methodical/defmethod t2/batched-hydrate [:model/Workspace :databases]
+(t2/define-batched-hydrate [:model/Workspace :databases]
   [_model k workspaces]
   (mi/instances-with-hydrated-data
    workspaces k
@@ -43,7 +42,7 @@
    :id
    {:default []}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Workspace :creator]
+(t2/define-batched-hydrate [:model/Workspace :creator]
   [_model k workspaces]
   (mi/instances-with-hydrated-data
    workspaces k

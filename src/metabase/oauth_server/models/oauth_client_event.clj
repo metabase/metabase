@@ -7,13 +7,12 @@
    `user_id`."
   (:require
    [metabase.oauth-server.db :as oauth-server.db]
-   [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/OAuthClientEvent [_model] :oauth_client_event)
+(t2/define-table-name :model/OAuthClientEvent [_model] :oauth_client_event)
 
 (doto :model/OAuthClientEvent
   (derive :metabase/model))

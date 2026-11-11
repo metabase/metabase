@@ -6,10 +6,10 @@
    [metabase.notification.models :as notification.models]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 ;; ## Static Definitions
 
@@ -112,8 +112,8 @@
 
 ;; ## Entity
 
-(methodical/defmethod t2/table-name :model/PulseChannel [_model] :pulse_channel)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :pulse_channel] [_original-model _k] :model/PulseChannel)
+(t2/define-table-name :model/PulseChannel [_model] :pulse_channel)
+(t2/define-model-for-automagic-hydration [:default :pulse_channel] [_original-model _k] :model/PulseChannel)
 
 (doto :model/PulseChannel
   (derive :metabase/model)
@@ -128,7 +128,7 @@
    :schedule_type mi/transform-keyword
    :schedule_frame mi/transform-keyword})
 
-(methodical/defmethod t2/batched-hydrate [:default :recipients]
+(t2/define-batched-hydrate [:default :recipients]
   [_model _k pcs]
   (when (seq pcs)
     (let [pcid->recipients (-> (group-by :pulse_channel_id

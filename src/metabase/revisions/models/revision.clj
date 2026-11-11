@@ -10,13 +10,12 @@
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision.diff :refer [diff-strings*]]
    [metabase.segments.schema]
+   [metabase.toucan.core :as t2]
    [metabase.transforms.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
 (set! *warn-on-reflection* true)
@@ -98,7 +97,7 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(methodical/defmethod t2/table-name :model/Revision [_model] :revision)
+(t2/define-table-name :model/Revision [_model] :revision)
 
 (doto :model/Revision
   (derive :metabase/model)

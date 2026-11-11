@@ -3,7 +3,7 @@
    [medley.core :as m]
    [metabase.public-sharing.db :as public-sharing.db]
    [metabase.public-sharing.settings :as public-sharing.settings]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 (def public-uuid-prefix-length
   "How many leading characters of a `public_uuid` are copied into the plaintext `public_uuid_prefix` column.

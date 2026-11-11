@@ -12,7 +12,7 @@
    [metabase.metabot.persistence :as metabot-persistence]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.slackbot.api :as slackbot.api]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

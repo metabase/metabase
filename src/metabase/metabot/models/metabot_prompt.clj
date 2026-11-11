@@ -3,12 +3,11 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(methodical/defmethod t2/table-name :model/MetabotPrompt [_model] :metabot_prompt)
+(t2/define-table-name :model/MetabotPrompt [_model] :metabot_prompt)
 
 (doto :model/MetabotPrompt
   (derive :metabase/model)

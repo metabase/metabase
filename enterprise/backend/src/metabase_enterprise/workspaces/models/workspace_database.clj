@@ -8,10 +8,9 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/WorkspaceDatabase [_model] :workspace_database)
+(t2/define-table-name :model/WorkspaceDatabase [_model] :workspace_database)
 
 (doto :model/WorkspaceDatabase
   (derive :metabase/model)
@@ -40,7 +39,7 @@
   [_model _instance]
   api/*is-superuser?*)
 
-(methodical/defmethod t2/batched-hydrate [:model/WorkspaceDatabase :database]
+(t2/define-batched-hydrate [:model/WorkspaceDatabase :database]
   [_model k workspace-databases]
   (mi/instances-with-hydrated-data
    workspace-databases k

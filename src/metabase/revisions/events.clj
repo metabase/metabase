@@ -3,9 +3,9 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.revisions.models.revision :as revision]
+   [metabase.toucan.core :as t2]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (events/derive! ::event :metabase/event)
 

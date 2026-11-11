@@ -19,6 +19,7 @@
    [metabase.settings.db :as settings.db]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.settings.schema :as settings.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -26,9 +27,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.time :as u.time]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [metabase.util.time :as u.time])
   (:import
    (clojure.lang ExceptionInfo Keyword)
    (com.fasterxml.jackson.core JsonParseException)
@@ -89,12 +88,12 @@
 
 (declare admin-writable-site-wide-settings get-value-of-type set-value-of-type!)
 
-(methodical/defmethod t2/table-name :model/Setting [_model] :setting)
+(t2/define-table-name :model/Setting [_model] :setting)
 
 (doto :model/Setting
   (derive :metabase/model))
 
-(methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
+(t2/define-primary-keys :model/Setting [_model] [:key])
 
 (declare export?)
 

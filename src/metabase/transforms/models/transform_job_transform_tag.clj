@@ -1,13 +1,12 @@
 (ns metabase.transforms.models.transform-job-transform-tag
   (:require
    [metabase.serialization.core :as serialization]
-   [metabase.transforms.schema :as transforms.schema]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.transforms.schema :as transforms.schema]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/TransformJobTransformTag [_model] :transform_job_transform_tag)
+(t2/define-table-name :model/TransformJobTransformTag [_model] :transform_job_transform_tag)
 
 (doto :model/TransformJobTransformTag
   (derive :metabase/model)

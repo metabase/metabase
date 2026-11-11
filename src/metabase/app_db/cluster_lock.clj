@@ -23,11 +23,11 @@
    [metabase.app-db.query-cancelation :as app-db.query-cancelation]
    [metabase.app-db.transient-error :as transient-error]
    [metabase.config.core :as config]
+   [metabase.toucan.core :as t2]
    [metabase.util.connection :as u.connection]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.retry :as retry]
-   [toucan2.core :as t2])
+   [metabase.util.retry :as retry])
   (:import
    (java.sql Connection PreparedStatement SQLException SQLIntegrityConstraintViolationException)
    (java.util.concurrent ConcurrentHashMap)

@@ -2,14 +2,13 @@
   (:require
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.transforms.db :as transforms.db]
-   [metabase.transforms.schema :as transforms.schema]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.transforms.schema :as transforms.schema]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/TransformTransformTag [_model] :transform_transform_tag)
+(t2/define-table-name :model/TransformTransformTag [_model] :transform_transform_tag)
 
 (doto :model/TransformTransformTag
   (derive :metabase/model)

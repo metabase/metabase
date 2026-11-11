@@ -7,11 +7,11 @@
    [metabase.bookmarks.schema :as bookmarks.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn card-bookmark-exists?
   "Whether the User with `user-id` has a CardBookmark for the Card with `card-id`."

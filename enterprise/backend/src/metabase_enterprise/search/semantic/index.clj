@@ -21,13 +21,13 @@
    [metabase.permissions.core :as perms]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.toucan.core :as t2]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs]
-   [toucan2.core :as t2])
+   [next.jdbc.result-set :as jdbc.rs])
   (:import
    [com.mchange.v2.c3p0 PooledDataSource]
    [java.nio.charset StandardCharsets]

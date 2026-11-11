@@ -7,9 +7,9 @@
    [clojure.string :as str]
    [metabase-enterprise.content-translation.db :as content-translation.db]
    [metabase.premium-features.core :as premium-features]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :as i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 

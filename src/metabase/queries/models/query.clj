@@ -8,19 +8,19 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.queries.db :as queries.db]
+   [metabase.toucan.core :as t2]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.model :as t2.model])
   (:import
    (java.nio ByteBuffer)))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/Query [_model] :query)
+(t2/define-table-name :model/Query [_model] :query)
 (methodical/defmethod t2.model/primary-keys :model/Query [_model] [:query_hash])
 
 (t2/deftransforms :model/Query

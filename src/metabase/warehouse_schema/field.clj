@@ -3,10 +3,10 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
-   [metabase.warehouse-schema.table :as schema.table]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.table :as schema.table]))
 
 (defn hydrate-target-with-data-model-perms
   "Hydrate the FK target of `field` as `:target`, or nil when `field` is not an FK or the current user cannot edit the

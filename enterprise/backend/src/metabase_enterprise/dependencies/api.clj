@@ -25,12 +25,12 @@
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.segments.schema]
+   [metabase.toucan.core :as t2]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private entity-keys
   {:table     [:name :description :display_name :db_id :db :schema :fields :transform

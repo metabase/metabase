@@ -37,6 +37,7 @@
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -44,8 +45,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 (set! *warn-on-reflection* true)
 

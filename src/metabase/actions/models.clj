@@ -17,21 +17,21 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
 ;;; -------------------------------------------- Entity & Life Cycle ----------------------------------------------
 
-(methodical/defmethod t2/table-name :model/Action [_model] :action)
-(methodical/defmethod t2/table-name :model/QueryAction [_model] :query_action)
-(methodical/defmethod t2/table-name :model/ImplicitAction [_model] :implicit_action)
+(t2/define-table-name :model/Action [_model] :action)
+(t2/define-table-name :model/QueryAction [_model] :query_action)
+(t2/define-table-name :model/ImplicitAction [_model] :implicit_action)
 
 (def ^:private action-sub-models [:model/QueryAction :model/ImplicitAction])
 
@@ -51,8 +51,8 @@
 
 (derive :model/ImplicitAction :hook/dependencies)
 
-(methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
-(methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])
+(t2/define-primary-keys :model/QueryAction    [_model] [:action_id])
+(t2/define-primary-keys :model/ImplicitAction [_model] [:action_id])
 
 (def ^:private transform-action-visualization-settings
   {:in  mi/json-in
@@ -81,7 +81,7 @@
 (t2/deftransforms :model/ImplicitAction
   {:kind mi/transform-keyword})
 
-(methodical/defmethod t2/batched-hydrate [:model/Action :model]
+(t2/define-batched-hydrate [:model/Action :model]
   [_model k actions]
   (mi/instances-with-hydrated-data
    actions k

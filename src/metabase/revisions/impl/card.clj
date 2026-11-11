@@ -3,7 +3,7 @@
    [metabase.queries.core :as queries]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 (def ^:private excluded-columns-for-card-revision
   #{:cache_invalidated_at

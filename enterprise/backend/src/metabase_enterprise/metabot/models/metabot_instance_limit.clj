@@ -2,10 +2,9 @@
   (:require
    [metabase-enterprise.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/MetabotInstanceLimit [_model] :metabot_instance_limit)
+(t2/define-table-name :model/MetabotInstanceLimit [_model] :metabot_instance_limit)
 
 (doto :model/MetabotInstanceLimit
   (derive :metabase/model)

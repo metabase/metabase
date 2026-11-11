@@ -12,12 +12,11 @@
    [metabase.task-history.db :as task-history.db]
    [metabase.task-history.models.task-run :as task-run]
    [metabase.task-history.schema :as task-history.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import (clojure.lang PersistentQueue)
            (java.time Clock)
            (org.apache.commons.lang3.exception ExceptionUtils)))
@@ -26,7 +25,7 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(methodical/defmethod t2/table-name :model/TaskHistory [_model] :task_history)
+(t2/define-table-name :model/TaskHistory [_model] :task_history)
 
 (doto :model/TaskHistory
   (derive :metabase/model)

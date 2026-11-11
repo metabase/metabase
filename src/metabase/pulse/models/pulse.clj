@@ -31,20 +31,19 @@
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(methodical/defmethod t2/table-name :model/Pulse [_model] :pulse)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :pulse]  [_original-model _k] :model/Pulse)
+(t2/define-table-name :model/Pulse [_model] :pulse)
+(t2/define-model-for-automagic-hydration [:default :pulse]  [_original-model _k] :model/Pulse)
 
 (doto :model/Pulse
   (derive :metabase/model)
@@ -302,7 +301,7 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(methodical/defmethod t2/batched-hydrate [:default :channels]
+(t2/define-batched-hydrate [:default :channels]
   [_model k pulses]
   (mi/instances-with-hydrated-data
    pulses k
@@ -315,7 +314,7 @@
   [pulse-ids :- [:sequential ms/PositiveInt]]
   (pulse.db/pulse-cards-for-pulses pulse-ids))
 
-(methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
+(t2/define-batched-hydrate [:model/Pulse :cards]
   [_model k pulses]
   (mi/instances-with-hydrated-data
    pulses k

@@ -4,13 +4,12 @@
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
-(methodical/defmethod t2/table-name :model/AnalysisFinding [_model] :analysis_finding)
+(t2/define-table-name :model/AnalysisFinding [_model] :analysis_finding)
 
 (derive :model/AnalysisFinding :metabase/model)
 

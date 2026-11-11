@@ -7,11 +7,11 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; -------------------------------------------------- Schema --------------------------------------------------
 

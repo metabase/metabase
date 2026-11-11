@@ -4,8 +4,8 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
-   [metabase.util.json :as json]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.json :as json]))
 
 (defn- cron-string
   "Build a cron string from key-value pair parts."

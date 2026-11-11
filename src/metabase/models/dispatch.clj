@@ -2,8 +2,8 @@
   "Helpers to assist in the transition to Toucan 2. Once we switch to Toucan 2 this stuff shouldn't be needed, but we
   can update this namespace instead of having to update code all over the place."
   (:require
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [potemkin :as p]))
 
 (p/import-vars
  [t2

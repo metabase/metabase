@@ -4,9 +4,9 @@
   (:require
    [metabase.indexes.schema :as indexes.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."

@@ -1,10 +1,10 @@
 (ns metabase.events.schema
   (:require
    [malli.util :as mut]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; TODO -- move these into appropriate modules.
 

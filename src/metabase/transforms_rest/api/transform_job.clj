@@ -6,6 +6,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
+   [metabase.toucan.core :as t2]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.util :as transforms-rest.api.u]
    [metabase.transforms-rest.db :as transforms-rest.db]
@@ -16,8 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 

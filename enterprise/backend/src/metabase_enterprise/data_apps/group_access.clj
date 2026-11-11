@@ -7,8 +7,8 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.i18n :refer [tru]]))
 
 (defn- access-group-ids
   "The ids of the groups other than Administrators that can read the resource collection of `app`."

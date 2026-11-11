@@ -5,13 +5,13 @@
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.login-history.core :as login-history]
    [metabase.request.core :as request]
+   [metabase.toucan.core :as t2]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.string :as string]
-   [toucan2.core :as t2]))
+   [metabase.util.string :as string]))
 
 (set! *warn-on-reflection* true)
 

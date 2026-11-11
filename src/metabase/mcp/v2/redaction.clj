@@ -18,7 +18,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
    [metabase.pulse.core :as pulse]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

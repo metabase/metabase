@@ -10,14 +10,13 @@
    [metabase.request.core :as request]
    [metabase.session.db :as session.db]
    [metabase.session.settings :as session.settings]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.string :as string]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.string :as string]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,7 +68,7 @@
   []
   (string/random-string 12))
 
-(methodical/defmethod t2/table-name :model/Session [_model] :core_session)
+(t2/define-table-name :model/Session [_model] :core_session)
 
 (doto :model/Session
   (derive :metabase/model)

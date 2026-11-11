@@ -8,11 +8,11 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.request.core :as request]
+   [metabase.toucan.core :as t2]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 

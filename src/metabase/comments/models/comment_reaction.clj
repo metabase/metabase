@@ -3,15 +3,14 @@
   (:require
    [metabase.comments.db :as comments.db]
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/CommentReaction [_model] :comment_reaction)
+(t2/define-table-name :model/CommentReaction [_model] :comment_reaction)
 
 (doto :model/CommentReaction
   (derive :metabase/model))
 
-(methodical/defmethod t2/batched-hydrate [:model/CommentReaction :user]
+(t2/define-batched-hydrate [:model/CommentReaction :user]
   [_model k reactions]
   (mi/instances-with-hydrated-data
    reactions k

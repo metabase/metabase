@@ -4,19 +4,18 @@
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [metabase.warehouse-schema.user-settings :as user-settings]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.user-settings :as user-settings]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/TableUserSettings [_model] :metabase_table_user_settings)
+(t2/define-table-name :model/TableUserSettings [_model] :metabase_table_user_settings)
 
 (t2/deftransforms :model/TableUserSettings
   {:entity_type     mi/transform-keyword
@@ -37,7 +36,7 @@
   (derive :hook/timestamped?)
   (derive :hook/dependencies))
 
-(methodical/defmethod t2/primary-keys :model/TableUserSettings [_model] [:table_id])
+(t2/define-primary-keys :model/TableUserSettings [_model] [:table_id])
 
 (defn- complete-pairs
   "Fill in the other half of the two-column choices in `settings`: `visibility_type`/`data_layer`, derived from a

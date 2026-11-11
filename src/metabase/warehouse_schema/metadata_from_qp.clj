@@ -10,11 +10,11 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
 
 (def ^:private FieldOrColumn
   "A Field, as an app DB row or as Lib metadata."

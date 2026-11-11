@@ -4,8 +4,8 @@
    [clojure.set :as set]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-analyzer :as query-analyzer]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
    (java.io StringWriter Writer)

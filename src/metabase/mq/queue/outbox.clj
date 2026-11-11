@@ -25,8 +25,8 @@
    [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.transaction :as mq.tx]
    [metabase.mq.transport :as transport]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.toucan.core :as t2]
+   [metabase.util.log :as log])
   (:import
    (java.time Instant)))
 

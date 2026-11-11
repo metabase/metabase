@@ -5,8 +5,8 @@
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.util.secret :as u.secret]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.secret :as u.secret]))
 
 (set! *warn-on-reflection* true)
 

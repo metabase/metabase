@@ -18,10 +18,10 @@
    [metabase.metabot.config :as metabot.config]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
+   [metabase.toucan.core :as t2]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- mcp-session-id-from-headers
   [request]

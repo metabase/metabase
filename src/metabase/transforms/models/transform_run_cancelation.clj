@@ -1,16 +1,15 @@
 (ns metabase.transforms.models.transform-run-cancelation
   (:require
    [metabase.analytics-interface.core :as analytics]
+   [metabase.toucan.core :as t2]
    [metabase.transforms.db :as transforms.db]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/TransformRunCancelation [_model] :transform_run_cancelation)
+(t2/define-table-name :model/TransformRunCancelation [_model] :transform_run_cancelation)
 
 (derive :model/TransformRunCancelation :metabase/model)
 

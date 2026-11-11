@@ -1,12 +1,12 @@
 (ns metabase.usage-metadata.store
   (:require
+   [metabase.toucan.core :as t2]
    [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.models.source-dimension-daily]
    [metabase.usage-metadata.models.source-dimension-profile-daily]
    [metabase.usage-metadata.models.source-metric-daily]
    [metabase.usage-metadata.models.source-segment-composite-daily]
-   [metabase.usage-metadata.models.source-segment-daily]
-   [toucan2.core :as t2]))
+   [metabase.usage-metadata.models.source-segment-daily]))
 
 (def ^:private insert-chunk-size
   "Chunk size for bulk inserts. Keeps us under the Postgres ~65535 bind-parameter

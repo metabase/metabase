@@ -10,6 +10,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -22,7 +23,6 @@
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
@@ -36,12 +36,12 @@
   [[metabase.lib.schema.metadata/column-data-sensitivity-types]]."
   metabase.lib.schema.metadata/column-data-sensitivity-types)
 
-(methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
+(t2/define-table-name :model/Field [_model] :metabase_field)
 
-(methodical/defmethod t2/model-for-automagic-hydration [:default :destination]          [_model _k]  :model/Field)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :field]                [_model _k]  :model/Field)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :origin]               [_model _k]  :model/Field)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :human_readable_field] [_model _k]  :model/Field)
+(t2/define-model-for-automagic-hydration [:default :destination]          [_model _k]  :model/Field)
+(t2/define-model-for-automagic-hydration [:default :field]                [_model _k]  :model/Field)
+(t2/define-model-for-automagic-hydration [:default :origin]               [_model _k]  :model/Field)
+(t2/define-model-for-automagic-hydration [:default :human_readable_field] [_model _k]  :model/Field)
 
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]
@@ -215,7 +215,7 @@
   ([_model pk]
    (mi/can-write? (warehouse-schema.db/field pk))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Field :can_write]
+(t2/define-batched-hydrate [:model/Field :can_write]
   "Batched hydration for :can_write on fields, hydrating their tables first."
   [_model k fields]
   (mi/instances-with-hydrated-data
@@ -394,7 +394,7 @@
   [{:keys [table_id]}]
   (warehouse-schema.db/table table_id))
 
-(methodical/defmethod t2/batched-hydrate [:model/Field :parent]
+(t2/define-batched-hydrate [:model/Field :parent]
   [_model k fields]
   (mi/instances-with-hydrated-data
    fields k

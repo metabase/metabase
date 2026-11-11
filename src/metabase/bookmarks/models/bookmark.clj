@@ -6,17 +6,16 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
-(methodical/defmethod t2/table-name :model/CardBookmark        [_model] :card_bookmark)
-(methodical/defmethod t2/table-name :model/DashboardBookmark   [_model] :dashboard_bookmark)
-(methodical/defmethod t2/table-name :model/CollectionBookmark  [_model] :collection_bookmark)
-(methodical/defmethod t2/table-name :model/BookmarkOrdering    [_model] :bookmark_ordering)
-(methodical/defmethod t2/table-name :model/DocumentBookmark    [_model] :document_bookmark)
-(methodical/defmethod t2/table-name :model/ExplorationBookmark [_model] :exploration_bookmark)
+(t2/define-table-name :model/CardBookmark        [_model] :card_bookmark)
+(t2/define-table-name :model/DashboardBookmark   [_model] :dashboard_bookmark)
+(t2/define-table-name :model/CollectionBookmark  [_model] :collection_bookmark)
+(t2/define-table-name :model/BookmarkOrdering    [_model] :bookmark_ordering)
+(t2/define-table-name :model/DocumentBookmark    [_model] :document_bookmark)
+(t2/define-table-name :model/ExplorationBookmark [_model] :exploration_bookmark)
 
 (derive :model/CardBookmark :metabase/model)
 (derive :model/DashboardBookmark :metabase/model)

@@ -5,9 +5,9 @@
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-card :as pulse-card]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [methodical.core :as m]
-   [toucan2.core :as t2]))
+   [methodical.core :as m]))
 
 (events/derive! ::dashboard-update :metabase/event)
 (events/derive! :event/dashboard-update ::dashboard-update)

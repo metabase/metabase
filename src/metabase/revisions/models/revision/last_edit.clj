@@ -14,10 +14,10 @@
    [metabase.dashboards.schema]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.schema :as revisions.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
-   [toucan2.core :as t2]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 

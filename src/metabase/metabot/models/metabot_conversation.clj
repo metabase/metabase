@@ -3,12 +3,11 @@
    [metabase.api.common :as api]
    [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(methodical/defmethod t2/table-name :model/MetabotConversation [_model] :metabot_conversation)
+(t2/define-table-name :model/MetabotConversation [_model] :metabot_conversation)
 
 (doto :model/MetabotConversation
   (derive :metabase/model))
@@ -34,7 +33,7 @@
    (when-let [instance (metabot.db/conversation-id-and-user-id pk)]
      (mi/can-read? instance))))
 
-(methodical/defmethod t2/batched-hydrate [:model/MetabotConversation :user]
+(t2/define-batched-hydrate [:model/MetabotConversation :user]
   "Batch-hydrate `:user` (id/email/name only) — semantically the *originator*.
   Name kept as `:user` for compatibility with existing EE analytics responses."
   [_model k conversations]

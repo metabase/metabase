@@ -19,6 +19,7 @@
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
+   [metabase.toucan.core :as t2]
    [metabase.users-rest.db :as users-rest.db]
    [metabase.users.core :as users]
    [metabase.users.models.user :as user]
@@ -30,8 +31,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.secret :as u.secret]
-   [throttle.core :as throttle]
-   [toucan2.core :as t2]))
+   [throttle.core :as throttle]))
 
 (set! *warn-on-reflection* true)
 

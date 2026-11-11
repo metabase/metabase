@@ -5,7 +5,7 @@
    [metabase-enterprise.serialization.db :as serialization.db]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
-   [toucan2.core :as t2]
+   [metabase.toucan.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)

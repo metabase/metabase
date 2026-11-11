@@ -4,12 +4,12 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.metadata-from-qp :as warehouse-schema.metadata-from-qp]
-   [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]))
 
 (mu/defn search-values-query
   "Generate the MBQL query used to power FieldValues search in [[metabase.parameters.field/search-values]]. The actual

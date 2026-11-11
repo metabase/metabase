@@ -3,10 +3,9 @@
    [metabase.content-verification.db :as content-verification.db]
    [metabase.content-verification.impl :as moderation]
    [metabase.models.interface :as mi]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def statuses
   "Schema enum of the acceptable values for the `status` column"
@@ -27,7 +26,7 @@
      [:status              {:optional true} Statuses]
      [:text                {:optional true} [:maybe :string]]]))
 
-(methodical/defmethod t2/table-name :model/ModerationReview [_model] :moderation_review)
+(t2/define-table-name :model/ModerationReview [_model] :moderation_review)
 
 (doto :model/ModerationReview
   (derive :metabase/model)

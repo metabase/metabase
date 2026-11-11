@@ -64,14 +64,14 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
+   [metabase.toucan.core :as t2]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 

@@ -5,7 +5,7 @@
    [metabase.channel.email.messages :as messages]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as pulse]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

@@ -12,13 +12,12 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
-(methodical/defmethod t2/table-name :model/DashboardCard [_model] :report_dashboardcard)
+(t2/define-table-name :model/DashboardCard [_model] :report_dashboardcard)
 
 (doto :model/DashboardCard
   (derive :metabase/model)

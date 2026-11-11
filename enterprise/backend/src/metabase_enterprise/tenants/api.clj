@@ -9,11 +9,11 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
+   [metabase.toucan.core :as t2]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private Slug (mu/with-api-error-message tenant/Slug
                                                (deferred-tru "invalid slug")))

@@ -15,9 +15,9 @@
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.toolkit.db :as toolkit.db]
    [metabase.models.interface :as mi]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 

@@ -4,8 +4,8 @@
   (:require
    [malli.util :as mut]
    [metabase.content-translation.schema :as content-translation.schema]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli :as mu]))
 
 (mu/defn delete-all-translations!
   "Delete every ContentTranslation, returning the number deleted."

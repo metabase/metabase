@@ -22,8 +22,8 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 

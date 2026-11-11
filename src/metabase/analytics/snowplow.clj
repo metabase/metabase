@@ -6,11 +6,11 @@
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
+   [metabase.toucan.core :as t2]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.version.core :as version]
-   [toucan2.core :as t2])
+   [metabase.version.core :as version])
   (:import
    (com.snowplowanalytics.snowplow.tracker Snowplow Subject Tracker)
    (com.snowplowanalytics.snowplow.tracker.configuration EmitterConfiguration NetworkConfiguration SubjectConfiguration TrackerConfiguration)

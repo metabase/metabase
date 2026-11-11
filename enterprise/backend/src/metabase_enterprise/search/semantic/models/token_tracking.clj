@@ -2,12 +2,11 @@
   (:require
    [metabase-enterprise.search.semantic.db :as semantic-search.db]
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
 (derive :model/SemanticSearchTokenTracking :metabase/model)
 
-(methodical/defmethod t2/table-name :model/SemanticSearchTokenTracking [_model] :semantic_search_token_tracking)
+(t2/define-table-name :model/SemanticSearchTokenTracking [_model] :semantic_search_token_tracking)
 
 (t2/deftransforms :model/SemanticSearchTokenTracking
   {:request_type mi/transform-keyword})

@@ -1,9 +1,8 @@
 (ns metabase.queries.models.query-table
   (:require
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]))
 
-(methodical/defmethod t2/table-name :model/QueryTable [_model] :query_table)
+(t2/define-table-name :model/QueryTable [_model] :query_table)
 
 (doto :model/QueryTable
   (derive :metabase/model))

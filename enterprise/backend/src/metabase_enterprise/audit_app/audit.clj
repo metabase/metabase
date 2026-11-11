@@ -15,11 +15,11 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.nio.file FileVisitOption Files LinkOption Path)
    (java.util.jar JarEntry JarFile)))

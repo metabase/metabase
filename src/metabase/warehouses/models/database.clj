@@ -22,6 +22,7 @@
    [metabase.settings.core :as setting]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
@@ -33,7 +34,6 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [metabase.warehouses.settings :as warehouses.settings]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.realize :as t2.realize]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -42,7 +42,7 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(methodical/defmethod t2/table-name :model/Database [_model] :metabase_database)
+(t2/define-table-name :model/Database [_model] :metabase_database)
 
 (methodical/defmethod t2.pipeline/results-transform [:toucan.result-type/instances :model/Database]
   [query-type model]
@@ -63,8 +63,8 @@
    :settings                       (mi/transform-encrypted-json "metabase_database.settings")
    :dbms_version                   mi/transform-json})
 
-(methodical/defmethod t2/model-for-automagic-hydration [:default :database] [_model _k] :model/Database)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :db]       [_model _k] :model/Database)
+(t2/define-model-for-automagic-hydration [:default :database] [_model _k] :model/Database)
+(t2/define-model-for-automagic-hydration [:default :db]       [_model _k] :model/Database)
 
 (doto :model/Database
   (derive :metabase/model)
@@ -593,7 +593,7 @@
   ;; TODO - do we want to include tables that should be `:hidden`?
   (warehouses.db/active-tables-for-database id))
 
-(methodical/defmethod t2/batched-hydrate [:model/Database :tables]
+(t2/define-batched-hydrate [:model/Database :tables]
   "Batch hydrate `Tables` for the given `Database`."
   [_model k databases]
   (mi/instances-with-hydrated-data
@@ -762,7 +762,7 @@
   (for [database databases]
     (assoc database :router_user_attribute nil)))
 
-(methodical/defmethod t2/batched-hydrate [:model/Database :router_user_attribute]
+(t2/define-batched-hydrate [:model/Database :router_user_attribute]
   "Batch hydrate `Tables` for the given `Database`."
   [_model k databases]
   (hydrate-router-user-attribute k databases))

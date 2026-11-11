@@ -23,13 +23,13 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.sso.core :as sso]
+   [metabase.toucan.core :as t2]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
-   [throttle.core :as throttle]
-   [toucan2.core :as t2]))
+   [throttle.core :as throttle]))
 
 (set! *warn-on-reflection* true)
 

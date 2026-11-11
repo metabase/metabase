@@ -9,11 +9,11 @@
    [metabase.events.core :as events]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.jvm :as u.jvm]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
