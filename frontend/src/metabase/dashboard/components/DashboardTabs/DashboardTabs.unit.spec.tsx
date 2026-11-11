@@ -1,15 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import _ from "underscore";
 
-import {
-  act,
-  renderWithProviders,
-  screen,
-  waitFor,
-  within,
-} from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { Link } from "metabase/common/components/Link";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
@@ -17,7 +12,6 @@ import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { createTabSlug } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/redux";
 import type { DashboardState } from "metabase/redux/store";
-import { performUndo } from "metabase/redux/undo";
 import { Route, useLocation } from "metabase/router";
 import type { DashboardTab } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -62,6 +56,7 @@ function setup({
     return (
       <>
         <DashboardTabs />
+        <UndoListing />
         <span>Selected tab id is {selectedTabId}</span>
         <br />
         <span>Path is {location.pathname + location.search}</span>
@@ -115,7 +110,6 @@ function setup({
     },
   );
   return {
-    store,
     getDashcards: () => Object.values(store.getState().dashboard.dashcards),
   };
 }
@@ -548,7 +542,7 @@ describe("DashboardTabs", () => {
   });
 
   it("should allow duplicating, deleting and undoing the deletion of tabs more than once (#45364)", async () => {
-    const { store, getDashcards } = setup({
+    const { getDashcards } = setup({
       tabs: [],
       dashcards: _.mapObject(TEST_DASHBOARD_STATE.dashcards, (dashcard) => ({
         ...dashcard,
@@ -572,10 +566,11 @@ describe("DashboardTabs", () => {
     await deleteTab(1);
     expect(queryTab("Tab 1")).not.toBeInTheDocument();
 
-    await waitFor(() => expect(store.getState().undo).toHaveLength(1));
-    act(() => {
-      store.dispatch(performUndo(store.getState().undo[0].id));
-    });
+    await userEvent.click(
+      within(await screen.findByTestId("toast-undo")).getByRole("button", {
+        name: "Undo",
+      }),
+    );
     expect(getTabNames()).toEqual(["Tab 1", "Copy of Tab 1", "Copy of Tab 1"]);
     expect(
       getDashcards().filter(({ id }) => firstTabDashcardIds.includes(id)),

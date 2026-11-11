@@ -331,11 +331,18 @@ describe("DashboardApp > tabs", () => {
 
     expect(await getSavedDashcards()).toEqual([
       expect.objectContaining({ id: 1, dashboard_tab_id: null }),
-      expect.objectContaining({ dashboard_tab_id: null }),
+      expect.objectContaining({
+        dashboard_tab_id: null,
+        visualization_settings: expect.objectContaining({
+          text: "New heading",
+        }),
+      }),
     ]);
     await waitFor(() =>
       expect(screen.queryByTestId("edit-bar")).not.toBeInTheDocument(),
     );
     expect(screen.getAllByTestId("dashcard")).toHaveLength(2);
+    expect(screen.getByText("Existing heading")).toBeInTheDocument();
+    expect(screen.getByText("New heading")).toBeInTheDocument();
   });
 });
