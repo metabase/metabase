@@ -549,7 +549,7 @@ describe("LinkedEntityPicker", () => {
       });
     });
 
-    it("should fall back to the first tab when the saved tab has been removed and only one tab is left", async () => {
+    it("should clear the tab when the saved tab has been removed and the target dashboard has no tabs", async () => {
       const targetDashboard = createMockDashboard({
         id: getNextId(),
         tabs: [],
@@ -572,6 +572,32 @@ describe("LinkedEntityPicker", () => {
       expect(updateSettings).toHaveBeenCalledWith({
         ...clickBehavior,
         tabId: undefined,
+      });
+    });
+
+    it("should fall back to the only tab when the saved tab has been removed and one tab is left", async () => {
+      const targetDashboard = createMockDashboard({
+        id: getNextId(),
+        tabs: [FIRST_TAB],
+      });
+      const clickBehavior = getClickBehavior(targetDashboard, REMOVED_TAB_ID);
+      const { updateSettings } = setup({
+        clickBehavior,
+        dashboard: sourceDashboard,
+        targetDashboard,
+      });
+
+      expect(
+        await screen.findByText(
+          "Pass values to this dashboard's filters (optional)",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Select a dashboard tab"),
+      ).not.toBeInTheDocument();
+      expect(updateSettings).toHaveBeenCalledWith({
+        ...clickBehavior,
+        tabId: FIRST_TAB.id,
       });
     });
   });
