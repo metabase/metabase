@@ -2,7 +2,7 @@
 import type { LocaleData } from "ttag";
 import { addLocale, useLocale } from "ttag";
 
-import { dayjs, loadDayjsLocale } from "metabase/dayjs";
+import { dayjs, getDayjsLocale, isDayjsLocaleLoaded } from "metabase/dayjs";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/utils/date-time";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DayOfWeekId } from "metabase-types/api";
@@ -68,27 +68,15 @@ function preserveLatinNumbersInDayjsLocale(locale: string): void {
   });
 }
 
+// The locale is loaded with its catalogue (`loadLocaleCatalog`), so it's ready here.
 function updateDayjsLocale(language: string): void {
-  const locale = getLocale(language);
+  const locale = getDayjsLocale(language);
 
-  try {
-    if (locale !== "en") {
-      loadDayjsLocale(locale);
-    }
+  if (isDayjsLocaleLoaded(locale)) {
     dayjs.locale(locale);
-  } catch (e) {
+  } else {
     console.warn(`Could not set day.js locale to ${locale}`);
     dayjs.locale("en");
-  }
-}
-
-function getLocale(language = ""): string {
-  switch (language) {
-    case "zh":
-    case "zh-Hans":
-      return "zh-cn";
-    default:
-      return language.toLowerCase();
   }
 }
 

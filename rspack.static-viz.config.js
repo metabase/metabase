@@ -159,6 +159,9 @@ module.exports = (env) => {
         /node_modules\/@reduxjs\/toolkit\/.*\/process$/,
         "process/browser",
       ),
+      // GraalVM loads this one file and can't fetch chunks, so merge any chunks
+      // that dynamic imports (e.g. the dayjs locales) would split out.
+      new rspack.optimize.LimitChunkCountPlugin({ maxChunks: 1 }),
       new rspack.ProvidePlugin({
         process: "process/browser",
         Buffer: ["buffer", "Buffer"],
