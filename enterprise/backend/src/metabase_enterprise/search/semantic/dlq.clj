@@ -182,7 +182,11 @@
   (let [{:keys [^Duration cap]} policy
         cap-ms (.toMillis cap)
         delay-ms (max-delay-ms retry-count policy)
-        jitter (+ 0.9 (* (rand) 0.2))
+        ;; Wide on purpose. Documents that failed in one batch are rescheduled together, and only jitter puts them
+        ;; in separate runs, where the good ones succeed and leave and the bad one is retried alone. Only then can
+        ;; it take the permanent policy (see failure-outcome). At ±10% that took ~17 minutes (median) for a batch of
+        ;; 100 in simulation; at ±50%, ~5.
+        jitter (+ 0.5 (rand))
         jittered-ms (* delay-ms jitter)]
     (Duration/ofMillis (min cap-ms (max 0 (long jittered-ms))))))
 

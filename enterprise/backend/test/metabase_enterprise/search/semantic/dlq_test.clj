@@ -33,6 +33,18 @@
 (defn- ts ^Timestamp [s]
   (Timestamp/from (Instant/parse s)))
 
+(deftest next-delay-jitter-test
+  (testing "the delay is jittered between half and one and a half times the backoff, and never passes the cap"
+    (let [policy  semantic.dlq/transient-policy
+          backoff (semantic.dlq/max-delay-ms 3 policy)
+          delay   (fn [r]
+                    (mt/with-dynamic-fn-redefs [rand (constantly r)]
+                      (.toMillis ^Duration (semantic.dlq/next-delay 3 policy))))]
+      (is (= (long (* 0.5 backoff)) (delay 0.0)))
+      (is (= (long (* 1.5 backoff)) (delay 1.0)))
+      (mt/with-dynamic-fn-redefs [rand (constantly 1.0)]
+        (is (= (:cap policy) (semantic.dlq/next-delay 1000 policy)))))))
+
 (deftest error-categorization-test
   (testing "HTTP status codes"
     (is (= :permanent (semantic.dlq/categorize-error (ex-info "Client error" {:status 404}))))
