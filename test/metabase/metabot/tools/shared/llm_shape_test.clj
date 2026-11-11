@@ -457,11 +457,14 @@
       (is (str/includes? xml "type=\"notebook\""))
       (is (not (str/includes? xml "<query_results>"))))))
 
-(deftest ^:parallel query-result->xml-escapes-pipes-test
-  (testing "a pipe in a cell or column name cannot split the markdown row"
+(deftest ^:parallel markdown-tables-escape-pipes-test
+  (testing "a pipe in a query result cell or column name cannot split the markdown row"
     (let [xml (llm-shape/query-result->xml {:result_columns [{:name "a|b" :type "text"}]
                                             :rows           [["x|y<z"]]})]
-      (is (str/includes? xml "| a\\|b |\n| x\\|y&lt;z |")))))
+      (is (str/includes? xml "| a\\|b |\n| x\\|y&lt;z |"))))
+  (testing "a pipe in a glossary term or definition cannot split the markdown row"
+    (let [xml (llm-shape/user->xml {:id 1, :name "Ann", :email "a@example.com", :glossary {"A|B" "x|y"}})]
+      (is (str/includes? xml "| A\\|B | x\\|y |")))))
 
 (deftest ^:parallel chart->xml-test
   (testing "formats chart (simplified version)"

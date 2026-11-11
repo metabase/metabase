@@ -183,6 +183,11 @@
   (when s
     (str/replace s "|" "\\|")))
 
+(defn- markdown-cell
+  "Render `v` for a markdown table cell in `|safe` template output, with XML and pipes escaped."
+  [v]
+  (escape-pipes (escape-xml (str v))))
+
 (defn- json-cell-safe
   "Keep a JSON string valid inside a markdown table cell. Markdown `\\|` escaping is not
   valid JSON, so encode pipe characters as JSON unicode escapes instead."
@@ -459,7 +464,7 @@
                   ;; `reference` is a JSON array the LLM copies verbatim. Keep the cell valid
                   ;; JSON by encoding pipes as `\u007c` instead of markdown `\|`.
                   (= k :reference) (json-cell-safe (escape-xml-content v))
-                  :else            (escape-pipes (escape-xml (str v)))))}))
+                  :else            (markdown-cell v)))}))
 
 (defn- format-join-required-dimensions-table
   "Like [[format-metric-dimensions-table]] but the Reference is the FULL alias-qualified field clause
@@ -476,7 +481,7 @@
                   (nil? v)         ""
                   (keyword? v)     (escape-pipes (clojure.core/name v))
                   (= k :reference) (json-cell-safe (escape-xml-content v))
-                  :else            (escape-pipes (escape-xml (str v)))))}))
+                  :else            (markdown-cell v)))}))
 
 (defn- format-metric-join-required-dimensions
   "Render the metric's FK-less join dimensions — the columns the metric reaches through an explicit
@@ -614,10 +619,9 @@
   "Format query result rows as a markdown table.
    Note: Uses |safe in template, so values must be escaped."
   [columns rows]
-  (let [cell      #(escape-pipes (escape-xml (str %)))
-        header    (format-markdown-row (map (comp cell :name) columns))
+  (let [header    (format-markdown-row (map (comp markdown-cell :name) columns))
         data-rows (map (fn [row]
-                         (format-markdown-row (map cell row)))
+                         (format-markdown-row (map markdown-cell row)))
                        rows)]
     (str header "\n" (str/join "\n" data-rows) "\n")))
 
@@ -825,7 +829,7 @@
   (let [glossary-rows (when (seq glossary)
                         (str/join "\n"
                                   (map (fn [[term definition]]
-                                         (str "| " (escape-xml term) " | " (escape-xml definition) " |"))
+                                         (format-markdown-row (map markdown-cell [term definition])))
                                        glossary)))]
     (render-llm-template
      :user
@@ -943,7 +947,7 @@
    or when the database couldn't be sampled for statistics.
    Tables use |safe in the template, so values must be escaped."
   [{:keys [field_values field_values_total has_more_values statistics statistics_unavailable]}]
-  (let [escape-value        (fn [_k v] (escape-pipes (escape-xml (str v))))
+  (let [escape-value        (fn [_k v] (markdown-cell v))
         sample-values-table (when (seq field_values)
                               (te/markdown-table
                                (map vector field_values)
