@@ -549,6 +549,46 @@
                        ["SELECT indexname, indexdef FROM pg_indexes WHERE tablename = ?" (name table-name)]
                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
+(defn incompressible-text
+  "A string of `n` seeded random lowercase letters.
+  Random text compresses poorly, so 8000 letters stay past the 2704-byte B-tree entry limit after compression."
+  [n]
+  (let [rng (java.util.Random. 42)]
+    (apply str (repeatedly n #(char (+ (int \a) (.nextInt rng 26)))))))
+
+(defn content-indexes
+  "Map of index name to access method (`:btree`, `:hash`) for each index on `content` of index table `table-name`."
+  [table-name]
+  (into {}
+        (keep (fn [[index-name indexdef]]
+                (when-let [[_ method] (re-find #"USING (\w+) \(content\)" indexdef)]
+                  [index-name (keyword method)])))
+        (table-indexes (semantic.util/table-name-part table-name))))
+
+(defn create-content-index-as-before-migration-6!
+  "Run the statement that versions before dynamic migration 6 use at startup to create the `content` index of
+  index table `table-name`: a B-tree, created only when no index has its name yet."
+  [pgvector table-name]
+  ;; spelled out rather than taken from [[semantic.index/content-index-name]], so the tests notice if they drift apart
+  (jdbc/execute! pgvector [(format "CREATE INDEX IF NOT EXISTS %s ON %s (content)"
+                                   (semantic.util/quote-ident
+                                    (semantic.index/hash-identifier-if-exceeds-pg-limit
+                                     (str (semantic.util/table-name-part table-name) "_content_idx")))
+                                   (semantic.util/quote-table table-name))]))
+
+(defn restore-content-btree!
+  "Put index table `table-name` back in its shape before dynamic migration 6: the B-tree on `content` in place
+  of the hash index, recorded at `index_version` 5 so the next init migrates it again."
+  [pgvector index-metadata table-name]
+  (let [index {:table-name table-name}]
+    (jdbc/execute! pgvector [(str "DROP INDEX " (semantic.util/quote-table
+                                                 (semantic.index/schema-qualified-index-name
+                                                  index (semantic.index/content-index-name index))))]))
+  (create-content-index-as-before-migration-6! pgvector table-name)
+  (jdbc/execute! pgvector (sql/format {:update (keyword (:metadata-table-name index-metadata))
+                                       :set    {:index_version 5}
+                                       :where  [:= :table_name table-name]})))
+
 ;; read-only pg_class lookup; the bang-named calls at most lazily initialize the shared pool
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn index-relfilenode

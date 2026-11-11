@@ -112,7 +112,7 @@ You can disable emoji using the [`MB_EMOJI_IN_LOGS` environment variable](../con
 
 ```
 export MB_EMOJI_IN_LOGS="false"
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+java -jar metabase.jar
 ```
 
 ### Turn off colorized logs

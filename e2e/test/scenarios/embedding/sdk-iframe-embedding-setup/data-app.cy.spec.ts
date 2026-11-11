@@ -20,10 +20,10 @@ describe("scenarios > embedding > data app embed wizard", () => {
       .should("be.checked");
 
     cy.log("auto-select the data app that was chosen in data studio");
-    cy.get<EmbeddedDataApp>("@app").then(({ display_name }) => {
+    cy.get<EmbeddedDataApp>("@app").then(({ name }) => {
       H.modal()
         .findByRole("textbox", { name: "Data app" })
-        .should("have.value", display_name);
+        .should("have.value", name);
     });
 
     cy.log("data app preview should load");
@@ -33,22 +33,22 @@ describe("scenarios > embedding > data app embed wizard", () => {
 
     H.modal().findByRole("button", { name: "Get code" }).click();
 
-    cy.get<EmbeddedDataApp>("@app").then(({ name }) => {
+    cy.get<EmbeddedDataApp>("@app").then(({ slug }) => {
       cy.log("embed code snippet must not contain guest or session auth flags");
       H.modal()
         .findByTestId("embed-code-snippet")
-        .should("contain", `<metabase-data-app path="${name}">`)
+        .should("contain", `<metabase-data-app path="${slug}">`)
         .and("not.contain", "useExistingUserSession")
         .and("not.contain", '"isGuest": true');
     });
 
     H.modal().findByRole("button", { name: "Back" }).click();
 
-    cy.get<EmbeddedDataApp>("@app").then(({ display_name }) => {
+    cy.get<EmbeddedDataApp>("@app").then(({ name }) => {
       cy.log("same app should remain selected after navigation");
       H.modal()
         .findByRole("textbox", { name: "Data app" })
-        .should("have.value", display_name);
+        .should("have.value", name);
     });
   });
 
@@ -81,9 +81,9 @@ describe("scenarios > embedding > data app embed wizard", () => {
 function openDataAppEmbedWizard() {
   cy.visit("/data-studio/apps");
 
-  cy.get<EmbeddedDataApp>("@app").then(({ display_name }) => {
+  cy.get<EmbeddedDataApp>("@app").then(({ name }) => {
     H.main()
-      .findByRole("row", { name: new RegExp(display_name) })
+      .findByRole("row", { name: new RegExp(name) })
       .findByRole("button", { name: "Data app options" })
       .click();
   });
