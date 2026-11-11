@@ -119,16 +119,18 @@
                                 :chart-type (get-in result [:structured-output :chart-type])
                                 :shown-as   (when shown [(= chart-id (:id shown)) (:display shown)])
                                 :add-it?    (str/includes? (:output result)
-                                                           (str "pass `chart_id` `" chart-id "` to `write_dashboard`"))})))
+                                                           (str "pass `chart_id` `" chart-id "` to `write_dashboard`"))
+                                :edit-it?   (str/includes? (:output result)
+                                                           (str "call `edit_chart` with that `chart_id` rather than"))})))
                 readable #{"create_sql_query" "run_query"}]
             (testing "a shown query is drawn as its chart, with the display left to the frontend"
-              (is (= {:chart-id? true, :chart-type :table, :shown-as [true nil], :add-it? false}
+              (is (= {:chart-id? true, :chart-type :table, :shown-as [true nil], :add-it? false, :edit-it? true}
                      (create! readable {}))))
             (testing "a chosen chart type is the chart's and the display's"
               (is (=? {:chart-type :bar, :shown-as [true "bar"]}
                       (create! readable {:visualization {:chart_type "bar"}}))))
             (testing "a hidden query still gets a chart, and its chart_id is named when write_dashboard is offered"
-              (is (= {:chart-id? true, :chart-type :table, :shown-as nil, :add-it? true}
+              (is (= {:chart-id? true, :chart-type :table, :shown-as nil, :add-it? true, :edit-it? false}
                      (create! (conj readable "write_dashboard") {:show_chart false}))))))))))
 
 (deftest edit-sql-query-output-test
