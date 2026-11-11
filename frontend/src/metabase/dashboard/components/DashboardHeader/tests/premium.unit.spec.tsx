@@ -41,8 +41,6 @@ const setupPremium = async ({ isAdmin = true } = {}) => {
     }
     const review = createMockModerationReview({
       status: body.status,
-      moderated_item_id: DASHBOARD_ID,
-      moderated_item_type: "dashboard",
       most_recent: true,
     });
     reviews = [

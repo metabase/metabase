@@ -1,6 +1,7 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardEndpoints,
   setupCollectionByIdEndpoint,
@@ -8,6 +9,7 @@ import {
   setupDashboardEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   createMockAppState,
   createMockDashboardState,
@@ -16,7 +18,8 @@ import {
   createMockQueryBuilderState,
   createMockStoreDashboard,
 } from "__support__/state";
-import { renderWithProviders } from "__support__/ui";
+import { queryIcon, renderWithProviders } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
 import type {
   DashboardState,
@@ -24,12 +27,13 @@ import type {
 } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import { modelToUrl } from "metabase/urls";
-import type { Card } from "metabase-types/api";
+import type { Card, Collection, TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockDashboard,
   createMockSearchResult,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { AppBarContainer, getSearchResultSelection } from "./AppBar";
@@ -319,6 +323,130 @@ describe("AppBar", () => {
   });
 });
 
+const OFFICIAL_COLLECTION = createMockCollection({
+  id: 6,
+  name: "Official Collection Test",
+  authority_level: "official",
+  location: `/${FOO_COLLECTION.id}/`,
+  effective_ancestors: [
+    createMockCollection({ id: "root", name: "Our analytics" }),
+    FOO_COLLECTION,
+  ],
+});
+
+const OFFICIAL_DASHBOARD = createMockDashboard({
+  id: 7,
+  name: "Official Dashboard",
+  collection_id: OFFICIAL_COLLECTION.id,
+});
+
+const OFFICIAL_QUESTION = createMockCard({
+  id: 8,
+  name: "Official Question",
+  collection_id: OFFICIAL_COLLECTION.id,
+});
+
+describe("AppBar official collection breadcrumbs", () => {
+  const matchMediaSpy = jest.spyOn(window, "matchMedia");
+
+  // The search button needs a command palette provider outside of embedding,
+  // so these tests render the app bar the way full-app embedding does.
+  beforeEach(() => {
+    mockEmbedding();
+    matchMediaSpy.mockReturnValue(getMediaQuery({ matches: false }));
+  });
+
+  afterEach(() => {
+    matchMediaSpy.mockReset();
+    restoreMockEmbedding();
+    reinitialize();
+  });
+
+  const pages = [
+    {
+      page: "dashboard",
+      setupOpts: {
+        initialRoute: `/dashboard/${OFFICIAL_DASHBOARD.id}`,
+        dashboardState: {
+          dashboard: createMockDashboardState({
+            dashboardId: OFFICIAL_DASHBOARD.id,
+            dashboards: {
+              [OFFICIAL_DASHBOARD.id]: createMockStoreDashboard({
+                id: OFFICIAL_DASHBOARD.id,
+                name: OFFICIAL_DASHBOARD.name,
+                collection_id: OFFICIAL_COLLECTION.id,
+              }),
+            },
+          }),
+        },
+      },
+    },
+    {
+      page: "question",
+      setupOpts: {
+        initialRoute: `/question/${OFFICIAL_QUESTION.id}`,
+        card: OFFICIAL_QUESTION,
+      },
+    },
+  ];
+
+  const getCollectionBreadcrumb = async (name: string) =>
+    screen.findByRole("link", { name: new RegExp(name) });
+
+  it.each(pages)(
+    "shows the official badge next to the official collection on the $page page",
+    async ({ setupOpts }) => {
+      setup({
+        ...setupOpts,
+        embedOptions: { breadcrumbs: true },
+        collections: [FOO_COLLECTION, OFFICIAL_COLLECTION],
+        tokenFeatures: { official_collections: true },
+        enterprisePlugins: ["collections"],
+      });
+
+      const officialBreadcrumb = await getCollectionBreadcrumb(
+        OFFICIAL_COLLECTION.name,
+      );
+      expect(
+        await within(officialBreadcrumb).findByLabelText(
+          "official_collection icon",
+        ),
+      ).toBeVisible();
+
+      const regularBreadcrumb = await getCollectionBreadcrumb(
+        FOO_COLLECTION.name,
+      );
+      expect(
+        within(regularBreadcrumb).getByLabelText("folder icon"),
+      ).toBeInTheDocument();
+      expect(
+        within(regularBreadcrumb).queryByLabelText("official_collection icon"),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it.each(pages)(
+    "does not show the official badge without the official_collections feature on the $page page",
+    async ({ setupOpts }) => {
+      setup({
+        ...setupOpts,
+        embedOptions: { breadcrumbs: true },
+        collections: [FOO_COLLECTION, OFFICIAL_COLLECTION],
+        tokenFeatures: {},
+        enterprisePlugins: ["collections"],
+      });
+
+      const breadcrumb = await getCollectionBreadcrumb(
+        OFFICIAL_COLLECTION.name,
+      );
+      expect(
+        within(breadcrumb).getByLabelText("folder icon"),
+      ).toBeInTheDocument();
+      expect(queryIcon("official_collection")).not.toBeInTheDocument();
+    },
+  );
+});
+
 describe("getSearchResultSelection", () => {
   const indexedEntity = createMockSearchResult({
     id: 42,
@@ -363,20 +491,31 @@ function setup({
   card = createMockCard(),
   dashboardState,
   initialRoute = "/question/1",
+  collections = [FOO_COLLECTION],
+  tokenFeatures,
+  enterprisePlugins,
 }: {
   embedOptions?: Partial<InteractiveEmbeddingOptions>;
   card?: Card;
   dashboardState?: { dashboard: DashboardState };
   initialRoute?: string;
+  collections?: Collection[];
+  tokenFeatures?: Partial<TokenFeatures>;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }) {
+  const settings = tokenFeatures
+    ? mockSettings({
+        "token-features": createMockTokenFeatures(tokenFeatures),
+      })
+    : undefined;
+  enterprisePlugins?.forEach(setupEnterpriseOnlyPlugin);
+
   // Need to set the location because CollectionBreadcrumbs uses the useLocation()
   window.history.pushState({}, "", initialRoute);
 
   setupUserMetabotPermissionsEndpoint();
-  setupCollectionsEndpoints({
-    collections: [FOO_COLLECTION],
-  });
-  setupCollectionByIdEndpoint({ collections: [FOO_COLLECTION] });
+  setupCollectionsEndpoints({ collections });
+  setupCollectionByIdEndpoint({ collections });
   setupCardEndpoints(card);
   setupDashboardEndpoints(BAR_DASHBOARD);
 
@@ -395,6 +534,7 @@ function setup({
         card,
       }),
       ...dashboardState,
+      ...(settings ? { settings } : {}),
     },
   });
 }

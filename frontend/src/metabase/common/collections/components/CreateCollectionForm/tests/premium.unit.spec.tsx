@@ -54,7 +54,7 @@ describe("CreateCollectionForm", () => {
         description: "a personal collection child",
         initialCollectionProps: {
           name: "Personal collection child",
-          personal_owner_id: null,
+          personal_owner_id: undefined,
           is_personal: true,
         },
       },
