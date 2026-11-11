@@ -21,11 +21,11 @@ type SetupOpts = {
   hasRemoteChanges?: boolean;
 };
 
-const setup = ({
+function setup({
   syncType = "read-write",
   dirty = [],
   hasRemoteChanges = false,
-}: SetupOpts = {}) => {
+}: SetupOpts = {}) {
   setupRemoteSyncEndpoints({
     dirty,
     hasRemoteChanges,
@@ -44,15 +44,16 @@ const setup = ({
       ),
     }),
   });
-};
+}
 
-const wasCalled = (path: string) =>
-  fetchMock.callHistory.called(`path:/api/ee/remote-sync/${path}`);
+function wasCalled(path: string) {
+  return fetchMock.callHistory.called(`path:/api/ee/remote-sync/${path}`);
+}
 
-const openSyncMenu = async () => {
+async function openSyncMenu() {
   await userEvent.click(screen.getByRole("button", { name: /main/ }));
   return screen.findByRole("menu");
-};
+}
 
 describe("AppBarControls", () => {
   it("shows synced branch", () => {

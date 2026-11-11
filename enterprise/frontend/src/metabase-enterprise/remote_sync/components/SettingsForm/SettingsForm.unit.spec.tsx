@@ -83,14 +83,14 @@ type SetupOpts = {
   settingsError?: RemoteSyncUnsyncedDependenciesErrorData;
 };
 
-const setup = ({
+function setup({
   isEnabled = false,
   url = "",
   syncType = "read-write",
   collections = [LIBRARY, MARKETING],
   settingsTaskId,
   settingsError,
-}: SetupOpts = {}) => {
+}: SetupOpts = {}) {
   const settings = createMockSettings({
     "remote-sync-enabled": isEnabled,
     "remote-sync-url": url,
@@ -132,19 +132,20 @@ const setup = ({
   );
 
   return { onSaved };
-};
+}
 
-const getSettingsRequestBodies = () =>
-  Promise.all(
+function getSettingsRequestBodies() {
+  return Promise.all(
     fetchMock.callHistory
       .calls("path:/api/ee/remote-sync/settings")
       .map((call) => call.request?.json()),
   );
+}
 
-const getSettingsRequestBody = async () => {
+async function getSettingsRequestBody() {
   const [body] = await getSettingsRequestBodies();
   return body;
-};
+}
 
 describe("SettingsForm", () => {
   it("sets up remote sync of Library and chosen collections", async () => {

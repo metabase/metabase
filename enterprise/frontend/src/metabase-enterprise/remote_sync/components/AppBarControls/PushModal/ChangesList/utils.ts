@@ -29,7 +29,7 @@ export type ChangesGroup = {
   items: ChangesItem[];
 };
 
-export const getStatusIcon = (status: RemoteSyncDirtyItemStatus): IconName => {
+export function getStatusIcon(status: RemoteSyncDirtyItemStatus): IconName {
   switch (status) {
     case "create":
       return "add";
@@ -39,9 +39,9 @@ export const getStatusIcon = (status: RemoteSyncDirtyItemStatus): IconName => {
     case "removed":
       return "trash";
   }
-};
+}
 
-export const getStatusColor = (status: RemoteSyncDirtyItemStatus) => {
+export function getStatusColor(status: RemoteSyncDirtyItemStatus) {
   switch (status) {
     case "create":
       return "feedback-positive";
@@ -51,14 +51,14 @@ export const getStatusColor = (status: RemoteSyncDirtyItemStatus) => {
     case "removed":
       return "feedback-negative";
   }
-};
+}
 
 type GroupHeader = Pick<ChangesGroup, "key" | "icon" | "path">;
 
-const getGroupHeader = (
+function getGroupHeader(
   change: RemoteSyncDirtyItem,
   collections: CollectionEssentials[],
-): GroupHeader => {
+): GroupHeader {
   const collection = collections.at(-1);
   if (collection) {
     return {
@@ -69,11 +69,9 @@ const getGroupHeader = (
   }
   const { key, icon, name } = getItemSection(change);
   return { key, icon, path: [name] };
-};
+}
 
-export const groupChanges = (
-  changes: RemoteSyncDirtyItem[],
-): ChangesGroup[] => {
+export function groupChanges(changes: RemoteSyncDirtyItem[]): ChangesGroup[] {
   const groups = new Map<string, ChangesGroup>();
 
   const getGroup = (
@@ -128,4 +126,4 @@ export const groupChanges = (
   });
 
   return [...groups.values()];
-};
+}

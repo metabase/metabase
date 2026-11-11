@@ -51,21 +51,23 @@ const MODEL_ICONS: Record<RemoteSyncItemModel, IconName> = {
   transformtest: "list",
 };
 
-export const getModelIcon = (model: RemoteSyncItemModel): IconName =>
-  MODEL_ICONS[model];
+export function getModelIcon(model: RemoteSyncItemModel): IconName {
+  return MODEL_ICONS[model];
+}
 
-const getCollectionPath = (
+function getCollectionPath(
   collection: RemoteSyncItemCollection | null | undefined,
-): CollectionEssentials[] =>
-  collection != null
+): CollectionEssentials[] {
+  return collection != null
     ? [...(collection.effective_ancestors ?? []), collection].filter(
         (pathCollection) => !isRootCollection(pathCollection),
       )
     : [];
+}
 
-export const getItemCollections = (
+export function getItemCollections(
   item: RemoteSyncItemOrDirtyItem,
-): CollectionEssentials[] => {
+): CollectionEssentials[] {
   switch (item.model) {
     case "collection":
       return getCollectionPath(item.data);
@@ -96,11 +98,11 @@ export const getItemCollections = (
     case "transformtag":
       return [];
   }
-};
+}
 
-export const getItemTable = (
+export function getItemTable(
   item: RemoteSyncItemOrDirtyItem,
-): RemoteSyncItemTable | null => {
+): RemoteSyncItemTable | null {
   switch (item.model) {
     case "tableusersettings":
       return item.data?.table != null
@@ -118,24 +120,28 @@ export const getItemTable = (
     default:
       return null;
   }
-};
+}
 
-export const isItemCollection = (
+export function isItemCollection(
   item: RemoteSyncItemOrDirtyItem,
   collection: CollectionEssentials,
-): boolean => item.model === "collection" && item.id === collection.id;
+): boolean {
+  return item.model === "collection" && item.id === collection.id;
+}
 
-export const isItemTable = (
+export function isItemTable(
   item: RemoteSyncItemOrDirtyItem,
   table: RemoteSyncItemTable,
-): boolean => item.model === "tableusersettings" && item.id === table.id;
+): boolean {
+  return item.model === "tableusersettings" && item.id === table.id;
+}
 
 const DATA_SECTION = { key: "data", icon: "database" } as const;
 const TRANSFORMS_SECTION = { key: "transforms", icon: "insight" } as const;
 
-export const getItemSection = (
+export function getItemSection(
   item: RemoteSyncItemOrDirtyItem,
-): RemoteSyncItemSection => {
+): RemoteSyncItemSection {
   switch (item.model) {
     case "tableusersettings":
     case "fieldusersettings":
@@ -163,11 +169,11 @@ export const getItemSection = (
     case "timeline":
       return { key: "other", icon: "folder", name: t`Other content` };
   }
-};
+}
 
-const getItemModelAreas = (
+function getItemModelAreas(
   item: RemoteSyncItemOrDirtyItem,
-): RemoteSyncChangesArea[] => {
+): RemoteSyncChangesArea[] {
   switch (item.model) {
     case "tableusersettings":
     case "fieldusersettings":
@@ -195,11 +201,11 @@ const getItemModelAreas = (
     case "timeline":
       return [];
   }
-};
+}
 
-export const getItemAreas = (
+export function getItemAreas(
   item: RemoteSyncItemOrDirtyItem,
-): RemoteSyncChangesArea[] => {
+): RemoteSyncChangesArea[] {
   const isInLibrary = getItemCollections(item).some(
     ({ type }) => type === "library",
   );
@@ -209,13 +215,15 @@ export const getItemAreas = (
       ...getItemModelAreas(item),
     ]),
   ];
-};
+}
 
-export const getItemTransformId = (
+export function getItemTransformId(
   item: RemoteSyncItemOrDirtyItem,
-): TransformId | null => (item.model === "transform" ? item.id : null);
+): TransformId | null {
+  return item.model === "transform" ? item.id : null;
+}
 
-export const getItemName = (item: RemoteSyncItem): string => {
+export function getItemName(item: RemoteSyncItem): string {
   switch (item.model) {
     case "glossary":
       return item.data.term;
@@ -240,9 +248,9 @@ export const getItemName = (item: RemoteSyncItem): string => {
     default:
       return item.data.name;
   }
-};
+}
 
-export const getItemUrl = (item: RemoteSyncItemOrDirtyItem): string | null => {
+export function getItemUrl(item: RemoteSyncItemOrDirtyItem): string | null {
   switch (item.model) {
     case "tableusersettings":
       return Urls.dataStudioTable(item.id);
@@ -302,4 +310,4 @@ export const getItemUrl = (item: RemoteSyncItemOrDirtyItem): string | null => {
           })
         : null;
   }
-};
+}

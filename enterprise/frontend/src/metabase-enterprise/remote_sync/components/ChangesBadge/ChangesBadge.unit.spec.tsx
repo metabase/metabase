@@ -23,12 +23,12 @@ type SetupOpts = {
   syncType?: RemoteSyncType;
 };
 
-const setup = ({
+function setup({
   target,
   dirty = [],
   isAdmin = true,
   syncType = "read-write",
-}: SetupOpts) => {
+}: SetupOpts) {
   setupRemoteSyncEndpoints({ dirty });
 
   renderWithProviders(<ChangesBadge target={target} />, {
@@ -43,7 +43,7 @@ const setup = ({
       ),
     }),
   });
-};
+}
 
 describe("ChangesBadge", () => {
   it("shows badge when target has unpushed changes", async () => {

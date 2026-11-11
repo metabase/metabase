@@ -34,10 +34,10 @@ type UnsyncedDependenciesModalProps = {
   onClose: () => void;
 };
 
-export const UnsyncedDependenciesModal = ({
+export function UnsyncedDependenciesModal({
   dependencies,
   onClose,
-}: UnsyncedDependenciesModalProps) => {
+}: UnsyncedDependenciesModalProps) {
   const { submitForm, isSubmitting } = useFormikContext<SettingsFormValues>();
 
   return (
@@ -63,59 +63,64 @@ export const UnsyncedDependenciesModal = ({
       </Stack>
     </Modal>
   );
-};
+}
 
 type DependencyGroupItemProps = {
   group: DependencyGroup;
 };
 
-const DependencyGroupItem = ({ group }: DependencyGroupItemProps) => (
-  <Stack gap="sm">
-    <Group justify="space-between">
-      <Text fw="bold">
-        {group.collection ? (
-          <EntityLink
-            name={group.collection.name}
-            url={Urls.modelToUrl({
-              id: group.collection.id,
-              model: "collection",
-              name: group.collection.name,
-            })}
-          />
-        ) : (
-          t`Not in a collection`
-        )}
-      </Text>
-      {group.collection ? (
-        <CollectionSyncSwitch collection={group.collection} />
-      ) : null}
-    </Group>
-    {group.dependencies.map((dependency) => (
-      <Stack
-        key={`${dependency.model}-${dependency.id}`}
-        gap={0}
-        align="flex-start"
-      >
-        <EntityLink name={getItemName(dependency)} url={getItemUrl(dependency)}>
-          <Group gap="sm" wrap="nowrap">
-            <Icon name={getModelIcon(dependency.model)} aria-hidden />
-            <Box>{getItemName(dependency)}</Box>
-          </Group>
-        </EntityLink>
-        <Text c="text-secondary" fz="sm">
-          {jt`Used by ${sortItems(dependency.used_by ?? []).map(
-            (item, index) => (
-              <Fragment key={`${item.model}-${item.id}`}>
-                {index > 0 && ", "}
-                <EntityLink name={getItemName(item)} url={getItemUrl(item)} />
-              </Fragment>
-            ),
-          )}`}
+function DependencyGroupItem({ group }: DependencyGroupItemProps) {
+  return (
+    <Stack gap="sm">
+      <Group justify="space-between">
+        <Text fw="bold">
+          {group.collection ? (
+            <EntityLink
+              name={group.collection.name}
+              url={Urls.modelToUrl({
+                id: group.collection.id,
+                model: "collection",
+                name: group.collection.name,
+              })}
+            />
+          ) : (
+            t`Not in a collection`
+          )}
         </Text>
-      </Stack>
-    ))}
-  </Stack>
-);
+        {group.collection ? (
+          <CollectionSyncSwitch collection={group.collection} />
+        ) : null}
+      </Group>
+      {group.dependencies.map((dependency) => (
+        <Stack
+          key={`${dependency.model}-${dependency.id}`}
+          gap={0}
+          align="flex-start"
+        >
+          <EntityLink
+            name={getItemName(dependency)}
+            url={getItemUrl(dependency)}
+          >
+            <Group gap="sm" wrap="nowrap">
+              <Icon name={getModelIcon(dependency.model)} aria-hidden />
+              <Box>{getItemName(dependency)}</Box>
+            </Group>
+          </EntityLink>
+          <Text c="text-secondary" fz="sm">
+            {jt`Used by ${sortItems(dependency.used_by ?? []).map(
+              (item, index) => (
+                <Fragment key={`${item.model}-${item.id}`}>
+                  {index > 0 && ", "}
+                  <EntityLink name={getItemName(item)} url={getItemUrl(item)} />
+                </Fragment>
+              ),
+            )}`}
+          </Text>
+        </Stack>
+      ))}
+    </Stack>
+  );
+}
 
 type EntityLinkProps = {
   name: string;
@@ -123,7 +128,7 @@ type EntityLinkProps = {
   children?: ReactNode;
 };
 
-const EntityLink = ({ name, url, children = name }: EntityLinkProps) => {
+function EntityLink({ name, url, children = name }: EntityLinkProps) {
   return url != null ? (
     <Anchor
       component={Link}
@@ -138,13 +143,13 @@ const EntityLink = ({ name, url, children = name }: EntityLinkProps) => {
   ) : (
     children
   );
-};
+}
 
 type CollectionSyncSwitchProps = {
   collection: DependencyGroupCollection;
 };
 
-const CollectionSyncSwitch = ({ collection }: CollectionSyncSwitchProps) => {
+function CollectionSyncSwitch({ collection }: CollectionSyncSwitchProps) {
   const { values, setFieldValue } = useFormikContext<SettingsFormValues>();
   if (!(collection.id in values.collections)) {
     return <Text c="text-secondary">{t`Can't be synced`}</Text>;
@@ -166,4 +171,4 @@ const CollectionSyncSwitch = ({ collection }: CollectionSyncSwitchProps) => {
       onChange={(event) => handleChange(event.currentTarget.checked)}
     />
   );
-};
+}

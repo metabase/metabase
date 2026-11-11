@@ -29,92 +29,102 @@ type ChangesListProps = {
   entities: RemoteSyncDirtyItem[];
 };
 
-export const ChangesList = ({ entities }: ChangesListProps) => (
-  <Stack gap="sm">
-    <Text fw="bold">{t`Changes`}</Text>
-    <Paper withBorder radius="sm" mah="20rem" style={{ overflowY: "auto" }}>
-      {groupChanges(entities).map((group, index) => (
-        <Fragment key={group.key}>
-          {index > 0 && <Divider />}
-          <GroupSection group={group} />
-        </Fragment>
-      ))}
-    </Paper>
-  </Stack>
-);
+export function ChangesList({ entities }: ChangesListProps) {
+  return (
+    <Stack gap="sm">
+      <Text fw="bold">{t`Changes`}</Text>
+      <Paper withBorder radius="sm" mah="20rem" style={{ overflowY: "auto" }}>
+        {groupChanges(entities).map((group, index) => (
+          <Fragment key={group.key}>
+            {index > 0 && <Divider />}
+            <GroupSection group={group} />
+          </Fragment>
+        ))}
+      </Paper>
+    </Stack>
+  );
+}
 
 type GroupSectionProps = {
   group: ChangesGroup;
 };
 
-const GroupSection = ({ group }: GroupSectionProps) => (
-  <Box p="md">
-    <Group
-      p="sm"
-      gap="sm"
-      mb={group.items.length > 0 ? "sm" : 0}
-      bg="background_page-secondary"
-      bdrs="sm"
-      wrap="nowrap"
-    >
-      <Icon name={group.icon} c="text-secondary" />
-      <Text fw="bold" c="text-secondary" truncate>
-        {group.path.join(" / ")}
-      </Text>
-      {group.collectionEntity && <StatusIcon entity={group.collectionEntity} />}
-    </Group>
-    {group.items.length > 0 && (
-      <NestedList>
-        {group.items.map((item) => (
-          <ItemSection key={item.key} item={item} />
-        ))}
-      </NestedList>
-    )}
-  </Box>
-);
+function GroupSection({ group }: GroupSectionProps) {
+  return (
+    <Box p="md">
+      <Group
+        p="sm"
+        gap="sm"
+        mb={group.items.length > 0 ? "sm" : 0}
+        bg="background_page-secondary"
+        bdrs="sm"
+        wrap="nowrap"
+      >
+        <Icon name={group.icon} c="text-secondary" />
+        <Text fw="bold" c="text-secondary" truncate>
+          {group.path.join(" / ")}
+        </Text>
+        {group.collectionEntity && (
+          <StatusIcon entity={group.collectionEntity} />
+        )}
+      </Group>
+      {group.items.length > 0 && (
+        <NestedList>
+          {group.items.map((item) => (
+            <ItemSection key={item.key} item={item} />
+          ))}
+        </NestedList>
+      )}
+    </Box>
+  );
+}
 
 type ItemSectionProps = {
   item: ChangesItem;
 };
 
-const ItemSection = ({ item }: ItemSectionProps) => (
-  <Box>
-    {item.entity ? (
-      <EntityRow entity={item.entity} />
-    ) : (
-      <Group gap="sm" wrap="nowrap">
-        <Icon name="table" c="text-secondary" />
-        <Text c="text-secondary" truncate>
-          {item.name}
-        </Text>
-      </Group>
-    )}
-    {item.children.length > 0 && (
-      <NestedList mt="sm">
-        {item.children.map((child, index) => (
-          <EntityRow
-            key={`${child.model}-${child.id}-${index}`}
-            entity={child}
-          />
-        ))}
-      </NestedList>
-    )}
-  </Box>
-);
+function ItemSection({ item }: ItemSectionProps) {
+  return (
+    <Box>
+      {item.entity ? (
+        <EntityRow entity={item.entity} />
+      ) : (
+        <Group gap="sm" wrap="nowrap">
+          <Icon name="table" c="text-secondary" />
+          <Text c="text-secondary" truncate>
+            {item.name}
+          </Text>
+        </Group>
+      )}
+      {item.children.length > 0 && (
+        <NestedList mt="sm">
+          {item.children.map((child, index) => (
+            <EntityRow
+              key={`${child.model}-${child.id}-${index}`}
+              entity={child}
+            />
+          ))}
+        </NestedList>
+      )}
+    </Box>
+  );
+}
 
 type EntityProps = {
   entity: RemoteSyncDirtyItem;
 };
 
-const EntityRow = ({ entity }: EntityProps) => (
-  <Group gap="sm" wrap="nowrap">
-    <Icon name={getModelIcon(entity.model)} c="text-secondary" />
-    <EntityName entity={entity} />
-    <StatusIcon entity={entity} />
-  </Group>
-);
+function EntityRow({ entity }: EntityProps) {
+  return (
+    <Group gap="sm" wrap="nowrap">
+      <Icon name={getModelIcon(entity.model)} c="text-secondary" />
+      <EntityName entity={entity} />
+      <StatusIcon entity={entity} />
+    </Group>
+  );
+}
 
-const EntityName = ({ entity }: EntityProps) => {
+function EntityName({ entity }: EntityProps) {
   const url = getItemUrl(entity);
 
   return url != null ? (
@@ -124,30 +134,34 @@ const EntityName = ({ entity }: EntityProps) => {
   ) : (
     <Text truncate>{entity.name}</Text>
   );
-};
+}
 
-const StatusIcon = ({ entity }: EntityProps) => (
-  <Icon
-    name={getStatusIcon(entity.sync_status)}
-    c={getStatusColor(entity.sync_status)}
-    ml="auto"
-    aria-label={entity.sync_status}
-  />
-);
+function StatusIcon({ entity }: EntityProps) {
+  return (
+    <Icon
+      name={getStatusIcon(entity.sync_status)}
+      c={getStatusColor(entity.sync_status)}
+      ml="auto"
+      aria-label={entity.sync_status}
+    />
+  );
+}
 
 type NestedListProps = {
   mt?: StackProps["mt"];
   children: ReactNode;
 };
 
-const NestedList = ({ mt, children }: NestedListProps) => (
-  <Stack
-    gap="sm"
-    mt={mt}
-    ml="lg"
-    pl="sm"
-    style={{ borderLeft: "2px solid var(--mb-color-border-neutral)" }}
-  >
-    {children}
-  </Stack>
-);
+function NestedList({ mt, children }: NestedListProps) {
+  return (
+    <Stack
+      gap="sm"
+      mt={mt}
+      ml="lg"
+      pl="sm"
+      style={{ borderLeft: "2px solid var(--mb-color-border-neutral)" }}
+    >
+      {children}
+    </Stack>
+  );
+}

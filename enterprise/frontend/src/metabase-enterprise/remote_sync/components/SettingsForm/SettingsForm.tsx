@@ -51,7 +51,7 @@ type SettingsFormProps = {
   onCancel?: () => void;
 };
 
-export const SettingsForm = (props: SettingsFormProps) => {
+export function SettingsForm(props: SettingsFormProps) {
   const { isLoading: isLoadingSettings } = useGetAdminSettingsDetailsQuery();
   const syncableCollections = useSyncableCollections();
 
@@ -62,7 +62,7 @@ export const SettingsForm = (props: SettingsFormProps) => {
   return (
     <LoadedSettingsForm {...props} syncableCollections={syncableCollections} />
   );
-};
+}
 
 type LoadedSettingsFormProps = {
   triggeredFrom: "admin-settings" | "data-studio";
@@ -71,12 +71,12 @@ type LoadedSettingsFormProps = {
   onCancel?: () => void;
 };
 
-const LoadedSettingsForm = ({
+function LoadedSettingsForm({
   triggeredFrom,
   syncableCollections: { library, regularCollections, tenantCollections },
   onSaved,
   onCancel,
-}: LoadedSettingsFormProps) => {
+}: LoadedSettingsFormProps) {
   const collections = useMemo(
     () => [...regularCollections, ...tenantCollections],
     [regularCollections, tenantCollections],
@@ -174,7 +174,7 @@ const LoadedSettingsForm = ({
       />
     </>
   );
-};
+}
 
 type SettingsFormBodyProps = {
   regularCollections: SyncableCollection[];
@@ -182,11 +182,11 @@ type SettingsFormBodyProps = {
   onCancel?: () => void;
 };
 
-const SettingsFormBody = ({
+function SettingsFormBody({
   regularCollections,
   tenantCollections,
   onCancel,
-}: SettingsFormBodyProps) => {
+}: SettingsFormBodyProps) {
   const isTenantsEnabled = useSetting("use-tenants");
   const { values, dirty, setFieldValue } =
     useFormikContext<SettingsFormValues>();
@@ -278,9 +278,9 @@ const SettingsFormBody = ({
       </Stack>
     </Form>
   );
-};
+}
 
-const TestConnectionButton = () => {
+function TestConnectionButton() {
   const { values } = useFormikContext<SettingsFormValues>();
   const [testConnection, { isLoading }] = useTestRemoteSyncConnectionMutation();
   const [sendToast] = useToast();
@@ -306,4 +306,4 @@ const TestConnectionButton = () => {
       >{t`Test connection`}</Button>
     </Group>
   );
-};
+}
