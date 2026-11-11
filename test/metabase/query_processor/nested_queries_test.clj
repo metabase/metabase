@@ -1990,8 +1990,10 @@
           (let [query (lib/expression base "ne" (lib/!= b true))
                 ne    (m/find-first #(= "ne" (:name %)) (lib/visible-columns query))]
             (is (= 200 (n-rows query)))
-            (testing "used in a filter"
-              (is (= 149 (n-rows (lib/filter query (lib/= ne true))))))))
+            ;; SQL Server compiles `ne = true` to a predicate compared with a value, which is a syntax error.
+            (when-not (= driver/*driver* :sqlserver)
+              (testing "used in a filter"
+                (is (= 149 (n-rows (lib/filter query (lib/= ne true)))))))))
         (testing "a filter on the boolean column"
           (is (= 51 (n-rows (lib/filter base (lib/= b true))))))
         ;; Postgres has no `MIN(boolean)` and SQL Server and Redshift cannot aggregate one; no driver feature captures

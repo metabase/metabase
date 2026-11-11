@@ -113,26 +113,29 @@ describe("scenarios > custom column > boolean functions", () => {
       });
     }
 
-    it("should be able setup an 'open dashboard' click behavior for the same and for another dashboard", () => {
-      createDashboardWithQuestion({ name: "D2" }).then((dashboard) =>
-        cy.wrap(dashboard.id).as("otherDashboardId"),
+    // Each target dashboard is opened for the first time by the click. A dashboard that ran a filtered query before
+    // loads with the last used filter value, and that hides a click behavior that does not send the value.
+    it("should be able setup an 'open dashboard' click behavior for another and for the same dashboard", () => {
+      createDashboardWithQuestion({ name: "D2" });
+      createDashboardWithQuestion({ name: "D3" }).then((dashboard) =>
+        cy.wrap(dashboard.id).as("sameDashboardId"),
       );
       createDashboardWithQuestion({ name: "D1" }).then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
-      cy.log("same dashboard");
-      setupOpenDashboardClickBehavior("D1");
-      clickFalseValueAndVerifyFilteredCard();
-      cy.findByTestId("dashboard-name-heading").should("have.value", "D1");
-
       cy.log("another dashboard");
-      cy.get<number>("@otherDashboardId").then((dashboardId) =>
+      setupOpenDashboardClickBehavior("D2");
+      clickFalseValueAndVerifyFilteredCard();
+      cy.findByTestId("dashboard-name-heading").should("have.value", "D2");
+
+      cy.log("same dashboard");
+      cy.get<number>("@sameDashboardId").then((dashboardId) =>
         H.visitDashboard(dashboardId),
       );
-      setupOpenDashboardClickBehavior("D1");
+      setupOpenDashboardClickBehavior("D3");
       clickFalseValueAndVerifyFilteredCard();
-      cy.findByTestId("dashboard-name-heading").should("have.value", "D1");
+      cy.findByTestId("dashboard-name-heading").should("have.value", "D3");
     });
   });
 });
