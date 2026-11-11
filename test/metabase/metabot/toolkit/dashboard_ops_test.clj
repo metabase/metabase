@@ -839,7 +839,12 @@
            (op-error empty-dash
                      [{:op "add_tab" :id -1 :name "Q3"}
                       {:op "add_tab" :id -2 :name "Q4"}
-                      {:op "add_card" :id -3 :card_id 42}])))))
+                      {:op "add_card" :id -3 :card_id 42}]))))
+  (testing "a stored dashcard with no tab is rejected too, though no op touches it"
+    (is (= {::dashboard-ops/error :cards-without-tab, :dashcard-ids [7]}
+           (op-error (assoc (dash-with [{:id 7 :card_id 9 :dashboard_tab_id nil :row 0 :col 0 :size_x 4 :size_y 4}])
+                            :tabs [{:id 1 :name "A"} {:id 2 :name "B"}])
+                     [{:op "add_text" :id -1 :markdown "hi" :tab 2}])))))
 
 (deftest single-tab-coverage-is-not-enforced-test
   (testing "GHY-4147: with exactly one tab, a tabless card is allowed — update-dashboard! back-fills

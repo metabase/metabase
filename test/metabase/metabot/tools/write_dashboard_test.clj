@@ -223,7 +223,23 @@
         (testing "a dashcard on a later tab stays under that tab"
           (is (re-find (re-pattern (str "<tab tab_id=\"" second-tab "\" name=\"Second\">\n"
                                         "      <dashcard dashcard_id=\"" second-id "\""))
-                       output)))))))
+                       output))))
+      (testing "ops that leave it with no tab are rejected, naming it as a card that was already there"
+        (is (=? {:code ::write-dashboard/dashboard-op-rejected
+                 :text (re-pattern (str "(?s)\\QThe dashboard has tabs, so every card needs one. Cards " legacy-id
+                                        " were already on the dashboard with no tab\\E.*\\Q`move` them to a tab"
+                                        " in this call. Nothing was saved.\\E.*"))}
+                (failure {:dashboard_id dash-id
+                          :ops          [{:op "add_text", :id -1, :markdown "More", :tab second-tab}]})))
+        (is (= 2 (count (dashcards dash-id)))))
+      (testing "moving it to a tab in the same call saves"
+        (call {:dashboard_id dash-id
+               :ops          [{:op "add_text", :id -1, :markdown "More", :tab second-tab}
+                              {:op "move", :dashcard_id legacy-id, :tab second-tab}]})
+        (is (=? [{:id legacy-id, :dashboard_tab_id second-tab}
+                 {:id second-id, :dashboard_tab_id second-tab}
+                 {:dashboard_tab_id second-tab}]
+                (dashcards dash-id)))))))
 
 (deftest retry-reuses-question-test
   (mt/with-model-cleanup [:model/Card]

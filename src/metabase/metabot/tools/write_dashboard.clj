@@ -282,8 +282,18 @@
 
    :cards-without-tab
    (fn [{:keys [dashcard-ids]}]
-     (str "The dashboard has tabs, so every card needs one, and cards " (ids-text dashcard-ids) " have none."
-          " Pass `tab` on the op that adds a card, or `move` a placed card to a tab."))
+     ;; New rows carry the caller's negative ids. A stored card with no tab predates the dashboard's tabs, and the
+     ;; result lists it as `all_tabs`, so the model needs to hear that saving any ops makes it pick a tab for it.
+     (let [{added true, stored false} (group-by neg? dashcard-ids)]
+       (str/join " "
+                 (cond-> ["The dashboard has tabs, so every card needs one."]
+                   (seq added)
+                   (conj (str "Cards " (ids-text added) " have none. Pass `tab` on the op that adds a card,"
+                              " or `move` it to a tab."))
+                   (seq stored)
+                   (conj (str "Cards " (ids-text stored) " were already on the dashboard with no tab, so they show"
+                              " on every tab. The save needs each of them on one tab: `move` them to a tab in this"
+                              " call."))))))
 
    :overlapping-cards
    (fn [{:keys [dashcard-ids]}]
