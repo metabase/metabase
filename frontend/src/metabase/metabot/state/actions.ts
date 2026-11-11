@@ -634,8 +634,7 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatch(
                   dashboardSaved({
                     dashboardId: dashboard_id,
-                    // the backend stamps every part with its tool call, though the wire type has it optional
-                    saveId: part.data.tool_call_id ?? uuid(),
+                    saveId: part.data.tool_call_id,
                   }),
                 );
                 pushDataPart({ type: "data_part", part });

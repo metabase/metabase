@@ -139,7 +139,7 @@ export type DashboardSavedValue = {
   collection_id: CollectionId | null;
   open: boolean;
   saved_charts: { chart_id: string; card_id: CardId }[];
-  tool_call_id?: string;
+  tool_call_id: string;
 };
 
 export type ToolTitleData = {
