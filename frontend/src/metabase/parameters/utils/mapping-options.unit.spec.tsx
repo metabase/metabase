@@ -7,7 +7,7 @@ import {
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { ParameterTarget } from "metabase-types/api";
+import type { Card, Parameter, ParameterTarget } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboardCard,
@@ -323,6 +323,97 @@ describe("parameters/utils/mapping-options", () => {
             isForeign: false,
           },
         ]);
+      });
+    });
+
+    describe("structured query with custom columns", () => {
+      function getOptionNames(card: Card, parameter: Parameter) {
+        return getParameterMappingOptions(
+          new Question(card, metadata),
+          parameter,
+          card,
+        ).map((option) => option.name);
+      }
+
+      const aggregatedStage: TestQuerySpec["stages"][0] = {
+        source: { type: "table", id: PRODUCTS_ID },
+        aggregations: [
+          { type: "operator", operator: "count", args: [] },
+          {
+            type: "operator",
+            operator: "sum",
+            args: [{ type: "column", name: "PRICE" }],
+          },
+        ],
+        breakouts: [{ type: "column", name: "CATEGORY" }],
+      };
+
+      const mathExpression = {
+        type: "operator",
+        operator: "+",
+        args: [
+          { type: "literal", value: 1 },
+          { type: "literal", value: 1 },
+        ],
+      } as const;
+
+      it("should offer a custom column for a number parameter (metabase#18747)", () => {
+        const card = structured({
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              expressions: [
+                {
+                  name: "Quantity_2",
+                  value: { type: "column", name: "QUANTITY" },
+                },
+              ],
+            },
+          ],
+        });
+        const parameter = createMockParameter({ type: "number/=" });
+
+        expect(getOptionNames(card, parameter)).toContain("Quantity_2");
+      });
+
+      it("should offer the source table's date columns when a custom column follows an aggregation (metabase#19744)", () => {
+        const card = structured({
+          stages: [
+            aggregatedStage,
+            { expressions: [{ name: "Math", value: mathExpression }] },
+          ],
+        });
+        const parameter = createMockParameter({ type: "date/all-options" });
+
+        expect(getOptionNames(card, parameter)).toContain("Created At");
+      });
+
+      it("should offer the source table's date columns once the custom columns after an aggregation are removed (metabase#19745)", () => {
+        const query = Lib.createTestQuery(provider, {
+          stages: [
+            aggregatedStage,
+            {
+              expressions: [{ name: "Custom Column", value: mathExpression }],
+              fields: [
+                { type: "column", name: "CATEGORY" },
+                { type: "column", name: "sum" },
+                { type: "column", name: "Custom Column" },
+              ],
+            },
+          ],
+        });
+        const queryWithoutExpressions = Lib.expressions(query, 1).reduce(
+          (query, expression) => Lib.removeClause(query, 1, expression),
+          query,
+        );
+        expect(Lib.expressions(queryWithoutExpressions, 1)).toHaveLength(0);
+
+        const card = createMockCard({
+          dataset_query: Lib.toJsQuery(queryWithoutExpressions),
+        });
+        const parameter = createMockParameter({ type: "date/month-year" });
+
+        expect(getOptionNames(card, parameter)).toContain("Created At");
       });
     });
 
