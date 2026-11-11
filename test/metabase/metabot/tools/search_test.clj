@@ -1969,6 +1969,18 @@
                   (invoke-search [#'search/semantic-search-tool] {:query "   "}))))
         (is (false? @searched?))))))
 
+(deftest unchecked-fulltext-query-is-still-searched-test
+  (testing "a full-text query the database can't check is searched anyway, and a failure there is recoverable"
+    (mt/with-test-user :rasta
+      (let [searched? (atom false)]
+        (mt/with-dynamic-fn-redefs [search-core/query-expr-problems (fn [& _] (throw (ex-info "connection reset" {})))
+                                    search/search-by-query          (fn [_]
+                                                                      (reset! searched? true)
+                                                                      (throw (ex-info "connection reset" {})))]
+          (is (= {:class :recoverable :code ::search/search-failed}
+                 (:error (invoke-search [#'search/fulltext-search-tool] {:query "revenue"})))))
+        (is (true? @searched?))))))
+
 (deftest vector-only-reaches-the-search-context-test
   (mt/with-test-user :rasta
     (mt/with-dynamic-fn-redefs [perms/impersonated-user? (fn [] false)

@@ -1255,12 +1255,19 @@
 
 (defn- check-keyword-query!
   "Reject a structured query the engine would run in a way the model didn't mean: too many leaves, and on Postgres,
-  leaves that normalize to nothing or a query that can't restrict the index."
+  leaves that normalize to nothing or a query that can't restrict the index.
+  A query that can't be checked is let through."
   [{:keys [validate-tsquery?]} expr]
   (when-let [message (search/query-expr-limit-error expr)]
     (query-too-large! {:message message}))
   (when validate-tsquery?
-    (let [{:keys [empty-leaves unrestricted?]} (search/query-expr-problems expr)]
+    (when-let [{:keys [empty-leaves unrestricted?]}
+               (try
+                 (search/query-expr-problems expr)
+                 (catch Exception e
+                   ;; The search runs the same tsquery on the same database, and a failure there is recoverable.
+                   (log/warn e "Could not check a full-text query; running it unchecked")
+                   nil))]
       (when (seq empty-leaves)
         (query-matches-nothing! {:terms (vec empty-leaves)}))
       (when unrestricted?
