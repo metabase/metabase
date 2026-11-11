@@ -390,6 +390,7 @@
            connection-pool
            funnysql
            task.secure-delegate
+           toucan
            util
            util.classloader
            util.config}
@@ -1183,7 +1184,7 @@
   funnysql
   {:team "Querying"
    :api  #{metabase.funnysql.core}
-   :uses #{util}}
+   :uses #{toucan util}}
 
   geojson
   {:team "UX West"

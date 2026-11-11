@@ -11,6 +11,7 @@
   delete!
   exists?
   fragment
+  fragment?
   insert!
   query
   select

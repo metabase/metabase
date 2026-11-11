@@ -1,5 +1,6 @@
 (ns metabase.toucan.core-test
   (:require
+   [clojure.edn :as edn]
    [clojure.test :refer :all]
    [metabase.toucan.core :as t2]
    [toucan2.core]))
@@ -62,11 +63,27 @@
       (is (re-find #"(?i)email\W* = \?$" sql))
       (is (= ["a@b.c"] args)))))
 
+(deftest ^:parallel fragment-is-plain-honeysql-test
+  (let [email "a@b.c"]
+    (is (= [:= :email [:auto/param "a@b.c"]] (t2/fragment [:= :email email])))
+    (is (= {:where [:= :email [:auto/param "a@b.c"]]} (t2/fragment {:where [:= :email email]})))))
+
 (deftest ^:parallel nil-fragment-dropped-test
   (letfn [(email-is [email] (when email (t2/fragment [:= :email email])))]
     (let [[sql & args] (toucan2.core/compile (t2/select :model/User {:where [:and (email-is nil)]}))]
       (is (re-find #"(?i)WHERE true$" sql))
       (is (empty? args)))))
+
+(deftest ^:parallel fragment-subquery-allowed-test
+  (letfn [(user-ids [email] (t2/fragment {:select [:id] :from [:core_user] :where [:= :email email]}))]
+    (let [[sql & args] (toucan2.core/compile (t2/select :model/User {:where [:in :id (user-ids "a@b.c")]}))]
+      (is (re-find #"(?i)email\W* = \?\)$" sql))
+      (is (= ["a@b.c"] args)))))
+
+(deftest ^:parallel parsed-data-not-fragment-test
+  (is (t2/fragment? (t2/fragment [:= :email "a@b.c"])))
+  (is (not (t2/fragment? (with-meta [:= :email "a@b.c"] {:allow-subquery true}))))
+  (is (not (t2/fragment? (edn/read-string "^{:fragment true} [:= :email \"a@b.c\"]")))))
 
 (deftest ^:parallel plain-honeysql-value-rejected-test
   (letfn [(email-is [email] [:= :email email])]

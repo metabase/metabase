@@ -1,23 +1,30 @@
 (ns metabase.toucan.impl
-  "Toucan 2 call macros that bind every runtime value with `[:auto/param ...]` unless it is a [[Fragment]]."
+  "Toucan 2 call macros that bind every runtime value with `[:auto/param ...]` unless it is a [[fragment]]."
   (:require
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(deftype Fragment [form])
+(defonce ^:private fragment-key
+  (Object.))
 
-(defn- fragment? [x]
-  (instance? Fragment x))
+(defn fragment?
+  "Whether `x` was built by [[fragment]]; parsed data never is, since only this namespace holds the metadata key."
+  [x]
+  (contains? (meta x) fragment-key))
+
+(defn ->fragment
+  "`form` marked as a [[fragment]]."
+  [form]
+  (vary-meta form assoc fragment-key true))
 
 (defn value
-  "`x` where a macro here found a runtime form: a [[Fragment]] unwrapped, an integer as is, anything else as
+  "`x` where a macro here found a runtime form: a [[fragment]] or an integer as is, anything else as
   `[:auto/param x]`."
   [x]
-  (cond
-    (fragment? x) (.-form ^Fragment x)
-    (integer? x)  x
-    :else         [:auto/param x]))
+  (if (or (integer? x) (fragment? x))
+    x
+    [:auto/param x]))
 
 (defn- dynamic? [form]
   (or (symbol? form) (seq? form)))
@@ -33,9 +40,10 @@
     :else           form))
 
 (defmacro fragment
-  "A [[Fragment]] of literal `form`, with every runtime value inside it handled by [[value]]."
+  "Literal `form` marked as a fragment, with every runtime value inside it handled by [[value]]; the app-DB guard
+  accepts a fragment map as a subquery."
   [form]
-  `(->Fragment ~(wrap-dynamic form)))
+  `(->fragment ~(wrap-dynamic form)))
 
 (defn- wrap-args
   "`[modelable & args]` with the kv-arg values and the trailing query map handled by [[wrap-dynamic]]; throws when the

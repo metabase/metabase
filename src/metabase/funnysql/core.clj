@@ -9,6 +9,7 @@
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
    [honey.sql.pg-ops]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
@@ -39,7 +40,8 @@
 
 (defn- subquery? [x]
   (and (map? x)
-       (:allow-subquery (meta x))))
+       (or (:allow-subquery (meta x))
+           (t2/fragment? x))))
 
 (defn- fn-call? [x]
   (and (vector? x)
@@ -1230,7 +1232,7 @@
   clojure.lang.Keyword        (compile! [this context] (keyword! this context))
   ;; a `^:allow-subquery` map compiled anywhere other than the top level is a subquery -- a scalar subquery in a
   ;; `SELECT` list or function argument, a derived table in `FROM`, etc. -- all of which need to be parenthesized.
-  clojure.lang.IPersistentMap (compile! [this context] ((if (:allow-subquery (meta this))
+  clojure.lang.IPersistentMap (compile! [this context] ((if (subquery? this)
                                                           parens!
                                                           object!) this context))
   clojure.lang.IPersistentSet (compile! [this context] (sequence! this context))
