@@ -344,7 +344,8 @@ const config = {
         // a shared stylesheet would change the order of the CSS rules.
         appCommon: {
           type: /^javascript/,
-          chunks: (chunk) => APP_COMMON_ENTRIES.has(chunk.name),
+          chunks: (chunk) =>
+            chunk.name !== undefined && APP_COMMON_ENTRIES.has(chunk.name),
           minChunks: APP_COMMON_ENTRIES.size,
           name: "app-common",
           priority: -20,
