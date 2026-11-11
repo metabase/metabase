@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { getIn } from "icepick";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -78,10 +77,8 @@ const FieldTypeDetail = ({
               />
             ) : (
               <span>
-                {getIn(FIELD_SEMANTIC_TYPES_MAP, [
-                  field.semantic_type ?? "",
-                  "name",
-                ]) || t`No field type`}
+                {FIELD_SEMANTIC_TYPES_MAP[field.semantic_type ?? ""]?.name ||
+                  t`No field type`}
               </span>
             )}
           </span>

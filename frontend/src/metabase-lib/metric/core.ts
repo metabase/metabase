@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 /* eslint-disable metabase/no-unjustified-type-casts */
 
 import * as LibMetric from "cljs/metabase.lib_metric.js";

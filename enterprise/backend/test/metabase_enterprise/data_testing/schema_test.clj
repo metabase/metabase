@@ -236,3 +236,30 @@
   (testing "and an input's format, which is the same kind of dispatch"
     (is (= #{"unknown format :nope, must be one of: rows, sql"}
            (explained ::data-testing.schema/inputs [{:table {:name "PEOPLE"} :format :nope}])))))
+
+;;; ---------------------------------- One test shape, one subject key per type ----------------------------------
+
+(def ^:private definition
+  {:name "t" :inputs [] :expectations [{:type :empty :name "none" :sql "SELECT 1"}]})
+
+(def ^:private saved
+  {:id 1 :entity_id "abcdefghijklmnopqrstu" :creator_id 1
+   :created_at #t "2026-11-06T00:00:00Z" :updated_at #t "2026-11-06T00:00:00Z"})
+
+(deftest test-schemas-differ-only-in-the-subject-key-test
+  (doseq [[test-type subject-key other-key] [[:transform-test :transform_id :card_id]
+                                             [:card-test      :card_id      :transform_id]]
+          :let [schema (fn [suffix] (keyword "metabase-enterprise.data-testing.schema"
+                                             (str (name test-type) suffix)))]]
+    (testing (str test-type)
+      (testing "create takes the definition and the subject key, and no other subject's key"
+        (is (mr/validate (schema ".create") (assoc definition subject-key 1)))
+        (is (not (mr/validate (schema ".create") definition)))
+        (is (not (mr/validate (schema ".create") (assoc definition other-key 1)))))
+      (testing "update takes any subset of them"
+        (is (mr/validate (schema ".update") {}))
+        (is (mr/validate (schema ".update") {subject-key 2 :name "renamed"}))
+        (is (not (mr/validate (schema ".update") {other-key 2}))))
+      (testing "a saved test is the definition, the subject key and the row's own columns"
+        (is (mr/validate (schema "") (merge saved definition {subject-key 1})))
+        (is (not (mr/validate (schema "") (merge saved definition {other-key 1}))))))))

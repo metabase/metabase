@@ -72,7 +72,7 @@ export const setup = ({
     key: "isNavbarOpened",
     value: isNavbarOpened,
   });
-  setupLibraryEndpoints(false);
+  setupLibraryEndpoints({ hasLibrary: false });
   setupRemoteSyncEndpoints({ dirty });
 
   const state = createMockState({

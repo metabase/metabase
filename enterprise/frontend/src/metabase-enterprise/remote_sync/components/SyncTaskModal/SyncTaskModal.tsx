@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { match } from "ts-pattern";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
+import { dayjs } from "metabase/dayjs";
 import { useDispatch } from "metabase/redux";
 import {
   Button,
@@ -14,6 +15,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { getUserName } from "metabase/utils/user";
 import {
   EnterpriseApi,
   useCancelRemoteSyncCurrentTaskMutation,
@@ -61,7 +63,7 @@ const SyncTaskModalBody = ({ taskId, onClose }: SyncTaskModalBodyProps) => {
     task.status === "running" ||
     task.status === "successful"
   ) {
-    return <RunningTask progress={task?.progress ?? 0} />;
+    return <RunningTask task={task} />;
   }
 
   return <FinishedTask task={task} onClose={onClose} />;
@@ -106,16 +108,31 @@ const getOutcomeMessage = (outcome: RemoteSyncTask["outcome"]) =>
     .otherwise(() => t`Sync finished`);
 
 type RunningTaskProps = {
-  progress: number;
+  task: RemoteSyncTask | undefined;
 };
 
-const RunningTask = ({ progress }: RunningTaskProps) => {
+const RunningTask = ({ task }: RunningTaskProps) => {
   const [cancelTask, { isLoading, isSuccess: isCancelling }] =
     useCancelRemoteSyncCurrentTaskMutation();
 
   return (
     <Stack gap="lg">
-      <Progress value={progress * 100} animated />
+      <Stack gap="sm">
+        {task != null && (
+          <Text ta="center" c="text-secondary">
+            {task.sync_task_type === "export"
+              ? t`Exporting content…`
+              : t`Importing content…`}
+          </Text>
+        )}
+        <Progress value={(task?.progress ?? 0) * 100} animated />
+      </Stack>
+      {task != null && (
+        <Text size="sm" c="text-secondary">
+          {getStartedBy(task)}
+        </Text>
+      )}
+      <Text size="sm">{t`Please wait until this finishes before editing content.`}</Text>
       <Group justify="flex-end">
         <Button
           loading={isLoading}
@@ -137,6 +154,11 @@ type FinishedTaskProps = {
 const FinishedTask = ({ task, onClose }: FinishedTaskProps) => (
   <Stack gap="lg">
     <Text>{getErrorMessage(task)}</Text>
+    {task.status === "cancelled" && (
+      <Text size="sm" c="text-secondary">
+        {getStoppedAt(task)}
+      </Text>
+    )}
     {task.conflicts != null && task.conflicts.length > 0 && (
       <List>
         {task.conflicts.map((conflict) => (
@@ -164,3 +186,18 @@ const getErrorMessage = (task: RemoteSyncTask) =>
       () => t`The same content was changed here and on the branch.`,
     )
     .otherwise(() => t`The sync failed.`);
+
+const getStartedBy = (task: RemoteSyncTask) => {
+  const time = dayjs(task.started_at).format("LT");
+  return task.initiated_by_user != null
+    ? c("{0} is a person's name, {1} is a time of day")
+        .t`Started by ${getUserName(task.initiated_by_user)} at ${time}`
+    : c("{0} is a time of day").t`Started at ${time}`;
+};
+
+const getStoppedAt = (task: RemoteSyncTask) => {
+  const percent = Math.round((task.progress ?? 0) * 100);
+  const startedBy = getStartedBy(task);
+  return c("{0} is a percentage, {1} says who started the sync and when")
+    .t`Stopped at ${percent}% · ${startedBy}`;
+};

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 import type { EChartsType } from "echarts/core";
 import type { TreeNode } from "echarts/types/src/data/Tree";
 import type GlobalModel from "echarts/types/src/model/Global";

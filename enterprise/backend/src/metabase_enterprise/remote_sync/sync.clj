@@ -25,7 +25,7 @@
                                    {:branch branch})))
         known? (and base-version (protocol/has-version? repo base-version))
         base   (content/tree-documents repo (when known? base-version))
-        theirs (content/tree-documents repo tip)
+        theirs (if (= tip base-version) base (content/tree-documents repo tip))
         ours   (content/local-documents)]
     {:tip                tip
      :base               base

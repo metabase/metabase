@@ -414,9 +414,8 @@ describe("fetchDashboard", () => {
  * Creates a dispatch/getState pair that runs thunks against the mock dashboard
  * `state` but routes RTK Query lifecycle actions to a real (api-only) store, so
  * the RTK-backed dashcard query endpoints execute. The dashboard `dashcardData`
- * reducer is intentionally bypassed: it uses icepick `assocIn`, which crashes
- * under Immer when many fulfilled actions arrive at once (the case these
- * concurrency tests provoke).
+ * reducer is intentionally bypassed: these concurrency tests only assert on
+ * the requests that get made, not on the dashboard state.
  */
 function createMockDispatch(getMockState: () => Partial<State>) {
   const apiStore = getStore({ [Api.reducerPath]: Api.reducer }, {}, [

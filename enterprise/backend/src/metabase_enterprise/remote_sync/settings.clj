@@ -110,7 +110,8 @@
   :default 60)
 
 (defenterprise read-only?
-  "Whether remote sync is on and keeps the rows it syncs read-only."
+  "Whether remote sync is on and keeps the rows it syncs read-only. Without the `:remote-sync` feature it is false:
+  synced content can be edited, and the next force pull once the feature returns overwrites those edits."
   :feature :remote-sync
   []
   (boolean (and (remote-sync-enabled) (= :read-only (remote-sync-type)))))
@@ -131,13 +132,14 @@
 
 (defn check-repository!
   "Throws unless the repository at the `:remote-sync-url` of `settings`, the saved one by default, can be reached with
-  their token, and has their `:remote-sync-branch` when they give one."
+  their token, and has their `:remote-sync-branch` when they give one. The URL is an `http://`, `https://` or `file://`
+  URL, or a local path."
   [settings]
   (let [url (or (:remote-sync-url settings) (setting/get :remote-sync-url))]
     (when (str/blank? url)
       (throw (ex-info (tru "Remote sync isn''t set up.") {})))
     (when-not (or (not (str/includes? url ":")) (re-find #"^(https?|file)://" url))
-      (throw (ex-info (tru "Use an HTTPS repository URL, such as https://github.com/your-org/your-repo.git.")
+      (throw (ex-info (tru "Use an HTTP or HTTPS repository URL, such as https://github.com/your-org/your-repo.git.")
                       {})))
     (let [branches (protocol/branches (git/repository url (token settings)))
           branch   (:remote-sync-branch settings)]

@@ -1,12 +1,9 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import {
   AccordionList,
   type Section,
 } from "metabase/common/components/AccordionList";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
 import type {
@@ -75,8 +72,6 @@ export const DataSelectorTablePicker = ({
     return null;
   }
 
-  const isSavedQuestionList = selectedDatabase.is_saved_questions;
-
   const header = (
     <Header
       onBack={onBack}
@@ -135,10 +130,6 @@ export const DataSelectorTablePicker = ({
           renderItemIcon={renderItemIcon}
           showItemArrows={hasNextStep}
         />
-
-        {isSavedQuestionList && (
-          <LinkToDocsOnReferencingSavedQuestionsInQueries />
-        )}
       </Box>
     );
   } else {
@@ -149,32 +140,6 @@ export const DataSelectorTablePicker = ({
       </Box>
     );
   }
-};
-
-const LinkToDocsOnReferencingSavedQuestionsInQueries = () => {
-  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- It's hard to tell if this is still used in the app. Please see https://metaboat.slack.com/archives/C505ZNNH4/p1703243785315819
-  const { url: docsUrl } = useDocsUrl(
-    "questions/native-editor/referencing-saved-questions-in-queries",
-  );
-  return (
-    <Box
-      p="lg"
-      ta="center"
-      bg={"background_page-secondary"}
-      style={{
-        borderTop: "1px solid var(--mb-color-border-neutral)",
-      }}
-    >
-      {t`Is a question missing?`}
-      <ExternalLink
-        href={docsUrl}
-        target="_blank"
-        className={cx(CS.block, CS.link)}
-      >
-        {t`Learn more about nested queries`}
-      </ExternalLink>
-    </Box>
-  );
 };
 
 const Header = ({

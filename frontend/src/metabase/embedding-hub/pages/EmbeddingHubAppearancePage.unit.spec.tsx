@@ -65,7 +65,7 @@ describe("EmbeddingHubAppearancePage", () => {
   it("upsells and shows neither section below the paywall", async () => {
     setup({ hasSimpleEmbedding: false });
 
-    expect(await screen.findByText("Create custom themes")).toBeInTheDocument();
+    expect(await screen.findByText("Create custom themes")).toBeVisible();
 
     expect(
       screen.queryByRole("heading", { name: "Themes" }),
