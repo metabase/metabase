@@ -302,24 +302,36 @@
     (testing "every opt-in sits under an exemption, not under another opt-in or nothing"
       (is (empty? (remove (comp exemptions nearest) opt-ins))))))
 
-(deftest exemption-covers-submodules-test
-  (testing "a submodule of an exemption does not trigger driver tests, even where a trigger reaches it"
-    ;; The `transforms` module reaches `metabot`, and so `metabot.toolkit` once `metabot` uses it.
-    (let [deps (update (mage.modules/dependencies) 'metabot conj 'metabot.toolkit)]
-      (is (contains? (mage.modules/affected-modules deps ['metabot.toolkit]) 'transforms))
-      (is (false? (mage.modules/driver-deps-affected? deps ['metabot.toolkit]))))))
-
-(deftest opt-in-submodule-triggers-driver-tests-test
-  (testing "an opted-in submodule of an exemption still triggers driver tests"
-    ;; The `util` module is exempt, but `lib`, and through it `driver`, uses `util.graph`.
-    (is (contains? mage.modules/driver-test-exemptions 'util))
-    (is (contains? (mage.modules/affected-modules (mage.modules/dependencies) ['util.graph]) 'driver))
-    (is (true? (mage.modules/driver-deps-affected? ['util.graph])))))
-
-(deftest trigger-submodule-of-exemption-triggers-driver-tests-test
-  (testing "a driver-trigger module still triggers driver tests when its parent is an exemption"
-    (is (contains? mage.modules/driver-test-exemptions 'workspaces))
-    (is (true? (mage.modules/driver-deps-affected? ['enterprise/workspaces])))))
+(deftest exemption-rules-test
+  ;; A made-up graph, so the rules are tested apart from the real module config.
+  ;; The trigger `t` uses every module, so each one decides on its exemption alone.
+  (let [deps  '{t                       #{a a.sub a.sub.in a.sub.in.deep a.sub.in.deep.out x x.t both enterprise/a}
+                a                       #{}
+                a.sub                   #{}
+                a.sub.in                #{}
+                a.sub.in.deep           #{}
+                a.sub.in.deep.out       #{}
+                x                       #{}
+                x.t                     #{}
+                both                    #{}
+                enterprise/a            #{}}
+        rules '{:triggers   #{t x.t both}
+                :exemptions #{a a.sub.in.deep.out x both}
+                :opt-ins    #{a.sub.in}}]
+    (are [changed expected] (= expected (mage.modules/driver-deps-affected? deps [changed] rules))
+      ;; exemptions and what they cover
+      'a                 false
+      'a.sub             false
+      'enterprise/a      false
+      ;; opt-ins and what they cover
+      'a.sub.in          true
+      'a.sub.in.deep     true
+      ;; the nearest listed ancestor wins
+      'a.sub.in.deep.out false
+      ;; triggers
+      't                 true
+      'x.t               true
+      'both              false)))
 
 ;;; =============================================================================
 ;;; Regression test: module graph should not become more connected

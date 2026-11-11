@@ -196,19 +196,25 @@
   '#{users.tenants
      util.graph})
 
+(def ^:private driver-test-rules
+  "The trigger, exemption and opt-in sets that [[driver-deps-affected?]] uses by default."
+  {:triggers   (set/union default-modules-which-trigger-drivers modules-triggering-cloud-drivers)
+   :exemptions driver-test-exemptions
+   :opt-ins    driver-test-opt-ins})
+
 (defn- driver-exempt?
-  "Whether changes to `module` should skip driver tests.
+  "Whether changes to `module` should skip driver tests under `rules`, shaped like [[driver-test-rules]].
   The nearest listed module among `module` and its ancestors decides.
-  An exemption skips them, and an opt-in or one of `trigger-modules` keeps them."
-  [deps trigger-modules module]
+  An exemption skips them, and an opt-in or a trigger keeps them."
+  [deps {:keys [triggers exemptions opt-ins]} module]
   (->> (modules/lineage deps module)
        (some (fn [m]
                ;; Exemptions come first, so a module that is both a trigger and an exemption, such as
                ;; `enterprise/transforms`, stays exempt.
                (cond
-                 (contains? driver-test-exemptions m) :exempt
-                 (or (contains? driver-test-opt-ins m)
-                     (contains? trigger-modules m))  :included)))
+                 (contains? exemptions m) :exempt
+                 (or (contains? opt-ins m)
+                     (contains? triggers m))  :included)))
        (= :exempt)))
 
 (defn- affected-modules
@@ -231,26 +237,23 @@
   (unaffected-modules (dependencies) '#{enterprise/billing}))
 
 (defn driver-deps-affected?
-  "Returns true if any of `trigger-modules` are affected by the changed `modules`.
+  "Returns true if any trigger in `rules` is affected by the changed `modules`.
   Changed modules that [[driver-exempt?]] exempts are left out.
-  The 1-arity and 2-arity trigger on the union of [[default-modules-which-trigger-drivers]] and
-  [[modules-triggering-cloud-drivers]].
-  Throws when one of `trigger-modules` is not a declared module."
+  The 1-arity and 2-arity use [[driver-test-rules]].
+  Throws when a trigger is not a declared module."
   ([modules]
    (driver-deps-affected? (dependencies) modules))
   ([deps modules]
-   (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
-                                                  modules-triggering-cloud-drivers)))
-  ([deps modules trigger-modules]
+   (driver-deps-affected? deps modules driver-test-rules))
+  ([deps modules {:keys [triggers] :as rules}]
    ;; Fail clearly when a renamed trigger is missing from the config.
-   (when-let [missing (seq (remove #(contains? deps %) trigger-modules))]
+   (when-let [missing (seq (remove #(contains? deps %) triggers))]
      (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
                           (pr-str missing))
                      {:missing missing})))
-   (let [exempt?    (partial driver-exempt? deps (set trigger-modules))
-         unaffected (unaffected-modules deps (remove exempt? modules))]
+   (let [unaffected (unaffected-modules deps (remove #(driver-exempt? deps rules %) modules))]
      (boolean
-      (some #(not (contains? unaffected %)) trigger-modules)))))
+      (some #(not (contains? unaffected %)) triggers)))))
 
 (defn- print-updated-and-unaffected-modules [deps updated drivers-affected?]
   (let [unaffected (unaffected-modules deps updated)]
