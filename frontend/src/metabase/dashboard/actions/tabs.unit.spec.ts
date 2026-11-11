@@ -489,7 +489,8 @@ describe("moveDashCardToTab", () => {
     card: createMockCard({ ...ORDERS_CARD, name: "Orders" }),
     row: 0,
     col: 0,
-    size_x: 10,
+    // full width, so that the link card is placed in the row below it
+    size_x: 24,
     size_y: 4,
   });
 
@@ -510,7 +511,7 @@ describe("moveDashCardToTab", () => {
       getTabDashcards(store)[1].find(({ id }) => id !== ORDERS_DASHCARD.id),
     );
     const linkPosition = _.pick(linkDashcard, "row", "col");
-    expect(linkPosition).not.toEqual({ row: 0, col: 0 });
+    expect(linkPosition).toEqual({ row: 4, col: 0 });
 
     // Move the second card first so that their positions invert on the
     // destination tab, which lets undo prove it restores the original one
@@ -527,7 +528,7 @@ describe("moveDashCardToTab", () => {
     expect(getTabDashcards(store)[1]).toBeUndefined();
     expect(getTabDashcards(store)[2]).toHaveLength(2);
     expect(getDashCardById(store.getState(), ORDERS_DASHCARD.id)).toMatchObject(
-      { size_x: 10, size_y: 4 },
+      { size_x: 24, size_y: 4 },
     );
 
     await waitFor(() => expect(store.getState().undo).toHaveLength(2));
