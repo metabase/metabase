@@ -35,6 +35,7 @@ content-diagnostics-sparse-collection-threshold-items: null
 content-diagnostics-sparse-dashboard-threshold-dashcards: null
 content-diagnostics-stale-threshold-days: null
 default-maps-enabled: null
+deprecated-agent-api-enabled?: null
 disable-cors-on-localhost: null
 email-max-recipients-per-message: null
 email-max-recipients-per-second: null
