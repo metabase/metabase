@@ -133,7 +133,12 @@
         (search/reindex! {:async? false :in-place? true})
         (mt/with-test-user :crowberto
           (is (=? {:type :not-matching :details {:search-string "zzzznomatch"}}
-                  (diagnose {:search-string "zzzznomatch"} "card" card-id))))))))
+                  (diagnose {:search-string "zzzznomatch"} "card" card-id)))
+          (testing "with a structured query, the permission probes still ignore the text"
+            (is (=? {:type :not-matching :details {:search-string "zzzznomatch"}}
+                    (diagnose {:search-string "zzzznomatch"
+                               :search-expr   {:op "or" :args ["zzzznomatch" "zzzzalso"]}}
+                              "card" card-id)))))))))
 
 (deftest ^:synchronized matched-test
   (when (search/supports-index?)

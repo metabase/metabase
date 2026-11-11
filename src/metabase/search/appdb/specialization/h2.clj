@@ -46,15 +46,16 @@
                         :search_index.native_search_terms
                         :search_index.search_terms)
         search-expr   (:search-expr search-ctx)]
+    ;; A blank term matches everything, even with a structured query in the context: diagnostics probe that way for
+    ;; a text-free query, as Postgres does.
     (cond-> {:select select-items
              :from   [[active-table :search_index]]}
-      search-expr
-      (sql.helpers/where (query-expr/->like-predicate search-expr search-column))
-
-      ;; a plain string requires every word
-      (and (nil? search-expr) (not (str/blank? search-term)))
-      (sql.helpers/where (into [:and] (for [pattern (wildcard-tokens search-term)]
-                                        [:like [:lower search-column] pattern]))))))
+      (not (str/blank? search-term))
+      (sql.helpers/where (if search-expr
+                           (query-expr/->like-predicate search-expr search-column)
+                           ;; a plain string requires every word
+                           (into [:and] (for [pattern (wildcard-tokens search-term)]
+                                          [:like [:lower search-column] pattern])))))))
 
 (defmethod specialization/extra-entry-fields :h2 [entity]
   {:search_terms        (:searchable_text entity)

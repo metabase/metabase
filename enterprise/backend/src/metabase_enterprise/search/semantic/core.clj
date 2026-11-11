@@ -137,6 +137,9 @@
                   combined-results (concat results (with-zero-semantic-distance-score search-ctx fallback-results))
                   deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
               (take total-limit deduped-results)))))
+      ;; a cancelled search ends here, rather than falling back or reporting a search error
+      (catch InterruptedException e
+        (throw e))
       (catch Exception e
         (let [fallback (when-not (:vector-only? search-ctx) (fallback-engine))]
           (if fallback

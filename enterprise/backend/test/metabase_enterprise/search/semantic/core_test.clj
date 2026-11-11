@@ -363,3 +363,15 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error executing semantic search"
                                 (semantic.core/results (assoc search-context :vector-only? true))))
           (is (nil? (:metabase-search/semantic-error-fallback @metrics))))))))
+
+(deftest interrupted-semantic-search-is-rethrown-test
+  (testing "an interrupted semantic search ends there, without falling back or reporting a search error"
+    (mt/with-premium-features #{:semantic-search}
+      (with-redefs [semantic.pgvector-api/query (fn [& _] (throw (InterruptedException.)))
+                    search.engine/results       (fn [ctx]
+                                                  (case (:search-engine ctx)
+                                                    :search.engine/semantic (semantic.core/results ctx)
+                                                    (throw (ex-info "the keyword engine ran" {}))))]
+        (doseq [ctx [search-context (assoc search-context :vector-only? true)]]
+          (testing (str "vector-only? " (boolean (:vector-only? ctx)))
+            (is (thrown? InterruptedException (semantic.core/results ctx)))))))))

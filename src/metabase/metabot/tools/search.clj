@@ -1048,14 +1048,14 @@
   "The search backend failed, for example because the search index is missing.
 
   Every failure gets [[no-retry-step]], because each retry uses an iteration and logs a stack trace.
-  The browse steps come from `scope`; a nil scope, when the failure left none to build, gets no browse steps."
-  {:payload [:maybe ::search-scope]}
+  The browse steps come from `scope`; an empty scope, when the failure left none to build, gets no browse steps."
+  {:payload [:or ::search-scope [:map {:closed true}]]}
   [scope]
   {:message  "Search failed."
-   :recovery (conj (if scope (browse-steps scope) []) no-retry-step)})
+   :recovery (conj (if (seq scope) (browse-steps scope) []) no-retry-step)})
 
 (defn- failed-search-scope
-  "The [[search-scope]] to recover from a failed search with, or nil when building it fails too.
+  "The [[search-scope]] to recover from a failed search with, or an empty map when building it fails too.
   Building it can read the app DB, which may be why the search failed."
   [& args]
   (try
@@ -1064,7 +1064,7 @@
       (throw e))
     (catch Exception e
       (log/warn e "Could not work out where a failed Metabot search could browse instead")
-      nil)))
+      {})))
 
 (tools/defrecoverable semantic-search-failed!
   "The semantic engine failed. A vector-only search doesn't fall back to a keyword engine, so the model is pointed at

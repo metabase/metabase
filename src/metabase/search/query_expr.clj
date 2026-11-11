@@ -178,15 +178,20 @@
     []))
 
 (defn ->like-predicate
-  "Compile `expr` to a HoneySQL predicate that finds each leaf's text, case-insensitively, anywhere in `column`.
-  Every leaf matches as a literal substring, so a phrase matches its text as written."
+  "Compile `expr` to a HoneySQL predicate that finds each leaf's text, case-insensitively, in `column`.
+  A term or phrase matches as a literal substring anywhere, a phrase as written.
+  A prefix matches at the start of the text or after a space."
   [expr column]
-  (let [go (fn go [e]
-             (cond
-               (leaf? e)         [:like [:lower column] (h2x/like-substring (leaf-text e))]
-               (= "and" (:op e)) (into [:and] (map go) (:args e))
-               (= "or" (:op e))  (into [:or] (map go) (:args e))
-               (= "not" (:op e)) [:not (go (first (:args e)))]))]
+  (let [like (fn [pattern] [:like [:lower column] pattern])
+        go   (fn go [e]
+               (cond
+                 (= "prefix" (:op e)) [:or
+                                       (like (h2x/like-prefix (:text e)))
+                                       (like (h2x/like-substring (str " " (:text e))))]
+                 (leaf? e)            (like (h2x/like-substring (leaf-text e)))
+                 (= "and" (:op e))    (into [:and] (map go) (:args e))
+                 (= "or" (:op e))     (into [:or] (map go) (:args e))
+                 (= "not" (:op e))    [:not (go (first (:args e)))]))]
     (go expr)))
 
 (defn- prefix-tsquery-text

@@ -155,11 +155,16 @@
     (with-index-contents
       [{:model "card" :id 1 :name "revenue forecast"}
        {:model "card" :id 2 :name "income statement"}
-       {:model "card" :id 3 :name "gross margin by region"}]
+       {:model "card" :id 3 :name "gross margin by region"}
+       {:model "card" :id 4 :name "quarterly totals"}]
       (testing "a structured query matches the way its tree says, not as a string"
         (is (= #{1 2} (set (map second (expr-results {:op "or" :args ["revenue" "income"]})))))
         (is (= [] (expr-results {:op "and" :args ["region" {:op "not" :args [{:op "phrase" :text "gross margin"}]}]})))
-        (is (= [3] (map second (expr-results {:op "and" :args ["region" {:op "phrase" :text "gross margin"}]}))))))))
+        (is (= [3] (map second (expr-results {:op "and" :args ["region" {:op "phrase" :text "gross margin"}]})))))
+      (testing "a prefix matches the start of a word, not the middle of one"
+        (is (= [4] (map second (expr-results {:op "prefix" :text "quart"}))))
+        (is (= [4] (map second (expr-results {:op "prefix" :text "tot"}))))
+        (is (= [] (expr-results {:op "prefix" :text "arter"})))))))
 
 (deftest ^:parallel search-expr-exact-test
   (when (= :postgres (mdb/db-type))
