@@ -13,6 +13,11 @@
  [metabase.toucan.impl
   column-name
   count
+  define-batched-hydrate
+  define-model-for-automagic-hydration
+  define-primary-keys
+  define-simple-hydrate
+  define-table-name
   delete!
   exists?
   fragment

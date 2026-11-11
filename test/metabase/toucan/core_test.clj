@@ -136,6 +136,12 @@
     (testing (pr-str form)
       (is (re-find #"Expected a literal keyword naming one identifier" (expansion-error form))))))
 
+(deftest ^:parallel define-macros-target-toucan-multimethods-test
+  (is (= '(methodical.core/defmethod toucan2.core/table-name :model/User [_model] :core_user)
+         (macroexpand-1 '(metabase.toucan.core/define-table-name :model/User [_model] :core_user))))
+  (is (= '(methodical.core/defmethod toucan2.core/batched-hydrate :around [:model/User :k] [_model _k users] users)
+         (macroexpand-1 '(metabase.toucan.core/define-batched-hydrate :around [:model/User :k] [_model _k users] users)))))
+
 (deftest ^:parallel plain-honeysql-value-rejected-test
   (letfn [(email-is [email] [:= :email email])]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

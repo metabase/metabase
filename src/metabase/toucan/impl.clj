@@ -241,3 +241,33 @@
   "`t2/reducible-query` on literal query map `m` with every runtime value bound."
   [m]
   `(t2/reducible-query ~(wrap-query m)))
+
+(defmacro define-table-name
+  "`methodical/defmethod` of `t2/table-name`, taking the args after the multimethod."
+  {:arglists '([dispatch-value & fn-tail] [qualifier dispatch-value & fn-tail])}
+  [& args]
+  `(methodical/defmethod t2/table-name ~@args))
+
+(defmacro define-primary-keys
+  "`methodical/defmethod` of `t2/primary-keys`, taking the args after the multimethod."
+  {:arglists '([dispatch-value & fn-tail] [qualifier dispatch-value & fn-tail])}
+  [& args]
+  `(methodical/defmethod t2/primary-keys ~@args))
+
+(defmacro define-batched-hydrate
+  "`methodical/defmethod` of `t2/batched-hydrate`, taking the args after the multimethod."
+  {:arglists '([dispatch-value & fn-tail] [qualifier dispatch-value & fn-tail])}
+  [& args]
+  `(methodical/defmethod t2/batched-hydrate ~@args))
+
+(defmacro define-simple-hydrate
+  "`methodical/defmethod` of `t2/simple-hydrate`, taking the args after the multimethod."
+  {:arglists '([dispatch-value & fn-tail] [qualifier dispatch-value & fn-tail])}
+  [& args]
+  `(methodical/defmethod t2/simple-hydrate ~@args))
+
+(defmacro define-model-for-automagic-hydration
+  "`methodical/defmethod` of `t2/model-for-automagic-hydration`, taking the args after the multimethod."
+  {:arglists '([dispatch-value & fn-tail] [qualifier dispatch-value & fn-tail])}
+  [& args]
+  `(methodical/defmethod t2/model-for-automagic-hydration ~@args))
