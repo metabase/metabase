@@ -10,7 +10,6 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase-enterprise.search.semantic.util :as semantic.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -65,9 +64,7 @@
   [pgvector gate-table-name repair-table-name]
   (when-let [lost-deletes (seq (find-lost-deletes pgvector gate-table-name repair-table-name))]
     (log/debugf "Repairing %d lost deletes" (count lost-deletes))
-    (->> lost-deletes
-         (group-by :model)
-         (m/map-vals #(map :model_id %)))))
+    (u/group-by :model :model_id lost-deletes)))
 
 (defn count-stale-orphans
   "Count rows in the active index table whose `(model, model_id)` is absent from the repair table (the current

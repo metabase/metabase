@@ -12,12 +12,12 @@ type CollectionsFieldProps = {
   collections: SyncableCollection[];
 };
 
-export const CollectionsField = ({
+export function CollectionsField({
   title,
   description,
   emptyMessage,
   collections,
-}: CollectionsFieldProps) => {
+}: CollectionsFieldProps) {
   const [{ value }, , { setValue }] =
     useField<Record<RegularCollectionId, boolean>>("collections");
 
@@ -46,4 +46,4 @@ export const CollectionsField = ({
       ))}
     </Stack>
   );
-};
+}

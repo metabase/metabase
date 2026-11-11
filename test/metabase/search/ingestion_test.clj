@@ -249,6 +249,15 @@
         (is (= 3 @factory-calls)
             "Factory should be called once per unique database-id, not once per lookup")))))
 
+(deftest update!-reports-every-batch-test
+  (testing "the update counts cover every batch of documents, not just the last one"
+    (mt/with-prometheus-system! [_ system]
+      ;; The stubs are global, so count only this test's documents in case a background ingestion runs meanwhile.
+      (with-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
+                    search.engine/update!        (fn [_engine batch] {"ingestion-test" (count (filter ::doc batch))})]
+        (search.ingestion/update! (repeat 400 {::doc true}) [])
+        (is (== 400 (mt/metric-value system :metabase-search/index-updates {:model "ingestion-test"})))))))
+
 (deftest curation-signals-surfaced-in-results-test
   (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,
             so Metabot can render them (BOT-1570) — not just stored in the filtering column"

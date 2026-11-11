@@ -2,7 +2,6 @@
   "`/api/ee/remote-sync` endpoints."
   (:require
    [metabase-enterprise.remote-sync.content :as content]
-   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.protocol :as protocol]
@@ -63,93 +62,75 @@
     (sync/local-changes (content/tree-documents repo (when (and base-version (known?)) base-version))
                         (content/local-documents))))
 
-(defn- dirty-item
-  "The change `change` as the client lists it."
-  [{:keys [key status doc]}]
-  (let [[model]      key
-        [_ id]       (:row doc)
-        row          (when id (remote-sync.db/row model id))
-        removed-row  (when-not row (first (serialization/local-rows model [(:entity doc)])))
-        current      (or row removed-row)
-        collection-id (some->> current (remote-sync/synced-collection-id model))
-        parent        (some->> current (remote-sync/synced-parent model))]
-    (cond-> {:id          (or (some-> current (get (first (t2/primary-keys model)))) 0)
-             :name        (remote-sync.merge/label key doc)
-             :model       (u/lower-case-en (name model))
-             :sync_status (if (and (= "delete" status) removed-row) "removed" status)}
-      collection-id                                    (assoc :collection_id collection-id)
-      parent                                           (assoc :parent parent)
-      (remote-sync/synced-collection-from-parent? model) (assoc ::collection-from-parent? true))))
+(defn- removed-rows
+  "The rows of the app DB the deleted changes among `changes` still find, which remote sync no longer syncs, by the
+  key of their change."
+  [changes]
+  (into {}
+        (for [[model deletes] (group-by (comp first :key) (filter #(= "delete" (:status %)) changes))
+              [{k :key} row]  (map vector deletes (serialization/local-rows model (mapv (comp :entity :doc) deletes)))
+              :when row]
+          [k row])))
 
-(defn- with-parents
-  "The `items` with the `[model pk]` of their parent replaced by the parent as the client names it, by the label the
-  spec of its model gives its exported entity, and, for an item whose collection is its parent's, with the collection
-  of its parent."
-  [items]
-  (let [parents (into {}
-                      (for [[model parents] (group-by first (into [] (comp (keep :parent) (distinct)) items))
-                            :let [pk   (first (t2/primary-keys model))
-                                  rows (remote-sync.db/exported-rows model (mapv second parents))]
-                            [row entity] (map vector rows (serialization/export-batch model rows))]
-                        [[model (get row pk)]
-                         {:name          (when-not (instance? Exception entity)
-                                           (remote-sync/synced-label model entity))
-                          :collection-id (remote-sync/synced-collection-id model row)}]))]
-    (mapv (fn [{[model id :as parent] :parent :as item}]
-            (let [collection-id (when (::collection-from-parent? item)
-                                  (get-in parents [parent :collection-id]))]
-              (cond-> (dissoc item ::collection-from-parent?)
-                parent        (assoc :parent {:model (u/lower-case-en (name model))
-                                              :id    id
-                                              :name  (get-in parents [parent :name])})
-                collection-id (assoc :collection_id collection-id))))
-          items)))
-
-(defn- with-collections
-  "The `items` with the collection each change belongs to, the entity itself for a collection, with its effective
-  ancestors in place of its id."
-  [items]
-  (let [ids     (into [] (comp (keep :collection_id) (distinct)) items)
-        by-id   (when (seq ids)
-                  (into {}
-                        (map (juxt :id (fn [collection]
-                                         (-> (select-keys collection [:id :name :type :effective_ancestors])
-                                             (update :effective_ancestors #(filterv (comp pos-int? :id) %))))))
-                        (t2/hydrate (remote-sync.db/collections ids) :effective_ancestors)))]
-    (mapv (fn [{:keys [collection_id] :as item}]
-            (cond-> (dissoc item :collection_id)
-              (get by-id collection_id) (assoc :collection (get by-id collection_id))))
-          items)))
-
-(defn- entity-ref
-  "The `row` of `model` as the client names it."
+(defn- row-ref
+  "The `[model pk]` of `row`, a row of `model`."
   [model row]
-  {:id    (get row (first (t2/primary-keys model)))
-   :name  (or (remote-sync/synced-label model row) "")
-   :model (u/lower-case-en (name model))})
+  [model (get row (first (t2/primary-keys model)))])
 
-(defn- name-key
-  "What sorts the client-named entity `entity` by its name, ignoring case."
-  [{entity-name :name id :id}]
-  [(u/lower-case-en entity-name) (str id)])
+(defn- model-name
+  "The name of `model` as the client names it, such as `card` for `:model/Card`."
+  [model]
+  (u/lower-case-en (name model)))
 
-(defn- unsynced-dependency
-  "The unsynced dependency `dependency` as the client lists it."
-  [{:keys [model row used-by]}]
-  (assoc (entity-ref model row)
-         :collection_id (remote-sync/synced-collection-id model row)
-         :used_by       (vec (sort-by name-key (map #(apply entity-ref %) used-by)))))
+(def ^:private items-batch-size
+  "The most primary keys the `:synced-items` of a remote sync spec gets at once."
+  1000)
 
-(defn- sorted-dependencies
-  "The unsynced `dependencies` with their collections, by the name of their top-level collection, those in no collection
-  last, then by name."
+(defn- items
+  "The rows of `refs`, `[model pk]` pairs, by ref, as the `:synced-items` of the spec of their model returns them, a batch of
+  primary keys at a time, none for the rows of a model without `:synced-items`."
+  [refs]
+  (into {}
+        (for [[model refs] (group-by first (distinct refs))
+              :let  [items (:synced-items (remote-sync/spec model))]
+              :when items
+              pks   (partition-all items-batch-size (map second refs))
+              row   (items (vec pks))]
+          [(row-ref model row) row])))
+
+(defn- dirty-items
+  "The `changes` as the client lists them (see `::remote-sync.schema/change`)."
+  [changes]
+  (let [removed (removed-rows changes)
+        refs    (into {}
+                      (keep (fn [{[model] :key k :key :keys [doc]}]
+                              (when-let [ref (or (:row doc) (some->> (get removed k) (row-ref model)))]
+                                [k ref])))
+                      changes)
+        items   (items (vals refs))]
+    (vec (for [{[model] :key k :key :keys [status doc]} changes
+               :let [[_ id :as ref] (get refs k)]]
+           {:id          (or id 0)
+            :model       (model-name model)
+            :name        (remote-sync.merge/label k doc)
+            :sync_status (if (and (= "delete" status) (contains? removed k)) "removed" status)
+            :data        (get items ref)}))))
+
+(defn- unsynced-dependencies
+  "The unsynced `dependencies` as the client lists them (see `::remote-sync.schema/item`)."
   [dependencies]
-  (vec (sort-by (fn [{:keys [collection] :as dependency}]
-                  (let [top-level (or (first (:effective_ancestors collection)) collection)]
-                    [(nil? top-level) (some-> top-level name-key) (name-key dependency)]))
-                (with-collections (map unsynced-dependency dependencies)))))
+  (let [items (items (mapcat (fn [{:keys [model row used-by]}]
+                               (cons (row-ref model row) (map #(apply row-ref %) used-by)))
+                             dependencies))
+        item  (fn [model row]
+                {:id    (second (row-ref model row))
+                 :model (model-name model)
+                 :data  (get items (row-ref model row))})]
+    (mapv (fn [{:keys [model row used-by]}]
+            (assoc (item model row) :used_by (mapv #(apply item %) used-by)))
+          dependencies)))
 
-(api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
+(api.macros/defendpoint :post "/import" :- ::remote-sync.schema/import-response
   "Pull the synced content of the remote branch, or of `branch` to switch to it, into this instance, keeping its local
   changes when `merge`, discarding them when `force`, and refusing when it has some otherwise."
   [_route
@@ -170,7 +151,7 @@
         (throw (ex-info (tru "You have changes that aren''t pushed yet. Pull again to keep or discard them.")
                         {:status-code   400
                          :conflicts     true
-                         :dirty_objects (with-collections (with-parents (map dirty-item changes)))
+                         :dirty_objects (dirty-items changes)
                          :response/keys #{:conflicts :dirty_objects}}))))
     (let [task (started (tasks/start! {:type "import" :branch branch :user-id user :event :event/remote-sync-import}
                                       (fn [report]
@@ -178,21 +159,21 @@
                                                     {:force? force :report report}))))]
       {:status :success :task_id (:id task)})))
 
-(api.macros/defendpoint :get "/is-dirty" :- remote-sync.schema/IsDirtyResponse
+(api.macros/defendpoint :get "/is-dirty" :- ::remote-sync.schema/is-dirty-response
   "Whether the synced content of this instance changed since the last sync."
   []
   (api/check-superuser)
   {:is_dirty (boolean (and (remote-sync.settings/remote-sync-enabled) (seq (local-changes))))})
 
-(api.macros/defendpoint :get "/dirty" :- remote-sync.schema/DirtyResponse
+(api.macros/defendpoint :get "/dirty" :- ::remote-sync.schema/dirty-response
   "The synced content of this instance that changed since the last sync."
   []
   (api/check-superuser)
   {:dirty (if (remote-sync.settings/remote-sync-enabled)
-            (with-collections (with-parents (map dirty-item (local-changes))))
+            (dirty-items (local-changes))
             [])})
 
-(api.macros/defendpoint :get "/has-remote-changes" :- remote-sync.schema/HasRemoteChangesResponse
+(api.macros/defendpoint :get "/has-remote-changes" :- ::remote-sync.schema/has-remote-changes-response
   "Whether the remote branch moved on since the last sync."
   []
   (api/check-superuser)
@@ -206,7 +187,7 @@
              :local_version  local}
       (nil? tip) (assoc :branch_missing true))))
 
-(api.macros/defendpoint :post "/export" :- remote-sync.schema/ExportResponse
+(api.macros/defendpoint :post "/export" :- ::remote-sync.schema/export-response
   "Push the synced content of this instance to `branch`, the synced branch, overwriting the changes of the remote since
   the last sync when `force`, merging them in when `merge`, and stopping otherwise."
   [_route
@@ -230,7 +211,7 @@
                                                      :report  report}))))]
       {:message (tru "Pushing changes") :task_id (:id task)})))
 
-(api.macros/defendpoint :get "/export-preflight" :- remote-sync.schema/ExportPreflightResponse
+(api.macros/defendpoint :get "/export-preflight" :- ::remote-sync.schema/export-preflight-response
   "What a push to `branch`, the synced branch, would do: whether the remote changed since the last sync, and what a
   merge would conflict on, merge in, and what a force push would discard."
   [_route
@@ -254,14 +235,14 @@
   (-> (t2/hydrate task :status :initiated_by_user)
       (update :initiated_by_user #(some-> % (select-keys [:id :first_name :last_name :email])))))
 
-(api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
+(api.macros/defendpoint :get "/current-task" :- [:maybe ::remote-sync.schema/sync-task]
   "The most recent task."
   []
   (api/check-superuser)
   (remote-sync.task/supersede-stale-tasks!)
   (some-> (remote-sync.task/most-recent-task) present-task))
 
-(api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
+(api.macros/defendpoint :post "/current-task/cancel" :- ::remote-sync.schema/sync-task
   "Ask the running task to stop. A task that already started to change content finishes."
   []
   (api/check-superuser)
@@ -270,7 +251,7 @@
     (remote-sync.task/cancel-sync-task! (:id task))
     (present-task (remote-sync.task/most-recent-task))))
 
-(api.macros/defendpoint :post "/test-connection" :- remote-sync.schema/TestConnectionResponse
+(api.macros/defendpoint :post "/test-connection" :- ::remote-sync.schema/test-connection-response
   "Check that the saved repository, or the one of `remote-sync-url` and `remote-sync-token`, can be reached."
   [_route-params
    _query-params
@@ -284,7 +265,7 @@
     (catch Exception e
       (throw (ex-info (tasks/error-message e) {:status-code 400} e)))))
 
-(api.macros/defendpoint :put "/settings" :- remote-sync.schema/SettingsUpdateResponse
+(api.macros/defendpoint :put "/settings" :- ::remote-sync.schema/settings-update-response
   "Update the remote sync settings, and which collections are synced."
   [_route-params
    _query-params
@@ -306,7 +287,7 @@
                       (if-let [dependencies (:unsynced-dependencies (ex-data e))]
                         {:status-code           400
                          :error-code            "unsynced-dependencies"
-                         :unsynced_dependencies (sorted-dependencies dependencies)
+                         :unsynced_dependencies (unsynced-dependencies dependencies)
                          :response/keys         #{:unsynced_dependencies}}
                         (merge {:status-code 400} (ex-data e)))
                       e))))
@@ -322,7 +303,7 @@
       (cond-> {:success true} task (assoc :task_id (:id task))))
     {:success true}))
 
-(api.macros/defendpoint :get "/branches" :- remote-sync.schema/BranchesResponse
+(api.macros/defendpoint :get "/branches" :- ::remote-sync.schema/branches-response
   "The branches of the repository."
   []
   (api/check-superuser)
@@ -332,7 +313,7 @@
     (catch Exception e
       (throw (ex-info (tasks/error-message e) {:status-code 400} e)))))
 
-(api.macros/defendpoint :post "/stash" :- remote-sync.schema/StashResponse
+(api.macros/defendpoint :post "/stash" :- ::remote-sync.schema/stash-response
   "Push the synced content of this instance to the new branch `new_branch`, created at the version of the last sync,
   and sync with it."
   [_route
