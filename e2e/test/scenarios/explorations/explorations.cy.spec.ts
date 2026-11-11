@@ -268,7 +268,7 @@ describe("scenarios > explorations", () => {
   });
 
   describe("detail page", () => {
-    it("keeps the URL `timeline` param and its event chips after a reload", () => {
+    it("keeps the URL `timeline` param, its event chips, and the page's star and hidden state after a reload", () => {
       createTimelineWithSentinelEvent("Releases", "star").then((timelineId) => {
         cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
           // Unjustified type cast. FIXME
@@ -284,15 +284,18 @@ describe("scenarios > explorations", () => {
             timelineIds: [timelineId],
             dimensionIds: [temporalDimension!.id],
           }).then((id) => {
+            const temporalPage = () =>
+              cy.findByRole("treeitem", {
+                name: new RegExp(`${temporalDimension!.display_name}$`), // anchor at end so we don't match day of week or hour of day
+              });
+
             cy.visit(`/question/research/${id}?timeline=${timelineId}`);
             // Sidebar treeitems appear once the BE returns query rows.
             cy.findAllByRole("treeitem", { timeout: 15000 })
               .first()
               .should("be.visible");
 
-            cy.findByRole("treeitem", {
-              name: new RegExp(`${temporalDimension!.display_name}$`), // anchor at end so we don't match day of week or hour of day
-            }).click();
+            temporalPage().click();
             cy.findByTestId("exploration-chart-grid").within(() => {
               H.timelineEventChip("Releases event").should("be.visible");
             });
@@ -308,6 +311,29 @@ describe("scenarios > explorations", () => {
             cy.findByTestId("exploration-chart-grid").within(() => {
               H.timelineEventChip("Releases event").should("be.visible");
             });
+
+            cy.log("Star and hide writes persist across a reload");
+            cy.intercept("PUT", "/api/exploration/page/*/starred").as(
+              "setStarred",
+            );
+            cy.intercept("PUT", "/api/exploration/pages/hidden").as(
+              "setPagesHidden",
+            );
+
+            cy.get("body").type("s");
+            cy.wait("@setStarred");
+            cy.reload();
+            H.main()
+              .findByRole("button", { name: "Remove star", timeout: 15000 })
+              .should("be.visible");
+
+            cy.get("body").type("h");
+            cy.wait("@setPagesHidden");
+            cy.reload();
+            cy.findAllByRole("treeitem", { timeout: 15000 })
+              .first()
+              .should("be.visible");
+            temporalPage().should("not.exist");
           });
         });
       });
