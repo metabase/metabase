@@ -5,6 +5,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]))
 
+(set! *warn-on-reflection* true)
+
 (defn- lint!
   "The `:metabase/dynamic-redefs-captured-proxy` findings from a real kondo run over `body-lines`.
    They follow an `ns` form that requires `metabase.test` as `mt`, `metabase.test.util.dynamic-redefs` as `dr`,
