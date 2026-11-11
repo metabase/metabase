@@ -721,9 +721,9 @@
   they connect to. The `saved-charts` are the charts this call saved, which [[card-shown-fn]] shows.
   When the dashboard has tabs, a dashcard with no tab is listed before them, marked `all_tabs`, as in the frontend
   and `read_resource`'s items read."
-  ;; The `dashcard_id`, `tab_id` and `all_tabs` attributes and the `<filter>` element match `read_resource`'s items
-  ;; read. The layout differs: dashcards nest under their `<tab>`, and a question's id is `card_id`, the name the ops
-  ;; take.
+  ;; The `dashcard_id`, `tab_id` and `all_tabs` attributes match `read_resource`'s items read, and the `<filter>`
+  ;; element matches its dashboard details read. The layout differs: dashcards nest under their `<tab>`, and a
+  ;; question's id is `card_id`, the name the ops take.
   [{:keys [id name description tabs dashcards parameters]} saved-charts]
   (let [by-tab      (group-by :dashboard_tab_id (sort-by (juxt :row :col) dashcards))
         card-shown? (card-shown-fn dashcards saved-charts)
