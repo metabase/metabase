@@ -838,7 +838,6 @@ def field_references(sql: str, dialect: str = "postgres") -> str:
     - alias: column alias (null if none)
     - source_columns: nested list of possible source columns
     - table: table info (for all_columns)
-    - used_fields: list of fields used (for custom_field)
     - member_fields: list of fields (for composite_field)
     """
     try:
@@ -1265,19 +1264,13 @@ class FieldReferenceWalker:
                 return [{"col": subquery_result["returned_fields"][0]}]
             return []
 
-        # Everything else is a custom field (function, case, binary expression, etc.)
-        used_fields = []
-        for result in self._find_used_fields(expr, sources, withs):
-            if "col" in result:
-                used_fields.append(result["col"])
-
+        # Everything else is a custom field (function, case, binary expression, etc.). It does not list the fields it
+        # reads: those are in the query's used_fields, and a copy in each field that reads it grows with each level.
         alias = expr.alias if hasattr(expr, "alias") and expr.alias else None
         return [{
             "col": {
                 "type": "custom_field",
                 "alias": alias,
-                # Don't freeze - these go directly to returned_fields which isn't unfrozen
-                "used_fields": used_fields
             }
         }]
 
@@ -1514,8 +1507,6 @@ class FieldReferenceWalker:
                                         "col": {
                                             "type": "custom_field",
                                             "alias": column_name,
-                                            # Don't freeze - goes directly to returned_fields
-                                            "used_fields": list(source.get("returned_fields", []))
                                         }
                                     }]
                                 else:
@@ -1527,8 +1518,6 @@ class FieldReferenceWalker:
                                         "col": {
                                             "type": "custom_field",
                                             "alias": column_name,
-                                            # Don't freeze - goes directly to returned_fields
-                                            "used_fields": list(source.get("returned_fields", []))
                                         }
                                     }]
                                 else:

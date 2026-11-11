@@ -533,12 +533,7 @@
 
         :custom-field
         {:type :custom-field
-         :alias (or (:alias field) (get field "alias"))
-         :used-fields (set (map convert-field
-                                (or (:used-fields field)
-                                    (:used_fields field)
-                                    (get field "used_fields")
-                                    [])))}
+         :alias (or (:alias field) (get field "alias"))}
 
         :composite-field
         {:type :composite-field
@@ -570,7 +565,6 @@
    - :alias - column alias (nil if none)
    - :source-columns - nested list of possible source columns
    - :table - table info (for all-columns)
-   - :used-fields - set of fields used (for custom-field)
    - :member-fields - list of fields (for composite-field)
 
    On timeout, returns an error map instead of throwing, consistent with the
