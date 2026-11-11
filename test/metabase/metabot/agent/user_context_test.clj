@@ -16,6 +16,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
    [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -567,16 +568,219 @@
                  :query    {:source-table (str "card__" card-id)}}]
       (testing "a query sourced from a readable card is exportable even when its database is not queryable"
         (mt/with-no-data-perms-for-all-users!
-          (perms/set-table-permission! (perms-group/all-users) (mt/id :venues)
-                                       :perms/manage-table-metadata :yes)
+          (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
           (mt/with-test-user :rasta
             (is (not (mi/can-query? :model/Database (mt/id))))
             (is (some? (shared.content-store/query-for-export query false))))))
+      (testing "and not exportable when the user has no view-data access to the card's table"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-test-user :rasta
+            (is (not (perms/user-has-permission-for-table? (mt/user->id :rasta) :perms/view-data :unrestricted
+                                                           (mt/id) (mt/id :venues)))
+                "precondition")
+            (is (nil? (shared.content-store/query-for-export query false))))))
       (testing "and not exportable when the card is not readable"
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-no-data-perms-for-all-users!
             (mt/with-test-user :rasta
               (is (nil? (shared.content-store/query-for-export query false))))))))))
+
+(defn- card-source-query
+  "An ad-hoc query on the card with `card-id`, with `inner` merged into its stage, as the frontend sends one."
+  ([card-id]
+   (card-source-query card-id nil))
+  ([card-id inner]
+   {:database (mt/id)
+    :type     :query
+    :query    (merge {:source-table (str "card__" card-id)} inner)}))
+
+(defn- venues-model-dataset-query
+  "A query on VENUES with the custom column `Double`, for a model."
+  []
+  {:database (mt/id)
+   :type     :query
+   :query    {:source-table (mt/id :venues)
+              :expressions  {"Double" [:* [:field (mt/id :venues :price) nil] 2]}}})
+
+(defn- adhoc-viewing-context
+  [query]
+  (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]}))
+
+(defn- qp-refusal
+  "The message of the error that the query processor throws for `query`, or nil when the query runs."
+  [query]
+  (try
+    (qp/process-query query)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (ex-message e))))
+
+(defn- rasta-has-view-data?
+  [table-key]
+  (perms/user-has-permission-for-table? (mt/user->id :rasta) :perms/view-data :unrestricted
+                                        (mt/id) (mt/id table-key)))
+
+(defn- check-refused
+  "Assert that Metabot gets neither `query` nor its columns, and that the query processor refuses `query`
+  with `refusal`.
+
+  `column-names` are the columns that a cleared query shows, as [[check-cleared]] takes them."
+  [query refusal column-names]
+  (testing "query-for-export refuses the query, and does not report it as unchecked"
+    (is (nil? (shared.content-store/query-for-export query true))))
+  (testing "the viewing context shows neither the query nor a column list"
+    (let [out (adhoc-viewing-context query)]
+      (is (str/includes? out "notebook editor"))
+      (is (not (str/includes? out "source-card")))
+      (is (not (str/includes? out "Columns")))
+      (doseq [column-name column-names]
+        (is (not (str/includes? out column-name)) column-name))))
+  (testing "the query processor refuses the same query"
+    (is (re-find refusal (str (qp-refusal query))))))
+
+(defn- check-cleared
+  "Assert that Metabot gets `query` and a column list with each of `column-names`."
+  [query column-names]
+  (is (some? (:mp (shared.content-store/query-for-export query true))))
+  (let [out (adhoc-viewing-context query)]
+    (is (str/includes? out "source-card"))
+    (doseq [column-name column-names]
+      (is (str/includes? out (str "- \"" column-name "\""))))))
+
+(deftest adhoc-viewing-context-model-view-data-test
+  (testing "a user who can read a model but has no view-data access to its table gets neither the query nor its columns"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card {model-id :id} {:name          "Venues model"
+                                                 :type          :model
+                                                 :database_id   (mt/id)
+                                                 :table_id      (mt/id :venues)
+                                                 :dataset_query (venues-model-dataset-query)}]
+        (let [query (card-source-query model-id)]
+          (doseq [view-data [:blocked :legacy-no-self-service]]
+            (testing (str "view-data " view-data)
+              (mt/with-no-data-perms-for-all-users!
+                (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data view-data)
+                (mt/with-test-user :rasta
+                  (is (not (rasta-has-view-data? :venues)) "precondition")
+                  (check-refused query #"You do not have permissions to run this query\." ["NAME" "Double"]))))))))))
+
+(deftest adhoc-viewing-context-model-view-data-roles-test
+  (mt/with-temp [:model/Card {model-id :id} {:name          "Venues model"
+                                             :type          :model
+                                             :database_id   (mt/id)
+                                             :table_id      (mt/id :venues)
+                                             :dataset_query (venues-model-dataset-query)}]
+    (let [query (card-source-query model-id)]
+      (testing "an admin gets the query and its columns"
+        (mt/with-test-user :crowberto
+          (check-cleared query ["NAME" "Double"])))
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (mt/with-test-user :rasta
+          (testing "a user with view-data but no create-queries access gets a bare model query, since the card read
+                   authorizes the run"
+            (is (rasta-has-view-data? :venues) "precondition")
+            (is (not (mi/can-query? :model/Table (mt/id :venues))) "precondition")
+            (check-cleared query ["NAME" "Double"])
+            (is (seq (mt/rows (qp/process-query query)))))
+          (testing "the same user does not get a query that refers to a field of the model's table by id"
+            ;; the QP runs this query for the user: the gate refuses it because it resolves the field id to a name
+            (let [by-field-id (card-source-query model-id {:filter [:> [:field (mt/id :venues :price) nil] 1]})]
+              (is (seq (mt/rows (qp/process-query by-field-id))))
+              (is (nil? (shared.content-store/query-for-export by-field-id true))))))))))
+
+(deftest adhoc-viewing-context-model-joins-blocked-table-test
+  (testing "a model that joins an allowed table to a blocked table is refused: every table under the card counts"
+    (mt/with-temp [:model/Card {model-id :id}
+                   {:type          :model
+                    :database_id   (mt/id)
+                    :table_id      (mt/id :venues)
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :venues)
+                                               :joins        [{:source-table (mt/id :categories)
+                                                               :alias        "Categories"
+                                                               :fields       :all
+                                                               :condition    [:=
+                                                                              [:field (mt/id :venues :category_id) nil]
+                                                                              [:field (mt/id :categories :id)
+                                                                               {:join-alias "Categories"}]]}]}}}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/view-data :blocked)
+        (mt/with-test-user :rasta
+          (is (rasta-has-view-data? :venues) "precondition")
+          (is (not (rasta-has-view-data? :categories)) "precondition")
+          (check-refused (card-source-query model-id) #"You do not have permissions to run this query\." ["NAME"]))))))
+
+(deftest adhoc-viewing-context-nested-card-blocked-table-test
+  (testing "a model on a question on a blocked table is refused: nested cards are expanded"
+    (mt/with-temp [:model/Card {question-id :id} {:dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (mt/id :categories)}}}
+                   :model/Card {model-id :id}    {:type          :model
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table
+                                                                             (str "card__" question-id)}}}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/view-data :blocked)
+        (mt/with-test-user :rasta
+          (is (not (rasta-has-view-data? :categories)) "precondition")
+          (check-refused (card-source-query model-id) #"You do not have permissions to run this query\." ["NAME"]))))))
+
+(deftest adhoc-viewing-context-native-model-blocked-result-metadata-test
+  (testing "a native model whose result_metadata maps columns to fields of a blocked table is refused"
+    (let [native (lib/native-query (mt/metadata-provider) "SELECT ID, NAME FROM CATEGORIES")
+          cols   (mapv #(assoc %1 :id %2)
+                       (mt/cols (qp/process-query native))
+                       [(mt/id :categories :id) (mt/id :categories :name)])]
+      (mt/with-temp [:model/Card {model-id :id} {:type            :model
+                                                 :database_id     (mt/id)
+                                                 :dataset_query   native
+                                                 :result_metadata cols}]
+        (is (= #{(mt/id :categories :id) (mt/id :categories :name)}
+               (set (map :id (t2/select-one-fn :result_metadata :model/Card :id model-id))))
+            "precondition: the stored result_metadata maps the columns to fields")
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (testing "a user with view-data on the mapped table gets the query"
+            (mt/with-test-user :rasta
+              (check-cleared (card-source-query model-id) ["NAME"])))
+          ;; One blocked table makes the database-level value :blocked, so the QP refuses a native model through
+          ;; the EE block rule. :legacy-no-self-service reaches the QP's own result_metadata rule.
+          (doseq [[view-data refusal] {:blocked                #"You do not have permissions to run this query\."
+                                       :legacy-no-self-service #"in result_metadata"}]
+            (testing (str "view-data " view-data " on the mapped table")
+              (perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/view-data view-data)
+              (mt/with-test-user :rasta
+                (is (not (rasta-has-view-data? :categories)) "precondition")
+                (check-refused (card-source-query model-id) refusal ["NAME"])))))))))
+
+(deftest adhoc-viewing-context-table-joins-blocked-card-test
+  (testing "a table query that joins a card on a blocked table is refused"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :categories)}}}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+        (mt/with-test-user :rasta
+          (is (mi/can-query? :model/Table (mt/id :venues)) "precondition: the outer table is queryable")
+          (is (not (rasta-has-view-data? :categories)) "precondition")
+          (check-refused {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (mt/id :venues)
+                                     :joins        [{:source-table (str "card__" card-id)
+                                                     :alias        "c"
+                                                     :fields       :all
+                                                     :condition    [:=
+                                                                    [:field (mt/id :venues :category_id) nil]
+                                                                    [:field "ID" {:base-type  :type/BigInteger
+                                                                                  :join-alias "c"}]]}]}}
+                         #"permission"
+                         ["NAME"]))))))
 
 (deftest ^:parallel adhoc-viewing-context-includes-query-test
   (testing "adhoc viewing context renders the query so the model can see the chart"
@@ -629,6 +833,8 @@
                                               :query    {:source-table (str "card__" card-id)}}}]})]
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id db-id}
+                   ;; a table with no fields does not preprocess, and the query then renders unchecked
+                   :model/Field    _ {:table_id table-id :name "ID" :base_type :type/Integer}
                    :model/Card     {card-id :id} {:database_id   db-id
                                                   :dataset_query {:database db-id
                                                                   :type     :query
@@ -638,12 +844,12 @@
           (mt/with-test-user :rasta
             (let [out (user-context/format-viewing-context (viewing card-id))]
               (is (str/includes? out "notebook editor"))
-              (is (not (str/includes? out (str "card__" card-id))))))))
+              (is (not (str/includes? out "source-card")))))))
       (testing "and still renders for a user who can read that database"
         (mt/with-test-user :crowberto
           (let [out (user-context/format-viewing-context (viewing card-id))]
             (is (str/includes? out "notebook editor"))
-            (is (re-find #"source-card|card__" out))))))))
+            (is (str/includes? out "source-card"))))))))
 
 (defn- refusing-store
   "A ContentStore that records `tag` and refuses, the way the real stores do for a row the

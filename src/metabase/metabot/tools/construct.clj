@@ -965,10 +965,11 @@
 ;;; ---------------------------------------- Result columns ----------------------------------------
 
 (defn- result-columns-for-query
-  "Generate result columns from a MBQL 5 query for LLM consumption."
+  "Generate result columns from a MBQL 5 query for LLM consumption, without the columns that the current user may not
+  see, such as the columns that a sandbox hides ([[entity-details/permission-filter-columns]])."
   [mbql5-query metadata-provider]
   (let [query (lib/query metadata-provider mbql5-query)
-        cols  (lib/returned-columns query)]
+        cols  (entity-details/permission-filter-columns (lib/returned-columns query))]
     (tools.u/->result-columns query cols)))
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
@@ -998,6 +999,60 @@
                        causes)
                  (and (not (input-error-data? data))
                       (some #(contains? (ex-data %) :toucan2/context-trace) causes)))))))))
+
+;;; ----- a saved question, model or metric that the user cannot run ----------------------------
+
+(defn- card-source-not-runnable!
+  "Reject the query: the current user can read `card`, but has no data access to the tables under it."
+  [card]
+  (throw (ex-info (format (str "You can open %s, but you do not have data access to the tables under it, "
+                               "so no query on it can run.")
+                          (quoting/quoted (:name card)))
+                  {:agent-error? true
+                   :status-code  403
+                   :error        :card-source-not-runnable})))
+
+(defn- card-preprocessing-failed!
+  "Reject the query: the query processor cannot prepare the query of `card`, so no query on it can run.
+
+  `cause` stays out of the message. It can name a table that the current user cannot view."
+  [card cause]
+  (throw (ex-info (format "Metabase cannot prepare the query of %s, so no query on it can run."
+                          (quoting/quoted (:name card)))
+                  {:agent-error? true
+                   :status-code  400
+                   :error        :card-source-preprocessing-failed}
+                  cause)))
+
+(defn- card-runnable?
+  "Whether the current user has the data access that the query processor needs for a query on `card`.
+
+  Throws [[card-preprocessing-failed!]] when the query processor cannot prepare the query of `card`."
+  [card]
+  (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
+    (try
+      (shared.content-store/card-sources-accessible? (lib/query mp (lib.metadata/card mp (:id card))))
+      (catch clojure.lang.ExceptionInfo e
+        ;; Fail closed: nothing here lets the build go on. The classes are those of `check-query-preprocessing!`:
+        ;; an app-DB failure stays an internal error, and a permission failure is a denial.
+        (cond
+          (database-error? e)                                                (throw e)
+          (some #(= 403 (:status-code (ex-data %))) (u/full-exception-chain e)) false
+          (= :qp (:type (ex-data e)))                                        (card-preprocessing-failed! card e)
+          :else                                                              (throw e))))))
+
+(defn- check-card-sources-runnable!
+  "Reject `parsed-query` when it reads a Card, as a source or as a metric, whose tables the current user cannot view.
+
+  The query processor refuses such a query, and repair's errors would name the Card's columns. A Card that is missing
+  or that the user cannot read is left to resolve's own answer."
+  [parsed-query]
+  (when-let [card (->> (concat (source-card-refs parsed-query) (portable-metric-refs parsed-query))
+                       distinct
+                       (keep readable-card-by-ref)
+                       (remove card-runnable?)
+                       first)]
+    (card-source-not-runnable! card)))
 
 (defn- has-valid-trailing-clause?
   "Return whether a stage has a nonempty trailing clause with a valid portable structure."
@@ -1336,7 +1391,8 @@
         ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
         ;; never inspects table/card metadata that the current user cannot use.
         checked     (check-source-table-query-permissions! mp parsed)
-        _curated    (check-curated-portable-sources! mp parsed checked)]
+        _curated    (check-curated-portable-sources! mp parsed checked)
+        _cards      (check-card-sources-runnable! parsed)]
     ;; Relay query-input errors while preserving database and permission failures.
     (try
       (let [;; Repair's mini-resolve lookups are best-effort - a failure is logged at debug and the

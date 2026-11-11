@@ -512,6 +512,49 @@
                                      {:query (orders-query
                                               :aggregation [["metric" {} (:entity_id metric)]])})))))))
 
+(deftest construct-query-source-card-without-data-access-test
+  (mt/with-premium-features #{}
+    (mt/with-temp [:model/Card {model-eid :entity_id}
+                   {:name          "Venues model"
+                    :type          :model
+                    :database_id   (mt/id)
+                    :table_id      (mt/id :venues)
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :venues)
+                                               :expressions  {"Double" [:* [:field (mt/id :venues :price) nil] 2]}}}}]
+      (testing "an admin gets the query"
+        (is (string? (:query (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                   {:query (source-card-query model-eid)})))))
+      (testing "a user who can read the model but has no view-data access to its table gets a 403 that names no column"
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :blocked)
+          (let [response (mt/user-http-request :rasta :post 403 "agent/v2/construct-query"
+                                               {:query (source-card-query model-eid)})]
+            (is (=? {:error "card-source-not-runnable"} response))
+            (is (str/includes? (pr-str response) "Venues model"))
+            (doseq [column ["Double" "PRICE"]]
+              (is (not (str/includes? (pr-str response) column)) column))))))))
+
+(deftest construct-query-source-card-that-cannot-be-prepared-test
+  (mt/with-temp [:model/Table {table-id :id}         {:db_id (mt/id) :name "NO_FIELDS_TABLE" :active true}
+                 :model/Card  {model-eid :entity_id} {:name          "No fields model"
+                                                      :type          :model
+                                                      :database_id   (mt/id)
+                                                      :table_id      table-id
+                                                      :dataset_query {:database (mt/id)
+                                                                      :type     :query
+                                                                      :query    {:source-table table-id}}}]
+    (testing "an admin gets the query, since the card check skips an admin"
+      (is (string? (:query (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                 {:query (source-card-query model-eid)})))))
+    (testing "a non-admin gets a 400 with a declared error that names the model and no table"
+      (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                           {:query (source-card-query model-eid)})]
+        (is (=? {:error "card-source-preprocessing-failed"} response))
+        (is (str/includes? (pr-str response) "No fields model"))
+        (is (not (str/includes? (pr-str response) "NO_FIELDS_TABLE")))))))
+
 (deftest construct-query-rejects-empty-query-test
   (testing "Empty / blank :query is rejected by the request schema"
     (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query ""}))

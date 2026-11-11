@@ -41,6 +41,17 @@
         (is (=? [{:id table-id, :is_published true, :collection_id (:id data)}]
                 (metabot.db/table-schema-rows [table-id])))))))
 
+(deftest card-result-metadata-test
+  (testing "returns the stored result_metadata for each card id, and nothing for a missing id"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {card-id :id} {:database_id   (mt/id)
+                                                :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
+        (let [stored  (t2/select-one-fn :result_metadata :model/Card :id card-id)
+              missing Integer/MAX_VALUE]
+          (is (seq stored) "precondition: the card has result_metadata")
+          (is (= {card-id stored}
+                 (metabot.db/card-result-metadata #{card-id missing}))))))))
+
 (deftest card-source-info-classifies-legacy-metrics-test
   (testing "Reading stored metric sources preserves stage structure without upgrading curated dimensions"
     (let [mp (mt/metadata-provider)]

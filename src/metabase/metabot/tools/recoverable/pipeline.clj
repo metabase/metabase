@@ -206,6 +206,23 @@
     :text (str "Call `search` to find curated tables, models, or metrics and build the query on those instead. "
                "A table related to a curated one may be joined, but not used as the query's source.")}])
 
+;;; Permissions
+
+(defpipeline-error card-source-not-runnable!
+  "The query reads a saved question, model or metric that the user can read, but the user has no data access to the
+  tables under it."
+  ;; No retry helps: every query on that card needs the same data access.
+  [{:uses #{}
+    :text (str "Tell the user that they need data access to the tables under it. "
+               "Do not retry with other columns or with another query on it.")}])
+
+(defpipeline-error card-source-preprocessing-failed!
+  "The query reads a saved question, model or metric whose own query the query processor cannot prepare."
+  ;; No retry helps: the card itself is broken, so no change to this query can make it run.
+  [{:uses #{}
+    :text (str "Tell the user that Metabase cannot run a query on it. "
+               "Do not retry with other columns or with another query on it.")}])
+
 ;;; Table resolution
 
 (defrecoverable unknown-table!

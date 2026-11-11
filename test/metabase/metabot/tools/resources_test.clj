@@ -792,22 +792,34 @@
                 (is (not (str/includes? (:output result) "SELECT")) uri)))))))))
 
 (deftest read-conversation-source-card-query-resource-test
-  (testing "a query sourced from a readable card exports through the card's collection access alone,
-           with no database permission of any kind"
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                              :type     :query
-                                                              :query    {:source-table (mt/id :orders)}}}]
-      (mt/with-no-data-perms-for-all-users!
-        (mt/with-current-user (mt/user->id :rasta)
-          (doseq [database-id [(mt/id) lib.schema.id/saved-questions-virtual-database-id]]
-            (binding [tools.shared/*memory-atom*
-                      (conversation-query-state {:database database-id
-                                                 :type     :query
-                                                 :query    {:source-table (str "card__" card-id)}})]
-              (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
-                (let [result (read-uris {:uris [uri]})]
-                  (is (=? {:resources [{:content map?}]} result))
-                  (is (str/includes? (:output result) "source-card")))))))))))
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                            :type     :query
+                                                            :query    {:source-table (mt/id :orders)}}}]
+    (let [read-card-query (fn [database-id uri]
+                            (binding [tools.shared/*memory-atom*
+                                      (conversation-query-state {:database database-id
+                                                                 :type     :query
+                                                                 :query    {:source-table (str "card__" card-id)}})]
+                              (read-uris {:uris [uri]})))]
+      (testing "a query sourced from a readable card exports with view-data access alone, with no create-queries
+               access"
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (mt/with-current-user (mt/user->id :rasta)
+            (doseq [database-id [(mt/id) lib.schema.id/saved-questions-virtual-database-id]
+                    uri         ["metabase://query/q-1" "metabase://chart/chart-1"]]
+              (let [result (read-card-query database-id uri)]
+                (is (=? {:resources [{:content map?}]} result))
+                (is (str/includes? (:output result) "source-card")))))))
+      (testing "and has its body withheld without view-data access to the card's table"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-current-user (mt/user->id :rasta)
+            (doseq [database-id [(mt/id) lib.schema.id/saved-questions-virtual-database-id]
+                    uri         ["metabase://query/q-1" "metabase://chart/chart-1"]]
+              (let [result (read-card-query database-id uri)]
+                (is (str/includes? (:output result) "references content the user cannot read")
+                    [database-id uri])
+                (is (not (str/includes? (:output result) "source-card")) [database-id uri])))))))))
 
 (deftest read-conversation-source-card-query-unreadable-card-test
   (testing "a query sourced from a card in a collection the user cannot read has its body withheld"

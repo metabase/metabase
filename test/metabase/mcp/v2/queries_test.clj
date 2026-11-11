@@ -8,6 +8,7 @@
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.recovery-hints :as v2.recovery-hints]
    [metabase.metabot.tools.construct :as metabot.construct]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]))
@@ -149,6 +150,59 @@
                                 (fn [_] (throw (ex-info nil {:agent-error? true :status-code 400})))]
       (is (= [400 "\"definition\" could not be resolved. Pass a full query."]
              (thrown #(v2.queries/resolve-external-query {} (message/msg ["Pass a full query."]))))))))
+
+(deftest card-source-not-runnable-test
+  (testing "MCP relays the refusal of a model whose tables the user cannot view, with a step that says not to retry"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card {model-id :id} {:name          "Venues model"
+                                                 :type          :model
+                                                 :database_id   (mt/id)
+                                                 :table_id      (mt/id :venues)
+                                                 :dataset_query {:database (mt/id)
+                                                                 :type     :query
+                                                                 :query    {:source-table (mt/id :venues)}}}]
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :blocked)
+          (mt/with-test-user :rasta
+            (let [query {:lib/type "mbql/query"
+                         :stages   [{:lib/type "mbql.stage/mbql" :source-card model-id}]}]
+              (testing "execute_query and visualize_query"
+                (let [[status message] (thrown #(v2.queries/execute-representations-query query))]
+                  (is (= 403 status))
+                  (is (str/includes? (str message) "Venues model"))
+                  (is (str/includes? (str message) "Do not retry"))))
+              (testing "a `definition` passes the refusal through, not as a teaching error about its shape"
+                (let [[status message] (thrown #(v2.queries/resolve-external-query
+                                                 query (message/msg ["Pass a full query."])))]
+                  (is (= 403 status))
+                  (is (str/includes? (str message) "Do not retry"))
+                  (is (not (str/includes? (str message) "Pass a full query."))))))))))))
+
+(deftest card-source-preprocessing-failed-test
+  (testing "MCP relays a model whose query cannot be prepared as a final error, with a step that says not to retry"
+    (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :name "NO_FIELDS_TABLE" :active true}
+                   :model/Card  {model-id :id} {:name          "No fields model"
+                                                :type          :model
+                                                :database_id   (mt/id)
+                                                :table_id      table-id
+                                                :dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table table-id}}}]
+      (mt/with-test-user :rasta
+        (let [query {:lib/type "mbql/query"
+                     :stages   [{:lib/type "mbql.stage/mbql" :source-card model-id}]}]
+          (testing "execute_query and visualize_query"
+            (let [[status message] (thrown #(v2.queries/execute-representations-query query))]
+              (is (= 400 status))
+              (is (str/includes? (str message) "No fields model"))
+              (is (str/includes? (str message) "Do not retry"))
+              (is (not (str/includes? (str message) "NO_FIELDS_TABLE")))))
+          (testing "a `definition` passes the error through, not as a teaching error about its shape"
+            (let [[status message] (thrown #(v2.queries/resolve-external-query
+                                             query (message/msg ["Pass a full query."])))]
+              (is (= 400 status))
+              (is (str/includes? (str message) "Do not retry"))
+              (is (not (str/includes? (str message) "Pass a full query."))))))))))
 
 (defn- pipeline-failure
   "The exception [[v2.queries/execute-representations-query]] throws when the shared pipeline throws `e`."

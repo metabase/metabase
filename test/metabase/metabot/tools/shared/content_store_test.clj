@@ -33,6 +33,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.serialization.resolve :as serialization.resolve]
    [metabase.test :as mt]
@@ -334,19 +335,40 @@
                    :type     :query
                    :query    {:source-table (str "card__" card-id)}}]
         (mt/with-no-data-perms-for-all-users!
-          (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/manage-table-metadata :yes)
+          (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
           (mt/with-test-user :rasta
             (is (not (mi/can-query? :model/Database (mt/id)))
                 "precondition: nothing grants query access to the database")
             (doseq [audited? [true false]]
               (is (some? (shared.content-store/query-for-export query audited?))))))
-        (testing "and with no permission on that database at all, since running the card is what authorizes it"
+        (testing "but not without view-data access to the card's table, since the query processor needs it too"
           (mt/with-no-data-perms-for-all-users!
             (mt/with-test-user :rasta
               (is (not (mi/can-read? :model/Database (mt/id)))
                   "precondition: the database is not even readable")
               (doseq [audited? [true false]]
-                (is (some? (shared.content-store/query-for-export query audited?)))))))))))
+                (is (nil? (shared.content-store/query-for-export query audited?)))))))))))
+
+(deftest card-source-check-preprocesses-only-a-card-query-for-a-non-admin-test
+  (testing "the view-data check on a saved question's sources preprocesses only a query on a saved question,
+            and only for a non-admin"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:dataset_query (lib/query (mt/metadata-provider)
+                                              (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
+      (let [query-on (fn [source-table]
+                       {:database (mt/id) :type :query :query {:source-table source-table}})
+            calls    (fn [user query]
+                       (let [n    (atom 0)
+                             orig (mt/original-fn #'query-perms/query->resolved-source-ids)]
+                         (mt/with-dynamic-fn-redefs [query-perms/query->resolved-source-ids
+                                                     (fn [q] (swap! n inc) (orig q))]
+                           (mt/with-test-user user
+                             (is (some? (:mp (shared.content-store/query-for-export query false)))
+                                 "precondition: the query is cleared")))
+                         @n))]
+        (is (= 0 (calls :rasta (query-on (mt/id :venues)))))
+        (is (= 1 (calls :rasta (query-on (str "card__" card-id)))))
+        (is (= 0 (calls :crowberto (query-on (str "card__" card-id)))))))))
 
 ;;; ============================================================
 ;;; default-store integration shape

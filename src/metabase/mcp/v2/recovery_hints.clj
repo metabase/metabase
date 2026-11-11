@@ -130,4 +130,12 @@
     :query-preprocessing-failed
     (message/msg ["Fix that part of the query and retry."])
 
+    :card-source-not-runnable
+    (message/msg [(str "Tell the user that they need data access to the tables under it. "
+                       "Do not retry with other columns or with another query on it.")])
+
+    :card-source-preprocessing-failed
+    (message/msg [(str "Tell the user that Metabase cannot run a query on it. "
+                       "Do not retry with other columns or with another query on it.")])
+
     nil))

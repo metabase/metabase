@@ -184,14 +184,42 @@
           (throw e))))
     (mi/can-read? model id)))
 
+(defn- result-metadata-accessible?
+  "Whether the current user has unrestricted view-data on each table that the cards' `result_metadata` names.
+
+  The cards are the ones with `card-ids`. Throws when the check cannot be made."
+  [database-id card-ids]
+  (try
+    (doseq [result-metadata (vals (metabot.db/card-result-metadata card-ids))]
+      (query-perms/check-result-metadata-data-perms database-id result-metadata))
+    true
+    (catch clojure.lang.ExceptionInfo e
+      (if (:permissions-error? (ex-data e))
+        false
+        (throw e)))))
+
+(defn card-sources-accessible?
+  "Whether the current user has unrestricted view-data on each table that the query processor checks for `normalized`.
+
+  These are the tables of the query expanded through its saved questions, and the tables that the questions'
+  `result_metadata` maps a column to. Always true for an admin. Throws when the check cannot be made."
+  [normalized]
+  ;; an admin always has unrestricted view-data, so skip the preprocess
+  (or api/*is-superuser?*
+      (let [{:keys [table-ids card-ids referenced-card-ids]} (query-perms/query->resolved-source-ids normalized)
+            table-ids (set table-ids)]
+        (and (= table-ids (metabot.perms/data-accessible-table-ids table-ids))
+             (result-metadata-accessible? (:database normalized) (into (set card-ids) referenced-card-ids))))))
+
 (defn- runnable-normalized-query
-  "`resolved` normalized, when the current user may run it and see every table and field it
-  names: the query processor's own run check (a saved question authorizes through its collection, native
-  SQL through database-wide native access), then a per-table check on the ids the export
-  resolves to names and a column-sandbox check on its field refs. The saved questions the
-  query reads from are checked first with the caller's audit polarity, since the run check
-  refuses them without a trail. Measure / segment refs are not checked here; the stores gate
-  those with the caller's audit polarity.
+  "`resolved` normalized, when the current user may run it and see every table and field it names.
+
+  The checks are the query processor's own run check (a saved question authorizes through its collection,
+  native SQL through database-wide native access), then a per-table check on the ids the export resolves to
+  names and a column-sandbox check on its field refs. A query on a saved question also goes through
+  [[card-sources-accessible?]]. The saved questions the query reads from are checked first with the caller's
+  audit polarity, since the run check refuses them without a trail. Measure / segment refs are not checked
+  here; the stores gate those with the caller's audit polarity.
 
   Nil when they may not, and `::unchecked` when the check could not be made at all - a query that
   will not normalize, permissions that will not calculate. That is not a denial, so the caller
@@ -212,7 +240,11 @@
         (let [field-table (metabot.perms/field-id->table-id field)
               table-ids   (into (set table) (vals field-table))]
           (when (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
-                     (sandbox-visible-fields? field-table))
+                     (sandbox-visible-fields? field-table)
+                     ;; the run check clears a query on a saved question on the card read alone, but the query
+                     ;; processor also checks view-data on the expanded query. Skip the extra preprocess for a
+                     ;; query that reads no saved question.
+                     (or (empty? card) (card-sources-accessible? normalized)))
             normalized))))
     (catch Exception e
       (log/debugf "Rendering a query unresolved, since it could not be permission-checked: %s"
@@ -235,8 +267,10 @@
 
 (defn query-for-export
   "How the caller should render `query`, or nil when the current user may not see it at all.
-  Run permission is the whole rule: reading the database is not enough, and a saved question the
-  user can read authorizes a query over a database they cannot. With `audited?` the saved-question
+  Run permission is the rule: reading the database is not enough, and a saved question the user
+  can read authorizes a query over a database they cannot query. The user still needs unrestricted
+  view-data access to every table that the expanded query reads and that the saved questions'
+  `result_metadata` names, as the query processor requires. With `audited?` the saved-question
   refusals are audited, for client-supplied queries where the ids are the caller's own.
 
   Three shapes come back, because a check that was never needed and a check that could not be made
