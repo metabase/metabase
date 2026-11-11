@@ -102,7 +102,8 @@ export function FormulaChip({
       ) : (
         <UnstyledButton
           className={S.chipButton}
-          aria-label={t`Rename ${label}`}
+          aria-label={label}
+          aria-keyshortcuts="F2"
           onDoubleClick={startRenaming}
           onKeyDown={(event) => {
             if (

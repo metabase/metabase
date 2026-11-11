@@ -172,7 +172,9 @@ describe("summary formula handoff", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
     await expectClosed();
     await userEvent.dblClick(
-      screen.getByRole("button", { name: "Rename Total + 10" }),
+      within(screen.getByTestId("summary-well-columns")).getByRole("button", {
+        name: "Total + 10",
+      }),
     );
     const nameInput = screen.getByRole("textbox", {
       name: "Name of Total + 10",

@@ -152,7 +152,7 @@ describe("SummaryWells", () => {
     });
 
     await userEvent.dblClick(
-      screen.getByRole("button", { name: "Rename Order date: Month" }),
+      screen.getByRole("button", { name: "Order date: Month" }),
     );
     const input = screen.getByRole("textbox", { name: "Name of Order date" });
     expect(input).toHaveFocus();
@@ -181,9 +181,7 @@ describe("SummaryWells", () => {
   it("renames a value formula from the keyboard", async () => {
     const { onChange } = setup({ spec: FORMULA_QUERY });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Rename Sum total" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Sum total" }));
     await userEvent.keyboard("{F2}");
     expect(
       screen.getByRole("textbox", { name: "Name of Sum total" }),
@@ -208,9 +206,7 @@ describe("SummaryWells", () => {
   it("keeps keyboard focus in the well when Tab commits a new name", async () => {
     const { onChange } = setup({ spec: FORMULA_QUERY });
 
-    await userEvent.dblClick(
-      screen.getByRole("button", { name: "Rename Sum total" }),
-    );
+    await userEvent.dblClick(screen.getByRole("button", { name: "Sum total" }));
     await userEvent.keyboard("Renamed formula");
     await userEvent.tab();
 
@@ -225,7 +221,7 @@ describe("SummaryWells", () => {
     });
 
     await userEvent.dblClick(
-      screen.getByRole("button", { name: "Rename Order date: Month" }),
+      screen.getByRole("button", { name: "Order date: Month" }),
     );
     await userEvent.keyboard("Renamed formula");
     await userEvent.click(screen.getByText("Group by"));
@@ -238,9 +234,7 @@ describe("SummaryWells", () => {
   it("removes a chip instead of renaming it when Remove is clicked during a rename", async () => {
     const { onChange, getLastChange } = setup({ spec: FORMULA_QUERY });
 
-    await userEvent.dblClick(
-      screen.getByRole("button", { name: "Rename Sum total" }),
-    );
+    await userEvent.dblClick(screen.getByRole("button", { name: "Sum total" }));
     await userEvent.keyboard("Renamed formula");
     await userEvent.click(
       screen.getByRole("button", { name: "Remove Sum total" }),
@@ -256,7 +250,7 @@ describe("SummaryWells", () => {
       formulaNames: ["Order date"],
     });
     await userEvent.dblClick(
-      screen.getByRole("button", { name: "Rename Order date: Month" }),
+      screen.getByRole("button", { name: "Order date: Month" }),
     );
     await userEvent.keyboard("Discard this name{Escape}");
     expect(onChange).not.toHaveBeenCalled();
@@ -265,14 +259,14 @@ describe("SummaryWells", () => {
     ).not.toBeInTheDocument();
 
     await userEvent.dblClick(
-      screen.getByRole("button", { name: "Rename Order date: Month" }),
+      screen.getByRole("button", { name: "Order date: Month" }),
     );
     await userEvent.keyboard("{Backspace}");
     await userEvent.click(getGroupingField());
     expect(onChange).not.toHaveBeenCalled();
 
     await userEvent.dblClick(
-      screen.getByRole("button", { name: "Rename Order date: Month" }),
+      screen.getByRole("button", { name: "Order date: Month" }),
     );
     await userEvent.keyboard("Existing formula");
     await userEvent.click(getGroupingField());
@@ -311,7 +305,7 @@ describe("SummaryWells", () => {
       ).not.toBeInTheDocument();
     }
     await userEvent.dblClick(
-      screen.getByRole("button", { name: "Rename Order date: Month" }),
+      screen.getByRole("button", { name: "Order date: Month" }),
     );
     expect(
       screen.getByRole("textbox", { name: "Name of Order date" }),
