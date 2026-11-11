@@ -279,26 +279,30 @@
   (testing "driver triggers driver tests (it's a root)"
     (is (true? (mage.modules/driver-deps-affected? ['driver])))))
 
-(deftest override-covers-submodules-test
-  (testing "a submodule of an override does not trigger driver tests, even where a trigger reaches it"
-    ;; `transforms` reaches `metabot`, and so `metabot.toolkit` once `metabot` uses it.
-    (let [deps (update (mage.modules/dependencies) 'metabot conj 'metabot.toolkit)]
-      (is (false? (mage.modules/driver-deps-affected? deps ['metabot.toolkit]))))))
-
-(deftest opt-in-submodule-triggers-driver-tests-test
-  (testing "an opted-in submodule of an override still triggers driver tests"
-    ;; `util` is an override, but `lib`, and through it `driver`, uses `util.graph`.
-    (is (true? (mage.modules/driver-deps-affected? ['util.graph])))))
-
-(deftest trigger-submodule-of-override-triggers-driver-tests-test
-  (testing "a driver-trigger module still triggers driver tests when its parent is an override"
-    (is (true? (mage.modules/driver-deps-affected? ['enterprise/workspaces])))))
-
 (deftest all-modules-triggers-themselves-test
   (let [deps (mage.modules/dependencies)]
     (doseq [a-module (keys (mage.modules/dependencies))]
       (is (contains? (mage.modules/affected-modules deps [a-module]) a-module)
           (str "The " a-module " module should trigger itself")))))
+
+;;; =============================================================================
+;;; Exemptions and opt-ins
+;;; =============================================================================
+
+(deftest exemption-covers-submodules-test
+  (testing "a submodule of an exemption does not trigger driver tests, even where a trigger reaches it"
+    ;; The `transforms` module reaches `metabot`, and so `metabot.toolkit` once `metabot` uses it.
+    (let [deps (update (mage.modules/dependencies) 'metabot conj 'metabot.toolkit)]
+      (is (false? (mage.modules/driver-deps-affected? deps ['metabot.toolkit]))))))
+
+(deftest opt-in-submodule-triggers-driver-tests-test
+  (testing "an opted-in submodule of an exemption still triggers driver tests"
+    ;; The `util` module is exempt, but `lib`, and through it `driver`, uses `util.graph`.
+    (is (true? (mage.modules/driver-deps-affected? ['util.graph])))))
+
+(deftest trigger-submodule-of-exemption-triggers-driver-tests-test
+  (testing "a driver-trigger module still triggers driver tests when its parent is an exemption"
+    (is (true? (mage.modules/driver-deps-affected? ['enterprise/workspaces])))))
 
 ;;; =============================================================================
 ;;; Regression test: module graph should not become more connected
