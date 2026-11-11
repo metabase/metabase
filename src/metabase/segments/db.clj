@@ -8,17 +8,16 @@
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.segments.schema :as segments.schema]
    [metabase.toucan.core :as t2]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (mu/defn synced-segments-clause :- [:fn vector?]
-  "The clause over the Segment table aliased `alias` selecting the segments of the tables remote sync syncs."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  [:and
-   (when-not (:include-archived? opts)
-     [:= (u/qualified-key alias :archived) false])
-   (remote-sync/synced-fk-clause alias :table_id :model/TableUserSettings opts)])
+  "The clause over the Segment table selecting the segments of the tables remote sync syncs."
+  [opts :- ::remote-sync.schema/synced-filter-opts]
+  (t2/fragment
+   [:and
+    (when-not (:include-archived? opts)
+      (t2/fragment [:= :archived false]))
+    [:in :table_id (remote-sync/synced-ids-clause :model/TableUserSettings opts)]]))
 
 (mu/defn insert-segment!
   "Insert a Segment and return the inserted instance."

@@ -9,7 +9,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.toucan.core :as t2]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (defn- action-database-joins
@@ -23,23 +22,27 @@
     [(t2/table-name :model/Database) :db]       [:= :db.id [:coalesce :qa.database_id :card.database_id :tbl.db_id]]]))
 
 (mu/defn synced-action-details-clause :- [:fn vector?]
-  "The clause over an action details table aliased `alias` selecting the details of the synced actions."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  (remote-sync/synced-fk-clause alias :action_id :model/Action opts))
+  "The clause over an action details table selecting the details of the synced actions."
+  [opts :- ::remote-sync.schema/synced-filter-opts]
+  (t2/fragment [:in :action_id (remote-sync/synced-ids-clause :model/Action opts)]))
 
 (mu/defn synced-actions-clause :- [:fn vector?]
-  "The clause over the Action table aliased `alias` selecting the actions remote sync syncs."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  [:and
-   (when-not (:include-archived? opts)
-     [:= (u/qualified-key alias :archived) false])
-   [:or
-    (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)
-    [:and
-     [:= (u/qualified-key alias :collection_id) nil]
-     [:= (u/qualified-key alias :model_id) nil]]]])
+  "The clause over the Action table selecting the actions remote sync syncs."
+  [opts :- ::remote-sync.schema/synced-filter-opts]
+  (t2/fragment
+   [:and
+    (when-not (:include-archived? opts)
+      (t2/fragment [:= :archived false]))
+    [:or
+     [:in :collection_id (remote-sync/synced-ids-clause :model/Collection opts)]
+     [:and
+      [:= :collection_id nil]
+      [:= :model_id nil]]]]))
+
+(mu/defn action-ids-query :- [:fn map?]
+  "The query selecting the ids of the Actions matching `where`."
+  [where :- [:fn vector?]]
+  (t2/fragment {:select [:id] :from [(t2/table-name :model/Action)] :where where}))
 
 (mu/defn database-for-action
   "The Database the Action with `action-id` runs against: its query's, or its model's or table's for an implicit action,

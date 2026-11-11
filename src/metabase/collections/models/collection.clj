@@ -2314,5 +2314,21 @@
 (defmethod remote-sync/spec :model/Collection
   [_model]
   {:collection-id        :id
-   :synced-filter-clause (partial collections.db/synced-collections-clause
-                                  [data-apps-ns transforms-ns snippets-ns data-actions-ns])})
+   :synced-filter-clause (fn [opts]
+                           (t2/fragment
+                            [:and
+                             (when-not (:include-archived? opts)
+                               (t2/fragment [:= :archived false]))
+                             [:or
+                              [:in :id ^:allow-subquery {:select [:c.id]
+                                                         :from   [[(t2/table-name :model/Collection) :c]]
+                                                         :join   [[(t2/table-name :model/Collection) :synced_root]
+                                                                  [:or
+                                                                   [:= :synced_root.id :c.id]
+                                                                   [:like :c.location [:concat "/" :synced_root.id "/%"]]]]
+                                                         :where  [:and
+                                                                  [:= :synced_root.is_remote_synced true]
+                                                                  [:= :synced_root.location "/"]]}]
+                              [:in :namespace (mapv name [data-apps-ns transforms-ns snippets-ns data-actions-ns])]]]))
+   :ids-query            (fn [where]
+                           (t2/fragment {:select [:id] :from [(t2/table-name :model/Collection)] :where where}))})

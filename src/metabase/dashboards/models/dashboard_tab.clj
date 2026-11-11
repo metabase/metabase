@@ -124,4 +124,5 @@
 
 (defmethod remote-sync/spec :model/DashboardTab
   [_model]
-  {:synced-filter-clause dashboards.db/synced-dashboard-tabs-clause})
+  {:synced-filter-clause (fn [opts]
+                           (t2/fragment [:in :dashboard_id (remote-sync/synced-ids-clause :model/Dashboard opts)]))})

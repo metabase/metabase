@@ -3,85 +3,65 @@
   (:require
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.remote-sync.spec :as remote-sync.spec]
-   [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli :as mu]))
 
 (def all-rows-filter-clause
   "The HoneySQL where-clause selecting every row."
-  [:= 1 1])
+  (t2/fragment [:= 1 1]))
 
-(defn- synced-filter-clause
-  "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows remote sync syncs,
-  all of them unless its spec says otherwise, with `opts` (see `::remote-sync.schema/synced-filter-opts`)."
-  [model alias opts]
+(mu/defn synced-filter-clause :- [:fn vector?]
+  "The HoneySQL where-clause over the columns of `model`'s table selecting the rows remote sync syncs, all of them
+  unless its spec says otherwise, with `opts`."
+  [model :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   (if-let [clause (:synced-filter-clause (remote-sync.spec/spec model))]
-    (clause alias opts)
+    (clause opts)
     all-rows-filter-clause))
 
 (mu/defn built-in-filter-clause :- [:fn vector?]
-  "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows every instance has
-  with the same entity id, none unless its spec says otherwise."
-  [model :- :keyword
-   alias :- :keyword]
+  "The HoneySQL where-clause over the columns of `model`'s table selecting the rows every instance has with the same
+  entity id, none unless its spec says otherwise."
+  [model :- :keyword]
   (if-let [clause (:built-in-filter-clause (remote-sync.spec/spec model))]
-    (clause alias)
-    [:= 1 0]))
+    (clause)
+    (t2/fragment [:= 1 0])))
+
+(defn- ids-query
+  "The HoneySQL query selecting the primary keys of the rows of `model` matching `where`, from the `:ids-query` of its
+  spec."
+  [model where]
+  (if-let [query (:ids-query (remote-sync.spec/spec model))]
+    (query where)
+    (throw (ex-info (str "The remote sync spec of " model " has no :ids-query") {:model model}))))
 
 (mu/defn synced-ids-clause :- [:fn map?]
   "The HoneySQL query selecting the primary keys of the rows of `model` remote sync syncs, with `opts`."
   [model :- :keyword
    opts  :- ::remote-sync.schema/synced-filter-opts]
-  (let [table (t2/table-name model)
-        alias (keyword (str "synced_" (name table)))]
-    ^:allow-subquery {:select [(u/qualified-key alias (first (t2/primary-keys model)))]
-                      :from   [[table alias]]
-                      :where  (synced-filter-clause model alias opts)}))
-
-(mu/defn synced-fk-clause :- [:fn vector?]
-  "The HoneySQL where-clause holding when `column` of the table aliased `alias` references a row of `model` remote sync
-  syncs, with `opts`."
-  [alias  :- :keyword
-   column :- :keyword
-   model  :- :keyword
-   opts   :- ::remote-sync.schema/synced-filter-opts]
-  [:in (u/qualified-key alias column) (synced-ids-clause model opts)])
+  (ids-query model (synced-filter-clause model opts)))
 
 (defn- read-only-filter-clause
-  "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting its read-only rows: those
-  synced, archived or not, since unarchiving one makes it synced again, or on every instance, which a read-only
-  instance can't write."
-  [model alias]
-  [:or (synced-filter-clause model alias {:include-archived? true}) (built-in-filter-clause model alias)])
+  "The HoneySQL where-clause over the columns of `model`'s table selecting its read-only rows: those synced, archived or
+  not, since unarchiving one makes it synced again, or on every instance, which a read-only instance can't write."
+  [model]
+  (t2/fragment [:or (synced-filter-clause model {:include-archived? true}) (built-in-filter-clause model)]))
 
 (mu/defn read-only-pks :- [:set ::remote-sync.schema/pk]
   "The primary keys of the read-only rows of `model` (see [[read-only-filter-clause]])."
   [model :- :keyword]
-  (into #{}
-        (map :pk)
-        (t2/query {:select [[(u/qualified-key :row (first (t2/primary-keys model))) :pk]]
-                   :from   [[(t2/table-name model) :row]]
-                   :where  (read-only-filter-clause model :row)})))
+  (set (t2/select-pks-set model {:where (read-only-filter-clause model)})))
 
 (mu/defn read-only-row? :- :boolean
   "Whether the row of `model` with the primary key `pk` is read-only (see [[read-only-filter-clause]])."
   [model :- :keyword
    pk    :- ::remote-sync.schema/pk]
-  (boolean (seq (t2/query {:select [[[:inline 1] :one]]
-                           :from   [[(t2/table-name model) :row]]
-                           :where  [:and
-                                    [:= (u/qualified-key :row (first (t2/primary-keys model))) pk]
-                                    (read-only-filter-clause model :row)]
-                           :limit  1}))))
+  (t2/exists? model :toucan/pk pk {:where (read-only-filter-clause model)}))
 
-(mu/defn writable-filter-clause :- [:fn vector?]
-  "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows that aren't
-  read-only (see [[read-only-filter-clause]])."
+(mu/defn read-only-pks-among :- [:set ::remote-sync.schema/pk]
+  "The primary keys among `pks` of the read-only rows of `model` (see [[read-only-filter-clause]])."
   [model :- :keyword
-   alias :- :keyword]
-  (let [pk (first (t2/primary-keys model))]
-    [:not [:exists ^:allow-subquery {:select [[[:inline 1] :one]]
-                                     :from   [[(t2/table-name model) :synced_row]]
-                                     :where  [:and
-                                              [:= (u/qualified-key :synced_row pk) (u/qualified-key alias pk)]
-                                              (read-only-filter-clause model :synced_row)]}]]))
+   pks   :- [:sequential ::remote-sync.schema/pk]]
+  (if (seq pks)
+    (set (t2/select-pks-set model :toucan/pk [:in pks] {:where (read-only-filter-clause model)}))
+    #{}))

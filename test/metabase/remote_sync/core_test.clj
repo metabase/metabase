@@ -9,8 +9,7 @@
 (defn- synced?
   "Whether the row of `model` with `pk` is synced."
   [model pk]
-  (let [pk-column (first (t2/primary-keys model))]
-    (t2/exists? model {:where [:and [:= pk-column pk] [:in pk-column (remote-sync/synced-ids-clause model nil)]]})))
+  (t2/exists? model :toucan/pk pk {:where (remote-sync/synced-filter-clause model nil)}))
 
 (deftest synced-models-test
   (testing "content models define which of their rows are synced"

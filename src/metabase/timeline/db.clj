@@ -9,24 +9,27 @@
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.timeline.schema :as timeline.schema]
    [metabase.toucan.core :as t2]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
 (mu/defn synced-timeline-events-clause :- [:fn vector?]
-  "The clause over the TimelineEvent table aliased `alias` selecting the events of the timelines remote sync syncs."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  (remote-sync/synced-fk-clause alias :timeline_id :model/Timeline opts))
+  "The clause over the TimelineEvent table selecting the events of the timelines remote sync syncs."
+  [opts :- ::remote-sync.schema/synced-filter-opts]
+  (t2/fragment [:in :timeline_id (remote-sync/synced-ids-clause :model/Timeline opts)]))
 
 (mu/defn synced-timelines-clause :- [:fn vector?]
-  "The clause over the Timeline table aliased `alias` selecting the timelines remote sync syncs."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  [:and
-   (when-not (:include-archived? opts)
-     [:= (u/qualified-key alias :archived) false])
-   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
+  "The clause over the Timeline table selecting the timelines remote sync syncs."
+  [opts :- ::remote-sync.schema/synced-filter-opts]
+  (t2/fragment
+   [:and
+    (when-not (:include-archived? opts)
+      (t2/fragment [:= :archived false]))
+    [:in :collection_id (remote-sync/synced-ids-clause :model/Collection opts)]]))
+
+(mu/defn timeline-ids-query :- [:fn map?]
+  "The query selecting the ids of the Timelines matching `where`."
+  [where :- [:fn vector?]]
+  (t2/fragment {:select [:id] :from [(t2/table-name :model/Timeline)] :where where}))
 
 (mu/defn insert-timeline!
   "Insert the Timeline `row` and return the inserted instance."

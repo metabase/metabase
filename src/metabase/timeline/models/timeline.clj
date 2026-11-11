@@ -68,4 +68,5 @@
 
 (defmethod remote-sync/spec :model/Timeline
   [_model]
-  {:synced-filter-clause timeline.db/synced-timelines-clause})
+  {:synced-filter-clause timeline.db/synced-timelines-clause
+   :ids-query            timeline.db/timeline-ids-query})

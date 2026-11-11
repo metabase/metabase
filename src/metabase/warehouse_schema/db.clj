@@ -6,8 +6,6 @@
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.remote-sync.core :as remote-sync]
-   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -17,22 +15,6 @@
 (def field-order-rule
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
-
-(mu/defn synced-field-user-settings-clause :- [:fn vector?]
-  "The clause over the FieldUserSettings table aliased `alias` selecting the settings of synced tables' fields."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  [:in (u/qualified-key alias :field_id) ^:allow-subquery {:select [:f.id]
-                                                           :from   [[(t2/table-name :model/Field) :f]]
-                                                           :where  (remote-sync/synced-fk-clause :f :table_id :model/TableUserSettings opts)}])
-
-(mu/defn synced-table-user-settings-clause :- [:fn vector?]
-  "The clause over the TableUserSettings table aliased `alias` selecting the published tables remote sync syncs."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  [:and
-   [:= (u/qualified-key alias :is_published) true]
-   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn field
   "The ::warehouse-schema.schema/field with `field-id`, or nil."

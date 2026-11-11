@@ -9,10 +9,7 @@
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.remote-sync.core :as remote-sync]
-   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.transforms.schema :as transforms.schema]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -29,23 +26,6 @@
                    :wr.is_active]}]])
 
 ;;; ------------------------------------------------ Transform ------------------------------------------------
-
-(mu/defn synced-transform-tags-clause :- [:fn vector?]
-  "The clause over the TransformTag table aliased `alias` selecting the tags remote sync syncs, all but the built-in ones."
-  [alias :- :keyword
-   _opts :- ::remote-sync.schema/synced-filter-opts]
-  [:= (u/qualified-key alias :built_in_type) nil])
-
-(mu/defn built-in-transform-tags-clause :- [:fn vector?]
-  "The clause over the TransformTag table aliased `alias` selecting the built-in tags every instance has."
-  [alias :- :keyword]
-  [:not= (u/qualified-key alias :built_in_type) nil])
-
-(mu/defn synced-transform-transform-tags-clause :- [:fn vector?]
-  "The clause over the TransformTransformTag table aliased `alias` selecting the tags of synced transforms."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
-  (remote-sync/synced-fk-clause alias :transform_id :model/Transform opts))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."

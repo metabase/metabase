@@ -155,4 +155,8 @@
   [_model]
   {:parent               (fn [{:keys [field_id]}]
                            (some->> (warehouse-schema.db/field field_id) :table_id (vector :model/TableUserSettings)))
-   :synced-filter-clause warehouse-schema.db/synced-field-user-settings-clause})
+   :synced-filter-clause (fn [opts]
+                           (t2/fragment
+                            [:in :field_id ^:allow-subquery {:select [:id]
+                                                             :from   [(t2/table-name :model/Field)]
+                                                             :where  [:in :table_id (remote-sync/synced-ids-clause :model/TableUserSettings opts)]}]))})

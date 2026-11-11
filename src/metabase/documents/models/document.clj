@@ -758,4 +758,10 @@
 
 (defmethod remote-sync/spec :model/Document
   [_model]
-  {:synced-filter-clause documents.db/synced-documents-clause})
+  {:synced-filter-clause (fn [opts]
+                           (t2/fragment
+                            [:and
+                             (when-not (:include-archived? opts)
+                               (t2/fragment [:= :archived false]))
+                             [:= :exploration_id nil]
+                             [:in :collection_id (remote-sync/synced-ids-clause :model/Collection opts)]]))})

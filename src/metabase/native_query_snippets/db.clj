@@ -7,17 +7,15 @@
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
-   [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli :as mu]))
 
 (mu/defn synced-snippets-clause :- [:fn vector?]
-  "The clause over the NativeQuerySnippet table aliased `alias` selecting the snippets remote sync syncs."
-  [alias :- :keyword
-   opts  :- ::remote-sync.schema/synced-filter-opts]
+  "The clause over the NativeQuerySnippet table selecting the snippets remote sync syncs."
+  [opts :- ::remote-sync.schema/synced-filter-opts]
   (if (:include-archived? opts)
-    [:= 1 1]
-    [:= (u/qualified-key alias :archived) false]))
+    (t2/fragment [:= 1 1])
+    (t2/fragment [:= :archived false])))
 
 (mu/defn snippets-by-archived
   "The NativeQuerySnippets whose archived flag is `archived`, in case-insensitive name order."
@@ -33,10 +31,7 @@
   "The ids among `ids` of the NativeQuerySnippets remote sync lets be written."
   [ids :- [:sequential ::lib.schema.id/native-query-snippet]]
   (if (seq ids)
-    (set (t2/select-pks-set :model/NativeQuerySnippet
-                            {:where [:and
-                                     [:in :id ids]
-                                     (remote-sync/can-write-filter-clause :model/NativeQuerySnippet :native_query_snippet)]}))
+    (remote-sync/writable-pks :model/NativeQuerySnippet (vec (t2/select-pks-set :model/NativeQuerySnippet :id [:in ids])))
     #{}))
 
 (mu/defn snippet-name-exists?
@@ -60,8 +55,18 @@
   [snippet-name :- :string]
   (t2/select-one-fn :id :model/NativeQuerySnippet :name snippet-name))
 
+(defn- names-starting-with
+  "The clause matching the names starting with one of `snippet-names`, as a balanced tree."
+  [snippet-names]
+  (let [n (count snippet-names)]
+    (case n
+      0 (t2/fragment [:or])
+      1 (t2/fragment [:like :name (str (first snippet-names) "%")])
+      (let [[l r] (split-at (quot n 2) snippet-names)]
+        (t2/fragment [:or (names-starting-with l) (names-starting-with r)])))))
+
 (mu/defn snippet-names-and-entity-ids
   "The name and entity id of the NativeQuerySnippets whose name starts with one of `snippet-names`."
   [snippet-names :- [:sequential :string]]
   (t2/select [:model/NativeQuerySnippet :name :entity_id]
-             {:where (into [:or] (map (fn [n] [:like :name [:auto/param (str n "%")]])) snippet-names)}))
+             {:where (names-starting-with snippet-names)}))

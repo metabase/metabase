@@ -1957,4 +1957,11 @@
 
 (defmethod remote-sync/spec :model/Card
   [_model]
-  {:synced-filter-clause queries.db/synced-cards-clause})
+  {:synced-filter-clause (fn [opts]
+                           (t2/fragment
+                            [:and
+                             (when-not (:include-archived? opts)
+                               (t2/fragment [:= :archived false]))
+                             [:in :collection_id (remote-sync/synced-ids-clause :model/Collection opts)]]))
+   :ids-query            (fn [where]
+                           (t2/fragment {:select [:id] :from [(t2/table-name :model/Card)] :where where}))})
