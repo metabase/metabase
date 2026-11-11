@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import { selectTab } from "metabase/redux/dashboard";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { ClickBehavior } from "metabase-types/api";
@@ -130,6 +131,13 @@ describe("getClickBehavior", () => {
 
 const stateColumn = createMockColumn({ name: "STATE" });
 
+const createdAtMonthColumn = createMockColumn({
+  name: "CREATED_AT",
+  base_type: "type/DateTime",
+  effective_type: "type/DateTime",
+  unit: "month",
+});
+
 const targetDashboard = createMockDashboard({
   id: 2,
   parameters: [
@@ -233,6 +241,23 @@ describe("getDashboardDrillType", () => {
 
     expect(type).toBeNull();
   });
+
+  it("resolves no drill when the question link target is not loaded in extraData", () => {
+    // Static embedding loads no link targets, so these links must not open
+    const type = getDashboardDrillType({
+      settings: buildSettings({
+        root: {
+          type: "link",
+          linkType: "question",
+          targetId: 5,
+          parameterMapping: {},
+        },
+      }),
+      extraData: { dashboard: createMockDashboard({ id: 1 }) },
+    });
+
+    expect(type).toBeNull();
+  });
 });
 
 describe("getDashboardDrillTab", () => {
@@ -277,6 +302,59 @@ describe("getDashboardDrillParameters", () => {
 
     expect(pairs).toEqual([["current-param", "CA"]]);
   });
+
+  it("updates every mapped filter at once, formatting each value for its parameter", () => {
+    const pairs = getDashboardDrillParameters({
+      settings: buildSettings({
+        root: {
+          type: "crossfilter",
+          parameterMapping: {
+            "text-param": {
+              id: "text-param",
+              source: { type: "column", id: "count", name: "Count" },
+              target: { type: "parameter", id: "text-param" },
+            },
+            "date-param": {
+              id: "date-param",
+              source: {
+                type: "column",
+                id: "CREATED_AT",
+                name: "Created At: Month",
+              },
+              target: { type: "parameter", id: "date-param" },
+            },
+          },
+        },
+      }),
+      data: [
+        { col: createMockColumn({ name: "count" }), value: 64 },
+        {
+          col: createdAtMonthColumn,
+          value: "2025-07-01T00:00:00Z",
+        },
+      ],
+      extraData: {
+        dashboard: createMockDashboard({ id: 1 }),
+        parameters: [
+          createMockParameter({
+            id: "text-param",
+            slug: "filter-text",
+            type: "string/=",
+          }),
+          createMockParameter({
+            id: "date-param",
+            slug: "filter-time",
+            type: "date/month-year",
+          }),
+        ],
+      },
+    });
+
+    expect(pairs).toEqual([
+      ["text-param", 64],
+      ["date-param", "2025-07"],
+    ]);
+  });
 });
 
 describe("getDashboardDrillUrl", () => {
@@ -288,6 +366,37 @@ describe("getDashboardDrillUrl", () => {
     });
 
     expect(url).toBe("/dashboard/2?state=CA&size=L&tab=7");
+  });
+
+  it("uses the tab of the clicked table dashcard's column click behavior (metabase#34447, metabase#44106)", () => {
+    const tableDashcard = createMockDashboardCard({
+      card: createMockCard({ display: "table" }),
+    });
+    const productIdColumn = createMockColumn({ name: "PRODUCT_ID" });
+    const getUrlForTab = (tabId: number) =>
+      getDashboardDrillUrl({
+        column: productIdColumn,
+        settings: buildSettings({
+          columns: {
+            PRODUCT_ID: {
+              type: "link",
+              linkType: "dashboard",
+              targetId: 3,
+              tabId,
+              parameterMapping: {},
+            },
+          },
+        }),
+        data: [{ col: productIdColumn, value: 14 }],
+        extraData: {
+          dashboard: createMockDashboard({ id: 1 }),
+          dashcard: tableDashcard,
+          dashboards: { 3: createMockDashboard({ id: 3, parameters: [] }) },
+        },
+      });
+
+    expect(getUrlForTab(11)).toBe("/dashboard/3?tab=11");
+    expect(getUrlForTab(12)).toBe("/dashboard/3?tab=12");
   });
 });
 
@@ -305,6 +414,37 @@ describe("getDashboardDrillLinkUrl", () => {
     });
 
     expect(url).toBe("https://metabase.test/42");
+  });
+
+  it("fills dashboard filter values and clicked column values into the link template", () => {
+    const url = getDashboardDrillLinkUrl({
+      settings: buildSettings({
+        root: {
+          type: "link",
+          linkType: "url",
+          linkTemplate:
+            "https://metabase.com/{{filter-text}}/{{count}}/{{CREATED_AT}}",
+        },
+      }),
+      data: [
+        { col: createdAtMonthColumn, value: "2026-10-01T00:00:00Z" },
+        { col: createMockColumn({ name: "count" }), value: 1 },
+      ],
+      extraData: {
+        dashboard: createMockDashboard({
+          parameters: [
+            createMockParameter({
+              id: "text-param",
+              name: "Text filter",
+              slug: "filter-text",
+            }),
+          ],
+        }),
+        parameterValuesBySlug: { "filter-text": "Dell Adams" },
+      },
+    });
+
+    expect(url).toBe("https://metabase.com/Dell%20Adams/1/2026-10");
   });
 });
 
@@ -327,6 +467,65 @@ describe("DashboardClickAction", () => {
       name: "click_behavior",
       defaultAlways: true,
     });
+  });
+
+  it("switches the tab and sets mapped filters when linking to the same dashboard (metabase#39319)", () => {
+    const setParameterValue = jest.fn((id: string, value: unknown) => ({
+      type: "set-parameter-value",
+      payload: { id, value },
+    }));
+    const userIdColumn = createMockColumn({ name: "USER_ID" });
+    const [action] = DashboardClickAction({
+      question: new Question(createMockCard(), createMockMetadata()),
+      clicked: {
+        column: userIdColumn,
+        data: [{ col: userIdColumn, value: 1 }],
+        settings: buildSettings({
+          root: {
+            type: "link",
+            linkType: "dashboard",
+            targetId: 1,
+            tabId: 2,
+            parameterMapping: {
+              "text-param": {
+                id: "text-param",
+                source: { type: "column", id: "USER_ID", name: "User ID" },
+                target: { type: "parameter", id: "text-param" },
+              },
+            },
+          },
+        }),
+        extraData: {
+          dashboard: createMockDashboard({ id: 1 }),
+          dashboards: { 1: createMockDashboard({ id: 1 }) },
+          parameters: [
+            createMockParameter({ id: "text-param", type: "string/contains" }),
+          ],
+          setParameterValue,
+        },
+      },
+    });
+    const dispatch = jest.fn();
+
+    expect(action).toHaveProperty("action");
+    if (!("action" in action)) {
+      return;
+    }
+    const thunk = action.action();
+    expect(typeof thunk).toBe("function");
+    if (typeof thunk === "function") {
+      thunk(dispatch, jest.fn(), undefined);
+    }
+
+    expect(dispatch.mock.calls).toEqual([
+      [selectTab({ tabId: 2 })],
+      [
+        {
+          type: "set-parameter-value",
+          payload: { id: "text-param", value: 1 },
+        },
+      ],
+    ]);
   });
 
   it("returns no action when no click behavior is configured for the clicked target", () => {

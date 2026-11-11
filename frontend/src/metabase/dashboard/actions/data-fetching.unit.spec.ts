@@ -384,6 +384,57 @@ describe("fetchDashboard", () => {
     expect(result.type).toBe("metabase/dashboard/FETCH_DASHBOARD/fulfilled");
   });
 
+  it("loads no click behavior link targets for a static embedded dashboard", async () => {
+    const token = "header.payload.signature";
+    const dashboard = createMockDashboard({
+      id: token,
+      dashcards: [
+        createMockDashboardCard({
+          id: 1,
+          visualization_settings: {
+            click_behavior: {
+              type: "link",
+              linkType: "dashboard",
+              targetId: 2,
+              parameterMapping: {},
+            },
+          },
+        }),
+        createMockDashboardCard({
+          id: 2,
+          visualization_settings: {
+            click_behavior: {
+              type: "link",
+              linkType: "question",
+              targetId: 3,
+              parameterMapping: {},
+            },
+          },
+        }),
+      ],
+    });
+    fetchMock.get(`path:/api/embed/dashboard/${token}`, dashboard);
+
+    const store = setup({
+      dashboard: createMockDashboardState({
+        linkTargets: {
+          dashboards: { 2: createMockDashboard({ id: 2 }) },
+          questions: { 3: createMockCard({ id: 3 }) },
+        },
+      }),
+    });
+
+    const result = await store.dispatch(
+      fetchDashboard({ dashId: token, queryParams: {}, options: {} }),
+    );
+
+    expect(result.type).toBe("metabase/dashboard/FETCH_DASHBOARD/fulfilled");
+    expect(store.getState().dashboard.linkTargets).toEqual({
+      dashboards: {},
+      questions: {},
+    });
+  });
+
   it("uses a prefetched dashboard instead of re-fetching it", async () => {
     const dashboard = createMockDashboard({ id: 1, name: "Prefetched" });
 
