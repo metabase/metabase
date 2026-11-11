@@ -1111,7 +1111,7 @@
 
   explorations
   {:team "UX West"
-   :api #{metabase.explorations.api metabase.explorations.core metabase.explorations.init metabase.explorations.schema}
+   :api #{metabase.explorations.api metabase.explorations.core metabase.explorations.init}
    :uses #{analytics
            analytics.interface
            api
@@ -2510,18 +2510,14 @@
            collections
            dashboards
            events
-           explorations
            lib
            lib.be
            lib.schema
-           measures
            models
            parameters
            queries
            query-permissions
            revisions.schema
-           segments
-           transforms
            util
            util.config}
    :model-exports #{:model/Revision}
