@@ -207,6 +207,47 @@ describe("ParameterValueWidget", () => {
     expect(triggerButton).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("should close a date filter popover with Escape (metabase#54353)", async () => {
+    setup({
+      parameter: {
+        type: "date/all-options",
+        slug: "date",
+        name: "Date",
+      },
+      value: "past12months",
+    });
+
+    await userEvent.click(screen.getByTestId("parameter-value-widget-target"));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+  });
+
+  it.each([
+    ["Enter", "{Enter}"],
+    ["Space", " "],
+  ])(
+    "should open a filter popover with %s (metabase#52674)",
+    async (_keyName, key) => {
+      setup({
+        parameter: {
+          type: "number/between",
+          slug: "number",
+          name: "Number",
+        },
+      });
+
+      screen.getByTestId("parameter-value-widget-target").focus();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      await userEvent.keyboard(key);
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    },
+  );
+
   describe("static list source with custom labels in a saved question", () => {
     const CARD_ID = 1;
     const LABELED_VALUE = "1018947080336";
