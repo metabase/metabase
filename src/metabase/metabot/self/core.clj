@@ -999,9 +999,12 @@
       (let [submitted (u/start-timer)]
         (.execute tool-executor
                   ^Runnable (fn []
-                              (analytics/observe! :metabase-metabot/tool-executor-wait-ms
-                                                  (u/since-ms submitted))
-                              (.run task)))))))
+                              ;; The task completes the call's future, so it runs even if the observation throws
+                              (try
+                                (analytics/observe! :metabase-metabot/tool-executor-wait-ms
+                                                    (u/since-ms submitted))
+                                (finally
+                                  (.run task)))))))))
 
 (defn- submit-virtual
   "Submit a thunk to run on a virtual thread, bounded by pool size, once every future in `after` has completed.

@@ -2316,6 +2316,20 @@
         (finally
           (run! #(deliver % true) [release-held release-earlier]))))))
 
+(deftest submit-virtual-runs-the-call-when-the-wait-observation-throws-test
+  (testing "a call runs and completes although the observation of its wait throws"
+    (let [original-observe! analytics/observe!]
+      ;; A global redef: the observation runs on a pool thread, which does not see the bindings of this thread.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [analytics/observe! (fn [metric & args]
+                                         (if (= :metabase-metabot/tool-executor-wait-ms metric)
+                                           (throw (ex-info "The metric failed" {:metric metric}))
+                                           (apply original-observe! metric args)))]
+        (let [earlier (#'self.core/submit-virtual [] (constantly :earlier))
+              waiting (#'self.core/submit-virtual [earlier] (constantly :waiting))]
+          (is (= :earlier (deref earlier 5000 ::timeout)))
+          (is (= :waiting (deref waiting 5000 ::timeout))))))))
+
 (deftest call-llm-prometheus-test
   (llm.tu/with-default-connections
     (mt/with-prometheus-system! [_ system]
