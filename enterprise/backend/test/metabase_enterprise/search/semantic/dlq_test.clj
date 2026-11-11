@@ -347,7 +347,9 @@
                          :model_id       "2"
                          :document       nil                ; deletion
                          :gated_at       (ts "2025-01-04T09:00:00Z")
-                         :error_gated_at (ts "2025-01-04T09:00:00Z")}]]
+                         :error_gated_at (ts "2025-01-04T09:00:00Z")}]
+        ;; two upserts, so a failure can't be pinned on either one
+        upsert-batch   [(first gate-docs) (assoc (first gate-docs) :id "card_3" :model_id "3")]]
     (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
                 _ (semantic.tu/open-index! pgvector index)]
       (testing "batch processing singles out orphans (dlq entry with no associated gate record)"
@@ -383,24 +385,22 @@
           (with-redefs [rand                         (constantly 1.0)
                         semantic.index/upsert-index! (fn [& _] (throw (SQLException. "boom" "54000")))
                         semantic.dlq/clock           (reify InstantSource (instant [_] now))]
-            (let [upserts  [(first gate-docs) (assoc (first gate-docs) :id "card_3" :model_id "3")]
-                  attempts (fn [docs]
+            (let [attempts (fn [docs]
                              (->> (semantic.dlq/try-batch! pgvector index (map #(assoc % :retry_count 42) docs))
                                   :failures
                                   (map (comp :attempt_at :dlq-entry))
                                   set))
                   after    #(.plus now ^Duration (semantic.dlq/next-delay 43 %))]
-              (is (= #{(after semantic.dlq/permanent-policy)} (attempts (take 1 upserts))))
-              (is (= #{(after semantic.dlq/transient-policy)} (attempts upserts)))))))
+              (is (= #{(after semantic.dlq/permanent-policy)} (attempts (take 1 upsert-batch))))
+              (is (= #{(after semantic.dlq/transient-policy)} (attempts upsert-batch)))))))
       (testing "a permanent failure is logged once, by document and SQLState, without the message"
-        (let [upserts [(first gate-docs) (assoc (first gate-docs) :id "card_3" :model_id "3")]]
-          (mt/with-dynamic-fn-redefs [semantic.index/upsert-index!
-                                      (fn [& _] (throw (SQLException. "row holds the private description" "54000")))]
+        (mt/with-dynamic-fn-redefs [semantic.index/upsert-index!
+                                    (fn [& _] (throw (SQLException. "row holds the private description" "54000")))]
+          (log.capture/with-log-messages-for-level [logs [metabase-enterprise.search.semantic.dlq :warn]]
+            (semantic.dlq/try-batch! pgvector index (map #(assoc % :retry_count 1) (take 1 upsert-batch)))
+            (is (=? [{:level :warn, :message #".*card_1.*SQLState 54000.*"}] (logs)))
+            (is (not-any? #(re-find #"private description" (:message %)) (logs))))
+          (testing "and a failed batch, which may only be collateral, is not"
             (log.capture/with-log-messages-for-level [logs [metabase-enterprise.search.semantic.dlq :warn]]
-              (semantic.dlq/try-batch! pgvector index (map #(assoc % :retry_count 1) (take 1 upserts)))
-              (is (=? [{:level :warn, :message #".*card_1.*SQLState 54000.*"}] (logs)))
-              (is (not-any? #(re-find #"private description" (:message %)) (logs))))
-            (testing "and a failed batch, which may only be collateral, is not"
-              (log.capture/with-log-messages-for-level [logs [metabase-enterprise.search.semantic.dlq :warn]]
-                (semantic.dlq/try-batch! pgvector index (map #(assoc % :retry_count 1) upserts))
-                (is (empty? (logs)))))))))))
+              (semantic.dlq/try-batch! pgvector index (map #(assoc % :retry_count 1) upsert-batch))
+              (is (empty? (logs))))))))))

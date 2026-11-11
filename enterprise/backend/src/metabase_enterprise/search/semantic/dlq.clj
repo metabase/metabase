@@ -363,11 +363,10 @@
         ex-policy   ({:transient transient-policy, :permanent permanent-policy} ex-category transient-policy)]
     ;; The DLQ catches the exception, so this is the only place a document that keeps failing says why.
     ;; Transient failures stay at debug: an outage fails every batch, and other logs report it.
-    (if (= :permanent ex-category)
+    (when (= :permanent ex-category)
       (log/warnf "Semantic indexing of %s failed with %s; retrying on the permanent backoff"
-                 (:id (first gate-docs)) (error-summary ex))
-      (log/debugf "Semantic indexing of a batch of %d failed with %s" (count gate-docs) (error-summary ex)))
-    (log/debug ex "Semantic indexing failure")
+                 (:id (first gate-docs)) (error-summary ex)))
+    (log/debugf ex "Semantic indexing of a batch of %d failed" (count gate-docs))
     {:failures (mapv (fn [gate-doc]
                        {:gate-doc gate-doc
                         :dlq-entry

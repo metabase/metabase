@@ -381,22 +381,22 @@
   (alter-index-tables!
    tx index-metadata 6
    (fn [_execute! table-name]
-     (let [index     {:table-name table-name}
+     (let [index      {:table-name table-name}
            ;; the hash index takes over the B-tree's name; see [[semantic.index/content-index-name]] for why
-           name      (semantic.index/content-index-name index)
-           temp-name (semantic.index/hash-identifier-if-exceeds-pg-limit
-                      (str (semantic.util/table-name-part table-name) "_content_hash_tmp"))
-           qualified #(semantic.util/quote-table (semantic.index/schema-qualified-index-name index %))]
+           final-name (semantic.index/content-index-name index)
+           temp-name  (semantic.index/hash-identifier-if-exceeds-pg-limit
+                       (str (semantic.util/table-name-part table-name) "_content_hash_tmp"))
+           qualified  #(semantic.util/quote-table (semantic.index/schema-qualified-index-name index %))]
        ;; build the replacement first, so the embedding lookup is never left without an index
        (jdbc/execute! tx [(format "CREATE INDEX IF NOT EXISTS %s ON %s USING hash (content)"
                                   (semantic.util/quote-ident temp-name)
                                   (semantic.util/quote-table table-name))])
        ;; the index already holding the final name goes too, so a re-run replaces it rather than failing
-       (doseq [old-name (distinct (cons name (content-btree-index-names tx table-name)))]
+       (doseq [old-name (distinct (cons final-name (content-btree-index-names tx table-name)))]
          (jdbc/execute! tx [(str "DROP INDEX IF EXISTS " (qualified old-name))]))
        (jdbc/execute! tx [(format "ALTER INDEX %s RENAME TO %s"
                                   (qualified temp-name)
-                                  (semantic.util/quote-ident name))])))))
+                                  (semantic.util/quote-ident final-name))])))))
 
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, i.e. the schema of the `index_...` index tables. Migration author is responsible for

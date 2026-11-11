@@ -550,7 +550,7 @@
                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 (defn incompressible-text
-  "`n` seeded random lowercase letters.
+  "A string of `n` seeded random lowercase letters.
   Random text compresses poorly, so 8000 letters stay past the 2704-byte B-tree entry limit after compression."
   [n]
   (let [rng (java.util.Random. 42)]
@@ -566,8 +566,8 @@
         (table-indexes (semantic.util/table-name-part table-name))))
 
 (defn create-content-index-as-before-migration-6!
-  "Run the statement versions before dynamic migration 6 use at startup for the `content` index of index table
-  `table-name`: a B-tree, created only when no index has its name yet."
+  "Run the statement that versions before dynamic migration 6 use at startup to create the `content` index of
+  index table `table-name`: a B-tree, created only when no index has its name yet."
   [pgvector table-name]
   ;; the name as those versions build it, not as [[semantic.index/content-index-name]] builds it today
   (jdbc/execute! pgvector [(format "CREATE INDEX IF NOT EXISTS %s ON %s (content)"
@@ -580,10 +580,10 @@
   "Put index table `table-name` back in its shape before dynamic migration 6: the B-tree on `content` in place
   of the hash index, recorded at `index_version` 5 so the next init migrates it again."
   [pgvector index-metadata table-name]
-  (jdbc/execute! pgvector [(str "DROP INDEX " (semantic.util/quote-table
-                                               (semantic.index/schema-qualified-index-name
-                                                {:table-name table-name}
-                                                (semantic.index/content-index-name {:table-name table-name}))))])
+  (let [index {:table-name table-name}]
+    (jdbc/execute! pgvector [(str "DROP INDEX " (semantic.util/quote-table
+                                                 (semantic.index/schema-qualified-index-name
+                                                  index (semantic.index/content-index-name index))))]))
   (create-content-index-as-before-migration-6! pgvector table-name)
   (jdbc/execute! pgvector (sql/format {:update (keyword (:metadata-table-name index-metadata))
                                        :set    {:index_version 5}
