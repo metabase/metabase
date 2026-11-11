@@ -279,6 +279,21 @@
   (testing "driver triggers driver tests (it's a root)"
     (is (true? (mage.modules/driver-deps-affected? ['driver])))))
 
+(deftest override-covers-submodules-test
+  (testing "a submodule of an override does not trigger driver tests, even where a trigger reaches it"
+    ;; `transforms` reaches `metabot`, and so `metabot.toolkit` once `metabot` uses it.
+    (let [deps (update (mage.modules/dependencies) 'metabot conj 'metabot.toolkit)]
+      (is (false? (mage.modules/driver-deps-affected? deps ['metabot.toolkit]))))))
+
+(deftest opt-in-submodule-triggers-driver-tests-test
+  (testing "an opted-in submodule of an override still triggers driver tests"
+    ;; `util` is an override, but `lib`, and through it `driver`, uses `util.graph`.
+    (is (true? (mage.modules/driver-deps-affected? ['util.graph])))))
+
+(deftest trigger-submodule-of-override-triggers-driver-tests-test
+  (testing "a driver-trigger module still triggers driver tests when its parent is an override"
+    (is (true? (mage.modules/driver-deps-affected? ['enterprise/workspaces])))))
+
 (deftest all-modules-triggers-themselves-test
   (let [deps (mage.modules/dependencies)]
     (doseq [a-module (keys (mage.modules/dependencies))]
@@ -297,7 +312,7 @@
 (deftest module-graph-may-not-become-more-connected
   (testing "The number of modules that trigger driver tests should not increase without explicit approval.
             If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
-            Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
+            Add it, or a parent module, to driver-test-exemptions if it shouldn't trigger driver tests."
     (let [modules-triggering-drivers (modules-affecting-drivers)
           ;; This is a ratchet: it prevents accidental expansion of which modules
           ;; trigger driver tests. When a module transitively depends on driver code,
@@ -305,7 +320,8 @@
           ;; expensive. If this test fails, either:
           ;;   1. Your module legitimately affects drivers -- bump max-allowed-count
           ;;   2. Your module is infrastructure/gating, not driver logic
-          ;;      -- add it to driver-affecting-overrides in mage.modules
+          ;;      -- add it, or a parent module, to driver-test-exemptions in mage.modules.
+          ;;         An exemption covers its submodules, except those in driver-test-opt-ins.
           ;;
           ;; History:
           ;; 2026-02-06 Initial count: 37
@@ -323,7 +339,7 @@
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
                    If this is intentional, update max-allowed-count.
-                   Otherwise, add the new module(s) to driver-affecting-overrides."
+                   Otherwise, add the new module(s), or a parent module, to driver-test-exemptions."
                   max-allowed-count
                   (count modules-triggering-drivers)
                   (pr-str (sort modules-triggering-drivers)))))))

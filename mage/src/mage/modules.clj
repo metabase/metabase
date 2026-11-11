@@ -122,41 +122,28 @@
       acc
       new-deps))))
 
-(def driver-affecting-overrides
-  "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
-  '#{metabot.agent-api
-     metabot.agent-api.usage
-     analytics
-     analytics.interface
+(def driver-test-exemptions
+  "Modules whose changes skip driver tests, though drivers depend on them in the module graph.
+  An exemption covers the module's submodules too, except those in [[driver-test-opt-ins]]."
+  '#{analytics
      api
      api-keys
      api-scope
      appearance
      audit-app
-     sso.auth-identity
      auth-provider
      batch-processing
      bookmarks
      channel
-     util.classloader
      collections
-     util.config
      content-verification
-     explorations.contextual-interestingness
-     custom-viz-plugin
+     core.initialization-status
+     core.version
      dashboards
      data-apps
      dependencies
      documents
-     api.eid-translation
      embedding
-     enterprise/api
-     enterprise/sso.scim
-     enterprise/serialization
-     enterprise/sso
-     enterprise/transforms
-     enterprise/transforms.inspector
-     search.entity-retrieval
      events
      explorations
      formatter
@@ -164,17 +151,13 @@
      geojson
      glossary
      indexed-entities
-     core.initialization-status
      interestingness
-     analytics.internal-stats
-     metabot.llm
-     session.login-history
+     lib.types
      mcp
      measures
      metabot
      mq
      notification
-     mcp.oauth-server
      osi
      permissions
      premium-features
@@ -182,36 +165,56 @@
      pulse
      remote-sync
      request
-     request.schema
      sample-data
      search
-     warehouses.secrets
      segments
      server
      session
      settings
      setup
-     metabot.slackbot
      sso
      staleness
      startup
      system
      task
-     task.history
-     task.secure-delegate
      tiles
      timeline
      tracing
      transforms.feature-gating
-     lib.types
      users
-     users.schema
      util
-     core.version
-     audit-app.view-log
      warehouses.schema
+     warehouses.secrets
      workspaces
-     xrays})
+     xrays
+     enterprise/serialization
+     enterprise/transforms})
+
+(def driver-test-opt-ins
+  "Submodules of [[driver-test-exemptions]] whose changes still trigger driver tests.
+  An opt-in covers the module's own submodules too."
+  '#{users.tenants
+     util.graph})
+
+(defn- lineage
+  "The module followed by its ancestors, nearest first."
+  [deps module]
+  (take-while some? (iterate #(modules/parent-module deps %) module)))
+
+(defn- driver-exempt?
+  "Whether changes to `module` should skip driver tests.
+  The nearest listed module among `module` and its ancestors decides.
+  An exemption skips them, and an opt-in or one of `trigger-modules` keeps them."
+  [deps trigger-modules module]
+  (->> (lineage deps module)
+       (some (fn [m]
+               ;; Exemptions come first, so a module that is both a trigger and an exemption, such as
+               ;; `enterprise/transforms`, stays exempt.
+               (cond
+                 (contains? driver-test-exemptions m) :exempt
+                 (or (contains? driver-test-opt-ins m)
+                     (contains? trigger-modules m))  :included)))
+       (= :exempt)))
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.
@@ -642,21 +645,29 @@
         updated-files))
 
 (defn driver-deps-affected?
-  "Returns true if any of `trigger-modules` are affected by the changed modules.
-   1-arity and 2-arity trigger on the union of [[default-modules-which-trigger-drivers]] and
-   [[modules-triggering-cloud-drivers]]."
+  "Returns true if any of `trigger-modules` are affected by the changed `modules`.
+  Changed modules that [[driver-exempt?]] exempts are left out.
+  The 1-arity and 2-arity trigger on the union of [[default-modules-which-trigger-drivers]] and
+  [[modules-triggering-cloud-drivers]].
+  Throws when a trigger, exemption or opt-in is not a declared module, or an opt-in is not under an exemption."
   ([modules]
    (driver-deps-affected? (dependencies) modules))
   ([deps modules]
    (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
                                                   modules-triggering-cloud-drivers)))
   ([deps modules trigger-modules]
-   ;; Fail clearly when a renamed trigger is missing from the config.
-   (when-let [missing (seq (remove #(contains? deps %) trigger-modules))]
-     (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
+   ;; Fail clearly when a renamed module is missing from the config.
+   (when-let [missing (seq (remove #(contains? deps %)
+                                   (concat trigger-modules driver-test-exemptions driver-test-opt-ins)))]
+     (throw (ex-info (str "Driver-trigger, exemption or opt-in module(s) not declared in the module config: "
                           (pr-str missing))
                      {:missing missing})))
-   (let [unaffected (unaffected-modules deps (remove driver-affecting-overrides modules))]
+   ;; An opt-in with no exempt ancestor does nothing, which hides a stale entry.
+   (when-let [stray (seq (remove #(some driver-test-exemptions (rest (lineage deps %))) driver-test-opt-ins))]
+     (throw (ex-info (str "Driver-test opt-in(s) not under any exemption: " (pr-str stray))
+                     {:stray stray})))
+   (let [exempt?    (partial driver-exempt? deps (set trigger-modules))
+         unaffected (unaffected-modules deps (remove exempt? modules))]
      (boolean
       (some #(not (contains? unaffected %)) trigger-modules)))))
 
