@@ -26,6 +26,7 @@
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.save-entity :as save-entity]
    [metabase.metabot.tools.shared :as shared]
@@ -281,8 +282,18 @@
 
    :cards-without-tab
    (fn [{:keys [dashcard-ids]}]
-     (str "The dashboard has tabs, so every card needs one, and cards " (ids-text dashcard-ids) " have none."
-          " Pass `tab` on the op that adds a card, or `move` a placed card to a tab."))
+     ;; New rows carry the caller's negative ids. A stored card with no tab predates the dashboard's tabs, and the
+     ;; result lists it as `all_tabs`, so the model needs to hear that saving any ops makes it pick a tab for it.
+     (let [{added true, stored false} (group-by neg? dashcard-ids)]
+       (str/join " "
+                 (cond-> ["The dashboard has tabs, so every card needs one."]
+                   (seq added)
+                   (conj (str "Cards " (ids-text added) " have none. Pass `tab` on the op that adds a card,"
+                              " or `move` it to a tab."))
+                   (seq stored)
+                   (conj (str "Cards " (ids-text stored) " were already on the dashboard with no tab, so they show"
+                              " on every tab. The save needs each of them on one tab: `move` them to a tab in this"
+                              " call."))))))
 
    :overlapping-cards
    (fn [{:keys [dashcard-ids]}]
@@ -692,10 +703,11 @@
 
 (defn- dashcard-xml
   "One dashcard of a saved dashboard. A card that `card-shown?` refuses shows its slot only."
-  [card-shown? {:keys [id card row col size_x size_y visualization_settings]}]
+  [card-shown? {:keys [id card row col size_x size_y visualization_settings all_tabs]}]
   (let [readable (when (and card (card-shown? card)) card)]
     (str "<dashcard"
-         (xml-attrs :id id
+         (xml-attrs :dashcard_id id
+                    :all_tabs all_tabs
                     :card_id (:id readable)
                     :name (:name readable)
                     :display (some-> (or (:display readable)
@@ -707,33 +719,29 @@
 (defn- dashboard-lines
   "The lines of the saved dashboard `dash`: its tabs, dashcards with their layout, and filters with the dashcards
   they connect to. The `saved-charts` are the charts this call saved, which [[card-shown-fn]] shows.
-  A dashcard with no tab shows on the first tab, as in the frontend and `read_resource`."
+  When the dashboard has tabs, a dashcard with no tab is listed before them, marked `all_tabs`, as in the frontend
+  and `read_resource`'s items read."
+  ;; The `dashcard_id`, `tab_id` and `all_tabs` attributes match `read_resource`'s items read, and the `<filter>`
+  ;; element matches its dashboard details read. The layout differs: dashcards nest under their `<tab>`, and a
+  ;; question's id is `card_id`, the name the ops take.
   [{:keys [id name description tabs dashcards parameters]} saved-charts]
-  (let [tabs        (sort-by :position tabs)
-        first-tab   (:id (first tabs))
-        by-tab      (group-by #(or (:dashboard_tab_id %) first-tab) (sort-by (juxt :row :col) dashcards))
-        connections (fn [parameter-id]
-                      (not-empty (for [dc dashcards
-                                       :when (some #(= parameter-id (:parameter_id %)) (:parameter_mappings dc))]
-                                   (:id dc))))
+  (let [by-tab      (group-by :dashboard_tab_id (sort-by (juxt :row :col) dashcards))
         card-shown? (card-shown-fn dashcards saved-charts)
         card-lines  (fn [indent dcs] (for [dc dcs] (str indent (dashcard-xml card-shown? dc))))]
     [(str "  <dashboard" (xml-attrs :id id :name name) ">")
      (when description
        (str "    <description>" (llm-shape/escape-xml-content description) "</description>"))
      (if (seq tabs)
-       (for [{tab-id :id tab-name :name} tabs]
-         [(str "    <tab" (xml-attrs :id tab-id :name tab-name) ">")
-          (card-lines "      " (get by-tab tab-id))
-          "    </tab>"])
+       ;; A dashcard from before the dashboard had tabs has no tab, and the frontend shows it on every tab
+       ;; (`getVisibleCards`), so it comes before the tabs, marked `all_tabs`, as in the items read.
+       [(card-lines "    " (map #(assoc % :all_tabs true) (get by-tab nil)))
+        (for [{tab-id :id tab-name :name} (sort-by :position tabs)]
+          [(str "    <tab" (xml-attrs :tab_id tab-id :name tab-name) ">")
+           (card-lines "      " (get by-tab tab-id))
+           "    </tab>"])]
        (card-lines "    " (get by-tab nil)))
-     (for [{parameter-id :id :as parameter} parameters]
-       (str "    <filter"
-            (xml-attrs :id parameter-id
-                       :name (:name parameter)
-                       :type (some-> (:type parameter) u/qualified-name)
-                       :connected_dashcards (some->> (connections parameter-id) ids-text))
-            "/>"))
+     (for [parameter (entity-details/with-filter-connections parameters dashcards)]
+       (str "    " (llm-shape/dashboard-filter->xml parameter)))
      "  </dashboard>"]))
 
 (defn- action

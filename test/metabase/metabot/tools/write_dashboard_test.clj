@@ -1,5 +1,6 @@
 (ns metabase.metabot.tools.write-dashboard-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
@@ -153,7 +154,7 @@
                           {:op "add_card", :id -3, :chart_id "C", :name "Venues C"
                            :position {:row 6, :col 0}, :size {:size_x 24, :size_y 6}}
                           {:op "add_parameter", :parameter_id "price", :name "Price"
-                           :type "number/=", :sectionId "number"}
+                           :type "number/=", :sectionId "number", :default "2"}
                           {:op "wire_parameter", :parameter_id "price", :dashcard_id -1
                            :target_field (mt/id :venues :price), :autowire true}]
                   result (binding [shared/*memory-atom* (chart-memory convo-id)]
@@ -179,9 +180,9 @@
                 (is (= (map :id cards) (map :card_id dcs)))
                 (is (= [[0 0 12 6] [0 12 12 6] [6 0 24 6]] (map (juxt :row :col :size_x :size_y) dcs)))
                 (is (not-any? true? (for [a dcs b dcs :when (not= a b)] (overlap? a b)))))
-              (testing "connects the filter to every card with the field"
+              (testing "connects the filter to every card with the field, and shows its default"
                 (is (every? (fn [dc] (some #(= "price" (:parameter_id %)) (:parameter_mappings dc))) dcs))
-                (is (re-find (re-pattern (str "<filter id=\"price\" name=\"Price\" type=\"number/=\""
+                (is (re-find (re-pattern (str "<filter id=\"price\" name=\"Price\" type=\"number/=\" default=\"2\""
                                               " connected_dashcards=\"\\d+, \\d+, \\d+\"/>"))
                              (:output result))))
               (testing "opens the dashboard only in internal Metabot"
@@ -193,26 +194,52 @@
   (mt/with-model-cleanup [:model/Dashboard]
     (mt/with-current-user (mt/user->id :crowberto)
       (testing "the result groups the dashcards under their tabs"
-        (is (re-find #"<tab id=\"\d+\" name=\"Revenue\">\n      <dashcard id=\"\d+\" display=\"text\" row=\"0\""
+        (is (re-find (re-pattern (str "<tab tab_id=\"\\d+\" name=\"Revenue\">\n"
+                                      "      <dashcard dashcard_id=\"\\d+\" display=\"text\" row=\"0\""))
                      (:output (call {:name "Tabbed"
                                      :ops  [{:op "add_tab", :id -1, :name "Revenue"}
                                             {:op "add_text", :id -2, :markdown "Notes", :tab -1}]}))))))))
 
-(deftest untabbed-card-on-tabbed-dashboard-test
-  (mt/with-temp [:model/Dashboard     {dash-id :id}     {:name "Tabbed"}
-                 :model/DashboardTab  {one-id :id}      {:dashboard_id dash-id, :name "One", :position 0}
-                 :model/DashboardTab  {two-id :id}      {:dashboard_id dash-id, :name "Two", :position 1}
-                 :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id, :row 0, :col 0, :size_x 12, :size_y 6
-                                                         :visualization_settings {:virtual_card {:display "text"}
-                                                                                  :text         "Notes"}}]
+(deftest legacy-dashcard-on-tabbed-dashboard-test
+  (mt/with-temp [:model/Dashboard     {dash-id :id}    {:name "Tabbed"}
+                 :model/DashboardTab  _                {:dashboard_id dash-id, :name "First", :position 0}
+                 :model/DashboardTab  {second-tab :id} {:dashboard_id dash-id, :name "Second", :position 1}
+                 :model/DashboardCard {legacy-id :id}  {:dashboard_id dash-id, :dashboard_tab_id nil, :card_id nil
+                                                        :row 0, :col 0, :size_x 24, :size_y 1
+                                                        :visualization_settings {:virtual_card {:display "heading"}
+                                                                                 :text         "Legacy"}}
+                 :model/DashboardCard {second-id :id}  {:dashboard_id dash-id, :dashboard_tab_id second-tab
+                                                        :card_id nil
+                                                        :row 1, :col 0, :size_x 12, :size_y 3
+                                                        :visualization_settings {:virtual_card {:display "text"}
+                                                                                 :text         "Notes"}}]
     (mt/with-current-user (mt/user->id :crowberto)
-      (testing "the result shows a card without a tab on the first tab, as the frontend does"
-        (is (re-find (re-pattern (str "<tab id=\"" one-id "\" name=\"One\">\n"
-                                      "      <dashcard id=\"" dashcard-id "\" display=\"text\"[^\n]*/>\n"
-                                      "    </tab>\n"
-                                      "    <tab id=\"" two-id "\" name=\"Two\">\n"
-                                      "    </tab>"))
-                     (:output (call {:dashboard_id dash-id, :name "Renamed"}))))))))
+      (let [output (:output (call {:dashboard_id dash-id, :name "Renamed"}))]
+        (testing "a dashcard with no tab comes before the tabs, marked as shown on every tab"
+          (is (re-find (re-pattern (str "\n    <dashcard dashcard_id=\"" legacy-id "\" all_tabs=\"true\""))
+                       output))
+          (is (< (str/index-of output (str "dashcard_id=\"" legacy-id "\""))
+                 (str/index-of output "<tab "))))
+        (testing "a dashcard on a later tab stays under that tab"
+          (is (re-find (re-pattern (str "<tab tab_id=\"" second-tab "\" name=\"Second\">\n"
+                                        "      <dashcard dashcard_id=\"" second-id "\""))
+                       output))))
+      (testing "ops that leave it with no tab are rejected, naming it as a card that was already there"
+        (is (=? {:code ::write-dashboard/dashboard-op-rejected
+                 :text (re-pattern (str "(?s)\\QThe dashboard has tabs, so every card needs one. Cards " legacy-id
+                                        " were already on the dashboard with no tab\\E.*\\Q`move` them to a tab"
+                                        " in this call. Nothing was saved.\\E.*"))}
+                (failure {:dashboard_id dash-id
+                          :ops          [{:op "add_text", :id -1, :markdown "More", :tab second-tab}]})))
+        (is (= 2 (count (dashcards dash-id)))))
+      (testing "moving it to a tab in the same call saves"
+        (call {:dashboard_id dash-id
+               :ops          [{:op "add_text", :id -1, :markdown "More", :tab second-tab}
+                              {:op "move", :dashcard_id legacy-id, :tab second-tab}]})
+        (is (=? [{:id legacy-id, :dashboard_tab_id second-tab}
+                 {:id second-id, :dashboard_tab_id second-tab}
+                 {:dashboard_tab_id second-tab}]
+                (dashcards dash-id)))))))
 
 (deftest retry-reuses-question-test
   (mt/with-model-cleanup [:model/Card]
@@ -357,7 +384,7 @@
              (is (=? {:name "Revenue by month", :archived false} (t2/select-one :model/Card :id card-id)))
              (is (= "Marketing" (t2/select-one-fn :name :model/Dashboard :id other-id))))
            (testing "the result shows the layout with real ids"
-             (is (re-find (re-pattern (str "<dashcard id=\"" dashcard-id "\" card_id=\"" (:id new-card)
+             (is (re-find (re-pattern (str "<dashcard dashcard_id=\"" dashcard-id "\" card_id=\"" (:id new-card)
                                            "\" name=\"Venues\" display=\"bar\" row=\"0\" col=\"0\""
                                            " size_x=\"24\" size_y=\"6\"/>"))
                           (:output result))))))))))
@@ -378,7 +405,7 @@
        (mt/with-current-user (mt/user->id :rasta)
          (let [output (:output (call {:dashboard_id dash-id, :name "Sales summary"}))]
            (testing "a card the user can't read shows its slot without its id or name"
-             (is (re-find (re-pattern (str "<dashcard id=\"" dashcard-id "\" row=\"6\" col=\"0\" size_x=\"12\""
+             (is (re-find (re-pattern (str "<dashcard dashcard_id=\"" dashcard-id "\" row=\"6\" col=\"0\" size_x=\"12\""
                                            " size_y=\"6\"/>"))
                           output))
              (is (not (re-find #"Secret revenue" output))))))))))
@@ -695,7 +722,7 @@
 (deftest curated-only-result-test
   (curated-dashboard!
    (fn [{:keys [curated-id dash-id dashcard-id curated-metabot open-metabot]}]
-     (let [slot-only (re-pattern (str "<dashcard id=\"" dashcard-id "\" row=\"0\" col=\"0\" size_x=\"12\""
+     (let [slot-only (re-pattern (str "<dashcard dashcard_id=\"" dashcard-id "\" row=\"0\" col=\"0\" size_x=\"12\""
                                       " size_y=\"6\"/>"))]
        (testing "with curation on, the uncurated dashboard is edited"
          (let [output (as-metabot
@@ -783,7 +810,7 @@
                        curated-metabot
                        #(binding [shared/*memory-atom* (chart-memory convo-id)]
                           (:output (call {:dashboard_id dash-id, :name "Renamed"} :internal))))]
-           (is (re-find (re-pattern (str "<dashcard id=\"" dashcard-id "\" row=\"6\" col=\"0\" size_x=\"12\""
+           (is (re-find (re-pattern (str "<dashcard dashcard_id=\"" dashcard-id "\" row=\"6\" col=\"0\" size_x=\"12\""
                                          " size_y=\"6\"/>"))
                         output))
            (is (not (re-find #"Other chat's chart" output)))))))))
