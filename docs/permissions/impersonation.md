@@ -173,11 +173,10 @@ If instead you want to give a group SQL access to some, but not all, of the sche
 
 Once any group has impersonated access to a database, Metabase checks every native query on that database before running it, no matter who runs the query. That includes admins, people whose other groups give them **Can view** access, and SQL questions that other questions use as a data source or in a join.
 
-Metabase rejects anything that isn't a single `SELECT` statement. Common table expressions (`WITH`) and set operations (`UNION`, `INTERSECT`, `EXCEPT`) count as a single `SELECT` statement, so those queries will run. Admins can also run a single statement that isn't a `SELECT`, like `SHOW TIMEZONE`, but not multiple statements. For [data actions written in SQL](../data-modeling/data-actions.md#create-a-data-action-with-sql), the rule is a single `INSERT`, `UPDATE`, or `DELETE` statement instead.
+Metabase rejects anything that isn't a single `SELECT` statement. Common table expressions (`WITH`) and set operations (`UNION`, `INTERSECT`, `EXCEPT`) count as a single `SELECT` statement, so those queries will run. Admins can also run a single statement that isn't a `SELECT`, like `SHOW TIMEZONE`. But no one, including admins, can run multiple statements separated by semicolons, like `SET ROLE analyst; SELECT * FROM people;`. For [data actions written in SQL](../data-modeling/data-actions.md#create-a-data-action-with-sql), the rule is a single `INSERT`, `UPDATE`, or `DELETE` statement instead.
 
 Examples of queries Metabase rejects for people who aren't admins:
 
-- Multiple statements separated by semicolons, like `SET ROLE analyst; SELECT * FROM people;`
 - Statements that create or change tables, including temporary tables (`CREATE`, `ALTER`, `DROP`)
 - Role-switching statements like `SET ROLE` or `USE ROLE`
 - Queries that call functions that wait, change the session, run a SQL string, or reach outside the database, like `pg_sleep`, `set_config`, `dblink`, or `OPENQUERY`
