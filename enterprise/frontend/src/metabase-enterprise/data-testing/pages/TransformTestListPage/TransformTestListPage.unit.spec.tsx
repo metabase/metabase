@@ -31,13 +31,13 @@ import type {
 } from "metabase-types/api";
 import {
   createMockCollection,
+  createMockDataTestEmptyExpectation,
+  createMockDataTestEqualsExpectation,
   createMockDataTestRun,
   createMockDatabase,
   createMockTokenFeatures,
   createMockTransform,
   createMockTransformTest,
-  createMockTransformTestEmptyExpectation,
-  createMockTransformTestEqualsExpectation,
 } from "metabase-types/api/mocks";
 
 import { TransformTestListPage } from "./TransformTestListPage";
@@ -104,8 +104,8 @@ describe("TransformTestListPage", () => {
           id: 1,
           name: "Refunded orders are excluded",
           expectations: [
-            createMockTransformTestEqualsExpectation(),
-            createMockTransformTestEmptyExpectation(),
+            createMockDataTestEqualsExpectation(),
+            createMockDataTestEmptyExpectation(),
           ],
           last_run: createMockDataTestRun({ status: "passed" }),
         }),

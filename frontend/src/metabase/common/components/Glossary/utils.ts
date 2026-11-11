@@ -1,6 +1,6 @@
 import type { KeyboardEvent } from "react";
 
-import type { GlossaryItem } from "metabase/api";
+import type { GlossaryItem } from "metabase-types/api";
 
 import type { GlossaryField, GlossarySort } from "./types";
 

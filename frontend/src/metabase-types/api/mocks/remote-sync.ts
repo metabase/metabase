@@ -5,61 +5,186 @@ import type {
   GetBranchesResponse,
   HasRemoteChangesResponse,
   ImportChangesResponse,
+  RemoteSyncActionData,
+  RemoteSyncCardData,
+  RemoteSyncCardTestData,
   RemoteSyncChangesResponse,
-  RemoteSyncEntity,
-  RemoteSyncEntityCollection,
-  RemoteSyncEntityCollectionAncestor,
-  RemoteSyncEntityParent,
-  RemoteSyncEntityRef,
+  RemoteSyncCollectionData,
+  RemoteSyncDashboardData,
+  RemoteSyncDataAppData,
+  RemoteSyncDimensionData,
+  RemoteSyncDirtyItem,
+  RemoteSyncDocumentData,
+  RemoteSyncFieldUserSettingsData,
+  RemoteSyncGlossaryData,
   RemoteSyncIsDirtyResponse,
+  RemoteSyncItem,
+  RemoteSyncItemData,
+  RemoteSyncItemModel,
+  RemoteSyncMeasureData,
   RemoteSyncMergeSummary,
+  RemoteSyncNativeQuerySnippetData,
   RemoteSyncPulledOutcome,
+  RemoteSyncPythonLibraryData,
+  RemoteSyncSegmentData,
+  RemoteSyncTableUserSettingsData,
   RemoteSyncTask,
+  RemoteSyncTimelineData,
+  RemoteSyncTransformData,
+  RemoteSyncTransformTagData,
+  RemoteSyncTransformTestData,
   RemoteSyncUnsyncedDependenciesErrorData,
-  RemoteSyncUnsyncedDependency,
   StashChangesResponse,
   TestRemoteSyncConnectionResponse,
   UpdateRemoteSyncSettingsResponse,
 } from "../remote-sync";
 
-export const createMockRemoteSyncEntityParent = (
-  opts?: Partial<RemoteSyncEntityParent>,
-): RemoteSyncEntityParent => ({
-  model: "tableusersettings",
-  id: 1,
-  name: "Orders",
-  ...opts,
-});
+export function createMockRemoteSyncActionData(
+  opts?: Partial<RemoteSyncActionData>,
+): RemoteSyncActionData {
+  return {
+    id: 1,
+    name: "Action",
+    type: "query",
+    model_id: null,
+    collection_id: null,
+    ...opts,
+  };
+}
 
-export const createMockRemoteSyncEntity = (
-  opts?: Partial<RemoteSyncEntity>,
-): RemoteSyncEntity => ({
-  id: 1,
-  name: "My Question",
-  model: "card",
-  sync_status: "update",
-  ...opts,
-});
+export function createMockRemoteSyncCardData(
+  opts?: Partial<RemoteSyncCardData>,
+): RemoteSyncCardData {
+  return { id: 1, name: "Card", collection_id: null, ...opts };
+}
 
-export const createMockRemoteSyncEntityCollectionAncestor = (
-  opts?: Partial<RemoteSyncEntityCollectionAncestor>,
-): RemoteSyncEntityCollectionAncestor => ({
-  id: 1,
-  name: "Parent collection",
-  type: null,
-  personal_owner_id: null,
-  ...opts,
-});
+export function createMockRemoteSyncCardTestData(
+  opts?: Partial<RemoteSyncCardTestData>,
+): RemoteSyncCardTestData {
+  return { id: 1, name: "Card test", card_id: 1, ...opts };
+}
 
-export const createMockRemoteSyncEntityCollection = (
-  opts?: Partial<RemoteSyncEntityCollection>,
-): RemoteSyncEntityCollection => ({
-  id: 2,
-  name: "Collection",
-  type: null,
-  effective_ancestors: [],
-  ...opts,
-});
+export function createMockRemoteSyncCollectionData(
+  opts?: Partial<RemoteSyncCollectionData>,
+): RemoteSyncCollectionData {
+  return { id: 1, name: "Collection", location: "/", ...opts };
+}
+
+export function createMockRemoteSyncDashboardData(
+  opts?: Partial<RemoteSyncDashboardData>,
+): RemoteSyncDashboardData {
+  return { id: 1, name: "Dashboard", collection_id: null, ...opts };
+}
+
+export function createMockRemoteSyncDataAppData(
+  opts?: Partial<RemoteSyncDataAppData>,
+): RemoteSyncDataAppData {
+  return { id: 1, slug: "app", name: "App", ...opts };
+}
+
+export function createMockRemoteSyncDimensionData(
+  opts?: Partial<RemoteSyncDimensionData>,
+): RemoteSyncDimensionData {
+  return { id: 1, field_id: 1, name: "Dimension", ...opts };
+}
+
+export function createMockRemoteSyncDocumentData(
+  opts?: Partial<RemoteSyncDocumentData>,
+): RemoteSyncDocumentData {
+  return { id: 1, name: "Document", collection_id: null, ...opts };
+}
+
+export function createMockRemoteSyncFieldUserSettingsData(
+  opts?: Partial<RemoteSyncFieldUserSettingsData>,
+): RemoteSyncFieldUserSettingsData {
+  return { field_id: 1, display_name: null, ...opts };
+}
+
+export function createMockRemoteSyncGlossaryData(
+  opts?: Partial<RemoteSyncGlossaryData>,
+): RemoteSyncGlossaryData {
+  return { id: 1, term: "Term", ...opts };
+}
+
+export function createMockRemoteSyncMeasureData(
+  opts?: Partial<RemoteSyncMeasureData>,
+): RemoteSyncMeasureData {
+  return { id: 1, name: "Measure", table_id: 1, ...opts };
+}
+
+export function createMockRemoteSyncNativeQuerySnippetData(
+  opts?: Partial<RemoteSyncNativeQuerySnippetData>,
+): RemoteSyncNativeQuerySnippetData {
+  return { id: 1, name: "Snippet", collection_id: null, ...opts };
+}
+
+export function createMockRemoteSyncPythonLibraryData(
+  opts?: Partial<RemoteSyncPythonLibraryData>,
+): RemoteSyncPythonLibraryData {
+  return { id: 1, path: "common.py", ...opts };
+}
+
+export function createMockRemoteSyncSegmentData(
+  opts?: Partial<RemoteSyncSegmentData>,
+): RemoteSyncSegmentData {
+  return { id: 1, name: "Segment", table_id: 1, ...opts };
+}
+
+export function createMockRemoteSyncTableUserSettingsData(
+  opts?: Partial<RemoteSyncTableUserSettingsData>,
+): RemoteSyncTableUserSettingsData {
+  return { table_id: 1, display_name: null, collection_id: null, ...opts };
+}
+
+export function createMockRemoteSyncTimelineData(
+  opts?: Partial<RemoteSyncTimelineData>,
+): RemoteSyncTimelineData {
+  return { id: 1, name: "Timeline", collection_id: null, ...opts };
+}
+
+export function createMockRemoteSyncTransformData(
+  opts?: Partial<RemoteSyncTransformData>,
+): RemoteSyncTransformData {
+  return { id: 1, name: "Transform", collection_id: null, ...opts };
+}
+
+export function createMockRemoteSyncTransformTagData(
+  opts?: Partial<RemoteSyncTransformTagData>,
+): RemoteSyncTransformTagData {
+  return { id: 1, name: "Tag", ...opts };
+}
+
+export function createMockRemoteSyncTransformTestData(
+  opts?: Partial<RemoteSyncTransformTestData>,
+): RemoteSyncTransformTestData {
+  return { id: 1, name: "Transform test", transform_id: 1, ...opts };
+}
+
+export function createMockRemoteSyncItem<TModel extends RemoteSyncItemModel>(
+  opts: Partial<RemoteSyncItem<TModel>> & {
+    model: TModel;
+    data: RemoteSyncItemData<TModel>;
+  },
+): RemoteSyncItem<TModel> {
+  return {
+    id: 1,
+    ...opts,
+  };
+}
+
+export function createMockRemoteSyncDirtyItem<
+  TModel extends RemoteSyncItemModel,
+>(
+  opts: Partial<RemoteSyncDirtyItem<TModel>> & { model: TModel },
+): RemoteSyncDirtyItem<TModel> {
+  return {
+    id: 1,
+    name: "Item",
+    sync_status: "update",
+    data: null,
+    ...opts,
+  };
+}
 
 export const createMockRemoteSyncTask = (
   opts?: Partial<RemoteSyncTask>,
@@ -69,25 +194,6 @@ export const createMockRemoteSyncTask = (
   status: "running",
   progress: 0,
   started_at: "2026-01-01T00:00:00Z",
-  ...opts,
-});
-
-export const createMockRemoteSyncEntityRef = (
-  opts?: Partial<RemoteSyncEntityRef>,
-): RemoteSyncEntityRef => ({
-  id: 1,
-  name: "Dashboard",
-  model: "dashboard",
-  ...opts,
-});
-
-export const createMockRemoteSyncUnsyncedDependency = (
-  opts?: Partial<RemoteSyncUnsyncedDependency>,
-): RemoteSyncUnsyncedDependency => ({
-  id: 1,
-  name: "Card",
-  model: "card",
-  used_by: [],
   ...opts,
 });
 

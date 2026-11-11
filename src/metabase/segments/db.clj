@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -69,3 +70,11 @@
   "The Database id, schema, and id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :db_id :schema :id] :id table-id))
+
+(mu/defn synced-segment-items :- [:sequential ::segments.schema/segment]
+  "The Segments with `ids`, with their Table and its Collection and ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Segment :id :name :table_id] :id [:in ids])
+        (t2/hydrate [:table [:collection :effective_ancestors]])
+        (->> (mapv (fn [row] (update row :table #(some-> % (collection.root/hydrate-root-collection root)))))))))

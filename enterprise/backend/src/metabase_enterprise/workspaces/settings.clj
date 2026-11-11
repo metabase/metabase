@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.settings
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]))
@@ -39,7 +40,10 @@
                                   {:status-code 400})))
                 (setting/set-value-of-type! :boolean :workspaces-enabled new-value))
   ;; :on-change gets the raw cached strings ("true"/"false"/nil), not booleans.
+  ;; Outside workspace mode a node trusts its cache of the Databases with remappings, and rows may have changed
+  ;; while it was in workspace mode. Fires on every node when its settings cache picks up the change.
   :on-change  (fn [old-value new-value]
+                (table-remapping/invalidate-database-ids!)
                 (when (and (= "true" old-value) (not= "true" new-value))
                   (ws.db/delete-all-table-remappings!))))
 

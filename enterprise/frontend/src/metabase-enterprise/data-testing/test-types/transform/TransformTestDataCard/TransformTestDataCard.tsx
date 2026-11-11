@@ -15,18 +15,18 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type {
+  DataTestData,
+  DataTestRow,
+  DataTestRowValue,
+  DataTestRowsData,
   IconName,
-  TransformTestData,
-  TransformTestRow,
-  TransformTestRowValue,
-  TransformTestRowsData,
 } from "metabase-types/api";
 
 type TransformTestDataCardProps = {
   name: string;
   icon: IconName;
   description: string;
-  data: TransformTestData;
+  data: DataTestData;
 };
 
 export function TransformTestDataCard({
@@ -58,12 +58,12 @@ export function TransformTestDataCard({
 
 type RowEntry = {
   id: string;
-  row: TransformTestRow;
+  row: DataTestRow;
 };
 
 type RowsTableProps = {
   name: string;
-  data: TransformTestRowsData;
+  data: DataTestRowsData;
 };
 
 function RowsTable({ name, data }: RowsTableProps) {
@@ -94,6 +94,6 @@ function RowsTable({ name, data }: RowsTableProps) {
   );
 }
 
-function formatValue(value: TransformTestRowValue | undefined): string {
+function formatValue(value: DataTestRowValue | undefined): string {
   return value === undefined ? "" : String(value);
 }

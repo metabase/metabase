@@ -24,7 +24,7 @@ type ControlsModal =
   | { type: "pull" }
   | { type: "task"; task: SyncTask };
 
-export const AppBarControls = () => {
+export function AppBarControls() {
   const isVisible = useSelector(getIsRemoteSyncVisible);
   const branch = useSetting("remote-sync-branch");
 
@@ -33,13 +33,13 @@ export const AppBarControls = () => {
   }
 
   return <Controls branch={branch} />;
-};
+}
 
 type ControlsProps = {
   branch: string;
 };
 
-const Controls = ({ branch }: ControlsProps) => {
+function Controls({ branch }: ControlsProps) {
   const [modal, setModal] = useState<ControlsModal | null>(null);
   const [checkIsDirty] = useLazyGetRemoteSyncIsDirtyQuery();
   const [importChanges, { isLoading: isPulling }] = useImportChangesMutation();
@@ -116,4 +116,4 @@ const Controls = ({ branch }: ControlsProps) => {
       />
     </>
   );
-};
+}
