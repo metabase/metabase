@@ -4,6 +4,7 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -117,3 +118,50 @@
               (mt/user-http-request :crowberto :put 200 (str "database/" db-id)
                                     {:settings {:database-workspace-schema "ws_new"}})
               (is (zero? (t2/count :model/TableRemapping :database_id db-id))))))))))
+
+(deftest put-database-refuses-non-string-workspace-schema-test
+  (testing "PUT /api/database/:id refuses a non-string database-workspace-schema, which every read would choke on"
+    (mt/with-premium-features #{:workspaces}
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details (:details (mt/db))}]
+        (doseq [bad [5 true ["ws"] {:schema "ws"}]]
+          (testing (pr-str bad)
+            (is (= "Setting database-workspace-schema must be a string."
+                   (mt/user-http-request :crowberto :put 400 (str "database/" db-id)
+                                         {:settings {:database-workspace-schema bad}})))
+            (is (nil? (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema])))))))))
+
+(deftest put-setting-workspaces-enabled-refused-under-env-var-test
+  (testing "with MB_WORKSPACES_ENABLED set, PUT /api/setting/workspaces-enabled refuses a different value, like /current"
+    (ws.settings/workspaces-enabled! true)
+    (t2/insert! :model/TableRemapping {:database_id (mt/id) :from_db "" :from_schema "PUBLIC" :from_table_name "VENUES"
+                                       :to_db "" :to_schema "ws" :to_table_name "PUBLIC__VENUES"})
+    (mt/with-temp-env-var-value! [mb-workspaces-enabled "true"]
+      (doseq [value [false nil]]
+        (testing (pr-str value)
+          (is (= "workspaces-enabled is set to true by the MB_WORKSPACES_ENABLED env var and can't be changed at runtime."
+                 (mt/user-http-request :crowberto :put 400 "setting/workspaces-enabled" {:value value})))
+          (testing "and the remap rows survive"
+            (is (= 1 (t2/count :model/TableRemapping))))))
+      (testing "writing the env var's own value is allowed"
+        (mt/user-http-request :crowberto :put 204 "setting/workspaces-enabled" {:value true})))))
+
+(deftest put-database-workspace-schema-superuser-only-test
+  (testing "a non-superuser with manage-database permission can't set or clear database-workspace-schema"
+    (mt/with-premium-features #{:workspaces :advanced-permissions}
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :details  (:details (mt/db))
+                                                  :settings {:database-workspace-schema "ws"}}]
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) db-id :perms/manage-database :yes)
+          (testing "the manager can still edit the database"
+            (mt/user-http-request :rasta :put 200 (str "database/" db-id) {:description "edited"}))
+          (doseq [value ["elsewhere" nil]]
+            (testing (pr-str value)
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :put 403 (str "database/" db-id)
+                                           {:settings {:database-workspace-schema value}})))
+              (is (= "ws" (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema])))))
+          (testing "a superuser can"
+            (mt/user-http-request :crowberto :put 200 (str "database/" db-id)
+                                  {:settings {:database-workspace-schema "elsewhere"}})
+            (is (= "elsewhere" (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema])))))))))
