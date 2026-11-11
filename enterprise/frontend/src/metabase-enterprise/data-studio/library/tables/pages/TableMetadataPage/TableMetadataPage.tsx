@@ -12,6 +12,7 @@ import * as Urls from "metabase/urls";
 import { TableHeader } from "../../components/TableHeader";
 
 import S from "./TableMetadataPage.module.css";
+import { TableStructureSections } from "./TableStructureSections";
 import { TableSubjectFields } from "./TableSubjectFields";
 
 type TableMetadataPageParams = {
@@ -46,6 +47,7 @@ export function TableMetadataPage() {
             name={t`What this table is`}
             description={t`What each row is about, and what to call one row and many rows in plain words.`}
             contentPx="xxxl"
+            cardRadius="lg"
           >
             <TableSubjectFields table={table} readOnly={readOnly} />
           </DatabaseInfoSection>
@@ -53,9 +55,11 @@ export function TableMetadataPage() {
             name={t`Default segment and filter`}
             description={t`These are helpful for very large tables to prevent users from accidentally querying more data than they intend to.`}
             contentPx="xxxl"
+            cardRadius="lg"
           >
             <TableFiltering table={table} readOnly={readOnly} />
           </DatabaseInfoSection>
+          <TableStructureSections table={table} />
         </Flex>
       </Box>
     </PageContainer>

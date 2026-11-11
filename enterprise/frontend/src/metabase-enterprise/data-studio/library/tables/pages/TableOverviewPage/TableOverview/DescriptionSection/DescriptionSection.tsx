@@ -8,6 +8,10 @@ import { Link } from "metabase/common/components/Link/Link";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import { DataSourceInput, UserInput } from "metabase/metadata/components";
+import {
+  DATA_LAYER_VISIBILITY_ICONS,
+  useDataLayers,
+} from "metabase/metadata/data-layers";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Box, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -30,10 +34,18 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
   const formatNumber = useNumberFormatter();
   const isDependenciesEnabled = PLUGIN_DEPENDENCIES.isEnabled;
 
-  const { dependentsCount } = PLUGIN_DEPENDENCIES.useGetDependenciesCount({
-    id: Number(table.id),
-    type: "table",
-  });
+  const { dependenciesCount, dependentsCount } =
+    PLUGIN_DEPENDENCIES.useGetDependenciesCount({
+      id: Number(table.id),
+      type: "table",
+    });
+  // PROTOTYPE: mocked. Data layers live in the prototype's browser storage.
+  const { getTableDataLayer } = useDataLayers();
+  const dataLayer = getTableDataLayer(
+    table.db_id,
+    table.schema,
+    table.id,
+  ).layer;
 
   const handleChange = async (newValue: string) => {
     const newDescription = newValue.trim();
@@ -168,6 +180,35 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
           </Text>
         </Card.Section>
         <Card.Section withBorder p="lg">
+          <Group gap="sm" mb={4} wrap="nowrap">
+            <Icon name="table" c="core-brand" />
+            <Text size="md" fw={600} lh="1rem" ff="monospace" truncate>
+              {table.name}
+            </Text>
+          </Group>
+          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+            {t`Raw name`}
+          </Text>
+        </Card.Section>
+        <Card.Section withBorder p="lg">
+          <Group gap="sm" mb={4} wrap="nowrap">
+            <Icon
+              name={
+                dataLayer
+                  ? DATA_LAYER_VISIBILITY_ICONS[dataLayer.visibility]
+                  : "database"
+              }
+              c={dataLayer ? "core-brand" : "icon-disabled"}
+            />
+            <Text size="md" fw={600} lh="1rem">
+              {dataLayer?.name ?? t`No data layer`}
+            </Text>
+          </Group>
+          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+            {t`Data layer`}
+          </Text>
+        </Card.Section>
+        <Card.Section withBorder p="lg">
           <Group gap="sm" mb={4}>
             <Icon
               name="refresh_downstream"
@@ -194,6 +235,27 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
             {t`Source`}
           </Text>
         </Card.Section>
+        {table.data_source === "metabase-transform" && (
+          <Card.Section withBorder p="lg">
+            <Group gap="sm" mb={4} wrap="nowrap">
+              <Icon name="insight" c="core-brand" />
+              {table.transform ? (
+                <Link to={Urls.transform(table.transform.id)}>
+                  <Text size="md" fw={600} lh="1rem">
+                    {table.transform.name}
+                  </Text>
+                </Link>
+              ) : (
+                <Text size="md" fw={600} lh="1rem" c="feedback-negative">
+                  {t`Transform does not exist anymore`}
+                </Text>
+              )}
+            </Group>
+            <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+              {t`Transform`}
+            </Text>
+          </Card.Section>
+        )}
         <Card.Section withBorder p="lg">
           <Group gap="sm" mb={4}>
             <Icon
@@ -251,6 +313,41 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
               <Text size="xl" fw={600}>
                 {formatNumber(table.estimated_row_count)}
               </Text>
+            </Flex>
+          </Card.Section>
+        )}
+
+        <Card.Section withBorder py={rem(12)} px="lg">
+          <Flex justify="space-between" align="center">
+            <Text size="md" c="text-secondary">
+              {t`Views`}
+            </Text>
+            <Text size="xl" fw={600}>
+              {formatNumber(table.view_count)}
+            </Text>
+          </Flex>
+        </Card.Section>
+
+        {isDependenciesEnabled && (
+          <Card.Section withBorder py={rem(12)} px="lg">
+            <Flex justify="space-between" align="center">
+              <Text size="md" c="text-secondary">
+                {t`Dependencies`}
+              </Text>
+              {dependenciesCount > 0 ? (
+                <Link
+                  to={Urls.dataStudioTableDependencies(table.id)}
+                  className={S.metricLink}
+                >
+                  <Text size="xl" fw={600}>
+                    {dependenciesCount}
+                  </Text>
+                </Link>
+              ) : (
+                <Text size="xl" fw={600}>
+                  {dependenciesCount}
+                </Text>
+              )}
             </Flex>
           </Card.Section>
         )}

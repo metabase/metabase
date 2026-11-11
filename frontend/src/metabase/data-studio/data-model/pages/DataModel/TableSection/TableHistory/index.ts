@@ -14,3 +14,4 @@ export {
 } from "./HistoryShapeInputs";
 export { type ScdDetails, useScdDetails } from "./use-scd-details";
 export { useHistoryExampleSource } from "./HistoryShapeExample";
+export { HistorySummary } from "./HistorySummary";
