@@ -1107,6 +1107,12 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id :model/Card :id [:in ids] :archived true))
 
+(mu/defn card-database-ids
+  "A map of Card ID to Database ID for the Cards with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  ;; select only the two columns: a full Card row runs its query-dependent after-select hooks
+  (into {} (map (juxt :id :database_id)) (t2/select [:model/Card :id :database_id] :id [:in ids])))
+
 (mu/defn card-curation-rows
   "The ID, Collection ID, archived flag, and Document ID of the Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]

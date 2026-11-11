@@ -553,6 +553,60 @@
                 (testing "model/{id} doesn't list the failing metric defined on it"
                   (is (not (contains? (listed (str "metabase://model/" model-id)) bad-model-metric))))))))))))
 
+(defn- sum-metric-query [field-kw]
+  (let [mp (mt/metadata-provider)]
+    (lib/aggregate (orders-query) (lib/sum (lib.metadata/field mp (mt/id :orders field-kw))))))
+
+(deftest curated-table-details-judge-metrics-in-a-fixed-number-of-queries-test
+  (testing "BOT-2619: the queries curation adds to a curated table's details do not grow with the number of uncurated
+            metrics it lists"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-temp [:model/Metabot metabot {:name "curated metabot" :use_verified_content true}
+                     :model/Card {m1 :id} {:type          :metric
+                                           :name          "orders count"
+                                           :dataset_query (count-metric-query (orders-query))}]
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (let [uri      (str "metabase://table/" (mt/id :orders))
+                listed   #(into #{} (map :id) (get-in (first (read-uris % :internal uri))
+                                                      [:content :structured-output :metrics]))
+                counted  (fn [metabot]
+                           ;; the first read warms the memoized lookups
+                           (listed metabot)
+                           (t2/with-call-count [call-count]
+                             (listed metabot)
+                             (call-count)))
+                ;; the details have per-metric costs of their own; compare only what curation adds to them
+                added    #(- (counted metabot) (counted (assoc metabot :use_verified_content false)))
+                with-one (added)]
+            (is (= #{m1} (listed metabot)))
+            (mt/with-temp [:model/Card {m2 :id} {:type :metric :name "orders total" :dataset_query (sum-metric-query :total)}
+                           :model/Card {m3 :id} {:type :metric :name "orders subtotal" :dataset_query (sum-metric-query :subtotal)}
+                           :model/Card {m4 :id} {:type :metric :name "orders tax" :dataset_query (sum-metric-query :tax)}]
+              (testing "every uncurated metric passes the rule, so each one is judged by its definition"
+                (is (= #{m1 m2 m3 m4} (listed metabot))))
+              (is (= with-one (added))))))))))
+
+(deftest usable-metric-ids-judge-a-batch-in-a-fixed-number-of-queries-test
+  (testing "BOT-2619: judging a batch of uncurated metrics reads the app DB a fixed number of times"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-temp [:model/Card {m1 :id} {:type :metric :name "orders count" :dataset_query (count-metric-query (orders-query))}
+                     :model/Card {m2 :id} {:type :metric :name "orders total" :dataset_query (sum-metric-query :total)}
+                     :model/Card {m3 :id} {:type :metric :name "orders subtotal" :dataset_query (sum-metric-query :subtotal)}
+                     :model/Card {m4 :id} {:type          :metric
+                                           :name          "orders joined to raw reviews"
+                                           :dataset_query (count-metric-query
+                                                           (orders-joined-query :reviews :product_id :product_id))}]
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (let [counted (fn [ids]
+                          (curation/usable-metric-ids ids)
+                          (t2/with-call-count [call-count]
+                            (curation/usable-metric-ids ids)
+                            (call-count)))]
+            (testing "the batch keeps the verdicts each metric gets alone"
+              (is (= #{m1 m2 m3} (curation/usable-metric-ids [m1 m2 m3 m4])))
+              (is (= [true true true false] (mapv curation/curated-metric? [m1 m2 m3 m4]))))
+            (is (= (counted [m1]) (counted [m1 m2 m3])))))))))
+
 (deftest read-resource-curated-only-recents-test
   (testing "recent items (which carry keyword models) are filtered like any other list"
     (mt/with-current-user (mt/user->id :crowberto)

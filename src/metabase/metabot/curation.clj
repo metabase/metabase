@@ -219,19 +219,43 @@
 (defn- metric-context
   "State for one judgement of a query's metrics: `:seen`, the metrics being judged up the current reference chain
   (the cycle guard); `:verdicts`, an atom memoizing each metric's verdict by `[id depth]` so a metric reachable
-  through several references is judged once per depth; and `:definitions`, the atom [[load-metric-definitions!]]
-  fills so each Card is loaded once."
+  through several references is judged once per depth; `:definitions`, the atom [[load-metric-definitions!]]
+  fills so each Card is loaded once; `:curation`, an atom of `[model id]` -> curated, so each entity's curation is
+  read once ([[curated-in-context]]); and `:readable`, an atom of `[model-kw id]` -> whether the current user may
+  query or read it ([[definition-readable?]]). [[usable-metric-ids]] shares the last three across a batch."
   []
-  {:seen #{} :verdicts (atom {}) :definitions (atom {})})
+  {:seen #{} :verdicts (atom {}) :definitions (atom {}) :curation (atom {}) :readable (atom {})})
+
+(defn- curated-in-context
+  "[[curated-ids]] of `model+ids` within the judgement `ctx`, a [[metric-context]]: reads only the pairs the judgement
+  has not read yet."
+  [{:keys [curation]} model+ids]
+  (let [unread (into [] (comp (distinct) (remove #(contains? @curation %))) model+ids)]
+    (when (seq unread)
+      (let [curated (curated-ids unread)]
+        (swap! curation into (map (fn [pair] [pair (contains? curated pair)])) unread)))
+    (into #{} (filter @curation) model+ids)))
+
+(defn- readable-in-context?
+  "Memoized `(mi/can-query? :model/Table id)` or `(mi/can-read? :model/Card id)` within the judgement `ctx`."
+  [{:keys [readable]} model id]
+  (let [k [model id]]
+    (if-some [verdict (get @readable k)]
+      verdict
+      (u/prog1 (boolean (case model
+                          :model/Table (mi/can-query? :model/Table id)
+                          :model/Card  (mi/can-read? :model/Card id)))
+        (swap! readable assoc k <>)))))
 
 (defn- definition-readable?
   "Whether the current user may query every Table and read every Card the definition query `definition` names. An
   uncurated metric is judged by its definition only when they may: otherwise the verdict would tell them whether a
-  Table they cannot see is curated, so the metric fails closed instead."
-  [definition]
+  Table they cannot see is curated, so the metric fails closed instead. `ctx` is the [[metric-context]] of the
+  judgement."
+  [definition ctx]
   (let [{:keys [table card]} (lib/all-referenced-entity-ids [definition])]
-    (and (every? #(mi/can-query? :model/Table %) table)
-         (every? #(mi/can-read? :model/Card %) card))))
+    (and (every? #(readable-in-context? ctx :model/Table %) table)
+         (every? #(readable-in-context? ctx :model/Card %) card))))
 
 (defn- metric-ok?
   "Whether the metric `id`, whose definition query is `definition` (nil when unusable), may be used: it's curated,
@@ -252,7 +276,7 @@
                          (not (lib/any-native-stage? definition))
                          (not (seen id))
                          (< (count seen) max-metric-nesting)
-                         (definition-readable? definition)
+                         (definition-readable? definition ctx)
                          (empty? (uncurated-query-sources definition (update ctx :seen conj id))))))
         (swap! verdicts assoc k <>)))))
 
@@ -319,8 +343,9 @@
         dependents      (measure-and-segment-tables mp measure segment)
         ;; `metric` as well as the loaded closure: a curated metric passes on its curation alone, including one
         ;; the walk stopped short of loading
-        curated         (curated-ids (concat (for [id (into (set table) (mapcat val) dependents)] ["table" id])
-                                             (for [id (concat card metric (keys id->definition))] ["card" id])))
+        curated         (curated-in-context ctx
+                                            (concat (for [id (into (set table) (mapcat val) dependents)] ["table" id])
+                                                    (for [id (concat card metric (keys id->definition))] ["card" id])))
         curated?        (fn [model id] (contains? curated [model id]))
         curated-metric-queries (keep (fn [[id q]] (when (curated? "card" id) q)) id->definition)
         {:keys [covered metric-sources]} (query-coverage mp curated? table card curated-metric-queries)
@@ -370,28 +395,57 @@
       (:table (lib/all-referenced-entity-ids (vec queries) {:include-implicitly-joinable? true}))
       #{})))
 
-(defn curated-metric?
-  "Whether a curated-only Metabot may read the Card with `metric-id` where a metric is expected: the same judgement
-  [[uncurated-query-sources]] makes for a metric a query uses (see [[metric-ok?]]). A curated Card of any type
-  passes on its own curation; only a live metric Card is judged by its definition, so an uncurated question or
-  model named here is denied like anywhere else, and a missing or archived Card is. So is an uncurated metric whose
-  definition reads a Table or Card the user cannot ([[definition-readable?]]): judging it would tell them whether
-  that Table is curated."
-  [metric-id]
-  (let [curated?   (fn [model id] (contains? (curated-ids [[model id]]) [model id]))
-        definition (when-let [{:keys [database_id dataset_query archived type]} (metabot.db/card metric-id)]
-                     (when (and (= :metric type) (not archived))
-                       (definition-query (lib-be/application-database-metadata-provider database_id) dataset_query)))]
-    (boolean (metric-ok? curated? metric-id definition (metric-context)))))
+(defn- prefetch-referenced-curation!
+  "Read into `ctx` (a [[metric-context]]) in one lookup the curation of everything the definitions it holds name, so
+  that judging the metrics one by one reads none of it again. Only a cache: what this misses is read on demand."
+  [mp {:keys [definitions] :as ctx}]
+  (when-let [queries (seq (keep val @definitions))]
+    (let [{:keys [table card metric measure segment]} (lib/all-referenced-entity-ids (vec queries))
+          dependents (measure-and-segment-tables mp measure segment)]
+      (curated-in-context ctx (concat (for [id (into (set table) (mapcat val) dependents)] ["table" id])
+                                      (for [id (concat card metric (keys @definitions))] ["card" id]))))))
+
+(defn- usable-metric-ids-in-database
+  "Of the uncurated Card ids `ids`, all of the Database `database-id`, those whose definition passes the rule, judged
+  with one metadata provider, one set of definitions, and the curation and readability of `ctx` (a
+  [[metric-context]]) shared across the batch. Each metric gets its own cycle guard and verdict memo, so its verdict
+  is the one it would get alone."
+  [database-id ids ctx]
+  (let [mp      (lib-be/application-database-metadata-provider database-id)
+        shared  (assoc ctx :definitions (atom {}))
+        curated (fn [model id] (contains? (curated-in-context shared [[model id]]) [model id]))]
+    (doseq [batch (partition-all curation-batch-size ids)]
+      (load-metric-definitions! mp (:definitions shared) batch max-metric-nesting))
+    (prefetch-referenced-curation! mp shared)
+    (into #{}
+          (filter #(metric-ok? curated % (get @(:definitions shared) %) (assoc shared :verdicts (atom {}))))
+          ids)))
 
 (defn usable-metric-ids
-  "The subset of the metric Card ids `ids` a curated-only Metabot may use: curated ones, and uncurated ones whose
-  definition passes the rule (see [[curated-metric?]])."
+  "The subset of the Card ids `ids` a curated-only Metabot may use where a metric is expected: the same judgement
+  [[uncurated-query-sources]] makes for a metric a query uses (see [[metric-ok?]]). A curated Card of any type passes
+  on its own curation; only a live metric Card is judged by its definition, so an uncurated question or model named
+  here is denied like anywhere else, and a missing or archived Card is. So is an uncurated metric whose definition
+  reads a Table or Card the user cannot ([[definition-readable?]]): judging it would tell them whether that Table is
+  curated.
+  Judges the batch in a number of app-DB queries that does not grow with its size: one metadata provider per
+  Database, and the definitions, curation, and readability each read once for the batch."
   [ids]
-  (let [curated (curated-ids (map #(vector "card" %) ids))]
-    (into #{}
-          (filter (fn [id] (or (contains? curated ["card" id]) (curated-metric? id))))
-          ids)))
+  (let [ids       (into [] (distinct) ids)
+        shared    (metric-context)
+        curated   (curated-in-context shared (map #(vector "card" %) ids))
+        uncurated (into [] (remove #(contains? curated ["card" %])) ids)
+        db-ids    (into {} (mapcat metabot.db/card-database-ids) (partition-all curation-batch-size uncurated))]
+    (into (into #{} (map second) curated)
+          (mapcat (fn [[database-id entries]]
+                    (usable-metric-ids-in-database database-id (mapv key entries) shared)))
+          (group-by val db-ids))))
+
+(defn curated-metric?
+  "Whether a curated-only Metabot may read the Card with `metric-id` where a metric is expected: [[usable-metric-ids]]
+  of that one id."
+  [metric-id]
+  (contains? (usable-metric-ids [metric-id]) metric-id))
 
 (defn measure-or-segment-curated?
   "Whether a curated-only Metabot may read the measure or segment `id` (`kind` is `:measure` or `:segment`): its
