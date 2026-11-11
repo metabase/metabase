@@ -2049,6 +2049,25 @@
           (is (not-any? map? result)
               "Should not contain model instances, only IDs"))))))
 
+(deftest non-remote-synced-dependencies-dynamic-goal-test
+  (testing "a dynamic goal's source card outside remote sync is a non-remote-synced dependency"
+    (mt/with-temp [:model/Collection {synced-id :id}  {:name "Synced" :is_remote_synced true}
+                   :model/Collection {regular-id :id} {:name "Regular"}
+                   :model/Card       {goal-id :id}    {:name "Goal Source" :collection_id regular-id}]
+      (let [goal {:graph.goal_value {:id goal-id :type "card" :column "total"}}]
+        (testing "on the card's own visualization settings"
+          (mt/with-temp [:model/Card card {:name                   "Revenue"
+                                           :collection_id          synced-id
+                                           :visualization_settings goal}]
+            (is (= #{goal-id} (collection/non-remote-synced-dependencies card)))))
+        (testing "on a dashcard's visualization settings"
+          (mt/with-temp [:model/Card          {shown-id :id} {:name "Shown" :collection_id synced-id}
+                         :model/Dashboard     dashboard      {:name "D" :collection_id synced-id}
+                         :model/DashboardCard _              {:dashboard_id           (:id dashboard)
+                                                              :card_id                shown-id
+                                                              :visualization_settings goal}]
+            (is (= #{goal-id} (collection/non-remote-synced-dependencies dashboard)))))))))
+
 (deftest moving-into-remote-synced?-test
   (testing "moving-into-remote-synced? function behavior"
     (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :is_remote_synced true}

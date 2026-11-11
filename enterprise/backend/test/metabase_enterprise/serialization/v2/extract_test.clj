@@ -2945,6 +2945,52 @@
                             set)
                        goal-eid))))))
 
+(deftest card-dynamic-goal-descendants-test
+  (testing "selecting a card pulls in the card its own dynamic goal references"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection {coll-id :id}                     {:name "Revenue"}
+                         :model/Collection {other-id :id}                    {:name "Goals"}
+                         :model/Card       {goal-id :id goal-eid :entity_id} {:name "Goal Source"
+                                                                              :collection_id other-id}
+                         :model/Card       {shown-id :id}                    {:name          "Shown"
+                                                                              :collection_id coll-id
+                                                                              :visualization_settings
+                                                                              {:graph.goal_value {:id     goal-id
+                                                                                                  :type   "card"
+                                                                                                  :column "total"}}}]
+        (is (contains? (->> (extract/extract {:targets       [["Card" shown-id]]
+                                              :no-settings   true
+                                              :no-data-model true
+                                              :no-transforms true})
+                            (filter #(= "Card" (-> % :serdes/meta last :model)))
+                            (map :entity_id)
+                            set)
+                       goal-eid))))))
+
+(deftest dashboard-card-level-dynamic-goal-descendants-test
+  (testing "selecting a dashboard pulls in the card its card's own dynamic goal references"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection    {coll-id :id}                     {:name "Goals"}
+                         :model/Card          {goal-id :id goal-eid :entity_id} {:name "Goal Source"
+                                                                                 :collection_id coll-id}
+                         :model/Card          {shown-id :id}                    {:name          "Shown"
+                                                                                 :collection_id coll-id
+                                                                                 :visualization_settings
+                                                                                 {:graph.goal_value {:id     goal-id
+                                                                                                     :type   "card"
+                                                                                                     :column "total"}}}
+                         :model/Dashboard     {dash-id :id}                     {:name "D" :collection_id coll-id}
+                         :model/DashboardCard _                                 {:dashboard_id dash-id
+                                                                                 :card_id      shown-id}]
+        (is (contains? (->> (extract/extract {:targets       [["Dashboard" dash-id]]
+                                              :no-settings   true
+                                              :no-data-model true
+                                              :no-transforms true})
+                            (filter #(= "Card" (-> % :serdes/meta last :model)))
+                            (map :entity_id)
+                            set)
+                       goal-eid))))))
+
 (deftest visualizer-dashcard-dynamic-goal-descendants-test
   (testing "selecting a dashboard pulls in the card a visualizer dashcard's nested dynamic goal references"
     (mt/with-empty-h2-app-db!

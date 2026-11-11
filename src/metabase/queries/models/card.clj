@@ -1875,7 +1875,8 @@
               (for [card-id parameters-card-id]
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
-                {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
+                {["NativeQuerySnippet" snippet-id] {"Card" id}})
+              [(serdes/viz-dynamic-goals-descendants (:visualization_settings card) {"Card" id})]))))
 
 (defmethod serdes/extract-query "Card"
   [model-name {:keys [collection-set filter-column filter-ids] :as opts}]

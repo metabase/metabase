@@ -2013,7 +2013,9 @@
          (mapcat #(viz-click-behavior-descendants % src))
          set)))
 
-(defn- viz-dynamic-goals-descendants [viz src]
+(defn viz-dynamic-goals-descendants
+  "The cards the dynamic goals in `viz` read from, as descendants reached from `src`."
+  [viz src]
   (into {}
         (keep (fn [goal-value]
                 (let [{:keys [type id]} (dynamic-goals/goal-source goal-value)]
