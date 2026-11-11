@@ -2,18 +2,18 @@
   "Application database queries for the replacement module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions."
   (:require
+   [java-time.api :as t]
    [metabase-enterprise.replacement.schema :as replacement.schema]
-   [metabase.app-db.core :as mdb]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.schema :as measures.schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.segments.schema :as segments.schema]
+   [metabase.toucan.core :as t2]
    [metabase.transforms.schema :as transforms.schema]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn run
   "The ReplacementRun with `run-id`, or nil."
@@ -24,8 +24,8 @@
   "The ReplacementRuns, newest first, restricted to the `is-active` flag when given."
   [is-active :- [:maybe :boolean]]
   (t2/select :model/ReplacementRun
-             (cond-> {:order-by [[:start_time :desc]]}
-               (some? is-active) (assoc :where [:= :is_active is-active]))))
+             {:where    (when (some? is-active) (t2/fragment [:= :is_active is-active]))
+              :order-by [[:start_time :desc]]}))
 
 (mu/defn active-run
   "The active ReplacementRun, or nil."
@@ -60,7 +60,7 @@
    unit :- :keyword]
   (t2/update! :model/ReplacementRun
               :is_active true
-              :start_time [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
+              :start_time [:< (u.date/add (t/offset-date-time) unit (- age))]
               {:status    :timeout
                :is_active nil
                :end_time  :%now

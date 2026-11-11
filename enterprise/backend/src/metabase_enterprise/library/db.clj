@@ -4,8 +4,8 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli :as mu]))
 
 (mu/defn card-types-in-collections
   "The set of types of the unarchived Cards in the Collections with `collection-ids`."
@@ -25,16 +25,17 @@
 (mu/defn library-collections
   "The readable Library Collections, ordered by name."
   []
-  (t2/select :model/Collection
-             {:where    [:and
-                         [:in :type (vec collection/library-collection-types)]
-                         (collection/visible-collection-filter-clause
-                          :id
-                          {:include-archived-items    :exclude
-                           :include-trash-collection? false
-                           :permission-level          :read
-                           :archive-operation-id      nil})]
-              :order-by [[:%lower.name :asc]]}))
+  (let [{:keys [root? ids]} (collection/visible-collection-scope {:include-archived-items    :exclude
+                                                                  :include-trash-collection? false
+                                                                  :permission-level          :read
+                                                                  :archive-operation-id      nil})]
+    (t2/select :model/Collection
+               {:where    [:and
+                           [:in :type (vec collection/library-collection-types)]
+                           (t2/fragment [:or
+                                         (when root? (t2/fragment [:= :id nil]))
+                                         [:in :id ids]])]
+                :order-by [[:%lower.name :asc]]})))
 
 (mu/defn collection-type
   "The type of the Collection with `collection-id`."

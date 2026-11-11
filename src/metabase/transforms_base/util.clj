@@ -567,7 +567,7 @@
    target      :- ::transforms-base.schema/synced-target
    & kv-args   :- [:* [:or :keyword :string :int :boolean]]]
   (when database-id
-    (some-> (apply transforms-base.db/target-table database-id (:schema target) (:name target) kv-args)
+    (some-> (transforms-base.db/target-table database-id (:schema target) (:name target) (:active (apply hash-map kv-args)))
             (t2/hydrate :db))))
 
 (mu/defn target-table-exists? :- :boolean

@@ -5,9 +5,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.usage-controls :as usage-controls]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn all-groups
   "Every PermissionsGroup, in ID order."
@@ -137,10 +137,10 @@
 
 (defn- usage-window-expr
   [period-start user-id tenant-id]
-  [:and
-   [:>= :created_at period-start]
-   (when user-id [:= :user_id user-id])
-   (when tenant-id [:= :tenant_id tenant-id])])
+  (t2/fragment [:and
+                [:>= :created_at period-start]
+                (when user-id (t2/fragment [:= :user_id user-id]))
+                (when tenant-id (t2/fragment [:= :tenant_id tenant-id]))]))
 
 (mu/defn usage-token-sum
   "The `:sum` row of tokens logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
@@ -165,9 +165,12 @@
    tenant-id    :- [:maybe ms/PositiveInt]]
   (t2/query-one {:select [[[:count [:distinct :request_id]] :cnt]]
                  :from   [:ai_usage_log]
-                 :where  (cond-> (usage-window-expr period-start user-id tenant-id)
-                           (seq sources) (conj [:in :source sources])
-                           request-id    (conj [:not= :request_id request-id]))}))
+                 :where  [:and
+                          (usage-window-expr period-start user-id tenant-id)
+                          (when (seq sources)
+                            (t2/fragment [:in :source sources]))
+                          (when request-id
+                            (t2/fragment [:not= :request_id request-id]))]}))
 
 (mu/defn delete-usage-logs-created-before!
   "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."

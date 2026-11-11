@@ -5,8 +5,8 @@
    [metabase.actions.schema :as actions.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli :as mu]))
 
 (mu/defn action-ids-visible-to-user
   "The ids of the Actions that are `:archived` or not, of the model `:model-id`, or else in Collections the current
@@ -15,25 +15,30 @@
                                                                  [:type     {:optional true} [:maybe ::actions.schema/type]]
                                                                  [:model-id {:optional true} [:maybe ::lib.schema.id/card]]
                                                                  [:archived :boolean]]]
-  (t2/select-pks-vec :model/Action {:where [:and
-                                            [:= :archived archived]
-                                            (when action-type
-                                              [:= :type (name action-type)])
-                                            (if model-id
-                                              [:= :model_id model-id]
-                                              [:or
-                                               [:and
-                                                [:not= :model_id nil]
-                                                (collection/visible-collection-filter-clause
-                                                 :collection_id
-                                                 {:include-archived-items (if archived :all :exclude)
-                                                  :root-namespace         nil})]
-                                               [:and
-                                                [:= :model_id nil]
-                                                (collection/visible-collection-filter-clause
-                                                 :collection_id
-                                                 {:include-archived-items (if archived :all :exclude)
-                                                  :root-namespace         collection/data-actions-ns})]])]}))
+  (t2/select-pks-vec :model/Action
+                     {:where [:and
+                              [:= :archived archived]
+                              (when action-type
+                                (t2/fragment [:= :type (name action-type)]))
+                              (if model-id
+                                (t2/fragment [:= :model_id model-id])
+                                (let [archived-items (if archived :all :exclude)
+                                      model-scope    (collection/visible-collection-scope {:include-archived-items archived-items
+                                                                                           :root-namespace         nil})
+                                      data-scope     (collection/visible-collection-scope {:include-archived-items archived-items
+                                                                                           :root-namespace         collection/data-actions-ns})]
+                                  (t2/fragment
+                                   [:or
+                                    [:and
+                                     [:not= :model_id nil]
+                                     [:or
+                                      (when (:root? model-scope) (t2/fragment [:= :collection_id nil]))
+                                      [:in :collection_id (:ids model-scope)]]]
+                                    [:and
+                                     [:= :model_id nil]
+                                     [:or
+                                      (when (:root? data-scope) (t2/fragment [:= :collection_id nil]))
+                                      [:in :collection_id (:ids data-scope)]]]])))]}))
 
 (mu/defn public-actions
   "The name, id, public uuid, and model id of the unarchived Actions that are publicly shared."

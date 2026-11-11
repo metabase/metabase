@@ -396,8 +396,8 @@
     (map #(assoc %1 k %2) dashboards (map params/dashboard->resolved-params dashboards-with-cards))))
 
 (defmethod mi/exclude-internal-content-hsql :model/Dashboard
-  [_model & {:keys [table-alias]}]
-  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
+  [_model]
+  (t2/fragment [:not= :creator_id config/internal-mb-user-id]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |

@@ -1167,8 +1167,8 @@
     (queries.db/delete-notifications! notification-ids)))
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
-  [_model & {:keys [table-alias]}]
-  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
+  [_model]
+  (t2/fragment [:not= :creator_id config/internal-mb-user-id]))
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 

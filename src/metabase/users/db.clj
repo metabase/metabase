@@ -2,17 +2,16 @@
   "Application database queries for the users module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [honey.sql.helpers :as sql.helpers]
    [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.toucan.core :as t2]
    [metabase.users.schema :as users.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- status-clause
   "Figure out what `where` clause to add to the user query when we get a fiddly status and include_deactivated
@@ -24,39 +23,44 @@
     nil
     (case status
       "all"         nil
-      "deactivated" [:= :is_active false]
-      "active"      [:= :is_active true]
-      [:= :is_active true])))
+      "deactivated" (t2/fragment [:= :is_active false])
+      "active"      (t2/fragment [:= :is_active true])
+      (t2/fragment [:= :is_active true]))))
 
-(defn- wildcard-query [query] (h2x/like-substring query))
+(defn- wildcard-query [query] (second (h2x/like-substring query)))
 
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"
   [query]
-  [:or
-   [:like :%lower.first_name (wildcard-query query)]
-   [:like :%lower.last_name  (wildcard-query query)]
-   [:like :%lower.email      (wildcard-query query)]])
+  (t2/fragment
+   [:or
+    [:like :%lower.first_name [:escape (wildcard-query query) [::h2x/literal "!"]]]
+    [:like :%lower.last_name  [:escape (wildcard-query query) [::h2x/literal "!"]]]
+    [:like :%lower.email      [:escape (wildcard-query query) [::h2x/literal "!"]]]]))
 
 (defn- table-metadata-perms-exist-clause
   "EXISTS clause, correlated to :core_user.id, testing whether the user is in a group that grants
   manage-table-metadata."
   []
-  [:exists ^:allow-subquery {:select [1]
-                             :from   [[:permissions_group_membership :pgm]]
-                             :join   [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
-                             :where  [:and
-                                      [:= :pgm.user_id :core_user.id]
-                                      [:= :p.perm_type "perms/manage-table-metadata"]
-                                      [:= :p.perm_value "yes"]]}])
+  (t2/fragment
+   [:exists ^:allow-subquery {:select [1]
+                              :from   [[:permissions_group_membership :pgm]]
+                              :join   [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                              :where  [:and
+                                       [:= :pgm.user_id :core_user.id]
+                                       [:= :p.perm_type "perms/manage-table-metadata"]
+                                       [:= :p.perm_value "yes"]]}]))
 
-(defn- data-studio-access-clauses
-  "The disjuncts, any one of which grants a user access to Data Studio."
-  []
-  (cond-> [:core_user.is_superuser
-           (table-metadata-perms-exist-clause)]
-    ;; Data Studio entry pauses on downgrade, so membership only counts while the feature is available
-    (premium-features/enable-advanced-permissions?) (conj :core_user.is_data_analyst)))
+(defn- data-studio-access-clause
+  "The clause granting a user access to Data Studio when `can-access?`, or denying it otherwise."
+  [can-access?]
+  (let [exists-clause (table-metadata-perms-exist-clause)
+        analyst?      (premium-features/enable-advanced-permissions?)]
+    (cond
+      (and can-access? analyst?) (t2/fragment [:or :core_user.is_superuser exists-clause :core_user.is_data_analyst])
+      can-access?                (t2/fragment [:or :core_user.is_superuser exists-clause])
+      analyst?                   (t2/fragment [:and [:not :core_user.is_superuser] [:not exists-clause] [:not :core_user.is_data_analyst]])
+      :else                      (t2/fragment [:and [:not :core_user.is_superuser] [:not exists-clause]]))))
 
 (defn- tenant-clause
   "Honeysql clause restricting `:tenant_id`: `tenant-filter` is a tenant id to restrict to, `:all` for no
@@ -64,46 +68,50 @@
   [tenant-filter]
   (case tenant-filter
     :all      nil
-    :external [:not= :tenant_id nil]
-    [:= :tenant_id tenant-filter]))
+    :external (t2/fragment [:not= :tenant_id nil])
+    (t2/fragment [:= :tenant_id tenant-filter])))
 
-(def ^:private sort-order-by
-  "Fixed ORDER BYs for [[filter-clauses]]'s `:sort` option."
-  {:first-name [[:%lower.first_name :asc] [:%lower.last_name :asc] [:id :asc]]
-   :last-name  [[:%lower.last_name :asc] [:%lower.first_name :asc]]})
-
-(defn- add-sort
-  [honeysql-map sort]
-  (apply sql.helpers/order-by honeysql-map (sort-order-by sort)))
+(defn- order-by-clause
+  "The fixed ORDER BY for [[filter-clauses]]'s `:sort` option."
+  [sort]
+  (case sort
+    :first-name (t2/fragment [[:%lower.first_name :asc] [:%lower.last_name :asc] [:id :asc]])
+    :last-name  (t2/fragment [[:%lower.last_name :asc] [:%lower.first_name :asc]])
+    nil))
 
 (mu/defn filter-clauses
-  "Honeysql clauses for filtering on users. See [[metabase.users.schema/user-filters]] for the accepted options."
+  "The `:where`, `:right-join`, `:order-by`, `:limit`, and `:offset` clauses for filtering on users, to be spelled out in
+  a query map: `:right-join` is empty and `:order-by` nil when not needed, and `:limit` and `:offset` fall back to
+  unbounded. See [[metabase.users.schema/user-filters]] for the accepted options."
   [{:keys [status query group-ids user-ids include-deactivated is-data-analyst? can-access-data-studio? sort
            limit offset]
     :as   options} :- ::users.schema/user-filters]
-  (cond-> {}
-    true                                    (sql.helpers/where [:= :core_user.type "personal"])
-    true                                    (sql.helpers/where (status-clause status include-deactivated))
-    ;; don't send the internal user
-    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
-    (contains? options :tenant-filter)      (sql.helpers/where (tenant-clause (:tenant-filter options)))
-    (some? query)                           (sql.helpers/where (query-clause query))
-    (some? is-data-analyst?)                (sql.helpers/where (if is-data-analyst?
-                                                                 :core_user.is_data_analyst
-                                                                 [:not :core_user.is_data_analyst]))
-    (some? can-access-data-studio?)         (sql.helpers/where (let [clauses (data-studio-access-clauses)]
-                                                                 (if can-access-data-studio?
-                                                                   (into [:or] clauses)
-                                                                   (into [:and] (map #(vector :not %)) clauses))))
-    (some? group-ids)                       (sql.helpers/right-join
-                                             :permissions_group_membership
-                                             [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group-ids)                       (sql.helpers/where
-                                             [:in :permissions_group_membership.group_id group-ids])
-    (seq user-ids)                          (sql.helpers/where [:in :core_user.id user-ids])
-    (some? sort)                            (add-sort sort)
-    (some? limit)                           (sql.helpers/limit limit)
-    (some? offset)                          (sql.helpers/offset offset)))
+  {:where      (t2/fragment
+                [:and
+                 [:= :core_user.type "personal"]
+                 (status-clause status include-deactivated)
+                 (when (perms/sandboxed-or-impersonated-user?)
+                   (t2/fragment [:= :core_user.id api/*current-user-id*]))
+                 (when (contains? options :tenant-filter)
+                   (tenant-clause (:tenant-filter options)))
+                 (when (some? query)
+                   (query-clause query))
+                 (when (some? is-data-analyst?)
+                   (if is-data-analyst?
+                     (t2/fragment [:and :core_user.is_data_analyst])
+                     (t2/fragment [:not :core_user.is_data_analyst])))
+                 (when (some? can-access-data-studio?)
+                   (data-studio-access-clause can-access-data-studio?))
+                 (when (some? group-ids)
+                   (t2/fragment [:in :permissions_group_membership.group_id group-ids]))
+                 (when (seq user-ids)
+                   (t2/fragment [:in :core_user.id user-ids]))])
+   :right-join (if (some? group-ids)
+                 (t2/fragment [:permissions_group_membership [:= :core_user.id :permissions_group_membership.user_id]])
+                 (t2/fragment []))
+   :order-by   (order-by-clause sort)
+   :limit      (or limit Integer/MAX_VALUE)
+   :offset     (or offset 0)})
 
 (mu/defn set-user-last-login-now!
   "Set `last_login` of the User with `user-id` to now."
@@ -171,18 +179,27 @@
                       :where [:and [:= :permissions_group_membership.user_id user-id]
                               [:not= :permissions_group_membership.group_id all-users-group-id]]}]}))
 
+(defn- parameters-where
+  "The clause matching any of the UserParameterValue identifiers in `parameters`, as a balanced tree."
+  [parameters]
+  (let [n (count parameters)]
+    (case n
+      0 (t2/fragment [:or])
+      1 (let [p (first parameters)]
+          (t2/fragment [:and
+                        [:= :user_id (:user_id p)]
+                        [:= :dashboard_id (:dashboard_id p)]
+                        [:= :parameter_id (:parameter_id p)]]))
+      (let [[l r] (split-at (quot n 2) parameters)]
+        (t2/fragment [:or (parameters-where l) (parameters-where r)])))))
+
 (mu/defn delete-user-parameter-values!
   "Delete the UserParameterValues identified by the `:user_id`, `:dashboard_id`, and `:parameter_id` of `parameters`."
   [parameters :- [:sequential [:map {:closed true}
                                [:user_id      ::lib.schema.id/user]
                                [:dashboard_id ::lib.schema.id/dashboard]
                                [:parameter_id :string]]]]
-  (t2/delete! :model/UserParameterValue
-              {:where (into [:or] (for [p parameters]
-                                    [:and
-                                     [:= :user_id (:user_id p)]
-                                     [:= :dashboard_id (:dashboard_id p)]
-                                     [:= :parameter_id (:parameter_id p)]]))}))
+  (t2/delete! :model/UserParameterValue {:where (parameters-where parameters)}))
 
 (mu/defn insert-user-parameter-values!
   "Insert the UserParameterValue `rows`."
@@ -209,10 +226,12 @@
    & {:keys [type is-active?]} :- [:maybe [:map {:closed true}
                                            [:type        {:optional true} [:maybe [:or :keyword :string]]]
                                            [:is-active?  {:optional true} [:maybe :boolean]]]]]
-  (apply t2/select-one (into [:model/User] columns)
-         :id id
-         (concat (when type [:type type])
-                 (when (some? is-active?) [:is_active is-active?]))))
+  (let [model (into [:model/User] columns)]
+    (cond
+      (and type (some? is-active?)) (t2/select-one model :id id :type type :is_active is-active?)
+      type                          (t2/select-one model :id id :type type)
+      (some? is-active?)            (t2/select-one model :id id :is_active is-active?)
+      :else                         (t2/select-one model :id id))))
 
 (mu/defn user-email-exists?
   "Whether a User whose lower-cased email is `lower-case-email` exists."

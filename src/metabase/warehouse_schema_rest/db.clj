@@ -6,11 +6,11 @@
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
 
 (mu/defn field-and-target-database-ids
   "The `:source_db_id` and `:target_db_id` of the Fields with `source-field-id` and `target-field-id`."
@@ -88,41 +88,49 @@
        [:published-only?            {:optional true} [:maybe :boolean]]
        [:check-unused?              {:optional true} [:maybe :boolean]]
        [:include-transform-targets? {:optional true} [:maybe :boolean]]]]
-  (let [db-type    (app-db/db-type)
-        glob       (fn [escaped]
-                     (-> escaped
-                         (str/replace "*" "%")
-                         (cond-> (not (str/ends-with? term "*")) (str "%"))))
-        ci-pattern (fn [pattern]
-                     (case db-type
-                       (:h2 :postgres) pattern
-                       [::h2x/collate pattern "utf8mb4_unicode_ci"]))
-        like       (fn [field wrap]
-                     [(case db-type (:h2 :postgres) :ilike :like)
-                      field
-                      (h2x/like-pattern term (comp ci-pattern wrap glob))])
-        where      (cond-> [:and (if include-transform-targets?
-                                   [:or [:= :active true] [:= :transform_target true]]
-                                   [:= :active true])]
-                     (not (str/blank? term)) (conj [:or
-                                                    (like :name identity)
-                                                    (like :display_name identity)
-                                                    ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
-                                                    (like :display_name #(str "% " %))])
-                     visibility-type         (conj [:= :visibility_type visibility-type])
-                     data-layer              (conj [:= :data_layer      (name data-layer)])
-                     data-source             (conj [:= :data_source     (name data-source)])
-                     owner-user-id           (conj [:= :owner_user_id   owner-user-id])
-                     owner-email             (conj [:= :owner_email     owner-email])
-                     orphan-only?            (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
-                     published-only?         (conj [:= :is_published true])
-                     check-unused?
-                     (conj [:not-exists ^:allow-subquery {:select [:*]
-                                                          :from   [[:dependency :d]]
-                                                          :where  [:and
-                                                                   [:= :d.to_entity_id :metabase_table.id]
-                                                                   [:= :d.to_entity_type "table"]]}]))]
-    (t2/select :model/Table {:where where, :order-by [[:name :asc]]})))
+  (let [ilike?  (contains? #{:h2 :postgres} (app-db/db-type))
+        glob    (fn [escaped]
+                  (-> escaped
+                      (str/replace "*" "%")
+                      (cond-> (not (str/ends-with? term "*")) (str "%"))))
+        rhs     (fn [wrap]
+                  (let [pattern (wrap (glob (str/replace term #"([!%_])" "!$1")))]
+                    (if ilike?
+                      (t2/fragment [:escape pattern [::h2x/literal "!"]])
+                      (t2/fragment [:escape [::h2x/collate pattern "utf8mb4_unicode_ci"] [::h2x/literal "!"]]))))
+        like    (fn [column wrap]
+                  (case column
+                    :name         (if ilike?
+                                    (t2/fragment [:ilike :name (rhs wrap)])
+                                    (t2/fragment [:like :name (rhs wrap)]))
+                    :display_name (if ilike?
+                                    (t2/fragment [:ilike :display_name (rhs wrap)])
+                                    (t2/fragment [:like :display_name (rhs wrap)]))))]
+    (t2/select :model/Table
+               {:where    (t2/fragment
+                           [:and
+                            (if include-transform-targets?
+                              (t2/fragment [:or [:= :active true] [:= :transform_target true]])
+                              (t2/fragment [:= :active true]))
+                            (when-not (str/blank? term)
+                              (t2/fragment [:or
+                                            (like :name identity)
+                                            (like :display_name identity)
+                                            (like :display_name #(str "% " %))]))
+                            (when visibility-type (t2/fragment [:= :visibility_type visibility-type]))
+                            (when data-layer (t2/fragment [:= :data_layer (name data-layer)]))
+                            (when data-source (t2/fragment [:= :data_source (name data-source)]))
+                            (when owner-user-id (t2/fragment [:= :owner_user_id owner-user-id]))
+                            (when owner-email (t2/fragment [:= :owner_email owner-email]))
+                            (when orphan-only? (t2/fragment [:and [:= :owner_email nil] [:= :owner_user_id nil]]))
+                            (when published-only? (t2/fragment [:= :is_published true]))
+                            (when check-unused?
+                              (t2/fragment [:not-exists ^:allow-subquery {:select [:*]
+                                                                          :from   [[:dependency :d]]
+                                                                          :where  [:and
+                                                                                   [:= :d.to_entity_id :metabase_table.id]
+                                                                                   [:= :d.to_entity_type "table"]]}]))])
+                :order-by [[:name :asc]]})))
 
 (mu/defn tables-by-ids
   "The Tables with `table-ids`."
@@ -137,7 +145,7 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id [:auto/param database-id]))
+  (t2/select-one :model/Database :id database-id))
 
 (mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."

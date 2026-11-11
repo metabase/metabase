@@ -264,7 +264,10 @@
   {:team "UX West"
    :ns-prefix "metabase.internal-stats"
    :api #{metabase.internal-stats.core}
-   :uses #{app-db models util}
+   :uses #{app-db
+           models
+           toucan
+           util}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
@@ -935,6 +938,7 @@
            lib.schema
            request
            sync
+           toucan
            util
            warehouses.schema}
    :model-imports #{:model/Database
@@ -1837,7 +1841,6 @@
            metabase.model-persistence.core
            metabase.model-persistence.init}
    :uses #{api
-           app-db
            driver
            events
            lib.schema
@@ -1964,7 +1967,6 @@
    :uses #{analytics
            analytics.interface
            api
-           app-db
            appearance
            channel
            dashboards
@@ -2164,11 +2166,11 @@
   {:team "UX West"
    :api  #{metabase.product-feedback.init}
    :uses #{analytics
-           app-db
            channel
            premium-features
            settings
            task
+           toucan
            util
            util.config}
    :model-imports #{:model/Card
@@ -2479,7 +2481,10 @@
    :ns-prefix "metabase.query-processor.middleware.cache-backend"
    :api       #{metabase.query-processor.middleware.cache-backend.db
                 metabase.query-processor.middleware.cache-backend.interface}
-   :uses      #{app-db premium-features util}
+   :uses      #{app-db
+                premium-features
+                toucan
+                util}
    :model-imports #{:model/QueryCache}}
 
   query-processor.driver-api
@@ -2684,7 +2689,7 @@
   search.entity-retrieval
   {:team "Metabot"
    :api #{metabase.search.entity-retrieval.core metabase.search.entity-retrieval.mirror}
-   :uses #{premium-features util}
+   :uses #{premium-features toucan util}
    :model-imports #{:model/OsiAiContext}}
 
   security-center
@@ -4236,7 +4241,6 @@
    :api #{metabase-enterprise.replacement.api}
    :uses #{analytics
            api
-           app-db
            dashboards
            events
            lib

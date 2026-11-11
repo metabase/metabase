@@ -4,9 +4,9 @@
   (:require
    [clojure.string :as str]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private TableSelectors
   "A map of `:database_ids`, `:schema_ids`, and/or `:table_ids` picking out a set of Tables."
@@ -21,11 +21,29 @@
   [{:keys [database_ids table_ids schema_ids]}]
   (let [schema-expr (fn [s]
                       (let [[schema-db-id schema-name] (str/split s #"\:")]
-                        [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))]
-    (cond-> [:or false]
-      (seq database_ids) (conj [:in :db_id (sort database_ids)])
-      (seq table_ids)    (conj [:in :id    (sort table_ids)])
-      (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))))
+                        (t2/fragment [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]])))]
+    (t2/fragment [:or
+                  false
+                  (when (seq database_ids)
+                    (t2/fragment [:in :db_id (sort database_ids)]))
+                  (when (seq table_ids)
+                    (t2/fragment [:in :id (sort table_ids)]))
+                  (when (seq schema_ids)
+                    (reduce (fn [acc s] (t2/fragment [:or acc (schema-expr s)])) nil (sort schema_ids)))])))
+
+(defn- input-field-join
+  "The condition joining the input Field of a remapping Dimension, given the Table id column `input-table-id`."
+  [input-table-id]
+  (case input-table-id
+    :source_field/table_id (t2/fragment [:= :dim.field_id :input_field.id])
+    :target_field/table_id (t2/fragment [:= :dim.human_readable_field_id :input_field.id])))
+
+(defn- output-field-join
+  "The condition joining the output Field of a remapping Dimension, given the Table id column `output-table-id`."
+  [output-table-id]
+  (case output-table-id
+    :source_field/table_id (t2/fragment [:= :dim.field_id :output_field.id])
+    :target_field/table_id (t2/fragment [:= :dim.human_readable_field_id :output_field.id])))
 
 (mu/defn fk-remapped-table-ids-for-tables
   "The `:table_id`s reached through external Dimensions from the Tables with `table-ids`, reading the Table id
@@ -35,16 +53,16 @@
    output-table-id    :- :keyword
    table-ids          :- [:set ::lib.schema.id/table]
    exclude-table-ids  :- [:set ::lib.schema.id/table]]
-  (t2/reducible-query {:select [[output-table-id :table_id]]
-                       :from   [[(t2/table-name :model/Dimension) :dim]]
-                       :join   [[(t2/table-name :model/Field) :source_field]
-                                [:= :dim.field_id :source_field.id]
-                                [(t2/table-name :model/Field) :target_field]
-                                [:= :dim.human_readable_field_id :target_field.id]]
-                       :where  [:and
-                                [:= :dim.type "external"]
-                                [:in input-table-id table-ids]
-                                [:not [:in output-table-id exclude-table-ids]]]}))
+  (let [input-join  (input-field-join input-table-id)
+        output-join (output-field-join output-table-id)]
+    (t2/reducible-query {:select [[:output_field.table_id :table_id]]
+                         :from   [[(t2/table-name :model/Dimension) :dim]]
+                         :join   [[(t2/table-name :model/Field) :input_field] input-join
+                                  [(t2/table-name :model/Field) :output_field] output-join]
+                         :where  [:and
+                                  [:= :dim.type "external"]
+                                  [:in :input_field.table_id table-ids]
+                                  [:not [:in :output_field.table_id exclude-table-ids]]]})))
 
 (mu/defn fk-remapped-table-ids-for-selectors
   "The `:table_id`s reached through external Dimensions from the Tables picked out by `selectors`, reading the
@@ -53,26 +71,26 @@
   [input-table-id  :- :keyword
    output-table-id :- :keyword
    selectors       :- TableSelectors]
-  (let [where (table-selectors-where selectors)]
-    (t2/reducible-query {:select [[output-table-id :table_id]]
+  (let [where       (table-selectors-where selectors)
+        input-join  (input-field-join input-table-id)
+        output-join (output-field-join output-table-id)]
+    (t2/reducible-query {:select [[:output_field.table_id :table_id]]
                          :from   [[(t2/table-name :model/Dimension) :dim]]
-                         :join   [[(t2/table-name :model/Field) :source_field]
-                                  [:= :dim.field_id :source_field.id]
-                                  [(t2/table-name :model/Field) :target_field]
-                                  [:= :dim.human_readable_field_id :target_field.id]]
+                         :join   [[(t2/table-name :model/Field) :input_field] input-join
+                                  [(t2/table-name :model/Field) :output_field] output-join]
                          :where  [:and
                                   [:= :dim.type "external"]
-                                  [:in input-table-id ^:allow-subquery
+                                  [:in :input_field.table_id ^:allow-subquery
                                    {:select [:id] :from [(t2/table-name :model/Table)] :where where}]
                                   [:not [:exists ^:allow-subquery
                                          {:select [1]
                                           :from   [(t2/table-name :model/Table)]
-                                          :where  [:and where [:= :id output-table-id]]}]]]})))
+                                          :where  [:and where [:= :id :output_field.table_id]]}]]]})))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id [:auto/param database-id]))
+  (t2/select-one :model/Database :id database-id))
 
 (mu/defn databases
   "The Databases with `database-ids`."

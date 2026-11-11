@@ -4,13 +4,13 @@
    [metabase.app-db.core :as app-db]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
+   ;; the QueryCache table belongs to this backend; the QP rule is about reading metadata
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.toucan.core :as t2]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   ;; the QueryCache table belongs to this backend; the QP rule is about reading metadata
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -34,8 +34,9 @@
    lease-cutoff        :- Temporal
    started-at          :- Temporal]
   (t2/update! (t2/table-name :model/QueryCache)
-              {:query_hash                                         query-hash
-               [:coalesce :refresh_started_at lease-free-sentinel] [:< lease-cutoff]}
+              {:where [:and
+                       [:= :query_hash query-hash]
+                       [:< [:coalesce :refresh_started_at lease-free-sentinel] lease-cutoff]]}
               {:refresh_started_at started-at}))
 
 (mu/defn- delete-cache-entry!

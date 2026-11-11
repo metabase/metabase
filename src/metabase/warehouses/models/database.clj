@@ -24,7 +24,6 @@
    [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -580,9 +579,8 @@
       infer-db-schedules))
 
 (defmethod mi/exclude-internal-content-hsql :model/Database
-  [_model & {:keys [table-alias]}]
-  (let [maybe-alias #(h2x/identifier :field table-alias %)]
-    [:not [:or (maybe-alias :is_sample) (maybe-alias :is_audit)]]))
+  [_model]
+  (t2/fragment [:not [:or :is_sample :is_audit]]))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 

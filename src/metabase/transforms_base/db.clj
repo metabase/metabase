@@ -3,9 +3,9 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn transform-source
   "The source of the Transform with `transform-id`, or nil."
@@ -22,7 +22,7 @@
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Transform :id [:auto/param transform-id]))
+  (t2/select-one :model/Transform :id transform-id))
 
 (mu/defn update-transform!
   "Apply `changes` to the Transform with `transform-id`."
@@ -52,13 +52,15 @@
   (t2/select-one-fn :table_id :model/Field :id field-id))
 
 (mu/defn target-table
-  "The Table named `table-name` in `schema` of the Database with `database-id` also matching the key-value
-  `conditions`, or nil."
+  "The Table named `table-name` in `schema` of the Database with `database-id`, narrowed to the given `active` flag
+  unless it is nil, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string
-   & conditions :- [:* [:or :keyword :string :int :boolean]]]
-  (apply t2/select-one :model/Table :db_id database-id :schema schema :name table-name conditions))
+   active      :- [:maybe :boolean]]
+  (if (nil? active)
+    (t2/select-one :model/Table :db_id database-id :schema schema :name table-name)
+    (t2/select-one :model/Table :db_id database-id :schema schema :name table-name :active active)))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
@@ -110,20 +112,27 @@
                     :table_id table-id :active true
                     {:order-by [[:position :asc]]}))
 
+(defn- refs-where
+  "The clause matching any of the `[db-id schema table-name]` `refs`, as a balanced tree."
+  [refs]
+  (let [n (count refs)]
+    (case n
+      0 (t2/fragment [:or])
+      1 (let [[db-id schema table-name] (first refs)]
+          (t2/fragment [:and
+                        [:= :db_id db-id]
+                        (if (some? schema)
+                          (t2/fragment [:= :schema schema])
+                          (t2/fragment [:is :schema nil]))
+                        [:= :name table-name]]))
+      (let [[l r] (split-at (quot n 2) refs)]
+        (t2/fragment [:or (refs-where l) (refs-where r)])))))
+
 (mu/defn table-refs-matching
   "The id, Database id, schema, and name of the Tables matching any of `refs` (each a `[db-id schema table-name]`
   triple; `schema` may be nil)."
   [refs :- [:sequential [:tuple ms/PositiveInt [:maybe :string] :string]]]
-  (t2/select [:model/Table :id :db_id :schema :name]
-             {:where (into [:or]
-                           (map (fn [[db-id schema table-name]]
-                                  [:and
-                                   [:= :db_id db-id]
-                                   (if (some? schema)
-                                     [:= :schema schema]
-                                     [:is :schema nil])
-                                   [:= :name table-name]]))
-                           refs)}))
+  (t2/select [:model/Table :id :db_id :schema :name] {:where (refs-where refs)}))
 
 (mu/defn table-refs
   "The id, Database id, schema, and name of the Tables with `table-ids`."

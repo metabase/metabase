@@ -16,7 +16,6 @@
    [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -290,8 +289,8 @@
     (users.db/user-group-ids (u/the-id user-or-id))))
 
 (defmethod mi/exclude-internal-content-hsql :model/User
-  [_model & {:keys [table-alias]}]
-  [:and [:not= (h2x/identifier :field table-alias :type) "internal"]])
+  [_model]
+  (t2/fragment [:and [:not= :type "internal"]]))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 

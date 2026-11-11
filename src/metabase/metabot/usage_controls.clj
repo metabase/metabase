@@ -3,6 +3,7 @@
   for All Users and All tenant users, group-level mode one per group."
   (:require
    [metabase.permissions.core :as perms]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -14,10 +15,16 @@
   [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
 
 (defn visible-groups-clause
-  "A HoneySQL condition matching, on `column`, the groups an AI usage controls page shows in the mode selected by
-  `advanced?`: Administrators and the simple-mode groups in simple mode, every group but the simple-mode groups in
-  group-level mode."
+  "A fragment matching, on `column` (`:group_id` or `:id`), the groups an AI usage controls page shows in the mode
+  selected by `advanced?`: Administrators and the simple-mode groups in simple mode, every group but the simple-mode
+  groups in group-level mode."
   [column advanced?]
-  (if advanced?
-    [:not-in column (simple-mode-group-ids)]
-    [:in column (conj (simple-mode-group-ids) (u/the-id (perms/admin-group)))]))
+  (let [simple-ids (simple-mode-group-ids)
+        shown-ids  (conj simple-ids (u/the-id (perms/admin-group)))]
+    (case column
+      :group_id (if advanced?
+                  (t2/fragment [:not-in :group_id simple-ids])
+                  (t2/fragment [:in :group_id shown-ids]))
+      :id       (if advanced?
+                  (t2/fragment [:not-in :id simple-ids])
+                  (t2/fragment [:in :id shown-ids])))))

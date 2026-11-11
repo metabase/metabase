@@ -5,13 +5,11 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.users.core :as users]
+   [metabase.toucan.core :as t2]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (def ^:private PersonalUserChanges
   "The keys callers pass to [[update-personal-user!]]."
@@ -30,21 +28,30 @@
   "The `columns` of the Users matching `filters` (see [[metabase.users.schema/user-filters]])."
   [columns :- [:sequential :keyword]
    filters :- ::users.schema/user-filters]
-  (t2/select (into [:model/User] columns) (h2x/assert-map-or-nil! (user/filter-clauses filters))))
+  (let [{:keys [where right-join order-by limit offset]} (user/filter-clauses filters)]
+    (t2/select (into [:model/User] columns)
+               {:where      where
+                :right-join right-join
+                :order-by   order-by
+                :limit      limit
+                :offset     offset})))
 
 (mu/defn user-count
   "The number of Users matching `filters` (see [[metabase.users.schema/user-filters]]), ignoring any `:sort`,
   `:limit`, or `:offset` in `filters`."
   [filters :- ::users.schema/user-filters]
-  (t2/count :model/User (h2x/assert-map-or-nil! (users/filter-clauses-without-paging (user/filter-clauses filters)))))
+  (let [{:keys [where right-join]} (user/filter-clauses filters)]
+    (t2/count :model/User {:where where, :right-join right-join})))
 
 (mu/defn distinct-user-count
   "The `:count` of distinct Users matching `filters` (see [[metabase.users.schema/user-filters]]), ignoring any
   `:sort`, `:limit`, or `:offset` in `filters`."
   [filters :- ::users.schema/user-filters]
-  (t2/query (merge {:select [[[:count [:distinct :core_user.id]] :count]]
-                    :from   :core_user}
-                   (users/filter-clauses-without-paging (user/filter-clauses filters)))))
+  (let [{:keys [where right-join]} (user/filter-clauses filters)]
+    (t2/query {:select     [[[:count [:distinct :core_user.id]] :count]]
+               :from       :core_user
+               :where      where
+               :right-join right-join})))
 
 (mu/defn user-sso-source
   "The SSO source of the User with `user-id`, or nil."
@@ -55,21 +62,28 @@
   "Whether an unarchived, non-internal Card visible to the current user exists, optionally narrowed to `card-type`
   (nil for any type)."
   [card-type :- [:maybe :string]]
-  (t2/exists? :model/Card
-              {:where (into [:and
-                             [:= :archived false]
-                             (collection/visible-collection-filter-clause)
-                             (mi/exclude-internal-content-hsql :model/Card)]
-                            (when card-type [[:= :type card-type]]))}))
+  (let [{:keys [root? ids]} (collection/visible-collection-scope)]
+    (t2/exists? :model/Card
+                {:where [:and
+                         [:= :archived false]
+                         (t2/fragment [:or
+                                       (when root? (t2/fragment [:= :collection_id nil]))
+                                       [:in :collection_id ids]])
+                         (mi/exclude-internal-content-hsql :model/Card)
+                         (when card-type
+                           (t2/fragment [:= :type card-type]))]})))
 
 (mu/defn has-visible-dashboard?
   "Whether an unarchived, non-internal Dashboard visible to the current user exists."
   []
-  (t2/exists? :model/Dashboard
-              {:where [:and
-                       [:= :archived false]
-                       (collection/visible-collection-filter-clause)
-                       (mi/exclude-internal-content-hsql :model/Dashboard)]}))
+  (let [{:keys [root? ids]} (collection/visible-collection-scope)]
+    (t2/exists? :model/Dashboard
+                {:where [:and
+                         [:= :archived false]
+                         (t2/fragment [:or
+                                       (when root? (t2/fragment [:= :collection_id nil]))
+                                       [:in :collection_id ids]])
+                         (mi/exclude-internal-content-hsql :model/Dashboard)]})))
 
 (mu/defn first-login
   "The timestamp of the earliest LoginHistory of the User with `user-id`, or nil."
@@ -86,12 +100,13 @@
 (mu/defn writable-collection-exists?
   "Whether the current user can write to at least one Collection (excluding the Trash and archived items)."
   []
-  (t2/exists? :model/Collection
-              {:where (collection/visible-collection-filter-clause
-                       :id
-                       {:include-trash-collection? false
-                        :include-archived-items    :exclude
-                        :permission-level          :write})}))
+  (let [{:keys [root? ids]} (collection/visible-collection-scope {:include-trash-collection? false
+                                                                  :include-archived-items    :exclude
+                                                                  :permission-level          :write})]
+    (t2/exists? :model/Collection
+                {:where (t2/fragment [:or
+                                      (when root? (t2/fragment [:= :id nil]))
+                                      [:in :id ids]])})))
 
 (mu/defn other-user-with-email-exists?
   "Whether a User other than `user-id` has an email matching `email` case-insensitively."

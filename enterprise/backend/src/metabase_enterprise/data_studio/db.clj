@@ -5,10 +5,10 @@
    [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]))
 
 (def ^:private TableSelectors
   [:map {:closed true}
@@ -21,15 +21,19 @@
   [{:keys [database-ids table-ids schema-ids]}]
   (let [schema-expr (fn [s]
                       (let [[schema-db-id schema-name] (str/split s #"\:")]
-                        [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))]
-    (cond-> [:or false]
-      (seq database-ids) (conj [:in :db_id (sort database-ids)])
-      (seq table-ids)    (conj [:in :id    (sort table-ids)])
-      (seq schema-ids)   (conj (into [:or] (map schema-expr) (sort schema-ids))))))
+                        (t2/fragment [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]])))]
+    (t2/fragment [:or
+                  false
+                  (when (seq database-ids)
+                    (t2/fragment [:in :db_id (sort database-ids)]))
+                  (when (seq table-ids)
+                    (t2/fragment [:in :id (sort table-ids)]))
+                  (when (seq schema-ids)
+                    (reduce (fn [acc s] (t2/fragment [:or acc (schema-expr s)])) nil (sort schema-ids)))])))
 
 (defn- table-selectors-subquery
   [selectors]
-  ^:allow-subquery {:select [:id] :from [(t2/table-name :model/Table)] :where (table-selectors-expr selectors)})
+  (t2/fragment {:select [:id] :from [(t2/table-name :model/Table)] :where (table-selectors-expr selectors)}))
 
 (mu/defn remapped-table-ids-reducible
   "Reducible `:table_id` rows of the Tables reachable from `tables` through FK remapping Dimensions, from the
@@ -38,26 +42,28 @@
   [input-field  :- :keyword
    output-field :- :keyword
    tables       :- [:or [:set ms/PositiveInt] TableSelectors]]
-  (let [input-table-id  (keyword (name input-field) "table_id")
-        output-table-id (keyword (name output-field) "table_id")
-        table-ids       (if (map? tables)
-                          (table-selectors-subquery tables)
-                          tables)
-        not-in-tables   (if (map? tables)
-                          [:not [:exists (-> table-ids
-                                             (assoc :select [1])
-                                             (update :where (fn [where]
-                                                              [:and where [:= :id output-table-id]])))]]
-                          [:not [:in output-table-id tables]])]
-    (t2/reducible-query {:select [[output-table-id :table_id]]
+  (let [table-ids     (if (map? tables)
+                        (table-selectors-subquery tables)
+                        tables)
+        not-in-tables (if (map? tables)
+                        (let [selected (table-selectors-expr tables)]
+                          (t2/fragment [:not [:exists ^:allow-subquery {:select [1]
+                                                                        :from   [(t2/table-name :model/Table)]
+                                                                        :where  [:and selected [:= :id :output_field.table_id]]}]]))
+                        (t2/fragment [:not [:in :output_field.table_id tables]]))
+        input-join    (case input-field
+                        :source_field (t2/fragment [:= :dim.field_id :input_field.id])
+                        :target_field (t2/fragment [:= :dim.human_readable_field_id :input_field.id]))
+        output-join   (case output-field
+                        :source_field (t2/fragment [:= :dim.field_id :output_field.id])
+                        :target_field (t2/fragment [:= :dim.human_readable_field_id :output_field.id]))]
+    (t2/reducible-query {:select [[:output_field.table_id :table_id]]
                          :from   [[(t2/table-name :model/Dimension) :dim]]
-                         :join   [[(t2/table-name :model/Field) :source_field]
-                                  [:= :dim.field_id :source_field.id]
-                                  [(t2/table-name :model/Field) :target_field]
-                                  [:= :dim.human_readable_field_id :target_field.id]]
+                         :join   [[(t2/table-name :model/Field) :input_field] input-join
+                                  [(t2/table-name :model/Field) :output_field] output-join]
                          :where  [:and
                                   [:= :dim.type "external"]
-                                  [:in input-table-id table-ids]
+                                  [:in :input_field.table_id table-ids]
                                   not-in-tables]})))
 
 (mu/defn table-ids-matching-selectors
@@ -69,9 +75,9 @@
   (t2/select-pks-set :model/Table
                      {:where (let [selector-expr (table-selectors-expr selectors)]
                                (if (seq extra-table-ids)
-                                 [:or selector-expr (case extra-mode
-                                                      :unpublished [:and [:in :id extra-table-ids] [:= :is_published false]]
-                                                      :any         [:in :id extra-table-ids])]
+                                 (t2/fragment [:or selector-expr (case extra-mode
+                                                                   :unpublished (t2/fragment [:and [:in :id extra-table-ids] [:= :is_published false]])
+                                                                   :any         (t2/fragment [:in :id extra-table-ids]))])
                                  selector-expr))}))
 
 (mu/defn published-table-ids
@@ -87,7 +93,7 @@
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id [:auto/param collection-id]))
+  (t2/select-one :model/Collection :id collection-id))
 
 (mu/defn latest-table-publishing-event
   "The most recent publish or unpublish AuditLog event for `table-id`, or nil."
@@ -101,7 +107,7 @@
 (mu/defn user-name-and-email
   "The id, first name, last name, and email of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :first_name :last_name :email] :id [:auto/param user-id]))
+  (t2/select-one [:model/User :id :first_name :last_name :email] :id user-id))
 
 (mu/defn publish-tables!
   "Publish the Tables with `table-ids` into the Collection with `collection-id`, returning the number updated."
@@ -121,27 +127,35 @@
   [table-id   :- ::lib.schema.id/table
    user-id    :- ::lib.schema.id/user
    superuser? :- :boolean]
-  (t2/exists? :model/Table
-              {:where [:and
-                       [:= :id table-id]
-                       [:= :is_published true]
-                       (collection/visible-collection-filter-clause
-                        :collection_id {} {:current-user-id user-id
-                                           :is-superuser?   superuser?})]}))
+  (let [{:keys [root? ids]} (collection/visible-collection-scope {} {:current-user-id user-id
+                                                                     :is-superuser?   superuser?})]
+    (t2/exists? :model/Table
+                {:where [:and
+                         [:= :id table-id]
+                         [:= :is_published true]
+                         (t2/fragment [:or
+                                       (when root? (t2/fragment [:= :collection_id nil]))
+                                       [:in :collection_id ids]])]})))
 
 (mu/defn any-published-table-visible?
   "Whether the current user can read the Collection of any published Table."
   []
-  (t2/exists? :model/Table
-              {:where [:and
-                       [:= :is_published true]
-                       (collection/visible-collection-filter-clause :collection_id)]}))
+  (let [{:keys [root? ids]} (collection/visible-collection-scope)]
+    (t2/exists? :model/Table
+                {:where [:and
+                         [:= :is_published true]
+                         (t2/fragment [:or
+                                       (when root? (t2/fragment [:= :collection_id nil]))
+                                       [:in :collection_id ids]])]})))
 
 (mu/defn published-table-visible-in-database?
   "Whether the current user can read the Collection of any published Table in the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table
-              {:where [:and
-                       [:= :db_id database-id]
-                       [:= :is_published true]
-                       (collection/visible-collection-filter-clause :collection_id)]}))
+  (let [{:keys [root? ids]} (collection/visible-collection-scope)]
+    (t2/exists? :model/Table
+                {:where [:and
+                         [:= :db_id database-id]
+                         [:= :is_published true]
+                         (t2/fragment [:or
+                                       (when root? (t2/fragment [:= :collection_id nil]))
+                                       [:in :collection_id ids]])]})))
