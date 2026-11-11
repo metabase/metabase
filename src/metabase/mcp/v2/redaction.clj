@@ -27,12 +27,15 @@
 (def ^:private series-describing-viz-keys
   "`:visualization_settings` keys that describe every card on a dashcard, its series cards included.
    The frontend keys `:series_settings` entries by a card's name, alone or followed by a column name or breakout value.
+   The legacy `:graph.series_labels` lists the cards' names in series order.
+   Additional tooltip columns may come from any series card's results.
    A visualizer dashcard's `:visualization` maps its columns to the cards and columns they come from."
-  [:series_settings :visualization])
+  [:series_settings :graph.series_labels :graph.tooltip_columns :visualization])
 
 (def ^:private card-describing-viz-keys
   "`:visualization_settings` keys that describe the card rather than the grid slot: its author-written
-   title, the warehouse columns it displays and their labels, and click targets naming other entities.
+   title, the warehouse columns it displays and their labels, click targets naming other entities, and the
+   [[series-describing-viz-keys]], since the card is one of the cards those describe.
    Layout keys (sizing, container styling) describe the dashboard itself and survive redaction."
   (into [:card.title :card.description :column_settings :click_behavior] series-describing-viz-keys))
 
@@ -59,17 +62,16 @@
    When there are any, the `:parameter_mappings` to them go, since they carry those cards' field ids, and so do the
    [[series-describing-viz-keys]]."
   [dashcard]
-  (let [hidden (into #{} (remove readable-card?) (:series dashcard))]
-    (if (empty? hidden)
+  (let [hidden-ids (into #{} (comp (remove readable-card?) (keep :id)) (:series dashcard))]
+    (if (empty? hidden-ids)
       dashcard
       ;; The settings go whole rather than entry by entry: what names a hidden card follows the frontend's key and
       ;; column formats, and a readable card losing its series styling in a read is the cheaper mistake.
-      (let [hidden-ids (into #{} (keep :id) hidden)]
-        (-> dashcard
-            (update :series (partial mapv #(cond-> % (hidden %) (select-keys [:id]))))
-            (cond-> (some (comp hidden-ids :card_id) (:parameter_mappings dashcard))
-              (update :parameter_mappings (partial into [] (remove (comp hidden-ids :card_id)))))
-            (strip-viz-keys series-describing-viz-keys))))))
+      (-> dashcard
+          (update :series (partial mapv #(cond-> % (hidden-ids (:id %)) (select-keys [:id]))))
+          (cond-> (some (comp hidden-ids :card_id) (:parameter_mappings dashcard))
+            (update :parameter_mappings (partial into [] (remove (comp hidden-ids :card_id)))))
+          (strip-viz-keys series-describing-viz-keys)))))
 
 (defn- redact-dashcard
   [dashcard]

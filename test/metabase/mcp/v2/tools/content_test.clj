@@ -345,20 +345,20 @@
                                                              :card_id          hidden-series
                                                              :position         0}]
       (mt/with-non-admin-groups-no-collection-perms locked-id
-        (let [layout-dashcard (fn []
-                                (->> (content-one {:items [{:type "dashboard", :id dash-id}], :include ["layout"]})
-                                     :layout
-                                     :dashcards
-                                     (some #(when (= dc-id (:id %)) %))))]
+        (let [read-dashboard  #(content-one {:items   [{:type "dashboard", :id dash-id}]
+                                             :include ["layout" "parameters"]})
+              layout-dashcard (fn [row] (some #(when (= dc-id (:id %)) %) (:dashcards (:layout row))))]
           (testing "an admin sees the series card's settings and mapping"
             (mt/with-test-user :crowberto
-              (let [dc (layout-dashcard)]
+              (let [dc (layout-dashcard (read-dashboard))]
                 (is (str/includes? (json/encode dc) "SECRET Series"))
                 (is (= #{open-card hidden-series} (set (map :card_id (:parameter_mappings dc))))))))
           (mt/with-test-user :rasta
-            (let [dc (layout-dashcard)]
+            (let [row (read-dashboard)
+                  dc  (layout-dashcard row)]
               (is (some? dc))
-              (is (not (str/includes? (json/encode dc) "SECRET Series")))
+              (is (not (str/includes? (json/encode row) "SECRET Series"))
+                  "checked on the whole response, so a leak through another include fails too")
               (is (= [open-card] (map :card_id (:parameter_mappings dc))))
               (testing "the series settings go whole, since composite keys also name the card"
                 (is (nil? (get-in dc [:visualization_settings :series_settings])))))))))))
