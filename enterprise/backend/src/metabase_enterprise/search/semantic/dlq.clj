@@ -173,7 +173,7 @@
 (defn next-delay
   "Calculates the next retry delay as a Duration for the given retry count and policy.
 
-  Takes the policy's backoff, capped, and multiplies it by a random factor between 1 and 2.
+  Takes the policy's backoff and multiplies it by a random factor between 1 and 2, within the policy's cap.
   Returns a Duration object suitable for scheduling the next retry attempt (presumably against now/last-attempt).
 
   Initially DLQ entries have a retry count of zero - it is not 'try' count, it is 'retry' count.
@@ -182,7 +182,8 @@
   ^Duration [^long retry-count policy]
   ;; Wide, because only jitter separates documents that failed in one batch, so the bad one can be retried alone
   ;; (see failure-outcome). It only lengthens delays, so no retry comes sooner than the policy asks.
-  (Duration/ofMillis (long (* (max-delay-ms retry-count policy) (inc (rand))))))
+  (let [cap-ms (.toMillis ^Duration (:cap policy))]
+    (Duration/ofMillis (long (min cap-ms (* (max-delay-ms retry-count policy) (inc (rand))))))))
 
 (comment
   (next-delay 0 transient-policy)
