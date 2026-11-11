@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
@@ -8,6 +8,8 @@ import { useFavicon } from "metabase/common/hooks/use-favicon";
 import CS from "metabase/css/core/index.css";
 import {
   addCardToDashboard,
+  fetchDashboard,
+  fetchDashboardCardData,
   navigateToNewCardFromDashboard,
   setEditingDashboard,
   toggleSidebar,
@@ -22,7 +24,6 @@ import { addDashboardQuestion } from "metabase/dashboard/components/QuestionPick
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   DashboardContextProvider,
-  type DashboardContextProviderHandle,
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
@@ -96,15 +97,25 @@ export const DashboardApp = () => {
 
   useRegisterDashboardMetabotContext();
 
-  // Metabot saves dashboards on the server, so the page reloads to show them. An edit in progress
-  // isn't reloaded, since that would drop the user's unsaved changes.
-  const dashboardContextRef = useRef<DashboardContextProviderHandle>(undefined);
+  // Metabot saves dashboards on the server, so the page reloads them in place: open sidebars and
+  // filter values stay, and only cards whose query changed run again. An edit in progress isn't
+  // reloaded, since that would drop the user's unsaved changes.
   const isEditing = useSelector(getIsEditing);
-  const reloadDashboard = useCallback(() => {
-    if (!isEditing) {
-      dashboardContextRef.current?.refetchDashboard();
+  const reloadDashboard = useCallback(async () => {
+    if (isEditing || dashboardId == null) {
+      return;
     }
-  }, [isEditing]);
+    await dispatch(
+      fetchDashboard({
+        dashId: dashboardId,
+        queryParams: parameterQueryParams,
+        options: { preserveParameters: true },
+      }),
+    );
+    await dispatch(
+      fetchDashboardCardData({ reload: false, clearCache: false }),
+    );
+  }, [dispatch, isEditing, dashboardId, parameterQueryParams]);
   useOnMetabotDashboardSave(dashboardId, reloadDashboard);
 
   useDashboardUrlQuery(location);
@@ -191,7 +202,6 @@ export const DashboardApp = () => {
   return (
     <ErrorBoundary message={error}>
       <DashboardContextProvider
-        ref={dashboardContextRef}
         dashboardId={dashboardId}
         parameterQueryParams={parameterQueryParams}
         autoScrollToDashcardId={autoScrollToDashcardId}

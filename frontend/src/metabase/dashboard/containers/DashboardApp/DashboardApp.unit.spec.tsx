@@ -11,8 +11,10 @@ import {
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
+  setupRevisionsEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
+  setupUserEndpoints,
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
@@ -26,6 +28,8 @@ import {
   waitForDashboardToLoad,
 } from "__support__/ui";
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
+import { setSidebar } from "metabase/dashboard/actions";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { dashboardSaved } from "metabase/metabot/state";
 import { Route } from "metabase/router";
@@ -42,6 +46,7 @@ import {
   createMockHeadingDashboardCard,
   createMockTable,
   createMockTextDashboardCard,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 const TEST_COLLECTION = createMockCollection();
@@ -385,6 +390,26 @@ describe("DashboardApp", () => {
       await waitFor(() =>
         expect(dashboardFetches(dashboardId)).toBeGreaterThan(fetchesBefore),
       );
+    });
+
+    it("keeps the open sidebar when it reloads", async () => {
+      const { dashboardId, store } = await setup();
+      // the info sidebar loads the dashboard's history and its last editor
+      setupRevisionsEndpoints([]);
+      setupUserEndpoints(createMockUser({ id: 1 }));
+      act(() => {
+        store.dispatch(setSidebar({ name: SIDEBAR_NAME.info }));
+      });
+      const fetchesBefore = dashboardFetches(dashboardId);
+
+      act(() => {
+        store.dispatch(metabotSaves(dashboardId));
+      });
+
+      await waitFor(() =>
+        expect(dashboardFetches(dashboardId)).toBeGreaterThan(fetchesBefore),
+      );
+      expect(store.getState().dashboard.sidebar.name).toBe(SIDEBAR_NAME.info);
     });
 
     it("doesn't reload a dashboard being edited", async () => {
