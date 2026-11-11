@@ -159,8 +159,10 @@
     (is (re-find #"LIMIT \? OFFSET \?$" sql))
     (is (= [5 2] args))))
 
-(deftest ^:parallel non-integer-limit-bound-test
-  (let [n            "5; DROP TABLE core_user"
-        [sql & args] (toucan2.core/compile (t2/select :model/User {:limit n}))]
-    (is (re-find #"LIMIT \?$" sql))
-    (is (= ["5; DROP TABLE core_user"] args))))
+(deftest ^:parallel non-integer-limit-rejected-test
+  (doseq [n ["5" -1 1.5]]
+    (testing (pr-str n)
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid limit"
+                            (toucan2.core/compile (t2/select :model/User {:limit n}))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid offset"
+                            (toucan2.core/compile (t2/select :model/User {:offset n})))))))
