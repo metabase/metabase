@@ -135,7 +135,7 @@ export const GoalValueInput = ({
   const sourceUrl = isEmbedding() ? undefined : sourceInfo.url;
   const {
     resolveColumn: resolveEntityColumn,
-    hasParameters: entityHasParameters,
+    errorReason: entityQueryErrorReason,
   } = useEntityColumnResults(datasetQuery, data, entity, {
     enabled: menuLevel === "entity" && entityInfo.columns.length > 0,
   });
@@ -456,7 +456,7 @@ export const GoalValueInput = ({
                   <Menu.Item disabled>{t`No numeric columns`}</Menu.Item>
                 ))
                 .when(
-                  () => entityHasParameters,
+                  () => entityQueryErrorReason === "has-parameters",
                   () => (
                     <Menu.Item disabled maw={COLUMN_MENU_MIN_WIDTH}>
                       {getHasParametersMessage(entityInfo.kind)}

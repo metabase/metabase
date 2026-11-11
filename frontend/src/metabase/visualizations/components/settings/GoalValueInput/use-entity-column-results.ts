@@ -1,6 +1,8 @@
 import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
 import {
+  type GoalRefErrorReason,
   type GoalValueResult,
+  getFailedQueryReason,
   resolveGoalValue,
   toReferencedEntity,
 } from "metabase/viz-core";
@@ -12,7 +14,7 @@ import type {
 
 type EntityColumnResults = {
   resolveColumn: (column: string) => GoalValueResult;
-  hasParameters: boolean;
+  errorReason: GoalRefErrorReason | undefined;
 };
 
 export function useEntityColumnResults(
@@ -36,7 +38,10 @@ export function useEntityColumnResults(
     entity && sourceData.referenced_entities?.[entity.type]?.[entity.id];
 
   return {
-    hasParameters: entityResult?.error_type === "has-parameters",
+    errorReason:
+      entityResult?.status === "failed"
+        ? getFailedQueryReason(entityResult.error_type)
+        : undefined,
     resolveColumn: (column) =>
       entity
         ? resolveGoalValue(sourceData, { ...entity, column })

@@ -153,7 +153,7 @@ function resolveForeignColumnRef(
   return { value };
 }
 
-function getFailedQueryReason(
+export function getFailedQueryReason(
   errorType: ReferencedEntityResult["error_type"],
 ): GoalRefErrorReason {
   return match(errorType)

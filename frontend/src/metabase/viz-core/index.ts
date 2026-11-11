@@ -242,6 +242,7 @@ export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
 export {
   applyGraphGoalValue,
   getGoalErrorMessage,
+  getFailedQueryReason,
   getGoalErrors,
   getHasParametersMessage,
   getGoalSegmentBounds,
@@ -502,6 +503,7 @@ export type {
 export type {
   GoalData,
   GoalRefError,
+  GoalRefErrorReason,
   GoalValueResult,
   ReferencedEntityKind,
   ResolvedGoalSegment,
