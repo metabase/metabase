@@ -346,12 +346,12 @@
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *all-db-permission-cache*
   "Request cache for the questions that scan *every* database rather than asking about one --
-  [[user-has-any-perms-of-type?]]. Shaped like [[*db-permission-cache*]]'s `:perms`, but loaded in full, so it needs
-  no record of what it covers."
+  [[most-permissive-database-permission-for-user]] without a database and [[user-has-any-perms-of-type?]]:
+  `{[user-id perm-type perm-value exclude-db-ids] boolean}`."
   (atom {}))
 
 (defn- load-database-perms
-  "Whole-database values for `db-ids`, or for every database when nil."
+  "Whole-database values for `db-ids`."
   [user-id db-ids]
   (let [value (fn [perm-type mn mx] (when mn (ranks->most-permissive-value perm-type [mn mx])))]
     (reduce (fn [m {:keys [perm_type db_id any_mn any_mx every_mn every_mx db_mn db_mx]}]
@@ -408,15 +408,18 @@
          (load-database-perms! user-id #{database-id})))
      (load-database-perms user-id [database-id]))))
 
-(defn- all-database-perms
-  "Like [[cached-database-perms]] but for every database at once, for the questions that scan them all."
-  [user-id]
+(defn- any-database-has-perm-value?
+  "Whether any database outside `exclude-db-ids` grants `user-id` `perm-type` with `perm-value`, cached per request in
+  [[*all-db-permission-cache*]]."
+  [user-id perm-type perm-value exclude-db-ids]
   (if (use-cache? user-id)
-    (or (get @*all-db-permission-cache* user-id)
-        (let [loaded (load-database-perms user-id nil)]
-          (swap! *all-db-permission-cache* assoc user-id loaded)
-          loaded))
-    (load-database-perms user-id nil)))
+    (let [k [user-id perm-type perm-value exclude-db-ids]]
+      (if-some [cached (get @*all-db-permission-cache* k)]
+        cached
+        (let [loaded (permissions.db/user-has-perm-value? user-id perm-type perm-value exclude-db-ids)]
+          (swap! *all-db-permission-cache* assoc k loaded)
+          loaded)))
+    (permissions.db/user-has-perm-value? user-id perm-type perm-value exclude-db-ids)))
 
 ;;; ---------------------------------------------- Schema level cache ----------------------------------------------
 
@@ -794,7 +797,9 @@
   user has on any of the tables within this database?
 
   Called without a `database-id`, answers the same question across every database at once -- for asking about the
-  user's access to the instance as a whole. That takes one query, where walking the databases would take one each."
+  user's access to the instance as a whole -- with one indexed probe per value, most permissive first, so its cost
+  doesn't grow with the number of permission rows. Not supported for `:perms/view-data`, whose `:blocked` overrides
+  `:legacy-no-self-service` only within one database."
   ([user-id   :- [:maybe ::lib.schema.id/user]
     perm-type :- ::permissions.schema/data-permission-type]
    (most-permissive-database-permission-for-user user-id perm-type nil))
@@ -817,20 +822,23 @@
      (or (get-in (cached-database-perms user-id database-id) [perm-type database-id :any-table])
          (least-permissive-value perm-type))
 
+     (= perm-type :perms/view-data)
+     (throw (ex-info (tru "Permission type {0} needs a database." perm-type)
+                     {:perm-type perm-type}))
+
      :else
-     (let [ordered (-> permissions.schema/data-permissions perm-type :values)
-           values  (into #{} (keep :any-table) (vals (get (all-database-perms user-id) perm-type)))]
-       (or (first (filter values ordered))
-           (least-permissive-value perm-type))))))
+     (or (some #(when (any-database-has-perm-value? user-id perm-type % nil) %)
+               (butlast (-> permissions.schema/data-permissions perm-type :values)))
+         (least-permissive-value perm-type)))))
 
 (mu/defn user-has-any-perms-of-type? :- :boolean
   "Returns a Boolean indicating whether the user has the highest level of access for the given permission type in any
   group, for at least one database or table. Optionally takes `:exclude-db-ids` to exclude specific databases from the
   check.
 
-  Answered from [[*db-permission-cache*]] — one aggregated query, memoized per request — so callers that invoke this
-  repeatedly within one request (e.g. once per snippet in a list) cost at most one query, however many databases the
-  instance has. Note that permission rows for inactive tables do not count."
+  One indexed probe, memoized per request in [[*all-db-permission-cache*]], so callers that invoke this repeatedly
+  within one request (e.g. once per snippet in a list) cost at most one query, however many databases the instance
+  has. Note that permission rows for inactive tables do not count."
   [user-id   :- ::lib.schema.id/user
    perm-type :- ::permissions.schema/data-permission-type
    & {:keys [exclude-db-ids]} :- [:maybe [:map {:closed true}
@@ -838,12 +846,7 @@
   (or (is-superuser? user-id)
       (and (= perm-type :perms/manage-table-metadata)
            (is-data-analyst? user-id))
-      (let [value    (most-permissive-value perm-type)
-            exclude? (set exclude-db-ids)]
-        (boolean (some (fn [[db-id vals]]
-                         (and (= (:any-table vals) value)
-                              (not (exclude? db-id))))
-                       (get (all-database-perms user-id) perm-type))))))
+      (any-database-has-perm-value? user-id perm-type (most-permissive-value perm-type) exclude-db-ids)))
 
 ;;; --------------------------------------- cache assembly ------------------------------------------------------------
 
