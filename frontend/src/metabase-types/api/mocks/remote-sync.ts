@@ -42,13 +42,11 @@ export function createMockRemoteSyncActionData(
   opts?: Partial<RemoteSyncActionData>,
 ): RemoteSyncActionData {
   return {
-    ...{
-      id: 1,
-      name: "Action",
-      type: "query",
-      model_id: null,
-      collection_id: null,
-    },
+    id: 1,
+    name: "Action",
+    type: "query",
+    model_id: null,
+    collection_id: null,
     ...opts,
   };
 }
@@ -56,106 +54,103 @@ export function createMockRemoteSyncActionData(
 export function createMockRemoteSyncCardData(
   opts?: Partial<RemoteSyncCardData>,
 ): RemoteSyncCardData {
-  return { ...{ id: 1, name: "Card", collection_id: null }, ...opts };
+  return { id: 1, name: "Card", collection_id: null, ...opts };
 }
 
 export function createMockRemoteSyncCardTestData(
   opts?: Partial<RemoteSyncCardTestData>,
 ): RemoteSyncCardTestData {
-  return { ...{ id: 1, name: "Card test", card_id: 1 }, ...opts };
+  return { id: 1, name: "Card test", card_id: 1, ...opts };
 }
 
 export function createMockRemoteSyncCollectionData(
   opts?: Partial<RemoteSyncCollectionData>,
 ): RemoteSyncCollectionData {
-  return { ...{ id: 1, name: "Collection", location: "/" }, ...opts };
+  return { id: 1, name: "Collection", location: "/", ...opts };
 }
 
 export function createMockRemoteSyncDashboardData(
   opts?: Partial<RemoteSyncDashboardData>,
 ): RemoteSyncDashboardData {
-  return { ...{ id: 1, name: "Dashboard", collection_id: null }, ...opts };
+  return { id: 1, name: "Dashboard", collection_id: null, ...opts };
 }
 
 export function createMockRemoteSyncDataAppData(
   opts?: Partial<RemoteSyncDataAppData>,
 ): RemoteSyncDataAppData {
-  return { ...{ id: 1, slug: "app", name: "App" }, ...opts };
+  return { id: 1, slug: "app", name: "App", ...opts };
 }
 
 export function createMockRemoteSyncDocumentData(
   opts?: Partial<RemoteSyncDocumentData>,
 ): RemoteSyncDocumentData {
-  return { ...{ id: 1, name: "Document", collection_id: null }, ...opts };
+  return { id: 1, name: "Document", collection_id: null, ...opts };
 }
 
 export function createMockRemoteSyncFieldUserSettingsData(
   opts?: Partial<RemoteSyncFieldUserSettingsData>,
 ): RemoteSyncFieldUserSettingsData {
-  return { ...{ field_id: 1, display_name: null }, ...opts };
+  return { field_id: 1, display_name: null, ...opts };
 }
 
 export function createMockRemoteSyncGlossaryData(
   opts?: Partial<RemoteSyncGlossaryData>,
 ): RemoteSyncGlossaryData {
-  return { ...{ id: 1, term: "Term" }, ...opts };
+  return { id: 1, term: "Term", ...opts };
 }
 
 export function createMockRemoteSyncMeasureData(
   opts?: Partial<RemoteSyncMeasureData>,
 ): RemoteSyncMeasureData {
-  return { ...{ id: 1, name: "Measure", table_id: 1 }, ...opts };
+  return { id: 1, name: "Measure", table_id: 1, ...opts };
 }
 
 export function createMockRemoteSyncNativeQuerySnippetData(
   opts?: Partial<RemoteSyncNativeQuerySnippetData>,
 ): RemoteSyncNativeQuerySnippetData {
-  return { ...{ id: 1, name: "Snippet", collection_id: null }, ...opts };
+  return { id: 1, name: "Snippet", collection_id: null, ...opts };
 }
 
 export function createMockRemoteSyncPythonLibraryData(
   opts?: Partial<RemoteSyncPythonLibraryData>,
 ): RemoteSyncPythonLibraryData {
-  return { ...{ id: 1, path: "common.py" }, ...opts };
+  return { id: 1, path: "common.py", ...opts };
 }
 
 export function createMockRemoteSyncSegmentData(
   opts?: Partial<RemoteSyncSegmentData>,
 ): RemoteSyncSegmentData {
-  return { ...{ id: 1, name: "Segment", table_id: 1 }, ...opts };
+  return { id: 1, name: "Segment", table_id: 1, ...opts };
 }
 
 export function createMockRemoteSyncTableUserSettingsData(
   opts?: Partial<RemoteSyncTableUserSettingsData>,
 ): RemoteSyncTableUserSettingsData {
-  return {
-    ...{ table_id: 1, display_name: null, collection_id: null },
-    ...opts,
-  };
+  return { table_id: 1, display_name: null, collection_id: null, ...opts };
 }
 
 export function createMockRemoteSyncTimelineData(
   opts?: Partial<RemoteSyncTimelineData>,
 ): RemoteSyncTimelineData {
-  return { ...{ id: 1, name: "Timeline", collection_id: null }, ...opts };
+  return { id: 1, name: "Timeline", collection_id: null, ...opts };
 }
 
 export function createMockRemoteSyncTransformData(
   opts?: Partial<RemoteSyncTransformData>,
 ): RemoteSyncTransformData {
-  return { ...{ id: 1, name: "Transform", collection_id: null }, ...opts };
+  return { id: 1, name: "Transform", collection_id: null, ...opts };
 }
 
 export function createMockRemoteSyncTransformTagData(
   opts?: Partial<RemoteSyncTransformTagData>,
 ): RemoteSyncTransformTagData {
-  return { ...{ id: 1, name: "Tag" }, ...opts };
+  return { id: 1, name: "Tag", ...opts };
 }
 
 export function createMockRemoteSyncTransformTestData(
   opts?: Partial<RemoteSyncTransformTestData>,
 ): RemoteSyncTransformTestData {
-  return { ...{ id: 1, name: "Transform test", transform_id: 1 }, ...opts };
+  return { id: 1, name: "Transform test", transform_id: 1, ...opts };
 }
 
 export function createMockRemoteSyncItem<TModel extends RemoteSyncItemModel>(
