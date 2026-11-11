@@ -171,14 +171,16 @@
                (search-results :exact "revenue income" :search-expr {:op "or" :args ["revenue" "income"]})))))))
 
 (deftest ^:parallel search-expr-deep-tree-no-name-boost-test
-  (testing "a tree deeper than one flat node gets no exact or prefix name score"
-    (let [deep {:op "and" :args ["revenue" {:op "or" :args ["forecast" "projection"]}]}]
-      (is (= {:exact [:inline 0], :prefix [:inline 0]}
-             (select-keys (scoring/base-scorers {:search-expr     deep
-                                                 :search-string   "revenue forecast projection"
-                                                 :current-user-id 1}
-                                                {})
-                          [:exact :prefix]))))))
+  ;; The scorers dispatch on the app DB, and only Postgres and H2 have an app-db search specialization.
+  (when (#{:h2 :postgres} (mdb/db-type))
+    (testing "a tree deeper than one flat node gets no exact or prefix name score"
+      (let [deep {:op "and" :args ["revenue" {:op "or" :args ["forecast" "projection"]}]}]
+        (is (= {:exact [:inline 0], :prefix [:inline 0]}
+               (select-keys (scoring/base-scorers {:search-expr     deep
+                                                   :search-string   "revenue forecast projection"
+                                                   :current-user-id 1}
+                                                  {})
+                            [:exact :prefix])))))))
 
 (deftest ^:parallel prefix-test
   (with-index-contents
