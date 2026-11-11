@@ -370,12 +370,17 @@ describe("EditTableDataContainer", () => {
       const root = screen.getByTestId("edit-table-data-root");
       const crumbs = within(root).getByTestId("head-crumbs-container");
       expect(within(crumbs).getByText("Edit")).toBeInTheDocument();
-      expect(
-        within(crumbs).getByRole("link", { name: /Scores/ }),
-      ).toHaveAttribute(
-        "href",
-        expect.stringMatching(new RegExp(`^/question#`)),
-      );
+      // The query builder opens a new question on the `db` and `table` in the hash.
+      const href = within(crumbs)
+        .getByRole("link", { name: /Scores/ })
+        .getAttribute("href");
+      const url = new URL(checkNotNull(href), "http://localhost");
+      const hashParams = new URLSearchParams(url.hash.replace(/^#\?/, ""));
+      expect(url.pathname).toBe("/question");
+      expect(Object.fromEntries(hashParams)).toEqual({
+        db: String(DB_ID),
+        table: String(TABLE_ID),
+      });
       expect(within(root).getByTestId("table-root")).toBeInTheDocument();
     });
 
