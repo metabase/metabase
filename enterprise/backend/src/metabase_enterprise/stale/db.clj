@@ -30,7 +30,6 @@
               :archived
               :collection_position
               :display
-              :collection_preview
               :database_id
               [nil :location]
               :dataset_query

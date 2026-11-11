@@ -13,6 +13,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
@@ -235,9 +236,10 @@
 
 (defn- dashboard-metadata [dashboard]
   (letfn [(normalize-card [card]
-            (-> card
-                (m/update-existing :dataset_query lib-be/normalize-query)
-                (dissoc :id)))
+            (->> (-> card
+                     (m/update-existing :dataset_query lib-be/normalize-query)
+                     (dissoc :id))
+                 (lib/normalize ::queries.schema/card)))
           (normalize-series [series]
             (map normalize-card series))
           (normalize-dashcard [{:keys [card], :as dashcard}]

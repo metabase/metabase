@@ -240,7 +240,7 @@
   {(semantic.index/hnsw-index-name index)         #"CREATE INDEX .* USING hnsw \(embedding vector_cosine_ops\)"
    (semantic.index/fts-index-name index)          #"CREATE INDEX .* USING gin \(text_search_vector\)"
    (semantic.index/fts-native-index-name index)   #"CREATE INDEX .* USING gin \(text_search_with_native_query_vector\)"
-   (#'semantic.index/content-index-name index)    #"CREATE INDEX .* USING btree \(content\)"})
+   (semantic.index/content-index-name index)      #"CREATE INDEX .* USING hash \(content\)"})
 
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}
@@ -350,6 +350,25 @@
         (is (= {"card" 1, "dashboard" 1}
                (semantic.tu/upsert-index! (semantic.tu/mock-documents))))
         (semantic.tu/check-index-has-mock-docs)))))
+
+(deftest upsert-index!-long-content-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (testing "a document whose text is too long for a B-tree index entry is still indexed"
+        (let [doc      (assoc (first (semantic.tu/mock-documents))
+                              :embeddable_text (semantic.tu/incompressible-text 8000))
+              embedded (atom [])
+              embed    semantic.embedding/process-embeddings-streaming]
+          ;; :serial? keeps the upsert on this thread, where the dynamic redef applies
+          (mt/with-dynamic-fn-redefs [semantic.embedding/process-embeddings-streaming
+                                      (fn [model texts & args]
+                                        (swap! embedded into texts)
+                                        (apply embed model texts args))]
+            (is (= {"card" 1} (semantic.tu/upsert-index! [doc] :serial? true)))
+            (is (= 1 (count @embedded)))
+            (testing "and indexing the same text again reuses the stored embedding"
+              (is (= {"card" 1} (semantic.tu/upsert-index! [doc] :serial? true)))
+              (is (= 1 (count @embedded))))))))))
 
 (deftest upsert-index!-tsvectors-test
   (mt/with-premium-features #{:semantic-search}

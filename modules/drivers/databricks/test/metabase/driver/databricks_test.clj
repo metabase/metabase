@@ -17,6 +17,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -572,7 +573,8 @@
   {:host "x.cloud.databricks.com"
    :http-path "/sql/1.0/warehouses/abc"
    :catalog "main"
-   :auth-mode "wif"})
+   :auth-mode "wif"
+   :wif-provider "OIDC"})
 
 (deftest ^:parallel connection-details->spec-wif-inline-token-test
   (testing "WIF with an inline pasted JWT sets Auth_AccessToken via pass-through (AuthMech=11, Auth_Flow=0)"
@@ -587,6 +589,25 @@
         (is (not (contains? spec :pwd)))
         (is (not (contains? spec :OAuth2ClientId)))
         (is (not (contains? spec :OAuth2Secret)))))))
+
+(deftest ^:parallel connection-details->spec-wif-strips-legacy-creds-test
+  (testing "when an admin switches from PAT/M2M to WIF, stale credentials in details don't reach the spec"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :databricks
+                (assoc wif-base-details
+                       :wif-token    "eyJhbGciOi.jwt.sig"
+                       :token        "stale-pat"
+                       :client-id    "stale-cid"
+                       :oauth-secret "stale-secret"
+                       :password     "stale-password"))]
+      (is (= 11 (:AuthMech spec)))
+      (is (= 0 (:Auth_Flow spec)))
+      (is (= "eyJhbGciOi.jwt.sig" (:Auth_AccessToken spec)))
+      (is (not (contains? spec :uid)))
+      (is (not (contains? spec :pwd)))
+      (is (not (contains? spec :OAuth2ClientId)))
+      (is (not (contains? spec :OAuth2Secret)))
+      (is (not (contains? spec :password))))))
 
 (deftest connection-details->spec-wif-file-path-wins-test
   (testing "file path wins over inline token; trailing newline is stripped"
@@ -611,6 +632,93 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed" (spec))))
         (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))]
           (is (= "from-file" (:Auth_AccessToken (spec)))))))))
+
+(deftest connection-details->spec-wif-provider-aws-test
+  (testing "WIF provider AWS reads AWS_WEB_IDENTITY_TOKEN_FILE and emits trimmed contents as Auth_AccessToken"
+    (mt/with-temp-file [tok-path "aws-wif-token"]
+      (spit tok-path "aws-jwt\n")
+      (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))
+                                    "AWS_WEB_IDENTITY_TOKEN_FILE" tok-path]
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :databricks
+                    (assoc wif-base-details :wif-provider "AWS"))]
+          (is (= "aws-jwt" (:Auth_AccessToken spec)))
+          (is (= 11 (:AuthMech spec)))
+          (is (= 0 (:Auth_Flow spec))))))))
+
+(deftest connection-details->spec-wif-provider-azure-test
+  (testing "WIF provider AZURE reads AZURE_FEDERATED_TOKEN_FILE and emits trimmed contents as Auth_AccessToken"
+    (mt/with-temp-file [tok-path "azure-wif-token"]
+      (spit tok-path "azure-jwt\n")
+      (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))
+                                    "AZURE_FEDERATED_TOKEN_FILE" tok-path]
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :databricks
+                    (assoc wif-base-details :wif-provider "AZURE"))]
+          (is (= "azure-jwt" (:Auth_AccessToken spec))))))))
+
+(deftest connection-details->spec-wif-provider-ignores-oidc-fields-test
+  (testing "non-OIDC provider ignores :wif-token and :wif-token-file-path"
+    (mt/with-temp-file [tok-path "aws-wif-token"]
+      (spit tok-path "from-aws-env")
+      (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))
+                                    "AWS_WEB_IDENTITY_TOKEN_FILE" tok-path]
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :databricks
+                    (assoc wif-base-details
+                           :wif-provider        "AWS"
+                           :wif-token           "ignored-inline"
+                           :wif-token-file-path "/some/other/path"))]
+          (is (= "from-aws-env" (:Auth_AccessToken spec))))))))
+
+(deftest ^:parallel connection-details->spec-wif-provider-unknown-test
+  (testing "any WIF provider that isn't exactly OIDC/AWS/AZURE is rejected"
+    (are [provider] (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"Unsupported WIF provider"
+                     (sql-jdbc.conn/connection-details->spec
+                      :databricks
+                      (assoc wif-base-details :wif-provider provider)))
+      nil
+      ""
+      "bogus"
+      "aws"
+      "Aws"
+      "Azure"
+      "azure")))
+
+(deftest connection-details->spec-wif-hosted-rejects-ambient-providers-test
+  (testing "on Metabase Cloud, ambient WIF providers are not allowed"
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (doseq [provider ["AWS" "AZURE"]]
+        (testing provider
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"not available on Metabase Cloud"
+               (sql-jdbc.conn/connection-details->spec
+                :databricks
+                (assoc wif-base-details :wif-provider provider))))))))
+  (testing "OIDC with an explicit token is still allowed on Metabase Cloud"
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :databricks
+                  (assoc wif-base-details :wif-provider "OIDC" :wif-token "eyJhbGciOi.jwt.sig"))]
+        (is (= "eyJhbGciOi.jwt.sig" (:Auth_AccessToken spec)))
+        (is (= 11 (:AuthMech spec)))
+        (is (= 0 (:Auth_Flow spec)))))))
+
+(deftest wif-provider-options-hidden-when-hosted-test
+  (let [wif-provider-values
+        (fn [] (->> (:details-fields (:databricks (driver.u/available-drivers-info)))
+                    (m/find-first #(= "wif-provider" (:name %)))
+                    :options
+                    (mapv :value)))]
+    (testing "on Metabase Cloud, ambient options are stripped from the wif-provider select"
+      (mt/with-premium-features #{:hosting}
+        (is (= ["OIDC"] (wif-provider-values)))))
+    (testing "off Metabase Cloud, OIDC + AWS + AZURE are offered"
+      (mt/with-premium-features #{}
+        (is (= ["OIDC" "AWS" "AZURE"] (wif-provider-values)))))))
 
 (defn- fake-jwt
   "A parseable (but not verifiable) JWT with `claims` as the payload."
@@ -744,6 +852,7 @@
           :http-path     (tx/db-test-env-var-or-throw :databricks :http-path)
           :catalog       (tx/db-test-env-var-or-throw :databricks :catalog)
           :auth-mode     "wif"
+          :wif-provider  "OIDC"
           :wif-client-id (tx/db-test-env-var-or-throw :databricks :wif-user)}
          token-source))
 
@@ -772,6 +881,41 @@
               (let [spec (sql-jdbc.conn/connection-details->spec :databricks details)
                     rows (jdbc/query spec ["SELECT current_user() AS user"])]
                 (is (= [{:user wif-user}] rows))))))))))
+
+(deftest ^:synchronized databricks-wif-live-ambient-file-test
+  ;; Exercises the AWS/AZURE env-var → file → Auth_AccessToken dispatch end-to-end. The federated
+  ;; token is still a GH OIDC token (same federation policy as databricks-wif-live-test); this is
+  ;; NOT a test of real AKS/EKS cluster-issued tokens, only of Metabase's file-based dispatch.
+  (mt/test-driver
+    :databricks
+    (when-let [wif-user (wif-user-or-skip)]
+      (let [audience (tx/db-test-env-var-or-throw :databricks :wif-audience)]
+        (when-let [token (or (mint-github-actions-oidc-token audience)
+                             (some-> (tx/db-test-env-var :databricks :wif-token-file)
+                                     slurp
+                                     str/trim))]
+          (letfn [(check [provider]
+                    (let [details (assoc (wif-live-details-with-token {}) :wif-provider provider)
+                          spec    (sql-jdbc.conn/connection-details->spec :databricks details)]
+                      (testing "spec carries the token sourced from the ambient file"
+                        (is (= token (:Auth_AccessToken spec))))
+                      (testing "can-connect? via ambient WIF"
+                        (is (true? (driver/can-connect? :databricks details))))
+                      (testing "session identifies as the WIF service principal"
+                        (let [rows (jdbc/query spec ["SELECT current_user() AS user"])]
+                          (is (= [{:user wif-user}] rows))))))]
+            (testing "AWS"
+              (mt/with-temp-file [tok-file "wif-ambient-aws"]
+                (spit tok-file token)
+                (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-file))
+                                              "AWS_WEB_IDENTITY_TOKEN_FILE" tok-file]
+                  (check "AWS"))))
+            (testing "AZURE"
+              (mt/with-temp-file [tok-file "wif-ambient-azure"]
+                (spit tok-file token)
+                (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-file))
+                                              "AZURE_FEDERATED_TOKEN_FILE" tok-file]
+                  (check "AZURE"))))))))))
 
 (deftest ^:parallel mulit-line-comment-test
   (mt/test-driver :databricks

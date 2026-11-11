@@ -55,11 +55,7 @@
              [400 "Bookmark already exists"])
   (bookmarks.db/insert-bookmark! model id api/*current-user-id*))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:model/:id"
+(api.macros/defendpoint :delete "/:model/:id" :- ::api/generic-204-no-content
   "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id."
   [{:keys [model id]} :- [:map {:closed true}
                           [:model Models]
@@ -68,11 +64,7 @@
   (bookmarks.db/delete-bookmark! model id api/*current-user-id*)
   api/generic-204-no-content)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/ordering"
+(api.macros/defendpoint :put "/ordering" :- ::api/generic-204-no-content
   "Sets the order of bookmarks for user."
   [_route-params
    _query-params

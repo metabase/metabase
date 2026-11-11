@@ -43,6 +43,7 @@
    (com.google.common.cache Cache)
    (com.mchange.v2.c3p0 C3P0ProxyConnection ComboPooledDataSource DataSources)
    (java.sql DriverManager)
+   (org.apache.sshd.client SshClient)
    (org.h2.tools Server)))
 
 (set! *warn-on-reflection* true)
@@ -743,6 +744,42 @@
         (ssh/close-tunnel! (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database (mt/db))))
         ;; check the query again; the tunnel should have been reestablished
         (check-row)))))
+
+;; H2 only tunnels a `tcp://` connection that already has an open tunnel, so this driver opens one the way every other
+;; JDBC driver does
+(driver/register! ::tunneled-h2, :parent :h2)
+
+(defmethod driver/incorporate-ssh-tunnel-details ::tunneled-h2
+  [driver details]
+  ((get-method driver/incorporate-ssh-tunnel-details :sql-jdbc) driver details))
+
+(deftest ^:synchronized destroy-pool-stops-dedicated-ssh-client-test
+  (testing "destroying a pool stops the SSH client made for its tunnel's known hosts"
+    (let [port        ssh-test/ssh-mock-server-with-password-port
+          known-hosts (#'ssh-test/server-known-hosts-line (#'ssh-test/get-server-by-port port) "127.0.0.1" port)
+          clients     (atom [])
+          original    (mt/original-fn #'ssh/include-ssh-tunnel!)]
+      (mt/with-temp [:model/Database database {:engine  ::tunneled-h2
+                                               :details {:db                 "mem:destroy_pool_ssh_client_test"
+                                                         :host               "127.0.0.1"
+                                                         :port               9092
+                                                         :tunnel-enabled     true
+                                                         :tunnel-host        "127.0.0.1"
+                                                         :tunnel-port        port
+                                                         :tunnel-auth-option "password"
+                                                         :tunnel-user        ssh-test/ssh-username
+                                                         :tunnel-pass        ssh-test/ssh-password
+                                                         :tunnel-known-hosts known-hosts}}]
+        (mt/with-dynamic-fn-redefs [ssh/include-ssh-tunnel! (fn [details]
+                                                              (u/prog1 (original details)
+                                                                (swap! clients conj (:tunnel-client <>))))]
+          (let [pool-spec (#'sql-jdbc.conn/create-pool! (driver.u/ensure-lib-database database))]
+            (try
+              (is (=? [#(SshClient/.isStarted %)] @clients))
+              (#'sql-jdbc.conn/destroy-pool! (:id database) pool-spec)
+              (is (=? [#(not (SshClient/.isStarted %))] @clients))
+              (finally
+                (run! SshClient/.stop @clients)))))))))
 
 (deftest test-ssh-tunnel-connection-h2
   (testing (str "We need a customized version of this test for H2, because H2 requires bringing up its TCP server to tunnel into. "

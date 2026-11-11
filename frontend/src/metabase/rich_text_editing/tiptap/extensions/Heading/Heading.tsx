@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { NodeViewProps } from "@tiptap/core";
 import { Heading, type HeadingOptions } from "@tiptap/extension-heading";
 import { NodeViewContent, ReactNodeViewRenderer } from "@tiptap/react";

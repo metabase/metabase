@@ -309,15 +309,7 @@ describe("scenarios > joins", () => {
           query: {
             "source-table": `card__${id}`,
             aggregation: [["count"]],
-            breakout: [
-              [
-                "field",
-                PRODUCTS.CATEGORY,
-                {
-                  "source-field": ORDERS.PRODUCT_ID,
-                },
-              ],
-            ],
+            breakout: [["field", "CATEGORY", { "base-type": "type/Text" }]],
           },
           display: "bar",
         };
@@ -336,7 +328,7 @@ describe("scenarios > joins", () => {
 
         cy.findByTestId("qb-filters-panel").should(
           "contain",
-          "Orders → Category is Doohickey",
+          "Product → Category is Doohickey",
         );
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
         cy.findAllByTestId("header-cell")

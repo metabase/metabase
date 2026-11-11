@@ -2,6 +2,7 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
   createMockCard,
   createMockField,
@@ -33,7 +34,7 @@ describe("parameters/utils/cards", () => {
         quantity: {
           id: "tag-id",
           type: "dimension",
-          dimension: ORDERS.QUANTITY,
+          "field-id": ORDERS.QUANTITY,
           "widget-type": "number/=",
         },
       },
@@ -57,7 +58,7 @@ describe("parameters/utils/cards", () => {
 
         expect(dateUiParameter).toMatchObject({
           id: dateParameter.id,
-          fields: [firstField, secondField],
+          fields: [firstField, secondField].map(getParameterFieldInfo),
           hasVariableTemplateTagTarget: false,
         });
         expect(variableUiParameter).toMatchObject({
@@ -83,7 +84,7 @@ describe("parameters/utils/cards", () => {
 
         expect(dateUiParameter).toMatchObject({
           id: dateParameter.id,
-          fields: [field],
+          fields: [getParameterFieldInfo(field)],
           hasVariableTemplateTagTarget: false,
         });
       });
@@ -143,7 +144,7 @@ describe("parameters/utils/cards", () => {
 
         expect(quantityUiParameter).toMatchObject({
           id: "tag-id",
-          fields: [SAMPLE_METADATA.field(ORDERS.QUANTITY)],
+          fields: [expect.objectContaining({ id: ORDERS.QUANTITY })],
           hasVariableTemplateTagTarget: false,
         });
       });
@@ -163,7 +164,7 @@ describe("parameters/utils/cards", () => {
 
         expect(quantityUiParameter).toMatchObject({
           id: "tag-id",
-          fields: [SAMPLE_METADATA.field(ORDERS.QUANTITY)],
+          fields: [expect.objectContaining({ id: ORDERS.QUANTITY })],
           hasVariableTemplateTagTarget: false,
         });
       });

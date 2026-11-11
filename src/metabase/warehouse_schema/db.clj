@@ -6,6 +6,8 @@
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -15,6 +17,22 @@
 (def field-order-rule
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
+
+(mu/defn synced-field-user-settings-clause :- [:fn vector?]
+  "The clause over the FieldUserSettings table aliased `alias` selecting the settings of synced tables' fields."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  [:in (u/qualified-key alias :field_id) ^:allow-subquery {:select [:f.id]
+                                                           :from   [[(t2/table-name :model/Field) :f]]
+                                                           :where  (remote-sync/synced-fk-clause :f :table_id :model/TableUserSettings opts)}])
+
+(mu/defn synced-table-user-settings-clause :- [:fn vector?]
+  "The clause over the TableUserSettings table aliased `alias` selecting the published tables remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  [:and
+   [:= (u/qualified-key alias :is_published) true]
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn field
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
@@ -515,11 +533,6 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn databases-by-id
-  "A map of ID to ::warehouses.schema/database for `database-ids`."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-pk->fn identity :model/Database :id [:in database-ids]))
-
 (mu/defn database-engine
   "The engine of the ::warehouses.schema/database with `database-id`."
   [database-id :- ::lib.schema.id/database]
@@ -532,33 +545,7 @@
 
 ;;; ---------------------------------------------- Other models ----------------------------------------------
 
-(mu/defn collections
-  "The Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Collection :id [:in collection-ids]))
-
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
-
-(mu/defn cards-with-moderated-status
-  "The query-metadata columns of the Cards with `card-ids`, with their latest moderation status."
-  [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
-  (t2/select :model/Card
-             {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
-                          :c.description :c.collection_id :c.database_id :c.type
-                          :c.source_card_id :c.created_at :c.entity_id :c.card_schema
-                          ;; required alongside :card_schema for the Card schema upgrade
-                          :c.dimensions :c.dimension_mappings
-                          [:r.status :moderated_status]]
-              :from      [[:report_card :c]]
-              :left-join [[^:allow-subquery {:select   [:moderated_item_id :status]
-                                             :from     [:moderation_review]
-                                             :where    [:and
-                                                        [:= :moderated_item_type "card"]
-                                                        [:= :most_recent true]]
-                                             :order-by [[:id :desc]]
-                                             :limit    1} :r]
-                          [:= :r.moderated_item_id :c.id]]
-              :where     [:in :c.id card-ids]}))

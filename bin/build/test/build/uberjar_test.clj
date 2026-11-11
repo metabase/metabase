@@ -48,7 +48,7 @@
 
 (deftest class-file-conflicts-test
   (testing "No unexpected class file conflicts in the EE uberjar"
-    ;; Takes ~2 minutes — runs b/uber without AOT or resources
+    ;; Builds an uberjar without AOT or resources, which takes a few seconds
     (let [conflicts    (uberjar/detect-class-conflicts @basis)
           prefixes     (conflicting-prefixes conflicts)
           unexpected   (sort (remove prefix-matches? prefixes))]

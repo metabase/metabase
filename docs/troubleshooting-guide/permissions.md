@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting permissions
+summary: Work out whether someone's wrong level of access comes from their groups, collection permissions, or data permissions.
 ---
 
 # Troubleshooting permissions

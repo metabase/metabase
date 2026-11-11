@@ -23,7 +23,7 @@ export function DataAppActionDependenciesPage() {
       <DataAppActionHeader app={app} action={action} />
       <ActionDependenciesContent
         action={action}
-        baseUrl={Urls.dataStudioDataAppActionDependencies(app.name, action.id)}
+        baseUrl={Urls.dataStudioDataAppActionDependencies(app.slug, action.id)}
       />
     </PageContainer>
   );

@@ -534,7 +534,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       name: "createdAt",
       id: "ae3bd89b-1b94-47db-9020-8ee74afdb67a",
       "display-name": "CreatedAt",
-      dimension: ["field", PRODUCTS.CREATED_AT, null],
+      "field-id": PRODUCTS.CREATED_AT,
       "widget-type": "date/month-year",
     };
     const questionDetails = {
@@ -764,7 +764,7 @@ describe("issue 20438", () => {
           name: "CATEGORY",
           "display-name": "Category",
           type: "dimension",
-          dimension: ["field", PRODUCTS.CATEGORY, null],
+          "field-id": PRODUCTS.CATEGORY,
           "widget-type": "string/=",
           default: null,
         },

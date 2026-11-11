@@ -27,6 +27,8 @@
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
@@ -215,7 +217,7 @@
                      json/decode))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
+                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
                      (#'mi/migrate-viz-settings)
                      walk/stringify-keys)
                  (-> (t2/query-one {:select [:visualization_settings]
@@ -225,14 +227,14 @@
                      json/decode))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
+                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
                      (#'mi/migrate-viz-settings))
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})
                      :visualization_settings
                      json/decode
-                     mi/normalize-visualization-settings
+                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
                      (#'mi/migrate-viz-settings)))))))))
 
 (deftest ^:mb/old-migrations-test migrate-legacy-result-metadata-field-refs-test
@@ -668,7 +670,7 @@
                      (get "visualization_settings")))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
+                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
                      (#'mi/migrate-viz-settings)
                      walk/stringify-keys)
                  (-> (t2/query-one {:select [:object]
@@ -679,7 +681,7 @@
                      (get "visualization_settings")))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
+                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
                      (#'mi/migrate-viz-settings))
                  (-> (t2/query-one {:select [:object]
                                     :from   [:revision]
@@ -687,7 +689,7 @@
                      :object
                      json/decode
                      (get "visualization_settings")
-                     mi/normalize-visualization-settings
+                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
                      (#'mi/migrate-viz-settings)))))))))
 
 (deftest ^:mb/old-migrations-test revision-add-join-alias-to-column-settings-field-refs-test
@@ -814,7 +816,7 @@
                      json/decode))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
+                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
                      (#'mi/migrate-viz-settings)
                      walk/stringify-keys)
                  (-> (t2/query-one {:select [:visualization_settings]
@@ -824,14 +826,14 @@
                      json/decode))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
+                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
                      (#'mi/migrate-viz-settings))
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_dashboardcard]
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
                      json/decode
-                     mi/normalize-visualization-settings
+                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
                      (#'mi/migrate-viz-settings)))))))))
 
 (deftest ^:mb/old-migrations-test add-join-alias-to-dashboard-card-visualization-settings-field-refs-test
@@ -956,7 +958,7 @@
                      (get-in ["cards" 0 "visualization_settings"])))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
+                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
                      (#'mi/migrate-viz-settings)
                      walk/stringify-keys)
                  (-> (t2/query-one {:select [:object]
@@ -967,7 +969,7 @@
                      (get-in ["cards" 0 "visualization_settings"])))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
-                     mi/normalize-visualization-settings
+                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
                      (#'mi/migrate-viz-settings))
                  (-> (t2/query-one {:select [:object]
                                     :from   [:revision]
@@ -975,7 +977,7 @@
                      :object
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])
-                     mi/normalize-visualization-settings
+                     (->> (lib/normalize ::lib.schema.visualization-settings/visualization-settings))
                      (#'mi/migrate-viz-settings)))))))))
 
 (deftest ^:mb/old-migrations-test revision-add-join-alias-to-dashboard-card-column-settings-field-refs-test

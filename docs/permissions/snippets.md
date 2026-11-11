@@ -1,5 +1,6 @@
 ---
 title: Snippet folder permissions
+summary: Organize SQL snippets into folders and control which groups can use and edit them.
 redirect_from:
   - /docs/latest/enterprise-guide/sql-snippets
 ---

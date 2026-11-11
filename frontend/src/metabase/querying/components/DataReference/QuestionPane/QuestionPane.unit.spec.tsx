@@ -38,6 +38,7 @@ const setup = async ({ card }: SetupOpts) => {
     databases: [createSampleDatabase()],
     tables: [],
     fields: [],
+    cards: [],
   });
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root", name: "Our analytics" })],

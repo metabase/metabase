@@ -66,8 +66,8 @@ describe("CloudPanel", () => {
 
     // should see the progress bar update as progress increases
     for (const { progress } of migrationProgressResponses) {
-      await waitFor(async () => {
-        expect(await screen.findByRole("progressbar")).toHaveAttribute(
+      await waitFor(() => {
+        expect(screen.getByRole("progressbar")).toHaveAttribute(
           "aria-valuenow",
           `${progress}`,
         );

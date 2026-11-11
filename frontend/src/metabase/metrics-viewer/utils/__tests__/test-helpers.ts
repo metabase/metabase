@@ -1,7 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   createMetricMetadata,
   setupDefinition,
@@ -115,7 +115,7 @@ export const GEO_DIM_IDX = {
 export { createMetricMetadata, setupDefinition };
 
 export function setupDefinitionWithBreakout(
-  metadata: Metadata,
+  metadata: JsMetadata,
   metricId: number,
   dimensionIndex: number,
 ): LibMetric.MetricDefinition {
@@ -216,7 +216,7 @@ export const measureMetadata = createMockMetadata({
 });
 
 export function setupMeasureDefinition(
-  metadata: Metadata,
+  metadata: JsMetadata,
   measureId: number,
 ): LibMetric.MetricDefinition {
   const provider = LibMetric.metadataProvider(metadata);
@@ -228,7 +228,7 @@ export function setupMeasureDefinition(
 }
 
 export function setupMeasureDefinitionWithBreakout(
-  metadata: Metadata,
+  metadata: JsMetadata,
   measureId: number,
   dimensionIndex: number,
 ): LibMetric.MetricDefinition {

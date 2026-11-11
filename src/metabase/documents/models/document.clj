@@ -2,13 +2,13 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -16,6 +16,7 @@
    [metabase.queries.core :as card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
@@ -179,7 +180,7 @@
    [:parameter_mappings {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:description {:optional true} [:maybe ms/NonBlankString]]
    [:display ms/NonBlankString]
-   [:visualization_settings ms/VisualizationSettings]
+   [:visualization_settings ::lib.schema.visualization-settings/visualization-settings]
    [:result_metadata {:optional true} [:maybe ::queries.schema/card.result-metadata]]
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]
    [:source_card_id {:optional true} [:maybe ms/PositiveInt]]])
@@ -369,9 +370,7 @@
                              ;; collection permissions *and* the content gate, and the gate adjudicates the
                              ;; warehouse data the body embeds, so a document the creator may not read must not
                              ;; come back rendered.
-                             (u/prog1 (get-document document-id)
-                               (when (collections/remote-synced-collection? (:collection_id <>))
-                                 (collections/check-non-remote-synced-dependencies <>)))))]
+                             (get-document document-id)))]
     ;; Publish event after successful creation
     (events/publish-event! :event/document-create
                            {:object created-document
@@ -431,8 +430,7 @@
                                               (contains? body :document))
                                          (assoc :is_placeholder false)))
         (when (seq pairings)
-          (card/carry-pairings-for-document! document-id pairings)))
-      (collections/check-for-remote-sync-update existing-document))
+          (card/carry-pairings-for-document! document-id pairings))))
     (let [updated-document (hydrate-document document-id)]
       ;; Publish appropriate events
       (if (:archived document-updates)
@@ -758,3 +756,7 @@
                        (for [[model-name id] (linked-entities document)]
                          [(keyword "model" model-name) id]))))
         documents))
+
+(defmethod remote-sync/spec :model/Document
+  [_model]
+  {:synced-filter-clause documents.db/synced-documents-clause})

@@ -220,10 +220,8 @@
   (t2/update! :model/Pulse {:dashboard_id dashboard-id} (assoc changes :updated_at :updated_at)))
 
 (mu/defn pulse-cards-for-pulses
-  "The Cards of the Pulses with `pulse-ids` together with their PulseCard options, in position order. Excludes
-  archived Cards unless `include-archived?`."
-  [pulse-ids         :- [:sequential ::lib.schema.id/pulse]
-   include-archived? :- :boolean]
+  "The non-archived Cards of the Pulses with `pulse-ids` together with their PulseCard options, in position order."
+  [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
   (t2/select
    :model/Card
    {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.format_rows :pc.pivot_results
@@ -234,7 +232,7 @@
     :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
     :where     [:and
                 [:in :p.id pulse-ids]
-                (when-not include-archived? [:= :c.archived false])]
+                [:= :c.archived false]]
     :order-by [[:pc.position :asc]]}))
 
 (mu/defn pulse-card-refs

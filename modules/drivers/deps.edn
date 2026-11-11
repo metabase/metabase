@@ -1,5 +1,4 @@
-{
- ;; we have to copy over the Maven repos used for the Athena and Redshift drivers to here as well -- this is
+{;; we have to copy over the Maven repos used for the Athena and Redshift drivers to here as well -- this is
  ;; apparently done on purpose, as a security thing. See
  ;; https://ask.clojure.org/index.php/10726/deps-manifest-dependencies-respect-repos-dependent-project
  :mvn/repos
@@ -14,6 +13,7 @@
   metabase/druid-jdbc         {:local/root "druid-jdbc"}
   metabase/hive-like          {:local/root "hive-like"}
   metabase/mongo              {:local/root "mongo"}
+  metabase/motherduck         {:local/root "motherduck"}
   metabase/oracle             {:local/root "oracle"}
   metabase/presto-jdbc        {:local/root "presto-jdbc"}
   metabase/redshift           {:local/root "redshift"}

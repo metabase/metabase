@@ -1096,15 +1096,13 @@
                    (log/warnf t "destroy-workspace-isolation! failed for %s during password-leak test cleanup"
                               driver)))))))))
 
-(deftest ^:synchronized reprovision-resets-workspace-password-test
-  ;; A workspace user can survive a failed teardown (the row is kept and later
-  ;; re-provisioned). Identifiers are deterministic but the password is random
-  ;; per provisioning attempt, so init must reset the surviving user's password
-  ;; — engines whose `CREATE USER IF NOT EXISTS` silently no-ops need an
-  ;; explicit ALTER, or the persisted password stops matching the warehouse.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
-                           (mt/normal-drivers-with-feature :workspace))
-    (testing "re-running init for the same workspace id resets the user's password"
+(deftest ^:synchronized reinit-refuses-the-surviving-user-test
+  ;; Identifiers are deterministic, so a second init for the same workspace id finds the user the first one made. That
+  ;; user may belong to another parent restored from the same backup, so init refuses it with a 409 that tells the
+  ;; caller not to clean up, and leaves it as it was. A user that survived a failed teardown is removed by running
+  ;; destroy again, not by re-provisioning over it.
+  (mt/test-drivers (filter #{:postgres} (mt/normal-drivers-with-feature :workspace))
+    (testing "re-running init for the same workspace id refuses the existing user and leaves it unchanged"
       (let [driver    driver/*driver*
             database  (mt/db)
             details   (:details database)
@@ -1116,20 +1114,17 @@
             second-ws (with-isolation-details driver database workspace)]
         (try
           (driver/init-workspace-isolation! driver database first-ws)
-          (driver/init-workspace-isolation! driver database second-ws)
-          ;; MySQL: the workspace user's JDBC handshake needs access to the
-          ;; bound DB (see [[reuse-bound-db-as-input?]]).
-          (when (reuse-bound-db-as-input? driver)
-            (driver/grant-workspace-read-access! driver database second-ws
-                                                 [(-> database :details :db)]))
-          (testing "the credentials persisted by the second init authenticate"
+          (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! driver database second-ws)))]
+            (is (= {:status-code 409, :workspace/cleanup? false}
+                   (select-keys (ex-data e) [:status-code :workspace/cleanup?]))))
+          (testing "the credentials persisted by the first init still authenticate"
             (is (= [{:one 1}]
-                   (jdbc/query (workspace-user-spec driver details second-ws)
+                   (jdbc/query (workspace-user-spec driver details first-ws)
                                ["SELECT 1 AS one"]))))
           (finally
-            (try (driver/destroy-workspace-isolation! driver database second-ws)
+            (try (driver/destroy-workspace-isolation! driver database first-ws)
                  (catch Throwable t
-                   (log/warnf t "destroy-workspace-isolation! failed for %s during password-reset test cleanup"
+                   (log/warnf t "destroy-workspace-isolation! failed for %s during re-init test cleanup"
                               driver)))))))))
 
 (deftest ^:synchronized grant-failure-is-not-a-batch-envelope-test

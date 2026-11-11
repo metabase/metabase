@@ -5,26 +5,22 @@ const DataAppLink: ({
   onClick,
   target,
   rel,
+  className,
   ...rest
 }: DataAppLinkProps) => JSX.Element;
 ```
 
-Internal-only navigation link inside a data app.
-
-Renders a plain anchor rather than a router `<Link>`: a data app is mounted
-outside the app's route tree, so it has no router context to read.
-
-The `href` is the app's page in Metabase, so opening the link in a new tab or
-copying its address lands on the app rather than on its iframe, which refuses
-to load as a top-level page. A plain click navigates inside the app.
+Navigates inside a Data App without requiring a router context.
+Embedded apps use a button because a standalone tab cannot obtain the host's
+credentials. Internal apps use links to the app's regular Metabase page.
 
 ## Parameters
 
 <!-- [<snippet parameters>] -->
 
-| Parameter                                         | Type                                                                     |
-| :------------------------------------------------ | :----------------------------------------------------------------------- |
-| `{ to, children, onClick, target, rel, ...rest }` | [`DataAppLinkProps`](/docs/latest/embedding/sdk/api/DataAppLinkProps.md) |
+| Parameter                                                    | Type                                                                     |
+| :----------------------------------------------------------- | :----------------------------------------------------------------------- |
+| `{ to, children, onClick, target, rel, className, ...rest }` | [`DataAppLinkProps`](/docs/latest/embedding/sdk/api/DataAppLinkProps.md) |
 
 <!-- [<endsnippet parameters>] -->
 
