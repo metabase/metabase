@@ -6,6 +6,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::context
@@ -20,7 +21,6 @@
    :ad-hoc
    :agent
    :cache-refresh
-   :collection
    :map-tiles
    :metabot
    :metric
@@ -77,7 +77,7 @@
    [:lens-params             {:optional true} [:maybe [:map {:closed true}
                                                        [:join_step {:optional true} [:maybe :int]]]]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]
-   [:visualization-settings  {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+   [:visualization-settings  {:optional true} [:maybe [:ref ::lib.schema.visualization-settings/visualization-settings]]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
    ;;

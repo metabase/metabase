@@ -5,8 +5,10 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.schema :as models.schema]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.schema :as permissions.schema]
@@ -48,10 +50,10 @@
    [:id                      {:optional true} [:maybe ::lib.schema.id/field]]
    [:description             {:optional true} [:maybe :string]]
    [:display_name            {:optional true} [:maybe :string]]
-   [:semantic_type           {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
+   [:semantic_type           {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:fk_target_field_id      {:optional true} [:maybe ::lib.schema.id/field]]
-   [:settings                {:optional true} [:maybe ms/VisualizationSettings]]
-   [:visibility_type         {:optional true} [:maybe [:or :keyword :string]]]
+   [:settings                {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
+   [:visibility_type         {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:lib/source_display_name {:optional true} [:maybe :string]]])
 
 (mr/def ::card
@@ -153,7 +155,7 @@
 
 (mr/def ::card.visualization-settings
   "The `:visualization_settings` column of a Card, decoded."
-  ms/VisualizationSettings)
+  ::lib.schema.visualization-settings/visualization-settings)
 
 (mr/def ::card.parameter
   "One entry of the `:parameters` column of a Card, decoded."
@@ -178,7 +180,7 @@
    [:updated_at                                {:optional true} [:maybe [:or ms/TemporalInstant [:= :updated_at]]]]
    [:name                                      {:optional true} [:maybe :string]]
    [:description                               {:optional true} [:maybe :string]]
-   [:display                                   {:optional true} [:maybe [:or :keyword :string]]]
+   [:display                                   {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:dataset_query                             {:optional true} [:maybe ::card.dataset-query]]
    [:visualization_settings                    {:optional true} [:maybe ::card.visualization-settings]]
    [:creator_id                                {:optional true} [:maybe ::lib.schema.id/user]]
@@ -199,7 +201,6 @@
    [:entity_id                                 {:optional true} [:maybe :string]]
    [:parameters                                {:optional true} [:maybe [:sequential ::card.parameter]]]
    [:parameter_mappings                        {:optional true} [:maybe [:sequential ::card.parameter-mapping]]]
-   [:collection_preview                        {:optional true} [:maybe :boolean]]
    [:metabase_version                          {:optional true} [:maybe :string]]
    [:type                                      {:optional true} [:maybe ::lib.schema.metadata/card.type]]
    [:initially_published_at                    {:optional true} [:maybe ms/TemporalInstant]]
@@ -213,7 +214,7 @@
    [:card_schema                               {:optional true} [:maybe :int]]
    [:document_id                               {:optional true} [:maybe ::lib.schema.id/document]]
    [:legacy_query                              {:optional true} [:maybe :string]]
-   [:embedding_type                            {:optional true} [:maybe [:or :keyword :string]]]
+   [:embedding_type                            {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:public_uuid_prefix                        {:optional true} [:maybe :string]]
    [:dimensions                                {:optional true} [:maybe [:sequential ::card.dimension]]]
    [:dimension_mappings                        {:optional true} [:maybe [:sequential ::card.dimension-mapping]]]
@@ -379,7 +380,7 @@
   "A Card as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib-be.schema/external-registry}
    [:merge
-    [:select-keys ::card [:archived :archived_directly :collection_position :collection_preview :description :display
+    [:select-keys ::card [:archived :archived_directly :collection_position :description :display
                           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
                           :card_schema :result_metadata :database_id :collection_id :dimensions :creator_id
                           :dataset_query :dimension_mappings :parameter_mappings :visualization_settings :parameters

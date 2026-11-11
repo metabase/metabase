@@ -1,5 +1,6 @@
 ---
 title: Data apps overview
+summary: Build a custom app on your Metabase data with an AI coding agent, with its own pages and layout, and let people add and edit data from it.
 ---
 
 # Data apps overview

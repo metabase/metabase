@@ -4,23 +4,20 @@ import { t } from "ttag";
 import { LabelWithInfo } from "metabase/common/components/LabelWithInfo";
 import { SchemaAndTableDataSelector } from "metabase/querying/common/components/DataSelector";
 import { Group, Switch } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { TableId, TemplateTag } from "metabase-types/api";
+import type { DatabaseId, TableId, TemplateTag } from "metabase-types/api";
 
 import { ContainerLabel, ErrorSpan, InputContainer } from "./TagEditorParam";
 
 type TableMappingSelectProps = {
   tag: TemplateTag;
-  database?: Database | null;
-  databases: Database[];
+  databaseId: DatabaseId | null;
   onChange: (tableId: TableId) => void;
   onChangeEmitAlias: (emitAlias: boolean) => void;
 };
 
 export function TableMappingSelect({
   tag,
-  database,
-  databases,
+  databaseId,
   onChange,
   onChangeEmitAlias,
 }: TableMappingSelectProps) {
@@ -38,8 +35,7 @@ export function TableMappingSelect({
           </Group>
         </ContainerLabel>
         <SchemaAndTableDataSelector
-          databases={databases}
-          selectedDatabaseId={database?.id || null}
+          selectedDatabaseId={databaseId}
           selectedTableId={tableId}
           setSourceTableFn={onChange}
           isInitiallyOpen={tableId == null}

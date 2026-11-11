@@ -270,7 +270,7 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
                   options: {
                     "case-sensitive": false,
                   },
-                  dimension: ["field", PEOPLE.STATE, null],
+                  "field-id": PEOPLE.STATE,
                   default: null,
                   "widget-type": "string/contains",
                 },

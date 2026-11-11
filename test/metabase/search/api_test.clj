@@ -117,7 +117,7 @@
   [action-id]
   {:action_id     action-id
    :database_id   (mt/id)
-   :dataset_query (mt/query venues)})
+   :dataset_query (mt/native-query {:query "SELECT * FROM venues"})})
 
 (def ^:private test-collection (make-result "collection test collection"
                                             :bookmark false
@@ -1676,12 +1676,28 @@
         (is (= #{["dashboard" dash-public]
                  ["dashboard" dash-sub-public]
                  ["collection" coll-sub-public]}
-               (search :rasta "exclude"))))
+               (search :crowberto "exclude"))))
       (testing "non-admin exclude"
         (is (= #{["dashboard" dash-public]
                  ["dashboard" dash-sub-public]
                  ["collection" coll-sub-public]}
                (search :rasta "exclude"))))
+      (testing "non-admin `all` is not exposed to other users' personal collection items"
+        (let [rasta-all     (search :rasta "all")
+              crowberto-all (search :crowberto "all")
+              crowberto-items #{["dataset" model-crowberto]
+                                ["dataset" model-sub-crowberto]
+                                ["collection" coll-sub-crowberto]}
+              rasta-items   #{["card" card-rasta]
+                              ["card" card-sub-rasta]
+                              ["collection" coll-sub-rasta]}
+              public-items  #{["dashboard" dash-public]
+                              ["dashboard" dash-sub-public]
+                              ["collection" coll-sub-public]}]
+          (is (= (into rasta-items public-items) rasta-all)
+              "rasta sees only their own personal items plus public items, none of crowberto's")
+          (testing "positive control: admin with `all` sees everyone's items"
+            (is (= (into (into rasta-items crowberto-items) public-items) crowberto-all)))))
       (testing "getting models should return only models that are applied"
         (is (= #{"dashboard" "collection"}
                (get-available-models :q search-term :filter_items_in_personal_collection "exclude"))))

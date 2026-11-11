@@ -91,7 +91,6 @@
       "include_csv": false,
       "display": "line",
       "entity_id": "d4TDahfv70Lvb4PLM2_qt",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": [
           "X"

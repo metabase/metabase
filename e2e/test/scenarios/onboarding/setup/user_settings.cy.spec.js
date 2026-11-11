@@ -84,7 +84,7 @@ describe("user > settings", () => {
     cy.findByLabelText("Current password").clear().type(password);
     cy.findByLabelText("Create a password").clear().type(password);
     cy.findByLabelText("Confirm your password").clear().type(password);
-    cy.button("Save").click();
+    cy.findByRole("button", { name: /Save|Failed/ }).click();
     H.main().findByText("Success").should("be.visible");
     H.getProfileLink().click();
     H.popover().findByText("Sign out").click();

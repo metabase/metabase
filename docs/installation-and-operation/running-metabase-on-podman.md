@@ -1,5 +1,6 @@
 ---
 title: Running Metabase on Podman
+summary: Run Metabase with Podman using the official container image, either locally or in production.
 redirect_from:
   - /docs/latest/operations-guide/running-metabase-on-podman
 ---

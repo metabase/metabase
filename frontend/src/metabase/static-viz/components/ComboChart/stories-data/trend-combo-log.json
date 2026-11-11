@@ -149,7 +149,6 @@
       "include_csv": false,
       "display": "combo",
       "entity_id": "XbV9EAypfXzN29djlrJRM",
-      "collection_preview": true,
       "visualization_settings": {
         "series_settings": {
           "median": { "display": "area" },

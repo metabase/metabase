@@ -10,7 +10,6 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
@@ -40,6 +39,7 @@
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
@@ -342,20 +342,16 @@
     (when (and (seq query) (map? query))
       (merge
        ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
-       {:source_card_id (source-card-id query)}
+       {:source_card_id (source-card-id query)
+        :query_type     (if (query/query-is-native? query) :native :query)}
        (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
-         ;; TODO -- not sure `query_type` is actually used for anything important anyway
-         (let [query-type (if (query/query-is-native? query)
-                            :native
-                            :query)]
-           (merge
-            {:query_type (keyword query-type)}
-            ;; a stale table_id gets cleared when the query no longer has a source table (e.g. it was converted to
-            ;; native SQL), same as :source_card_id above
-            (when (or table-id clear-stale-table-id?)
-              {:table_id table-id})
-            (when database-id
-              {:database_id database-id})))))))))
+         (merge
+          ;; a stale table_id gets cleared when the query no longer has a source table (e.g. it was converted to
+          ;; native SQL), same as :source_card_id above
+          (when (or table-id clear-stale-table-id?)
+            {:table_id table-id})
+          (when database-id
+            {:database_id database-id}))))))))
 
 (defn- check-field-filter-fields-are-from-correct-database
   "Check that all native query Field filter parameters reference Fields belonging to the Database the query points
@@ -1059,6 +1055,7 @@
         ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
         ;; since we're removing `:ident`s; we can probably remove this now.
         (u/assoc-default :entity_id (u/generate-nano-id))
+        (u/assoc-default :type :question)
         card.metadata/populate-result-metadata
         pre-insert
         populate-query-fields
@@ -1143,10 +1140,20 @@
   (u/prog1 card
     (queries.db/move-actions-of-model! (:id card) (:collection_id card))))
 
+(defenterprise delete-card-tests!
+  "Delete the tests of the card `card-id` through Toucan, so that each test's delete hook runs. No-op in OSS."
+  metabase-enterprise.data-testing.models.card-test
+  [_card-id]
+  nil)
+
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
   [{:keys [id] :as card}]
   (pre-delete-check-sandbox-constraints card)
+  ;; The `card_test.card_id` FK is ON DELETE CASCADE, but a cascade runs no hook, and the CardTest hook is what sets the
+  ;; test id of the test's runs to null. A delete of cards that skips this hook leaves those runs' test id naming no
+  ;; test.
+  (delete-card-tests! id)
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
@@ -1295,11 +1302,11 @@
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
-                                              (u/prog1 (queries.db/insert-card! (cond-> card-data
-                                                                                  metadata
-                                                                                  (assoc :result_metadata metadata)))
-                                                (when (collections/remote-synced-collection? (:collection_id <>))
-                                                  (collections/check-non-remote-synced-dependencies <>))))]
+                                              (queries.db/insert-card!
+                                               (lib/normalize ::queries.schema/card.update
+                                                              (cond-> card-data
+                                                                metadata
+                                                                (assoc :result_metadata metadata)))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card (:size input-card-data))))
@@ -1520,7 +1527,7 @@
                                              :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id :embedding_type}
                                              :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                         :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                                        :result_metadata :collection_preview :verified-result-metadata?})]
+                                                        :result_metadata :verified-result-metadata?})]
       (assert-is-valid-dashboard-internal-update card-updates card-before-update)
       (maybe-unverify! card-before-update updated-fields actor)
       (queries.db/update-card! (:id card-before-update)
@@ -1535,7 +1542,7 @@
       (update-associated-parameters! card-before-update card-updates)
       (catch Throwable e
         (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
-    (collection/check-for-remote-sync-update card-before-update)))
+    (queries.db/card (:id card-before-update))))
 
 (defn- changed-action-events
   "The `[topic action]` pairs that announce how an update to a card changed its actions: `:event/action-delete` with
@@ -1646,6 +1653,11 @@
   [_]
   (conj collection/default-allowed-namespaces collection/data-apps-ns))
 
+(defn- model-override-keys
+  "The keys of a model's result metadata columns that a user can override, which export keeps for models."
+  []
+  (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false)))
+
 (defn- walk-export-result-metadata
   "The exported `result_metadata` of `card`, its ids replaced by what `visit` resolves them to. Native cards, models
   included, keep the keys of their columns, which can't be derived from the query without running it; other models
@@ -1669,7 +1681,7 @@
 
       (model? card)
       (mapv (fn [column]
-              (-> (select-keys column (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false)))
+              (-> (select-keys column (model-override-keys))
                   (m/update-existing :fk_target_field_id field)
                   (m/update-existing :id field)))
             result_metadata)
@@ -1678,16 +1690,19 @@
       nil)))
 
 (defn- walk-import-result-metadata
-  "The `result_metadata` of an exported card with its references replaced by what `visit` resolves them to."
+  "The `result_metadata` of an exported card with its references replaced by what `visit` resolves them to, normalized
+  like the stored column."
   [visit result-metadata]
-  (some->> result-metadata
-           (mapv (fn [column]
-                   (-> column
-                       (m/update-existing :table_id #(serialization/visit-some :model/Table % visit))
-                       (m/update-existing :id #(serialization/visit-some :model/Field % visit))
-                       (m/update-existing :field_ref #(serialization/walk-import-refs visit %))
-                       (m/update-existing :fk_target_field_id
-                                          #(if (number? %) % (serialization/visit-some :model/Field % visit))))))))
+  (cond->> (some->> result-metadata
+                    (mapv (fn [column]
+                            (-> column
+                                (m/update-existing :table_id #(serialization/visit-some :model/Table % visit))
+                                (m/update-existing :id #(serialization/visit-some :model/Field % visit))
+                                (m/update-existing :field_ref #(serialization/walk-import-refs visit %))
+                                (m/update-existing :fk_target_field_id
+                                                   #(if (number? %) % (serialization/visit-some :model/Field % visit)))))))
+    (and (some? result-metadata) (not (serialization/collecting? visit)))
+    (lib/normalize ::queries.schema/card.result-metadata)))
 
 (defn- export-database-ids
   "A transform fn exporting the Database of each card whose query doesn't name it, the only reference of an empty
@@ -1701,7 +1716,7 @@
 
 (defmethod serialization/spec :model/Card [_]
   {:schema    ::queries.schema/external-card
-   :copy      [:archived :archived_directly :collection_position :collection_preview :description :display
+   :copy      [:archived :archived_directly :collection_position :description :display
                :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name :card_schema]
    :skip      [:metabase_version :cache_invalidated_at :view_count :last_used_at :initially_published_at
                :dataset_query_metrics_v2_migration_backup :cache_ttl :legacy_query :query_type :table_id
@@ -1734,10 +1749,9 @@
                                         :import (fn [store _ xs opts]
                                                   (serialization/import-in-bulk
                                                    store xs opts metrics/walk-import-dimension-mappings))}}
-   :defaults  {:archived           false
-               :archived_directly  false
-               :collection_preview true
-               :enable_embedding   false}})
+   :defaults  {:archived          false
+               :archived_directly false
+               :enable_embedding  false}})
 
 (defn- dimension-mappings-dependencies
   "The dependencies of a Card's `:dimension_mappings`: what their targets refer to, found with `mbql`."
@@ -1899,15 +1913,19 @@
 
 (defn- overrides-stored?
   "Whether each column of `metadata`, the exported overrides of a model, matches the column of `stored` metadata at
-  its position."
+  its position in the keys a user can override."
   [metadata stored]
-  (and (= (count metadata) (count stored))
-       (every? true? (map (fn [column stored-column] (= column (select-keys stored-column (keys column))))
-                          metadata stored))))
+  (let [ks (model-override-keys)]
+    (and (= (count metadata) (count stored))
+         (every? true? (map (fn [column stored-column]
+                              (let [column (select-keys column ks)]
+                                (= column (select-keys stored-column (keys column)))))
+                            metadata stored)))))
 
 (defn- with-model-metadata
   "The load `item` of a Card that updates a model, without the exported overrides of its metadata when the local row
-  stores them, or with them applied to freshly inferred metadata, as an update of its query would store them."
+  stores them, with the exported metadata of a native query, whose columns can't be inferred without running it, or
+  with the overrides applied to freshly inferred metadata, as an update of its query would store them."
   [{:keys [row local] :as item}]
   (let [{query :dataset_query metadata :result_metadata card-type :type} row]
     (cond
@@ -1917,16 +1935,26 @@
       (overrides-stored? metadata (:result_metadata local))
       (update item :row dissoc :result_metadata)
 
+      (lib/native-only-query? query)
+      item
+
       :else
-      (assoc-in item [:row :result_metadata]
-                (or (card.metadata/infer-metadata-with-model-overrides query row) metadata)))))
+      (let [overrides (mapv #(select-keys % (model-override-keys)) metadata)]
+        (assoc-in item [:row :result_metadata]
+                  (or (card.metadata/infer-metadata-with-model-overrides query (assoc row :result_metadata overrides))
+                      metadata))))))
 
 (defn- keep-local-metadata
-  "The load `item` of a Card without a `:result_metadata` to import keeping the local one, which export leaves out of
-  the cards whose metadata the query derives."
+  "The load `item` of a Card without a `:result_metadata` or `:database_id` to import keeping the local ones, which
+  export leaves out of the cards whose query derives them."
   [item]
   (cond-> item
-    (nil? (get-in item [:row :result_metadata])) (update :row dissoc :result_metadata)))
+    (nil? (get-in item [:row :result_metadata])) (update :row dissoc :result_metadata)
+    (nil? (get-in item [:row :database_id]))     (update :row dissoc :database_id)))
 
 (defmethod serialization/before-load :model/Card [_ items]
   (mapv (comp with-model-metadata keep-local-metadata) items))
+
+(defmethod remote-sync/spec :model/Card
+  [_model]
+  {:synced-filter-clause queries.db/synced-cards-clause})

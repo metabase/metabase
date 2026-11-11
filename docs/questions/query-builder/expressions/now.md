@@ -1,5 +1,6 @@
 ---
 title: Now
+summary: Get the current datetime in your report timezone, for conditional logic like flagging overdue tasks.
 ---
 
 # Now

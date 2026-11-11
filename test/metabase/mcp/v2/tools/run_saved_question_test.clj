@@ -163,7 +163,7 @@
                                                                :display-name "Category"
                                                                :type         :dimension
                                                                :widget-type  :string/=
-                                                               :dimension    [:field (mt/id :products :category) nil]}}})}]
+                                                               :field-id     (mt/id :products :category)}}})}]
       (mt/with-current-user (mt/user->id :rasta)
         (let [clean   (tool-result (call-run-saved-question
                                     {:id card-id :parameters [{:id "cat_ff" :value ["Widget" "Gadget"]}]}))

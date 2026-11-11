@@ -26,7 +26,7 @@
 
 (deftest data-app-connect-src-allowed-hosts-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {app-name :name} {:allowed_hosts ["https://api.example.com" "https://*.acme.com"]}]
+    (mt/with-temp [:model/DataApp {app-name :slug} {:allowed_hosts ["https://api.example.com" "https://*.acme.com"]}]
       (testing "the data-app iframe document's connect-src includes the app's allowed_hosts (and keeps 'self')"
         (let [cs (connect-src-for! (str "/embed/apps/" app-name))]
           (is (str/includes? cs "https://api.example.com"))
@@ -45,7 +45,7 @@
                                 "api.example.com")))))))
 
 (deftest data-app-connect-src-hosts-fn-test
-  (mt/with-temp [:model/DataApp {app-id :id app-name :name} {:allowed_hosts ["https://api.example.com"]}]
+  (mt/with-temp [:model/DataApp {app-id :id app-name :slug} {:allowed_hosts ["https://api.example.com"]}]
     (testing "with the :data-apps feature the EE impl returns the app's allowed_hosts"
       (mt/with-premium-features #{:data-apps}
         (is (= ["https://api.example.com"] (mw.security/data-app-connect-src-hosts app-name)))

@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { merge } from "icepick";
 import {
   type ReactNode,
   useCallback,
@@ -41,7 +41,6 @@ import {
   checkCanBeModel,
   getSortedModelFields,
 } from "metabase-lib/v1/metadata/utils/models";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CollectionId,
   Dataset,
@@ -253,12 +252,7 @@ function getSidebar(
   if (isShowingTemplateTagsEditor) {
     return (
       // @ts-expect-error Multiple types missing, but handled inside TagEditorSidebar
-      <TagEditorSidebar
-        {...props}
-        // Unjustified type cast. FIXME
-        query={question.legacyNativeQuery() as NativeQuery}
-        onClose={toggleTemplateTagsEditor}
-      />
+      <TagEditorSidebar {...props} onClose={toggleTemplateTagsEditor} />
     );
   }
   if (isShowingDataReference) {
@@ -390,7 +384,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
     return getInitialEditorHeight({
-      query: question.legacyNativeQuery(),
+      query: question.query(),
       availableHeight: height ?? "full",
     });
   }, [question, height]);
@@ -433,12 +427,16 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   }, [result, focusedFieldName, fields, focusFirstField, focusedField]);
 
   const inheritMappedFieldProperties = useCallback(
-    (changes: { id: FieldId | null } & Partial<Omit<DatasetColumn, "id">>) => {
+    (changes: { id: FieldId | null }) => {
       const mappedField =
         changes.id != null ? storeFields[changes.id] : undefined;
-      const inheritedProperties =
-        mappedField && getWritableColumnProperties(mappedField, isNative);
-      return mappedField ? merge(inheritedProperties, changes) : changes;
+      if (!mappedField) {
+        return changes;
+      }
+      return {
+        ...getWritableColumnProperties(mappedField, isNative),
+        ...changes,
+      };
     },
     [storeFields, isNative],
   );

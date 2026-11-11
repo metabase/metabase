@@ -1,6 +1,6 @@
 import { cardApi, dashboardApi, embedApi, publicApi } from "metabase/api";
-import { isNative } from "metabase/common/utils/card";
 import type { Dispatch } from "metabase/redux/store";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
@@ -47,16 +47,19 @@ const PIVOT_ENDPOINTS = new Map<unknown, unknown>([
  * dedicated mirror endpoints that take `pivot_rows`/`pivot_cols`.
  */
 export function shouldUsePivotEndpoint(question: Question): boolean {
-  // Short-circuit on the cheap, always-safe checks first. `question.database()`
-  // resolves the database via Lib, which throws for query types Lib doesn't
+  // Short-circuit on the cheap, always-safe checks first. `question.query()`
+  // throws for query types Lib doesn't
   // support (e.g. the `internal` queries the audit pages run), so it must not
   // be evaluated for non-pivot/native cards.
-  if (question.display() !== "pivot" || isNative(question.card())) {
+  if (question.display() !== "pivot" || question.isNative()) {
     return false;
   }
-  const database = question.database();
+  const features = Lib.databaseDisplayInfo(question.query())?.features;
   // if we have metadata for the db, check if it supports pivots
-  return !database || database.supportsPivots();
+  return (
+    features == null ||
+    (features.includes("expressions") && features.includes("left-join"))
+  );
 }
 
 /**
