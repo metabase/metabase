@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.field-visibility-test
   "Tests for behavior of fields with different visibility settings."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.field-visibility-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -71,6 +72,7 @@
                    (qp.test-util/rows-and-cols
                     (qp/process-query query))))))))))
 
+;; TODO(mbql5-migration): builds raw legacy refs to :sensitive columns, which Lib does not offer; keep on the old macro
 (deftest ^:parallel sensitive-field-explicit-ref-test
   (testing "an explicit :field ref to a :sensitive column is rejected, by ID and by name"
     (mt/with-current-user (mt/user->id :rasta)
