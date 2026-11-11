@@ -227,7 +227,7 @@
                           [:middleware     {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
                           [:ignore-cache   {:optional true} [:maybe :boolean]]
                           [:card-transform {:optional true} [:maybe ifn?]]
-                          [:withhold-goal-sources? {:optional true} [:maybe :boolean]]]]]
+                          [:signed-parameter-ids {:optional true} [:maybe [:set ::lib.schema.parameter/id]]]]]]
   ;; run this query with full superuser perms
   ;;
   ;; we actually need to bind the current user perms here twice, once so `card-api` will have the full perms when it

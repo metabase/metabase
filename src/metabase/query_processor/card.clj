@@ -385,7 +385,7 @@
   [card :- ::queries.schema/card
    export-format :- ::qp.schema/export-format
    & {:keys [parameters constraints context dashboard-id dashcard middleware qp make-run ignore-cache card-transform
-             withhold-goal-sources?]
+             signed-parameter-ids]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
@@ -402,8 +402,8 @@
                [:make-run       {:optional true} [:maybe ifn?]]
                [:ignore-cache   {:optional true} [:maybe :boolean]]
                [:card-transform {:optional true} [:maybe ifn?]]
-               ;; set by static embeds whose token signs a parameter value: goal sources run without it
-               [:withhold-goal-sources? {:optional true} [:maybe :boolean]]]]]
+               ;; set by static embeds: the parameters their token signs a value for
+               [:signed-parameter-ids {:optional true} [:maybe [:set ::lib.schema.parameter/id]]]]]]
   {:pre [(map? card) (pos-int? (:id card)) (u/maybe? sequential? parameters)]}
   (let [card        (api/read-check card)
         stored-query (:dataset_query card)
@@ -430,7 +430,11 @@
                      (fn [goal-card goal-query]
                        (-> (cache-strategy goal-card dashboard-id)
                            (enrich-strategy goal-query)))
-                     :withhold? withhold-goal-sources?)
+                     ;; a goal source runs without parameter values, and a signed value is often what separates
+                     ;; tenants. Any signed value withholds the goals, wired to this card or not: an unwired card's
+                     ;; goal source can still read tenant data, and a visualizer card may be filtered through a
+                     ;; secondary source only.
+                     :withhold? (seq signed-parameter-ids))
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                         (assoc :viz-settings merged-viz)

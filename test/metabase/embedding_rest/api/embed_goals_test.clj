@@ -85,40 +85,61 @@
                      (is (= [[100]] (get-in (goal-result response goal-id) [:data :rows])))
                      (is (= 1 @runs)))))))))))))
 
+(defn- tenant-mapping [card-id]
+  {:parameter_id "_T_" :card_id card-id :target [:variable [:template-tag "tenant"]]})
+
+(defn- visualizer-settings
+  "A visualizer line chart drawing `count` from cards `card-ids`, with a goal on card `goal-id`."
+  [goal-id & card-ids]
+  {:visualization
+   {:display             "line"
+    :columnValuesMapping (into {}
+                               (map-indexed (fn [i card-id]
+                                              (let [column (str "COLUMN_" (inc i))]
+                                                [(keyword column) [{:sourceId     (str "card:" card-id)
+                                                                    :originalName "count"
+                                                                    :name         column}]])))
+                               card-ids)
+    :settings            {:graph.show_goal true :graph.goal_value (goal goal-id)}}})
+
 (deftest static-embed-dashcard-withholds-goals-for-signed-values-test
   (embed-test/with-embedding-enabled-and-new-secret-key!
     (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/native-query
                                                               {:query "SELECT COUNT(*) AS \"count\" FROM venues"})}
                    :model/Card {card-id :id} (main-card goal-id {})
+                   :model/Card {secondary-id :id} (main-card goal-id {})
                    :model/Dashboard {dash-id :id} {:enable_embedding true
                                                    :embedding_params {:tenant "locked"}
                                                    :parameters       [{:id "_T_" :name "Tenant" :slug "tenant"
                                                                        :type "number/="}]}
                    :model/DashboardCard plain {:dashboard_id       dash-id
                                                :card_id            card-id
-                                               :parameter_mappings [{:parameter_id "_T_"
-                                                                     :card_id      card-id
-                                                                     :target       [:variable
-                                                                                    [:template-tag "tenant"]]}]}
-                   :model/DashboardCard visualizer
+                                               :parameter_mappings [(tenant-mapping card-id)]}
+                   :model/DashboardCard unwired {:dashboard_id dash-id
+                                                 :card_id      card-id}
+                   :model/DashboardCard visualizer {:dashboard_id           dash-id
+                                                    :card_id                card-id
+                                                    :parameter_mappings     [(tenant-mapping card-id)]
+                                                    :visualization_settings (visualizer-settings goal-id card-id)}
+                   :model/DashboardCard {secondary-only-id :id :as secondary-only}
                    {:dashboard_id           dash-id
                     :card_id                card-id
-                    :parameter_mappings     [{:parameter_id "_T_"
-                                              :card_id      card-id
-                                              :target       [:variable [:template-tag "tenant"]]}]
-                    :visualization_settings {:visualization
-                                             {:display             "line"
-                                              :columnValuesMapping {:COLUMN_1 [{:sourceId     (str "card:" card-id)
-                                                                                :originalName "count"
-                                                                                :name         "COLUMN_1"}]}
-                                              :settings            {:graph.show_goal  true
-                                                                    :graph.goal_value (goal goal-id)}}}}]
-      (doseq [[label dashcard] {"dashcard" plain, "visualizer dashcard" visualizer}]
+                    :parameter_mappings     [(tenant-mapping secondary-id)]
+                    :visualization_settings (visualizer-settings goal-id card-id secondary-id)}
+                   :model/DashboardCardSeries _ {:dashboardcard_id secondary-only-id :card_id secondary-id}]
+      (doseq [{:keys [label dashcard rows]}
+              [{:label "dashcard", :dashcard plain, :rows [[10]]}
+               {:label "visualizer dashcard", :dashcard visualizer, :rows [[10]]}
+               ;; the signed value doesn't filter the card's query, but the goal source can still read tenant data
+               {:label "dashcard not wired to the signed filter", :dashcard unwired, :rows [[100]]}
+               ;; the goal rides on the primary card, which the signed filter doesn't reach
+               {:label "visualizer dashcard filtered through a secondary source only", :dashcard secondary-only
+                :rows [[100]]}]]
         (testing label
           (do-with-goal-runs
            (fn [runs]
              (let [response (client/client :get 202 (embed-test/dashcard-url dashcard {:params {:tenant [7]}}))]
-               (is (= [[10]] (mt/rows response)))
+               (is (= rows (mt/rows response)))
                (is (= {:status "failed" :error_type "withheld"} (goal-result response goal-id)))
                (is (zero? @runs))))))
         (testing (str label ", locked filter turned off")
