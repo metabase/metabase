@@ -368,7 +368,7 @@ describe("getDashboardDrillUrl", () => {
     expect(url).toBe("/dashboard/2?state=CA&size=L&tab=7");
   });
 
-  it("uses the tab of the clicked table dashcard's column click behavior (metabase#34447, metabase#44106)", () => {
+  it("uses the tab of the clicked table dashcard's column click behavior (metabase#34447)", () => {
     const tableDashcard = createMockDashboardCard({
       card: createMockCard({ display: "table" }),
     });

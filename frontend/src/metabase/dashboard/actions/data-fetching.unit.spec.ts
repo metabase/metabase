@@ -470,7 +470,14 @@ describe("fetchDashboard", () => {
       ],
     });
     fetchMock.get(`path:/api/embed/dashboard/${token}`, dashboard);
-    const store = setup();
+    const store = setup({
+      dashboard: createMockDashboardState({
+        linkTargets: {
+          dashboards: { 2: createMockDashboard({ id: 2 }) },
+          questions: { 3: createMockCard({ id: 3 }) },
+        },
+      }),
+    });
     await store.dispatch(
       fetchDashboard({ dashId: token, queryParams: {}, options: {} }),
     );
