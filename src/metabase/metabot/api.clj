@@ -289,6 +289,7 @@
                                      :else (:error (u/seek #(= :error (:type %)) combined-parts)))]
                 (metabot.persistence/finalize-assistant-turn!
                  assistant-msg-id combined-parts
+                 :conversation-id       conversation-id
                  :profile-id            profile-id
                  :finished?             (not aborted?)
                  :error                 error-data
