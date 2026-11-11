@@ -407,7 +407,7 @@
             :let   [table-name (ast/text column "table")]
             :when  (str/starts-with? table-name "#")]
       (ast/set-arg! column "table" (ast/identifier (str/replace table-name #"^#+" "")
-                                                    (ast/quoted? (ast/arg column "table"))))))
+                                                   (ast/quoted? (ast/arg column "table"))))))
   tree)
 
 (defn field-references
