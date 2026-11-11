@@ -457,6 +457,17 @@
       (is (str/includes? xml "type=\"notebook\""))
       (is (not (str/includes? xml "<query_results>"))))))
 
+(deftest ^:parallel markdown-table-cells-stay-in-their-column-test
+  (testing "a pipe in a column name cannot split the markdown row"
+    (is (str/includes? (llm-shape/query-result->xml {:result_columns [{:name "a|b", :type "text"}]})
+                       "| a\\|b |")))
+  (testing "a pipe or line break in a glossary term or definition cannot split the markdown row"
+    (let [xml (llm-shape/user->xml {:id       1
+                                    :name     "Ann"
+                                    :email    "a@example.com"
+                                    :glossary {"A|B" "x|y\nz"}})]
+      (is (str/includes? xml "| A\\|B | x\\|y z |")))))
+
 (deftest ^:parallel chart->xml-test
   (testing "formats chart (simplified version)"
     (let [chart {:chart-id "ch-abc-123"
@@ -854,9 +865,13 @@
     (let [metadata {:field_values []}
           xml (llm-shape/field-values-metadata->xml metadata)]
       (is (str/includes? xml "This field hasn't been sampled yet"))))
-  (testing "a pipe in a sample value is escaped so it can't break the table"
-    (let [xml (llm-shape/field-values-metadata->xml {:field_values ["a|b"]})]
-      (is (str/includes? xml "a\\|b"))))
+  (testing "a pipe or line break in a sample value can't break the table, and other text is kept as written"
+    (let [values ["a|b" "line 1\r\nline 2" "CORP\\jsmith" "Acme  \"Ltd\""]
+          xml    (llm-shape/field-values-metadata->xml {:field_values values})]
+      (is (str/includes? xml "| a\\|b |"))
+      (is (str/includes? xml "| line 1 line 2 |"))
+      (is (str/includes? xml "| CORP\\jsmith |"))
+      (is (str/includes? xml "| Acme  \"Ltd\" |"))))
   (testing "a partial list says how many values the field has, and a complete one doesn't"
     (are [value-metadata note] (= note (re-find #"This list shows [^.]+\."
                                                 (llm-shape/field-values-metadata->xml value-metadata)))

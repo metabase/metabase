@@ -517,12 +517,12 @@
        acc
        (update acc :charts merge
                (into {}
-                     (map (comp
-                           (juxt :chart_id identity)
-                           ;; The ID of a saved card is an integer, and the chart tools get charts by a string ID.
-                           (partial chart-config->chart
+                     (comp
+                      ;; The ID of a saved card is an integer, and the chart tools get charts by a string ID.
+                      (map (partial chart-config->chart
                                     (str id)
-                                    (first (extract-query-from-context-item item)))))
+                                    (first (extract-query-from-context-item item))))
+                      (u/index-by :chart_id))
                      chart_configs))))
    state
    (:user_is_viewing context)))

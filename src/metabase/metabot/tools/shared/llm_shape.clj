@@ -176,12 +176,15 @@
         (str/replace "<" "&lt;")
         (str/replace ">" "&gt;"))))
 
-(defn- escape-pipes
-  "Escape `|` so a value can't break a markdown table row.
-  Custom `:value-fn`s replace [[metabase.metabot.tmpl/markdown-table]]'s default, which does this."
-  [s]
-  (when s
-    (str/replace s "|" "\\|")))
+(defn- markdown-cell
+  "Render `v` as the text of one markdown table cell in `|safe` template output.
+  Pipes are escaped and each line break becomes a space, so the value stays in its column."
+  [v]
+  ;; The model copies these values into filters and reads them raw, so any other escape would need explaining to it.
+  (-> (str v)
+      escape-xml-content
+      (str/replace "|" "\\|")
+      (str/replace #"\r\n|\r|\n" " ")))
 
 (defn- json-cell-safe
   "Keep a JSON string valid inside a markdown table cell. Markdown `\\|` escaping is not
@@ -261,7 +264,7 @@
 
 (defn format-fields-table
   "Format fields as markdown table for LLM.
-   Matches Python render_table output format.
+   Based on Python render_table output, with cells escaped by [[markdown-cell]].
    Note: This output is used with |safe in templates, so we must escape manually."
   [fields & [{:keys [columns] :or {columns {:name          "Field Name"
                                             :field_id      "Field ID"
@@ -271,12 +274,9 @@
   (te/markdown-table
    fields columns
    {:value-fn (fn [k v]
-                (escape-pipes
-                 (escape-xml
-                  (cond
-                    (nil? v)                                  ""
-                    (and (#{:type :base-type} k) (keyword? v)) (clojure.core/name v)
-                    :else                                      (str v)))))}))
+                (markdown-cell (if (and (#{:type :base-type} k) (keyword? v))
+                                 (clojure.core/name v)
+                                 v)))}))
 
 (defn- fully-qualified-name
   "Get fully qualified name for a table."
@@ -431,6 +431,17 @@
           (str fqn " (via " table_reference ")")
           fqn)))))
 
+(defn- dimension-cell
+  "Render the value under `k` for a cell of a metric dimensions table."
+  [k v]
+  (cond
+    (nil? v)         ""
+    (keyword? v)     (markdown-cell (clojure.core/name v))
+    ;; `reference` is a JSON array the LLM copies verbatim. Keep the cell valid
+    ;; JSON by encoding pipes as `\u007c` instead of markdown `\|`.
+    (= k :reference) (json-cell-safe (escape-xml-content v))
+    :else            (markdown-cell v)))
+
 (defn format-metric-dimensions-table
   "Render a metric's dimensions with their source tables and field references.
 
@@ -452,14 +463,7 @@
         dims)
    {:name "Field Name" :field_id "Field ID" :type "Type" :source "Source table"
     :reference "Reference (copy as is if it starts with [\"field\"; else put it in a field clause)"}
-   {:value-fn (fn [k v]
-                (cond
-                  (nil? v)         ""
-                  (keyword? v)     (escape-pipes (clojure.core/name v))
-                  ;; `reference` is a JSON array the LLM copies verbatim. Keep the cell valid
-                  ;; JSON by encoding pipes as `\u007c` instead of markdown `\|`.
-                  (= k :reference) (json-cell-safe (escape-xml-content v))
-                  :else            (escape-pipes (escape-xml (str v)))))}))
+   {:value-fn dimension-cell}))
 
 (defn- format-join-required-dimensions-table
   "Like [[format-metric-dimensions-table]] but the Reference is the FULL alias-qualified field clause
@@ -471,12 +475,7 @@
    (map (fn [d] (assoc d :reference (some-> (:reference d) json/encode))) dims)
    {:name "Field Name" :field_id "Field ID" :type "Type"
     :reference "Reference (copy as is if it starts with [\"field\"; else put it in a field clause)"}
-   {:value-fn (fn [k v]
-                (cond
-                  (nil? v)         ""
-                  (keyword? v)     (escape-pipes (clojure.core/name v))
-                  (= k :reference) (json-cell-safe (escape-xml-content v))
-                  :else            (escape-pipes (escape-xml (str v)))))}))
+   {:value-fn dimension-cell}))
 
 (defn- format-metric-join-required-dimensions
   "Render the metric's FK-less join dimensions — the columns the metric reaches through an explicit
@@ -614,15 +613,15 @@
   "Format query result rows as a markdown table.
    Note: Uses |safe in template, so values must be escaped."
   [columns rows]
-  (let [header    (format-markdown-row (map :name columns))
+  (let [header    (format-markdown-row (map (comp markdown-cell :name) columns))
         data-rows (map (fn [row]
-                         (format-markdown-row (map #(escape-xml (str %)) row)))
+                         (format-markdown-row (map markdown-cell row)))
                        rows)]
     (str header "\n" (str/join "\n" data-rows) "\n")))
 
 (defn query-result->xml
   "Format query result for LLM consumption.
-   Matches Python QueryResult.llm_representation exactly."
+   Based on Python QueryResult.llm_representation, with table cells escaped."
   [{:keys [result_columns rows]}]
   (render-llm-template
    :query_results
@@ -818,13 +817,13 @@
 
 (defn user->xml
   "Format user for LLM consumption.
-   Matches Python DummyGetCurrentUserResultSchema.llm_representation exactly.
+   Based on Python DummyGetCurrentUserResultSchema.llm_representation, with glossary cells escaped.
    Note: Glossary rows are used with |safe, so we must escape manually."
   [{:keys [id name email glossary]}]
   (let [glossary-rows (when (seq glossary)
                         (str/join "\n"
                                   (map (fn [[term definition]]
-                                         (str "| " (escape-xml term) " | " (escape-xml definition) " |"))
+                                         (format-markdown-row (map markdown-cell [term definition])))
                                        glossary)))]
     (render-llm-template
      :user
@@ -938,11 +937,11 @@
 
 (defn field-values-metadata->xml
   "Format field values metadata for LLM consumption.
-   Matches Python FieldValuesMetadata.llm_representation, with notes when only some values are listed
-   or when the database couldn't be sampled for statistics.
+   Based on Python FieldValuesMetadata.llm_representation, with cells escaped by [[markdown-cell]].
+   Adds a note when only some values are listed or when the database couldn't be sampled for statistics.
    Tables use |safe in the template, so values must be escaped."
   [{:keys [field_values field_values_total has_more_values statistics statistics_unavailable]}]
-  (let [escape-value        (fn [_k v] (escape-pipes (escape-xml (str v))))
+  (let [escape-value        (fn [_k v] (markdown-cell v))
         sample-values-table (when (seq field_values)
                               (te/markdown-table
                                (map vector field_values)
@@ -952,7 +951,7 @@
         partial?            (and field_values_total
                                  (or has_more_values (< shown field_values_total)))
 
-        stats-map   (into {} (filter (fn [[_ v]] (some? v)) statistics))
+        stats-map   (u/remove-nils statistics)
         stats-table (when (seq stats-map)
                       (te/markdown-table
                        (update-keys stats-map #(->> % name (str "sample-")))

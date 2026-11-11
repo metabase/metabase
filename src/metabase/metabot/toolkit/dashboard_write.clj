@@ -113,7 +113,7 @@
   (let [stored (into {}
                      (comp (mapcat #(cons (:card %) (:series %)))
                            (remove nil?)
-                           (map (juxt :id identity)))
+                           (u/index-by :id))
                      (:dashcards dash))
         cards  (merge stored cards)]
     (-> (merge dash attrs payload)

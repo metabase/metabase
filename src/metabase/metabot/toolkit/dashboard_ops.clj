@@ -127,7 +127,7 @@
 (defn- find-row
   "The row in `(get state coll)` whose `:id` is `id`, or nil."
   [state coll id]
-  (first (filter #(= id (:id %)) (get state coll))))
+  (u/seek #(= id (:id %)) (get state coll)))
 
 (defn- insert-row
   "Append `row` to `(get state coll)`, preserving save order."
@@ -805,7 +805,7 @@
    They also include the card in each config a parameter op sends or touches, since the op may make it the source.
    The caller resolves these into the `cards` map, leaving out the ones its user cannot read."
   [dash ops]
-  (let [id->parameter (into {} (map (juxt :id identity)) (:parameters dash))
+  (let [id->parameter (u/index-by :id (:parameters dash))
         op-card-ids   (fn [op]
                         (concat (placed-card-ids op)
                                 (when (contains? parameter-ops (:op op))
@@ -856,7 +856,7 @@
 (defn- compact-op
   "The op without its null-valued keys."
   [op]
-  (into {} (remove (comp nil? val)) op))
+  (u/remove-nils op))
 
 (defn- prepared-op
   "The op at `idx`, checked against [[dashboard-op-schema/op-schema]] and then stripped of null values."

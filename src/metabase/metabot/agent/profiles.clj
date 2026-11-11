@@ -18,6 +18,7 @@
    [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -316,7 +317,7 @@
   A tool is a converted record or a var that is still the old shape; its declaration answers either
   way, which is why this no longer reads var metadata."
   [tools]
-  (into {} (map (juxt #(:name (tools.legacy/declaration-of %)) identity) tools)))
+  (u/index-by #(:name (tools.legacy/declaration-of %)) tools))
 
 ;;; API
 
