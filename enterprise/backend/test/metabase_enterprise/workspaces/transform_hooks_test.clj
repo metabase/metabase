@@ -77,6 +77,26 @@
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
 
+(deftest colliding-copy-name-is-refused-before-the-write-test
+  (testing "two targets whose schema__table names collide: the second is refused with a 409, the first keeps working"
+    (with-instance-workspace-for-db! "ws_test_schema"
+      (fn []
+        (try
+          (ws.table-remapping/clear-mappings-for-db! (mt/id))
+          (let [first-target  {:schema "A__B" :name "C" :type :table}
+                second-target {:schema "A" :name "B__C" :type :table}]
+            (ws.transform-hooks/record-workspace-target-remapping! (mt/id) first-target)
+            (is (= "A__B__C" (:name (ws.transform-hooks/workspace-transform-target (mt/id) first-target)))
+                "the target that owns the copy still resolves to it")
+            (is (= 409 (:status-code (try (ws.transform-hooks/workspace-transform-target (mt/id) second-target)
+                                          nil
+                                          (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+                "a run of the second target would overwrite the first one's copy, so it is refused before it writes")
+            (is (= 1 (t2/count :model/TableRemapping :database_id (mt/id)))
+                "nothing was recorded for the second target"))
+          (finally
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
+
 (defn- with-stubbed-execute-multimethod!
   "Replace `transforms.i/execute!` with a stub that captures the transform map it receives.
   Returns the captured value via the supplied atom. The hook still fires before dispatch

@@ -56,6 +56,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -619,12 +620,36 @@
                                   :schema (normalize-level (:schema workspace-ns))))]
       {:from-spec from-spec :to-spec to-spec})))
 
+(defn- check-copy-not-taken!
+  "Throw a 409 when a remapping from a different source already points at `to-spec`.
+
+   The copy's name is `schema__table` with no escaping, so two sources can share it: `a__b.c` and
+   `a.b__c` both become `a__b__c`. A run records its remapping only after its write, so without this
+   check the second transform would overwrite the first one's copy, and dropping its target would
+   drop that copy."
+  [db-id from-spec to-spec]
+  (let [k     #(select-keys (normalize-spec %) [:db :schema :table])
+        from  (k from-spec)
+        to    (k to-spec)
+        other (some (fn [[f t]] (when (and (= (k t) to) (not= (k f) from)) (k f)))
+                    (ws.remapping/remappings-for-db db-id))]
+    (when other
+      (throw (ex-info (tru "Another table''s workspace copy already uses the name {0}." (:table to))
+                      {:status-code 409
+                       :db-id       db-id
+                       :from        from
+                       :to          to
+                       :taken-by    other})))))
+
 (defn transform-target-remapping
   "The to-side [[add-transform-target-mapping!]] would record for `target` on workspaced
    database `db-id`, as a denormalized `{:db :schema :name}` map, without recording it.
-   Throws when the database is not workspaced."
+   Throws when the database is not workspaced, and a 409 when another source table's copy already
+   has that name (see [[check-copy-not-taken!]])."
   [db-id target]
-  (spec->consumer-shape (:to-spec (transform-target-specs db-id target))))
+  (let [{:keys [from-spec to-spec]} (transform-target-specs db-id target)]
+    (check-copy-not-taken! db-id from-spec to-spec)
+    (spec->consumer-shape to-spec)))
 
 (defn add-transform-target-mapping!
   "Register a remapping for a transform target on a workspaced database. The from-side spec
