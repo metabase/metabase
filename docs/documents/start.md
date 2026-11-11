@@ -1,5 +1,6 @@
 ---
 title: "Documents overview"
+summary: Combine text and charts in a document to tell the story behind your data.
 ---
 
 # Documents overview

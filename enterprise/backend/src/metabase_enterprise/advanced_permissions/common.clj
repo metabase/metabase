@@ -10,14 +10,13 @@
    [metabase.warehouses.models.database :as database]))
 
 (defenterprise current-user-can-write-field?
-  "Enterprise version. Returns a boolean whether the current user can write the given field.
-   Checks both that the user has manage-table-metadata permission and that the parent table
-   is editable (not in a remote-synced collection in read-only mode)."
+  "Enterprise version: whether the current user can manage the metadata of the table of the field `instance`, which
+  nobody can when a read-only instance syncs the table."
   :feature :advanced-permissions
   [instance]
   (let [table (or (:table instance)
                   (advanced-permissions.db/table (:table_id instance)))]
-    (and (remote-sync/table-editable? table)
+    (and (remote-sync/can-write? :model/TableUserSettings (:id table))
          (let [db-id (or (:db_id table)
                          (database/table-id->database-id (:table_id instance)))]
            (perms/user-has-permission-for-table?
@@ -50,11 +49,11 @@
    db-id))
 
 (defenterprise current-user-can-write-table?
-  "Enterprise version. Checks both that the user has manage-table-metadata permission and
-   that the table is editable (not in a remote-synced collection in read-only mode)."
+  "Enterprise version: whether the current user can manage the metadata of `table`, which nobody can when a read-only
+  instance syncs it."
   :feature :advanced-permissions
   [table]
-  (and (remote-sync/table-editable? table)
+  (and (remote-sync/can-write? :model/TableUserSettings (:id table))
        (perms/user-has-permission-for-table?
         api/*current-user-id*
         :perms/manage-table-metadata

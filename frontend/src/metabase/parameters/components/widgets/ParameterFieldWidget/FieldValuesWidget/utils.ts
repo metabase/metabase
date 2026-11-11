@@ -4,25 +4,16 @@ import _ from "underscore";
 import type { ComboboxItem } from "metabase/ui";
 import { isTransientId } from "metabase/utils/dashboard";
 import { stripId } from "metabase/utils/formatting";
-import { getSearchField } from "metabase-lib/v1/metadata/utils/remapping";
-import type { ParameterField } from "metabase-lib/v1/parameters/types";
+import type * as Lib from "metabase-lib";
 import {
-  canListFieldValues,
   canListParameterValues,
-  canSearchFieldValues,
   canSearchParameterValues,
   getSourceType,
 } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   isIdParameter,
   isNumberParameter,
-  isStringParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
-import {
-  isID,
-  isNumeric as isNumericField,
-  isString,
-} from "metabase-lib/v1/types/utils/isa";
 import type {
   CardId,
   DashboardId,
@@ -45,113 +36,50 @@ export function canUseDashboardEndpoints(dashboardId?: DashboardId) {
   return dashboardId != null && !isTransientId(dashboardId);
 }
 
-export function shouldList({
-  parameter,
-  fields,
-  disableSearch,
-}: {
-  parameter?: Parameter;
-  fields: ParameterField[];
-  disableSearch?: boolean;
-}) {
-  if (disableSearch) {
-    return false;
-  } else {
-    return parameter
-      ? canListParameterValues(parameter)
-      : canListFieldValues(fields);
-  }
+export function shouldList(parameter: Parameter) {
+  return canListParameterValues(parameter);
 }
 
-function getNonSearchableTokenFieldPlaceholder(
-  firstField: ParameterField,
-  parameter?: Parameter,
-) {
-  if (parameter) {
-    if (isIdParameter(parameter)) {
-      return t`Enter an ID`;
-    } else if (isStringParameter(parameter)) {
-      return t`Enter some text`;
-    } else if (isNumberParameter(parameter)) {
-      return t`Enter a number`;
-    }
-
-    // fallback
-    return t`Enter some text`;
-  } else if (firstField) {
-    if (isID(firstField)) {
-      return t`Enter an ID`;
-    } else if (isString(firstField)) {
-      return t`Enter some text`;
-    } else if (isNumericField(firstField)) {
-      return t`Enter a number`;
-    }
-
-    // fallback
-    return t`Enter some text`;
+function getNonSearchableTokenFieldPlaceholder(parameter: Parameter) {
+  if (isIdParameter(parameter)) {
+    return t`Enter an ID`;
+  } else if (isNumberParameter(parameter)) {
+    return t`Enter a number`;
   }
-
-  // fallback
   return t`Enter some text`;
 }
 
-export function searchField(
-  field: ParameterField | null,
-  disablePKRemappingForSearch?: boolean,
-) {
-  return field ? getSearchField(field, disablePKRemappingForSearch) : null;
-}
-
 function getSearchableTokenFieldPlaceholder(
-  parameter: Parameter | undefined,
-  fields: ParameterField[],
-  firstField: ParameterField,
-  disablePKRemappingForSearch?: boolean,
+  parameter: Parameter,
+  fields: Lib.ParameterFieldInfo[],
 ) {
-  let placeholder;
-
   const names = new Set(
-    fields.map((field) =>
-      stripId(
-        getSearchField(field, disablePKRemappingForSearch)?.display_name ?? "",
-      ),
-    ),
+    fields.map((field) => stripId(field.searchFieldDisplayName ?? "")),
   );
 
-  if (
-    names.size !== 1 ||
-    (parameter != null && getSourceType(parameter) != null)
-  ) {
-    placeholder = t`Search`;
-  } else {
-    const [name] = names;
-
-    placeholder = t`Search by ${name}`;
-    if (
-      firstField &&
-      isID(firstField) &&
-      firstField !== getSearchField(firstField, disablePKRemappingForSearch)
-    ) {
-      placeholder += t` or enter an ID`;
-    }
+  if (names.size !== 1 || getSourceType(parameter) != null) {
+    return t`Search`;
   }
-  return placeholder;
+
+  const [name] = names;
+  const [firstField] = fields;
+  const canEnterId =
+    firstField != null &&
+    firstField.hasRemappedValues &&
+    firstField.searchFieldDisplayName !== firstField.displayName;
+  return canEnterId
+    ? t`Search by ${name}` + t` or enter an ID`
+    : t`Search by ${name}`;
 }
 
 export function hasList({
   parameter,
-  fields,
-  disableSearch,
   options,
 }: {
-  parameter?: Parameter;
-  fields: ParameterField[];
-  disableSearch: boolean;
+  parameter: Parameter;
   options: FieldValue[];
 }) {
-  return (
-    shouldList({ parameter, fields, disableSearch }) && !_.isEmpty(options)
-  );
+  return shouldList(parameter) && !_.isEmpty(options);
 }
 
 // if this search is just an extension of the previous search, and the previous search
@@ -172,116 +100,54 @@ export function isExtensionOfPreviousSearch(
 
 export function isSearchable({
   parameter,
-  fields,
-  disableSearch,
-  disablePKRemappingForSearch,
   valuesMode,
 }: {
-  parameter?: Parameter;
-  fields?: ParameterField[];
-  disableSearch?: boolean;
-  disablePKRemappingForSearch?: boolean;
+  parameter: Parameter;
   valuesMode?: ValuesMode;
 }) {
-  if (disableSearch) {
-    return false;
-  } else if (valuesMode === "search") {
-    return true;
-  } else if (parameter) {
-    return canSearchParameterValues(parameter, disablePKRemappingForSearch);
-  } else if (fields) {
-    return canSearchFieldValues(fields, disablePKRemappingForSearch);
-  } else {
-    return false;
-  }
+  return valuesMode === "search" || canSearchParameterValues(parameter);
 }
 
 export function getTokenFieldPlaceholder({
   fields,
   parameter,
-  disableSearch,
   placeholder,
-  disablePKRemappingForSearch,
   options,
   valuesMode,
 }: {
-  fields: ParameterField[];
-  parameter?: Parameter;
-  disableSearch: boolean;
+  fields: Lib.ParameterFieldInfo[];
+  parameter: Parameter;
   placeholder?: string;
-  disablePKRemappingForSearch?: boolean;
   options: FieldValue[];
   valuesMode: ValuesMode;
 }) {
   if (placeholder) {
     return placeholder;
-  }
-
-  const [firstField] = fields;
-
-  if (
-    hasList({
-      parameter,
-      fields,
-      disableSearch,
-      options,
-    })
-  ) {
+  } else if (hasList({ parameter, options })) {
     return t`Search the list`;
-  } else if (
-    isSearchable({
-      parameter,
-      fields,
-      disableSearch,
-      disablePKRemappingForSearch,
-      valuesMode,
-    })
-  ) {
-    return getSearchableTokenFieldPlaceholder(
-      parameter,
-      fields,
-      firstField,
-      disablePKRemappingForSearch,
-    );
+  } else if (isSearchable({ parameter, valuesMode })) {
+    return getSearchableTokenFieldPlaceholder(parameter, fields);
   } else {
-    return getNonSearchableTokenFieldPlaceholder(firstField, parameter);
+    return getNonSearchableTokenFieldPlaceholder(parameter);
   }
 }
 
-export function getValuesMode({
-  parameter,
-  fields,
-  disableSearch,
-  disablePKRemappingForSearch,
-}: {
-  parameter?: Parameter;
-  fields: ParameterField[];
-  disableSearch?: boolean;
-  disablePKRemappingForSearch?: boolean;
-}): ValuesMode {
-  if (
-    isSearchable({
-      parameter,
-      fields,
-      disableSearch,
-      disablePKRemappingForSearch,
-      valuesMode: undefined,
-    })
-  ) {
+export function getValuesMode(parameter: Parameter): ValuesMode {
+  if (isSearchable({ parameter })) {
     return "search";
-  }
-
-  if (shouldList({ parameter, fields, disableSearch })) {
+  } else if (shouldList(parameter)) {
     return "list";
   }
-
   return "none";
 }
 
-export function isNumeric(parameter: Parameter, fields: ParameterField[]) {
+export function isNumeric(
+  parameter: Parameter,
+  fields: Lib.ParameterFieldInfo[],
+) {
   return (
     isNumberParameter(parameter) ||
-    (fields.length > 0 && fields.every(isNumericField))
+    (fields.length > 0 && fields.every((field) => field.isNumeric))
   );
 }
 

@@ -11,7 +11,12 @@ import {
 import { Box, Flex, SimpleGrid } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualization } from "metabase/viz-core";
-import type { DatasetColumn, RowValue, Series } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  RowValue,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockSegmentFormatting,
@@ -151,11 +156,19 @@ WithFormattingAndHover.play = async ({
 };
 
 // values the card cannot compact truncate from the end instead of overflowing
-const longValueSeries = (value: RowValue, col: DatasetColumn): Series =>
+const longValueSeries = (
+  value: RowValue,
+  col: DatasetColumn,
+  settings: VisualizationSettings = {},
+): Series =>
   // Unjustified type cast. FIXME
   [
     {
-      card: createMockCard({ name: "Metabase token", display: "scalar" }),
+      card: createMockCard({
+        name: "Metabase token",
+        display: "scalar",
+        visualization_settings: settings,
+      }),
       data: { cols: [col], rows: [[value]] },
     },
   ] as Series;
@@ -170,6 +183,16 @@ const LONG_VALUE_SERIES = [
     DateTimeColumn({ name: "Oldest open PR", unit: "minute" }),
   ),
   longValueSeries(Number.MAX_SAFE_INTEGER, NumberColumn({ name: "Count" })),
+  longValueSeries(Number.MAX_SAFE_INTEGER, NumberColumn({ name: "Count" }), {
+    column_settings: {
+      '["name","Count"]': { suffix: " active users this quarter" },
+    },
+  }),
+  longValueSeries(Number.MAX_SAFE_INTEGER, NumberColumn({ name: "Count" }), {
+    column_settings: {
+      '["name","Count"]': { number_style: "currency", currency: "USD" },
+    },
+  }),
 ];
 
 const LONG_VALUE_CARD_SIZES = [

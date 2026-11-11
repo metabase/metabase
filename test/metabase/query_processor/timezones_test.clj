@@ -157,7 +157,7 @@
                                             :display_name "Timestamp Range"
                                             :type         "dimension"
                                             :widget-type  :date/all-options
-                                            :dimension    [:field (mt/id :users :last_login) nil]}}}
+                                            :field-id     (mt/id :users :last_login)}}}
     :parameters [{:type   "date/range"
                   :target ["dimension" ["template-tag" "ts_range"]]
                   :value  "2014-08-02~2014-08-03"}]}
@@ -174,7 +174,7 @@
                                                :display_name "Just A Date"
                                                :type         "dimension"
                                                :widget-type  :date/all-options
-                                               :dimension    [:field (mt/id :users :last_login) nil]}}}
+                                               :field-id     (mt/id :users :last_login)}}}
     :parameters [{:type   "date/single"
                   :target ["dimension" ["template-tag" "just_a_date"]]
                   :value  "2014-08-02"}]}})

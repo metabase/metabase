@@ -97,6 +97,7 @@ async function setup(opts: SetupOpts = {}) {
 
 const setupEmptyQuery = async () => {
   const question = Question.create({
+    metadata: createMockMetadata(),
     DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
   });
   const query = question.query();
@@ -200,6 +201,7 @@ describe("DataStep", () => {
       createMockCardQueryMetadata({ databases: [createSampleDatabase()] }),
     );
     const emptyQuery = Question.create({
+      metadata: createMockMetadata(),
       DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
     }).query();
     const { getNextQuery } = await setup({

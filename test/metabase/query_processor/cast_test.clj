@@ -867,6 +867,7 @@
              {:field-name "as_bytes"
               :base-type {:natives {"postgres" "BYTEA"
                                     "h2"       "BYTEA"
+                                    "motherduck" "BLOB"
                                     "mysql"    "VARBINARY(100)"
                                     "redshift" "VARBYTE"
                                     "presto-jdbc" "VARBINARY"
@@ -883,6 +884,7 @@
              {:field-name "as_bytes"
               :base-type {:natives {"postgres" "BYTEA"
                                     "h2"       "BYTEA"
+                                    "motherduck" "BLOB"
                                     "mysql"    "VARBINARY(100)"
                                     "redshift" "VARBYTE"
                                     "presto-jdbc" "VARBINARY"
@@ -902,7 +904,7 @@
   [_driver]
   [])
 
-(doseq [driver [:h2 :postgres :databricks]]
+(doseq [driver [:h2 :postgres :databricks :motherduck]]
   (defmethod binary-dates-expected-rows-simple driver
     [_driver]
     [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
@@ -951,7 +953,7 @@
      [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
      [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]))
 
-(doseq [driver [:mysql :sqlserver :presto-jdbc :postgres :h2]]
+(doseq [driver [:mysql :sqlserver :presto-jdbc :postgres :h2 :motherduck]]
   (defmethod binary-dates-expected-rows-iso driver
     [_driver]
     [[1 "foo" #t "2019-04-21T16:43"]

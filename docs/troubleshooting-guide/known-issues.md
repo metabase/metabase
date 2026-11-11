@@ -1,5 +1,6 @@
 ---
 title: How to find a known bug or limitation
+summary: How to find out whether what you're hitting is a known bug or a known product limitation.
 ---
 
 # How to find a known bug or limitation

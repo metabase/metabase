@@ -6,14 +6,12 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import { Box } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import {
   getFilterArgumentFormatOptions,
   isEqualsOperator,
 } from "metabase-lib/v1/operators/utils";
-import type {
-  ParameterField,
-  UiParameter,
-} from "metabase-lib/v1/parameters/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import {
   getIsMultiSelect,
@@ -28,7 +26,7 @@ import FieldValuesWidget from "./FieldValuesWidget";
 import { normalizeValue } from "./normalizeValue";
 
 interface ParameterFieldWidgetProps {
-  fields: ParameterField[];
+  fields: Lib.ParameterFieldInfo[];
   isEditing?: boolean;
   parameter: UiParameter;
   parameters?: UiParameter[];
