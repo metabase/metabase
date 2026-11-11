@@ -422,6 +422,152 @@
           dc (first dashcards)]
       (is (= [0 0 8 2] [(:row dc) (:col dc) (:size_x dc) (:size_y dc)])))))
 
+;;; Two charts side by side, each with a card below it, as on the eval dashboard whose widened chart covered its
+;;; neighbour.
+(def ^:private side-by-side
+  (dash-with [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id nil}
+              {:id 8 :card_id 9 :row 0 :col 12 :size_x 12 :size_y 6 :dashboard_tab_id nil}
+              {:id 9 :card_id 9 :row 6 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id nil}
+              {:id 10 :card_id 9 :row 6 :col 12 :size_x 12 :size_y 4 :dashboard_tab_id nil}]))
+
+(defn- layout
+  "`{dashcard-id [row col size_x size_y]}` for a compiled payload."
+  [payload]
+  (u/for-map [dc (:dashcards payload)] [(:id dc) [(:row dc) (:col dc) (:size_x dc) (:size_y dc)]]))
+
+(deftest ^:parallel resize-pushes-covered-cards-down-test
+  (testing "widening a card pushes the card it covers down, and that one pushes the card it lands on"
+    (let [payload (compile-with-stub-cards side-by-side
+                                           [{:op "resize" :dashcard_id 7 :size {:size_x 24 :size_y 6}}])]
+      (is (= {7 [0 0 24 6], 8 [6 12 12 6], 9 [6 0 12 6], 10 [12 12 12 4]}
+             (layout payload)))
+      (testing "the payload says which stored cards moved, in save order"
+        (is (= [8 10] (dashboard-ops/pushed-dashcard-ids payload))))
+      (testing "the payload keeps save order"
+        (is (= [7 8 9 10] (map :id (:dashcards payload))))))))
+
+(deftest ^:parallel explicit-positions-push-covered-cards-down-test
+  (testing "move to a position over another card pushes it down"
+    (let [payload (compile-with-stub-cards side-by-side
+                                           [{:op "move" :dashcard_id 9 :position {:row 0 :col 12}}])]
+      (is (= {7 [0 0 12 6], 8 [6 12 12 6], 9 [0 12 12 6], 10 [12 12 12 4]}
+             (layout payload)))
+      (is (= [8 10] (dashboard-ops/pushed-dashcard-ids payload)))))
+  (testing "add_card at a position over cards pushes them down"
+    (let [payload (compile-with-stub-cards side-by-side
+                                           [{:op "add_card" :id -1 :card_id 42
+                                             :position {:row 0 :col 0} :size {:size_x 24 :size_y 2}}])]
+      (is (= {-1 [0 0 24 2], 7 [2 0 12 6], 8 [2 12 12 6], 9 [8 0 12 6], 10 [8 12 12 4]}
+             (layout payload)))
+      (is (= [7 8 9 10] (dashboard-ops/pushed-dashcard-ids payload)))))
+  (testing "a placed card that covers nothing moves nothing"
+    (let [payload (compile-with-stub-cards side-by-side
+                                           [{:op "resize" :dashcard_id 10 :size {:size_x 12 :size_y 6}}])]
+      (is (= {7 [0 0 12 6], 8 [0 12 12 6], 9 [6 0 12 6], 10 [6 12 12 6]}
+             (layout payload)))
+      (is (empty? (dashboard-ops/pushed-dashcard-ids payload))))))
+
+(deftest ^:parallel autoplaced-cards-are-pushed-not-refused-test
+  (testing "a card the call autoplaces moves out of the way of a card a later op places, and isn't listed as moved"
+    (let [payload (compile-with-stub-cards (dash-with [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6
+                                                        :dashboard_tab_id nil}])
+                                           [{:op "add_card" :id -1 :card_id 42 :size {:size_x 12 :size_y 6}}
+                                            {:op "resize" :dashcard_id 7 :size {:size_x 24 :size_y 6}}])]
+      (is (= {7 [0 0 24 6], -1 [6 12 12 6]} (layout payload)))
+      (is (empty? (dashboard-ops/pushed-dashcard-ids payload))))))
+
+(deftest ^:parallel cards-without-a-tab-share-the-only-tab-test
+  (testing "with one tab, a card with no tab settles with the cards on that tab, where it shows"
+    (let [dash (assoc empty-dash
+                      :tabs      [{:id 1 :name "A"}]
+                      :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id nil}
+                                  {:id 8 :card_id 9 :row 0 :col 12 :size_x 12 :size_y 6 :dashboard_tab_id 1}])]
+      (is (= {7 [0 0 24 6], 8 [6 12 12 6]}
+             (layout (compile-with-stub-cards dash [{:op "resize" :dashcard_id 7 :size {:size_x 24 :size_y 6}}])))))))
+
+(deftest ^:parallel untouched-tabs-keep-their-layout-test
+  (let [overlapping [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id 1}
+                     {:id 8 :card_id 9 :row 2 :col 6 :size_x 12 :size_y 6 :dashboard_tab_id 1}]
+        dash        (assoc empty-dash
+                           :tabs       [{:id 1 :name "A"} {:id 2 :name "B"}]
+                           :parameters [{:id "p1" :name "P1" :type "category"}]
+                           :dashcards  (conj overlapping
+                                             {:id 9 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6
+                                              :dashboard_tab_id 2}))]
+    (testing "a tab that already overlaps stays as it is when the call places a card on another tab"
+      (let [payload (compile-with-stub-cards dash [{:op "resize" :dashcard_id 9 :size {:size_x 24 :size_y 6}}])]
+        (is (= overlapping (filterv #(= 1 (:dashboard_tab_id %)) (:dashcards payload))))
+        (is (empty? (dashboard-ops/pushed-dashcard-ids payload)))))
+    (testing "or when the call places no card at all"
+      (let [payload (compile-with-stub-cards dash [{:op "update_parameter" :parameter_id "p1" :name "Status"}])]
+        (is (= (:dashcards dash) (:dashcards payload)))))))
+
+(deftest ^:parallel positioned-cards-must-not-overlap-test
+  (testing "two cards given positions in one call that cover each other fail, naming both"
+    (is (= {::dashboard-ops/error :overlapping-cards, :dashcard-ids [9 10]}
+           (op-error side-by-side
+                     [{:op "move" :dashcard_id 9 :position {:row 0 :col 0}}
+                      {:op "move" :dashcard_id 10 :position {:row 2 :col 6}}])))))
+
+(deftest ^:parallel resized-cards-yield-to-positioned-cards-test
+  (testing "a resized card keeps its place unless a card given a position covers it, as with a title added on top"
+    (let [payload (compile-with-stub-cards side-by-side
+                                           [{:op "add_heading" :id -1 :text "Spend"
+                                             :position {:row 0 :col 0} :size {:size_x 24 :size_y 1}}
+                                            {:op "resize" :dashcard_id 7 :size {:size_x 24 :size_y 6}}])]
+      (is (= {-1 [0 0 24 1], 7 [1 0 24 6], 8 [7 12 12 6], 9 [7 0 12 6], 10 [13 12 12 4]}
+             (layout payload)))
+      (is (= [7 8 9 10] (dashboard-ops/pushed-dashcard-ids payload)))))
+  (testing "two resized cards that cover each other settle in order of row and column rather than fail"
+    (is (= {7 [0 0 24 6], 8 [6 12 12 8], 9 [6 0 12 6], 10 [14 12 12 4]}
+           (layout (compile-with-stub-cards side-by-side
+                                            [{:op "resize" :dashcard_id 7 :size {:size_x 24 :size_y 6}}
+                                             {:op "resize" :dashcard_id 8 :size {:size_x 12 :size_y 8}}]))))))
+
+(deftest ^:parallel new-tabs-are-settled-test
+  (testing "a tab duplicated after a resize gets a valid layout, though none of its copies was placed"
+    (let [dash    (assoc empty-dash
+                         :tabs      [{:id 1 :name "A"}]
+                         :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id 1}
+                                     {:id 8 :card_id 9 :row 0 :col 12 :size_x 12 :size_y 6 :dashboard_tab_id 1}])
+          payload (compile-with-stub-cards dash [{:op "resize" :dashcard_id 7 :size {:size_x 24 :size_y 6}}
+                                                 {:op "duplicate_tab" :id -5 :tab_id 1}])
+          copies  (filterv #(= -5 (:dashboard_tab_id %)) (:dashcards payload))]
+      (is (= #{[0 0 24 6] [6 12 12 6]}
+             (set (map (juxt :row :col :size_x :size_y) copies))))
+      (testing "and only stored cards are listed as moved"
+        (is (= [8] (dashboard-ops/pushed-dashcard-ids payload))))))
+  (testing "the copies settle as the source tab does, with a moved card's copy kept in place"
+    (let [dash    (assoc empty-dash
+                         :tabs      [{:id 1 :name "A"}]
+                         :dashcards [{:id 8 :card_id 20 :row 0 :col 12 :size_x 12 :size_y 6 :dashboard_tab_id 1}
+                                     {:id 9 :card_id 21 :row 6 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id 1}])
+          payload (compile-with-stub-cards dash [{:op "move" :dashcard_id 9 :position {:row 0 :col 12}}
+                                                 {:op "duplicate_tab" :id -5 :tab_id 1}])
+          on-tab  (fn [tab-id]
+                    (u/for-map [dc (:dashcards payload) :when (= tab-id (:dashboard_tab_id dc))]
+                      [(:card_id dc) [(:row dc) (:col dc)]]))]
+      (is (= {21 [0 12], 20 [6 12]} (on-tab 1) (on-tab -5))))))
+
+(deftest ^:parallel reused-new-id-is-not-placed-test
+  (testing "a removed card's id reused by an autoplaced card doesn't keep the removed card's position"
+    (is (= {-1 [1 0 12 4], -2 [0 0 24 1]}
+           (layout (compile-with-stub-cards empty-dash
+                                            [{:op "add_card" :id -1 :card_id 42
+                                              :position {:row 0 :col 0} :size {:size_x 12 :size_y 4}}
+                                             {:op "remove" :dashcard_id -1}
+                                             {:op "add_card" :id -1 :card_id 42 :size {:size_x 12 :size_y 4}}
+                                             {:op "add_heading" :id -2 :text "Spend"
+                                              :position {:row 0 :col 0} :size {:size_x 24 :size_y 1}}]))))))
+
+(deftest ^:parallel placed-card-past-the-grid-edge-test
+  (testing "a placed card that runs past column 24 fails"
+    (is (= {::dashboard-ops/error :past-grid-edge, :dashcard-id 8, :col 12, :size-x 24}
+           (op-error side-by-side [{:op "resize" :dashcard_id 8 :size {:size_x 24 :size_y 6}}])))
+    (is (= {::dashboard-ops/error :past-grid-edge, :dashcard-id -1, :col 20, :size-x 6}
+           (op-error empty-dash [{:op "add_card" :id -1 :card_id 42
+                                  :position {:row 0 :col 20} :size {:size_x 6 :size_y 4}}])))))
+
 (deftest move-without-a-position-keeps-its-own-slot-test
   (testing "GHY-4147: move without a position autoplaces against the *other* cards on the tab. The
             moved card is not its own sibling — counting it means the search can never return the

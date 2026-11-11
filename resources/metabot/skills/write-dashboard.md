@@ -39,6 +39,7 @@ The grid is 24 columns wide. Full width is `size_x: 24`. A card is placed at `po
 **Editing cards**
 - New cards and tabs take negative ids you choose (-1, -2, …), which later ops in the same call can use. The result gives the real ids.
 - `move` changes a card's `position` or `tab`, `resize` its `size`, and `remove` deletes it from the dashboard.
+- A card you give a `position` stays there, and a card you resize keeps its place; either pushes down the cards it would cover. The result says which cards moved. Two cards you give a `position` in the same call must not cover each other.
 - `replace_card` shows another question or chart in the same slot. It resets that card's filter connections, so connect the filters again in the same call.
 
 **Tabs**

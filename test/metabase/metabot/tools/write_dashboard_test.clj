@@ -312,6 +312,19 @@
 
 ;;; -------------------------------------------------- Editing -----------------------------------------------------
 
+(deftest placed-card-pushes-cards-down-test
+  (sales-dashboard!
+   (fn [{:keys [dash-id dashcard-id]}]
+     (mt/with-current-user (mt/user->id :rasta)
+       (let [result (call {:dashboard_id dash-id
+                           :ops          [{:op "add_heading", :id -1, :text "Revenue"
+                                           :position {:row 0, :col 0}, :size {:size_x 24, :size_y 2}}]})]
+         (testing "a card placed over another pushes it down"
+           (is (=? [{:id dashcard-id, :row 2, :col 0} {:row 0, :col 0, :size_x 24, :size_y 2}]
+                   (dashcards dash-id))))
+         (testing "the result says which card moved, so the model can tell the user"
+           (is (re-find (re-pattern (str "Card " dashcard-id " moved down")) (:output result)))))))))
+
 (deftest replace-chart-on-dashboard-test
   (sales-dashboard!
    (fn [{:keys [card-id dash-id dashcard-id other-id]}]

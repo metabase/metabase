@@ -284,6 +284,16 @@
      (str "The dashboard has tabs, so every card needs one, and cards " (ids-text dashcard-ids) " have none."
           " Pass `tab` on the op that adds a card, or `move` a placed card to a tab."))
 
+   :overlapping-cards
+   (fn [{:keys [dashcard-ids]}]
+     (str "Cards " (ids-text dashcard-ids) " would overlap, and this call gives both a `position`."
+          " Give them positions that don't cover each other. Other cards move down by themselves."))
+
+   :past-grid-edge
+   (fn [{:keys [dashcard-id col size-x]}]
+     (str "Card " dashcard-id " would run past the grid's right edge: `col` " col " plus `size_x` " size-x
+          " is more than 24. Move it left or make it narrower."))
+
    :unknown-parameter
    (fn [{:keys [parameter-id]}]
      (str "The dashboard has no filter with id " (quoting/quoted parameter-id) "."))
@@ -750,6 +760,7 @@
         url         (str "/dashboard/" id)
         link        (str "metabase://dashboard/" id)
         layout?     (contains? #{"created" "updated"} action)
+        pushed      (dashboard-ops/pushed-dashcard-ids dashboard)
         chart-pairs (for [{:keys [chart-id card-id]} saved-charts]
                       {:chart_id chart-id, :card_id card-id})
         output      (te/lines
@@ -769,6 +780,9 @@
                        "trashed"  "Tell the user you moved it to the trash, and that they can restore it from there."
                        "restored" "Tell the user you restored it."
                        "Tell the user what you changed and where the dashboard is saved.")
+                     (when (seq pushed)
+                       (str (if (next pushed) "Cards " "Card ") (ids-text pushed)
+                            " moved down to make room for the cards you placed. Mention it to the user."))
                      (str "Link it as " (te/link name link) "."))]
     {:output            output
      :structured-output {:result-type  :dashboard-saved
