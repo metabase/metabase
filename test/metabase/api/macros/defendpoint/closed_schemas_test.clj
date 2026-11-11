@@ -39,7 +39,6 @@
      [:a [:map {:closed true} [:type [:= :a]]]]
      [:b [:map {:closed true} [:type [:= :b]]]]]
     ms/DatabaseDetails
-    ms/VisualizationSettings
     ms/DatabaseSettings
     ms/OpaqueJSONObject
     (ms/string-keyed-map :string)

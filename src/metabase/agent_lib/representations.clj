@@ -168,10 +168,12 @@
 
 (def ^:private registry
   {::table-fk [:and vector?
-               [:fn {:error/message "table FK must be [db-name, schema-or-null, table-name]"}
+               [:fn {:error/message (str "table FK must be [db-name, schema, table-name], "
+                                         "with null as the schema only in a database without schemas")}
                 table-fk?]]
    ::field-fk [:and vector?
-               [:fn {:error/message "field FK must be [db-name, schema-or-null, table-name, field-name, …]"}
+               [:fn {:error/message (str "field FK must be [db-name, schema, table-name, field-name, …], "
+                                         "with null as the schema only in a database without schemas")}
                 field-fk?]]
    ::options  [:and map?
                [:fn {:error/message "options must always be a map (use `{}` if empty)"}

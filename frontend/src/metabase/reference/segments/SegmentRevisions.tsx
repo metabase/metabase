@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
-import { getIn } from "icepick";
 import { Component } from "react";
 import { t } from "ttag";
 
@@ -59,7 +57,7 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
       user && Object.keys(revisions).length > 0
         ? assignUserColors(
             Object.values(revisions).map((revision) =>
-              String(getIn(revision, ["user", "id"])),
+              String(revision.user.id),
             ),
             String(user.id),
           )
@@ -97,12 +95,7 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
                             tableId={table.id}
                             objectName={segment?.name ?? ""}
                             currentUser={user || {}}
-                            userColor={
-                              userColorAssignments[
-                                // Unjustified type cast. FIXME
-                                getIn(revision, ["user", "id"]) as string
-                              ]
-                            }
+                            userColor={userColorAssignments[revision.user.id]}
                           />
                         ) : null,
                       )

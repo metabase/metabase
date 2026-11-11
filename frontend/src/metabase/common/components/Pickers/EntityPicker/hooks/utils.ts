@@ -41,7 +41,7 @@ export const getDataAppsRootItem = (): OmniPickerCollectionItem => ({
 export const getDataAppItem = (dataApp: DataApp): OmniPickerDataAppItem => ({
   model: "data-app",
   id: dataApp.id,
-  name: dataApp.display_name,
+  name: dataApp.name,
 });
 
 export const getOurAnalytics = (): OmniPickerCollectionItem => ({
