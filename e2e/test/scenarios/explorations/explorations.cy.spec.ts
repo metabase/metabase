@@ -327,6 +327,14 @@ describe("scenarios > explorations", () => {
               .findByRole("button", { name: "Remove star", timeout: 15000 })
               .should("be.visible");
 
+            cy.log("The page comment editor opens in a real browser");
+            cy.get("body").type("c");
+            H.popover()
+              .findByRole("button", { name: "Send" })
+              .should("be.visible");
+            H.main().findByRole("button", { name: "Add comment" }).click();
+            cy.findByRole("button", { name: "Send" }).should("not.exist");
+
             cy.get("body").type("h");
             cy.wait("@setPagesHidden");
             cy.reload();
