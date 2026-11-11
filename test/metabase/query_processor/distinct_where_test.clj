@@ -146,15 +146,8 @@
                                   :dataset-query (-> (lib/query mp venues)
                                                      (lib/aggregate (lib/distinct-where venues-price (lib/< venues-price 4))))
                                   :type          :metric}]})
-          ;; TODO(mbql5-migration): (lib/query mp <metric card>) special-cases :type :metric cards
-          ;; (metric-query, src/metabase/lib/query.cljc) -- it resolves to the metric's underlying
-          ;; :source-table and auto-injects the [:metric 1] aggregation, which is NOT the legacy
-          ;; {:source-table "card__1", :aggregation [[:metric 1]]} shape this test exercises. Use the
-          ;; R56 legacy-map hybrid to run the exact same query as before.
-          query        (lib/query mock-mp {:database (mt/id)
-                                           :type     :query
-                                           :query    {:source-table "card__1"
-                                                      :aggregation  [[:metric 1]]}})]
+          query        (-> (lib/query mock-mp (lib.metadata/table mock-mp (mt/id :venues)))
+                           (lib/aggregate (lib.metadata/metric mock-mp 1)))]
       (qp.store/with-metadata-provider mock-mp
         (mt/with-native-query-testing-context query
           (is (= 3

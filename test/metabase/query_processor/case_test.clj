@@ -96,14 +96,8 @@
                                     :dataset_query (-> (lib/query mp venues)
                                                        (lib/aggregate (lib/sum (lib/case [[(lib/< venues-price 4)
                                                                                            venues-price]]))))}]})
-            ;; TODO(mbql5-migration): R56 hybrid — (lib/query mp (lib.metadata/card mp N)) on a :type :metric
-            ;; card re-sources the stage and pre-adds the [:metric] aggregation (metric-query), so no builder
-            ;; path reproduces the legacy :source-card + [:metric] stage shape. Wrapping the legacy map converts
-            ;; to {:source-card 1, :aggregation [[:metric {} 1]]}, exactly the old macro output.
-            query        (lib/query mock-mp {:database (mt/id)
-                                             :type     :query
-                                             :query    {:source-table "card__1"
-                                                        :aggregation  [[:metric 1]]}})]
+            query        (-> (lib/query mock-mp (lib.metadata/table mock-mp (mt/id :venues)))
+                             (lib/aggregate (lib.metadata/metric mock-mp 1)))]
         (is (= 179.0
                (some->> (qp/process-query query)
                         mt/rows
@@ -209,7 +203,7 @@
             products    (lib.metadata/table mp (mt/id :products))
             products-id (lib.metadata/field mp (mt/id :products :id))
             ;; there is no lib/if builder (:if is an alias tag of :case), so use the lib/expression-clause
-            ;; escape hatch (R34); it re-groups the flat args into the [[pred expr] ...] + fallback shape.
+            ;; escape hatch; it re-groups the flat args into the [[pred expr] ...] + fallback shape.
             query       (-> (lib/query mp products)
                             (lib/expression "If" (lib/expression-clause :if
                                                                         [(lib/= products-id 1) "First"

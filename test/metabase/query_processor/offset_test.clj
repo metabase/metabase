@@ -169,7 +169,7 @@
 (deftest ^:parallel legacy-query-normalization-test
   (testing "Make sure legacy queries work correctly as they come in from the REST API (not-yet-normalized) (#42323)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
-      ;; TODO(mbql5-migration): exercises legacy-MBQL normalization (§5) — the not-yet-normalized legacy map IS the
+      ;; TODO(mbql5-migration): exercises legacy-MBQL normalization — the not-yet-normalized legacy map IS the
       ;; fixture under test (#42323); porting to lib would pre-normalize it. Keep on the old macro.
       (let [query (-> (mt/mbql-query orders
                         {:aggregation [[:offset

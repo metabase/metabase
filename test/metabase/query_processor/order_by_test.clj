@@ -37,8 +37,8 @@
                 (qp/process-query query))))))))
 
 ;; TODO(mbql5-migration): intentionally-duplicated order-bys — the MBQL-5 schema rejects duplicates
-;; (::lib.schema.order-by/order-bys requires distinct clauses) and lib/order-by dedups at construction (QUE-1604),
-;; so the duplicate can only be expressed on the legacy path this test exercises; keep legacy (§4.4).
+;; (::lib.schema.order-by/order-bys requires distinct clauses) and lib/order-by dedups at construction,
+;; so the duplicate can only be expressed on the legacy path this test exercises; keep legacy.
 (deftest ^:parallel duplicate-order-bys-test
   ;; This test succeeds because the normalize-preprocessing-middleware normalizes and dedups the order-by clauses
   ;; before the query makes it to the validate-query middleware.

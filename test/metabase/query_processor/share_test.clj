@@ -139,15 +139,8 @@
                                     :dataset-query (-> (lib/query mp venues)
                                                        (lib/aggregate (lib/share (lib/< venues-price 4))))
                                     :type          :metric}]})
-            ;; TODO(mbql5-migration): R56 hybrid — (lib/query mp (lib.metadata/card mp N)) on a :type :metric
-            ;; card re-sources the stage onto the metric's :source-table and pre-adds the [:metric] aggregation,
-            ;; so there is no clean builder path for a metric used as its own source card. Wrapping the legacy
-            ;; inner query converts to {:source-card 1, :aggregation [[:metric {} 1]]}, exactly the old macro
-            ;; output.
-            query        (lib/query mock-mp {:database (mt/id)
-                                             :type     :query
-                                             :query    {:source-table "card__1"
-                                                        :aggregation  [[:metric 1]]}})]
+            query        (-> (lib/query mock-mp (lib.metadata/table mock-mp (mt/id :venues)))
+                             (lib/aggregate (lib.metadata/metric mock-mp 1)))]
         (is (= [[0.94]]
                (mt/formatted-rows
                 [2.0]

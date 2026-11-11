@@ -139,13 +139,8 @@
                                   :dataset-query (-> (lib/query mp venues)
                                                      (lib/aggregate (lib/sum-where venues-price (lib/< venues-price 4))))
                                   :type          :metric}]})
-          ;; TODO(mbql5-migration): no builder path reproduces :source-card + [:metric] — lib/query on a metric card
-          ;; splices the metric's own aggregation into the stage (and uses :source-table, not :source-card), so use
-          ;; the R56 legacy-map hybrid to preserve the original query shape.
-          query        (lib/query mock-mp {:database (mt/id)
-                                           :type     :query
-                                           :query    {:source-table "card__1"
-                                                      :aggregation  [[:metric 1]]}})]
+          query        (-> (lib/query mock-mp (lib.metadata/table mock-mp (mt/id :venues)))
+                           (lib/aggregate (lib.metadata/metric mock-mp 1)))]
       (qp.store/with-metadata-provider mock-mp
         (mt/with-native-query-testing-context query
           (is (= 179.0
