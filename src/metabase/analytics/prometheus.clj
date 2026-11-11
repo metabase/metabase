@@ -852,7 +852,7 @@
    (prometheus/histogram :metabase-metabot/tool-executor-utilization
                          {:description (str "Share of the tool executor pool in use when a metabot tool call reaches "
                                             "the pool: active threads over pool size.")
-                          :buckets [0.25 0.5 0.75 0.9 1.0]})
+                          :buckets [0.25 0.5 0.75 0.9 0.95 1.0]})
    (prometheus/histogram :metabase-metabot/tool-executor-queue-depth
                          {:description (str "Metabot tool calls waiting for a free tool executor thread when a "
                                             "metabot tool call reaches the pool.")
