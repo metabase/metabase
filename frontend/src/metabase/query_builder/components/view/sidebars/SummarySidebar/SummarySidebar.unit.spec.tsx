@@ -365,6 +365,17 @@ describe("SummarySidebar", () => {
     expect(getLastQuery().dimensions).toEqual(["Created At: Month"]);
   });
 
+  it("adds a column that's already grouped again, with its next unit, on alt-click", () => {
+    const { getLastQuery } = setup({ query: SUMMARIZED_QUERY });
+
+    fireEvent.click(getFieldButton("Orders", "Created At"), { altKey: true });
+
+    expect(getLastQuery().dimensions).toEqual([
+      "Created At: Month",
+      "Created At: Quarter",
+    ]);
+  });
+
   it("doesn't rerun when the clicked field is all its well holds", async () => {
     const { onQueryChange } = setup({ query: createQueryWithMetric() });
 
@@ -423,6 +434,17 @@ describe("SummarySidebar", () => {
       });
       expect(onQueryChange).toHaveBeenCalledTimes(2);
       expect(getChipLabels("columns")).toEqual(["Product → Category"]);
+    });
+
+    it("adds a dragged column that's already grouped again, with its next unit", () => {
+      const { getLastQuery } = setup({ query: SUMMARIZED_QUERY });
+
+      drop(getFieldDrag(SUMMARIZED_QUERY, "Orders", "Created At"), "columns");
+
+      expect(getLastQuery().dimensions).toEqual([
+        "Created At: Month",
+        "Created At: Quarter",
+      ]);
     });
 
     it("shows a preview and which wells take the dragged item until the drag ends", () => {

@@ -450,6 +450,61 @@ function hasValue(
   }
 }
 
+/** The default first, then coarser, then finer, then the parts of a date. */
+function sortBucketsForRegrouping(
+  query: Lib.Query,
+  stageIndex: number,
+  buckets: Lib.Bucket[],
+): Lib.Bucket[] {
+  const [extractions, ranges] = _.partition(
+    buckets,
+    (bucket) =>
+      Lib.displayInfo(query, stageIndex, bucket).isTemporalExtraction === true,
+  );
+  const defaultIndex = Math.max(
+    ranges.findIndex(
+      (bucket) => Lib.displayInfo(query, stageIndex, bucket).default === true,
+    ),
+    0,
+  );
+  return [
+    ...ranges.slice(defaultIndex),
+    ...ranges.slice(0, defaultIndex).reverse(),
+    ...extractions,
+  ];
+}
+
+function getRegroupingColumns(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): Lib.ColumnMetadata[] {
+  const strategies = Lib.availableBinningStrategies(query, stageIndex, column);
+  if (strategies.length > 0) {
+    return sortBucketsForRegrouping(query, stageIndex, strategies).map(
+      (strategy) => Lib.withBinning(column, strategy),
+    );
+  }
+  const units = Lib.availableTemporalBuckets(query, stageIndex, column);
+  return sortBucketsForRegrouping(query, stageIndex, units).map((unit) =>
+    Lib.withTemporalBucket(column, unit),
+  );
+}
+
+function breakoutAgain(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): Lib.Query {
+  const breakoutCount = Lib.breakouts(query, stageIndex).length;
+  const nextColumn = getRegroupingColumns(query, stageIndex, column).find(
+    (bucketedColumn) =>
+      Lib.breakouts(Lib.breakout(query, stageIndex, bucketedColumn), stageIndex)
+        .length > breakoutCount,
+  );
+  return nextColumn ? Lib.breakout(query, stageIndex, nextColumn) : query;
+}
+
 export function areQueriesEqual(query: Lib.Query, other: Lib.Query): boolean {
   return (
     query === other ||
@@ -471,8 +526,11 @@ export function addField(
       field.kind === "column"
         ? findBreakoutableColumn(query, stageIndex, field.column)
         : null;
-    if (column == null || hasBreakout(query, stageIndex, column)) {
+    if (column == null) {
       return query;
+    }
+    if (hasBreakout(query, stageIndex, column)) {
+      return breakoutAgain(query, stageIndex, column);
     }
     return Lib.breakout(
       query,

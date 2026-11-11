@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
@@ -559,17 +561,90 @@ describe("addField", () => {
   const query = createOrdersQueryWithMetricsAndMeasures();
   const sections = getFieldSections(query, STAGE_INDEX);
 
-  it("groups by a column with its default bucket, once", () => {
-    const createdAt = findField(sections, "Created At");
-    const grouped = addField(query, STAGE_INDEX, "columns", createdAt);
+  function addTimes(query: Lib.Query, fieldName: string, times: number) {
+    return _.range(times).reduce(
+      (query) =>
+        addField(
+          query,
+          STAGE_INDEX,
+          "columns",
+          findField(getFieldSections(query, STAGE_INDEX), fieldName),
+        ),
+      query,
+    );
+  }
 
-    expect(getDimensionLabels(grouped)).toEqual(["Created At: Month"]);
+  it("groups by a column with its default bucket", () => {
+    expect(getDimensionLabels(addTimes(query, "Created At", 1))).toEqual([
+      "Created At: Month",
+    ]);
+    expect(getDimensionLabels(addTimes(query, "Total", 1))).toEqual([
+      "Total: Auto binned",
+    ]);
+  });
+
+  it("groups by a date again with the next unused unit: coarser, then finer, then the parts of a date", () => {
+    const labels = getDimensionLabels(addTimes(query, "Created At", 15));
+    expect(labels).toEqual([
+      "Created At: Month",
+      "Created At: Quarter",
+      "Created At: Year",
+      "Created At: Week",
+      "Created At: Day",
+      "Created At: Hour",
+      "Created At: Minute",
+      "Created At: Minute of hour",
+      "Created At: Hour of day",
+      "Created At: Day of week",
+      "Created At: Day of month",
+      "Created At: Day of year",
+      "Created At: Week of year",
+      "Created At: Month of year",
+      "Created At: Quarter of year",
+    ]);
+  });
+
+  it("starts from the default unit when another one is in use", () => {
+    const groupedByYear = createOrdersQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count" }],
+          breakouts: [{ type: "column", name: "CREATED_AT", unit: "year" }],
+        },
+      ],
+    });
+
     expect(
-      isSameQuery(
-        addField(grouped, STAGE_INDEX, "columns", createdAt),
-        grouped,
-      ),
-    ).toBe(true);
+      getDimensionLabels(addTimes(groupedByYear, "Created At", 3)),
+    ).toEqual([
+      "Created At: Year",
+      "Created At: Month",
+      "Created At: Quarter",
+      "Created At: Week",
+    ]);
+  });
+
+  it("groups by a number again with the next unused bins, never unbinned", () => {
+    const binned = addTimes(query, "Total", 4);
+
+    expect(getDimensionLabels(binned)).toEqual([
+      "Total: Auto binned",
+      "Total: 10 bins",
+      "Total: 50 bins",
+      "Total: 100 bins",
+    ]);
+    expect(isSameQuery(addTimes(binned, "Total", 1), binned)).toBe(true);
+  });
+
+  it("leaves the query alone once every unit is in use, or the column has none", () => {
+    const everyUnit = addTimes(query, "Created At", 15);
+    const category = addTimes(query, "Category", 1);
+
+    expect(isSameQuery(addTimes(everyUnit, "Created At", 1), everyUnit)).toBe(
+      true,
+    );
+    expect(isSameQuery(addTimes(category, "Category", 1), category)).toBe(true);
   });
 
   it("sums a number dropped on Summarize by, and counts the distinct values of a text", () => {
@@ -780,6 +855,17 @@ describe("drag and drop", () => {
     expect(getDimensionLabels(grouped)).toEqual([
       "Created At: Month",
       "Quantity: Auto binned",
+    ]);
+
+    const regrouped = dropOnWell(
+      query,
+      STAGE_INDEX,
+      fieldDrag("Created At"),
+      "columns",
+    );
+    expect(getDimensionLabels(regrouped)).toEqual([
+      "Created At: Month",
+      "Created At: Quarter",
     ]);
 
     const summed = dropOnWell(
