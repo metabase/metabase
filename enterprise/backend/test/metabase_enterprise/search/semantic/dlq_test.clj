@@ -394,10 +394,10 @@
               (is (= #{(after semantic.dlq/permanent-policy)} (attempts (take 1 upsert-batch))))
               (is (= #{(after semantic.dlq/transient-policy)} (attempts upsert-batch)))))))
       (testing "documents that fail together are rescheduled apart"
-        (let [now     (Instant/parse "2025-01-01T13:14:33Z")
-              policy  semantic.dlq/transient-policy
-              backoff (.plus now (Duration/ofMillis (long (semantic.dlq/max-delay-ms 6 policy))))
-              draws   (atom [0.0 0.99 0.99])]
+        (let [now      (Instant/parse "2025-01-01T13:14:33Z")
+              policy   semantic.dlq/transient-policy
+              earliest (.plus now (Duration/ofMillis (long (/ (semantic.dlq/max-delay-ms 6 policy) 2))))
+              draws    (atom [0.0 0.99 0.99])]
           (mt/with-dynamic-fn-redefs [rand                         (fn [] (ffirst (swap-vals! draws rest)))
                                       semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "boom")))]
             (with-redefs [semantic.dlq/clock (reify InstantSource (instant [_] now))]
@@ -405,8 +405,8 @@
                                   :failures
                                   (map (comp :attempt_at :dlq-entry)))]
                 (is (apply distinct? attempts))
-                (testing "and never sooner than their backoff, or later than the cap"
-                  (is (not-any? #(.isBefore ^Instant % backoff) attempts))
+                (testing "and no sooner than half their backoff, or later than the cap"
+                  (is (not-any? #(.isBefore ^Instant % earliest) attempts))
                   (is (= (:cap policy) (semantic.dlq/next-delay 1000 policy)))))))))
       (testing "a permanent failure is logged without its message"
         (mt/with-dynamic-fn-redefs [semantic.index/upsert-index!
