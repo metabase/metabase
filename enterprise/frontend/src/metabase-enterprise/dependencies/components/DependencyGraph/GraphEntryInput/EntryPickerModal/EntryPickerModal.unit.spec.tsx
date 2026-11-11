@@ -38,7 +38,7 @@ import {
 
 import { EntryPickerModal } from "./EntryPickerModal";
 
-const OWLS = createMockDataApp({ id: 8, name: "owls", display_name: "Owls" });
+const OWLS = createMockDataApp({ id: 8, slug: "owls", name: "Owls" });
 
 // The current user's personal collection, which the picker fetches for its root list.
 const PERSONAL_COLLECTION = createMockCollection({

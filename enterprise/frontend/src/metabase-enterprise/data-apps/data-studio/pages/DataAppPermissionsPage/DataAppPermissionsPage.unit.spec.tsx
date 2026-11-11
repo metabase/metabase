@@ -13,18 +13,18 @@ type SetupOpts = {
 };
 
 function setup({ allowedHosts }: SetupOpts) {
-  const app = createMockDataApp({ name: "sales", allowed_hosts: allowedHosts });
+  const app = createMockDataApp({ slug: "sales", allowed_hosts: allowedHosts });
   setupDataAppEndpoint(app);
-  setupDataAppGroupsEndpoint(app.name, []);
+  setupDataAppGroupsEndpoint(app.slug, []);
 
   renderWithProviders(
     <Route
-      path="/data-studio/apps/:name/permissions"
+      path="/data-studio/apps/:slug/permissions"
       element={<DataAppPermissionsPage />}
     />,
     {
       withRouter: true,
-      initialRoute: `/data-studio/apps/${app.name}/permissions`,
+      initialRoute: `/data-studio/apps/${app.slug}/permissions`,
     },
   );
 }

@@ -6,13 +6,11 @@ parameters:
 - default: Widget
   id: d0000001-0000-0000-0000-000000000001
   name: Category
-  position: 0
   sectionId: string
   slug: category
   type: string/=
 - id: d0000002-0000-0000-0000-000000000002
   name: Min Price
-  position: 1
   sectionId: number
   slug: min_price
   type: number/>=
