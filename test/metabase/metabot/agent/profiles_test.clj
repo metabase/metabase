@@ -258,15 +258,11 @@
                                                                             {:metabot confined :profile-id :nlq}))]
                 (is (=? [{:name   "retrieve_library_entities"
                           :reason "library search can't yet be limited to what this metabot may show"}]
-                        (filter #(= "retrieve_library_entities" (:name %)) unavailable)))))))
-        (testing "a confined metabot is withheld without probing the library index"
-          (mt/with-temp [:model/Collection {coll-id :id} {:name "Scope"}
-                         :model/Metabot    confined {:name "confined bot" :collection_id coll-id}]
-            (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available?
-                                        (fn [] (throw (ex-info "probed the library index" {})))]
-              (is (not (contains? (profiles/profile->tools (profiles/get-profile :nlq) []
-                                                           {:metabot confined :profile-id :nlq})
-                                  "retrieve_library_entities"))))))))))
+                        (filter #(= "retrieve_library_entities" (:name %)) unavailable)))))
+            (testing "a confined metabot is withheld without probing the library index"
+              (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available?
+                                          (fn [] (throw (ex-info "probed the library index" {})))]
+                (is (not (offered? confined :nlq)))))))))))
 
 (deftest library-withheld-wherever-search-is-confined-test
   (testing "every profile whose search tools confine a metabot to its collection also withholds library retrieval"

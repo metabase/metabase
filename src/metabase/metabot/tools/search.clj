@@ -498,8 +498,7 @@
 
 (defn confined-collection-id
   "The collection that discovery for `metabot` must stay inside, or nil.
-  A confined metabot (embedded, or a profile that offers the NLQ search tools) may only search inside its own
-  collection.
+  A confined metabot (embedded, or on a profile offering the NLQ search tools) searches only its own collection.
   Takes `profile-id` as a string or a keyword."
   [metabot profile-id]
   (when (or (= (:entity_id metabot) metabot.config/embedded-metabot-id)
@@ -1260,18 +1259,20 @@
   [{:keys [validate-tsquery?]} expr]
   (when-let [message (search/query-expr-limit-error expr)]
     (query-too-large! {:message message}))
-  (when validate-tsquery?
-    (when-let [{:keys [empty-leaves unrestricted?]}
+  (when-let [{:keys [empty-leaves unrestricted?]}
+             (when validate-tsquery?
                (try
                  (search/query-expr-problems expr)
+                 (catch InterruptedException e
+                   (throw e))
                  (catch Exception e
                    ;; The search runs the same tsquery on the same database, and a failure there is recoverable.
                    (log/warn e "Could not check a full-text query; running it unchecked")
-                   nil))]
-      (when (seq empty-leaves)
-        (query-matches-nothing! {:terms (vec empty-leaves)}))
-      (when unrestricted?
-        (query-matches-everything! {})))))
+                   nil)))]
+    (when (seq empty-leaves)
+      (query-matches-nothing! {:terms (vec empty-leaves)}))
+    (when unrestricted?
+      (query-matches-everything! {}))))
 
 (defn- search-display
   [{:keys [query]}]

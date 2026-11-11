@@ -25,6 +25,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- invoke-search
   "Call the first tool in `tool-list` with `args`, through the runtime, as the agent would."
   ([tool-list args] (invoke-search tool-list args nil nil))
@@ -1979,7 +1981,15 @@
                                                                       (throw (ex-info "connection reset" {})))]
           (is (= {:class :recoverable :code ::search/search-failed}
                  (:error (invoke-search [#'search/fulltext-search-tool] {:query "revenue"})))))
-        (is (true? @searched?))))))
+        (is (true? @searched?)))))
+  (testing "an interrupted check ends the call instead of searching unchecked"
+    (mt/with-test-user :rasta
+      (let [searched? (atom false)]
+        (mt/with-dynamic-fn-redefs [search-core/query-expr-problems (fn [& _] (throw (InterruptedException.)))
+                                    search/search-by-query          (fn [_] (reset! searched? true) [])]
+          (is (= {:class :unrecoverable :code :interrupted}
+                 (:error (invoke-search [#'search/fulltext-search-tool] {:query "revenue"})))))
+        (is (false? @searched?))))))
 
 (deftest vector-only-reaches-the-search-context-test
   (mt/with-test-user :rasta
