@@ -10,7 +10,6 @@
    [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -100,13 +99,8 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
-  (let [measures  (measures.db/unarchived-measures)
-        table-ids (into #{} (keep :table_id) measures)]
-    (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (measures.db/table-database-ids table-ids))
-                                    :table-ids table-ids})
-    (->> (t2/hydrate (filterv mi/can-read? measures) :creator :definition_description)
-         (mapv with-api-dimensions))))
+  (->> (t2/hydrate (filterv mi/can-read? (measures.db/unarchived-measures)) :creator :definition_description)
+       (mapv with-api-dimensions)))
 
 (defn write-check-and-update-measure!
   "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate

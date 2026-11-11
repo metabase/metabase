@@ -7,7 +7,6 @@
    [metabase.lib.schema.metadata]
    [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -333,19 +332,11 @@
   true)
 
 (defn readable-fields-only
-  "Efficiently checks if each field is readable and returns only readable fields.
-
-  Reading a Field delegates to its Table, so the tables are loaded up front -- otherwise this costs a query per
-  distinct table, and another per distinct database, which is what makes it expensive for callers whose fields fan
-  out across tables, such as hydrating `:target` over a dashboard's FK columns."
+  "The readable `fields`, checked against their hydrated Tables."
   [fields]
-  (let [fields (t2/hydrate fields :table)
-        tables (into #{} (keep :table) fields)]
-    (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                    :table-ids (into #{} (keep :id) tables)})
-    (for [field fields
-          :when (mi/can-read? field)]
-      (dissoc field :table))))
+  (for [field (t2/hydrate fields :table)
+        :when (mi/can-read? field)]
+    (dissoc field :table)))
 
 (mi/define-batched-hydration-method with-targets
   :target
