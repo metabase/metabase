@@ -48,7 +48,8 @@ export type SummaryValueItem = {
     }
   | { kind: "metric" }
   | { kind: "measure" }
-  | { kind: "expression" }
+  /** `column` is set when the formula aggregates a single column, so it can be dragged to Group by. */
+  | { kind: "expression"; column?: Lib.ColumnMetadata }
 );
 
 export type SummaryDimensionItem = {

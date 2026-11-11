@@ -215,20 +215,22 @@ function getValueItem(
 ): SummaryValueItem {
   const { displayName, isNamed } = Lib.displayInfo(query, stageIndex, clause);
   const base = { clause, key, label: displayName };
-  if (isNamed && entityKind === null) {
-    return { ...base, kind: "expression" };
-  }
   const clauseOperators = Lib.selectedAggregationOperators(operators, clause);
   const selectedOperator = clauseOperators.find(
     (operator) => Lib.displayInfo(query, stageIndex, operator).selected,
   );
+  // the operator's columns carry the selection; `Lib.aggregationColumn` is the result column
+  const column = selectedOperator
+    ? Lib.aggregationOperatorColumns(selectedOperator).find(
+        (column) => Lib.displayInfo(query, stageIndex, column).selected,
+      )
+    : undefined;
+  if (isNamed && entityKind === null) {
+    return { ...base, kind: "expression", column };
+  }
   if (selectedOperator == null) {
     return { ...base, kind: entityKind ?? "expression" };
   }
-  // the operator's columns carry the selection; `Lib.aggregationColumn` is the result column
-  const column = Lib.aggregationOperatorColumns(selectedOperator).find(
-    (column) => Lib.displayInfo(query, stageIndex, column).selected,
-  );
   if (column == null) {
     return { ...base, kind: "count" };
   }
@@ -483,10 +485,14 @@ function getDragField(
   switch (drag.kind) {
     case "field":
       return drag.field;
-    case "value":
-      return drag.item.kind === "column"
-        ? { kind: "column", column: drag.item.column }
-        : null;
+    case "value": {
+      const { item } = drag;
+      const column =
+        item.kind === "column" || item.kind === "expression"
+          ? item.column
+          : undefined;
+      return column ? { kind: "column", column } : null;
+    }
     case "dimension": {
       const column = Lib.breakoutColumn(query, stageIndex, drag.item.clause);
       return column ? { kind: "column", column } : null;

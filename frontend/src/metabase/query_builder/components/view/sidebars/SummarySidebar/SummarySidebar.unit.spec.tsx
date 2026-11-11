@@ -470,6 +470,35 @@ describe("SummarySidebar", () => {
       });
     });
 
+    it("moves a named value formula chip to Group by", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              {
+                name: "Sum total",
+                value: {
+                  type: "operator",
+                  operator: "sum",
+                  args: [{ type: "column", name: "TOTAL" }],
+                },
+              },
+            ],
+          },
+        ],
+      });
+      const { getLastQuery } = setup({ query });
+      const [item] = getValueItems(query, STAGE_INDEX);
+
+      drop({ kind: "value", item }, "columns");
+
+      expect(getLastQuery()).toEqual({
+        values: ["Count"],
+        dimensions: ["Total: Auto binned"],
+      });
+    });
+
     it("leaves the query alone when the drop is rejected or misses", () => {
       const { onQueryChange } = setup({ query: SUMMARIZED_QUERY });
       const [countItem] = getValueItems(SUMMARIZED_QUERY, STAGE_INDEX);
