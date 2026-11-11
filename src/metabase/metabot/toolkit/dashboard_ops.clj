@@ -597,25 +597,31 @@
     (recur settled (assoc dc :row (apply max (map bottom hits))))
     dc))
 
+(defn- check-placements!
+  "Throws when a card in `dcs`, all on one tab, that an op placed runs past the grid's right edge, or when two cards
+   given positions overlap.
+   `placed` is as [[settle-tab]] takes it."
+  [placed dcs]
+  (doseq [{:keys [id col size_x]} (filter (comp placed :id) dcs)
+          :when (< autoplace/default-grid-width (+ col size_x))]
+    (fail! :past-grid-edge {:dashcard-id id, :col col, :size-x size_x}))
+  (let [positioned (filterv (comp #{:position} placed :id) dcs)]
+    (when-let [pair (first (for [[i a] (map-indexed vector positioned)
+                                 b     (drop (inc i) positioned)
+                                 :when (overlap? a b)]
+                             [(:id a) (:id b)]))]
+      (fail! :overlapping-cards {:dashcard-ids pair}))))
+
 (defn- settle-tab
   "The new rows of the dashcards in `dcs`, all on one tab, that must move down, as `{id row}`.
    `placed` maps the id of each card an op placed to `:position` or `:size`, as [[mark-placed]] records it.
    Cards given a position stay where they are.
    Resized cards settle next, then the rest, each group in reading order, and each card below whatever settled card
    it overlaps.
-   So a pushed card pushes the cards it lands on in turn.
-   Throws when a placed card runs past the grid's right edge, or two cards given positions overlap."
+   So a pushed card pushes the cards it lands on in turn."
   [placed dcs]
   (let [{positioned :position resized :size others nil} (group-by (comp placed :id) dcs)
         in-reading-order (partial sort-by (juxt :row :col))]
-    (doseq [{:keys [id col size_x]} (concat positioned resized)
-            :when (< autoplace/default-grid-width (+ col size_x))]
-      (fail! :past-grid-edge {:dashcard-id id, :col col, :size-x size_x}))
-    (when-let [pair (first (for [[i a] (map-indexed vector positioned)
-                                 b     (drop (inc i) positioned)
-                                 :when (overlap? a b)]
-                             [(:id a) (:id b)]))]
-      (fail! :overlapping-cards {:dashcard-ids pair}))
     (second
      (reduce (fn [[settled moved] dc]
                (let [settled-dc (push-below settled dc)]
@@ -640,10 +646,10 @@
         touched (into (into #{} (comp (map :id) (filter neg?)) tabs)
                       (comp (filter (comp placed :id)) (map tab-of))
                       dashcards)
-        rows    (into {}
-                      (mapcat (partial settle-tab placed))
-                      ;; `contains?`, as a dashboard without tabs keeps its cards under the tab nil.
-                      (vals (group-by tab-of (filter #(contains? touched (tab-of %)) dashcards))))]
+        ;; `contains?`, as a dashboard without tabs keeps its cards under the tab nil.
+        by-tab  (vals (group-by tab-of (filter #(contains? touched (tab-of %)) dashcards)))
+        _       (run! (partial check-placements! placed) by-tab)
+        rows    (into {} (mapcat (partial settle-tab placed)) by-tab)]
     (-> state
         (map-rows :dashcards #(if-let [row (get rows (:id %))] (assoc % :row row) %))
         (assoc ::pushed (into [] (comp (map :id) (filter #(and (pos-int? %) (contains? rows %)))) dashcards)))))
