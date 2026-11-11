@@ -10,6 +10,7 @@ import {
   setupCopyDocumentEndpoint,
   setupCreateBookmarkEndpoint,
   setupCreateDocumentEndpoint,
+  setupCreateDocumentErrorEndpoint,
   setupDocumentErrorEndpoint,
   setupEntityRevisionsEndpoint,
   setupLibraryEndpoints,
@@ -370,6 +371,35 @@ describe("DocumentPage lifecycle", () => {
           method: "GET",
         }),
       ).toHaveLength(0);
+    });
+
+    it("shows an error toast and keeps the document unsaved when creating fails", async () => {
+      setupCreateDocumentErrorEndpoint({ status: 500 });
+      const { router, store } = setup({
+        initialRoute: "/document/new",
+        documents: [],
+      });
+
+      await userEvent.type(await findTitleInput(), "Title");
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Save" }),
+      );
+      const selectButton = await screen.findByTestId(
+        "entity-picker-select-button",
+      );
+      await waitFor(() => expect(selectButton).toBeEnabled());
+      await userEvent.click(selectButton);
+
+      await waitFor(() =>
+        expect(getToasts(store)).toMatchObject([
+          { message: "Error saving document", variant: "negative" },
+        ]),
+      );
+      expect(
+        fetchMock.callHistory.calls("path:/api/document", { method: "POST" }),
+      ).toHaveLength(1);
+      expect(router?.location.pathname).toBe("/document/new");
+      await expectSaveButton();
     });
 
     it("resets the editor when navigating from /new to /new and the changes are discarded", async () => {

@@ -29,14 +29,18 @@ export const documentApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) => (error ? [] : [listTag("document")]),
       async onQueryStarted(_props, { dispatch, queryFulfilled }) {
-        const { data } = await queryFulfilled;
-        await dispatch(
-          documentApi.util.upsertQueryData(
-            "getDocument",
-            { id: data.id },
-            data,
-          ),
-        );
+        try {
+          const { data } = await queryFulfilled;
+          await dispatch(
+            documentApi.util.upsertQueryData(
+              "getDocument",
+              { id: data.id },
+              data,
+            ),
+          );
+        } catch {
+          // The caller handles the error through the mutation result.
+        }
       },
     }),
     updateDocument: builder.mutation<Document, UpdateDocumentRequest>({
@@ -56,14 +60,18 @@ export const documentApi = Api.injectEndpoints({
             ]
           : [],
       async onQueryStarted(_props, { dispatch, queryFulfilled }) {
-        const { data } = await queryFulfilled;
-        await dispatch(
-          documentApi.util.upsertQueryData(
-            "getDocument",
-            { id: data.id },
-            data,
-          ),
-        );
+        try {
+          const { data } = await queryFulfilled;
+          await dispatch(
+            documentApi.util.upsertQueryData(
+              "getDocument",
+              { id: data.id },
+              data,
+            ),
+          );
+        } catch {
+          // The caller handles the error through the mutation result.
+        }
       },
     }),
     deleteDocument: builder.mutation<void, DeleteDocumentRequest>({
@@ -82,14 +90,18 @@ export const documentApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) => (error ? [] : [listTag("document")]),
       async onQueryStarted(_props, { dispatch, queryFulfilled }) {
-        const { data } = await queryFulfilled;
-        await dispatch(
-          documentApi.util.upsertQueryData(
-            "getDocument",
-            { id: data.id },
-            data,
-          ),
-        );
+        try {
+          const { data } = await queryFulfilled;
+          await dispatch(
+            documentApi.util.upsertQueryData(
+              "getDocument",
+              { id: data.id },
+              data,
+            ),
+          );
+        } catch {
+          // The caller handles the error through the mutation result.
+        }
       },
     }),
     listPublicDocuments: builder.query<GetPublicDocument[], void>({
