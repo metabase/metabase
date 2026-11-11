@@ -127,14 +127,21 @@ function matchesPinnedState(item: CollectionItem, pinnedState: string | null) {
 
 function handleCollectionItemsResponse({
   call,
-  collectionItems,
+  collectionItems: unarchivedItems,
+  archivedItems = [],
   modelsParam,
 }: {
   call: { url: string };
   collectionItems: CollectionItem[];
+  archivedItems?: CollectionItem[];
   modelsParam?: string[];
 }) {
   const url = new URL(call.url);
+  // As in the API, archived items are only listed when they are requested.
+  const collectionItems =
+    url.searchParams.get("archived") === "true"
+      ? [...unarchivedItems, ...archivedItems]
+      : unarchivedItems;
   const models = modelsParam ?? url.searchParams.getAll("models");
   const pinnedState = url.searchParams.get("pinned-state");
 
@@ -185,10 +192,13 @@ function collectionItemsMetadata(
 export function setupCollectionItemsEndpoint({
   collection,
   collectionItems = [],
+  archivedItems,
   models: modelsParam,
 }: {
   collection: Pick<Collection, "id">;
   collectionItems: CollectionItem[];
+  /** Items that are only listed when the request asks for `archived=true`. */
+  archivedItems?: CollectionItem[];
   models?: string[];
 }) {
   const itemsName = `collection-${collection.id}-items`;
@@ -203,6 +213,7 @@ export function setupCollectionItemsEndpoint({
       return handleCollectionItemsResponse({
         call,
         collectionItems,
+        archivedItems,
         modelsParam,
       });
     },
@@ -246,9 +257,12 @@ export function setupTenantCollectionItemsEndpoint({
 
 export function setupRootCollectionItemsEndpoint({
   rootCollectionItems,
+  archivedRootItems = [],
   tenantRootItems = [],
 }: {
   rootCollectionItems: CollectionItem[];
+  /** Items, like the trash, that are only listed with `archived=true`. */
+  archivedRootItems?: CollectionItem[];
   tenantRootItems?: CollectionItem[];
 }) {
   fetchMock.get(
@@ -268,9 +282,14 @@ export function setupRootCollectionItemsEndpoint({
         };
       }
 
+      const items =
+        url.searchParams.get("archived") === "true"
+          ? [...rootCollectionItems, ...archivedRootItems]
+          : rootCollectionItems;
+
       return {
-        data: rootCollectionItems,
-        total: rootCollectionItems.length,
+        data: items,
+        total: items.length,
         models,
         limit: null,
         offset: null,
