@@ -606,6 +606,18 @@
         (is (= false
                (:can_write (first (mt/with-test-user :rasta (recent-views (mt/user->id :rasta)))))))))))
 
+(deftest selected-dashboard-can-write-reflects-real-permission-graph-test
+  (testing "a dashboard in recent selections reports `can_write` false to a user who can only read it"
+    (mt/with-model-cleanup [:model/RecentViews]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Dashboard  {dash-id :id} {:collection_id coll-id}]
+          (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :selection)
+          (is (= [{:id dash-id :can_write false}]
+                 (->> (mt/with-test-user :rasta (recent-views (mt/user->id :rasta) [:selections]))
+                      (map #(select-keys % [:id :can_write]))))))))))
+
 (deftest special-collections-are-treated-specially
   (mt/with-temp
     [:model/Collection {instance-analytics-id :id} {:type collection/instance-analytics-collection-type}
