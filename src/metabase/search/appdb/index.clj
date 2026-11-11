@@ -34,16 +34,12 @@
 
 (def ^:private sync-tracking-period (long (* 5 #_minutes 60e9)))
 
-(defonce ^:private next-sync-at (atom nil))
-
-;; The active and pending index tables. Writers that read the database before writing this state hold its slot lock.
-;; The exception is the test-only guard in [[batch-update!]], which only clears a table that is still the tracked one.
-;; Installing the first root also clears the sync timer, so a root a reload installs, which starts empty, syncs on its
-;; next read instead of waiting out a timer set for the state it replaced.
+;; The active and pending index tables, and `:next-sync-at`, the time after which a read syncs them with the database.
+;; The time lives in the same value, so a binding or a reset of the state covers it too. A state without it syncs on
+;; its next read. Writers that read the database before writing this state hold its slot lock. The exception is the
+;; test-only guard in [[batch-update!]], which only clears a table that is still the tracked one.
 (def ^:private indexes-component
-  (system/mutable-component-handle ::indexes (fn []
-                                               (reset! next-sync-at nil)
-                                               {:active nil, :pending nil})))
+  (system/mutable-component-handle ::indexes (constantly {:active nil, :pending nil})))
 
 (defn indexes-handle
   "The [[metabase.global-system.mutable-component/MutableComponentHandle]] for the tracked index tables."
@@ -54,9 +50,12 @@
 (def ^:private ^:dynamic *mocking-tables* false)
 
 (defmethod search.engine/reset-tracking! :search.engine/appdb [_]
-  (mc/reset! indexes-component nil)
-  ;; Cleared after the state, so the next read syncs rather than trusting the blank state until the timer runs out.
-  (reset! next-sync-at nil))
+  (mc/reset! indexes-component nil))
+
+(defn- track-tables!
+  "Replace the tracked index tables with `tables`, keeping the time of the next sync."
+  [tables]
+  (mc/swap! indexes-component #(assoc tables :next-sync-at (:next-sync-at %))))
 
 (declare exists?)
 
@@ -72,13 +71,13 @@
                             ;; For debugging, make it clear why we are not tracking the given metadata.
                             [(keyword (name status) "not-found") (keyword table-name)])))]
       (log/debugf "Sync tracked index tables: %s" indexes)
-      (mc/reset! indexes-component indexes))))
+      (track-tables! indexes))))
 
 (defn sync-from-restored-db!
   "Re-sync the tracked index tables with the current database state.
    Used after snapshot restore where the index tables are already present."
   []
-  (reset! next-sync-at nil)
+  (mc/swap! indexes-component assoc :next-sync-at nil)
   (sync-tracking-atoms!))
 
 ;; This exists only to be mocked.
@@ -86,12 +85,13 @@
 
 (defn- sync-tracking-atoms-if-stale! []
   (when-not *mocking-tables*
-    (let [current @next-sync-at
-          now-ns (now)]
-      (when (or (nil? current) (> now-ns current))
-        ;; Use compare-and-set! to ensure only one thread wins the race and syncs
-        (when (compare-and-set! next-sync-at current (+ now-ns sync-tracking-period))
-          (sync-tracking-atoms!))))))
+    (let [now-ns (now)
+          stale? (fn [{:keys [next-sync-at]}]
+                   (or (nil? next-sync-at) (> now-ns next-sync-at)))
+          ;; Only the thread whose swap moves the time on syncs, so a stale state is synced once.
+          [old]  (mc/swap-vals! indexes-component #(cond-> % (stale? %) (assoc :next-sync-at (+ now-ns sync-tracking-period))))]
+      (when (stale? old)
+        (sync-tracking-atoms!)))))
 
 (defn active-table
   "The table against which we should currently make search queries."
@@ -237,7 +237,7 @@
       (boolean
        (when-let [pending (:pending @indexes-component)]
          (analyze-table! pending)
-         (mc/reset! indexes-component {:pending nil, :active pending})
+         (track-tables! {:pending nil, :active pending})
          true))
       ;; Ensure the metadata is updated and pruned.
       (let [{:keys [pending]} (sync-tracking-atoms!)]
@@ -245,7 +245,7 @@
         (when pending
           (analyze-table! pending)
           (let [active (keyword (search-index-metadata/active-pending! :appdb (search.spec/index-version-hash)))]
-            (mc/reset! indexes-component {:pending nil, :active active})
+            (track-tables! {:pending nil, :active active})
             (log/infof "Activated pending index %s" active)))
         ;; Clean up while we're here
         (delete-obsolete-tables!)

@@ -9,9 +9,12 @@
 (set! *warn-on-reflection* true)
 
 (deftest ^:synchronized reset-tracking-in-a-binding-test
-  (testing "resetting tracking inside a binding of the index state clears only the bound state"
+  (testing "resetting tracking inside a binding of the index state clears only the bound state, sync time included"
+    ;; a read gives the root a time for its next sync, which the reset in the binding must leave alone
+    (search.index/active-table)
     (let [handle (search.index/indexes-handle)
           root   @handle]
+      (is (some? (:next-sync-at root)))
       (is (= {:inside nil, :root-after root}
              {:inside     (mc/binding handle {:active ::bound-active, :pending nil}
                                       (fn []

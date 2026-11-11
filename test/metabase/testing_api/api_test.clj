@@ -111,7 +111,8 @@
           ;; Snapshot with a valid search index in place
           (mt/user-http-request :rasta :post 204 (format "testing/snapshot/%s" snapshot-name))
           ;; Clear the tracking atoms so we can verify they get restored
-          (mc/reset! (search.index/indexes-handle) {:active nil, :pending nil})
+          ;; keeps the time of the next sync, so the read below does not sync the tables back
+          (mc/swap! (search.index/indexes-handle) assoc :active nil, :pending nil)
           (is (nil? (search.index/active-table))
               "Precondition: tracking atoms should be cleared before restore")
           ;; Restore should call sync-from-restored-db! and refresh the atoms
