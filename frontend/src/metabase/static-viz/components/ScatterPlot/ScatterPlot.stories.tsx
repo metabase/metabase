@@ -1,5 +1,4 @@
 import type { StoryFn } from "@storybook/react";
-import { updateIn } from "icepick";
 
 import {
   measureTextHeight,
@@ -15,6 +14,7 @@ import {
   type StaticChartProps,
   StaticVisualization,
 } from "../StaticVisualization";
+import { withVisualizationSettings } from "../stories-utils";
 
 import { data } from "./stories-data";
 
@@ -226,17 +226,11 @@ export const CustomYAxisRangeOffScreen = {
   render: Template,
 
   args: {
-    // Unjustified type cast. FIXME
-    rawSeries: updateIn(
-      data.default,
-      [0, "card", "visualization_settings"],
-      (val) => ({
-        ...val,
-        "graph.y_axis.auto_range": false,
-        "graph.y_axis.min": 100000,
-        "graph.y_axis.max": 200000,
-      }),
-    ) as any,
+    rawSeries: withVisualizationSettings(data.default, {
+      "graph.y_axis.auto_range": false,
+      "graph.y_axis.min": 100000,
+      "graph.y_axis.max": 200000,
+    }),
     renderingContext,
   },
 };

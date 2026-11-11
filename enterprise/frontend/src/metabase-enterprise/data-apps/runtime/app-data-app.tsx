@@ -7,15 +7,23 @@ import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
 } from "metabase/embedding-sdk/config";
 import { setDataApp } from "metabase/embedding/config";
+import { setBasename } from "metabase/utils/basename";
 import { applyDocumentLocales } from "metabase/utils/boot-locale";
 
-import { readNameFromUrl } from "./lib/read-name-from-url";
+import {
+  getDataAppUserLocale,
+  initDataAppBroker,
+  installDataAppFetchBroker,
+  installDataAppRouteReporter,
+} from "../broker/iframe-broker";
+
+import { readSlugFromUrl } from "./lib/read-slug-from-url";
 
 /**
  * Entry point loaded by `data-app.html` and served from the internal or SSO-embedded data app route.
  *
  * This script boots inside the iframe — separate from the host Metabase
- * app's React tree. It reads the data-app `:name` from the URL, fetches the
+ * app's React tree. It reads the data-app `:slug` from the URL, fetches the
  * bundle, instantiates it inside a Near Membrane sandbox bound to *this*
  * window, and renders the resulting component.
  */
@@ -26,11 +34,20 @@ import { readNameFromUrl } from "./lib/read-name-from-url";
 // implementations the package component facades look up at render time.
 window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
 
+setBasename(window.MetabaseRoot);
+
+if (window.parent !== window) {
+  initDataAppBroker();
+  installDataAppFetchBroker();
+  installDataAppRouteReporter();
+}
+
 const init = async () => {
   document.body.style.margin = "0";
 
-  // This page is served from our own document, which carries the catalogues.
-  await applyDocumentLocales();
+  // The document carries the catalogues. On the isolated origin it is served without a
+  // signed-in user, so the top page passes the user's locale.
+  await applyDocumentLocales(await getDataAppUserLocale());
 
   const rootElement = document.getElementById("root");
 
@@ -46,7 +63,7 @@ const init = async () => {
     EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey = "enable-embedding-modular";
     EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
 
-    setDataApp(readNameFromUrl() ?? "");
+    setDataApp(readSlugFromUrl() ?? "");
     await import("sdk-iframe-embedding-ee-plugins");
 
     const { DataAppEmbed } =

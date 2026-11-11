@@ -19,6 +19,7 @@
   and a permanent-policy (that is likely only resolved with manual intervention, a patch to the code).
   Even 'permanent' errors are retried however - due to inherent ambiguity - it just effects the backoff climb."
   (:require
+   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase-enterprise.search.semantic.gate :as semantic.gate]
    [metabase-enterprise.search.semantic.index :as semantic.index]
@@ -29,6 +30,7 @@
    [next.jdbc.result-set :as jdbc.rs])
   (:import
    (java.net SocketException)
+   (java.sql SQLException)
    (java.time Clock Duration Instant InstantSource)))
 
 (set! *warn-on-reflection* true)
@@ -86,6 +88,17 @@
   [pgvector index-metadata index-id]
   (semantic.util/table-exists? pgvector (name (dlq-table-name-kw index-metadata index-id))))
 
+(def ^:private deterministic-sqlstate-classes
+  "SQLState classes of errors that fail the same way on every retry."
+  #{"22"   ; data exception, such as an invalid byte sequence
+    "23"   ; integrity constraint violation
+    "54"}) ; program limit exceeded, such as an index row too large
+
+(defn- deterministic-sql-error? [t]
+  (when-let [state (when (instance? SQLException t)
+                     (.getSQLState ^SQLException t))]
+    (some #(str/starts-with? state %) deterministic-sqlstate-classes)))
+
 (defn categorize-error
   "Categorizes an error as :transient, :permanent, or defaults to :transient.
 
@@ -95,6 +108,8 @@
   - SocketException -> :transient (network issues, may recover)
   - AssertionError -> :permanent (logic errors, won't be fixed by retry)
   - NullPointerException -> :permanent (programming errors, won't be fixed by retry)
+  - SQLException in the cause chain with a data, constraint or limit SQLState -> :permanent
+    (the same row fails the same way, e.g. a value too large for an index)
   - Everything else -> :transient (safer to retry unknown errors)
 
   This categorization determines which retry policy is applied - 'permanent' errors
@@ -110,6 +125,8 @@
         AssertionError :permanent
         NullPointerException :permanent
         nil)
+      (when (some deterministic-sql-error? (u/full-exception-chain t))
+        :permanent)
       :transient))
 
 (def transient-policy
@@ -156,19 +173,17 @@
 (defn next-delay
   "Calculates the next retry delay as a Duration for the given retry count and policy.
 
-  Applies the policy's exponential backoff formula with the cap constraint.
+  Takes the policy's backoff and multiplies it by a random factor between 0.5 and 1.5, within the policy's cap.
   Returns a Duration object suitable for scheduling the next retry attempt (presumably against now/last-attempt).
 
   Initially DLQ entries have a retry count of zero - it is not 'try' count, it is 'retry' count.
   The initial retry is scheduled using the standard 'initial-backoff' variable, this function is only used
   when we have retried at least once."
   ^Duration [^long retry-count policy]
-  (let [{:keys [^Duration cap]} policy
-        cap-ms (.toMillis cap)
-        delay-ms (max-delay-ms retry-count policy)
-        jitter (+ 0.9 (* (rand) 0.2))
-        jittered-ms (* delay-ms jitter)]
-    (Duration/ofMillis (min cap-ms (max 0 (long jittered-ms))))))
+  ;; Wide, because only jitter separates documents that failed in one batch, so the bad one can be retried alone
+  ;; (see failure-outcome). Below the cap it averages out to the policy's backoff.
+  (let [cap-ms (.toMillis ^Duration (:cap policy))]
+    (Duration/ofMillis (long (min cap-ms (* (max-delay-ms retry-count policy) (+ 0.5 (rand))))))))
 
 (comment
   (next-delay 0 transient-policy)
@@ -330,10 +345,25 @@
      :attempt_at        (.plus attempted-at ^Duration (next-delay new-retry-count retry-policy))
      :last_attempted_at attempted-at}))
 
+(defn- error-summary
+  "The class of `ex`'s root cause, and the SQLState of the first SQL error in its chain, if any.
+  Leaves out the message, which for a Postgres data error can quote the document's text."
+  [ex]
+  (let [chain (u/full-exception-chain ex)
+        sql   (some #(when (instance? SQLException %) %) chain)]
+    (cond-> (.getName (class (last chain)))
+      sql (str " (SQLState " (.getSQLState ^SQLException sql) ")"))))
+
 (defn- failure-outcome [ex gate-docs]
   (let [now         (.instant clock)
-        ex-category (categorize-error ex)
+        ;; a failed batch doesn't say which document caused the error, so only a lone one gets the permanent policy
+        ex-category (if (next gate-docs) :transient (categorize-error ex))
         ex-policy   ({:transient transient-policy, :permanent permanent-policy} ex-category transient-policy)]
+    ;; the only log of why a document keeps failing; transient ones stay at debug, as an outage fails every batch
+    (when (= :permanent ex-category)
+      (log/warnf "Semantic indexing of %s failed with %s; retrying on the permanent backoff"
+                 (:id (first gate-docs)) (error-summary ex)))
+    (log/debugf ex "Semantic indexing of a batch of %d failed" (count gate-docs))
     {:failures (mapv (fn [gate-doc]
                        {:gate-doc gate-doc
                         :dlq-entry

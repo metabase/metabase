@@ -352,7 +352,7 @@
                    :action :action
                    :data-app :data_app)
      :name-column (case entity-type
-                    (:table :data-app) :entity.display_name
+                    :table :entity.display_name
                     :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                     :entity.name)
      :location-column (case entity-type

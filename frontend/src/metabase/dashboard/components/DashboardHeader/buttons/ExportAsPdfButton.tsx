@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { ButtonHTMLAttributes } from "react";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";

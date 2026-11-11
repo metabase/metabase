@@ -8,8 +8,8 @@ import type {
 export const createMockDataApp = (opts?: Partial<DataApp>): DataApp => ({
   id: 1,
   entity_id: "mOcKdAtAaPpEnTiTyIdXx",
-  name: "sales",
-  display_name: "Sales",
+  slug: "sales",
+  name: "Sales",
   description: null,
   version: 1,
   outdated: false,

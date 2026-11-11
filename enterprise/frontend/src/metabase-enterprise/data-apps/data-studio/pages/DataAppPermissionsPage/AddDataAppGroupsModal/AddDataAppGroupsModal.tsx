@@ -29,7 +29,7 @@ export function AddDataAppGroupsModal({
   onClose,
 }: AddDataAppGroupsModalProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const { data: assignedGroups = [] } = useGetDataAppGroupsQuery(app.name);
+  const { data: assignedGroups = [] } = useGetDataAppGroupsQuery(app.slug);
 
   const isTenantsEnabled = useSetting("use-tenants");
   const hasTenantsFeature = useHasTokenFeature("tenants");
@@ -61,7 +61,7 @@ export function AddDataAppGroupsModal({
 
   const handleAdd = async () => {
     const { error } = await addGroups({
-      name: app.name,
+      slug: app.slug,
       group_ids: selectedIds.map(Number),
     });
     if (error) {
@@ -73,11 +73,7 @@ export function AddDataAppGroupsModal({
   };
 
   return (
-    <Modal
-      title={t`Add groups to ${app.display_name}`}
-      opened
-      onClose={onClose}
-    >
+    <Modal title={t`Add groups to ${app.name}`} opened onClose={onClose}>
       <Stack gap="lg" mt="sm">
         <Text>{t`People in these groups will be able to open the app.`}</Text>
         <AddDataAppsGroupsCombobox
