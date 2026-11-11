@@ -362,15 +362,24 @@
                         :exporter-timeout (Duration/ofMillis timeout-ms)
                         :schedule-delay   (Duration/ofMillis delay-ms)}]}}))
 
+(defn- set-default-sdk!
+  "Make `otel` clj-otel's default SDK, or clear the default when nil.
+  clj-otel caches the tracer its first span gets, and setting the default SDK does not clear that cache, so the tracer
+  is set here too. A tracer cached before this, from a closed SDK or from the no-op global one, would drop every span."
+  [otel]
+  (otel/set-default-otel! otel)
+  (span/set-default-tracer! (when otel (span/get-tracer {:open-telemetry otel}))))
+
 (defn- stop-otel-sdk!
-  "Close `otel`, flushing any pending spans, and stop tracing groups."
+  "Stop tracing groups, then close `otel`, flushing any pending spans, and clear it as the default."
   [otel]
   (log/info "Shutting down OpenTelemetry tracing...")
+  (shutdown-groups!)
   (try
     (otel-sdk/close-otel-sdk! otel)
     (catch Exception e
       (log/warnf "Error shutting down OpenTelemetry SDK: %s" (ex-message e))))
-  (shutdown-groups!)
+  (set-default-sdk! nil)
   (log/info "OpenTelemetry tracing shut down"))
 
 (defn init!
@@ -400,11 +409,11 @@
                                        :queue-size   queue-size
                                        :timeout-ms   timeout-ms
                                        :delay-ms     delay-ms})]
-             ;; the default only once the rest has worked, and the SDK closed if it has not, so a failed start leaves no
-             ;; running SDK behind
+             ;; spans start once a group is enabled, so the SDK must be the default by then. A failed start closes the SDK
+             ;; and clears the default, leaving no running SDK behind.
              (try
+               (set-default-sdk! otel)
                (init-enabled-groups! groups-str log-level-str)
-               (otel/set-default-otel! otel)
                (catch Throwable e
                  (stop-otel-sdk! otel)
                  (throw e)))
