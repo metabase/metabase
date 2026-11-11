@@ -1,7 +1,12 @@
 (ns metabase.toucan.impl
   "Toucan 2 call macros that bind every runtime value with `[:auto/param ...]` unless it is a [[fragment]]."
   (:require
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
+   [toucan2.query :as t2.query]
+   [toucan2.tools.transformed])
+  (:import
+   (toucan2.tools.transformed RecordTypeForInterceptingApplyKVArgCalls)))
 
 (set! *warn-on-reflection* true)
 
@@ -28,6 +33,31 @@
   (if (or (integer? x) (fragment? x))
     x
     [:auto/param x]))
+
+(defn- marker? [x]
+  (and (vector? x)
+       (= 2 (count x))
+       (= :auto/param (first x))))
+
+(defn- nested-marker-paths
+  "The `get-in` paths of the `[:auto/param ...]` markers inside operator form `v`, not counting `v` itself."
+  [v]
+  (letfn [(paths [x path]
+            (cond
+              (marker? x) [path]
+              (vector? x) (into [] (mapcat (fn [i] (paths (nth x i) (conj path i)))) (range (count x)))
+              :else       []))]
+    (when (and (vector? v) (not (marker? v)))
+      (paths v []))))
+
+(methodical/defmethod t2.query/apply-kv-arg :around [:default RecordTypeForInterceptingApplyKVArgCalls :default]
+  "Run a column's transform on the values inside the markers of an operator kv-arg, then mark them again; otherwise the
+  transform also rewrites the `:auto/param` keyword."
+  [model query k v]
+  (if-let [paths (seq (nested-marker-paths v))]
+    (let [[k v*] (next-method model query k (reduce (fn [v path] (update-in v path second)) v paths))]
+      [k (reduce (fn [v path] (update-in v path (fn [x] [:auto/param x]))) v* paths)])
+    (next-method model query k v)))
 
 (defn- dynamic? [form]
   (or (symbol? form) (seq? form)))

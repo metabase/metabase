@@ -108,6 +108,17 @@
                           (toucan2.core/compile
                             (t2/select :model/User {:where [:in :id (assoc fragment :select [:password])]}))))))
 
+(deftest ^:parallel operator-kv-arg-transformed-test
+  (let [types        [:personal :internal]
+        [sql & args] (toucan2.core/compile (t2/select :model/User :type [:in types]))]
+    (is (re-find #"(?i)type\W* IN \(\?, \?\)$" sql))
+    (is (= ["personal" "internal"] args)))
+  (let [lo           :internal
+        hi           :personal
+        [sql & args] (toucan2.core/compile (t2/select :model/User :type [:between lo hi]))]
+    (is (re-find #"(?i)type\W* BETWEEN \? AND \?$" sql))
+    (is (= ["internal" "personal"] args))))
+
 (deftest ^:parallel plain-honeysql-value-rejected-test
   (letfn [(email-is [email] [:= :email email])]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
