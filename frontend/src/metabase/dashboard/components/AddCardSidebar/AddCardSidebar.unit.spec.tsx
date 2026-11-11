@@ -320,6 +320,26 @@ describe("AddCardSideBar", () => {
       expect(screen.getByText("Nothing here")).toBeInTheDocument();
     });
 
+    it("should show personal collections next to public ones in the root collection", async () => {
+      setupCollectionItemsEndpoint({
+        collection: ROOT_COLLECTION,
+        collectionItems: [],
+      });
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInPersonalSubcollection,
+      });
+
+      await userEvent.click(screen.getByText(ROOT_COLLECTION.name));
+
+      expect(
+        await screen.findByRole("menuitem", { name: PERSONAL_COLLECTION.name }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", { name: COLLECTION.name }),
+      ).toBeInTheDocument();
+    });
+
     it("should show all questions", async () => {
       const collectionItems = [
         createMockCollectionItem({
