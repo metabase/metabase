@@ -212,7 +212,7 @@
                         (try
                           (let [caller-thread (.getName (Thread/currentThread))]
                             (.execute executor ^Runnable #(compare! method dialect sql args call primary-outcome
-                                                                            caller-thread)))
+                                                                    caller-thread)))
                           (catch RejectedExecutionException _
                             (.decrementAndGet in-flight)
                             (quietly #(record-comparison! method dialect :dropped))))
