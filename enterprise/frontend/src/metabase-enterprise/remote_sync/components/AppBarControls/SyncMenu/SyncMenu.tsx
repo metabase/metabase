@@ -12,33 +12,35 @@ type SyncMenuProps = {
   onPush: () => void;
 };
 
-export const SyncMenu = ({ branch, onPull, onPush }: SyncMenuProps) => (
-  <Menu position="bottom-start">
-    <Menu.Target>
-      <Button
-        variant="subtle"
-        color="neutral"
-        leftSection={<Icon name="git_branch" c="text-secondary" size={14} />}
-        rightSection={<Icon name="chevrondown" c="text-secondary" size={8} />}
-        data-testid="git-sync-controls"
-      >
-        <Text fw="bold" c="text-secondary" size="sm" lh="md" truncate>
-          {branch}
-        </Text>
-      </Button>
-    </Menu.Target>
-    <Menu.Dropdown>
-      <PushMenuItem onClick={onPush} />
-      <PullMenuItem onClick={onPull} />
-    </Menu.Dropdown>
-  </Menu>
-);
+export function SyncMenu({ branch, onPull, onPush }: SyncMenuProps) {
+  return (
+    <Menu position="bottom-start">
+      <Menu.Target>
+        <Button
+          variant="subtle"
+          color="neutral"
+          leftSection={<Icon name="git_branch" c="text-secondary" size={14} />}
+          rightSection={<Icon name="chevrondown" c="text-secondary" size={8} />}
+          data-testid="git-sync-controls"
+        >
+          <Text fw="bold" c="text-secondary" size="sm" lh="md" truncate>
+            {branch}
+          </Text>
+        </Button>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <PushMenuItem onClick={onPush} />
+        <PullMenuItem onClick={onPull} />
+      </Menu.Dropdown>
+    </Menu>
+  );
+}
 
 type SyncMenuItemProps = {
   onClick: () => void;
 };
 
-const PushMenuItem = ({ onClick }: SyncMenuItemProps) => {
+function PushMenuItem({ onClick }: SyncMenuItemProps) {
   const { data, isFetching } = useGetRemoteSyncIsDirtyQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
@@ -53,9 +55,9 @@ const PushMenuItem = ({ onClick }: SyncMenuItemProps) => {
       {t`Push changes`}
     </Menu.Item>
   );
-};
+}
 
-const PullMenuItem = ({ onClick }: SyncMenuItemProps) => {
+function PullMenuItem({ onClick }: SyncMenuItemProps) {
   const { data, isFetching } = useGetHasRemoteChangesQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
@@ -70,4 +72,4 @@ const PullMenuItem = ({ onClick }: SyncMenuItemProps) => {
       {t`Pull changes`}
     </Menu.Item>
   );
-};
+}
