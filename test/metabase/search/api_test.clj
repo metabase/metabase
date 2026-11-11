@@ -117,7 +117,7 @@
   [action-id]
   {:action_id     action-id
    :database_id   (mt/id)
-   :dataset_query (mt/query venues)})
+   :dataset_query (mt/native-query {:query "SELECT * FROM venues"})})
 
 (def ^:private test-collection (make-result "collection test collection"
                                             :bookmark false

@@ -75,7 +75,6 @@ describe("metabot > context", () => {
     fetchMock.removeRoutes({ names: ["database-list"] });
     setupDatabaseListEndpoint([
       createMockDatabase({
-        is_saved_questions: false,
         native_permissions: "none",
       }),
     ]);

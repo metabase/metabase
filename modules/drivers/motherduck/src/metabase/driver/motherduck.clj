@@ -197,6 +197,9 @@
                  ;; a pg_get_indexdef arity it doesn't provide. Only transform index management uses these.
                  :index/fetch
                  :index/standalone-create
+                 ;; Workspace isolation creates Postgres users and schema grants (pg_user, CREATE USER, GRANT).
+                 ;; MotherDuck authenticates with tokens and has no such users.
+                 :workspace
                  ;; DuckDB uses RE2, which does not support lookahead or lookbehind assertions.
                  ;; This disables some fancy MBQL expressions, like extracting email domains and URL hostnames.
                  :regex/lookaheads-and-lookbehinds]]

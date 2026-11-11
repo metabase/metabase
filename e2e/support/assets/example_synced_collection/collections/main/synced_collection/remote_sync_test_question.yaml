@@ -1,0 +1,21 @@
+name: Remote Sync Test Question
+entity_id: emoZpKzkmTi_zmyqeUB1O
+creator_id: admin@metabase.test
+display: table
+collection_id: AF_m-cEw4pFjXYd90_tnj
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - source-table:
+    - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+visualization_settings: {}
+card_schema: 24
+serdes/meta:
+- model: Card
+type: question

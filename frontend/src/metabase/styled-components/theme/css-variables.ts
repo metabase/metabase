@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 // WARNING: This file is referenced by CssVarsDeclarationPlugin.
 // If you move or rename it, update the path in css-vars-declaration-plugin.js.
 

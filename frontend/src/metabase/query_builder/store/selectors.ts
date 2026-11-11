@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
 import { merge } from "icepick";
@@ -49,7 +50,7 @@ import type {
   DatasetColumn,
   DatasetQuery,
   Field,
-  NormalizedFieldId,
+  FieldId,
   Series,
   TimelineEventsVisibility,
 } from "metabase-types/api";
@@ -315,7 +316,7 @@ export const getTableMetadata = createSelector(
   (tableId, tables) => (tableId != null ? tables[tableId] : undefined),
 );
 
-const NO_FIELD_IDS: NormalizedFieldId[] = [];
+const NO_FIELD_IDS: FieldId[] = [];
 
 const getTableFieldIds = (state: QueryBuilderStoreState) => {
   const tableId = getSourceTableId(state);
@@ -398,7 +399,7 @@ export const getRowIndexToPKMap = createSelector(
 function areLegacyQueriesEqual(
   queryA: DatasetQuery | undefined,
   queryB: DatasetQuery | undefined,
-  tableFieldIds: NormalizedFieldId[],
+  tableFieldIds: FieldId[],
 ) {
   if (queryA == null || queryB == null) {
     return false;
@@ -423,7 +424,7 @@ function areComposedEntitiesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: NormalizedFieldId[];
+  tableFieldIds: FieldId[];
 }) {
   const isQuestion = originalQuestion?.type() === "question";
   if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {
@@ -471,7 +472,7 @@ export function areQueriesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: NormalizedFieldId[];
+  tableFieldIds: FieldId[];
 }) {
   return (
     areLegacyQueriesEqual(

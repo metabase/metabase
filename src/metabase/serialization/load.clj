@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [import load])
   (:require
    [clojure.walk :as walk]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.models.interface :as mi]
    [metabase.serialization.dependencies :as serialization.dependencies]
    [metabase.serialization.entity :as serialization.entity]
@@ -10,6 +11,7 @@
    [metabase.serialization.protocol.app-db :as protocol.app-db]
    [metabase.serialization.spec :as serialization.spec]
    [metabase.serialization.util :as serialization.util]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log])
   (:import
    (java.time OffsetDateTime ZonedDateTime)))
@@ -57,10 +59,13 @@
 
 (defn- comparable
   "`x` as an import compares it with a value of the store: without the uuids and metadata providers of MBQL clauses,
-  which every import of a query regenerates, and with temporals as instants."
+  which every import of a query regenerates, with temporals as instants, localized strings as their text, and byte
+  arrays as their bytes."
   [x]
   (walk/postwalk (fn [y]
                    (cond
+                     (i18n/localized-string? y)     (str y)
+                     (bytes? y)                     (vec y)
                      (map? y)                       (dissoc y :lib/uuid :lib/metadata)
                      (instance? OffsetDateTime y)   (.toInstant ^OffsetDateTime y)
                      (instance? ZonedDateTime y)    (.toInstant ^ZonedDateTime y)
@@ -274,6 +279,17 @@
           (doseq [error errors]
             (log/warnf "Skipping %s: %s" (ex-message error) (ex-message (ex-cause error))))
           errors)))))
+
+(defn do-with-import-transaction
+  "Calls `thunk`, which should do the whole import, in one transaction of the app DB (see [[with-import-transaction]]),
+  marking the dependents of what it changes once at its end, and retrying it on a transient DB error."
+  [thunk]
+  (protocol/transact protocol.app-db/store {:retries 3} #(dependencies.hooks/with-batched-marks (thunk))))
+
+(defmacro with-import-transaction
+  "Runs `body`, which should do the whole import, in one transaction of the app DB, so it lands whole or not at all."
+  [& body]
+  `(do-with-import-transaction (fn [] ~@body)))
 
 (defn load-all
   "Loads the entities with the `[model ref]` keys `ks` into the app DB in one transaction, every entity after what it

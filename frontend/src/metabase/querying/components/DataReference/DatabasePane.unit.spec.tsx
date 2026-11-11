@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadata } from "__support__/metadata";
 import {
   setupDatabaseEndpoints,
   setupSearchEndpoints,
@@ -23,10 +22,7 @@ import type { DatabasePaneProps } from "./DatabasePane";
 import { DatabasePane } from "./DatabasePane";
 
 const mockDatabaseApi = createMockDatabase();
-const metadata = createMockMetadata({
-  databases: [mockDatabaseApi],
-});
-const database = checkNotNull(metadata.database(mockDatabaseApi.id));
+const database = mockDatabaseApi;
 
 const incompleteTableSearchResult = createMockSearchResult({
   id: getNextId(),
@@ -147,12 +143,6 @@ describe("DatabasePane", () => {
           }),
         ],
       });
-      const singleSchemaMetadata = createMockMetadata({
-        databases: [singleSchemaDb],
-      });
-      const singleSchemaDatabase = checkNotNull(
-        singleSchemaMetadata.database(singleSchemaDb.id),
-      );
 
       const table1 = createMockSearchResult({
         id: getNextId(),
@@ -162,7 +152,7 @@ describe("DatabasePane", () => {
         initial_sync_status: "complete",
       });
 
-      setup({ id: singleSchemaDatabase.id });
+      setup({ id: singleSchemaDb.id });
       setupDatabaseEndpoints(singleSchemaDb);
       setupSearchEndpoints([table1]);
 
@@ -190,12 +180,6 @@ describe("DatabasePane", () => {
           }),
         ],
       });
-      const multiSchemaMetadata = createMockMetadata({
-        databases: [multiSchemaDb],
-      });
-      const multiSchemaDatabase = checkNotNull(
-        multiSchemaMetadata.database(multiSchemaDb.id),
-      );
 
       const table1 = createMockSearchResult({
         id: getNextId(),
@@ -212,7 +196,7 @@ describe("DatabasePane", () => {
         initial_sync_status: "complete",
       });
 
-      setup({ id: multiSchemaDatabase.id });
+      setup({ id: multiSchemaDb.id });
       setupDatabaseEndpoints(multiSchemaDb);
       setupSearchEndpoints([table1, table2]);
 
@@ -226,14 +210,8 @@ describe("DatabasePane", () => {
         id: getNextId(),
         tables: [],
       });
-      const emptySchemasMetadata = createMockMetadata({
-        databases: [emptySchemasDb],
-      });
-      const emptySchemasDatabase = checkNotNull(
-        emptySchemasMetadata.database(emptySchemasDb.id),
-      );
 
-      setup({ id: emptySchemasDatabase.id });
+      setup({ id: emptySchemasDb.id });
       setupDatabaseEndpoints(emptySchemasDb);
       setupSearchEndpoints([]);
 
@@ -293,12 +271,6 @@ describe("DatabasePane", () => {
           }),
         ],
       });
-      const multiSchemaMetadata = createMockMetadata({
-        databases: [multiSchemaDb],
-      });
-      const multiSchemaDatabase = checkNotNull(
-        multiSchemaMetadata.database(multiSchemaDb.id),
-      );
 
       const table1 = createMockSearchResult({
         id: getNextId(),
@@ -315,7 +287,7 @@ describe("DatabasePane", () => {
         initial_sync_status: "complete",
       });
 
-      setup({ id: multiSchemaDatabase.id });
+      setup({ id: multiSchemaDb.id });
       setupDatabaseEndpoints(multiSchemaDb);
       setupSearchEndpoints([table1, table2]);
 

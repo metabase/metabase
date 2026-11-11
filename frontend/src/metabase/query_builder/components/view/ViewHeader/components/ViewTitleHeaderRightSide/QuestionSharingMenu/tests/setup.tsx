@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
@@ -143,7 +144,9 @@ export async function setupQuestionSharingMenu({
 
   renderWithProviders(
     <div>
-      <QuestionSharingMenu question={new Question(card)} />
+      <QuestionSharingMenu
+        question={new Question(card, createMockMetadata())}
+      />
       <FakeSidebar />
     </div>,
     { storeInitialState: state },

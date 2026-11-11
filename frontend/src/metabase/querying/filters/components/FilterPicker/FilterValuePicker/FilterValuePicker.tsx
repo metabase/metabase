@@ -57,7 +57,7 @@ function FilterValuePicker({
   onChange,
 }: FilterValuePickerOwnProps) {
   const fieldInfo = useMemo(
-    () => Lib.fieldValuesSearchInfo(query, column),
+    () => Lib.fieldSearchInfo(query, column),
     [query, column],
   );
 

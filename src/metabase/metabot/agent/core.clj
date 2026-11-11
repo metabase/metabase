@@ -602,13 +602,20 @@
         ;; `profile->tools` keys by name; `->entries` takes the tools themselves and keys them from
         ;; their declarations, so converted and unconverted ones arrive the same way.
         ;;
-        ;; The show_chart argument only does anything alongside run_query, so a turn without
-        ;; run_query declares construct_notebook_query as it was before the argument existed.
-        ;; `without-show-chart` edits the entry's `:schema`, which `->entries` synthesises in the
-        ;; same `[:=> [:cat args] out]` shape it read off the var before.
-        tools        (update-vals (cond-> (tools/->entries (vals base-tools) memory-atom metabot profile-id)
-                                    (not (contains? base-tools "run_query"))
-                                    (m/update-existing "construct_notebook_query" tools/without-show-chart))
+        ;; The show_chart argument does nothing unless run_query can read the query's results, so a turn where it
+        ;; can't declares the query tools without it. The notebook builder needs run_query; the SQL tools also need
+        ;; SQL execution.
+        ;; Removing it edits the `[:=> [:cat args] out]` `:schema` that `->entries` synthesises.
+        run-query?   (contains? base-tools "run_query")
+        no-chart-arg (cond-> #{}
+                       (not run-query?)
+                       (conj "construct_notebook_query")
+
+                       (not (and run-query? (scope/sql-execution-allowed?)))
+                       (into tools/sql-query-tool-names))
+        tools        (update-vals (reduce #(m/update-existing %1 %2 tools/without-show-chart)
+                                          (tools/->entries (vals base-tools) memory-atom metabot profile-id)
+                                          no-chart-arg)
                                   #(assoc % :declaration (delay (self.schema/tool-function %))))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)

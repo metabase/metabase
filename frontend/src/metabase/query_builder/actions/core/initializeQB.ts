@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
@@ -13,6 +14,12 @@ import {
   selectQuestionFromOpts,
 } from "metabase/metadata-store";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
+import {
+  getTemplateTagCardIds,
+  hasSnippetTemplateTags,
+  updateCardTemplateTagNames,
+  updateSnippetNames,
+} from "metabase/querying/native";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
@@ -30,8 +37,6 @@ import { parseSearchQuery } from "metabase/utils/browser";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   SegmentId,
@@ -229,13 +234,13 @@ export async function resolveCards({
  * they might have changed since the query was last opened.
  */
 export async function updateTemplateTagNames(
-  query: NativeQuery,
+  query: Lib.Query,
   getState: GetState,
   dispatch: Dispatch,
-): Promise<NativeQuery> {
+): Promise<Lib.Query> {
   const referencedCards = (
     await Promise.all(
-      query.referencedQuestionIds().map(async (id) => {
+      getTemplateTagCardIds(query).map(async (id) => {
         try {
           return await runRtkEndpoint(
             { id, ignore_error: true },
@@ -250,7 +255,7 @@ export async function updateTemplateTagNames(
   ).filter(isNotNull);
 
   query = updateCardTemplateTagNames(query, referencedCards);
-  if (query.hasSnippets()) {
+  if (hasSnippetTemplateTags(query)) {
     // Unjustified type cast. FIXME
     const action = (dispatch as DispatchFn)(
       snippetApi.endpoints.listSnippets.initiate(undefined, {
@@ -259,7 +264,7 @@ export async function updateTemplateTagNames(
     );
     try {
       const snippets = await action.unwrap();
-      query = query.updateSnippetNames(snippets);
+      query = updateSnippetNames(query, snippets);
     } finally {
       action.unsubscribe();
     }
@@ -439,10 +444,12 @@ async function handleQBInit(
   }
 
   if (isNative && isEditable) {
-    // Unjustified type cast. FIXME
-    const query = question.legacyNativeQuery() as NativeQuery;
-    const newQuery = await updateTemplateTagNames(query, getState, dispatch);
-    question = question.setLegacyQuery(newQuery);
+    const newQuery = await updateTemplateTagNames(
+      question.query(),
+      getState,
+      dispatch,
+    );
+    question = question.setQuery(newQuery);
   }
 
   if (isStale()) {

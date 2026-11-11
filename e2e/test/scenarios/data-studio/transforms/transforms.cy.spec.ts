@@ -2165,9 +2165,12 @@ LIMIT
         tableVariableTable: SOURCE_TABLE,
         tableVariableSchema: TARGET_SCHEMA,
       });
-      cy.log("set up remote sync");
+      cy.log("set up remote sync and push the transform");
       H.setupGitSync();
+      H.configureGit("read-write");
+      H.pushChangesWithApi();
       H.configureGit("read-only");
+      H.pollForTask({ taskName: "import" });
     });
 
     it("should make transform pages read-only", () => {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { P, match } from "ts-pattern";
 
 import type { EngineKey } from "metabase-types/api/settings";

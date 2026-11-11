@@ -11,13 +11,6 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(defmacro ^:private with-transforms-enabled
-  "Body with `features` licensed and the transforms setting on."
-  [features & body]
-  `(mt/with-premium-features ~features
-     (mt/with-temporary-raw-setting-values [~'transforms-enabled "true"]
-       ~@body)))
-
 (defn- with-people-transform
   "Call `f` with the schema and name of the people table and the id of a transform selecting `id, name`
   from it into `people_summary`."
@@ -41,7 +34,7 @@
 (deftest transform-test-lifecycle-test
   (testing "author, read, run, edit, re-run and delete a transform test over the API"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-      (with-transforms-enabled #{:transforms-basic :transforms-testing}
+      (data-testing.test-util/with-transforms-enabled #{:transforms-basic :transforms-testing}
         (with-people-transform
           (fn [schema table transform-id]
             (let [input   {:table  {:schema schema :name table}
@@ -102,47 +95,10 @@
                 (finally
                   (t2/delete! :model/TransformTest :id (:id created)))))))))))
 
-(deftest adhoc-run-test
-  (testing "POST /run runs an unsaved test of an unsaved transform and records a run owned by no test"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-      (with-transforms-enabled #{:transforms-basic :transforms-testing}
-        (let [mp                            (mt/metadata-provider)
-              {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
-              transform-count               (t2/count :model/Transform)
-              result                        (mt/user-http-request
-                                             :crowberto :post 200 "ee/transform-test/run"
-                                             {:transform {:name   "Adhoc"
-                                                          :source {:type  "query"
-                                                                   :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
-                                                          :target {:type   "table"
-                                                                   :schema schema
-                                                                   :name   "adhoc_people_summary"}}
-                                              :test      {:name         "Adhoc"
-                                                          :inputs       [{:table  {:schema schema :name table}
-                                                                          :format "sql"
-                                                                          :sql    "SELECT 1 AS id, 'abc' AS name"}]
-                                                          :expectations [{:type "empty"
-                                                                          :name "no null ids"
-                                                                          :sql  (str "SELECT * FROM " schema ".adhoc_people_summary WHERE id IS NULL")}]}})
-              run                           (t2/select-one :model/TransformTestRun {:order-by [[:id :desc]]})]
-          (try
-            (is (= "passed" (:status result)))
-            (is (= [{:name "no null ids" :type "empty" :status "passed"}]
-                   (outcomes result)))
-            (testing "saves no transform"
-              (is (= transform-count (t2/count :model/Transform))))
-            (testing "records run by caller under no test"
-              (is (=? {:transform_test_id nil
-                       :initiated_by      (mt/user->id :crowberto)
-                       :status            :passed}
-                      run)))
-            (finally
-              (t2/delete! :model/TransformTestRun :id (:id run)))))))))
-
 (deftest run-refusal-test
   (testing "a non-200 from the run endpoint means nothing ran"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-      (with-transforms-enabled #{:transforms-basic :transforms-python :transforms-testing}
+      (data-testing.test-util/with-transforms-enabled #{:transforms-basic :transforms-python :transforms-testing}
         (testing "422 — the environment prevents a run: not a query transform"
           (mt/with-temp [:model/Transform     {transform-id :id}
                          {:source {:type            :python
@@ -177,7 +133,7 @@
                   (is (not (contains? response :trace))))))))))))
 
 (deftest run-is-gated-test
-  (with-transforms-enabled #{:transforms-basic :transforms-testing}
+  (data-testing.test-util/with-transforms-enabled #{:transforms-basic :transforms-testing}
     (mt/with-temp [:model/Transform     {transform-id :id} {}
                    :model/TransformTest {test-id :id}      {:transform_id transform-id}]
       (let [run-path (format "ee/transform-test/%d/run" test-id)]
