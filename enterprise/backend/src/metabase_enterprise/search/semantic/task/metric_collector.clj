@@ -8,7 +8,7 @@
    [metabase-enterprise.search.semantic.dlq :as semantic.dlq]
    [metabase-enterprise.search.semantic.env :as semantic.env]
    [metabase-enterprise.search.semantic.util :as semantic.u]
-   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.search.index-health :as search.index-health]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
@@ -22,6 +22,12 @@
 
 (def ^:private collector-job-key (jobs/key "metabase.task.semantic-metric-collector.job"))
 (def ^:private collector-trigger-key (triggers/key "metabase.task.semantic-metric-collector.trigger"))
+
+;; Labelled because an unlabelled collector can never stop exporting a series; the value matches the
+;; logical index the semantic index-health checks register under.
+(def ^:private store-gauge-labels
+  "The labels the semantic store gauges are published under."
+  {:index "semantic-search"})
 
 (defn- row-count
   [pgvector table-name-str]
@@ -39,7 +45,7 @@
     (if (semantic.u/table-exists? pgvector gate-table-name)
       (let [table-size (row-count pgvector gate-table-name)]
         (log/debugf "Setting `semantic-gate-size` metric to %d" table-size)
-        (analytics/set-gauge! :metabase-search/semantic-gate-size table-size)
+        (search.index-health/publish-gauge! :metabase-search/semantic-gate-size store-gauge-labels table-size)
         nil)
       (log/warn "Gate table does not exist. Index may not have been initialized."))))
 
@@ -61,11 +67,11 @@
       (when (semantic.u/table-exists? pgvector dlq-table-name)
         (let [table-size (row-count pgvector dlq-table-name)]
           (log/debugf "Setting `semantic-dlq-size` metric to %d" table-size)
-          (analytics/set-gauge! :metabase-search/semantic-dlq-size table-size)
+          (search.index-health/publish-gauge! :metabase-search/semantic-dlq-size store-gauge-labels table-size)
           nil)))
     (log/warn "DLQ table does not exist. Index may not have been initialized.")))
 
-(defn- collect-metrics! []
+(defn- collect-store-gauges! []
   (try
     ;; Active, not merely available: on an available-but-inactive instance the index tables never exist,
     ;; and the collectors would warn about them on every run.
@@ -77,13 +83,24 @@
     (catch InterruptedException e
       (throw e))
     (catch Exception e
-      (log/errorf "Semantic search metric collector errored: %s" (ex-message e))))
-  ;; Registered collectors self-gate, so refreshing them is a cheap no-op when their feature is off.
-  ;; Keep this outside the try: ordinary failures continue here, while interruption and fatal errors exit.
+      (log/errorf "Semantic search metric collector errored: %s" (ex-message e)))))
+
+;; Measured per process, like the index-health gauges: Prometheus scrapes every node, so a gauge left to
+;; the clustered job would freeze on whichever node last ran it.
+(def ^:private store-gauge-collector
+  (search.index-health/background-refresh-collector ::semantic-store-gauges collect-store-gauges!))
+
+(defmethod analytics.core/pull-collector ::semantic-store-gauges [_]
+  store-gauge-collector)
+
+(defn- collect-metrics! []
+  ;; Registered collectors self-gate, so this is a cheap no-op when their feature is off. It persists the
+  ;; health rows and republishes this node's own gauges on the way, overlapping the scrape collectors
+  ;; harmlessly.
   (search.index-health/refresh-search-index-metrics!))
 
 (task/defjob SemanticMetricCollector
-  "Collect expensive semantic search metrics"
+  "Persist semantic search health rows"
   {:saved-class "metabase_enterprise.semantic_search.task.metric_collector.SemanticMetricCollector"
    :concurrent? false}
   [_ctx]

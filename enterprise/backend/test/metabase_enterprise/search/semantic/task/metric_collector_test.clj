@@ -20,6 +20,11 @@
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
+(def ^:private store-gauge-labels
+  "The labels these gauges are expected to be exported under. Stated here rather than read from the
+  collector, so that renaming the label in production fails this test instead of following it."
+  {:index "semantic-search"})
+
 (defn- create-test-tables!
   [pgvector index-metadata model]
   (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)
@@ -69,23 +74,26 @@
    pgvector
    (sql/format {:delete-from [[:raw (:gate-table-name index-metadata)]]})))
 
-(deftest shared-index-metrics-survive-semantic-collector-failure-test
-  (let [refreshes (atom 0)]
+(deftest store-gauge-failure-does-not-escape-the-scrape-test
+  (testing "an unreachable store leaves the refresh to the next scrape rather than throwing at it"
     (mt/with-dynamic-fn-redefs
-      [semantic.u/semantic-search-active?                (constantly true)
-       semantic.env/get-pgvector-datasource!             #(throw (ex-info "pgvector unavailable" {}))
-       search.index-health/refresh-search-index-metrics! #(swap! refreshes inc)]
-      (@#'semantic.task.collector/collect-metrics!)
-      (is (= 1 @refreshes)))))
+      [semantic.u/semantic-search-active?    (constantly true)
+       semantic.env/get-pgvector-datasource! #(throw (ex-info "pgvector unavailable" {}))]
+      (is (nil? (@#'semantic.task.collector/collect-store-gauges!))))))
 
-(deftest interrupted-semantic-collector-skips-shared-refresh-test
-  (let [refreshes (atom 0)]
-    (mt/with-dynamic-fn-redefs
-      [semantic.u/semantic-search-active?                (constantly true)
-       semantic.env/get-pgvector-datasource!             #(throw (InterruptedException.))
-       search.index-health/refresh-search-index-metrics! #(swap! refreshes inc)]
-      (is (thrown? InterruptedException (@#'semantic.task.collector/collect-metrics!)))
-      (is (zero? @refreshes)))))
+(deftest interrupted-store-gauge-collection-propagates-test
+  (mt/with-dynamic-fn-redefs
+    [semantic.u/semantic-search-active?    (constantly true)
+     semantic.env/get-pgvector-datasource! #(throw (InterruptedException.))]
+    (is (thrown? InterruptedException (@#'semantic.task.collector/collect-store-gauges!)))))
+
+(deftest job-persists-health-rows-test
+  (testing "the clustered job refreshes every registered measure, which is what persists health rows"
+    (let [refreshes (atom 0)]
+      (mt/with-dynamic-fn-redefs
+        [search.index-health/refresh-search-index-metrics! #(swap! refreshes inc)]
+        (@#'semantic.task.collector/collect-metrics!)
+        (is (= 1 @refreshes))))))
 
 (deftest metric-collector-test
   (mt/with-premium-features #{:semantic-search}
@@ -98,12 +106,12 @@
            semantic.env/get-configured-embedding-model (constantly model)
            ;; supported? requires a configured embedder for engine selection
            semantic.embedding/get-configured-model     (constantly model)
-           ;; collect-metrics! only runs when semantic is the active engine; pin it so a sibling test
-           ;; leaking the search-engine setting can't make this read 0
+           ;; collect-store-gauges! only measures when semantic is the active engine; pin it so a sibling
+           ;; test leaking the search-engine setting can't make this read 0
            semantic.u/semantic-search-active?          (constantly true)]
           (testing "Missing tables are handled gracefully"
             (let [result (try
-                           (@#'semantic.task.collector/collect-metrics!)
+                           (@#'semantic.task.collector/collect-store-gauges!)
                            :success
                            (catch Throwable _
                              :failure))]
@@ -120,14 +128,14 @@
               ["b" 2 (t/zoned-date-time) (t/zoned-date-time) (t/zoned-date-time)]
               ["c" 3 (t/zoned-date-time) (t/zoned-date-time) (t/zoned-date-time)]])
             (testing "Metrics after insertion into gate and dlq"
-              (@#'semantic.task.collector/collect-metrics!)
-              (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-size)))
-              (is (== 3 (mt/metric-value system :metabase-search/semantic-dlq-size))))
+              (@#'semantic.task.collector/collect-store-gauges!)
+              (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-size store-gauge-labels)))
+              (is (== 3 (mt/metric-value system :metabase-search/semantic-dlq-size store-gauge-labels))))
             (drop-gate-table-entries! pgvector index-metadata)
             (drop-dlq-table-entries! pgvector index-metadata)
             (testing "Metrics after deletion from gate and dlq"
-              (@#'semantic.task.collector/collect-metrics!)
-              (is (== 0 (mt/metric-value system :metabase-search/semantic-gate-size)))
-              (is (== 0 (mt/metric-value system :metabase-search/semantic-dlq-size))))
+              (@#'semantic.task.collector/collect-store-gauges!)
+              (is (== 0 (mt/metric-value system :metabase-search/semantic-gate-size store-gauge-labels)))
+              (is (== 0 (mt/metric-value system :metabase-search/semantic-dlq-size store-gauge-labels))))
             (finally
               (drop-test-tables! pgvector index-metadata))))))))

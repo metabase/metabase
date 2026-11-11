@@ -78,4 +78,6 @@
    (-observe! [_ metric _labels _amount]
      (throw (unsupported-op :observe! metric)))
    (-clear! [_ metric]
-     (throw (unsupported-op :clear! metric)))))
+     (throw (unsupported-op :clear! metric)))
+   (-remove-series! [_ metric _labels]
+     (throw (unsupported-op :remove-series! metric)))))
