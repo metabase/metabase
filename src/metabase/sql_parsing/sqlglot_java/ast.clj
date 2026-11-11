@@ -44,7 +44,9 @@
   (SqlGlot/generate expr dialect))
 
 (defn pretty-sql
-  "`expr` as pretty-printed SQL in `dialect`, generated in place (`Dialect.generate(copy=False, pretty=True)`)."
+  "`expr` as pretty-printed SQL in `dialect` (`Dialect.generate(pretty=True)`). `sql_tools.py` passes `copy=False`,
+  but this copies the tree first: in place, Python writes each Postgres function parameter mode twice
+  (`IN a INT IN`)."
   ^String [^Expr expr ^String dialect]
   (.sqlPretty (Generator/forDialect dialect) expr))
 

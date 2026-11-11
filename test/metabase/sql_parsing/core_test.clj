@@ -114,9 +114,10 @@
 
 (deftest ^:parallel transpile-sql-test
   (testing "a query rewritten from one dialect to another, or skipped when it holds a template tag"
-    (doseq [{:keys [name sql from to expected]} (case-files/cases "transpile_sql")]
+    (doseq [{:keys [name sql from to backend expected]} (case-files/cases "transpile_sql")
+            :let [parser (if backend (sql-parsing/parser backend) (sql-tools/sqlglot-parser))]]
       (testing name
-        (is (= expected (sql-parsing/transpile-sql (sql-tools/sqlglot-parser) sql from to))
+        (is (= expected (sql-parsing/transpile-sql parser sql from to))
             (pr-str sql))))))
 
 ;;; ------------------------------------------------ field-references ----------------------------------------------

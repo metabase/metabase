@@ -47,4 +47,14 @@
    :to       "postgres"
    :expected {:status :skipped
               :reason :contains-templates
-              :transpiled-sql "SELECT * FROM orders WHERE created_at > {{start_date}}"}}]}
+              :transpiled-sql "SELECT * FROM orders WHERE created_at > {{start_date}}"}}
+
+  ;; Only on the Java backend: with copy=False, Python sqlglot writes each parameter mode twice
+  ;; (`IN a INT IN`). The Java backend copies the tree before it generates, so it does not.
+  {:name     "postgres function parameter modes are written once"
+   :backend  :sqlglot-java
+   :sql      "CREATE FUNCTION foo(IN a INT, OUT b INT, INOUT c VARCHAR, VARIADIC d INT[])"
+   :from     "postgres"
+   :to       "postgres"
+   :expected {:status :success
+              :transpiled-sql "CREATE FUNCTION foo(IN a INT, OUT b INT, INOUT c VARCHAR, VARIADIC d INT[])"}}]}
