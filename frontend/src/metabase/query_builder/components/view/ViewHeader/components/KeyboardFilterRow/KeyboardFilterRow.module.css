@@ -395,6 +395,7 @@
 /* The grey parts of a hovered option, like the "=" of an operator, stay
    readable on the dark blue. */
 .option.option[data-combobox-selected] .optionHint,
+.option.option[data-combobox-selected] .optionCount,
 .option.option[data-combobox-selected] .optionDescription {
   color: var(--mb-color-text-secondary-inverse);
 }
@@ -474,6 +475,15 @@
   white-space: nowrap;
 }
 
+.optionCount {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: var(--mantine-spacing-md);
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .optionHint {
   flex-shrink: 0;
   margin-left: auto;
@@ -493,6 +503,15 @@
 .optionCheckboxBody,
 .optionCheckboxLabelWrapper {
   min-width: 0;
+}
+
+/* The label takes the whole row, so a row count goes to the right end. */
+.optionCheckboxLabelWrapper {
+  flex: 1;
+
+  & > label {
+    display: block;
+  }
 }
 
 .fixedValues {

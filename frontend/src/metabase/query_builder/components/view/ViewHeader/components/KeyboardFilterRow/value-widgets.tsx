@@ -48,6 +48,8 @@ interface UseValueWidgetOpts {
   values: string[];
   /** The share of the rows with each value, when it is known. */
   getShare?: (value: string) => number;
+  /** The value of the option that Enter or Tab picks, shown on a map. */
+  highlightedValue?: string | null;
   onToggleValue: (value: string) => void;
 }
 
@@ -64,6 +66,26 @@ export function hasValueShares(
   );
 }
 
+/** Checkbox lists with this many values or fewer show the row counts. */
+const MAX_COUNTED_VALUES = 8;
+
+/**
+ * True when the checkbox list of the column shows the number of rows with
+ * each value: a short list that has no shares.
+ */
+export function hasValueRowCounts(
+  column: Lib.ColumnMetadata,
+  operator: DraftOperator,
+  fieldValues: ValueAndLabel[],
+) {
+  return (
+    !hasValueShares(column, operator) &&
+    operator.valueKind === "multi" &&
+    fieldValues.length > 0 &&
+    fieldValues.length <= MAX_COUNTED_VALUES
+  );
+}
+
 /**
  * Prototype: the dropdown under the value input, with the widgets of the
  * filter widgets prototype: tiles for operator options, and a map for
@@ -75,6 +97,7 @@ export function useValueWidget({
   fieldValues,
   values,
   getShare,
+  highlightedValue,
   onToggleValue,
 }: UseValueWidgetOpts): ValueWidget {
   const isCountry = Lib.isCountry(column);
@@ -130,6 +153,7 @@ export function useValueWidget({
           selectedValues={values}
           width={WORLD_MAP_WIDTH}
           getShare={getShare}
+          highlightedValue={highlightedValue}
           onToggle={onToggleValue}
         />
       ),
@@ -162,6 +186,7 @@ export function useValueWidget({
           selectedValues={values}
           width={STATES_MAP_WIDTH}
           getShare={getShare}
+          highlightedValue={highlightedValue}
           onToggle={onToggleValue}
         />
       ),

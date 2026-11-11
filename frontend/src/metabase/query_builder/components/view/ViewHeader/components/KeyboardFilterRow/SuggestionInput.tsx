@@ -182,6 +182,12 @@ interface SuggestionInputProps {
     hasSelectedOption: boolean,
     firstOptionValue: string | undefined,
   ) => boolean;
+  /**
+   * Called with the value of the option that Enter or Tab picks: the
+   * highlighted option or, while the user types, the first option. Null when
+   * there is no such option.
+   */
+  onTargetOptionChange?: (value: string | null) => void;
 }
 
 /**
@@ -208,6 +214,7 @@ export function SuggestionInput({
   onTextChange,
   onOptionSubmit,
   onKeyDown,
+  onTargetOptionChange,
 }: SuggestionInputProps) {
   // Prototype: no loop, so ArrowUp on the first option goes back to the input.
   const combobox = useCombobox({ defaultOpened: true, loop: false });
@@ -300,6 +307,41 @@ export function SuggestionInput({
 
   const firstOptionValue = filteredGroups[0]?.options[0]?.value;
 
+  // The combobox sets the highlight on the option elements and keeps no state
+  // for it, so an observer reads it from the DOM.
+  const [optionsContent, setOptionsContent] = useState<HTMLDivElement | null>(
+    null,
+  );
+  const [highlightedValue, setHighlightedValue] = useState<string | null>(null);
+  useEffect(() => {
+    if (optionsContent == null || onTargetOptionChange == null) {
+      return;
+    }
+    const update = () => {
+      const option = optionsContent.querySelector("[data-combobox-selected]");
+      setHighlightedValue(option?.getAttribute("data-option-value") ?? null);
+    };
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(optionsContent, {
+      attributes: true,
+      attributeFilter: ["data-combobox-selected"],
+      childList: true,
+      subtree: true,
+    });
+    return () => {
+      observer.disconnect();
+      setHighlightedValue(null);
+    };
+  }, [optionsContent, onTargetOptionChange]);
+  const targetOptionValue =
+    optionsContent == null
+      ? null
+      : (highlightedValue ?? (isSearching ? firstOptionValue : null) ?? null);
+  useEffect(() => {
+    onTargetOptionChange?.(targetOptionValue);
+  }, [targetOptionValue, onTargetOptionChange]);
+
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     const hasSelectedOption =
       combobox.dropdownOpened && combobox.getSelectedOptionIndex() !== -1;
@@ -354,6 +396,7 @@ export function SuggestionInput({
         <Combobox.Option
           key={option.value}
           value={option.value}
+          data-option-value={option.value}
           className={cx(S.tile, { [S.shareTile]: option.share != null })}
           style={
             option.share != null
@@ -375,6 +418,7 @@ export function SuggestionInput({
       <Combobox.Option
         key={option.value}
         value={option.value}
+        data-option-value={option.value}
         className={cx(S.optionRow, {
           [S.selectedOption]: !isMultiSelect && option.isChecked,
         })}
@@ -479,6 +523,7 @@ export function SuggestionInput({
                 viewportProps={{ tabIndex: -1 }}
               >
                 <div
+                  ref={setOptionsContent}
                   className={S.optionsContent}
                   onMouseMove={handleOptionsMouseMove}
                 >
@@ -593,7 +638,12 @@ function isTextInput(target: EventTarget) {
 function OptionLabel({ option }: { option: SuggestionOption }) {
   return (
     // A hint goes to the right end, so the label takes the whole row.
-    <Flex align="center" gap="sm" miw={0} w={option.hint ? "100%" : undefined}>
+    <Flex
+      align="center"
+      gap="sm"
+      miw={0}
+      w={option.hint || option.count ? "100%" : undefined}
+    >
       {option.icon && <Icon name={option.icon} />}
       {option.leftSection}
       <span className={S.optionLabel} title={option.label}>
@@ -603,6 +653,7 @@ function OptionLabel({ option }: { option: SuggestionOption }) {
         <span className={S.optionDescription}>{option.description}</span>
       )}
       {option.hint && <span className={S.optionHint}>{option.hint}</span>}
+      {option.count && <span className={S.optionCount}>{option.count}</span>}
     </Flex>
   );
 }

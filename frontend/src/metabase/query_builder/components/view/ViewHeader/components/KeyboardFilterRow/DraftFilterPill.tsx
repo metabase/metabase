@@ -82,6 +82,7 @@ import {
   SELECT_ALL_VALUE,
   type ValueAndLabel,
   formatShare,
+  hasValueRowCounts,
   hasValueShares,
   useValueWidget,
 } from "./value-widgets";
@@ -1155,12 +1156,14 @@ function ValueInput({
   const isAiPromptText = isAiPrompt(text);
   const hasNoDropdown = isAiPromptText || operator.hasNoValueSuggestions;
   const fieldValues = useFieldValues(query, column, hasNoDropdown ? "" : text);
+  const hasRowCounts = hasValueRowCounts(column, operator, fieldValues);
+  const [targetValue, setTargetValue] = useState<string | null>(null);
   const valueCounts = useValueCounts({
     query,
     stageIndex,
     column,
     filter,
-    isEnabled: hasValueShares(column, operator),
+    isEnabled: hasValueShares(column, operator) || hasRowCounts,
   });
   const widget = useValueWidget({
     column,
@@ -1168,6 +1171,7 @@ function ValueInput({
     fieldValues,
     values,
     getShare: valueCounts.type === "counts" ? valueCounts.getShare : undefined,
+    highlightedValue: targetValue,
     onToggleValue,
   });
   const handleOptionSubmit = (value: string) => {
@@ -1191,6 +1195,16 @@ function ValueInput({
         ? widget.groups.map((group) => ({
             ...group,
             options: group.options.map((option) => {
+              if (hasRowCounts) {
+                return option.isSelectAll
+                  ? option
+                  : {
+                      ...option,
+                      count: valueCounts
+                        .getCount(option.value)
+                        .toLocaleString(),
+                    };
+              }
               const share = valueCounts.getShare(option.value);
               return {
                 ...option,
@@ -1202,7 +1216,7 @@ function ValueInput({
             }),
           }))
         : widget.groups,
-    [widget.groups, valueCounts],
+    [widget.groups, valueCounts, hasRowCounts],
   );
   const labels = useMemo(
     () =>
@@ -1249,6 +1263,7 @@ function ValueInput({
         onTextChange={onTextChange}
         onOptionSubmit={handleOptionSubmit}
         onKeyDown={onKeyDown}
+        onTargetOptionChange={widget.aside != null ? setTargetValue : undefined}
       />
     </ValueBox>
   );

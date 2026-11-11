@@ -23,6 +23,8 @@ export type SuggestionOption = {
   isSelectAll?: boolean;
   /** The share of the rows with this value, shown on a tile. */
   share?: { value: number; label: string };
+  /** The number of rows with this value, shown at the right end. */
+  count?: string;
   /** Shown but not pickable, like a column that can't go where the caret is. */
   disabled?: boolean;
 };

@@ -26,6 +26,8 @@ export type ValueCounts =
       type: "counts";
       /** The share of the rows with each value, from 0 to 1. */
       getShare: (value: string) => number;
+      /** The number of rows with each value. */
+      getCount: (value: string) => number;
     };
 
 const NO_COUNTS: ValueCounts = { type: "none" };
@@ -65,6 +67,7 @@ export function useValueCounts({
     return {
       type: "counts",
       getShare: (value) => (total > 0 ? (counts.get(value) ?? 0) / total : 0),
+      getCount: (value) => counts.get(value) ?? 0,
     };
   }, [countsQuery, rows]);
 }

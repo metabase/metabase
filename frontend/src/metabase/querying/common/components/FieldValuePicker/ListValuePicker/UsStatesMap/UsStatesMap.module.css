@@ -27,7 +27,8 @@
       var(--mb-color-background_page-primary)
     );
 
-    &:hover {
+    &:hover,
+    &[data-hovered="true"] {
       fill: color-mix(
         in srgb,
         var(--mb-color-core-summarize) 45%,
@@ -46,7 +47,8 @@
   }
 
   &[data-selected="true"],
-  &[data-selected="true"]:hover {
+  &[data-selected="true"]:hover,
+  &[data-selected="true"][data-hovered="true"] {
     fill: color-mix(
       in srgb,
       var(--mb-color-core-summarize) 80%,

@@ -15,6 +15,11 @@ export interface RegionMapProps {
    * shade of each region shows its share.
    */
   getShare?: (value: string) => number;
+  /**
+   * A value that looks hovered, like the highlighted option of a list next to
+   * the map. A region under the pointer comes first.
+   */
+  highlightedValue?: string | null;
   onToggle: (value: string) => void;
 }
 
@@ -42,6 +47,7 @@ export function RegionMap({
   selectedValues,
   width = 256,
   getShare,
+  highlightedValue,
   onToggle,
 }: Props) {
   const { paths, height } = useMemo(() => {
@@ -62,7 +68,13 @@ export function RegionMap({
   }, [regions, getProjection, width]);
 
   const [hoveredCode, setHoveredCode] = useState<string | null>(null);
-  const hoveredPath = paths.find(({ code }) => code === hoveredCode);
+  const highlightedCode =
+    hoveredCode ??
+    Array.from(valuesByCode).find(
+      ([, value]) => value === highlightedValue,
+    )?.[0] ??
+    null;
+  const hoveredPath = paths.find(({ code }) => code === highlightedCode);
 
   const selectedValuesSet = new Set(selectedValues);
   // The region with the largest share gets the darkest shade. The square root
@@ -94,6 +106,7 @@ export function RegionMap({
             data-shaded={shade != null}
             d={d}
             data-available={value != null}
+            data-hovered={value != null && code === highlightedCode}
             data-selected={value != null && selectedValuesSet.has(value)}
             onClick={value != null ? () => onToggle(value) : undefined}
             onMouseEnter={
