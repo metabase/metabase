@@ -312,6 +312,23 @@
 
 ;;; -------------------------------------------------- Editing -----------------------------------------------------
 
+(deftest create-reports-no-moved-cards-test
+  (mt/with-model-cleanup [:model/Dashboard]
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [result  (call {:name "Q4 planning"
+                           :ops  [{:op "add_text", :id -1, :markdown "Notes"}
+                                  {:op       "add_heading"
+                                   :id       -2
+                                   :text     "Q4"
+                                   :position {:row 0, :col 0}
+                                   :size     {:size_x 24, :size_y 1}}]})
+            dash-id (:dashboard_id (event result))]
+        (testing "a card the call adds and then covers moves down"
+          (is (=? [{:row 0, :size_x 24} {:row 1}]
+                  (sort-by :row (dashcards dash-id)))))
+        (testing "but isn't reported as moved, as the call placed it"
+          (is (not (re-find #"moved down" (:output result)))))))))
+
 (deftest placed-card-pushes-cards-down-test
   (sales-dashboard!
    (fn [{:keys [dash-id dashcard-id]}]
