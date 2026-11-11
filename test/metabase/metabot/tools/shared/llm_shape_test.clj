@@ -457,13 +457,20 @@
       (is (str/includes? xml "type=\"notebook\""))
       (is (not (str/includes? xml "<query_results>"))))))
 
-(deftest ^:parallel markdown-tables-escape-pipes-test
+(deftest ^:parallel markdown-table-cells-stay-in-their-column-test
   (testing "a pipe in a query result cell or column name cannot split the markdown row"
-    (let [xml (llm-shape/query-result->xml {:result_columns [{:name "a|b" :type "text"}]
+    (let [xml (llm-shape/query-result->xml {:result_columns [{:name "a|b", :type "text"}]
                                             :rows           [["x|y<z"]]})]
       (is (str/includes? xml "| a\\|b |\n| x\\|y&lt;z |"))))
+  (testing "an escaped pipe or a line break in a cell cannot split the markdown row"
+    (let [xml (llm-shape/query-result->xml {:result_columns [{:name "a", :type "text"}]
+                                            :rows           [["x\\|y"] ["line 1\n  line 2"]]})]
+      (is (str/includes? xml "| x\\\\\\|y |\n| line 1 line 2 |"))))
   (testing "a pipe in a glossary term or definition cannot split the markdown row"
-    (let [xml (llm-shape/user->xml {:id 1, :name "Ann", :email "a@example.com", :glossary {"A|B" "x|y"}})]
+    (let [xml (llm-shape/user->xml {:id       1
+                                    :name     "Ann"
+                                    :email    "a@example.com"
+                                    :glossary {"A|B" "x|y"}})]
       (is (str/includes? xml "| A\\|B | x\\|y |")))))
 
 (deftest ^:parallel chart->xml-test

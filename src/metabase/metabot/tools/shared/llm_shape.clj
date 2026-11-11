@@ -23,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.quoting :as quoting]
    [ring.util.codec :as codec]
    [selmer.parser :as selmer]))
 
@@ -176,17 +177,18 @@
         (str/replace "<" "&lt;")
         (str/replace ">" "&gt;"))))
 
-(defn- escape-pipes
-  "Escape `|` so a value can't break a markdown table row.
-  Custom `:value-fn`s replace [[metabase.metabot.tmpl/markdown-table]]'s default, which does this."
-  [s]
-  (when s
-    (str/replace s "|" "\\|")))
-
 (defn- markdown-cell
-  "Render `v` for a markdown table cell in `|safe` template output, with XML and pipes escaped."
+  "Render `v` as the text of one markdown table cell in `|safe` template output.
+  Each run of whitespace becomes one space, and backslashes, pipes and invisible characters are escaped."
   [v]
-  (escape-pipes (escape-xml (str v))))
+  ;; The escaping of run-query's result cells, without their length cap.
+  (-> (str v)
+      escape-xml-content
+      (str/replace "\\" "\\\\")
+      (str/replace "|" "\\|")
+      (str/replace #"(?U)\s+" " ")
+      ;; After the backslashes are doubled, so an escape written here differs from the same text in the data.
+      (quoting/escape-code-points quoting/invisible-code-point?)))
 
 (defn- json-cell-safe
   "Keep a JSON string valid inside a markdown table cell. Markdown `\\|` escaping is not
@@ -276,12 +278,9 @@
   (te/markdown-table
    fields columns
    {:value-fn (fn [k v]
-                (escape-pipes
-                 (escape-xml
-                  (cond
-                    (nil? v)                                  ""
-                    (and (#{:type :base-type} k) (keyword? v)) (clojure.core/name v)
-                    :else                                      (str v)))))}))
+                (markdown-cell (if (and (#{:type :base-type} k) (keyword? v))
+                                 (clojure.core/name v)
+                                 v)))}))
 
 (defn- fully-qualified-name
   "Get fully qualified name for a table."
@@ -460,7 +459,7 @@
    {:value-fn (fn [k v]
                 (cond
                   (nil? v)         ""
-                  (keyword? v)     (escape-pipes (clojure.core/name v))
+                  (keyword? v)     (markdown-cell (clojure.core/name v))
                   ;; `reference` is a JSON array the LLM copies verbatim. Keep the cell valid
                   ;; JSON by encoding pipes as `\u007c` instead of markdown `\|`.
                   (= k :reference) (json-cell-safe (escape-xml-content v))
@@ -479,7 +478,7 @@
    {:value-fn (fn [k v]
                 (cond
                   (nil? v)         ""
-                  (keyword? v)     (escape-pipes (clojure.core/name v))
+                  (keyword? v)     (markdown-cell (clojure.core/name v))
                   (= k :reference) (json-cell-safe (escape-xml-content v))
                   :else            (markdown-cell v)))}))
 
@@ -627,7 +626,7 @@
 
 (defn query-result->xml
   "Format query result for LLM consumption.
-   Matches Python QueryResult.llm_representation exactly."
+   Based on Python QueryResult.llm_representation, with table cells escaped."
   [{:keys [result_columns rows]}]
   (render-llm-template
    :query_results
@@ -823,7 +822,7 @@
 
 (defn user->xml
   "Format user for LLM consumption.
-   Matches Python DummyGetCurrentUserResultSchema.llm_representation exactly.
+   Based on Python DummyGetCurrentUserResultSchema.llm_representation, with glossary cells escaped.
    Note: Glossary rows are used with |safe, so we must escape manually."
   [{:keys [id name email glossary]}]
   (let [glossary-rows (when (seq glossary)
