@@ -12,6 +12,7 @@
    [metabase-enterprise.workspaces.query-processor.middleware :as ws.middleware]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
+   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
@@ -127,25 +128,24 @@
   (testing "in workspace mode a row this process didn't write (another node's) is seen by the next remapping check"
     (with-no-remappings!
       (fn []
-        (try
-          (ws/set-instance-workspace! {:name      "test-ws"
-                                       :databases {(mt/id) {:input_schemas ["PUBLIC"]
-                                                            :output        {:schema "ws_other"}}}})
-          (is (false? (ws.remapping/enabled-for-db? (mt/id))))
-          ;; a plain HoneySQL insert skips the model hooks, so this process's cache isn't invalidated
-          (t2/query-one {:insert-into :table_remapping
-                         :values      [{:database_id     (mt/id)
-                                        :from_db         ""
-                                        :from_schema     "PUBLIC"
-                                        :from_table_name "VENUES"
-                                        :to_db           ""
-                                        :to_schema       "ws_other"
-                                        :to_table_name   "VENUES"
-                                        :created_at      :%now}]})
-          (is (true? (ws.remapping/enabled-for-db? (mt/id))))
-          (finally
-            (ws/clear-instance-workspace!)
-            (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
+        (workspaces.tu/with-workspace-db!
+          (mt/id) "ws_other"
+          (fn []
+            (try
+              (is (false? (ws.remapping/enabled-for-db? (mt/id))))
+              ;; a plain HoneySQL insert skips the model hooks, so this process's cache isn't invalidated
+              (t2/query-one {:insert-into :table_remapping
+                             :values      [{:database_id     (mt/id)
+                                            :from_db         ""
+                                            :from_schema     "PUBLIC"
+                                            :from_table_name "VENUES"
+                                            :to_db           ""
+                                            :to_schema       "ws_other"
+                                            :to_table_name   "VENUES"
+                                            :created_at      :%now}]})
+              (is (true? (ws.remapping/enabled-for-db? (mt/id))))
+              (finally
+                (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))))
 
 (deftest rolled-back-write-leaves-cache-correct-test
   (let [from {:schema "PUBLIC" :table "VENUES"}
@@ -252,30 +252,30 @@
           (drop-ids-cache! db-id)
           (is (false? (ws.remapping/enabled-for-db? db-id)) "premise: this node fills its cache before the workspace")
           (is (not (contains? (table-remapping/database-ids-with-remappings) db-id)) "premise: the cache excludes the database")
-          (ws/set-instance-workspace! {:name      "test-ws"
-                                       :databases {db-id {:input_schemas ["PUBLIC"]
-                                                          :output        {:schema "ws_kept"}}}})
-          ;; a plain HoneySQL insert skips the model hooks, as another node's insert does
-          (t2/query-one {:insert-into :table_remapping
-                         :values      [{:database_id     db-id
-                                        :from_db         ""
-                                        :from_schema     "PUBLIC"
-                                        :from_table_name "VENUES"
-                                        :to_db           ""
-                                        :to_schema       "ws_kept"
-                                        :to_table_name   "PUBLIC__VENUES"
-                                        :created_at      :%now}]})
-          (testing "control: in workspace mode the row remaps reads"
-            (is (true? (ws.remapping/enabled-for-db? db-id)))
-            (is (re-find #"(?i)ws_kept" (rewritten))))
-          (mt/with-dynamic-fn-redefs [ws/clear-all-remappings! (fn [] (throw (ex-info "row delete failed" {})))]
-            (mt/user-http-request :crowberto :delete 500 "ee/workspace-instance/current"))
-          (is (not (ws/workspace-mode?)) "premise: DELETE /current cleared the workspace")
-          (is (t2/exists? :model/TableRemapping :database_id db-id) "premise: the row was kept")
-          (is (true? (ws.remapping/enabled-for-db? db-id)))
-          (is (= {:db "" :schema "ws_kept" :table "PUBLIC__VENUES"}
-                 (ws.remapping/get-mapping db-id {:db "" :schema "PUBLIC" :table "VENUES"})))
-          (is (re-find #"(?i)ws_kept" (rewritten)) "a query of PUBLIC.VENUES reads the copy")
+          (workspaces.tu/with-workspace-db!
+            db-id "ws_kept"
+            (fn []
+              ;; a plain HoneySQL insert skips the model hooks, as another node's insert does
+              (t2/query-one {:insert-into :table_remapping
+                             :values      [{:database_id     db-id
+                                            :from_db         ""
+                                            :from_schema     "PUBLIC"
+                                            :from_table_name "VENUES"
+                                            :to_db           ""
+                                            :to_schema       "ws_kept"
+                                            :to_table_name   "PUBLIC__VENUES"
+                                            :created_at      :%now}]})
+              (testing "control: in workspace mode the row remaps reads"
+                (is (true? (ws.remapping/enabled-for-db? db-id)))
+                (is (re-find #"(?i)ws_kept" (rewritten))))
+              (mt/with-dynamic-fn-redefs [ws.db/delete-all-table-remappings! (fn [] (throw (ex-info "row delete failed" {})))]
+                (mt/user-http-request :crowberto :delete 500 "ee/workspace-instance/current"))
+              (is (not (ws/workspace-mode?)) "premise: DELETE /current cleared the workspace")
+              (is (t2/exists? :model/TableRemapping :database_id db-id) "premise: the row was kept")
+              (is (true? (ws.remapping/enabled-for-db? db-id)))
+              (is (= {:db "" :schema "ws_kept" :table "PUBLIC__VENUES"}
+                     (ws.remapping/get-mapping db-id {:db "" :schema "PUBLIC" :table "VENUES"})))
+              (is (re-find #"(?i)ws_kept" (rewritten)) "a query of PUBLIC.VENUES reads the copy")))
           (finally
             (ws/clear-instance-workspace!)
             (ws.table-remapping/clear-mappings-for-db! db-id)))))))

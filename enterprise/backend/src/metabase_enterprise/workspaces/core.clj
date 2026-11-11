@@ -31,10 +31,12 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
@@ -139,7 +141,10 @@
                                               (dissoc settings :database-workspace-schema)))
         ;; Rows pointing at the old schema would keep redirecting reads there.
         (ws.db/delete-table-remappings-of-database! id))
-      (ws.settings/workspaces-enabled! true)))
+      (ws.settings/workspaces-enabled! true)
+      ;; A node outside workspace mode trusts its cache of the Databases with remappings; drop it once the new
+      ;; schemas and flag are visible to other readers.
+      (app-db/do-after-commit table-remapping/invalidate-database-ids!)))
   nil)
 
 (defn delete-stale-table-remappings!
@@ -149,7 +154,8 @@
    [[set-instance-workspace!]]: `PUT /api/database/:id` and the `config.yml` loader."
   [previous-database database]
   (when (not= (database-workspace-schema previous-database) (database-workspace-schema database))
-    (ws.db/delete-table-remappings-of-database! (:id database)))
+    (ws.db/delete-table-remappings-of-database! (:id database))
+    (app-db/do-after-commit table-remapping/invalidate-database-ids!))
   nil)
 
 (defn clear-instance-workspace!
