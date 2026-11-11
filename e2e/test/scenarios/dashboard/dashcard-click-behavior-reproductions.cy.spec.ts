@@ -14,7 +14,10 @@ import type {
   Table,
   VisualizationSettings,
 } from "metabase-types/api";
-import { createMockActionParameter } from "metabase-types/api/mocks";
+import {
+  createMockActionParameter,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 const {
   ORDERS,
@@ -143,7 +146,7 @@ describe("issue 64368", () => {
   });
 });
 
-describe("issue 66277", () => {
+describe("issue 58556, issue 66277", () => {
   const QUESTION: StructuredQuestionDetails = {
     query: {
       "source-table": ORDERS_ID,
@@ -153,21 +156,76 @@ describe("issue 66277", () => {
     display: "table",
   };
 
+  const PARAMETER = createMockParameter({
+    id: "date-param",
+    name: "Date",
+    slug: "date",
+    type: "date/all-options",
+  });
+
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
 
-    H.createDashboardWithQuestions({ questions: [QUESTION] }).then(
-      ({ dashboard }) => {
-        H.visitDashboard(dashboard.id);
+    H.createDashboardWithQuestions({
+      questions: [QUESTION],
+      dashboardDetails: {
+        parameters: [PARAMETER],
       },
-    );
+    }).then(({ dashboard }) => {
+      cy.request("GET", `/api/dashboard/${dashboard.id}`).then(
+        ({ body: dashboard }) => {
+          const [dashcard] = dashboard.dashcards;
+          const parameter_mappings = [
+            {
+              card_id: dashcard.card_id,
+              parameter_id: PARAMETER.id,
+              target: [
+                "dimension",
+                [
+                  "field",
+                  "CREATED_AT",
+                  {
+                    "base-type": "type/DateTime",
+                    "inherited-temporal-unit": "hour",
+                  },
+                ],
+                {
+                  "stage-number": 1,
+                },
+              ],
+            },
+          ];
+
+          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+            dashcards: [
+              {
+                ...dashcard,
+                col: 0,
+                size_x: 12,
+                parameter_mappings,
+              },
+              {
+                ...dashcard,
+                id: -1,
+                col: 12,
+                size_x: 12,
+                parameter_mappings,
+              },
+            ],
+          });
+        },
+      );
+
+      H.visitDashboard(dashboard.id);
+    });
 
     H.editDashboard();
   });
 
-  it("should keep the time of an hour column in a click behavior to a saved question (metabase#66277)", () => {
-    H.clickBehaviorSidebar().within(() => {
+  it("should keep the time of an hour column in click behavior parameters (metabase#58556, metabase#66277)", () => {
+    cy.log("metabase#66277: go to a saved question");
+    H.clickBehaviorSidebar(1).within(() => {
       cy.findByText("Created At: Hour").click();
       cy.findByText("Go to a custom destination").click();
       cy.findByText("Saved question").click();
@@ -180,9 +238,20 @@ describe("issue 66277", () => {
     H.popover().findByText("Created At: Hour").click();
     H.sidebar().button("Done").click();
 
+    cy.log("metabase#58556: update a dashboard filter");
+    H.clickBehaviorSidebar(0).within(() => {
+      cy.findByText("Created At: Hour").click();
+      cy.findByText("Update a dashboard filter").click();
+      cy.findByText("Date").click();
+    });
+
+    H.popover().findByText("Created At: Hour").click();
+    H.sidebar().button("Done").click();
+
     H.saveDashboard();
 
-    H.getDashboardCard()
+    cy.log("metabase#66277: click a row of the second card");
+    H.getDashboardCard(1)
       .findByTestId("table-body")
       .findAllByTestId("link-formatted-text")
       .eq(0)
@@ -193,6 +262,63 @@ describe("issue 66277", () => {
         /Created At is .* \d{1,2}:\d{2} (AM|PM) – \d{1,2}:\d{2} (AM|PM)/,
       )
       .should("be.visible");
+
+    cy.go("back");
+
+    cy.log("metabase#58556: click a row of the first card");
+    H.getDashboardCard(0)
+      .findByTestId("table-body")
+      .findAllByTestId("link-formatted-text")
+      .eq(0)
+      .click();
+
+    cy.log("ensure the filter contains a time value");
+    cy.location("search").should((search) => {
+      expect(new URLSearchParams(search).get("date")).to.match(
+        /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/,
+      );
+    });
+    H.filterWidget().should(($widget) => {
+      expect($widget.text()).to.match(/\d{1,2}:\d{2}/);
+    });
+  });
+});
+
+describe("issue 23137", () => {
+  const GAUGE_QUESTION_DETAILS: StructuredQuestionDetails = {
+    display: "gauge",
+    query: {
+      "source-table": REVIEWS_ID,
+      aggregation: [["count"]],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+  });
+
+  it("should navigate to a target from a gauge card (metabase#23137)", () => {
+    const visualization_settings: VisualizationSettings = {
+      click_behavior: {
+        type: "link",
+        linkType: "question",
+        targetId: ORDERS_QUESTION_ID,
+        parameterMapping: {},
+      },
+    };
+
+    H.createDashboardWithQuestions({
+      questions: [GAUGE_QUESTION_DETAILS],
+      cards: [{ row: 0, col: 0, visualization_settings }],
+    }).then(({ dashboard }) => {
+      H.visitDashboard(dashboard.id);
+    });
+
+    H.getDashboardCard(0).findByTestId("gauge-arc-1").click();
+    cy.wait("@cardQuery");
+    H.queryBuilderHeader().findByDisplayValue("Orders").should("be.visible");
   });
 });
 
