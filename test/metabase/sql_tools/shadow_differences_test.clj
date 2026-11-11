@@ -66,6 +66,25 @@
                [seen_count (json/decode+kw shadow_result)])))
       (is (= 2 (count (rows)))))))
 
+(deftest record-counts-equal-arguments-as-one-input-test
+  (testing "maps with the same value but a different order are one input"
+    (mt/with-empty-h2-app-db!
+      (let [table-names (map #(str "t" %) (range 10))
+            in-order    (apply array-map (interleave table-names (range)))
+            reversed    (apply array-map (interleave (reverse table-names) (reverse (range 10))))]
+        (is (= in-order reversed))
+        (is (not= (pr-str in-order) (pr-str reversed)))
+        (shadow-differences/record! (difference "SELECT 1" :method :validate-query, :args ["public" in-order]))
+        (shadow-differences/record! (difference "SELECT 1" :method :validate-query, :args ["public" reversed]))
+        (is (= [2] (map :seen_count (rows))))))))
+
+(deftest record-keeps-valid-json-when-truncated-test
+  (mt/with-empty-h2-app-db!
+    (shadow-differences/record! (difference "SELECT 1" :shadow {:value (apply str (repeat 100000 "x"))}))
+    (let [shadow-result (json/decode+kw (:shadow_result (first (rows))))]
+      (is (= [:truncated] (keys shadow-result)))
+      (is (= 16384 (count (:truncated shadow-result)))))))
+
 (deftest record-keeps-at-most-max-rows-test
   (mt/with-empty-h2-app-db!
     (with-redefs [shadow-differences/max-rows 3]

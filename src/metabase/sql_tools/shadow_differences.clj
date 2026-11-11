@@ -29,28 +29,34 @@
   16384)
 
 (defn- ->json
+  "`x` as JSON of at most about `max-json-length` characters. JSON that is too long becomes a JSON object whose
+  `truncated` key holds the start of it, so the column always holds valid JSON."
   [x]
-  (try
-    (json/encode x)
-    (catch Exception _
-      (json/encode (pr-str x)))))
+  (let [s (try
+            (json/encode x)
+            (catch Exception _
+              (json/encode (pr-str x))))]
+    (if (< max-json-length (count s))
+      (json/encode {:truncated (u/truncate s max-json-length)})
+      s)))
 
 (defn- truncate
   [s n]
   (some-> s (u/truncate n)))
 
 (defn- input-hash
+  "SHA-256 of the input. The arguments go in by their value hash, since equal maps can print in different orders."
   [{:keys [method dialect primary-backend shadow-backend sql args]}]
   (codecs/bytes->hex
-   (buddy-hash/sha256 (pr-str [method dialect primary-backend shadow-backend sql args]))))
+   (buddy-hash/sha256 (pr-str [method dialect primary-backend shadow-backend sql (hash args)]))))
 
 (defn record!
   "Keep `difference`, a map that [[metabase.sql-parsing.core/set-shadow-difference-recorder!]] describes."
   [{:keys [method dialect outcome primary-backend shadow-backend sql args primary shadow] :as difference}]
   (let [hash-value (input-hash difference)
         changes    {:outcome        (name outcome)
-                    :primary_result (truncate (->json primary) max-json-length)
-                    :shadow_result  (truncate (->json shadow) max-json-length)}]
+                    :primary_result (->json primary)
+                    :shadow_result  (->json shadow)}]
     (when (zero? (sql-tools.db/shadow-difference-seen-again! hash-value changes))
       (let [id (sql-tools.db/insert-shadow-difference!
                 (merge changes
@@ -61,7 +67,7 @@
                         :shadow_backend  (name shadow-backend)
                         :sql             (truncate sql max-sql-length)
                         :arguments       (when (seq args)
-                                           (truncate (->json args) max-json-length))}))]
+                                           (->json args))}))]
         (when (< max-rows id)
           (sql-tools.db/delete-shadow-differences-up-to! (- id max-rows)))))))
 
