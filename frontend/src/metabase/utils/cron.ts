@@ -1,19 +1,9 @@
 import { t } from "ttag";
 
-import { createLazyModule, useLazyModule } from "metabase/utils/lazy-module";
+import { cronLibraries } from "metabase/utils/lazy-libraries";
+import { useLazyModule } from "metabase/utils/lazy-module";
 import MetabaseSettings from "metabase/utils/settings";
 import { has24HourModeSetting } from "metabase/utils/time-dayjs";
-
-// The cron libraries are only needed by schedule UIs, so they load on demand
-// rather than with the app.
-const cronLibraries = createLazyModule(() =>
-  Promise.all([import("cronstrue"), import("cron-expression-validator")]).then(
-    ([cronstrue, validator]) => ({
-      cronstrue: cronstrue.default,
-      isValidCronExpression: validator.isValidCronExpression,
-    }),
-  ),
-);
 
 /**
  * Loads the cron libraries and re-renders once they're ready. Call it in a
@@ -23,10 +13,6 @@ const cronLibraries = createLazyModule(() =>
  */
 export function useCronLibraries(): boolean {
   return useLazyModule(cronLibraries) !== undefined;
-}
-
-export function loadCronLibraries(): Promise<unknown> {
-  return cronLibraries.load();
 }
 
 function translateErrorMessage(message: string) {

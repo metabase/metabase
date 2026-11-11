@@ -5,6 +5,9 @@ import * as testingLibrary from "@testing-library/react";
 import fetchMockModule from "fetch-mock";
 
 import { resetRouterForTests } from "metabase/router/navigator";
+// Registers the lazy libraries so `loadAllLazyModules` below can preload them.
+import "metabase/utils/lazy-libraries";
+import { loadAllLazyModules } from "metabase/utils/lazy-module";
 
 // Imports compile to lazy requires (see jest.base.conf.js). Resolve these at
 // the top level, so a spec that calls jest.resetModules() cannot make the
@@ -86,7 +89,11 @@ Object.assign(navigator, {
   },
 });
 
-beforeEach(() => {
+beforeEach(async () => {
+  // Modules loaded on first use (`createLazyModule`) are ready before each test,
+  // as in a warm app, so components don't re-render with them mid-test.
+  await loadAllLazyModules();
+
   fetchMock.mockGlobal();
   // Always mock the error reporting endpoint — it's fire-and-forget
   // and should never affect test behavior

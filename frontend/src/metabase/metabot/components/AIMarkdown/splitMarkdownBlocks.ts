@@ -1,10 +1,5 @@
 import type { Lexer } from "marked";
 
-import { createLazyModule } from "metabase/utils/lazy-module";
-
-// `marked` is only needed once Metabot renders markdown, so it stays out of the main bundle.
-export const markedModule = createLazyModule(() => import("marked"));
-
 const FOOTNOTE_PATTERN = /\[\^[^\]\s]+\]/;
 
 // Splits markdown into top-level block sources for memoized rendering.

@@ -1,5 +1,4 @@
 import { screen } from "__support__/ui";
-import { loadCronLibraries } from "metabase/utils/cron";
 import type { ScheduleDisplayType } from "metabase-types/api";
 
 import { setup } from "./setup.spec";
@@ -26,9 +25,6 @@ const setupSchedule = (
   });
 
 describe("NotificationSchedule", () => {
-  // The cron libraries are lazy-loaded; load them so the first render can use them.
-  beforeAll(() => loadCronLibraries());
-
   it("raw - should correctly parse day of week from cron expression", () => {
     // In Quartz cron format, days are 1-based: 1=SUN, 2=MON, ..., 7=SAT
     // "0 0 9 ? * 2,4,6 *" means Monday, Wednesday, Friday at 9:00 AM

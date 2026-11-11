@@ -18,12 +18,8 @@ import {
   useState,
 } from "react";
 
-import { createLazyModule, useLazyModule } from "metabase/utils/lazy-module";
-
-// The CSV parser loads when an input mounts rather than with the app.
-const csvParseModule = createLazyModule(
-  () => import("csv-parse/browser/esm/sync"),
-);
+import { csvParseLibrary } from "metabase/utils/lazy-libraries";
+import { useLazyModule } from "metabase/utils/lazy-module";
 type CsvParse = typeof parse;
 
 const DELIMITERS = [",", "\t", "\n"];
@@ -71,7 +67,7 @@ export function useMultiAutocomplete({
   onDropdownClose,
   onOptionSubmit,
 }: UseMultiAutocompleteProps) {
-  const csvParse = useLazyModule(csvParseModule)?.parse;
+  const csvParse = useLazyModule(csvParseLibrary)?.parse;
   const parseCsv = (rawValue: string) => parseCsvValues(rawValue, csvParse);
   const combobox = useCombobox({
     opened: dropdownOpened,
