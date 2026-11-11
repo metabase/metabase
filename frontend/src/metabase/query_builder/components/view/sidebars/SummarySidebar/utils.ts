@@ -282,11 +282,25 @@ export function getDimensionItems(
   stageIndex: number,
 ): SummaryDimensionItem[] {
   const { breakoutNames } = getResultColumnNames(query, stageIndex);
-  return Lib.breakouts(query, stageIndex).map((clause, index) => ({
-    clause,
-    key: breakoutNames[index],
-    label: Lib.displayInfo(query, stageIndex, clause).longDisplayName,
-  }));
+  const expressions = Lib.expressions(query, stageIndex);
+  return Lib.breakouts(query, stageIndex).map((clause, index) => {
+    const info = Lib.displayInfo(query, stageIndex, clause);
+    const column = Lib.breakoutColumn(query, stageIndex, clause);
+    const columnInfo = column && Lib.displayInfo(query, stageIndex, column);
+    const expression = columnInfo?.isCalculated
+      ? expressions.find(
+          (expression) =>
+            Lib.displayInfo(query, stageIndex, expression).displayName ===
+            columnInfo.name,
+        )
+      : undefined;
+    return {
+      clause,
+      expression,
+      key: breakoutNames[index],
+      label: info.longDisplayName,
+    };
+  });
 }
 
 function findBreakoutableColumn(

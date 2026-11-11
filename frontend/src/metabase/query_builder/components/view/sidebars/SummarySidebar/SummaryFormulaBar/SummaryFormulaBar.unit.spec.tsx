@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useState } from "react";
 
+import { createMockMetadata } from "__support__/metadata";
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import {
   act,
@@ -13,11 +14,20 @@ import {
   within,
 } from "__support__/ui";
 import { databaseApi } from "metabase/api";
+import {
+  deserializeCardFromUrl,
+  serializeCardForUrl,
+} from "metabase/common/utils/card";
 import { defer } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { Database } from "metabase-types/api";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import Question from "metabase-lib/v1/Question";
+import type { Card, Database } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import {
   FormulaBarSlotProvider,
@@ -29,11 +39,19 @@ import { getDimensionItems, getValueItems } from "../utils";
 
 jest.unmock("@uiw/react-codemirror");
 
-type SetupOpts = { database?: Database; databaseResponse?: Promise<Database> };
+type SetupOpts = {
+  database?: Database;
+  databaseResponse?: Promise<Database>;
+  query?: Lib.Query;
+};
 
 async function setup({
   database = createSampleDatabase(),
   databaseResponse,
+  query: initialQuery = Lib.createTestQuery(
+    SAMPLE_PROVIDER,
+    DEFAULT_TEST_QUERY,
+  ),
 }: SetupOpts = {}) {
   if (databaseResponse) {
     fetchMock.get(`path:/api/database/${database.id}`, () => databaseResponse, {
@@ -43,25 +61,52 @@ async function setup({
     setupDatabaseEndpoints(database);
   }
   const onQueryChange = jest.fn<void, [Lib.Query]>();
-  function Harness() {
-    const [query, setQuery] = useState(() =>
-      Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
-    );
+  const metadata = createMockMetadata({ databases: [database] });
+  let savedCard = createMockCard({
+    dataset_query: Lib.toJsQuery(initialQuery),
+  });
+  function Harness({ initialCard }: { initialCard: Card }) {
+    const [card, setCard] = useState(initialCard);
+    const question = new Question(card, metadata);
+    const query = question.query();
     return (
       <FormulaBarSlotProvider>
         <FormulaBarSlotTarget />
+        <button
+          onClick={() => {
+            const [breakout] = Lib.breakouts(query, -1);
+            if (breakout) {
+              setCard(
+                question.setQuery(Lib.removeClause(query, -1, breakout)).card(),
+              );
+            }
+          }}
+        >
+          Remove grouping outside sidebar
+        </button>
         <SummarySidebar
           query={query}
           stageIndex={-1}
-          onQueryChange={(nextQuery) => {
-            setQuery(nextQuery);
+          generatedExpressions={
+            question.settings()["summary.generated_expressions"]
+          }
+          onQueryChange={(nextQuery, generatedExpressions) => {
+            savedCard = question
+              .setQuery(nextQuery)
+              .updateSettings({
+                "summary.generated_expressions": generatedExpressions,
+              })
+              .card();
+            setCard(savedCard);
             onQueryChange(nextQuery);
           }}
         />
       </FormulaBarSlotProvider>
     );
   }
-  const { store } = renderWithProviders(<Harness />);
+  const { store, rerender } = renderWithProviders(
+    <Harness initialCard={savedCard} />,
+  );
   if (!databaseResponse) {
     await act(async () => {
       await store
@@ -71,7 +116,17 @@ async function setup({
         .unwrap();
     });
   }
-  return { onQueryChange, store };
+  return {
+    onQueryChange,
+    store,
+    reloadQuestion: () =>
+      rerender(
+        <Harness
+          key={1}
+          initialCard={deserializeCardFromUrl(serializeCardForUrl(savedCard))}
+        />,
+      ),
+  };
 }
 
 function getInput(wellId: SummaryWellId) {
@@ -94,6 +149,70 @@ async function expectClosed() {
 describe("summary formula handoff", () => {
   afterEach(() => {
     jest.useRealTimers();
+  });
+  it("removes only custom columns created in the grouping well after loading the question again", async () => {
+    const { onQueryChange, reloadQuestion } = await setup({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            expressions: [
+              { name: "Manual", value: { type: "column", name: "TOTAL" } },
+            ],
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [{ type: "column", name: "Manual" }],
+          },
+        ],
+      }),
+    });
+    fireEvent.change(getInput("columns"), {
+      target: { value: "=[Total] + 10" },
+    });
+    await screen.findByRole("textbox", { name: "Formula" });
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await expectClosed();
+    reloadQuestion();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Total + 10" }),
+    );
+    expect(onQueryChange).toHaveBeenCalledTimes(2);
+    const [afterFormulaRemoval] = onQueryChange.mock.calls[1];
+    expect(Lib.expressions(afterFormulaRemoval, -1)).toHaveLength(1);
+    expect(
+      Lib.displayInfo(
+        afterFormulaRemoval,
+        -1,
+        Lib.expressions(afterFormulaRemoval, -1)[0],
+      ).displayName,
+    ).toBe("Manual");
+    await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    expect(onQueryChange).toHaveBeenCalledTimes(3);
+    const [afterClear] = onQueryChange.mock.calls[2];
+    expect(Lib.breakouts(afterClear, -1)).toHaveLength(0);
+    expect(Lib.expressions(afterClear, -1)).toHaveLength(1);
+  });
+  it("keeps a formula regrouped after its grouping was removed outside the sidebar", async () => {
+    const { onQueryChange } = await setup();
+    fireEvent.change(getInput("columns"), {
+      target: { value: "=[Total] + 10" },
+    });
+    await screen.findByRole("textbox", { name: "Formula" });
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await expectClosed();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove grouping outside sidebar" }),
+    );
+    await userEvent.type(getInput("columns"), "Total + 10");
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Total + 10" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Total + 10" }),
+    );
+    expect(onQueryChange).toHaveBeenCalledTimes(3);
+    const [query] = onQueryChange.mock.calls[2];
+    expect(Lib.breakouts(query, -1)).toHaveLength(0);
+    expect(Lib.expressions(query, -1)).toHaveLength(1);
   });
   it.each([
     {

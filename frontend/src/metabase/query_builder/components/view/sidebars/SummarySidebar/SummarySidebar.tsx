@@ -5,6 +5,7 @@ import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { ActionIcon, Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { SummaryGeneratedExpression } from "metabase-types/api";
 
 import type { UpdateQueryHookProps } from "../../../../hooks/types";
 
@@ -12,7 +13,13 @@ import { SummaryFieldList } from "./SummaryFieldList";
 import { useSummaryFormulaBar } from "./SummaryFormulaBar";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
-import type { SummaryField, SummaryFieldSection, SummaryWellId } from "./types";
+import type {
+  SummaryField,
+  SummaryFieldSection,
+  SummaryQueryChangeOptions,
+  SummaryWellId,
+} from "./types";
+import { updateSummaryFormula } from "./update-summary-formula";
 import {
   addField,
   areQueriesEqual,
@@ -21,7 +28,13 @@ import {
   replaceWellWithField,
 } from "./utils";
 
-type SummarySidebarProps = UpdateQueryHookProps;
+type SummarySidebarProps = Omit<UpdateQueryHookProps, "onQueryChange"> & {
+  generatedExpressions?: SummaryGeneratedExpression[];
+  onQueryChange: (
+    query: Lib.Query,
+    generatedExpressions: SummaryGeneratedExpression[],
+  ) => void;
+};
 
 function translateSections(
   sections: SummaryFieldSection[],
@@ -42,7 +55,21 @@ export function SummarySidebar({
   query,
   onQueryChange,
   stageIndex,
+  generatedExpressions = [],
 }: SummarySidebarProps) {
+  const handleQueryChange = (
+    nextQuery: Lib.Query,
+    options?: SummaryQueryChangeOptions,
+  ) => {
+    const result = updateSummaryFormula({
+      query,
+      nextQuery,
+      stageIndex,
+      generatedExpressions,
+      ...options,
+    });
+    onQueryChange(result.query, result.generatedExpressions);
+  };
   const tc = useTranslateContent();
   const sections = useMemo(
     () => translateSections(getFieldSections(query, stageIndex), tc),
@@ -52,7 +79,11 @@ export function SummarySidebar({
     Lib.aggregations(query, stageIndex).length > 0 ||
     Lib.breakouts(query, stageIndex).length > 0;
 
-  const handleWellAdd = (nextQuery: Lib.Query, wellId: SummaryWellId) => {
+  const handleWellAdd = (
+    nextQuery: Lib.Query,
+    wellId: SummaryWellId,
+    createdFormula = false,
+  ) => {
     const isGroupingWithoutValues =
       wellId === "columns" &&
       Lib.aggregations(nextQuery, stageIndex).length === 0;
@@ -60,14 +91,15 @@ export function SummarySidebar({
       ? Lib.aggregateByCount(nextQuery, stageIndex)
       : nextQuery;
     if (!areQueriesEqual(query, nextSummary)) {
-      onQueryChange(nextSummary);
+      handleQueryChange(nextSummary, { createdFormula });
     }
   };
 
   const { bar, formulaInputs, draftFormula } = useSummaryFormulaBar({
     query,
     stageIndex,
-    onAdd: handleWellAdd,
+    onAdd: (nextQuery, wellId) =>
+      handleWellAdd(nextQuery, wellId, wellId === "columns"),
   });
 
   const handleAdd = (wellId: SummaryWellId, field: SummaryField) =>
@@ -82,7 +114,7 @@ export function SummarySidebar({
   };
 
   const handleClearAll = () =>
-    onQueryChange(
+    handleQueryChange(
       clearWell(clearWell(query, stageIndex, "columns"), stageIndex, "values"),
     );
 
@@ -103,7 +135,7 @@ export function SummarySidebar({
           formulaInputs={formulaInputs}
           draftFormula={draftFormula}
           onPick={handleAdd}
-          onChange={onQueryChange}
+          onChange={handleQueryChange}
         />
         <Flex className={S.wellsFooter} align="center" justify="space-between">
           <Button

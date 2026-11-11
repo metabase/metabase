@@ -334,12 +334,20 @@ export type ColumnSettings = TimeOnlyOptions & {
   [key: string]: any;
 };
 
+export type SummaryGeneratedExpression = {
+  stageIndex: number;
+  name: string;
+  expression: string;
+};
+
 /**
  * Visualization-specific display options. Prefer Metabase defaults unless the
  * user asks for an explicit presentation change; many settings depend on exact
  * result column names.
  */
 export type VisualizationSettings = {
+  "summary.generated_expressions"?: SummaryGeneratedExpression[];
+
   /** Show value labels directly on supported chart marks. */
   "graph.show_values"?: boolean;
 

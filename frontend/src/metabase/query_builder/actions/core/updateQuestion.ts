@@ -19,6 +19,7 @@ import {
   getQuestion,
   getRawSeries,
 } from "../../store/selectors";
+import { reconcileSummaryFormulas } from "../../utils/summary-formulas";
 import { getAdHocQuestionWithVizSettings } from "../../utils/viz-settings";
 import { runQuestionQuery } from "../querying";
 import { setQueryBuilderMode } from "../ui";
@@ -94,6 +95,20 @@ export const updateQuestion = (
       shouldStartAdHocQuestion:
         shouldStartAdHocQuestion && queryBuilderMode !== "dataset",
     });
+
+    const generatedExpressions =
+      newQuestion.settings()["summary.generated_expressions"];
+    if (generatedExpressions) {
+      const reconciledExpressions = reconcileSummaryFormulas(
+        newQuestion.query(),
+        generatedExpressions,
+      );
+      if (!_.isEqual(generatedExpressions, reconciledExpressions)) {
+        newQuestion = newQuestion.updateSettings({
+          "summary.generated_expressions": reconciledExpressions,
+        });
+      }
+    }
 
     if (!newQuestion.canAutoRun()) {
       run = false;
