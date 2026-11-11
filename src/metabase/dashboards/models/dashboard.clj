@@ -29,19 +29,18 @@
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.sync.field-values :as sync.field-values]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
-(methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
+(t2/define-table-name :model/Dashboard [_model] :report_dashboard)
 
-(methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :dashboard]
+(t2/define-model-for-automagic-hydration [#_model :default #_k :dashboard]
   [_original-model _k]
   :model/Dashboard)
 
@@ -143,7 +142,7 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(methodical/defmethod t2/batched-hydrate [:default :tabs]
+(t2/define-batched-hydrate [:default :tabs]
   [_model k dashboards]
   (mi/instances-with-hydrated-data
    dashboards k
@@ -151,7 +150,7 @@
    :id
    {:default []}))
 
-(methodical/defmethod t2/batched-hydrate [:default :dashcards]
+(t2/define-batched-hydrate [:default :dashcards]
   [_model k dashboards]
   (mi/instances-with-hydrated-data
    dashboards k
@@ -372,7 +371,7 @@
       (add-dashcards! dashboard dashcards-to-add)
       dashboard)))
 
-(methodical/defmethod t2/batched-hydrate [:model/Dashboard :resolved-params]
+(t2/define-batched-hydrate [:model/Dashboard :resolved-params]
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.
    (params/dashboard->resolved-params (t2/select-one Dashboard :id 62))
    ;; ->

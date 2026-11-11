@@ -6,9 +6,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn synced-transform-tests-clause :- [:fn vector?]
   "The clause over the TransformTest table aliased `alias` selecting the tests of the transforms remote sync syncs."
@@ -26,8 +26,9 @@
   "The TransformTests in name order, only those of the Transform with `:transform-id` when it is given."
   [{:keys [transform-id]} :- [:map {:closed true}
                               [:transform-id {:optional true} [:maybe ::lib.schema.id/transform]]]]
-  (t2/select :model/TransformTest (cond-> {:order-by [[:name :asc] [:id :asc]]}
-                                    transform-id (assoc :where [:= :transform_id transform-id]))))
+  (t2/select :model/TransformTest
+             {:where    (t2/fragment [:and (when transform-id (t2/fragment [:= :transform_id transform-id]))])
+              :order-by [[:name :asc] [:id :asc]]}))
 
 (mu/defn transform-test :- [:maybe ::data-testing.schema/transform-test]
   "The TransformTest with `id`, or nil."
@@ -53,27 +54,28 @@
                                   :initiated_by initiated-by
                                   :status       :started}))
 
-(def ^:private test-type->table
-  {:transform :transform_test
-   :card      :card_test})
-
 (mu/defn- runs-of-tests-clause :- vector?
   "A clause that holds for a run of one of the `test-type` tests with `test-ids` that started no earlier than its test
   was created."
   [test-type :- ::data-testing.schema/test-type
    test-ids  :- [:set ms/PositiveInt]]
   (if (empty? test-ids)
-    [:= [:inline 1] [:inline 0]]
-    [:and
-     [:= :data_test_run.test_type (name test-type)]
-     [:in :data_test_run.test_id test-ids]
-     ;; test_id has no foreign key, so a run can keep the id of a deleted test, and a later test can get the same id.
-     ;; The start time tells the runs of the later test from those of the deleted one.
-     [:exists ^:allow-subquery {:select [1]
-                                :from   [[(test-type->table test-type) :the_test]]
-                                :where  [:and
-                                         [:= :the_test.id :data_test_run.test_id]
-                                         [:>= :data_test_run.start_time :the_test.created_at]]}]]))
+    (t2/fragment [:= [:inline 1] [:inline 0]])
+    (t2/fragment
+     [:and
+      [:= :data_test_run.test_type (name test-type)]
+      [:in :data_test_run.test_id test-ids]
+      (case test-type
+        :transform (t2/fragment [:exists (t2/fragment {:select [1]
+                                                       :from   [[:transform_test :the_test]]
+                                                       :where  [:and
+                                                                [:= :the_test.id :data_test_run.test_id]
+                                                                [:>= :data_test_run.start_time :the_test.created_at]]})])
+        :card      (t2/fragment [:exists (t2/fragment {:select [1]
+                                                       :from   [[:card_test :the_test]]
+                                                       :where  [:and
+                                                                [:= :the_test.id :data_test_run.test_id]
+                                                                [:>= :data_test_run.start_time :the_test.created_at]]})]))])))
 
 (def ^:private RunFilters
   [:map {:closed true}
@@ -87,12 +89,13 @@
 
 (mu/defn- run-filter-clause :- vector?
   [{:keys [test-type test-ids statuses started-at-start started-at-end ended-at-start ended-at-end]} :- RunFilters]
-  (cond-> [:and (runs-of-tests-clause test-type test-ids)]
-    (seq statuses)   (conj [:in :status (map name statuses)])
-    started-at-start (conj [:>= :start_time started-at-start])
-    started-at-end   (conj [:< :start_time started-at-end])
-    ended-at-start   (conj [:>= :end_time ended-at-start])
-    ended-at-end     (conj [:< :end_time ended-at-end])))
+  (t2/fragment [:and
+                (runs-of-tests-clause test-type test-ids)
+                (when (seq statuses) (t2/fragment [:in :status (map name statuses)]))
+                (when started-at-start (t2/fragment [:>= :start_time started-at-start]))
+                (when started-at-end (t2/fragment [:< :start_time started-at-end]))
+                (when ended-at-start (t2/fragment [:>= :end_time ended-at-start]))
+                (when ended-at-end (t2/fragment [:< :end_time ended-at-end]))]))
 
 (mu/defn test-runs :- [:sequential ::data-testing.schema/data-test-run]
   "A page of the DataTestRuns matching `filters`, newest first. Only the runs of the tests in `:test-ids` match, and
@@ -118,17 +121,16 @@
   (t2/select :model/DataTestRun
              {:where [:and
                       (runs-of-tests-clause test-type test-ids)
-                      ;; A newer run starts no earlier than this one, so it passes the start-time guard too.
-                      [:not [:exists ^:allow-subquery {:select [1]
-                                                       :from   [[:data_test_run :newer]]
-                                                       :where  [:and
-                                                                [:= :newer.test_type :data_test_run.test_type]
-                                                                [:= :newer.test_id :data_test_run.test_id]
-                                                                [:or
-                                                                 [:> :newer.start_time :data_test_run.start_time]
-                                                                 [:and
-                                                                  [:= :newer.start_time :data_test_run.start_time]
-                                                                  [:> :newer.id :data_test_run.id]]]]}]]]}))
+                      [:not [:exists (t2/fragment {:select [1]
+                                                   :from   [[:data_test_run :newer]]
+                                                   :where  [:and
+                                                            [:= :newer.test_type :data_test_run.test_type]
+                                                            [:= :newer.test_id :data_test_run.test_id]
+                                                            [:or
+                                                             [:> :newer.start_time :data_test_run.start_time]
+                                                             [:and
+                                                              [:= :newer.start_time :data_test_run.start_time]
+                                                              [:> :newer.id :data_test_run.id]]]]})]]]}))
 
 (mu/defn clear-test-id-of-runs!
   "Set the test id of the runs of the `test-type` test `test-id` to nil, so that no run names the test after it is
@@ -181,8 +183,9 @@
   "The CardTests in name order, only those of the Card with `:card-id` when it is given."
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id {:optional true} [:maybe ::lib.schema.id/card]]]]
-  (t2/select :model/CardTest (cond-> {:order-by [[:name :asc] [:id :asc]]}
-                               card-id (assoc :where [:= :card_id card-id]))))
+  (t2/select :model/CardTest
+             {:where    (t2/fragment [:and (when card-id (t2/fragment [:= :card_id card-id]))])
+              :order-by [[:name :asc] [:id :asc]]}))
 
 (mu/defn insert-card-test! :- ::data-testing.schema/card-test
   "Insert the CardTest `card-test` and return the inserted instance."

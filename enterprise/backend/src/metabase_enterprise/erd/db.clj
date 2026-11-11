@@ -3,9 +3,8 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.models.table :as schema.table]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [metabase.util.malli :as mu]))
 
 (def ^:private ActiveTablesOpts
   "The optional restrictions [[active-tables-in-database]] accepts."
@@ -21,13 +20,17 @@
    database-id :- ::lib.schema.id/database
    opts        :- [:maybe ActiveTablesOpts]]
   (let [{:keys [table-ids schema]} opts]
-    (t2/select :model/Table
-               {:select columns
-                :where  (cond-> [:and [:= :db_id database-id] [:= :active true]]
-                          (contains? opts :table-ids) (conj [:in :id table-ids])
-                          (contains? opts :schema)     (conj (if (= schema "")
-                                                               [:or [:= :schema nil] [:= :schema ""]]
-                                                               [:= :schema schema])))})))
+    (t2/select (into [:model/Table] columns)
+               {:where (t2/fragment
+                        [:and
+                         [:= :db_id database-id]
+                         [:= :active true]
+                         (when (contains? opts :table-ids)
+                           (t2/fragment [:in :id table-ids]))
+                         (when (contains? opts :schema)
+                           (if (= schema "")
+                             (t2/fragment [:or [:= :schema nil] [:= :schema ""]])
+                             (t2/fragment [:= :schema schema])))])})))
 
 (mu/defn active-fields-for-tables
   "The active Fields of the Tables with `table-ids`, in field order."
@@ -35,7 +38,7 @@
   (t2/select :model/Field {:where    [:and
                                       [:in :table_id table-ids]
                                       [:= :active true]]
-                           :order-by schema.table/field-order-rule}))
+                           :order-by [[:position :asc] [:%lower.name :asc]]}))
 
 (mu/defn active-fields
   "The active Fields with `field-ids`."

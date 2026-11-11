@@ -6,9 +6,9 @@
    [metabase.app-db.core :as app-db]
    [metabase.content-verification.schema :as content-verification.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn moderation-reviews-for-items
   "The ModerationReviews of the items with `item-types` and `item-ids`, newest first."

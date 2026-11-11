@@ -8,18 +8,19 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (defn- action-database-joins
   "The joins from `action` to the Database `db` of its query, or for an implicit action of its model Card or its table."
   []
-  [[(t2/table-name :model/QueryAction) :qa]    [:= :qa.action_id :action.id]
-   [(t2/table-name :model/Card) :card]         [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
-   [(t2/table-name :model/ImplicitAction) :ia] [:= :ia.action_id :action.id]
-   [(t2/table-name :model/Table) :tbl]         [:= :tbl.id :ia.table_id]
-   [(t2/table-name :model/Database) :db]       [:= :db.id [:coalesce :qa.database_id :card.database_id :tbl.db_id]]])
+  (t2/fragment
+   [[(t2/table-name :model/QueryAction) :qa]    [:= :qa.action_id :action.id]
+    [(t2/table-name :model/Card) :card]         [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
+    [(t2/table-name :model/ImplicitAction) :ia] [:= :ia.action_id :action.id]
+    [(t2/table-name :model/Table) :tbl]         [:= :tbl.id :ia.table_id]
+    [(t2/table-name :model/Database) :db]       [:= :db.id [:coalesce :qa.database_id :card.database_id :tbl.db_id]]]))
 
 (mu/defn synced-action-details-clause :- [:fn vector?]
   "The clause over an action details table aliased `alias` selecting the details of the synced actions."
@@ -138,7 +139,7 @@
 (mu/defn dashcard-dashboard-id
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :id [:auto/param dashcard-id]))
+  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :id dashcard-id))
 
 (mu/defn dashcard-action-id
   "The Action id of the DashboardCard with `dashcard-id`, or nil."
@@ -267,7 +268,7 @@
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id dashboard-id))
 
 (mu/defn destination-database-exists-for-router?
   "Whether the Database with `database-id` has routing destinations."

@@ -6,9 +6,9 @@
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn tenant
   "The Tenant with `tenant-id`, or nil."
@@ -36,12 +36,17 @@
   [status :- [:enum "all" "active" "deactivated"]
    limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]]
-  (t2/select :model/Tenant (cond-> {:order-by [[:id :asc]]
-                                    :where    (case status
-                                                "all"         [:= [:inline 1] [:inline 1]]
-                                                "active"      [:= :is_active true]
-                                                "deactivated" [:= :is_active false])}
-                             limit (assoc :limit limit :offset offset))))
+  (let [where (case status
+                "all"         (t2/fragment [:= [:inline 1] [:inline 1]])
+                "active"      (t2/fragment [:= :is_active true])
+                "deactivated" (t2/fragment [:= :is_active false]))]
+    (if limit
+      (t2/select :model/Tenant {:order-by [[:id :asc]]
+                                :where    where
+                                :limit    limit
+                                :offset   offset})
+      (t2/select :model/Tenant {:order-by [[:id :asc]]
+                                :where    where}))))
 
 (mu/defn tenant-attributes-reducible
   "Reducible attribute maps of the Tenants that have attributes."

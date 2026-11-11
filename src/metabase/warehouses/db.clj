@@ -152,7 +152,7 @@
 (mu/defn pk-fields-for-tables
   "The primary-key Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK)))
+  (t2/select :model/Field :table_id [:in table-ids] :semantic_type [:in (mdb/type-keyword->descendants :type/PK)]))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."

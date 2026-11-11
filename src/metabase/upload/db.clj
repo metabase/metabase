@@ -5,11 +5,11 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.core :as warehouse-schema]
-   [metabase.warehouse-schema.humanization :as humanization]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.humanization :as humanization]))
 
 (mu/defn current-database
   "The Database being used for uploads, or nil."
@@ -24,7 +24,7 @@
 (mu/defn database-is-attached-dwh?
   "Whether the Database with `database-id` is an attached data warehouse."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :is_attached_dwh :model/Database :id [:auto/param database-id]))
+  (t2/select-one-fn :is_attached_dwh :model/Database :id database-id))
 
 (mu/defn disable-uploads-for-all-databases!
   "Disable uploads on every Database that has them enabled."

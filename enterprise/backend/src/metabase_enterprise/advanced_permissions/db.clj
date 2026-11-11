@@ -3,10 +3,9 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
@@ -96,7 +95,7 @@
   (t2/select :model/Permissions
              {:where [:or
                       [:= :object "/"]
-                      [:like :object (h2x/literal "/application/%")]]}))
+                      [:like :object "/application/%"]]}))
 
 (mu/defn user-group-memberships
   "The group ID (as `:id`) and manager flag of the memberships of the User with `user-id`."

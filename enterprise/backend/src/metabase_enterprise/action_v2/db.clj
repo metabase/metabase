@@ -4,10 +4,10 @@
   (:require
    [metabase-enterprise.action-v2.schema :as action-v2.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
@@ -70,9 +70,9 @@
 
 (defn- scope-and-user-expr
   [scope user-id]
-  [:and
-   (when scope [:= :scope scope])
-   (when user-id [:= :user_id user-id])])
+  (t2/fragment [:and
+                (when scope (t2/fragment [:= :scope scope]))
+                (when user-id (t2/fragment [:= :user_id user-id]))]))
 
 (mu/defn next-undo-batch
   "The Undo rows of the newest not-undone (when `undo?`) or oldest undone batch of `user-id` in `scope`."
@@ -80,16 +80,19 @@
    user-id :- ::lib.schema.id/user
    scope   :- :string]
   (t2/select :model/Undo
-             :batch_num [:in
-                         ^:allow-subquery
-                         {:select [[[(if undo? :max :min) :batch_num]]]
-                          :from   [(t2/table-name :model/Undo)]
-                          :where  [:and
-                                   [:= :user_id user-id]
-                                   [:= :scope scope]
-                                   (if undo?
-                                     [:not :undone]
-                                     :undone)]}]))
+             :batch_num [:in (if undo?
+                               (t2/fragment {:select [[[:max :batch_num]]]
+                                             :from   [(t2/table-name :model/Undo)]
+                                             :where  [:and
+                                                      [:= :user_id user-id]
+                                                      [:= :scope scope]
+                                                      [:not :undone]]})
+                               (t2/fragment {:select [[[:min :batch_num]]]
+                                             :from   [(t2/table-name :model/Undo)]
+                                             :where  [:and
+                                                      [:= :user_id user-id]
+                                                      [:= :scope scope]
+                                                      :undone]}))]))
 
 (mu/defn batch-to-prune-from
   "The `:batch_num` row of the newest Undo batch beyond the `batches-to-keep` most recent ones, narrowed by the
@@ -149,7 +152,9 @@
   (t2/exists? :model/Undo
               :table_id [:in table-ids]
               :row_pk [:in row-pks]
-              :batch_num [(if undo? :> :<) batch-num]
+              :batch_num (if undo?
+                           (t2/fragment [:> batch-num])
+                           (t2/fragment [:< batch-num]))
               :undone (not undo?)))
 
 (mu/defn lock-sequence-next-val

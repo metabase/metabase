@@ -3,9 +3,9 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private DurationScope
   "One `{:model :model-id :rerun-cutoff}` scope, as built by `duration-scopes`."
@@ -26,23 +26,20 @@
   [card-id      :- ::lib.schema.id/card
    dashboard-id :- [:maybe ::lib.schema.id/dashboard]
    database-id  :- [:maybe ::lib.schema.id/database]]
-  (let [qs (for [[i model model-id] [[1 "question"  card-id]
-                                     [2 "dashboard" dashboard-id]
-                                     [3 "database"  database-id]
-                                     [4 "root"      0]]
-                 :when              model-id]
-             ^:allow-subquery
-             {:from   [:cache_config]
-              :select [:id
-                       [[:inline i] :ordering]]
-              :where  [:and
-                       [:= :model model]
-                       [:= :model_id model-id]]})]
-    (t2/select-one :model/CacheConfig
-                   :id ^:allow-subquery {:from     [[^:allow-subquery {:union-all qs} :unused_alias]]
-                                         :select   [:id]
-                                         :order-by :ordering
-                                         :limit    [:inline 1]})))
+  (t2/select-one :model/CacheConfig
+                 {:where    [:or
+                             (when card-id
+                               (t2/fragment [:and [:= :model "question"] [:= :model_id card-id]]))
+                             (when dashboard-id
+                               (t2/fragment [:and [:= :model "dashboard"] [:= :model_id dashboard-id]]))
+                             (when database-id
+                               (t2/fragment [:and [:= :model "database"] [:= :model_id database-id]]))
+                             [:and [:= :model "root"] [:= :model_id 0]]]
+                  :order-by [[[:case
+                               [:= :model "question"] 1
+                               [:= :model "dashboard"] 2
+                               [:= :model "database"] 3
+                               :else 4]]]}))
 
 (mu/defn cards-by-id
   "A map of ID to Card for `card-ids`."
@@ -59,48 +56,50 @@
   []
   (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true))
 
+(defn- duration-scope-query
+  "The query definitions executed under one duration `scope` after `started-after`."
+  [{:keys [model model-id rerun-cutoff]} started-after parameterized?]
+  (t2/fragment
+   {:nest (t2/fragment
+           {:select   [[:q.query :query]
+                       [:qc.query_hash :cache-hash]
+                       [:qe.card_id :card-id]
+                       [:qe.dashboard_id :dashboard-id]
+                       [[:count :q.query_hash] :count]]
+            :from     [[(t2/table-name :model/Query) :q]]
+            :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]
+                       [(t2/table-name :model/QueryCache) :qc] [:= :qc.query_hash :qe.cache_hash]]
+            :where    [:and
+                       (case model
+                         "question"  (t2/fragment [:= :qe.card_id model-id])
+                         "dashboard" (t2/fragment [:= :qe.dashboard_id model-id]))
+                       [:<= :qc.updated_at rerun-cutoff]
+                       [:>= :qe.started_at started-after]
+                       [:= :qe.error nil]
+                       [:= :qe.is_sandboxed false]
+                       (if parameterized?
+                         (t2/fragment [:and
+                                       [:= :qe.parameterized true]
+                                       [:= :qe.cache_hit true]
+                                       [:not= :qe.context "cache-refresh"]])
+                         (t2/fragment [:= :qe.parameterized false]))]
+            :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]})}))
+
 (mu/defn duration-queries-to-rerun
   "The query definitions to rerun for the duration cache `scopes`, each `{:model :model-id :rerun-cutoff}`, counting
   only executions started after `started-after`; `parameterized?` selects parameterized or plain queries."
   [scopes         :- [:sequential DurationScope]
    started-after  :- ms/TemporalInstant
    parameterized? :- :boolean]
-  (t2/select
-   :model/Query
-   {:select [:u.query :u.cache-hash :u.card-id :u.dashboard-id :u.count]
-    :from   [[^:allow-subquery
-              {:union (for [{:keys [model model-id rerun-cutoff]} scopes]
-                        ^:allow-subquery
-                        {:nest
-                         ^:allow-subquery
-                         {:select   [[:q.query :query]
-                                     [:qc.query_hash :cache-hash]
-                                     [:qe.card_id :card-id]
-                                     [:qe.dashboard_id :dashboard-id]
-                                     [[:count :q.query_hash] :count]]
-                          :from     [[(t2/table-name :model/Query) :q]]
-                          :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]
-                                     [(t2/table-name :model/QueryCache) :qc] [:= :qc.query_hash :qe.cache_hash]]
-                          :where    [:and
-                                     (case model
-                                       "question"  [:= :qe.card_id model-id]
-                                       "dashboard" [:= :qe.dashboard_id model-id])
-                                     [:<= :qc.updated_at rerun-cutoff]
-                                     [:>= :qe.started_at started-after]
-                                     [:= :qe.error nil]
-                                     [:= :qe.is_sandboxed false]
-                                     (if parameterized?
-                                       [:and
-                                        [:= :qe.parameterized true]
-                                        ;; Only rerun a parameterized query if it's had a cache hit within
-                                        ;; the last caching window
-                                        [:= :qe.cache_hit true]
-                                        ;; Don't factor the last cache refresh into whether we should rerun
-                                        ;; a parameterized query
-                                        [:not= :qe.context "cache-refresh"]]
-                                       [:= :qe.parameterized false])]
-                          :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}})}
-              :u]]}))
+  (let [[first-query & more-queries] (map #(duration-scope-query % started-after parameterized?) scopes)
+        union                        (reduce (fn [union scope-query]
+                                               (t2/fragment {:union [union scope-query]}))
+                                             first-query
+                                             more-queries)]
+    (t2/select
+     :model/Query
+     {:select [:u.query :u.cache-hash :u.card-id :u.dashboard-id :u.count]
+      :from   [[union :u]]})))
 
 (mu/defn scheduled-base-query-to-rerun
   "The unparameterized query definition of the Card with `card-id` executed most recently after `started-after`, or

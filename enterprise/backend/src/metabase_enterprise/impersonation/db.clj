@@ -7,9 +7,9 @@
    [metabase-enterprise.impersonation.schema :as impersonation.schema]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn impersonation
   "The ConnectionImpersonation with `impersonation-id`, or nil."
@@ -47,10 +47,10 @@
    excluded-database-id  :- [:maybe ::lib.schema.id/database]]
   (t2/select :model/ConnectionImpersonation
              {:where [:and
-                      (when database-id [:= :db_id database-id])
-                      (when group-id [:= :group_id group-id])
-                      (when group-ids [:in :group_id group-ids])
-                      (when excluded-database-id [:not [:= :db_id excluded-database-id]])]}))
+                      (when database-id (t2/fragment [:= :db_id database-id]))
+                      (when group-id (t2/fragment [:= :group_id group-id]))
+                      (when group-ids (t2/fragment [:in :group_id group-ids]))
+                      (when excluded-database-id (t2/fragment [:not [:= :db_id excluded-database-id]]))]}))
 
 (mu/defn impersonation-exists-for-database?
   "Whether the Database with `database-id` has a ConnectionImpersonation."

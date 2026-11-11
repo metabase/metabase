@@ -8,11 +8,11 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
+   [metabase.toucan.core :as t2]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn sandbox
   "The Sandbox with `sandbox-id`, or nil."
@@ -65,10 +65,10 @@
               :join   [[(t2/table-name :model/Table) :t]
                        [:= :s.table_id :t.id]]
               :where  [:and
-                       (when group-id [:= :s.group_id group-id])
-                       (when group-ids [:in :s.group_id group-ids])
-                       (when db-id [:= :t.db_id db-id])
-                       (when excluded-db-id [:not [:= :t.db_id excluded-db-id]])]}))
+                       (when group-id (t2/fragment [:= :s.group_id group-id]))
+                       (when group-ids (t2/fragment [:in :s.group_id group-ids]))
+                       (when db-id (t2/fragment [:= :t.db_id db-id]))
+                       (when excluded-db-id (t2/fragment [:not [:= :t.db_id excluded-db-id]]))]}))
 
 (mu/defn candidate-sandboxes-for-groups-and-databases
   "The `:id`, `:group_id`, `:table_id`, `:db_id`, and `:schema` of the Sandboxes of the groups with `group-ids` on
@@ -164,15 +164,15 @@
              {:where [:and
                       [:= :db_id db-id]
                       (when schema-only?
-                        [:= :schema schema])]}))
+                        (t2/fragment [:= :schema schema]))]}))
 
 (mu/defn database-of-table
   "The Database of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Database
-                 :id ^:allow-subquery {:select [:t.db_id]
-                                       :from      [[(t2/table-name :model/Table) :t]]
-                                       :where  [:= :t.id table-id]}))
+                 :id (t2/fragment {:select [:t.db_id]
+                                    :from   [[(t2/table-name :model/Table) :t]]
+                                    :where  [:= :t.id table-id]})))
 
 (mu/defn fields-of-table-named
   "The `:id` and `:name` of the Fields of the Table with `table-id` named one of `field-names`."
@@ -203,9 +203,9 @@
                        ;; required alongside :card_schema for the Card schema upgrade
                        :c.type :c.entity_id :c.result_metadata :c.dimensions :c.dimension_mappings]
               :from   [[(t2/table-name :model/Card) :c]]
-              :where  [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                                 :from   [[(t2/table-name :model/Sandbox) :s]]
-                                                 :where  [:= :s.card_id :c.id]}]}))
+              :where  [:exists (t2/fragment {:select [[[:inline 1]]]
+                                              :from   [[(t2/table-name :model/Sandbox) :s]]
+                                              :where  [:= :s.card_id :c.id]})]}))
 
 (mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id`, returning the number updated."

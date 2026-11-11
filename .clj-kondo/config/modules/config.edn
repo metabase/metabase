@@ -1077,6 +1077,7 @@
            metabot
            permissions
            premium-features
+           toucan
            util.config}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1383,6 +1384,7 @@
            lib.schema
            lib.types
            settings
+           toucan
            util}
    :model-imports #{:model/Card :model/Field :model/Table}}
 
@@ -2919,6 +2921,7 @@
            lib.schema
            settings
            sql-tools.parsing
+           toucan
            util}
    :model-imports #{:model/Table}}
 
@@ -4628,6 +4631,7 @@
            search
            search.entity-retrieval
            task
+           toucan
            util
            enterprise/search.semantic}
    :model-imports #{:model/Card
@@ -4933,8 +4937,7 @@
            models
            permissions
            toucan
-           util
-           warehouses.schema}
+           util}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
   enterprise/workspaces

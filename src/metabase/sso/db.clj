@@ -5,9 +5,9 @@
    [java-time.api :as t]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.toucan.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mu/defn user-group-ids-excluding
   "The ids of the PermissionsGroups the User with `user-id` belongs to, other than `excluded-group-ids`."
@@ -43,18 +43,18 @@
               :user_id      user-id
               :provider     "password"
               :last_used_at [:not= nil]
-              {:where [:or [:= :expires_at nil] [:> :expires_at [:auto/param (t/offset-date-time)]]]}))
+              {:where [:or [:= :expires_at nil] [:> :expires_at (t/offset-date-time)]]}))
 
 (mu/defn slack-connect-identity
   "The user's Slack identity with `:provider_id` and `:metadata` selected, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/AuthIdentity :provider_id :metadata]
-                 :user_id [:auto/param (long user-id)] :provider "slack-connect"))
+                 :user_id (long user-id) :provider "slack-connect"))
 
 (mu/defn delete-slack-connect-identity!
   "Delete the user's Slack identity, returning the number deleted."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/AuthIdentity :user_id [:auto/param (long user-id)] :provider "slack-connect"))
+  (t2/delete! :model/AuthIdentity :user_id (long user-id) :provider "slack-connect"))
 
 (mu/defn insert-auth-identity!
   "Insert an AuthIdentity linking the User with `user-id` to `provider-id` at `provider`."

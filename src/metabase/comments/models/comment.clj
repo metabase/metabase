@@ -7,11 +7,10 @@
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.schema :as comments.schema]
    [metabase.models.interface :as mi]
-   [methodical.core :as methodical]
-   [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [metabase.toucan.core :as t2]
+   [ring.util.codec :as codec]))
 
-(methodical/defmethod t2/table-name :model/Comment [_model] :comment)
+(t2/define-table-name :model/Comment [_model] :comment)
 
 (doto :model/Comment
   (derive :metabase/model)
@@ -28,7 +27,7 @@
                         mi/json-out-with-keywordization)}
    :context mi/transform-json})
 
-(methodical/defmethod t2/batched-hydrate [:model/Comment :creator]
+(t2/define-batched-hydrate [:model/Comment :creator]
   "Hydrate the creator (user) of a comment based on the creator_id."
   [_model k comments]
   (mi/instances-with-hydrated-data
@@ -38,7 +37,7 @@
    :creator_id
    {:default {}}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Comment :reactions]
+(t2/define-batched-hydrate [:model/Comment :reactions]
   "Hydrate the creator (user) of a comment based on the creator_id."
   [_model k comments]
   (mi/instances-with-hydrated-data
