@@ -14,6 +14,7 @@ import {
   NEAR_MEMBRANE_SANDBOX_HOST_URL,
   getSubpathSafeUrl,
 } from "metabase/urls";
+import { isDataAppBrokerMode } from "metabase-enterprise/data-apps/broker/iframe-broker";
 import { createDataAppSandbox } from "metabase-enterprise/data-apps/sandbox/sandbox";
 import {
   DATA_APP_PROVIDER_PROP_KEYS,
@@ -80,20 +81,21 @@ export class DataAppBundleError extends Error {
 
 /**
  * Fetch a data-app bundle's raw JS source plus its fetch/XHR allowlist. Called
- * from the iframe-top `DataAppIframeApp` after it reads the `:name` from the
+ * from the iframe-top `DataAppIframeApp` after it reads the `:slug` from the
  * URL. Throws a [[DataAppBundleError]] on a transport failure or non-2xx
  * response.
  */
 export const fetchDataAppBundleCode = async (
-  name: string,
+  slug: string,
   { embedded = false }: { embedded?: boolean } = {},
 ): Promise<FetchedDataAppBundle> => {
   let res: Response;
   try {
-    // Use metabase/client fetch for SDK auth headers.
+    // Use metabase/client fetch for SDK auth headers. On the isolated origin, the broker
+    // carries this request (see `installDataAppFetchBroker`).
     res = await api.fetch({
       method: "GET",
-      url: `/api/ee/apps/${encodeURIComponent(name)}/bundle`,
+      url: `/api/ee/apps/${encodeURIComponent(slug)}/bundle`,
       cache: "no-store",
     });
   } catch (e) {
@@ -113,7 +115,7 @@ export const fetchDataAppBundleCode = async (
       .with(
         { embedded: true, status: 404 },
         () =>
-          t`Data app "${name}" was not found or is disabled. Check the app name in path.`,
+          t`Data app "${slug}" was not found or is disabled. Check the app slug in the path.`,
       )
       .otherwise(
         ({ status }) => t`Failed to fetch data app bundle: HTTP ${status}`,
@@ -145,7 +147,11 @@ export const instantiateDataAppBundle = async (
     label,
     targetWindow,
     allowedHosts,
-    realmHostUrl: getSubpathSafeUrl(NEAR_MEMBRANE_SANDBOX_HOST_URL),
+    // On the isolated origin there is no realm host, so Near-Membrane uses its default
+    // `about:blank` realm; see the data-app `script-src` in `security.clj`.
+    realmHostUrl: isDataAppBrokerMode()
+      ? undefined
+      : getSubpathSafeUrl(NEAR_MEMBRANE_SANDBOX_HOST_URL),
     endowments: {
       React,
       reactDom: ReactDOM,

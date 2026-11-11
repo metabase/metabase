@@ -598,8 +598,18 @@
       (throw (error (tru "Not something with an ID: {0}" (pr-str object-or-id))))))
 
 (def ^java.util.regex.Pattern uuid-regex
-  "A regular expression for matching canonical string representations of UUIDs."
+  "A regular expression for matching canonical lowercase string representations of UUIDs."
   #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
+
+(defn uuid-string?
+  "True if `s` is a string in the canonical 8-4-4-4-12 hex form of a UUID, in either case."
+  [s]
+  ;; On the JVM, `parse-uuid` and `UUID/fromString` accept any five dash-separated groups of hex digits.
+  ;; Case is ignored because some callers check values that users type, such as ClickHouse filter values.
+  ;; Checking the length first avoids lower-casing long input.
+  (boolean (and (string? s)
+                (= 36 (count s))
+                (re-matches uuid-regex (lower-case-en s)))))
 
 (defn one-or-many
   "Wraps a single element in a sequence; returns sequences as-is. In lots of situations we'd like to accept either a

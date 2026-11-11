@@ -1,5 +1,4 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { merge } from "icepick";
 import type { WritableDraft } from "immer";
 import { match } from "ts-pattern";
 
@@ -7,6 +6,7 @@ import {
   METABOT_PROFILE_OVERRIDES,
   getToolMessage,
 } from "metabase/metabot/constants";
+import { deepMerge } from "metabase/utils/deep-merge";
 import { uuid } from "metabase/utils/uuid";
 
 import {
@@ -330,7 +330,7 @@ export const createConversationForAgent = (
   overrides?: Partial<MetabotConversationState>,
 ): MetabotConversationState =>
   createConversation(
-    merge(conversationDefaultsByAgentId[agentId] ?? {}, overrides ?? {}),
+    deepMerge(conversationDefaultsByAgentId[agentId] ?? {}, overrides),
   );
 
 export const createAgentState = (

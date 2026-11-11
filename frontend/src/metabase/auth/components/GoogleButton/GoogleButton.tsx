@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useDebouncedValue, useResizeObserver } from "@mantine/hooks";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
-import { getIn } from "icepick";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -15,6 +13,7 @@ import * as Urls from "metabase/urls";
 import { getCspNonce } from "metabase/utils/csp";
 
 import S from "./GoogleButton.module.css";
+import { getErrors } from "./utils";
 
 interface GoogleButtonProps {
   redirectUrl?: string;
@@ -103,9 +102,4 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
       )}
     </Box>
   );
-};
-
-const getErrors = (error: unknown): string[] => {
-  const errors = getIn(error, ["data", "errors"]);
-  return errors ? Object.values(errors) : [];
 };

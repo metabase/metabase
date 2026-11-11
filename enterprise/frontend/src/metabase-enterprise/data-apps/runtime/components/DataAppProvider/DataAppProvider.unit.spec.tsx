@@ -34,7 +34,7 @@ const setup = (providerProps?: Record<string, unknown>) => {
   } as unknown as ReturnType<typeof useHostSdkStore>);
 
   render(
-    <DataAppProvider appName="test-app" providerProps={providerProps}>
+    <DataAppProvider appSlug="test-app" providerProps={providerProps}>
       <div>app content</div>
     </DataAppProvider>,
   );
@@ -55,7 +55,7 @@ describe("DataAppProvider", () => {
     expect(screen.getByText("app content")).toBeInTheDocument();
   });
 
-  it("configures the data-app request headers with the app name", async () => {
+  it("configures the data-app request headers with the app slug", async () => {
     setup();
 
     expect(EMBEDDING_SDK_CONFIG.isDataApp).toBe(true);

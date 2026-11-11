@@ -7,7 +7,7 @@ import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-shared/errors";
 import * as MetabaseErrors from "embedding-sdk-shared/errors";
 import {
   getDataAppEmbedUrl,
-  getEmbeddedAppNameFromPath,
+  getEmbeddedAppSlugFromPath,
   normalizeDataAppPath,
   validateDataAppPath,
 } from "embedding-sdk-shared/lib/embedded-data-app-path";
@@ -835,11 +835,11 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     this._validateEmbedSettings(nextValues);
 
-    // Do not remount when the app name remains the same.
+    // Do not remount when the app slug remains the same.
     // `useDataAppPathNavigation` hook will do client-side routing.
     if (
-      getEmbeddedAppNameFromPath(nextValues.path) ===
-      getEmbeddedAppNameFromPath(this._dataAppPath ?? "")
+      getEmbeddedAppSlugFromPath(nextValues.path) ===
+      getEmbeddedAppSlugFromPath(this._dataAppPath ?? "")
     ) {
       return false;
     }

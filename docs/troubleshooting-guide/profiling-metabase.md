@@ -21,7 +21,7 @@ If you have VisualVM installed on your Metabase server and are able to run Visua
 
 ## Connecting to a remote Metabase
 
-Monitoring a remote Metabase instance (or a local instance running in a docker container) is probably more common, but requires more setup. First we need to specify some system properties that let the JVM know that we want to allow remote monitoring. Assuming we are running Metabase using `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar`, we'd need to change the invocation to the below command, which includes the properties:
+Monitoring a remote Metabase instance (or a local instance running in a docker container) is probably more common, but requires more setup. First we need to specify some system properties that let the JVM know that we want to allow remote monitoring. Assuming we are running Metabase using `java -jar metabase.jar`, we'd need to change the invocation to the below command, which includes the properties:
 
 ```sh
 java --add-to-start=jmx,jmx-remote \

@@ -82,27 +82,33 @@
                                        :details {:value channel}}]}]})))
 
 (def schedule-schema
-  "Schedule schema shared with create-dashboard-subscription tool."
-  [:or
-   [:map {:closed true}
-    [:frequency [:= "hourly"]]]
-   [:map {:closed true}
-    [:frequency [:= "daily"]]
-    [:hour [:int {:min 0 :max 23}]]]
-   [:map {:closed true}
-    [:frequency [:= "weekly"]]
-    [:day_of_week [:enum "sunday" "monday" "tuesday" "wednesday" "thursday" "friday" "saturday"]]
-    [:hour [:int {:min 0 :max 23}]]]
-   [:map {:closed true}
-    [:frequency [:= "monthly"]]
-    [:day_of_month [:enum "first-calendar-day"
-                    "first-sunday" "first-monday" "first-tuesday" "first-wednesday"
-                    "first-thursday" "first-friday" "first-saturday"
-                    "middle-of-month"
-                    "last-calendar-day"
-                    "last-sunday" "last-monday" "last-tuesday" "last-wednesday"
-                    "last-thursday" "last-friday" "last-saturday"]]
-    [:hour [:int {:min 0 :max 23}]]]])
+  "Schedule schema shared with create-dashboard-subscription tool.
+  It dispatches on `frequency`, so a schedule missing a field is told which one, not every field of every frequency."
+  [:multi {:dispatch      :frequency
+           :error/message "should be either \"hourly\", \"daily\", \"weekly\" or \"monthly\""}
+   ["hourly"
+    [:map {:closed true}
+     [:frequency [:= "hourly"]]]]
+   ["daily"
+    [:map {:closed true}
+     [:frequency [:= "daily"]]
+     [:hour [:int {:min 0 :max 23}]]]]
+   ["weekly"
+    [:map {:closed true}
+     [:frequency [:= "weekly"]]
+     [:day_of_week [:enum "sunday" "monday" "tuesday" "wednesday" "thursday" "friday" "saturday"]]
+     [:hour [:int {:min 0 :max 23}]]]]
+   ["monthly"
+    [:map {:closed true}
+     [:frequency [:= "monthly"]]
+     [:day_of_month [:enum "first-calendar-day"
+                     "first-sunday" "first-monday" "first-tuesday" "first-wednesday"
+                     "first-thursday" "first-friday" "first-saturday"
+                     "middle-of-month"
+                     "last-calendar-day"
+                     "last-sunday" "last-monday" "last-tuesday" "last-wednesday"
+                     "last-thursday" "last-friday" "last-saturday"]]
+     [:hour [:int {:min 0 :max 23}]]]]])
 
 (def ^:private alert-schema
   [:map {:closed true}

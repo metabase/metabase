@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import cx from "classnames";
-import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -112,10 +111,8 @@ function updateParameter(
 
   const index = _.findIndex(dashboard.parameters, (p) => p.id === id);
   if (index >= 0) {
-    const parameters = assoc(
-      dashboard.parameters,
-      index,
-      parameterUpdater(dashboard.parameters[index]),
+    const parameters = dashboard.parameters.map((parameter, i) =>
+      i === index ? parameterUpdater(parameter) : parameter,
     );
     dispatch(
       setDashboardAttributes({ id: dashboard.id, attributes: { parameters } }),
