@@ -11,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { act, renderWithProviders, screen } from "__support__/ui";
+import type { BareSuggestionRendererRef } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { checkNotNull } from "metabase/utils/types";
 import type { MentionableUser } from "metabase-types/api";
 import {
@@ -28,10 +29,6 @@ const expectOptionToBePresent = async (name: string | RegExp) => {
 const expectOptionNotToBePresent = (name: string | RegExp) => {
   expect(screen.queryByRole("option", { name })).not.toBeInTheDocument();
 };
-
-interface SuggestionRef {
-  onKeyDown: (props: { event: KeyboardEvent }) => boolean;
-}
 
 const expectOnlyOptionActive = (name: string | RegExp) => {
   expect(screen.getByRole("option", { name })).toHaveAttribute(
@@ -88,7 +85,7 @@ interface SetupProps extends Partial<MentionSuggestionProps> {
 
 const setup = (props: SetupProps = {}) => {
   const command = jest.fn();
-  const ref = createRef<SuggestionRef>();
+  const ref = createRef<BareSuggestionRendererRef>();
 
   const mockChain = {
     focus: jest.fn().mockReturnThis(),

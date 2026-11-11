@@ -4,13 +4,10 @@ import { createRef } from "react";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, within } from "__support__/ui";
+import type { BareSuggestionRendererRef } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { MetabotMentionSuggestion } from "./MetabotSuggestion";
-
-interface SuggestionRef {
-  onKeyDown: (props: { event: KeyboardEvent }) => boolean;
-}
 
 const DATABASES = [
   createMockDatabase({ id: 1, name: "QA Postgres" }),
@@ -19,7 +16,7 @@ const DATABASES = [
 
 const setup = () => {
   const command = jest.fn();
-  const ref = createRef<SuggestionRef>();
+  const ref = createRef<BareSuggestionRendererRef>();
   setupDatabasesEndpoints(DATABASES);
 
   renderWithProviders(

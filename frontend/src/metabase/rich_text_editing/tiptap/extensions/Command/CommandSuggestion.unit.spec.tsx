@@ -19,7 +19,11 @@ import {
   within,
 } from "__support__/ui";
 import { Input } from "metabase/ui";
-import { type RecentItem, isRecentTableItem } from "metabase-types/api";
+import {
+  type RecentItem,
+  type SearchResult,
+  isRecentTableItem,
+} from "metabase-types/api";
 import {
   createMockDatabase,
   createMockRecentCollectionItem,
@@ -119,6 +123,7 @@ type SetupProps = {
   metabotCommand?: MetabotCommandConfig | null;
   newQuestionOptions?: NewQuestionOption[];
   recentItems?: RecentItem[];
+  searchItems?: SearchResult[];
   newQuestionModals?: NewQuestionModals;
 };
 
@@ -143,6 +148,7 @@ const setup = ({
   metabotCommand = null,
   newQuestionOptions = [],
   recentItems = RECENT_ITEMS,
+  searchItems = SEARCH_ITEMS,
   newQuestionModals = TEST_NEW_QUESTION_MODALS,
 }: SetupProps = {}) => {
   const ref = createRef<CommandSuggestionRef>();
@@ -156,7 +162,7 @@ const setup = ({
     isActive: jest.fn(),
   };
 
-  setupSearchEndpoints(SEARCH_ITEMS);
+  setupSearchEndpoints(searchItems);
   setupRecentViewsEndpoints(recentItems);
   setupDatabasesEndpoints([MOCK_DATABASE]);
 
@@ -542,18 +548,28 @@ describe("CommandSuggestion", () => {
     });
 
     it("resets the active option when the number of search results changes", async () => {
-      const { pressKey } = setup({ query: "Orders by" });
+      const { pressKey } = setup({
+        query: "Orders",
+        searchItems: [
+          ...SEARCH_ITEMS,
+          createMockSearchResult({
+            name: "Orders over time",
+            model: "card",
+            id: 7,
+          }),
+        ],
+      });
 
       expect(
-        await screen.findByRole("option", { name: /Orders by category/ }),
+        await screen.findByRole("option", { name: /Orders over time/ }),
       ).toBeInTheDocument();
       pressKey("ArrowDown");
       expectOnlyOptionActive(/Orders by category/);
 
-      await userEvent.type(getQueryInput(), " p");
+      await userEvent.type(getQueryInput(), " by");
       await waitFor(() =>
         expect(
-          screen.queryByRole("option", { name: /Orders by category/ }),
+          screen.queryByRole("option", { name: /Orders over time/ }),
         ).not.toBeInTheDocument(),
       );
       expectOnlyOptionActive(/Orders by product/);
