@@ -982,7 +982,7 @@
 
 ;;; Tool executor
 
-(defonce ^:private tool-executor
+(defonce ^:private ^ThreadPoolExecutor tool-executor
   ;; One pool per instance, shared by every user and conversation. A call waits here when 20 calls already run.
   (Executors/newFixedThreadPool
    20
@@ -991,18 +991,17 @@
 (def ^:private ^Executor observed-tool-executor
   "Runs each task on [[tool-executor]]. Observes the pool utilization and queue depth the task finds when it reaches
   the pool, and the time it then waits for a free thread."
-  (let [^ThreadPoolExecutor pool tool-executor]
-    (reify Executor
-      (execute [_ task]
-        (analytics/observe! :metabase-metabot/tool-executor-utilization
-                            (/ (.getActiveCount pool) (double (.getMaximumPoolSize pool))))
-        (analytics/observe! :metabase-metabot/tool-executor-queue-depth (.size (.getQueue pool)))
-        (let [submitted (u/start-timer)]
-          (.execute pool
-                    ^Runnable (fn []
-                                (analytics/observe! :metabase-metabot/tool-executor-wait-ms
-                                                    (u/since-ms submitted))
-                                (.run task))))))))
+  (reify Executor
+    (execute [_ task]
+      (analytics/observe! :metabase-metabot/tool-executor-utilization
+                          (/ (.getActiveCount tool-executor) (double (.getMaximumPoolSize tool-executor))))
+      (analytics/observe! :metabase-metabot/tool-executor-queue-depth (.size (.getQueue tool-executor)))
+      (let [submitted (u/start-timer)]
+        (.execute tool-executor
+                  ^Runnable (fn []
+                              (analytics/observe! :metabase-metabot/tool-executor-wait-ms
+                                                  (u/since-ms submitted))
+                              (.run task)))))))
 
 (defn- submit-virtual
   "Submit a thunk to run on a virtual thread, bounded by pool size, once every future in `after` has completed.
