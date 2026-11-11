@@ -22,6 +22,7 @@
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
   (:import
+   (java.util IdentityHashMap)
    (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
@@ -501,6 +502,23 @@
 
       :else error)))
 
+(def ^:private ^:dynamic *converted-composites*
+  "Identity cache of the composite fields that one [[field-references]] call has converted."
+  nil)
+
+(defn- cached-composite
+  "The value of `(compute)` for the composite field `field`, computed one time for each `field` object. A chain of
+  UNIONs gives the same composite field to more than one member, so without the cache the work doubles at each
+  level."
+  [field compute]
+  (if-let [^IdentityHashMap cache *converted-composites*]
+    (if (.containsKey cache field)
+      (.get cache field)
+      (let [result (compute)]
+        (.put cache field result)
+        result))
+    (compute)))
+
 (defn- convert-field
   "Convert a field spec from Python format to Clojure format."
   [field]
@@ -536,13 +554,16 @@
          :alias (or (:alias field) (get field "alias"))}
 
         :composite-field
-        {:type :composite-field
-         :alias (or (:alias field) (get field "alias"))
-         :member-fields (mapv convert-field
-                              (or (:member-fields field)
-                                  (:member_fields field)
-                                  (get field "member_fields")
-                                  []))}
+        (cached-composite
+         field
+         (fn []
+           {:type          :composite-field
+            :alias         (or (:alias field) (get field "alias"))
+            :member-fields (mapv convert-field
+                                 (or (:member-fields field)
+                                     (:member_fields field)
+                                     (get field "member_fields")
+                                     []))}))
 
         :unknown-columns
         {:type :unknown-columns}
@@ -575,9 +596,10 @@
           used-fields (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
           returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
           errors (or (:errors raw) (get raw "errors") [])]
-      {:used-fields (set (map convert-field used-fields))
-       :returned-fields (vec (map convert-field returned-fields))
-       :errors (set (map convert-error errors))})
+      (binding [*converted-composites* (IdentityHashMap.)]
+        {:used-fields (set (map convert-field used-fields))
+         :returned-fields (vec (map convert-field returned-fields))
+         :errors (set (map convert-error errors))}))
     (catch TimeoutException e
       {:used-fields #{}
        :returned-fields []

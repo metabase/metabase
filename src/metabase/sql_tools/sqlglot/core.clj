@@ -86,26 +86,29 @@
   "Normalize identifier strings in a field spec using driver-specific case rules.
    Only normalizes specific keys (column, table, schema, etc.) to match Macaw's col-fields."
   [driver field]
-  (if (map? field)
-    (reduce-kv (fn [m k v]
-                 (assoc m k
-                        (cond
-                          (and (normalizable-keys k) (string? v))
-                          (sql.normalize/normalize-name driver v)
+  (let [normalize (fn []
+                    (reduce-kv (fn [m k v]
+                                 (assoc m k
+                                        (cond
+                                          (and (normalizable-keys k) (string? v))
+                                          (sql.normalize/normalize-name driver v)
 
-                          (map? v)
-                          (normalize-field driver v)
+                                          (map? v)
+                                          (normalize-field driver v)
 
-                          (set? v)
-                          (set (map #(normalize-field driver %) v))
+                                          (set? v)
+                                          (set (map #(normalize-field driver %) v))
 
-                          (sequential? v)
-                          (mapv #(normalize-field driver %) v)
+                                          (sequential? v)
+                                          (mapv #(normalize-field driver %) v)
 
-                          :else v)))
-               {}
-               field)
-    field))
+                                          :else v)))
+                               {}
+                               field))]
+    (cond
+      (not (map? field)) field
+      (= :composite-field (:type field)) (sql-tools.common/cached-composite field normalize)
+      :else (normalize))))
 
 (defmethod sql-tools/field-references-impl :sqlglot
   [_parser driver sql-string]
