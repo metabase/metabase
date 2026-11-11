@@ -122,6 +122,12 @@
   [state id how]
   (update-in state [::placed id] #(if (= :position %) % how)))
 
+(defn- shown-tab
+  "The id of the tab a dashcard with `tab-id` shows on, which for a nil `tab-id` is the dashboard's first tab, if any."
+  [state tab-id]
+  ;; The save puts a card with no tab on the sole tab, and [[check-tab-coverage!]] refuses one when there are more.
+  (or tab-id (:id (first (:tabs state)))))
+
 (defn- card-display
   "The display type keyword driving a new dashcard's default size; `:table` when the card is
    unknown, which only affects the default and never correctness."
@@ -199,7 +205,7 @@
    the display type's default and an omitted position autoplaces against the cards already on
    the target tab."
   [state {:keys [position size]} tab-id display-type]
-  (let [siblings   (filterv #(= tab-id (:dashboard_tab_id %)) (:dashcards state))
+  (let [siblings   (filterv #(= (shown-tab state tab-id) (shown-tab state (:dashboard_tab_id %))) (:dashcards state))
         ;; The display's default size, from `dashboards.constants` via the 2-arity. Resolved
         ;; against no siblings so it always yields a size — the search below can come up empty on
         ;; a full tab, and the default size must not vanish with it.
@@ -640,8 +646,7 @@
    Elsewhere a layout that already overlaps stays as it was, so an edit to a filter or another tab doesn't rearrange
    it."
   [{:keys [tabs dashcards] :as state}]
-  ;; With one tab, a card with no tab shows on it; with more, [[check-tab-coverage!]] has refused such a card.
-  (let [tab-of      #(or (:dashboard_tab_id %) (:id (first tabs)))
+  (let [tab-of      #(shown-tab state (:dashboard_tab_id %))
         ;; A card an op placed and a later op removed is gone.
         placed      (select-keys (::placed state) (map :id dashcards))
         ;; A new tab's copies may hold no placed card, but their layout is the call's to make valid.

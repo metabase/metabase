@@ -83,6 +83,17 @@
           added (first (filter #(= -1 (:id %)) dashcards))]
       (is (<= 4 (:row added))))))
 
+(deftest autoplace-without-a-tab-on-a-one-tab-dashboard-test
+  (testing "a card added with no tab to a one-tab dashboard avoids that tab's cards, as it shows there"
+    (let [dash  (assoc empty-dash
+                       :tabs      [{:id 1 :name "A"}]
+                       :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id 1}])
+          added (->> (compile-with-stub-cards dash [{:op "add_card" :id -1 :card_id 42 :size {:size_x 12 :size_y 6}}])
+                     :dashcards
+                     (filter #(= -1 (:id %)))
+                     first)]
+      (is (= [0 12] [(:row added) (:col added)])))))
+
 (defn- op-error
   "The error data [[dashboard-ops/compile-ops]] throws for `ops` against `current` and `cards`, or nil when it compiles.
    It defaults `cards` to a stub row for every card `ops` name.
