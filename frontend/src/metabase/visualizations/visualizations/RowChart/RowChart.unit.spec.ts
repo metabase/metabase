@@ -1,11 +1,18 @@
+import {
+  getDataFromClicked,
+  renderLinkURLForClick,
+} from "metabase/value-formatting";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
   canBrush,
+  getSeriesClickData,
   getTooltipModel,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
 import {
   DEFAULT_VISUALIZATION_THEME,
+  type EChartsSeriesMouseEvent,
   type RenderingContext,
+  X_AXIS_DATA_KEY,
   getCartesianChartModel,
   getComputedSettingsForSeries,
   getSizeAdjustedSettings,
@@ -256,4 +263,92 @@ describe("row chart additional tooltip columns", () => {
       }),
     ).toEqual(["Count", "Sum"]);
   });
+});
+
+describe("row chart click data", () => {
+  const textColumn = (name: string) =>
+    createMockColumn({
+      name,
+      display_name: name,
+      base_type: "type/Text",
+      effective_type: "type/Text",
+    });
+
+  const rawSeries: RawSeries = [
+    {
+      card: createMockCard({
+        display: "row",
+        visualization_settings: {
+          "graph.dimensions": ["MAIN_GROUP", "SUB_GROUP"],
+          "graph.metrics": ["VALUE_SUM"],
+        },
+      }),
+      data: createMockDatasetData({
+        cols: [
+          textColumn("MAIN_GROUP"),
+          textColumn("SUB_GROUP"),
+          createMockColumn({
+            name: "VALUE_SUM",
+            display_name: "VALUE_SUM",
+            base_type: "type/Integer",
+            effective_type: "type/Integer",
+          }),
+          textColumn("GROUP_NAME"),
+        ],
+        rows: [
+          ["group_1", "sub_group_1", 111, "group_1__sub_group_1"],
+          ["group_1", "sub_group_2", 68, "group_1__sub_group_2"],
+          ["group_2", "sub_group_1", 79, "group_2__sub_group_1"],
+          ["group_2", "sub_group_2", 52, "group_2__sub_group_2"],
+        ],
+      }),
+    },
+  ];
+
+  const getClickedLinkUrl = (mainGroup: string, subGroup: string) => {
+    const computedSettings = getComputedSettingsForSeries(
+      getVisualizationTransformed(rawSeries).series,
+    );
+    const chartModel = getCartesianChartModel(
+      rawSeries,
+      computedSettings,
+      [],
+      renderingContext,
+    );
+    const seriesModel = chartModel.seriesModels.find(
+      (seriesModel) => seriesModel.name === subGroup,
+    );
+    const dataIndex = chartModel.transformedDataset.findIndex(
+      (datum) => datum[X_AXIS_DATA_KEY] === mainGroup,
+    );
+    const clicked = getSeriesClickData(
+      chartModel,
+      computedSettings,
+      // A partial ECharts event: only these fields are read by getSeriesClickData.
+      {
+        seriesId: seriesModel?.dataKey,
+        dataIndex,
+        event: { event: new MouseEvent("click") },
+      } as EChartsSeriesMouseEvent,
+    );
+
+    return renderLinkURLForClick(
+      "/?q={{group_name}}",
+      getDataFromClicked(clicked ?? {}),
+    );
+  };
+
+  it.each([
+    ["group_1", "sub_group_1"],
+    ["group_1", "sub_group_2"],
+    ["group_2", "sub_group_1"],
+    ["group_2", "sub_group_2"],
+  ])(
+    "passes the %s / %s row's value of a column left off the chart to a click behavior link (metabase#46318)",
+    (mainGroup, subGroup) => {
+      expect(getClickedLinkUrl(mainGroup, subGroup)).toBe(
+        `/?q=${mainGroup}__${subGroup}`,
+      );
+    },
+  );
 });
