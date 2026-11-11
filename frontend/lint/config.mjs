@@ -334,8 +334,8 @@ const configs = [
             "cross-fetch",
           ],
           // icepick returns `any` from helpers like `getIn`. Use optional
-          // chaining, spreads, immer, or `deepMerge` from
-          // "metabase/utils/deep-merge" instead.
+          // chaining, spreads, immer, `getAtPath` from "metabase/utils/get-at-path",
+          // or `deepMerge` from "metabase/utils/deep-merge" instead.
           modules: ["icepick"],
         },
       ],
