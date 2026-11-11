@@ -117,6 +117,7 @@ const setup = ({
   renderWithProviders(
     <SettingsForm triggeredFrom="admin-settings" onSaved={onSaved} />,
     {
+      withRouter: true,
       storeInitialState: createMockState({
         currentUser: createMockUser({ is_superuser: true }),
         settings: mockSettings(settings),
@@ -230,9 +231,19 @@ describe("SettingsForm", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     const modal = await screen.findByRole("dialog");
-    expect(within(modal).getByText("Sales")).toBeInTheDocument();
-    expect(within(modal).getByText("Revenue")).toBeInTheDocument();
-    expect(within(modal).getByText("Used by Overview")).toBeInTheDocument();
+    expect(within(modal).getByRole("link", { name: "Sales" })).toHaveAttribute(
+      "href",
+      "/collection/30-sales",
+    );
+    expect(
+      within(modal).getByRole("link", { name: "Revenue" }),
+    ).toHaveAttribute("href", "/question/1-revenue");
+    expect(
+      within(modal).getByRole("link", { name: "Overview" }),
+    ).toHaveAttribute("href", "/dashboard/1-overview");
+    expect(within(modal).getByText(/Used by/)).toHaveTextContent(
+      "Used by Overview",
+    );
     expect(onSaved).not.toHaveBeenCalled();
 
     setupRemoteSyncSettingsEndpoint();

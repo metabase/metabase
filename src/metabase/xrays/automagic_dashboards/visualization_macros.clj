@@ -20,8 +20,7 @@
                                 ["table" (merge {:column_settings {(->> metrics
                                                                         first
                                                                         :op
-                                                                        (format "[\"name\",\"%s\"]")
-                                                                        keyword) {:show_mini_bar true}}}
+                                                                        (format "[\"name\",\"%s\"]")) {:show_mini_bar true}}}
                                                 settings)]))
         (update :order_by #(or % [{(-> card :metrics first) "descending"}])))))
 

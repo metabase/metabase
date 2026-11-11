@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { createSelector } from "@reduxjs/toolkit";
 import { shallowEqual } from "react-redux";
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";

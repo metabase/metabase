@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import cx from "classnames";
 import type { ReactNode, Ref } from "react";
 import { Component, forwardRef } from "react";

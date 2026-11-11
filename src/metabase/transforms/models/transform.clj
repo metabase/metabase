@@ -125,7 +125,7 @@
 (defmethod mi/can-create? :model/Transform
   [_model instance]
   ;; Inline can-write? logic since instance is a plain map without model metadata.
-  ;; can-write? requires: can-read? and has-db-transforms-permission?
+  ;; can-write? requires: not a read-only remote sync instance, can-read? and has-db-transforms-permission?
   ;; can-read? requires: is-superuser? OR (entitled-data-analyst? AND source-tables-readable?)
   (and (not (remote-sync/read-only?))
        (transforms.u/check-feature-enabled (transforms.u/->definition instance))

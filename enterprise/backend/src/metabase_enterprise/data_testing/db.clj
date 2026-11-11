@@ -5,14 +5,22 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn synced-transform-tests-clause :- [:fn vector?]
   "The clause over the TransformTest table aliased `alias` selecting the tests of the transforms remote sync syncs."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :transform_id :model/Transform))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :transform_id :model/Transform opts))
+
+(mu/defn synced-card-tests-clause :- [:fn vector?]
+  "The clause over the CardTest table aliased `alias` selecting the tests of the cards remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :card_id :model/Card opts))
 
 (mu/defn transform-tests :- [:sequential ::data-testing.schema/transform-test]
   "The TransformTests in name order, only those of the Transform with `:transform-id` when it is given."
@@ -221,9 +229,3 @@
   "The TransformTest with `entity-id`, or nil."
   [entity-id :- :string]
   (t2/select-one :model/TransformTest :entity_id entity-id))
-
-(mu/defn transforms-by-entity-ids
-  "The entity id, name, and Collection id of the Transforms with `eids`."
-  [eids :- [:sequential :string]]
-  (when (seq eids)
-    (t2/select [:model/Transform :entity_id :name :collection_id] :entity_id [:in [:auto/param eids]])))
