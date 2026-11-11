@@ -494,16 +494,23 @@
 (defn- inline? [x]
   (fn-call-of-type? x :inline))
 
+(defn- count?
+  "Whether `n` is valid for a `LIMIT` or `OFFSET`: a non-negative integer, inline or not, or a bound `[:param k]`."
+  [n]
+  (or (nat-int? n)
+      (inline? n)
+      (fn-call-of-type? n :param)))
+
 (defn- limit!
   [n context]
-  (when-not ((some-fn nat-int? inline?) n)
+  (when-not (count? n)
     (throw (ex-info "Invalid limit" {:n n})))
   (append-sql! context "LIMIT ")
   (compile! n context))
 
 (defn- offset!
   [n context]
-  (when-not ((some-fn nat-int? inline?) n)
+  (when-not (count? n)
     (throw (ex-info "Invalid offset" {:n n})))
   (append-sql! context "OFFSET ")
   (compile! n context))

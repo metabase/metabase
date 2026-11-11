@@ -79,6 +79,7 @@
    [metabase.task-history.init]
    [metabase.testing-api.init]
    [metabase.tiles.init]
+   [metabase.toucan.init]
    [metabase.tracing.init]
    [metabase.transforms-base.init]
    [metabase.transforms.init]

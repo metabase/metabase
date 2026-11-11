@@ -3094,7 +3094,8 @@
 
   toucan
   {:team "DevEx"
-   :api  #{metabase.toucan.core}
+   :api  #{metabase.toucan.core
+           metabase.toucan.init}
    :uses #{}}
 
   tracing

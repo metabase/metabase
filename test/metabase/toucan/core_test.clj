@@ -152,8 +152,15 @@
                           #"Marked a whole operator form"
                           (toucan2.core/compile (t2/select :model/User :email email))))))
 
-(deftest ^:parallel integer-limit-spliced-test
+(deftest ^:parallel limit-offset-bound-test
   (let [n            5
+        m            2
+        [sql & args] (toucan2.core/compile (t2/select :model/User {:limit n :offset m}))]
+    (is (re-find #"LIMIT \? OFFSET \?$" sql))
+    (is (= [5 2] args))))
+
+(deftest ^:parallel non-integer-limit-bound-test
+  (let [n            "5; DROP TABLE core_user"
         [sql & args] (toucan2.core/compile (t2/select :model/User {:limit n}))]
-    (is (re-find #"LIMIT 5$" sql))
-    (is (empty? args))))
+    (is (re-find #"LIMIT \?$" sql))
+    (is (= ["5; DROP TABLE core_user"] args))))

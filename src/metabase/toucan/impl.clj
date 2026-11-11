@@ -27,10 +27,10 @@
   (vary-meta form assoc fragment-key form :allow-subquery true))
 
 (defn value
-  "`x` where a macro here found a runtime form: a [[fragment]] or an integer as is, anything else as
+  "`x` where a macro here found a runtime form: a [[fragment]] as is, anything else as
   `[:auto/param x]`."
   [x]
-  (if (or (integer? x) (fragment? x))
+  (if (fragment? x)
     x
     [:auto/param x]))
 
