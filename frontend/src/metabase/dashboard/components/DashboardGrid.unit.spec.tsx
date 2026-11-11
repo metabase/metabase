@@ -137,6 +137,20 @@ describe("DashboardGrid", () => {
       expect(await screen.findByText("Remove and trash")).toBeInTheDocument();
     });
 
+    it("removes the only dashcard of a dashboard question when its trash action is clicked", async () => {
+      setup([createDashcard(1, dashboardQuestion)]);
+
+      await userEvent.click(
+        within(getActionsPanels()[0]).getByLabelText("trash icon"),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("dashboardcard-actions-panel"),
+        ).not.toBeInTheDocument(),
+      );
+    });
+
     it("shows the close action on every dashcard when a dashboard question is on the dashboard twice", async () => {
       setup([
         createDashcard(1, dashboardQuestion, 0),
