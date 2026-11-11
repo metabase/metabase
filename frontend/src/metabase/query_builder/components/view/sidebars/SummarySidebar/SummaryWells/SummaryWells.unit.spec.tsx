@@ -43,6 +43,7 @@ function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
       query={query}
       stageIndex={STAGE_INDEX}
       sections={getFieldSections(query, STAGE_INDEX)}
+      draggedItem={null}
       onPick={onPick}
       onChange={onChange}
     />,

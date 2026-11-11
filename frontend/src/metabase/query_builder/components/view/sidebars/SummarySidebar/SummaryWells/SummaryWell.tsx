@@ -1,3 +1,4 @@
+import { useDroppable } from "@dnd-kit/core";
 import type { MouseEvent, ReactNode } from "react";
 
 import { Card, Flex, Text } from "metabase/ui";
@@ -9,13 +10,28 @@ import type { SummaryWellId } from "../types";
 const INTERACTIVE_SELECTOR =
   "button, input, a, [role='button'], [contenteditable='true']";
 
+export type WellDropState = "accepts" | "rejects" | "over";
+
 type SummaryWellProps = {
   wellId: SummaryWellId;
   title: string;
+  dropState: WellDropState | null;
   children: ReactNode;
 };
 
-export function SummaryWell({ wellId, title, children }: SummaryWellProps) {
+export function SummaryWell({
+  wellId,
+  title,
+  dropState,
+  children,
+}: SummaryWellProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `well:${wellId}`,
+    data: { wellId },
+  });
+  const effectiveDropState =
+    dropState === "accepts" && isOver ? "over" : dropState;
+
   const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
     if (
       !(event.target instanceof Element) ||
@@ -33,11 +49,13 @@ export function SummaryWell({ wellId, title, children }: SummaryWellProps) {
 
   return (
     <Card
+      ref={setNodeRef}
       className={S.well}
       radius="lg"
       shadow="xs_outline"
       p="md"
       data-testid={`summary-well-${wellId}`}
+      data-drop={effectiveDropState ?? undefined}
       onMouseDown={handleMouseDown}
     >
       <Flex className={S.wellHeader}>
