@@ -115,7 +115,10 @@
       (is (not (matches? "quarterly totals" "quart"))))
     (testing "a leaf is literal: operator syntax inside it is just text"
       (is (not (matches? "revenue" "revenue|income")))
-      (is (not (matches? "revenue" "!income"))))))
+      (is (not (matches? "revenue" "!income"))))
+    (testing "a prefix's quotes and backslashes stay inside its lexeme"
+      (is (matches? "dept x report" {:op "prefix" :text "dept\\x"}))
+      (is (matches? "it s report" {:op "prefix" :text "it's"})))))
 
 (deftest problems-test
   (when (= :postgres (mdb/db-type))

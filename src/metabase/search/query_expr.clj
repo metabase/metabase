@@ -178,10 +178,17 @@
     :else
     []))
 
+(defn- prefix-tsquery-text
+  "The `to_tsquery` text that matches `term` as the start of a word: the term as one quoted lexeme, marked `:*`."
+  [term]
+  ;; Inside a quoted lexeme, the tsquery parser reads a backslash as an escape and a doubled quote as a quote.
+  (str "'" (-> term (str/replace "\\" "\\\\") (str/replace "'" "''")) "':*"))
+
 (defn ->tsquery
   "Compile `expr` to a HoneySQL `tsquery` expression under the text-search configuration `lang`.
   The configuration name is a `regconfig`, not a value, so it goes in as a SQL literal rather than a parameter.
-  Every leaf's text is a bound parameter; nothing is spliced into the `to_tsquery` string language."
+  Every leaf's text is a bound parameter.
+  A prefix's text reaches `to_tsquery` quoted as one lexeme, so no operator in it takes effect."
   [expr lang]
   (let [lang    (h2x/literal lang)
         combine (fn [f [q & qs]] (reduce (fn [a b] [f a b]) q qs))
@@ -189,8 +196,7 @@
                   (cond
                     (string? e)          [:plainto_tsquery lang e]
                     (= "phrase" (:op e)) [:phraseto_tsquery lang (:text e)]
-                    ;; quote_literal makes the term a single quoted lexeme before `:*` marks it as a prefix
-                    (= "prefix" (:op e)) [:to_tsquery lang [:|| [:quote_literal (:text e)] ":*"]]
+                    (= "prefix" (:op e)) [:to_tsquery lang (prefix-tsquery-text (:text e))]
                     (= "and" (:op e))    (combine :tsquery_and (map go (:args e)))
                     (= "or" (:op e))     (combine :tsquery_or (map go (:args e)))
                     (= "not" (:op e))    [:tsquery_not (go (first (:args e)))]))]

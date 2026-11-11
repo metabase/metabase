@@ -1176,7 +1176,6 @@
      :phraseto_tsquery
      :plainto_tsquery
      :querytree
-     :quote_literal
      :rand
      :random
      :regexp_replace
