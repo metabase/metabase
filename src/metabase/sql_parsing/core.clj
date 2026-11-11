@@ -7,7 +7,6 @@
   API:
     (referenced-tables sql dialect) → [[catalog schema table] ...]
     (referenced-fields dialect sql) → [[catalog schema table field] ...]
-    (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
     (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
 
   The parsing itself happens behind the [[metabase.sql-parsing.protocol/SqlParser]] protocol (the
@@ -355,26 +354,6 @@
    => [[\"myproject\" \"analytics\" \"events\" \"*\"]]"
   [dialect sql]
   (protocol/referenced-fields (parser) dialect (strip-large-literal-lists sql)))
-
-(defn returned-columns-lineage
-  "Extract column lineage from SQL query, showing which output columns depend on which source columns.
-
-   Returns a vector of [alias pure? [[schema table col]...]] tuples:
-   - alias: The output column name/alias
-   - pure?: Boolean - true if the column is a direct pass-through from a source column
-   - deps: Vector of [schema table column] dependencies
-
-   Requires a schema map of the form:
-   {\"schema_name\" {\"table_name\" {\"column_name\" \"TYPE\"}}}
-
-   Examples:
-   (returned-columns-lineage \"postgres\" \"SELECT id FROM users\" nil {nil {\"users\" {\"id\" \"INT\"}}})
-   => [[\"id\" true [[[nil \"users\" \"id\"]]]]]
-
-   (returned-columns-lineage \"postgres\" \"SELECT id + 1 as computed FROM users\" nil schema)
-   => [[\"computed\" false [[[nil \"users\" \"id\"]]]]]"
-  [dialect sql default-table-schema sqlglot-schema]
-  (protocol/returned-columns-lineage (parser) dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
 
 (defn validate-query
   "Validate a SQL query against a schema using sqlglot's qualify optimizer.

@@ -115,17 +115,6 @@
                (sql-parsing/classify-stmt dialect sql stmt-type))
             (pr-str sql))))))
 
-;;; ------------------------------------------- returned-columns-lineage -------------------------------------------
-
-(deftest ^:parallel returned-columns-lineage-test
-  (testing "the columns a query returns, which is what an expectation compares against"
-    (doseq [{:keys [name sql dialect default-schema columns]} (cases "returned_columns")]
-      (testing name
-        (is (= columns
-               (sort (map (comp u/lower-case-en first)
-                          (sql-parsing/returned-columns-lineage dialect sql default-schema {}))))
-            (pr-str sql))))))
-
 ;;; ------------------------------------------------- validate-query -----------------------------------------------
 
 (deftest ^:parallel validate-query-test

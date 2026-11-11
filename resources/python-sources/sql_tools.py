@@ -8,7 +8,6 @@ import sqlglot
 # syntax. Falling back to parsing as a 'Command'."); silence them so customer SQL never reaches
 # stderr/server logs.
 logging.getLogger("sqlglot").setLevel(logging.CRITICAL)
-import sqlglot.lineage as lineage
 import sqlglot.optimizer as optimizer
 import sqlglot.optimizer.qualify as qualify
 from sqlglot import exp
@@ -374,40 +373,6 @@ def validate_query(dialect, sql, default_table_schema, sqlglot_schema_json):
 
     return json.dumps(status)
 
-#############################################################################
-# Experimental (using lineage)
-#############################################################################
-
-def is_pure_column(root):
-    """
-    Check whether the lineage graph is a path of columns terminated by table.
-
-    :param root: The root of the lineage graph
-    """
-    for node in root.walk():
-        expression = node.expression
-        downstream = node.downstream
-
-        # We are looking for "path"...
-        if len(downstream) > 1:
-            return False
-
-        examined = None
-        if (isinstance(expression, exp.Alias)):
-            examined = expression.this
-        else:
-            examined = expression
-
-        # ...of `exp.Column`s...
-        if isinstance(examined, exp.Column):
-            continue
-        # ...terminated by the `exp.Table`
-        elif isinstance(examined, exp.Table):
-            continue
-        else:
-            return False
-    return True
-
 def simple_query(sql: str, dialect: str = None) -> str:
     """
     Check if SQL is a simple SELECT (no LIMIT, OFFSET, or CTEs).
@@ -570,66 +535,6 @@ def add_insert_clause(sql: str, table_name: str, dialect: str = None) -> str:
         raise ValueError("SQL must be a SELECT statement")
 
     return exp.insert(ast, exp.to_table(table_name)).sql(dialect=dialect)
-
-
-def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema_json):
-    """
-    Extract column lineage from SQL query.
-
-    Args:
-        dialect: SQL dialect string (e.g., "postgres", "mysql")
-        sql: SQL query string
-        default_table_schema: Default schema name (e.g., "public")
-        sqlglot_schema_json: JSON-encoded schema map (to avoid GraalVM polyglot issues)
-
-    Returns:
-        JSON array of [alias, is_pure, dependencies] tuples
-    """
-    # Decode schema from JSON (passed from Clojure to avoid polyglot map issues)
-    sqlglot_schema = json.loads(sqlglot_schema_json) if sqlglot_schema_json else None
-
-    ast = sqlglot.parse_one(sql, read=dialect)
-    ast = qualify.qualify(ast,
-                          db=default_table_schema,
-                          dialect=dialect,
-                          schema=sqlglot_schema,
-                          infer_schema=True,
-                          sql=sql)
-
-    assert isinstance(ast, exp.Query), "Ast does not represent a `Query`."
-
-    dependencies = []
-    for select in ast.named_selects:
-
-        # Note: SQL allows duplicate column aliases (e.g., SELECT 1 AS x, 2 AS x).
-        # We track columns by position, not by name, so duplicates are fine.
-
-        select_elm_lineage = lineage.lineage(select, ast.sql(dialect), dialect=dialect)
-        is_pure_select = is_pure_column(select_elm_lineage)
-
-        leaves = set()
-        for node in select_elm_lineage.walk():
-            if (# Leaf nodes of `.walk` are `exp.Table`s. We are interested
-                # in the columns selected from those tables (i.e. penultimate
-                # level). The condition is intended to examine those columns.
-                len(node.downstream) == 1
-                and isinstance(node.downstream[0].expression, exp.Table)
-                and not node.downstream[0].downstream):
-                # For UDTFs/table functions, the penultimate node may not be a Column
-                # (e.g., FLATTEN results). Skip these gracefully.
-                if not isinstance(node.expression.this, exp.Column):
-                    continue
-                # Extract table parts (catalog, schema, table) from the source.
-                # Note: Schema may be missing when table is aliased to its own name.
-                table = table_parts(node.downstream[0].expression)
-                # Skip UDTFs and other function-based sources that don't have real table names
-                if table is not None:
-                    namespaced_column = table + (node.expression.this.name, )
-                    leaves.add(namespaced_column)
-
-        dependencies.append((select, is_pure_select, tuple(leaves), ))
-
-    return json.dumps(dependencies)
 
 
 def fold_keys(mapping):
