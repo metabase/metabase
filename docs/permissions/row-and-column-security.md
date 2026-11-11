@@ -54,7 +54,7 @@ For example, you can filter the Accounts table for a group so that the user attr
 - "Basic" will see rows where `Plan = "Basic"` (rows where the Plan column matches the value "Basic").
 - "Premium" will see the rows where `Plan = "Premium"` (rows where the Plan column matches the value "Premium").
 
-To filter on more than one column, click **Add a filter** and map another column to a user attribute. Each filter must use a different user attribute. People will only see rows that match all of the filters.
+To filter on more than one column, click **Add a filter** and map another column to a user attribute. Each filter must use a different user attribute. People only see rows that match all of the filters.
 
 ### Custom row and column security: use a SQL question to create a custom "view" of a table
 
@@ -128,7 +128,7 @@ Aside from excluding rows and columns, you can also **display edited columns** (
 
 For example, you can create an "Edited Accounts" SQL question that truncates the Email column to display usernames instead of complete email addresses.
 
-If you edit a column, keep the column's name and data type the same as in the original table. Metabase matches the question's columns to the table's columns by name, and it'll show an error if a column's data type doesn't match. For example, the "Edited Accounts" question can return a shortened Email column, as long as the column is still called Email and still returns text.
+If you edit a column, keep the column's name and data type the same as in the original table. Metabase matches the question's columns to the table's columns by name, and it shows an error if a column's data type doesn't match. For example, the "Edited Accounts" question can return a shortened Email column, as long as the column is still called Email and still returns text.
 
 The question can leave out columns from the original table (that's how you hide them), but it can't add new ones. Metabase drops any columns that aren't in the original table.
 

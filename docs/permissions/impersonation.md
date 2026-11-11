@@ -129,7 +129,7 @@ People in one group can have different attribute values, but must have the same 
 
 3. Select the database to configure access to.
 
-4. Under **View data** setting for that database, select **Impersonated**. If no one has a [user attribute](#assign-a-user-attribute-to-people-in-the-group) yet, Metabase will ask you to add one first.
+4. Under **View data** setting for that database, select **Impersonated**. If no one has a [user attribute](#assign-a-user-attribute-to-people-in-the-group) yet, Metabase asks you to add one first.
 
    ![Select impersonated permissions](./images/select-impersonated.png)
 
@@ -185,7 +185,7 @@ Examples of queries Metabase rejects for people who aren't admins:
 
 ### Very large hand-written value lists are rejected
 
-To validate a native query safely, Metabase must parse the whole statement first. A query with a very large literal list written directly in the SQL—a `VALUES` clause, `IN` list, or `ARRAY` literal with more than 2,000 rows or items—can't be validated, so Metabase rejects it rather than run something it can't check. You'll see a message asking you to reduce the size of the list. This limit doesn't apply to admins.
+To validate a native query safely, Metabase must parse the whole statement first. Metabase can't validate a query with a very large literal list written directly in the SQL (a `VALUES` clause, `IN` list, or `ARRAY` literal with more than 2,000 rows or items). Metabase rejects that query instead of running something it can't check. You'll see a message asking you to reduce the size of the list. This limit doesn't apply to admins.
 
 This limit only applies to values you type into the SQL itself. [Filter widgets and field filters](../questions/native-editor/sql-parameters.md) pass their values to the database separately, so dashboard and question filters with long lists of values keep working. If you need to match against a large set of hand-written values, load them into a table and join to it instead of listing them inline.
 

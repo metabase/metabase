@@ -153,6 +153,6 @@ If you need native SQL queries:
 
 ## Permissions for tenants
 
-If you use [tenants](../embedding/tenants.md), you'll set data permissions on the **All tenant users** group and on your tenant groups. See [Data permissions for tenants](../embedding/tenants.md#data-permissions-for-tenants). You can also use [tenant attributes](../embedding/tenants.md#tenant-attributes) to set up row and column security, impersonation, and database routing for everyone in a tenant.
+If you use [tenants](../embedding/tenants.md), set data permissions on the **All tenant users** group and on your tenant groups. See [Data permissions for tenants](../embedding/tenants.md#data-permissions-for-tenants). You can also use [tenant attributes](../embedding/tenants.md#tenant-attributes) to set up row and column security, impersonation, and database routing for everyone in a tenant.
 
 Tenant groups get no access to new databases, so you'll need to grant it yourself. See [Default permissions for new groups and databases](./data.md#default-permissions-for-new-groups-and-databases).
