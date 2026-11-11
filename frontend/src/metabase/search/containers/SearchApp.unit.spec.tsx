@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
@@ -8,6 +9,8 @@ import {
   setupTableEndpoints,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   type TestRouter,
   renderWithProviders,
@@ -30,6 +33,7 @@ import {
   createMockDatabase,
   createMockSearchResult,
   createMockTable,
+  createMockTokenFeatures,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
 
@@ -94,12 +98,23 @@ const setup = async ({
   searchFilters = {},
   searchItems = TEST_SEARCH_RESULTS,
   users = TEST_USER_LIST,
+  hasContentVerification = false,
 }: {
   searchText: string;
   searchFilters?: SearchFilters;
   searchItems?: SearchResult[];
   users?: UserListResult[];
+  hasContentVerification?: boolean;
 }) => {
+  const settings = mockSettings({
+    "token-features": createMockTokenFeatures({
+      content_verification: hasContentVerification,
+    }),
+  });
+  if (hasContentVerification) {
+    setupEnterpriseOnlyPlugin("content_verification");
+  }
+
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupSearchEndpoints(searchItems);
   setupTableEndpoints(TEST_TABLE);
@@ -131,6 +146,7 @@ const setup = async ({
     {
       withRouter: true,
       initialRoute,
+      storeInitialState: createMockState({ settings }),
     },
   );
 
@@ -170,6 +186,7 @@ const openUserFilter = async (name: string) => {
 };
 
 const DATE_FILTER_CASES = [
+  ["thisday", "Today"],
   ["past1days", "Yesterday"],
   ["past1weeks", "Previous week"],
   ["past7days", "Previous 7 days"],
@@ -470,5 +487,104 @@ describe("SearchApp", () => {
         expectLastSearchRequestParam(name, [literal]);
       },
     );
+  });
+  describe("type filter", () => {
+    it("should send the type filter from the URL as `models` and remove it with `X`", async () => {
+      const { router } = await setup({
+        searchText: "e",
+        searchFilters: { type: ["card"] },
+      });
+
+      expectLastSearchRequestParam("models", ["card"]);
+      expect(getFilter("type").getByText("Question")).toBeInTheDocument();
+
+      await userEvent.click(getFilter("type").getByLabelText("close icon"));
+
+      expectLocationParam(router, "type", []);
+      await waitFor(() => expectLastSearchRequestParam("models", []));
+      expect(getFilter("type").getByText("Content type")).toBeInTheDocument();
+      expect(
+        getFilter("type").queryByLabelText("close icon"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("native query filter", () => {
+    const getNativeQuerySwitch = () =>
+      getFilter("search_native_query").getByRole("switch");
+
+    it("should turn on searching native queries", async () => {
+      const { router } = await setup({ searchText: "reviews" });
+
+      expect(getNativeQuerySwitch()).not.toBeChecked();
+      expectLastSearchRequestParam("search_native_query", []);
+
+      await userEvent.click(getNativeQuerySwitch());
+
+      expectLocationParam(router, "search_native_query", ["true"]);
+      await waitFor(() =>
+        expectLastSearchRequestParam("search_native_query", ["true"]),
+      );
+      expect(getNativeQuerySwitch()).toBeChecked();
+    });
+
+    it("should hydrate the native query filter from the URL and turn it off", async () => {
+      const { router } = await setup({
+        searchText: "reviews",
+        searchFilters: { search_native_query: true },
+      });
+
+      expect(getNativeQuerySwitch()).toBeChecked();
+      expectLastSearchRequestParam("search_native_query", ["true"]);
+      expect(screen.getByText('Results for "reviews"')).toBeInTheDocument();
+
+      await userEvent.click(getNativeQuerySwitch());
+
+      expectLocationParam(router, "search_native_query", []);
+      await waitFor(() =>
+        expectLastSearchRequestParam("search_native_query", []),
+      );
+      expect(getNativeQuerySwitch()).not.toBeChecked();
+    });
+  });
+
+  describe("pagination and filters", () => {
+    it("should reset to the first page when a filter changes (metabase#65501)", async () => {
+      const { router } = await setup({ searchText: "Test" });
+
+      await userEvent.click(screen.getByTestId("next-page-btn"));
+      await waitForLoaderToBeRemoved();
+      expectLocationParam(router, "page", ["1"]);
+      expect(screen.getByLabelText("pagination")).toHaveTextContent("5 - 7");
+
+      await userEvent.click(
+        getFilter("search_native_query").getByRole("switch"),
+      );
+
+      expectLocationParam(router, "search_native_query", ["true"]);
+      expectLocationParam(router, "page", []);
+      await waitFor(() => expectLastSearchRequestParam("offset", ["0"]));
+    });
+  });
+  // Keep this block last: the content verification plugin stays registered for the rest of the file.
+  describe("verified filter", () => {
+    it("should hydrate the verified filter from the URL and turn it off", async () => {
+      const { router } = await setup({
+        searchText: "e",
+        searchFilters: { verified: true },
+        hasContentVerification: true,
+      });
+      const getVerifiedSwitch = () => getFilter("verified").getByRole("switch");
+
+      expect(getVerifiedSwitch()).toBeChecked();
+      expectLastSearchRequestParam("verified", ["true"]);
+      expect(screen.getByText('Results for "e"')).toBeInTheDocument();
+
+      await userEvent.click(getVerifiedSwitch());
+
+      expectLocationParam(router, "verified", []);
+      await waitFor(() => expectLastSearchRequestParam("verified", []));
+      expect(getVerifiedSwitch()).not.toBeChecked();
+    });
   });
 });
