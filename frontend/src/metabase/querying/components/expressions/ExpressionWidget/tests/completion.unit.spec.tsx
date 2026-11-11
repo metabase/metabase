@@ -183,7 +183,7 @@ describe("ExpressionWidget > completion", () => {
     await waitFor(() =>
       expect(getSelectedCompletionLabel()).toBe("Product → Rating"),
     );
-    await pressKey("Tab");
+    expect(await pressKey("Tab")).toBe(false);
 
     expect(getEditorValue()).toBe("[Product → Rating]");
     expect(screen.getByTestId("expression-name")).not.toHaveFocus();
@@ -202,6 +202,20 @@ describe("ExpressionWidget > completion", () => {
       "case([ID] = 1, [Price] * 1.21,  [Price][Price])",
     );
   });
+
+  it("should keep the whitespace after an unclosed identifier when applying a suggestion (metabase#50925)", async () => {
+    const source = "case([ID] = 1, [Price] * 1.21, [Price])";
+    await setup();
+
+    await pasteText(source);
+    await setCursorPosition(source.length - " [Price])".length);
+    await typeText(" [Pr");
+    await waitForCompletions();
+    await pressKey("Enter");
+    expect(getEditorValue()).toBe(
+      "case([ID] = 1, [Price] * 1.21, [Price] [Price])",
+    );
+  });
 });
 
 describe("ExpressionWidget > keyboard", () => {
@@ -213,7 +227,8 @@ describe("ExpressionWidget > keyboard", () => {
     await pressKey("Enter");
     expect(getEditorValue()).toBe("[Total]");
 
-    await pressKey("Tab");
+    // CodeMirror prevents the default action, so focus stays in the editor
+    expect(await pressKey("Tab")).toBe(false);
     expect(getEditorValue()).toBe("[Total]  ");
     expect(screen.getByTestId("expression-name")).not.toHaveFocus();
   });

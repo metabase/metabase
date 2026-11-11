@@ -161,16 +161,25 @@ export async function typeText(text: string) {
   });
 }
 
-/** Presses a key, e.g. `Enter`, `Tab` or `ArrowLeft`, in the editor. */
+/**
+ * Presses a key, e.g. `Enter`, `Tab` or `ArrowLeft`, in the editor. Resolves
+ * with the result of the last keydown: `false` when the editor handled the key
+ * and prevented its default action (for Tab, moving focus out of the editor).
+ */
 export async function pressKey(
   key: string,
   { shiftKey = false, times = 1 }: { shiftKey?: boolean; times?: number } = {},
-) {
+): Promise<boolean> {
+  let isNotPrevented = true;
   for (let index = 0; index < times; index++) {
     await interact(() => {
-      fireEvent.keyDown(getEditorContent(), { key, shiftKey });
+      isNotPrevented = fireEvent.keyDown(getEditorContent(), {
+        key,
+        shiftKey,
+      });
     });
   }
+  return isNotPrevented;
 }
 
 /** Replaces the selection with pasted text. */

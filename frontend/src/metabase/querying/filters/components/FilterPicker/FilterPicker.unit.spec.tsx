@@ -633,6 +633,21 @@ describe("FilterPicker", () => {
       );
     });
 
+    it("should turn a multi-argument contains expression without options into a case-sensitive filter (metabase#49304)", async () => {
+      const { query, getNextFilter } = setup();
+
+      await userEvent.click(screen.getByText(/Custom expression/i));
+      await editExpressionAndSubmit(
+        'contains([[Product → Category], "gadget", "widget", "gizmo")',
+      );
+
+      expect(Lib.stringFilterParts(query, 0, getNextFilter())).toMatchObject({
+        operator: "contains",
+        values: ["gadget", "widget", "gizmo"],
+        options: { caseSensitive: true },
+      });
+    });
+
     it("should show a comparison between two columns as a custom expression (metabase#12492)", async () => {
       const query = createQuery();
       const clause = Lib.expressionClause(">", [
