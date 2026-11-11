@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ALL_EXTERNAL_USERS_GROUP_ID } from "e2e/support/cypress_sample_instance_data";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/e2e-jwt-helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -381,6 +382,15 @@ describe("scenarios > dashboard > tenant question picker", () => {
       .its("body")
       .as("tenant");
 
+    // Lets tenant users see the results of the question they add.
+    cy.updatePermissionsGraph({
+      [ALL_EXTERNAL_USERS_GROUP_ID]: {
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+        },
+      },
+    });
+
     H.createSharedTenantCollection("Finance");
     H.createSharedTenantCollection("Marketing");
 
@@ -407,6 +417,24 @@ describe("scenarios > dashboard > tenant question picker", () => {
   // test needs a real tenant user. The unit tests in
   // AddCardSidebar.tenants.unit.spec.tsx cover the tree with mocked endpoints.
   it("shows tenant users a flattened collection tree and lets them add a question (EMB-2312)", () => {
+    cy.log("as an admin, from a dashboard in the tenant-specific collection");
+    cy.get("@tenant")
+      .then(({ tenant_collection_id }) =>
+        H.createDashboard({
+          name: "Admin tenant dashboard",
+          collection_id: tenant_collection_id,
+        }),
+      )
+      .its("body")
+      .then(({ id }) => H.visitDashboard(id));
+    H.editDashboard();
+    H.openQuestionsSidebar();
+
+    H.sidebar()
+      .findByTestId("breadcrumbs")
+      .should("contain", "Acme")
+      .and("not.contain", "Unknown");
+
     cy.get("@tenantCollection")
       .then(({ id }) =>
         H.createDashboard({
@@ -449,9 +477,12 @@ describe("scenarios > dashboard > tenant question picker", () => {
       .should("have.length", 1)
       .and("contain", "Tenant orders");
     H.saveDashboard();
+
+    cy.reload();
     H.getDashboardCards()
       .should("have.length", 1)
-      .and("contain", "Tenant orders");
+      .and("contain", "Tenant orders")
+      .and("not.contain", "Sorry, you don't have permission to see this card.");
 
     // The API omits 'Our analytics' when tenant users cannot read it, but it still
     // returns their personal collection. Show that collection directly under the
