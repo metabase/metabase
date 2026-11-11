@@ -202,20 +202,41 @@
    :exemptions driver-test-exemptions
    :opt-ins    driver-test-opt-ins})
 
+(defn- listed-decision
+  "How `rules`, shaped like [[driver-test-rules]], list `module` itself.
+  Returns `:exempt` for an exemption, `:included` for an opt-in or a trigger, and nil for an unlisted module."
+  [{:keys [triggers exemptions opt-ins]} module]
+  ;; Exemptions come first, so a module that is both a trigger and an exemption, such as
+  ;; `enterprise/transforms`, stays exempt.
+  (cond
+    (contains? exemptions module) :exempt
+    (or (contains? opt-ins module)
+        (contains? triggers module))  :included))
+
 (defn- driver-exempt?
   "Whether changes to `module` should skip driver tests under `rules`, shaped like [[driver-test-rules]].
-  The nearest listed module among `module` and its ancestors decides.
-  An exemption skips them, and an opt-in or a trigger keeps them."
-  [deps {:keys [triggers exemptions opt-ins]} module]
-  (->> (modules/lineage deps module)
-       (some (fn [m]
-               ;; Exemptions come first, so a module that is both a trigger and an exemption, such as
-               ;; `enterprise/transforms`, stays exempt.
-               (cond
-                 (contains? exemptions m) :exempt
-                 (or (contains? opt-ins m)
-                     (contains? triggers m))  :included)))
-       (= :exempt)))
+  The nearest listed module among `module` and its ancestors decides."
+  [deps rules module]
+  (= :exempt (some #(listed-decision rules %) (modules/lineage deps module))))
+
+(defn driver-test-rule-problems
+  "Mistakes in `rules`, shaped like [[driver-test-rules]], against the module graph `deps`.
+  Returns one map per mistake, with the `:module` and a `:type`.
+  The type is `:undeclared` for a listed module missing from `deps`.
+  It is `:redundant-exemption` for an exemption whose nearest listed ancestor is already exempt.
+  It is `:stray-opt-in` for an opt-in whose nearest listed ancestor is not an exemption."
+  [deps {:keys [exemptions opt-ins] :as rules}]
+  (let [inherited (fn [module] (some #(listed-decision rules %) (rest (modules/lineage deps module))))]
+    (concat
+     (for [module (sort-by str (concat exemptions opt-ins))
+           :when  (not (contains? deps module))]
+       {:type :undeclared, :module module})
+     (for [module (sort-by str exemptions)
+           :when  (= :exempt (inherited module))]
+       {:type :redundant-exemption, :module module})
+     (for [module (sort-by str opt-ins)
+           :when  (not= :exempt (inherited module))]
+       {:type :stray-opt-in, :module module}))))
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.

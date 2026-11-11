@@ -289,18 +289,32 @@
 ;;; Exemptions and opt-ins
 ;;; =============================================================================
 
-(deftest exemptions-and-opt-ins-are-well-formed-test
-  (let [deps       (mage.modules/dependencies)
-        exemptions mage.modules/driver-test-exemptions
-        opt-ins    mage.modules/driver-test-opt-ins
-        listed     (into exemptions opt-ins)
-        nearest    (fn [module] (some listed (rest (modules/lineage deps module))))]
-    (testing "every exemption and opt-in is a declared module"
-      (is (empty? (remove #(contains? deps %) listed))))
-    (testing "no exemption sits under another exemption, which already covers it"
-      (is (empty? (filter (comp exemptions nearest) exemptions))))
-    (testing "every opt-in sits under an exemption, not under another opt-in or nothing"
-      (is (empty? (remove (comp exemptions nearest) opt-ins))))))
+(deftest driver-test-rules-have-no-problems-test
+  (testing "the real exemptions and opt-ins are declared, not redundant, and each opt-in changes something"
+    (is (= [] (mage.modules/driver-test-rule-problems (mage.modules/dependencies)
+                                                      mage.modules/driver-test-rules)))))
+
+(deftest driver-test-rule-problems-test
+  (let [deps  '{a             #{}
+                a.sub         #{}
+                a.sub.in      #{}
+                a.sub.in.deep #{}
+                b.sub         #{}
+                x             #{}
+                x.t           #{}
+                x.t.e         #{}
+                x.t.o         #{}}
+        rules '{:triggers   #{x.t}
+                :exemptions #{a a.sub nope x x.t.e}
+                :opt-ins    #{a.sub.in a.sub.in.deep b.sub x.t.o}}]
+    ;; A trigger keeps its submodules in, like an opt-in: so the exemption `x.t.e` under the trigger `x.t` is
+    ;; needed, and the opt-in `x.t.o` there changes nothing.
+    (is (= '#{{:type :undeclared,          :module nope}
+              {:type :redundant-exemption, :module a.sub}
+              {:type :stray-opt-in,        :module a.sub.in.deep}
+              {:type :stray-opt-in,        :module b.sub}
+              {:type :stray-opt-in,        :module x.t.o}}
+           (set (mage.modules/driver-test-rule-problems deps rules))))))
 
 (deftest exemption-rules-test
   ;; A made-up graph, so the rules are tested apart from the real module config.
