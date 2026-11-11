@@ -5,6 +5,7 @@
   is a list of scope levels, innermost first, each a list of the sources in that scope (FROM and JOINs). `withs` maps a
   CTE name to its source."
   (:require
+   [clojure.string :as str]
    [metabase.sql-parsing.sqlglot-java.ast :as ast])
   (:import
    (com.metabase.sqlglot.ast Expressions$Alias Expressions$Between Expressions$Binary Expressions$Boolean
@@ -397,12 +398,25 @@
     (instance? Expressions$Union expr)  (process-union expr outside-sources withs)
     :else                               {:used_fields #{} :returned_fields [] :errors #{syntax-error}}))
 
+(defn- strip-temp-table-qualifiers!
+  "For T-SQL, drop the `#` prefix of each column qualifier in `tree` (`_column_qualifier`). SQLGlot reads the temp table
+  `[#t]` in a FROM clause as the table `t`, but keeps `#t` as the name of the qualifier in `[#t].col`. Returns `tree`."
+  [tree dialect]
+  (when (= dialect "tsql")
+    (doseq [column (ast/find-all tree Expressions$Column)
+            :let   [table-name (ast/text column "table")]
+            :when  (str/starts-with? table-name "#")]
+      (ast/set-arg! column "table" (ast/identifier (str/replace table-name #"^#+" "")
+                                                    (ast/quoted? (ast/arg column "table"))))))
+  tree)
+
 (defn field-references
   "`{:used_fields :returned_fields :errors}` for `sql`: the fields its clauses use, the fields it returns in order,
   and the qualifiers and columns that resolve to nothing."
   [dialect sql]
   (try
-    (let [{:keys [used_fields returned_fields errors]} (process-query (ast/parse-one sql dialect) [] {})]
+    (let [tree (strip-temp-table-qualifiers! (ast/parse-one sql dialect) dialect)
+          {:keys [used_fields returned_fields errors]} (process-query tree [] {})]
       {:used_fields     (vec used_fields)
        :returned_fields returned_fields
        :errors          (vec errors)})
