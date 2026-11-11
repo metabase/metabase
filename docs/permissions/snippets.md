@@ -25,11 +25,13 @@ You can create a Snippet folder from the **Snippets** menu in the [SQL editor](.
 
 ![Create new snippet folder](./images/snippet-folder.png)
 
-1. Click on the **Snippets** menu icon (the snippet icon looks like a block of text or code with three uneven horizontal lines).
+1. In the SQL editor, click the **SQL Snippets** icon (three horizontal lines inside curly braces).
 2. Click on the **+** icon and select **New folder**.
-3. Give your folder a name, and optionally **Add a description** and/or place the folder in an existing folder (the **Folder this should be in** option).
+3. In the **New collection** modal, give your folder a **Name**, and optionally add a **Description** and/or place the folder in an existing folder (the **Collection it's saved in** option).
 
 ![Create new folder modal](./images/create-new-folder-modal.png)
+
+You can also create snippets and folders in [Data Studio](../data-modeling/data-studio.md): go to **Data Studio** > **SQL snippets**, click **+ New**, and select **Snippet** or **Folder**.
 
 ### Creating a new Snippet
 
@@ -37,7 +39,7 @@ On [some plans](https://www.metabase.com/pricing), when creating a Snippet, you'
 
 ![Add a snippet enterprise modal](./images/enterprise-add-snippet.png)
 
-The default location is **SQL snippets**, which is the root folder for all snippets and folders. You can add a snippet to a folder at any time (or relocate a snippet to another folder, provided you have Edit permission to both folders).
+The default location is **SQL snippets**, which is the root folder for all snippets and folders. You can add a snippet to a folder at any time (or relocate a snippet to another folder, provided you have Curate access to both folders).
 
 Note that snippet names must be unique; folders do not affect this requirement.
 
@@ -59,17 +61,25 @@ When changing permissions on a folder that has sub-folders, you have an option t
 
 There are three options for changing snippet folder permissions:
 
-- **Edit access (green checkmark icon)**. The default setting. When a folder is created, all users (who have SQL editor permissions for at least one database) can view, edit, and archive or unarchive the folder's snippets.
-- **View access (yellow eye icon)**. Users in groups with view access can view snippets in the folder, but not edit or archive/unarchive them. They can, of course, copy snippet code and create new snippets, with no effect on the existing snippets.
-- **Revoke access (red X icon)**. Users in groups with neither edit nor view permissions to a snippet folder will not see that folder's snippets in the sidebar, nor will any snippets in that folder appear in typeahead suggestions for those users. Note that if people have access to a question with a snippet they don't have permission to, they will still be able to get results from that question. See the discussion below on [how folder permissions work](#how-folder-permissions-work).
+- **Curate (green checkmark icon)**. The default setting. When a folder is created, everyone who has SQL editor permissions for at least one database can view, edit, and archive or unarchive the folder's snippets.
+- **View (yellow eye icon)**. People in groups with view access can view snippets in the folder, but not edit or archive/unarchive them. They can copy snippet code and create new snippets, with no effect on the existing snippets.
+- **No access (red X icon)**. People in groups with neither curate nor view permissions to a snippet folder won't see that folder's snippets in the sidebar, nor will any snippets in that folder appear in their typeahead suggestions. Note that if people have access to a question with a snippet they don't have permission to, they will still be able to get results from that question. See the discussion below on [how folder permissions work](#how-folder-permissions-work).
+
+### People with row and column security can't use snippets
+
+If someone has [row and column security](./row-and-column-security.md) on any table, they can't view, create, or edit snippets, whatever their folder permissions are.
+
+### Snippets are read-only when remote sync is in Read-only mode
+
+If you [sync your Library with Git](../data-modeling/semantic-layer/remote-sync.md), SQL snippets sync along with it. When your Metabase is in [Read-only mode](../data-modeling/semantic-layer/remote-sync.md#remote-sync-has-two-modes-for-different-roles), no one can create or edit snippets, including people with curate access to a folder.
 
 ### Archiving does not affect permissions
 
-Archiving or unarchiving snippets does not affect a snippet's permissions. If, for example, only one group, say the Accounting group, has edit permissions on a folder, only people in the Accounting group (and admins) would be able to archive and unarchive snippets in that folder, as archiving and unarchiving is considered editing the snippet.
+Archiving or unarchiving snippets does not affect a snippet's permissions. If, for example, only one group, say the Accounting group, has Curate access to a folder, only people in the Accounting group (and admins) would be able to archive and unarchive snippets in that folder, as archiving and unarchiving is considered editing the snippet.
 
 ### How folder permissions work
 
-As with collection permissions, folder permissions are additive, meaning that the more permissive access overrules less permissive access. See [Setting permissions](./start.md) for a more detailed discussion.
+As with collection permissions, folder permissions are additive, meaning that the more permissive access overrules less permissive access. See [Permissions](./introduction.md).
 
 But snippet folder permissions require some more effort to unpack, as permissions for snippet folders must work in conjunction with permissions for data and collections.
 
