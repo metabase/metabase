@@ -374,4 +374,11 @@
                                                     (throw (ex-info "the keyword engine ran" {}))))]
         (doseq [ctx [search-context (assoc search-context :vector-only? true)]]
           (testing (str "vector-only? " (boolean (:vector-only? ctx)))
-            (is (thrown? InterruptedException (semantic.core/results ctx)))))))))
+            (is (thrown? InterruptedException (semantic.core/results ctx))))))))
+  (testing "an interrupt while topping up too few semantic results ends the search too"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
+        (with-search-engine-mocks! [(make-card-result 1 "semantic-card" :score 0.9)]
+          (fn [_] (throw (InterruptedException.)))
+          (fn []
+            (is (thrown? InterruptedException (semantic.core/results search-context)))))))))

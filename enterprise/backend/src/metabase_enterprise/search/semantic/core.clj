@@ -129,6 +129,8 @@
                                        (= :search.engine/in-place fallback)
                                        (into [] (comp (map t2.realize/realize)
                                                       (take total-limit))))
+                                     (catch InterruptedException e
+                                       (throw e))
                                      (catch Throwable t
                                        (log/warnf "Semantic search fallback errored, ignoring: %s" (ex-message t))
                                        []))
