@@ -474,25 +474,6 @@ describe("rich-text input in documents", () => {
         "be.visible",
       );
 
-      cy.log("blockquote shortcut is disabled");
-      // CustomBlockquote and CustomBold leave Mod-Shift-b to the browser.
-      // Shift+b is sent as key "B", like a real keyboard: a lowercase "b" with
-      // shiftKey makes ProseMirror fall back to the Mod-b (bold) binding.
-      Comments.getNewThreadInput().click();
-      cy.realType("not a quote");
-      cy.realPress([META_KEY, "Shift", "B"]);
-      cy.realType(" after shortcut");
-      Comments.getNewThreadInput()
-        .find("p")
-        .should("have.text", "not a quote after shortcut");
-      Comments.getNewThreadInput().find("blockquote").should("not.exist");
-      Comments.getNewThreadInput().find("strong").should("not.exist");
-      cy.realPress([META_KEY, "Enter"]);
-      Comments.getAllComments().should("have.length", 4);
-      Comments.getCommentByText("not a quote after shortcut")
-        .find("blockquote")
-        .should("not.exist");
-
       cy.log("code block shortcut");
       Comments.getNewThreadInput().click();
       cy.realType("code shortcut");
@@ -502,8 +483,8 @@ describe("rich-text input in documents", () => {
         "be.visible",
       );
       cy.realPress([META_KEY, "Enter"]);
-      Comments.getAllComments().should("have.length", 5);
-      H.getCodeBlock("code shortcut", Comments.getAllComments().eq(4)).should(
+      Comments.getAllComments().should("have.length", 4);
+      H.getCodeBlock("code shortcut", Comments.getAllComments().eq(3)).should(
         "be.visible",
       );
 

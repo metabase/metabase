@@ -70,4 +70,30 @@ describe("CommentEditor", () => {
       within(editorContent).getByText("Hello", { selector: "strong" }),
     ).toBeInTheDocument();
   });
+
+  it("leaves Mod-Shift-B to the browser (no blockquote, no bold)", async () => {
+    const { selectHello } = setup();
+    const editor = getEditor();
+
+    selectHello();
+    // In jsdom, Mod is Ctrl. Shift+b has the key "B", as on a real keyboard.
+    // A lowercase "b" with shiftKey makes ProseMirror use the Mod-b (bold) binding.
+    await act(async () => {
+      editor.view.dom.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "B",
+          shiftKey: true,
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+
+    expect(editor.getHTML().replace(/ _id="[^"]*"/g, "")).toBe(
+      "<p>Hello world</p>",
+    );
+    // Let the bubble-menu portal settle, so React does not warn about act()
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+  });
 });
