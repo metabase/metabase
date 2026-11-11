@@ -230,7 +230,29 @@
 (comment
   (unaffected-modules (dependencies) '#{enterprise/billing}))
 
-(defn- print-updated-and-unaffected-modules [deps updated driver-deps-affected?]
+(defn driver-deps-affected?
+  "Returns true if any of `trigger-modules` are affected by the changed `modules`.
+  Changed modules that [[driver-exempt?]] exempts are left out.
+  The 1-arity and 2-arity trigger on the union of [[default-modules-which-trigger-drivers]] and
+  [[modules-triggering-cloud-drivers]].
+  Throws when one of `trigger-modules` is not a declared module."
+  ([modules]
+   (driver-deps-affected? (dependencies) modules))
+  ([deps modules]
+   (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
+                                                  modules-triggering-cloud-drivers)))
+  ([deps modules trigger-modules]
+   ;; Fail clearly when a renamed trigger is missing from the config.
+   (when-let [missing (seq (remove #(contains? deps %) trigger-modules))]
+     (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
+                          (pr-str missing))
+                     {:missing missing})))
+   (let [exempt?    (partial driver-exempt? deps (set trigger-modules))
+         unaffected (unaffected-modules deps (remove exempt? modules))]
+     (boolean
+      (some #(not (contains? unaffected %)) trigger-modules)))))
+
+(defn- print-updated-and-unaffected-modules [deps updated drivers-affected?]
   (let [unaffected (unaffected-modules deps updated)]
     (println "These modules have changed:" (pr-str updated))
     (println)
@@ -241,19 +263,19 @@
     (println "(By unaffected, this means these modules do not have a direct or indirect dependency on the modules that have been changed.)")
     (println)
     (println)
-    (println (if driver-deps-affected?
+    (println (if drivers-affected?
                (c/red "Driver tests " (c/bold "MUST be run") ".")
                (c/green "Driver tests " (c/bold "CAN be skipped") "")))))
 
 (defn cli-print-affected-modules
   "CLI entry point: print modules affected by changes since `git-ref`, plus driver-test guidance."
   [[git-ref, :as _command-line-args]]
-  (let [modules-config (read-modules-config)
-        deps (dependencies)
-        updated (updated-modules git-ref)
-        affected (affected-modules deps updated)
-        driver-deps-affected? (not (contains? (unaffected-modules deps updated) 'driver))]
-    (print-updated-and-unaffected-modules deps updated driver-deps-affected?)
+  (let [modules-config    (read-modules-config)
+        deps              (dependencies)
+        updated           (updated-modules git-ref)
+        affected          (affected-modules deps updated)
+        drivers-affected? (driver-deps-affected? deps updated)]
+    (print-updated-and-unaffected-modules deps updated drivers-affected?)
     (println)
     (println)
     (println "You can run tests for these modules and all downstream modules as follows:")
@@ -638,28 +660,6 @@
               (println (str "Running driver tests because " (pr-str filename) " was changed")))
             filename))
         updated-files))
-
-(defn driver-deps-affected?
-  "Returns true if any of `trigger-modules` are affected by the changed `modules`.
-  Changed modules that [[driver-exempt?]] exempts are left out.
-  The 1-arity and 2-arity trigger on the union of [[default-modules-which-trigger-drivers]] and
-  [[modules-triggering-cloud-drivers]].
-  Throws when one of `trigger-modules` is not a declared module."
-  ([modules]
-   (driver-deps-affected? (dependencies) modules))
-  ([deps modules]
-   (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
-                                                  modules-triggering-cloud-drivers)))
-  ([deps modules trigger-modules]
-   ;; Fail clearly when a renamed trigger is missing from the config.
-   (when-let [missing (seq (remove #(contains? deps %) trigger-modules))]
-     (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
-                          (pr-str missing))
-                     {:missing missing})))
-   (let [exempt?    (partial driver-exempt? deps (set trigger-modules))
-         unaffected (unaffected-modules deps (remove exempt? modules))]
-     (boolean
-      (some #(not (contains? unaffected %)) trigger-modules)))))
 
 (defn cli-can-skip-driver-tests
   "Exits with zero status code if we can skip driver tests, nonzero if we cannot.
