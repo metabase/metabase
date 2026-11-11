@@ -21,8 +21,9 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { parseChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { markChartSaved } from "metabase/metabot/state";
 import { Route } from "metabase/router";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { MetabotInlineChart } from "./MetabotInlineChart";
 
@@ -33,7 +34,7 @@ jest.mock("metabase/visualizations/components/Visualization", () => ({
   default: () => <div data-testid="visualization" />,
 }));
 
-const datasetQuery = createMockStructuredDatasetQuery();
+const datasetQuery = Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 
 const PERSONAL_COLLECTION = createMockCollection({
   id: 1,

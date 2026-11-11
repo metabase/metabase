@@ -28,21 +28,23 @@
 
 (defn- literals-closed?
   "Whether `text` has no unterminated string literal.
-  Quotes escaped either way a dump tool may write them, doubled (`''`, Postgres) or backslashed (`\\'`, MySQL), do not
-  count."
-  [text]
-  ;; backslash pairs go first, so that a literal backslash at the end of a string is not read as escaping its quote
-  (-> text
-      (str/replace "\\\\" "")
-      (str/replace "\\'" "")
+  A doubled quote (`''`) never counts, and with `backslash-escapes?` neither does a backslashed one (`\\'`)."
+  [text backslash-escapes?]
+  ;; MySQL escapes with a backslash. Postgres, with standard_conforming_strings on as it is by default, treats a
+  ;; backslash as an ordinary character, so a string ending in one ends in `\'`. Backslash pairs go first, so that a
+  ;; literal backslash at the end of a MySQL string is not read as escaping its quote.
+  (-> (cond-> text
+        backslash-escapes? (-> (str/replace "\\\\" "")
+                               (str/replace "\\'" "")))
       (str/replace "''" "")
       (->> (re-seq #"'") count even?)))
 
 (defn lines->statements
   "Fold the line-oriented output of a dump tool into whole statements, without their trailing `;`.
   A statement ends on a line whose trimmed text ends in `;` and that closes every string literal it opened.
-  Comments, client directives and session settings between statements are dropped."
-  [lines]
+  Comments, client directives and session settings between statements are dropped.
+  Pass `:backslash-escapes? true` for a dialect whose strings escape a quote with a backslash, as MySQL's do."
+  [lines & {:keys [backslash-escapes?]}]
   (loop [[line & more] lines, current [], acc []]
     (cond
       (nil? line)
@@ -59,6 +61,6 @@
       :else
       (let [current (conj current line)
             text    (str/join "\n" current)]
-        (if (and (literals-closed? text) (str/ends-with? (str/trimr line) ";"))
+        (if (and (literals-closed? text backslash-escapes?) (str/ends-with? (str/trimr line) ";"))
           (recur more [] (conj acc (str/replace text #";\s*$" "")))
           (recur more current acc))))))

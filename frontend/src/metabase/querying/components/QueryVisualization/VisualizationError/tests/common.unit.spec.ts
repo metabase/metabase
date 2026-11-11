@@ -1,9 +1,24 @@
+import { createMockMetadata } from "__support__/metadata";
 import { screen } from "__support__/ui";
 import { StreamInterruptedError } from "metabase/api/client";
-import type { DatasetError } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
+import type { Database, DatasetError } from "metabase-types/api";
 import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
 
 import { setup } from "./setup";
+
+function createNativeCard(database: Database, query: string) {
+  const metadata = createMockMetadata({ databases: [database] });
+  const provider = createMetadataProvider({
+    databaseId: database.id,
+    metadata,
+  });
+  return createMockCard({
+    dataset_query: Lib.createTestJsNativeQuery(provider, { query }),
+    query_type: "native",
+  });
+}
 
 describe("VisualizationError (OSS)", () => {
   describe("interrupted stream", () => {
@@ -28,15 +43,7 @@ describe("VisualizationError (OSS)", () => {
     });
 
     it("should show a SQL help link when `show-metabase-links: true`", () => {
-      const card = createMockCard({
-        dataset_query: {
-          database: database.id,
-          type: "native",
-          native: {
-            query: "SELECT * FROM ORDERS",
-          },
-        },
-      });
+      const card = createNativeCard(database, "SELECT * FROM ORDERS");
       setup({ database, card, showMetabaseLinks: true });
 
       expect(
@@ -45,15 +52,7 @@ describe("VisualizationError (OSS)", () => {
     });
 
     it("should show a SQL help link when `show-metabase-links: false`", () => {
-      const card = createMockCard({
-        dataset_query: {
-          database: database.id,
-          type: "native",
-          native: {
-            query: "SELECT * FROM ORDERS",
-          },
-        },
-      });
+      const card = createNativeCard(database, "SELECT * FROM ORDERS");
       setup({ database, card, showMetabaseLinks: false });
 
       expect(
@@ -62,15 +61,7 @@ describe("VisualizationError (OSS)", () => {
     });
 
     it("should render the error action next to the message", () => {
-      const card = createMockCard({
-        dataset_query: {
-          database: database.id,
-          type: "native",
-          native: {
-            query: "SELECT * FROM ORDERS",
-          },
-        },
-      });
+      const card = createNativeCard(database, "SELECT * FROM ORDERS");
       setup({ database, card, errorAction: "Have Metabot fix it" });
 
       expect(screen.getByText("Have Metabot fix it")).toBeInTheDocument();
@@ -85,13 +76,7 @@ describe("VisualizationError (OSS)", () => {
     });
 
     const database = createMockDatabase({ engine: "postgres" });
-    const card = createMockCard({
-      dataset_query: {
-        database: database.id,
-        type: "native",
-        native: { query: "SELECT * FROM ORDERS" },
-      },
-    });
+    const card = createNativeCard(database, "SELECT * FROM ORDERS");
 
     it("shows the message from a 500 whose payload carries one the same way as for 4xx", () => {
       const message =
@@ -133,15 +118,7 @@ describe("VisualizationError (OSS)", () => {
     });
 
     it("should not show a SQL help link", () => {
-      const card = createMockCard({
-        dataset_query: {
-          database: database.id,
-          type: "native",
-          native: {
-            query: "[]",
-          },
-        },
-      });
+      const card = createNativeCard(database, "[]");
       setup({ database, card });
 
       expect(

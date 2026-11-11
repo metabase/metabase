@@ -216,11 +216,17 @@
    [:duration-ms                   {:optional true} [:maybe :int]]
    [:result                        {:optional true} :string]
    [:event-details                 {:optional true}
-    [:map {:closed true}
-     ["tool_name"   {:optional true} [:maybe :string]]
-     ["step"        {:optional true} :int]
-     ["error_class" {:optional true} :string]
-     ["error_code"  {:optional true} :string]]]])
+    [:or
+     ;; agent_used_tool
+     [:map {:closed true}
+      ["tool_name"   {:optional true} [:maybe :string]]
+      ["step"        {:optional true} :int]
+      ["error_class" {:optional true} :string]
+      ["error_code"  {:optional true} :string]]
+     ;; agent_turn_finished
+     [:map {:closed true}
+      ["finish_reason" {:optional true} :string]
+      ["steps"         {:optional true} :int]]]]])
 
 (def SnowplowEventData
   "Closed shape of the `data` payload accepted by [[track-event!]], as a union of the shapes each `SnowplowSchema`

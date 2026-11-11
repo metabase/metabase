@@ -7,13 +7,13 @@
   (:require
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib.core :as lib]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.recovery-hints :as v2.recovery-hints]
    [metabase.metabot.tools.construct :as metabot.construct]
-   [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
@@ -69,7 +69,7 @@
   ([external-query]
    (execute-representations-query external-query nil))
   ([external-query opts]
-   (binding [serdes.resolve/*numeric-ids-allowed?* true]
+   (binding [repr.resolve/*numeric-ids-allowed?* true]
      (try
        (metabot.construct/execute-representations-query external-query opts)
        (catch clojure.lang.ExceptionInfo e

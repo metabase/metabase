@@ -145,8 +145,8 @@ function DatasetFieldMetadataSidebarInner({
   const initialValues = useMemo(() => {
     const values: FieldMetadataFormValues = {
       display_name: field.display_name,
-      description: field.description,
-      semantic_type: field.semantic_type,
+      description: field.description ?? null,
+      semantic_type: field.semantic_type ?? null,
       fk_target_field_id: field.fk_target_field_id || null,
       visibility_type: field.visibility_type || "normal",
       should_index: shouldIndex,

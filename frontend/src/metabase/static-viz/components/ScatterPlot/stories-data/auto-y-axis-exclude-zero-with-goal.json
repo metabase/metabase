@@ -132,7 +132,6 @@
       "parameter_mappings": [],
       "display": "scatter",
       "entity_id": "dvjjKaOEvcPx4kTeFigLx",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.show_goal": true,
         "graph.goal_value": 165,

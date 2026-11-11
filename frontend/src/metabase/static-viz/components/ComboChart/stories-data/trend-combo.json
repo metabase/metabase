@@ -136,7 +136,6 @@
       "include_csv": false,
       "display": "combo",
       "entity_id": "rr62ODL22pstnmI-C3-_G",
-      "collection_preview": true,
       "visualization_settings": {
         "series_settings": {
           "avg": { "color": "#88BF4D" },

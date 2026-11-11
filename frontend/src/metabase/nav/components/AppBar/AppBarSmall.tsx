@@ -133,10 +133,7 @@ export const AppBarSmall = ({
           pl="1.25rem"
         >
           {detailView ? (
-            <DetailViewNav
-              rowName={detailView.rowName}
-              table={detailView.table}
-            />
+            <DetailViewNav detailView={detailView} />
           ) : isQuestionLineageVisible ? (
             questionLineage
           ) : isCollectionPathVisible ? (

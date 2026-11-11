@@ -10,13 +10,13 @@
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.server.settings :as server.settings]
    [metabase.session.api :as session.api]
    [metabase.test :as mt]
    [metabase.testing-api.api :as testing]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.queue :as queue]
-   [toucan2.core :as t2]))
+   [metabase.util.queue :as queue]))
 
 (set! *warn-on-reflection* true)
 
@@ -191,19 +191,11 @@
             (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers" {:value vllm})))
             (is (= vllm (vec (llm.settings/llm-providers))))))))))
 
-(deftest seed-ai-usage-test
-  (testing "POST seeds one chat LLM call per count, each in its own agent loop, and DELETE removes them"
-    (let [user-id   (mt/user->id :rasta)
-          seed-rows #(t2/select :model/AiUsageLog :user_id user-id :model "test/model" :source "metabot_agent")]
-      (try
-        (is (= {:inserted 3}
-               (mt/user-http-request :crowberto :post 200 "testing/metabot/seed-ai-usage"
-                                     {:user_id user-id :count 3})))
-        (let [rows (seed-rows)]
-          (is (= 3 (count rows)))
-          (is (= 3 (count (distinct (map :request_id rows)))) "each row is its own agent loop")
-          (is (every? :request_id rows)))
-        (finally
-          (is (= {:deleted 3}
-                 (mt/user-http-request :crowberto :delete 200 "testing/metabot/seed-ai-usage" {:user_id user-id})))
-          (is (empty? (seed-rows))))))))
+(deftest set-isolated-origin-test
+  (mt/with-temporary-setting-values [site-url        "http://localhost:4000"
+                                     isolated-origin nil]
+    (is (nil? (mt/user-http-request :rasta :put 204 "testing/isolated-origin" {:value "http://127.0.0.1:4000"})))
+    (is (= "http://127.0.0.1:4000" (server.settings/isolated-origin)))
+    (testing "a nil value unsets it"
+      (is (nil? (mt/user-http-request :rasta :put 204 "testing/isolated-origin" {:value nil})))
+      (is (nil? (server.settings/isolated-origin))))))

@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import { useState } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
@@ -98,7 +99,7 @@ interface Props {
 }
 
 const TestComponent = ({ card }: Props) => {
-  const question = new Question(card);
+  const question = new Question(card, createMockMetadata());
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (

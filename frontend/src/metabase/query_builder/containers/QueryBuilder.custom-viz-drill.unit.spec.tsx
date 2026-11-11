@@ -9,6 +9,8 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
 import { registerVisualization } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { CustomVizDisplayType, DatasetData } from "metabase-types/api";
 import {
@@ -21,7 +23,6 @@ import {
 import {
   ORDERS,
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createOrdersCreatedAtDatasetColumn,
   createOrdersIdDatasetColumn,
   createOrdersTotalDatasetColumn,
@@ -91,15 +92,17 @@ const CARD = createMockCard({
     "card.title": "Orders by month",
     "custom.setting": "kept",
   },
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+        },
+      ],
+    }),
+  ),
 });
 
 function DemoVisualization({ onVisualizationClick }: VisualizationProps) {

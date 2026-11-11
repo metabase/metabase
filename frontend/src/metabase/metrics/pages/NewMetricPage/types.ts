@@ -1,9 +1,9 @@
-import type { CollectionId, Field } from "metabase-types/api";
+import type { CollectionId, DatasetColumn } from "metabase-types/api";
 
 export interface NewMetricValues {
   name: string;
   description: string | null;
-  resultMetadata: Field[] | null;
+  resultMetadata: DatasetColumn[] | null;
   collection_id: CollectionId | null;
-  result_metadata: Field[] | null;
+  result_metadata: DatasetColumn[] | null;
 }

@@ -136,7 +136,7 @@ describe("scenarios > visualizations > scalar", () => {
               required: true,
               // @ts-expect-error the `TemplateTag` type allows only a single string default
               default: ["Doohickey", "Gizmo"],
-              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "field-id": PRODUCTS.CATEGORY,
               "widget-type": "string/=",
             },
           },

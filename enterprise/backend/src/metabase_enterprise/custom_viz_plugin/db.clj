@@ -33,6 +33,14 @@
   [identifier :- :string]
   (t2/select-one :model/CustomVizPlugin :identifier identifier))
 
+(mu/defn plugins-by-identifiers :- [:sequential :map]
+  "The CustomVizPlugins, with only `columns` unless nil, whose identifier is one of `identifiers`, oldest first."
+  [identifiers :- [:sequential {:min 1} :string]
+   columns     :- [:maybe [:sequential :keyword]]]
+  (t2/select (if columns (into [:model/CustomVizPlugin] columns) :model/CustomVizPlugin)
+             :identifier [:in [:auto/param (vec identifiers)]]
+             {:order-by [[:id :asc]]}))
+
 (mu/defn plugin-identifier-exists?
   "Whether a CustomVizPlugin with `identifier` exists."
   [identifier :- :string]

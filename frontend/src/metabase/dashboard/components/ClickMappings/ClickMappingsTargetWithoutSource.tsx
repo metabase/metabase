@@ -1,4 +1,3 @@
-import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import {
@@ -7,7 +6,10 @@ import {
   UnstyledButton,
   useCombobox,
 } from "metabase/ui";
-import type { ClickBehavior } from "metabase-types/api";
+import type {
+  ClickBehavior,
+  ClickBehaviorParameterMapping,
+} from "metabase-types/api";
 
 import S from "./ClickMappings.module.css";
 import type { SourceOption, SourceOptionsByType, TargetItem } from "./types";
@@ -31,14 +33,25 @@ export function ClickMappingsTargetWithoutSource({
       .flat()
       .find((option) => getValueForSource(option) === value);
 
-    updateSettings(
-      assocIn(clickBehavior, ["parameterMapping", id], {
-        source,
-        target: target.target,
-        id,
-        type,
-      }),
-    );
+    // `source` is a dropdown option (which also covers the "None" and user
+    // attribute choices), so it is looser than ClickBehaviorSource.
+    const mapping = {
+      source,
+      target: target.target,
+      id,
+      type,
+    } as ClickBehaviorParameterMapping[string];
+
+    // only crossfilter and custom destination links have parameter mappings
+    if (
+      clickBehavior.type === "crossfilter" ||
+      (clickBehavior.type === "link" && clickBehavior.linkType !== "url")
+    ) {
+      updateSettings({
+        ...clickBehavior,
+        parameterMapping: { ...clickBehavior.parameterMapping, [id]: mapping },
+      });
+    }
     combobox.closeDropdown();
   };
 

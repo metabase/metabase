@@ -6,9 +6,8 @@ import { setupNativeQuerySnippetEndpoints } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -47,7 +46,11 @@ function setup({
 }) {
   const database = createDatabase(engine);
   const metadata = createMockMetadata({ databases: [database] });
-  const question = checkNotNull(metadata.table(TABLE_ID)).question();
+  const question = Question.create({
+    DEPRECATED_RAW_MBQL_databaseId: DB_ID,
+    DEPRECATED_RAW_MBQL_tableId: TABLE_ID,
+    metadata,
+  });
   const onConvertClick = jest.fn<void, [Question]>();
 
   setupNativeQuerySnippetEndpoints();

@@ -33,10 +33,7 @@ function createQuery(tags: TemplateTag[]): Lib.Query {
     metadataProvider,
     `SELECT ${tags.map((tag) => `{{${tag.name}}}`).join(", ")}`,
   );
-  return Lib.withTemplateTags(
-    query,
-    Object.fromEntries(tags.map((tag) => [tag.name, tag])),
-  );
+  return Lib.withTemplateTags(query, tags);
 }
 
 describe("getFieldSettingsFromQuery", () => {

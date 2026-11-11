@@ -2,6 +2,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
+import {
+  setupCardEndpoints,
+  setupCardQueryMetadataEndpoint,
+} from "__support__/server-mocks";
 import { fireEvent, getIcon, screen, waitFor } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
 import { METAKEY, isTouchDevice } from "metabase/utils/browser";
@@ -14,13 +18,16 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { CardType, IconName } from "metabase-types/api";
-import { createMockSearchResult } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockSearchResult,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
-  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import {
@@ -90,6 +97,7 @@ async function setup(opts: SetupOpts = {}) {
 
 const setupEmptyQuery = async () => {
   const question = Question.create({
+    metadata: createMockMetadata(),
     DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
   });
   const query = question.query();
@@ -151,9 +159,10 @@ describe("DataStep", () => {
     { type: "question", icon: "table2" },
     { type: "model", icon: "model" },
   ])("should render with a selected card", async ({ type, icon }) => {
-    const card = createSavedStructuredCard({
+    const card = createMockCard({
       id: 1,
       type,
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     });
     const metadata = createMockMetadata({
       databases: [createSampleDatabase()],
@@ -162,9 +171,7 @@ describe("DataStep", () => {
     const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
     const query = Lib.queryFromTableOrCardMetadata(
       metadataProvider,
-      checkNotNull(
-        Lib.tableOrCardMetadata(metadataProvider, `card__${card.id}`),
-      ),
+      checkNotNull(Lib.cardMetadata(metadataProvider, card.id)),
     );
     const step = createMockNotebookStep({ query });
     await setup({ step });
@@ -180,6 +187,44 @@ describe("DataStep", () => {
     await userEvent.click(await screen.findByText("Products"));
 
     expect(getNextTableName()).toBe("Products");
+  });
+
+  it("should change to card", async () => {
+    const card = createMockCard({
+      id: 1,
+      name: "Orders question",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    });
+    setupCardEndpoints(card);
+    setupCardQueryMetadataEndpoint(
+      card,
+      createMockCardQueryMetadata({ databases: [createSampleDatabase()] }),
+    );
+    const emptyQuery = Question.create({
+      metadata: createMockMetadata(),
+      DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+    }).query();
+    const { getNextQuery } = await setup({
+      step: createMockNotebookStep({ query: emptyQuery }),
+      searchItems: [
+        createMockSearchResult({
+          id: card.id,
+          name: card.name,
+          model: "card",
+          database_id: SAMPLE_DB_ID,
+        }),
+      ],
+    });
+
+    await userEvent.type(
+      await screen.findByPlaceholderText(/search for tables and more/i),
+      card.name,
+    );
+    await userEvent.click(await screen.findByText(card.name));
+
+    await waitFor(() => {
+      expect(Lib.allSourceCardIds(getNextQuery())).toEqual([card.id]);
+    });
   });
 
   it("should remove joins when changing a table", async () => {

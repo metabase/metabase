@@ -12,18 +12,12 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import {
-  createMockCard,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-} from "metabase-types/api/mocks";
-import {
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createMockCard } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { NativeQueryEditor } from "./NativeQueryEditor";
 
@@ -73,46 +67,41 @@ jest.mock("metabase/common/components/CodeMirror", () => {
 
 const QUERY_TEXT = "SELECT 1";
 
-const setDatasetQuerySpy = jest.fn();
+const setQuerySpy = jest.fn();
 const runQuerySpy = jest.fn();
 
 function TestEditor({
   metadata,
   withRunButton = false,
 }: {
-  metadata: Metadata;
+  metadata: JsMetadata;
   withRunButton?: boolean;
 }) {
   const [card, setCard] = useState(() =>
     createMockCard({
       id: 1,
       name: "Native",
-      dataset_query: createMockNativeDatasetQuery({
-        database: SAMPLE_DB_ID,
-        native: createMockNativeQuery({ query: QUERY_TEXT }),
+      dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+        query: QUERY_TEXT,
       }),
+      query_type: "native",
     }),
   );
 
   const question = new Question(card, metadata);
-  // Unjustified type cast. The question is built from a native dataset query.
-  const query = question.legacyNativeQuery() as NativeQuery;
-
-  // The query builder passes a dispatch-bound action, whose identity is stable
-  const setDatasetQuery = useCallback((updatedQuery: NativeQuery) => {
-    setDatasetQuerySpy(updatedQuery.queryText());
+  const setQuery = useCallback((updatedQuery: Lib.Query) => {
+    setQuerySpy(Lib.rawNativeQuery(updatedQuery));
     setCard((previousCard) => ({
       ...previousCard,
-      dataset_query: updatedQuery.datasetQuery(),
+      dataset_query: Lib.toJsQuery(updatedQuery),
     }));
   }, []);
 
   return (
     <NativeQueryEditor
       question={question}
-      query={query}
       isNativeEditorOpen
-      setDatasetQuery={setDatasetQuery}
+      setQuery={setQuery}
       isRunnable
       runQuery={runQuerySpy}
       cancelQuery={jest.fn()}
@@ -151,7 +140,7 @@ async function typeThreeCharacters() {
 describe("NativeQueryEditor typing", () => {
   beforeEach(() => {
     receivedProps.length = 0;
-    setDatasetQuerySpy.mockClear();
+    setQuerySpy.mockClear();
     runQuerySpy.mockClear();
   });
 
@@ -169,7 +158,7 @@ describe("NativeQueryEditor typing", () => {
 describe("NativeQueryEditor deferred edits", () => {
   beforeEach(() => {
     receivedProps.length = 0;
-    setDatasetQuerySpy.mockClear();
+    setQuerySpy.mockClear();
     runQuerySpy.mockClear();
   });
 
@@ -178,7 +167,7 @@ describe("NativeQueryEditor deferred edits", () => {
 
     fireEvent.change(editor, { target: { value: "SELECT 2" } });
 
-    expect(setDatasetQuerySpy).not.toHaveBeenCalled();
+    expect(setQuerySpy).not.toHaveBeenCalled();
   });
 
   it("should put the edit in the store once the keystroke is over", async () => {
@@ -187,7 +176,7 @@ describe("NativeQueryEditor deferred edits", () => {
     fireEvent.change(editor, { target: { value: "SELECT 2" } });
 
     await waitFor(() => {
-      expect(setDatasetQuerySpy).toHaveBeenCalledWith("SELECT 2");
+      expect(setQuerySpy).toHaveBeenCalledWith("SELECT 2");
     });
   });
 
@@ -199,9 +188,9 @@ describe("NativeQueryEditor deferred edits", () => {
     fireEvent.change(editor, { target: { value: "SELECT 234" } });
 
     await waitFor(() => {
-      expect(setDatasetQuerySpy).toHaveBeenCalledWith("SELECT 234");
+      expect(setQuerySpy).toHaveBeenCalledWith("SELECT 234");
     });
-    expect(setDatasetQuerySpy).toHaveBeenCalledTimes(1);
+    expect(setQuerySpy).toHaveBeenCalledTimes(1);
   });
 
   it("should not lose a pending edit when the editor unmounts", async () => {
@@ -210,7 +199,7 @@ describe("NativeQueryEditor deferred edits", () => {
     fireEvent.change(editor, { target: { value: "SELECT 2" } });
     unmount();
 
-    expect(setDatasetQuerySpy).toHaveBeenCalledWith("SELECT 2");
+    expect(setQuerySpy).toHaveBeenCalledWith("SELECT 2");
   });
 
   it("should apply a pending edit before running the query", async () => {
@@ -219,9 +208,9 @@ describe("NativeQueryEditor deferred edits", () => {
     fireEvent.change(editor, { target: { value: "SELECT 2" } });
     await userEvent.click(screen.getByTestId("run-button"));
 
-    expect(setDatasetQuerySpy).toHaveBeenCalledWith("SELECT 2");
+    expect(setQuerySpy).toHaveBeenCalledWith("SELECT 2");
     expect(runQuerySpy).toHaveBeenCalled();
-    expect(setDatasetQuerySpy.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(setQuerySpy.mock.invocationCallOrder[0]).toBeLessThan(
       runQuerySpy.mock.invocationCallOrder[0],
     );
   });

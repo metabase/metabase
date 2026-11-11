@@ -29,6 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
@@ -411,9 +412,7 @@
       add-can-write-any-collection
       (assoc :slack_account_status (sso/slack-account-status api/*current-user-id*))))
 
-(api.macros/defendpoint :delete "/:id/slack" :- [:map {:closed true}
-                                                 [:status [:= 204]]
-                                                 [:body :nil]]
+(api.macros/defendpoint :delete "/:id/slack" :- ::api/generic-204-no-content
   "Remove the current user's Slack Connect link."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -661,7 +660,7 @@
                                        users-rest.db/mfa-auth-identity-id-from-hashed-key
                                        :mfa_auth_identity_id)]
       ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
-      (auth-identity/set-password! id password {:ended-by api/*current-user-id*})
+      (auth-identity/set-password! id (u.secret/expose password) {:ended-by api/*current-user-id*})
       (events/publish-event! :event/password-changed {:object user :user-id api/*current-user-id*})
       ;; after a successful password update go ahead and offer the client a new session that they can use
       (when (= id api/*current-user-id*)
@@ -698,11 +697,7 @@
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- [:map {:closed true} [:success [:= true]]]
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -720,11 +715,7 @@
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:id/modal/:modal"
+(api.macros/defendpoint :put "/:id/modal/:modal" :- [:map {:closed true} [:success [:= true]]]
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [{:keys [id modal]} :- [:map {:closed true}
                           [:id ms/PositiveInt]

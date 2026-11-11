@@ -16,14 +16,11 @@ import type {
 import {
   createMockCard,
   createMockField,
-  createMockNativeDatasetQuery,
   createMockParameter,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PRODUCTS,
-  SAMPLE_DB_ID,
   createOrdersTable,
   createProductsTable,
   createSampleDatabase,
@@ -72,19 +69,15 @@ const PROVIDER = createMetadataProvider({ metadata: METADATA });
 
 const BASE_QUESTION = new Question(
   createMockCard({
-    dataset_query: createMockStructuredDatasetQuery({
-      database: SAMPLE_DB_ID,
-      query: { "source-table": ORDERS_ID },
-    }),
+    dataset_query: Lib.createTestJsQuery(PROVIDER, DEFAULT_TEST_QUERY),
   }),
   METADATA,
 );
 
 const NATIVE_QUESTION = new Question(
   createMockCard({
-    dataset_query: createMockNativeDatasetQuery({
-      database: SAMPLE_DB_ID,
-      native: { query: "SELECT count(*) FROM orders" },
+    dataset_query: Lib.createTestJsNativeQuery(PROVIDER, {
+      query: "SELECT count(*) FROM orders",
     }),
   }),
   METADATA,

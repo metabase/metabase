@@ -2,28 +2,32 @@ import cx from "classnames";
 import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetFieldQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { Link } from "metabase/common/components/Link";
 import { Box, Image, Stack, Text, rem } from "metabase/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isFK, isa } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, Field, RowValue } from "metabase-types/api";
+import type { DatasetColumn, RowValue } from "metabase-types/api";
 
 import S from "./Value.module.css";
 
 interface Props {
   children: ReactNode;
   column: DatasetColumn;
-  field: Field | undefined;
   value: RowValue | undefined;
 }
 
 const FRAME_SIZE = 240;
 const IMAGE_SIZE = FRAME_SIZE - 2 * 16;
 
-export const Value = ({ children, column, field, value }: Props) => {
+export const Value = ({ children, column, value }: Props) => {
   const isEmptyValue = value == null || value === "";
-  const newTableId = field?.target?.table_id;
+  const fkTargetFieldId = isFK(column) ? column.fk_target_field_id : null;
+  const { data: fkTargetField } = useGetFieldQuery(
+    fkTargetFieldId != null ? { id: fkTargetFieldId } : skipToken,
+  );
+  const newTableId = fkTargetField?.table_id;
   const isValidLink = Boolean(
     column.settings?.view_as === "link" &&
     column.settings.link_text &&

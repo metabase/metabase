@@ -6,7 +6,7 @@
    [clojure.walk :as walk]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.lib-be.json-schema :as js]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
@@ -19,10 +19,10 @@
   "Map each exported model that has a serialization schema to that schema."
   []
   (into {}
-        (keep (fn [model-name]
-                (t2/resolve-model (keyword "model" model-name))
-                (when-let [schema (:schema (serdes/make-spec model-name {}))]
-                  [model-name schema])))
+        (keep (fn [model]
+                (t2/resolve-model model)
+                (when-let [schema (:schema (serialization/spec model))]
+                  [(name model) schema])))
         serdes.models/exported-models))
 
 (defn- validator ^Validator [json-schema]
@@ -53,8 +53,8 @@
 (deftest ^:parallel serdes-json-schemas-test
   (let [schemas    (model-schemas)
         validators (update-vals schemas (comp validator js/make-schema))]
-    (testing "every exported model but settings has a schema"
-      (is (= (set (remove #{"Setting"} serdes.models/exported-models))
+    (testing "every exported model has schema"
+      (is (= (set (map name serdes.models/exported-models))
              (set (keys schemas)))))
     (testing "it should remove malli quirks and Java-only regex anchors"
       (doseq [schema (vals schemas)]

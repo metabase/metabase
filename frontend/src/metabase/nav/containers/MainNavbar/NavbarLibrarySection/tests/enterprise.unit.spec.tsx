@@ -1,7 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
-import { createMockCollection } from "metabase-types/api/mocks";
+import { reinitialize } from "metabase/plugins";
+import {
+  createMockCollection,
+  createMockRemoteSyncEntity,
+  createMockRemoteSyncEntityCollection,
+} from "metabase-types/api/mocks";
 
 import { createChildCollection, createLibraryCollection, setup } from "./setup";
 
@@ -64,69 +69,12 @@ describe("NavbarLibrarySection", () => {
     });
   });
 
-  describe("dirty state badges", () => {
-    it("should not show badge when git sync is not visible", async () => {
-      const libraryCollection = createLibraryCollection({
-        children: [createChildCollection({ id: 10, name: "Metrics" })],
-      });
-      setup({
-        collections: [libraryCollection],
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Metrics")).toBeInTheDocument();
-      });
-
-      expect(
-        screen.queryByTestId("remote-sync-status"),
-      ).not.toBeInTheDocument();
+  describe("unpushed changes", () => {
+    afterEach(() => {
+      reinitialize();
     });
 
-    it("should not show badge when collection has no dirty changes", async () => {
-      const libraryCollection = createLibraryCollection({
-        children: [createChildCollection({ id: 10, name: "Metrics" })],
-      });
-      setup({
-        collections: [libraryCollection],
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Metrics")).toBeInTheDocument();
-      });
-
-      expect(
-        screen.queryByTestId("remote-sync-status"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("should show badge when collection has dirty changes and git sync is visible", async () => {
-      const libraryCollection = createLibraryCollection({
-        children: [createChildCollection({ id: 10, name: "Metrics" })],
-      });
-
-      fetchMock.get("path:/api/ee/remote-sync/dirty", {
-        dirty: [
-          {
-            collection_id: 10,
-          },
-        ],
-      });
-
-      setup({
-        isEnterprise: true,
-        collections: [libraryCollection],
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Metrics")).toBeInTheDocument();
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("remote-sync-status")).toBeInTheDocument();
-      });
-    });
-
-    it("should show badge only for collections with changes", async () => {
+    it("marks collections with unpushed changes", async () => {
       const libraryCollection = createLibraryCollection({
         children: [
           createChildCollection({
@@ -142,29 +90,41 @@ describe("NavbarLibrarySection", () => {
         ],
       });
 
-      fetchMock.get("path:/api/ee/remote-sync/dirty", {
-        dirty: [
-          {
-            collection_id: 10,
-          },
-        ],
-      });
-
       setup({
         isEnterprise: true,
         collections: [libraryCollection],
+        dirty: [
+          createMockRemoteSyncEntity({
+            collection: createMockRemoteSyncEntityCollection({ id: 10 }),
+          }),
+        ],
       });
 
-      await waitFor(() => {
-        expect(screen.getByText("Dirty Collection")).toBeInTheDocument();
-      });
-
+      expect(await screen.findByText("Dirty Collection")).toBeInTheDocument();
       expect(screen.getByText("Clean Collection")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.getAllByTestId("remote-sync-status")).toHaveLength(1),
+      );
+    });
 
-      await waitFor(() => {
-        const badges = screen.getAllByTestId("remote-sync-status");
-        expect(badges).toHaveLength(1);
+    it("marks nothing without remote sync", async () => {
+      setup({
+        collections: [
+          createLibraryCollection({
+            children: [createChildCollection({ id: 10, name: "Metrics" })],
+          }),
+        ],
+        dirty: [
+          createMockRemoteSyncEntity({
+            collection: createMockRemoteSyncEntityCollection({ id: 10 }),
+          }),
+        ],
       });
+
+      expect(await screen.findByText("Metrics")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("remote-sync-status"),
+      ).not.toBeInTheDocument();
     });
   });
 });

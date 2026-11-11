@@ -9,7 +9,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   createMockDatabase,
   createMockTable,
@@ -100,29 +99,6 @@ describe("TableBrowser", () => {
     ).toHaveLength(0);
   });
 
-  it("links a saved-question virtual table to an ad-hoc question", async () => {
-    const table = createMockTable({
-      id: "card__17",
-      db_id: 1,
-      name: "My question",
-      display_name: "My question",
-      initial_sync_status: "complete",
-    });
-    fetchMock.get(
-      `path:/api/database/${SAVED_QUESTIONS_VIRTUAL_DB_ID}/schema/Everything else`,
-      [table],
-    );
-
-    renderWithProviders(
-      <TableBrowser
-        dbId={SAVED_QUESTIONS_VIRTUAL_DB_ID}
-        schemaName="Everything else"
-      />,
-    );
-
-    const link = await screen.findByRole("link", { name: /My question/ });
-    expect(link).toHaveAttribute("href", expect.stringMatching(/^\/question#/));
-  });
   it("offers the edit action when the database allows table editing", async () => {
     const table = createMockTable({
       id: 123,

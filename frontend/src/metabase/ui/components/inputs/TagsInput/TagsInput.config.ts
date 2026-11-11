@@ -1,7 +1,7 @@
 import { TagsInput } from "@mantine/core";
 
 import CS from "../Combobox/Combobox.module.css";
-import { selectOverrides } from "../Select";
+import { selectClearButtonProps } from "../Select";
 
 import S from "./TagsInput.module.css";
 
@@ -13,7 +13,7 @@ export const tagsInputOverrides = {
       errorProps: {
         role: "alert",
       },
-      clearButtonProps: selectOverrides?.Select?.defaultProps?.clearButtonProps,
+      clearButtonProps: selectClearButtonProps,
     },
     classNames: {
       input: S.input,

@@ -3,11 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
-import {
-  createMockDirtyCardEntity,
-  createMockDirtyTransformEntity,
-  createMockRemoteSyncEntity,
-} from "metabase-types/api/mocks";
+import { createMockRemoteSyncEntity } from "metabase-types/api/mocks";
 
 import { DEFAULT_EE_SETTINGS, setup } from "./setup";
 
@@ -22,89 +18,67 @@ describe("DataStudioLayout", () => {
     jest.restoreAllMocks();
   });
 
-  describe("Remote sync button", () => {
-    it("should show Remote sync button when git settings is visible", async () => {
-      setup({ remoteSyncEnabled: false });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      expect(screen.getByLabelText("Remote sync")).toBeInTheDocument();
+  describe("remote sync", () => {
+    afterEach(() => {
+      reinitialize();
     });
 
-    it("should hide Remote sync button when git settings is not visible", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: true });
+    it("offers remote sync setup in modal", async () => {
+      setup(DEFAULT_EE_SETTINGS);
 
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Set up remote sync" }),
+      );
 
-      expect(screen.queryByLabelText("Remote sync")).not.toBeInTheDocument();
+      expect(
+        await screen.findByText("Set up remote sync for your Library"),
+      ).toBeInTheDocument();
     });
 
-    it("should open modal when Remote sync button is clicked", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: false });
+    it("shows remote sync controls once set up", async () => {
+      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncBranch: "main" });
 
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      const gitSettingsButton = screen.getByLabelText("Set up remote sync");
-      await userEvent.click(gitSettingsButton);
-
-      await waitFor(() => {
-        expect(
-          screen.getByText("Set up remote sync for your Library"),
-        ).toBeInTheDocument();
-      });
+      expect(
+        await screen.findByTestId("git-sync-controls"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Set up remote sync" }),
+      ).not.toBeInTheDocument();
     });
 
-    it("should close modal when onClose is called", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: false });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      // Open the modal
-      const gitSettingsButton = screen.getByLabelText("Set up remote sync");
-      await userEvent.click(gitSettingsButton);
-
-      await waitFor(() => {
-        expect(
-          screen.getByText("Set up remote sync for your Library"),
-        ).toBeInTheDocument();
-      });
-
-      // Close the modal by pressing escape
-      await userEvent.keyboard("{Escape}");
-
-      await waitFor(() => {
-        expect(
-          screen.queryByText("Set up remote sync for your Library"),
-        ).not.toBeInTheDocument();
-      });
-    });
-
-    it("should show Set up remote sync text when sidebar is expanded", async () => {
+    it.each([
+      {
+        entity: createMockRemoteSyncEntity({ model: "nativequerysnippet" }),
+        tab: "SQL snippets",
+      },
+      {
+        entity: createMockRemoteSyncEntity({ model: "action" }),
+        tab: "Data actions",
+      },
+      {
+        entity: createMockRemoteSyncEntity({ model: "glossary" }),
+        tab: "Glossary",
+      },
+    ])("marks only $tab tab for its changes", async ({ entity, tab }) => {
       setup({
         ...DEFAULT_EE_SETTINGS,
-        remoteSyncEnabled: false,
-        isNavbarOpened: true,
+        remoteSyncBranch: "main",
+        dirty: [entity],
       });
 
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      expect(screen.getByText("Set up remote sync")).toBeInTheDocument();
+      const tabElement = await screen.findByRole("link", { name: tab });
+      await waitFor(() =>
+        expect(
+          within(tabElement).getByTestId("remote-sync-status"),
+        ).toBeInTheDocument(),
+      );
+      expect(screen.getAllByTestId("remote-sync-status")).toHaveLength(1);
     });
   });
 
   describe("sidebar rendering", () => {
     it("should render the sidebar with navigation tabs", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncBranch: "main" });
+      setup(DEFAULT_EE_SETTINGS);
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
@@ -113,153 +87,14 @@ describe("DataStudioLayout", () => {
       expect(screen.getByText("Semantic layer")).toBeInTheDocument();
     });
 
-    it("should render GitSyncAppBarControls when sidebar is expanded", async () => {
-      setup({
-        ...DEFAULT_EE_SETTINGS,
-        remoteSyncBranch: "main",
-        isNavbarOpened: true,
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      expect(screen.getByTestId("git-sync-controls")).toBeInTheDocument();
-    });
-
-    it("should not render GitSyncAppBarControls when sidebar is collapsed", async () => {
-      setup({
-        ...DEFAULT_EE_SETTINGS,
-        remoteSyncBranch: "main",
-        isNavbarOpened: false,
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      expect(screen.queryByTestId("git-sync-controls")).not.toBeInTheDocument();
-    });
-
     it("should render content area", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncBranch: null });
+      setup(DEFAULT_EE_SETTINGS);
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
       expect(screen.getByTestId("content")).toBeInTheDocument();
-    });
-  });
-
-  describe("library tab dirty indicators", () => {
-    const LIBRARY_TABS = [
-      "Semantic layer",
-      "Dashboards",
-      "SQL snippets",
-      "Data actions",
-    ];
-    const getTabStatus = (label: string) =>
-      within(screen.getByLabelText(label)).queryByTestId("remote-sync-status");
-
-    it.each([
-      {
-        name: "a dirty snippet",
-        entity: createMockRemoteSyncEntity({ model: "nativequerysnippet" }),
-        tab: "SQL snippets",
-      },
-      {
-        name: "a dirty data action",
-        entity: createMockRemoteSyncEntity({ model: "action", card_id: null }),
-        tab: "Data actions",
-      },
-    ])("shows $name only on the $tab tab", async ({ entity, tab }) => {
-      setup({
-        ...DEFAULT_EE_SETTINGS,
-        remoteSyncBranch: "main",
-        isNavbarOpened: true,
-        dirty: [entity],
-      });
-
-      await waitFor(() => {
-        expect(getTabStatus(tab)).toBeInTheDocument();
-      });
-      const otherTabs = LIBRARY_TABS.filter((otherTab) => otherTab !== tab);
-      for (const otherTab of otherTabs) {
-        expect(getTabStatus(otherTab)).not.toBeInTheDocument();
-      }
-    });
-
-    it("shows Library changes only on the Semantic layer tab", async () => {
-      setup({
-        ...DEFAULT_EE_SETTINGS,
-        remoteSyncBranch: "main",
-        isNavbarOpened: true,
-        dirty: [createMockDirtyCardEntity()],
-      });
-
-      await waitFor(() => {
-        expect(getTabStatus("Semantic layer")).toBeInTheDocument();
-      });
-      expect(getTabStatus("Dashboards")).not.toBeInTheDocument();
-      expect(getTabStatus("SQL snippets")).not.toBeInTheDocument();
-      expect(getTabStatus("Data actions")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("transform dirty indicator", () => {
-    it("should show dirty indicator on Transforms tab when transforms have dirty changes", async () => {
-      setup({
-        ...DEFAULT_EE_SETTINGS,
-        remoteSyncBranch: "main",
-        isNavbarOpened: true,
-        dirty: [createMockDirtyTransformEntity()],
-        remoteSyncTransforms: true,
-      });
-
-      const transformsTab = await screen.findByLabelText("Data transformation");
-      await waitFor(() => {
-        expect(
-          within(transformsTab).getByTestId("remote-sync-status"),
-        ).toBeInTheDocument();
-      });
-    });
-
-    it("should not show dirty indicator on Transforms tab when no dirty changes", async () => {
-      setup({
-        ...DEFAULT_EE_SETTINGS,
-        remoteSyncBranch: "main",
-        isNavbarOpened: true,
-        remoteSyncTransforms: true,
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      const transformsTab = screen.getByLabelText("Data transformation");
-      expect(
-        within(transformsTab).queryByTestId("remote-sync-status"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("should show dirty indicator for a pending transform removal when remote-sync-transforms setting is disabled", async () => {
-      setup({
-        ...DEFAULT_EE_SETTINGS,
-        remoteSyncBranch: "main",
-        isNavbarOpened: true,
-        dirty: [createMockDirtyTransformEntity({ sync_status: "removed" })],
-        remoteSyncTransforms: false,
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      const transformsTab = screen.getByLabelText("Data transformation");
-      expect(
-        await within(transformsTab).findByTestId("remote-sync-status"),
-      ).toBeInTheDocument();
     });
   });
 

@@ -217,6 +217,12 @@ export function createConfig() {
     });
   }
   return {
+    options: {
+      // Type-aware rules run through oxlint-tsgolint.
+      typeAware: true,
+      // The CLI scripts also pass --report-unused-disable-directives. Editors only read this file.
+      reportUnusedDisableDirectives: "error",
+    },
     categories: { correctness: "off" },
     plugins: nativePlugins,
     settings: { react: { version: "18.2.0" } },

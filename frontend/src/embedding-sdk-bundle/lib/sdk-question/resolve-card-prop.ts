@@ -29,7 +29,7 @@ export function resolveCardProp(
     // `MetabaseQueryObject` is the public structural mirror of `DatasetQuery`
     // and deliberately omits its opaque marker, so it cannot be assigned to the
     // internal type without an assertion.
-    dataset_query: input.query as DatasetQuery,
+    dataset_query: input.query as unknown as DatasetQuery,
     // Public-facing `visualization` maps to the internal card `display`. When
     // omitted, let query results pick a better unlocked display later.
     display: input.visualization ?? "table",

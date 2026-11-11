@@ -1,5 +1,6 @@
 ---
 title: Referencing models and saved questions
+summary: Reuse a model or saved question inside a new SQL query, including as a common table expression (CTE).
 redirect_from:
   - /docs/latest/users-guide/referencing-saved-questions-in-queries
 ---

@@ -1,7 +1,9 @@
 (ns metabase.warehouse-schema.schema
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -20,7 +22,7 @@
   [:map {:closed true}
    [:field_id                {:optional true} [:maybe ::lib.schema.id/field]]
    [:name                    {:optional true} [:maybe :string]]
-   [:type                    {:optional true} [:maybe [:or :keyword :string]]]
+   [:type                    {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:human_readable_field_id {:optional true} [:maybe ::lib.schema.id/field]]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
@@ -28,7 +30,7 @@
 
 (mr/def ::field.settings
   "The `:settings` column of a Field, decoded."
-  ms/VisualizationSettings)
+  ::lib.schema.visualization-settings/visualization-settings)
 
 (mr/def ::field
   "A Field as selected from the app DB: every column of `:metabase_field`."
@@ -47,8 +49,8 @@
    [:created_at                 {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                 {:optional true} [:maybe ms/TemporalInstant]]
    [:name                       {:optional true} [:maybe :string]]
-   [:base_type                  {:optional true} [:maybe [:or :keyword :string]]]
-   [:semantic_type              {:optional true} [:maybe [:or :keyword :string]]]
+   [:base_type                  {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:semantic_type              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:active                     {:optional true} [:maybe :boolean]]
    [:description                {:optional true} [:maybe :string]]
    [:preview_display            {:optional true} [:maybe :boolean]]
@@ -56,20 +58,20 @@
    [:table_id                   {:optional true} [:maybe ::lib.schema.id/table]]
    [:parent_id                  {:optional true} [:maybe ::lib.schema.id/field]]
    [:display_name               {:optional true} [:maybe :string]]
-   [:visibility_type            {:optional true} [:maybe [:or :keyword :string]]]
+   [:visibility_type            {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:fk_target_field_id         {:optional true} [:maybe ::lib.schema.id/field]]
    [:last_analyzed              {:optional true} [:maybe ms/TemporalInstant]]
    [:points_of_interest         {:optional true} [:maybe :string]]
    [:caveats                    {:optional true} [:maybe :string]]
    [:fingerprint                {:optional true} [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
    [:fingerprint_version        {:optional true} [:maybe :int]]
-   [:database_type              {:optional true} [:maybe [:or :keyword :string]]]
-   [:has_field_values           {:optional true} [:maybe [:or :keyword :string]]]
+   [:database_type              {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
+   [:has_field_values           {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:settings                   {:optional true} [:maybe ::field.settings]]
    [:database_position          {:optional true} [:maybe :int]]
    [:custom_position            {:optional true} [:maybe :int]]
-   [:effective_type             {:optional true} [:maybe [:or :keyword :string]]]
-   [:coercion_strategy          {:optional true} [:maybe [:or :keyword :string]]]
+   [:effective_type             {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:coercion_strategy          {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:nfc_path                   {:optional true} [:maybe [:sequential [:or :string :keyword]]]]
    [:database_required          {:optional true} [:maybe :boolean]]
    [:json_unfolding             {:optional true} [:maybe :boolean]]
@@ -82,11 +84,11 @@
    [:database_is_generated      {:optional true} [:maybe :boolean]]
    [:database_default           {:optional true} [:maybe :string]]
    [:dimension_interestingness  {:optional true} [:maybe number?]]
-   [:data_sensitivity           {:optional true} [:maybe [:or :keyword :string]]]])
+   [:data_sensitivity           {:optional true} [:maybe ::lib.schema.common/keyword]]])
 
 (mr/def ::field-user-settings.settings
   "The `:settings` column of a FieldUserSettings, decoded."
-  ms/VisualizationSettings)
+  ::lib.schema.visualization-settings/visualization-settings)
 
 (mr/def ::field-user-settings
   "A FieldUserSettings as selected from the app DB: every column of `:metabase_field_user_settings`."
@@ -100,19 +102,19 @@
    [:field_id           {:optional true} [:maybe ::lib.schema.id/field]]
    [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
-   [:semantic_type      {:optional true} [:maybe [:or :keyword :string]]]
+   [:semantic_type      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:description        {:optional true} [:maybe :string]]
    [:display_name       {:optional true} [:maybe :string]]
-   [:visibility_type    {:optional true} [:maybe [:or :keyword :string]]]
+   [:visibility_type    {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:fk_target_field_id {:optional true} [:maybe ::lib.schema.id/field]]
-   [:has_field_values   {:optional true} [:maybe [:or :keyword :string]]]
-   [:effective_type     {:optional true} [:maybe [:or :keyword :string]]]
-   [:coercion_strategy  {:optional true} [:maybe [:or :keyword :string]]]
+   [:has_field_values   {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:effective_type     {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:coercion_strategy  {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:caveats            {:optional true} [:maybe :string]]
    [:points_of_interest {:optional true} [:maybe :string]]
    [:json_unfolding     {:optional true} [:maybe :boolean]]
    [:settings           {:optional true} [:maybe ::field-user-settings.settings]]
-   [:data_sensitivity   {:optional true} [:maybe [:or :keyword :string]]]
+   [:data_sensitivity   {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:custom_position    {:optional true} [:maybe :int]]
    [:nfc_path           {:optional true} [:maybe :string]]
    [:description_set        {:optional true} :boolean]
@@ -135,7 +137,7 @@
    [:human_readable_values {:optional true} [:maybe ms/FieldValues]]
    [:field_id              {:optional true} [:maybe ::lib.schema.id/field]]
    [:has_more_values       {:optional true} [:maybe :boolean]]
-   [:type                  {:optional true} [:maybe [:or :keyword :string]]]
+   [:type                  {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:hash_key              {:optional true} [:maybe :string]]
    [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
@@ -154,17 +156,17 @@
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:display_name            {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
-   [:entity_type             {:optional true} [:maybe [:or :keyword :string]]]
-   [:visibility_type         {:optional true} [:maybe [:or :keyword :string]]]
+   [:entity_type             {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:visibility_type         {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:caveats                 {:optional true} [:maybe :string]]
    [:points_of_interest      {:optional true} [:maybe :string]]
-   [:data_layer              {:optional true} [:maybe [:or :keyword :string]]]
-   [:data_source             {:optional true} [:maybe [:or :keyword :string]]]
+   [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:data_source             {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe ::lib.schema.id/user]]
-   [:field_order             {:optional true} [:maybe [:or :keyword :string]]]
+   [:field_order             {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:data_authority          {:optional true} [:maybe [:or :keyword :string]]]
+   [:data_authority          {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:is_published            {:optional true} [:maybe :boolean]]
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
    [:description_set         {:optional true} :boolean]
@@ -198,16 +200,16 @@
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:name                    {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
-   [:entity_type             {:optional true} [:maybe [:or :keyword :string]]]
+   [:entity_type             {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:active                  {:optional true} [:maybe :boolean]]
    [:db_id                   {:optional true} [:maybe ::lib.schema.id/database]]
    [:display_name            {:optional true} [:maybe :string]]
-   [:visibility_type         {:optional true} [:maybe [:or :keyword :string]]]
+   [:visibility_type         {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:schema                  {:optional true} [:maybe :string]]
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:field_order             {:optional true} [:maybe [:or :keyword :string]]]
+   [:field_order             {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:initial_sync_status     {:optional true} [:maybe [:or :keyword :string]]]
    [:is_upload               {:optional true} [:maybe :boolean]]
    [:database_require_filter {:optional true} [:maybe :boolean]]
@@ -217,9 +219,9 @@
    [:deactivated_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:archived_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:is_writable             {:optional true} [:maybe :boolean]]
-   [:data_authority          {:optional true} [:maybe [:or :keyword :string]]]
-   [:data_source             {:optional true} [:maybe [:or :keyword :string]]]
-   [:data_layer              {:optional true} [:maybe [:or :keyword :string]]]
+   [:data_authority          {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:data_source             {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe ::lib.schema.id/user]]
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
@@ -243,10 +245,11 @@
                            :database_indexed :database_is_auto_increment :database_is_generated
                            :database_is_nullable :database_is_pk :database_partitioned :database_position
                            :database_required :database_type :description :display_name :effective_type
-                           :has_field_values :is_defective_duplicate :json_unfolding :name :nfc_path
+                           :has_field_values :json_unfolding :name :nfc_path
                            :points_of_interest :position :preview_display :semantic_type :settings
-                           :unique_field_helper :visibility_type :table_id :fk_target_field_id :parent_id]]
+                           :visibility_type :table_id :fk_target_field_id :parent_id]]
     [:map {:closed true}
+     [:dimensions {:optional true} [:maybe [:sequential [:ref ::external-dimension]]]]
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
 (mr/def ::external-field-user-settings
@@ -287,7 +290,7 @@
    [:merge
     [:select-keys ::table [:name :description :entity_type :active :display_name :visibility_type :schema
                            :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
-                           :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable
+                           :database_require_filter :is_writable
                            :data_authority :data_source :owner_email :is_published :data_layer :db_id
                            :collection_id :transform_id :owner_user_id]]
     [:map {:closed true}

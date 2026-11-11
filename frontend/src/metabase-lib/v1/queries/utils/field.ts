@@ -11,7 +11,6 @@ type RawFieldValues = RowValue[] | FieldValue[] | RawFieldValuesObject;
 
 type RawField = {
   values?: RawFieldValues;
-  remappings?: FieldValue[];
 };
 
 // Already [[value], [value, label], ...] tuples vs deprecated flat scalars; an array-valued
@@ -47,16 +46,8 @@ export function getFieldValues(field?: RawField | null): FieldValue[] {
   return [];
 }
 
-/**
- * Merge field values and remappings
- */
 export function getRemappings(
   field?: RawField | null,
 ): [RowValue, string | undefined][] {
-  const remappings = (field && field.remappings) || [];
-  const fieldValues = getFieldValues(field);
-  return [...fieldValues, ...remappings].map(([value, label]) => [
-    value,
-    label,
-  ]);
+  return getFieldValues(field).map(([value, label]) => [value, label]);
 }
