@@ -18,6 +18,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.api :as metabot.api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -36,6 +37,7 @@
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.search :as metabot-search]
+   [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.util :as metabot.u]
    [metabase.native-query-snippets.core :as snippets]
@@ -631,6 +633,19 @@
               (is (= finish-reason (:finish-reason (last parts))))
               (is (= text (apply str (keep #(when (= :text (:type %)) (:text %)) parts)))
                   "what the user reads"))))))))
+
+(deftest run-agent-loop-binds-metabot-while-building-prompt-test
+  (testing "the viewing context is built with the turn's Metabot and profile bound, as a tool call binds them"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [format-viewing-context (mt/original-fn #'user-context/format-viewing-context)
+            seen                   (atom [])]
+        (mt/with-dynamic-fn-redefs [user-context/format-viewing-context
+                                    (fn [context]
+                                      (swap! seen conj [(:id tools.shared/*metabot*) tools.shared/*profile-id*])
+                                      (format-viewing-context context))]
+          (run-turn! :internal "Hello" []))
+        (is (seq @seen))
+        (is (every? #{[(:id (internal-metabot)) :internal]} @seen))))))
 
 (deftest the-turn-stops-when-the-client-leaves-during-a-tool-call-test
   (mt/with-current-user (mt/user->id :crowberto)

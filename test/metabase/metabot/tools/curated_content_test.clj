@@ -14,6 +14,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.claude :as claude]
@@ -29,6 +30,7 @@
    [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.tools.shared :as tools.shared]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.static-viz :as static-viz]
    [metabase.metabot.tools.subscriptions :as subscriptions]
    [metabase.permissions.core :as perms]
@@ -1571,3 +1573,60 @@
                 "PRODUCTS is one FK hop from curated ORDERS")
             (is (false? (curation/measure-or-segment-curated? :measure raw-measure)))
             (is (true? (curation/measure-or-segment-curated? :measure hop-measure)))))))))
+
+(defn- adhoc-viewing-context
+  "The viewing context of an ad-hoc query on the card `card-id`, rendered for `metabot` under `profile-id`."
+  [metabot profile-id card-id]
+  (let [mp    (mt/metadata-provider)
+        query (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id)))]
+    (as-metabot metabot profile-id
+                #(user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]}))))
+
+(deftest viewing-context-source-card-curated-only-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "curation test collection"}
+                   :model/Card {plain-model :id} {:type :model :name "plain model" :collection_id coll-id
+                                                  :dataset_query (orders-query)}
+                   :model/Card {verified-model :id} {:type :model :name "verified model" :collection_id coll-id
+                                                     :dataset_query (orders-query)}
+                   :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+      (verify-card! verified-model)
+      (testing "a curated-only Metabot gets no URI for an uncurated source card"
+        (let [out (adhoc-viewing-context metabot :internal plain-model)]
+          (is (str/includes? out "source-card") "the query text renders")
+          (is (not (str/includes? out "Source model")))
+          (is (not (str/includes? out (str "metabase://model/" plain-model))))))
+      (testing "a curated-only Metabot gets the URI of a curated source card"
+        (is (str/includes? (adhoc-viewing-context metabot :internal verified-model)
+                           (str "Source model \"verified model\": metabase://model/" verified-model))))
+      (testing "an exempt profile gets the URI of an uncurated source card"
+        (is (str/includes? (adhoc-viewing-context metabot :sql plain-model)
+                           (str "Source model \"plain model\": metabase://model/" plain-model)))))))
+
+(deftest viewing-context-source-metric-curated-only-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {orders-metric :id} {:type :metric :name "orders count"
+                                                      :dataset_query (count-metric-query (orders-query))}
+                     :model/Card {reviews-metric :id} {:type :metric :name "reviews count"
+                                                       :dataset_query (count-metric-query
+                                                                       (lib/query mp (lib.metadata/table
+                                                                                      mp (mt/id :reviews))))}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (let [out (fn [metric-id]
+                      ;; `lib/query` on a metric card does not make the metric the source card, so build the stage
+                      ;; by hand.
+                      (let [query {:database (mt/id) :type :query :query {:source-table (str "card__" metric-id)}}]
+                        (is (:mp (shared.content-store/query-for-export query true))
+                            "the permission check clears the query")
+                        (as-metabot metabot :internal
+                                    #(user-context/format-viewing-context
+                                      {:user_is_viewing [{:type "adhoc" :query query}]}))))]
+            (testing "a curated-only Metabot gets the URI of an uncurated metric on a curated table"
+              (is (str/includes? (out orders-metric)
+                                 (str "Source metric \"orders count\": metabase://metric/" orders-metric))))
+            (testing "a curated-only Metabot gets no URI for an uncurated metric on an uncurated table"
+              (let [text (out reviews-metric)]
+                (is (str/includes? text "source-card") "the query text renders")
+                (is (not (str/includes? text "Source metric")))))))))))

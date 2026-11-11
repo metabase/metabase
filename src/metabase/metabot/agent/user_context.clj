@@ -8,15 +8,19 @@
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-export :as query-export]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.resources :as resources-tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metabot.util :as metabot.u]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -409,30 +413,66 @@
       (log/warn e "Omitting the column list of an ad-hoc query")
       nil)))
 
-(defn- exported-query
-  "The client-supplied query rendered for the LLM, with its column list, or nil when the current user may not see the query.
+(defn- readable-source-card
+  "The stage-0 source card of a cleared `query`, or nil when it has none or Metabot may not read it as a resource.
 
-  The column list is present only when the permission check cleared the query with a metadata
-  provider."
+  Throws a 404 when the card's database is not addressable as a resource."
+  [query mp]
+  (when-let [{card-id :id card-type :type :as card}
+             (some->> (lib/primary-source-card-id (lib/query mp query)) (lib.metadata/card mp))]
+    ;; A readable card can clear a query on a database that the user cannot read. Check the database first:
+    ;; a failed `api/read-check` logs an error and publishes an audit event on each LLM call.
+    (when (mi/can-read? :model/Database (:database-id card))
+      ;; The checks of a `read_resource` call on the card's URI, so the line never points at a read that fails.
+      (resources-tools/check-card-resource-database card-id)
+      (when (or (not (shared/curated-only?))
+                (curation/subject-curated? [(if (= :metric card-type) "metric" "card") card-id]))
+        card))))
+
+(defn- source-card-line
+  "The line that names the stage-0 source card of a cleared `query` by its numeric-id URI, or nil.
+
+    Source model \"Venues\": metabase://model/12 (read its columns at metabase://model/12/fields)"
+  [query mp]
+  (try
+    (when-let [{card-id :id card-type :type card-name :name} (readable-source-card query mp)]
+      ;; `read_resource` lists the columns of a metric at `dimensions`, and of any other card at `fields`.
+      (str "Source " (name card-type) " " (quoting/quoted card-name) ": " (llm-shape/metabase-uri card-type card-id)
+           " (read its columns at "
+           (llm-shape/metabase-uri card-type card-id (if (= :metric card-type) "dimensions" "fields")) ")"))
+    (catch Exception e
+      (if (= 404 (:status-code (ex-data e)))
+        (log/debug "Omitting the source card of an ad-hoc query: its database is not addressable as a resource")
+        (log/warn e "Omitting the source card of an ad-hoc query"))
+      nil)))
+
+(defn- exported-query
+  "The client-supplied query rendered for the LLM, or nil when the current user may not see the query.
+
+  The result also holds the source-card line and the column list. They are present only when the permission check
+  cleared the query with a metadata provider."
   [query]
   ;; The database refusal is audited for the same reason that the query's card ids get the audited
   ;; store: the id is the caller's own.
   ;; One check per item: a refusal is not cached, and each check writes an audit entry.
   (when-let [{:keys [mp] :as export} (shared.content-store/query-for-export query true)]
     (when-let [text (query-export/export->text export shared.content-store/audited-store)]
-      {:text    text
-       :columns (when mp
-                  (permitted-column-list (:query export) mp))})))
+      {:text        text
+       :source-card (when mp
+                      (source-card-line (:query export) mp))
+       :columns     (when mp
+                      (permitted-column-list (:query export) mp))})))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
   (if (native-query-item? item)
     (format-native-query item)
-    (let [{:keys [text columns]} (exported-query (:query item))]
+    (let [{:keys [text source-card columns]} (exported-query (:query item))]
       (te/lines "The user is currently in the notebook editor viewing a query."
                 (te/field "Query ID" (:id item))
                 (te/field "Database ID" (get-in item [:query :database]))
+                source-card
                 (te/field "Query" text)
                 (when columns
                   (te/lines columns-header columns ""))
