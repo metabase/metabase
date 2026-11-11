@@ -7,6 +7,7 @@ import {
   ORDERS_DASHBOARD_ENTITY_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
+  READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 import {
@@ -1344,6 +1345,19 @@ describe("scenarios > dashboard > permissions", () => {
     cy.visit(`/dashboard/${dashboardId}`);
     H.main()
       .findByText("Sorry, you don’t have permission to see that.")
+      .should("be.visible");
+
+    cy.log(
+      "Users who cannot create questions are not asked to create one (metabase#44937)",
+    );
+    cy.signIn("readonly");
+    H.createDashboard({
+      name: "Read-only user's dashboard",
+      collection_id: READ_ONLY_PERSONAL_COLLECTION_ID,
+    }).then(({ body: { id } }) => H.visitDashboard(id));
+    H.editDashboard();
+    H.main()
+      .findByText("Browse your collections to find and add existing questions.")
       .should("be.visible");
   });
 
