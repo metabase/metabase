@@ -761,3 +761,5 @@ export function goToProfile() {
 export function getHelpSubmenu() {
   return cy.findByTestId("help-submenu");
 }
+
+// Touch for the uberjar reuse check; remove before merging.
