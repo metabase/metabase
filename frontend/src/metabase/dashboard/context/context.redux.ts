@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { ConnectedProps } from "react-redux";
 
 import { deletePermanently } from "metabase/archive/actions";
