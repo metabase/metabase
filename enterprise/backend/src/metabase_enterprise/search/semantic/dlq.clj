@@ -180,8 +180,8 @@
   The initial retry is scheduled using the standard 'initial-backoff' variable, this function is only used
   when we have retried at least once."
   ^Duration [^long retry-count policy]
-  ;; The jitter is wide because it is what splits up documents that failed in one batch, so the bad one ends up
-  ;; retried alone (see failure-outcome). It only lengthens the delay, so no retry comes sooner than the policy asks.
+  ;; Wide, because only jitter separates documents that failed in one batch, so the bad one can be retried alone
+  ;; (see failure-outcome). It only lengthens delays, so no retry comes sooner than the policy asks.
   (Duration/ofMillis (long (* (max-delay-ms retry-count policy) (inc (rand))))))
 
 (comment

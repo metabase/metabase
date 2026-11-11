@@ -569,7 +569,7 @@
   "Run the statement that versions before dynamic migration 6 use at startup to create the `content` index of
   index table `table-name`: a B-tree, created only when no index has its name yet."
   [pgvector table-name]
-  ;; the name as those versions build it, not as [[semantic.index/content-index-name]] builds it today
+  ;; spelled out rather than taken from [[semantic.index/content-index-name]], so the tests notice if they drift apart
   (jdbc/execute! pgvector [(format "CREATE INDEX IF NOT EXISTS %s ON %s (content)"
                                    (semantic.util/quote-ident
                                     (semantic.index/hash-identifier-if-exceeds-pg-limit

@@ -358,8 +358,8 @@
 (defn- content-btree-index-names
   "Names of the B-tree indexes on `content` of index table `table-name`, read from the catalog."
   [tx table-name]
-  ;; Read, not rebuilt from the table name, because older versions could leave it under a name Postgres truncated.
-  ;; Matched on catalog structure, because the index definition text is quoted per session settings.
+  ;; From the catalog, since a B-tree created by an older version can sit under a name Postgres truncated.
+  ;; Matched on catalog structure, since index definition text varies with session quoting settings.
   (->> (jdbc/execute! tx
                       [(str "SELECT i.relname AS indexname"
                             " FROM pg_index x"
@@ -374,7 +374,7 @@
 
 (defn- replace-content-btree-with-hash-index!
   "Migration 6: replace the B-tree index on `content` with a hash index.
-  A B-tree entry is capped at about 2.7 KB, so rows with long text failed to insert.
+  A B-tree entry is capped at about 2.7 KB, which rejects long text.
   The index serves only the equality lookup that reuses embeddings, which a hash index supports for any length."
   [tx index-metadata]
   (alter-index-tables!

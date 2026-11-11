@@ -500,9 +500,9 @@
   ;; text_search_with_native_query_vector => tswnqv
   (index-name index "_tswnqv_gin_idx"))
 
-;; A hash index, because a B-tree entry is capped at about 2.7 KB and the lookup only needs equality. It keeps the
-;; B-tree's name, so an older version's startup CREATE INDEX IF NOT EXISTS (in a rolling upgrade or a rollback)
-;; finds it and leaves it alone.
+;; A hash index, because a B-tree entry is capped at about 2.7 KB and the lookup only needs equality. Older versions
+;; create an index under this name at startup with IF NOT EXISTS, so in a rolling upgrade or a rollback they find
+;; this one and add no B-tree.
 (defn content-index-name
   "Returns the name for the hash index on `content` for the given semantic search index configuration.
   It serves the `content IN ..` lookup that reuses embeddings for identical text."
