@@ -36,8 +36,11 @@ export const Relationship = ({ fk, rowId, onClick }: Props) => {
     [fkQuery],
   );
   const fkQuestionUrl = useMemo(
-    () => (fkQuery != null ? getForeignKeyQuestionUrl(fkQuery) : undefined),
-    [fkQuery],
+    () =>
+      fkQuery != null
+        ? getForeignKeyQuestionUrl(store.getState(), fkQuery)
+        : undefined,
+    [store, fkQuery],
   );
 
   const {

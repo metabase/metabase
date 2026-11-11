@@ -10,8 +10,8 @@ import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import type { QueryModalType } from "metabase/redux/store";
 import { useSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   NativeQuerySnippet,
   RecentCollectionItem,
@@ -159,16 +159,11 @@ export function QueryEditorBody({
     return Promise.resolve();
   };
 
-  const handleNativeQueryChange = (newNativeQuery: NativeQuery) => {
-    onChange(newNativeQuery.question());
+  const handleNativeQueryChange = (newQuery: Lib.Query) => {
+    onChange(question.setQuery(newQuery));
   };
 
   if (isNative) {
-    const query = question.legacyNativeQuery();
-    if (!query) {
-      return null;
-    }
-
     return (
       <NativeQueryEditor
         className={cx(S.nativeQueryEditor, {
@@ -176,7 +171,6 @@ export function QueryEditorBody({
         })}
         availableHeight={availableHeight}
         question={question}
-        query={query}
         placeholder="SELECT * FROM TABLE_NAME"
         isInitiallyOpen
         isNativeEditorOpen
@@ -193,7 +187,7 @@ export function QueryEditorBody({
         cancelQuery={onCancelQuery}
         databaseIsDisabled={shouldDisableDatabase}
         databaseDisabledTooltip={databaseDisabledTooltip}
-        setDatasetQuery={handleNativeQueryChange}
+        setQuery={handleNativeQueryChange}
         toggleDataReference={onToggleDataReference}
         toggleSnippetSidebar={onToggleSnippetSidebar}
         toggleTemplateTagsEditor={onToggleTemplateTagsSidebar}

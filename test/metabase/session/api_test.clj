@@ -30,7 +30,6 @@
    [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
-   [metabase.util.string :as string]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -514,7 +513,7 @@
                        :new {:password (:new password)
                              :username email}}]
             (mt/client :post 200 "session" (:old creds))
-            (is (=? {:session_id string/valid-uuid?
+            (is (=? {:session_id u/uuid-string?
                      :success    true}
                     (mt/client :post 200 "session/reset_password" {:token    token
                                                                    :password (:new password)})))

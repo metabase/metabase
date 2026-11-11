@@ -50,6 +50,8 @@
 
 (set! *warn-on-reflection* true)
 
+(events/derive! :event/transform-run-complete :metabase/event)
+
 ;;; ------------------------------------------------- Constants -------------------------------------------------
 
 (def ^:const transform-temp-table-prefix

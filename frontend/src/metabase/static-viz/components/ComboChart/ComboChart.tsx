@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";

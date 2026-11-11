@@ -89,8 +89,6 @@ export interface Field {
   parent_id?: FieldId | null;
   fk_target_field_id: FieldId | null;
   target?: Field;
-  values?: FieldValue[];
-  remappings?: FieldValue[];
   settings?: FieldFormattingSettings;
 
   dimensions?: FieldDimension[];
@@ -99,7 +97,6 @@ export interface Field {
   max_value?: number;
   min_value?: number;
   has_field_values: FieldValuesType;
-  has_more_values?: boolean;
 
   caveats?: string | null;
   points_of_interest?: string;

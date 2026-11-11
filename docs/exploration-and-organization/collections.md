@@ -1,5 +1,6 @@
 ---
 title: Collections
+summary: Organize questions, dashboards, models, and documents into collections, and control who can see and edit what.
 redirect_from:
   - /docs/latest/users-guide/collections
 ---

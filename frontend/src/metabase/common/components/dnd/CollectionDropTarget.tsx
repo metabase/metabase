@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { ComponentType, ReactElement } from "react";
 import { Component } from "react";
 import type {

@@ -1,5 +1,6 @@
 ---
 title: Implementing multimethods for your driver
+summary: Implement driver multimethods to extend Metabase's existing driver code to your own database.
 ---
 
 # Implementing multimethods for your driver

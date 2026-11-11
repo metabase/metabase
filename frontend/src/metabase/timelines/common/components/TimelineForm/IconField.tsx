@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useField } from "formik";
 
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";

@@ -2,6 +2,7 @@
   (:require
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema :as glossary.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -42,3 +43,7 @@
   (mapv (fn [item]
           [{:label "glossary"} {:label (:term item) :key (:entity_id item)}])
         entities))
+
+(defmethod remote-sync/spec :model/Glossary
+  [_model]
+  {:label :term})

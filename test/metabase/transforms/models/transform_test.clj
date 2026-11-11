@@ -10,13 +10,20 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.search.core :as search]
+   [metabase.search.test-util :as search.tu]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms.query-test-util :as query-test-util]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest source-database-id-set-test
   (testing "inserting a transform correctly sets the source-database-id column"
@@ -358,3 +365,51 @@
                   (is (not (mi/can-read? stored)))
                   (is (not (mi/can-write? stored)))
                   (is (not (mi/can-create? :model/Transform (into {} stored)))))))))))))
+
+(deftest delete-while-run-writes-transform-does-not-deadlock-test
+  (testing "Deleting a transform while a run writes the transform row succeeds without a deadlock"
+    ;; The delete removes the search-index row, then the transform row. The run updates the transform row, then upserts
+    ;; the search-index row in the same transaction (`with-temp-index-table` indexes synchronously). The redefs pause
+    ;; the delete after its search-index delete until the run has updated the transform row.
+    (search.tu/with-temp-index-table
+      (let [transform-id   (t2/insert-returning-pk! :model/Transform
+                                                    {:name   "Deleted while running"
+                                                     :source {:type :python :source-tables [] :body "pass"}
+                                                     :target {:type "table" :schema "public" :name "deadlock_target"}})
+            search-deleted (promise)
+            run-updated    (promise)
+            search-delete! (mt/original-fn #'search/delete!)
+            search-update! (mt/original-fn #'search/update!)]
+        (try
+          (mt/with-dynamic-fn-redefs [search/delete! (fn [model ids]
+                                                       (u/prog1 (search-delete! model ids)
+                                                         (when (= :model/Transform model)
+                                                           (deliver search-deleted true)
+                                                           ;; A delete that holds the transform row blocks the run's
+                                                           ;; update, and this deref times out.
+                                                           (when (deref run-updated 3000 nil)
+                                                             ;; Postgres checks a lock wait for a deadlock once,
+                                                             ;; `deadlock_timeout` (1 s by default) after the wait
+                                                             ;; starts. A longer pause lets the run's check pass
+                                                             ;; before the delete waits, so the delete's check finds
+                                                             ;; the cycle and Postgres aborts the delete.
+                                                             (Thread/sleep 1500)))))
+                                      search/update! (fn [instance & more]
+                                                       (when (= :model/Transform (t2/model instance))
+                                                         (deliver run-updated true))
+                                                       (apply search-update! instance more))]
+            (let [run     (future
+                            (deref search-deleted 30000 nil)
+                            (transforms-base.db/update-transform! transform-id {:target_table_id (mt/id :venues)}))
+                  delete  (future (t2/delete! :model/Transform :id transform-id))
+                  outcome (fn [fut]
+                            (try (deref fut 90000 ::timed-out)
+                                 (catch Exception e (ex-message (or (ex-cause e) e)))))]
+              (is (= 1 (outcome delete)))
+              (testing "the run ends without a deadlock; its write may fail, since the transform is gone"
+                (let [run-outcome (outcome run)]
+                  (is (not= ::timed-out run-outcome))
+                  (is (not (re-find #"(?i)deadlock" (str run-outcome))))))
+              (is (not (t2/exists? :model/Transform :id transform-id)))))
+          (finally
+            (t2/delete! :model/Transform :id transform-id)))))))

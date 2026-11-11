@@ -1,5 +1,6 @@
 ---
 title: Data permissions
+summary: Control which groups can view data, create queries, download results, manage metadata and databases, upload, and run transforms, by database, schema, or table.
 redirect_from:
   - /docs/latest/administration-guide/data-permissions
 ---

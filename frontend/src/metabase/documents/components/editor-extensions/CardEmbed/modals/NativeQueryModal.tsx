@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useElementSize } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
@@ -22,7 +23,6 @@ import NoResultsView from "metabase/visualizations/components/Visualization/NoRe
 import { createRawSeries } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { Card, DatabaseId, Dataset, RawSeries } from "metabase-types/api";
 
 import S from "./NativeQueryModal.module.css";
@@ -181,16 +181,11 @@ export const NativeQueryModal = ({
     }
   }, [isOpen, currentQueryPromise]);
 
-  const setDatasetQuery = useCallback(
-    async (query: NativeQuery) => {
-      if (!modifiedQuestion) {
-        return modifiedQuestion;
+  const setQuery = useCallback(
+    (query: Lib.Query) => {
+      if (modifiedQuestion) {
+        setModifiedQuestion(modifiedQuestion.setQuery(query));
       }
-
-      const datasetQuery = query.datasetQuery();
-      const newQuestion = modifiedQuestion.setDatasetQuery(datasetQuery);
-      setModifiedQuestion(newQuestion);
-      return newQuestion;
     },
     [modifiedQuestion],
   );
@@ -310,10 +305,9 @@ export const NativeQueryModal = ({
     );
   }
 
-  const nativeQuery =
-    modifiedQuestion?.legacyNativeQuery() ??
-    question?.legacyNativeQuery() ??
-    null;
+  const isNative =
+    modifiedQuestion != null &&
+    Lib.queryDisplayInfo(modifiedQuestion.query()).isNative;
 
   return (
     <Modal
@@ -337,10 +331,9 @@ export const NativeQueryModal = ({
             ref={mainRef}
           >
             <Box pos="relative" className={S.editorContainer}>
-              {nativeQuery && (
+              {modifiedQuestion && isNative && (
                 <NativeQueryEditor
                   question={modifiedQuestion}
-                  query={nativeQuery}
                   isNativeEditorOpen
                   isInitiallyOpen
                   canAutoOpenDataReference={!isMetabotSidebarOpen}
@@ -352,7 +345,7 @@ export const NativeQueryModal = ({
                   isShowingDataReference={isShowingDataReference}
                   isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
                   isShowingSnippetSidebar={false}
-                  setDatasetQuery={setDatasetQuery}
+                  setQuery={setQuery}
                   runQuery={handleRunQuery}
                   cancelQuery={handleCancelQuery}
                   toggleTemplateTagsEditor={() =>

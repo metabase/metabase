@@ -1,5 +1,6 @@
 ---
 title: People can't log in to Metabase
+summary: Fix login problems, from resetting passwords to regaining access to the login page or your Metabase Store account.
 ---
 
 # People can't log in to Metabase

@@ -11,8 +11,8 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { State } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Database } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
@@ -129,7 +129,7 @@ function createMetadata({
 type SetupOpts = {
   database?: Database;
   state?: State;
-  metadata?: Metadata;
+  metadata?: JsMetadata;
   query?: Lib.Query;
   allowCustomExpressions?: boolean;
 };

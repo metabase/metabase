@@ -1,21 +1,10 @@
-import { createMockMetadataFromState } from "__support__/metadata";
-import { createMockState } from "__support__/state";
-import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import {
-  ORDERS,
-  PRODUCTS,
-  createSampleDatabase,
+  createOrdersTaxField,
+  createProductsCreatedAtField,
 } from "metabase-types/api/mocks/presets";
 
 import { SemanticTypeLabel } from "./SemanticTypeLabel";
-
-const state = createMockState({
-  entities: createMockEntitiesState({
-    databases: [createSampleDatabase()],
-  }),
-});
-const metadata = createMockMetadataFromState(state);
 
 function setup(semanticType: string | null | undefined) {
   return renderWithProviders(<SemanticTypeLabel semanticType={semanticType} />);
@@ -23,7 +12,7 @@ function setup(semanticType: string | null | undefined) {
 
 describe("SemanticTypeLabel", () => {
   describe("given a dimension with a semantic type", () => {
-    const field = metadata.field(PRODUCTS.CREATED_AT)!;
+    const field = createProductsCreatedAtField();
 
     it("should show an icon corresponding to the given semantic type", () => {
       setup(field.semantic_type);
@@ -37,7 +26,7 @@ describe("SemanticTypeLabel", () => {
   });
 
   describe("given a dimension without a semantic type", () => {
-    const field = metadata.field(ORDERS.TAX)!;
+    const field = createOrdersTaxField();
 
     it("should show an ellipsis icon representing the lack of semantic type", () => {
       setup(field.semantic_type);

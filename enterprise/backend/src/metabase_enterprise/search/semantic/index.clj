@@ -330,7 +330,7 @@
      ;; Must equal db.migration.impl/dynamic-schema-version — a freshly created index already has the
      ;; latest schema, so recording an older version would mark it stale on creation. Kept as a literal
      ;; (not a require) to avoid an index → impl → index-metadata → index cycle; bump both together.
-     :version 5}))
+     :version 6}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
@@ -500,9 +500,12 @@
   ;; text_search_with_native_query_vector => tswnqv
   (index-name index "_tswnqv_gin_idx"))
 
-(defn- content-index-name
-  "Returns the name for a B-tree database index on `content` for the given semantic search index configuration.
-   Used for efficient `content IN ..` queries."
+;; A hash index, because a B-tree entry is capped at about 2.7 KB and the lookup only needs equality. Older versions
+;; create an index under this name at startup with IF NOT EXISTS, so in a rolling upgrade or a rollback they find
+;; this one and add no B-tree.
+(defn content-index-name
+  "Returns the name for the hash index on `content` for the given semantic search index configuration.
+  It serves the `content IN ..` lookup that reuses embeddings for identical text."
   [index]
   (index-name index "_content_idx"))
 
@@ -582,7 +585,7 @@
        connectable
        (-> (sql.helpers/create-index
             [(keyword (content-index-name index)) :if-not-exists]
-            [(keyword table-name) :content])
+            [(keyword table-name) :using-hash :content])
            sql-format-quoted)))
     (catch Exception e
       ;; let an already-actionable error (e.g. the pgvector-extension guidance) surface unwrapped

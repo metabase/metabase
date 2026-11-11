@@ -5,6 +5,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -120,3 +121,7 @@
      :created-tab-ids (vals old->new-tab-id)
      :deleted-tab-ids to-delete-ids
      :total-num-tabs  (reduce + (map count [to-create to-update]))}))
+
+(defmethod remote-sync/spec :model/DashboardTab
+  [_model]
+  {:synced-filter-clause dashboards.db/synced-dashboard-tabs-clause})
