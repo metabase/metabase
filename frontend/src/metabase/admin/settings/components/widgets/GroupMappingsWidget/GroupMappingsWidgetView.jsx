@@ -9,7 +9,7 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import CS from "metabase/css/core/index.css";
 import { FormSwitch } from "metabase/forms";
 import { isDefaultGroup } from "metabase/lib/groups";
-import { Icon, Tooltip } from "metabase/ui";
+import { Icon, Text, Tooltip } from "metabase/ui";
 
 import AddMappingRow from "./AddMappingRow";
 import {
@@ -125,7 +125,7 @@ export function GroupMappingsWidgetView({
           <ToggleRoot>
             <span>{t`Synchronize Group Memberships`}</span>
             {typeof groupSyncSwitchValue === "string" ? (
-              <span>{t`Using ${groupSyncSwitchValue}`}</span>
+              <Text c="text-secondary">{t`Using ${groupSyncSwitchValue}`}</Text>
             ) : (
               <FormSwitch
                 data-testid="group-sync-switch"
