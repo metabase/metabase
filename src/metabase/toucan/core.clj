@@ -8,6 +8,7 @@
 
 (p/import-vars
  [metabase.toucan.impl
+  column-name
   delete!
   exists?
   fragment

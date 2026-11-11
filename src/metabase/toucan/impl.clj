@@ -62,19 +62,20 @@
 (defn- dynamic? [form]
   (or (symbol? form) (seq? form)))
 
-(defn- table-name-call?
-  "Whether `form` calls the [[table-name]] macro, whose literal model makes the result safe to leave unbound."
+(defn- name-call?
+  "Whether `form` calls [[table-name]] or [[column-name]], whose literal args make the result safe to leave unbound."
   [form]
   (and (seq? form)
        (symbol? (first form))
-       (contains? '#{metabase.toucan.core/table-name metabase.toucan.impl/table-name}
+       (contains? '#{metabase.toucan.core/table-name metabase.toucan.impl/table-name
+                     metabase.toucan.core/column-name metabase.toucan.impl/column-name}
                   (some-> (resolve (first form)) symbol))))
 
 (defn- wrap-dynamic
   "`form` with every symbol or call inside its literal maps, vectors and sets wrapped in a [[value]] call."
   [form]
   (cond
-    (table-name-call? form) form
+    (name-call? form)       form
     (dynamic? form)         (list `value form)
     (map? form)             (into {} (map (fn [[k v]] [k (wrap-dynamic v)])) form)
     (vector? form)          (mapv wrap-dynamic form)
@@ -87,6 +88,23 @@
   (when-not (keyword? model)
     (throw (ex-info (str "The model must be a literal keyword: " (pr-str model)) {:form model})))
   `(t2/table-name ~model))
+
+(defn- check-name-part
+  "Throw unless `part` is a literal simple keyword naming a single identifier part."
+  [part]
+  (when-not (and (simple-keyword? part)
+                 (re-matches #"[A-Za-z_][A-Za-z0-9_]*" (name part)))
+    (throw (ex-info (str "Expected a literal keyword naming one identifier: " (pr-str part)) {:form part}))))
+
+(defmacro column-name
+  "Literal column keyword `column`, qualified by literal alias keyword `alias` when given."
+  ([column]
+   (check-name-part column)
+   column)
+  ([alias column]
+   (check-name-part alias)
+   (check-name-part column)
+   (keyword (str (name alias) "." (name column)))))
 
 (defmacro fragment
   "Literal `form` marked as a fragment, with every runtime value inside it handled by [[value]]."

@@ -119,6 +119,27 @@
     (is (re-find #"(?i)type\W* BETWEEN \? AND \?$" sql))
     (is (= ["internal" "personal"] args))))
 
+(deftest ^:parallel column-name-expands-to-literal-test
+  (is (= :email (macroexpand-1 '(metabase.toucan.core/column-name :email))))
+  (is (= :u.email (macroexpand-1 '(metabase.toucan.core/column-name :u :email))))
+  (is (= '(toucan2.core/select :model/User {:where [:= (metabase.toucan.core/column-name :u :email)
+                                                     (metabase.toucan.impl/value email)]})
+         (macroexpand-1 '(metabase.toucan.core/select :model/User {:where [:= (metabase.toucan.core/column-name :u :email)
+                                                                          email]}))))
+  (let [email        "a@b.c"
+        [sql & args] (toucan2.core/compile (t2/select :model/User {:where [:= (t2/column-name :email) email]}))]
+    (is (re-find #"(?i)email\W* = \?$" sql))
+    (is (= ["a@b.c"] args))))
+
+(deftest ^:parallel column-name-requires-literal-parts-test
+  (doseq [form ['(metabase.toucan.core/column-name column)
+                '(metabase.toucan.core/column-name alias :email)
+                '(metabase.toucan.core/column-name :u.email)
+                '(metabase.toucan.core/column-name :u/email)
+                '(metabase.toucan.core/column-name "email")]]
+    (testing (pr-str form)
+      (is (re-find #"Expected a literal keyword naming one identifier" (expansion-error form))))))
+
 (deftest ^:parallel plain-honeysql-value-rejected-test
   (letfn [(email-is [email] [:= :email email])]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
