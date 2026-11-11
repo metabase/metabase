@@ -1328,6 +1328,11 @@
                     (subvec node 3) literals)))))
     node))
 
+(def ^:private day-comparison-skipped-keys
+  "Keys whose clauses [[repair-day-and-default-comparisons*]] leaves to other passes: the stage keys a bucket is
+  hoisted in, and join conditions."
+  (conj (set bucket-hoist-stage-keys) "conditions"))
+
 (defn- repair-day-and-default-comparisons*
   "Repair temporal comparisons outside of filters, expressions and join conditions."
   [form]
@@ -1335,10 +1340,11 @@
     (letfn [(rewrite [node]
               (if (map? node)
                 (reduce-kv (fn [result k v]
-                             (assoc result k (if (or (= k "conditions") (some #{k} bucket-hoist-stage-keys))
-                                               v
-                                               (rewrite v))))
-                           (empty node) node)
+                             (if (contains? day-comparison-skipped-keys k)
+                               result
+                               (let [v' (rewrite v)]
+                                 (if (identical? v' v) result (assoc result k v')))))
+                           node node)
                 (perf/walk rewrite repair-day-and-default-comparison node)))]
       (rewrite form))
     form))
@@ -2676,7 +2682,7 @@
     (update "joins" (partial mapv #(if (map? %) (apply dissoc % (hidden-join-keys %)) %)))))
 
 (defn- postwalk-outside-join-stages
-  "Apply `f` with `perf/postwalk` to the parts of `stage` that [[without-join-stages]] keeps.
+  "Postwalk `f` over the parts of `stage` that [[without-join-stages]] keeps.
   Each join's [[hidden-join-keys]] come back unchanged."
   [f stage]
   (let [joins (get stage "joins")]
@@ -2945,7 +2951,9 @@
 ;;; refs whose join or field can't be resolved are left for the resolver to report.
 ;;; ============================================================
 
-(defn- join-alias-string-field-clause? [v]
+(defn- join-alias-string-field-clause?
+  "True if `v` is a field ref by column name through a join alias."
+  [v]
   (match/matches? v ["field"
                      {"join-alias" (_ :guard non-blank-string?)}
                      (_ :guard non-blank-string?)]))
