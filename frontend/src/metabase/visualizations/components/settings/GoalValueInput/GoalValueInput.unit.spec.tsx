@@ -420,7 +420,7 @@ describe("GoalValueInput", () => {
     const explanation = await screen.findByRole("menuitem", {
       name: /This question uses variables/,
     });
-    expect(explanation).toHaveAttribute("data-disabled", "true");
+    expect(explanation).toBeDisabled();
     expect(
       screen.queryByRole("menuitem", { name: /Average/ }),
     ).not.toBeInTheDocument();

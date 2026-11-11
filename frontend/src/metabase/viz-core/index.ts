@@ -243,6 +243,7 @@ export {
   applyGraphGoalValue,
   getGoalErrorMessage,
   getGoalErrors,
+  getHasParametersMessage,
   getGoalSegmentBounds,
   getNumericGoalValue,
   getReferencedEntities,

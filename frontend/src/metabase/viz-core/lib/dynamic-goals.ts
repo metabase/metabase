@@ -237,7 +237,7 @@ const getTooManyRowsMessage = (sourceKind: ReferencedEntityKind | undefined) =>
     .with(undefined, () => t`The result must be a single value or row.`)
     .exhaustive();
 
-const getHasParametersMessage = (
+export const getHasParametersMessage = (
   sourceKind: ReferencedEntityKind | undefined,
 ) =>
   match(sourceKind)
