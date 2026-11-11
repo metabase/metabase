@@ -15,6 +15,7 @@
    ::dimension.update
    [:map {:closed true}
     [:id                      ms/PositiveInt]
+    [:field                   {:optional true} [:maybe [:ref ::field]]]
     [:human_readable_field    {:optional true} [:maybe [:ref ::field]]]]])
 
 (mr/def ::dimension.update

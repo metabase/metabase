@@ -1,9 +1,11 @@
 import {
   createMockCard,
   createMockCollection,
+  createMockField,
   createMockRemoteSyncCardData,
   createMockRemoteSyncCardTestData,
   createMockRemoteSyncCollectionData,
+  createMockRemoteSyncDimensionData,
   createMockRemoteSyncDirtyItem,
   createMockRemoteSyncSegmentData,
   createMockRemoteSyncTableUserSettingsData,
@@ -124,6 +126,33 @@ describe("groupChanges", () => {
     expect(groups[0].items[0].name).toBe("Orders");
     expect(groups[0].items[0].children.map((child) => child.name)).toEqual([
       "Big orders",
+    ]);
+  });
+
+  it("nests remappings under the table of their field", () => {
+    const groups = groupChanges([
+      createMockRemoteSyncDirtyItem({
+        id: 9,
+        model: "dimension",
+        name: "Product",
+        data: createMockRemoteSyncDimensionData({
+          id: 9,
+          field_id: 11,
+          name: "Product",
+          field: createMockField({
+            id: 11,
+            table_id: ORDERS.id,
+            table: ORDERS,
+          }),
+        }),
+      }),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].path).toEqual(["Data"]);
+    expect(groups[0].items[0].name).toBe("Orders");
+    expect(groups[0].items[0].children.map((child) => child.name)).toEqual([
+      "Product",
     ]);
   });
 

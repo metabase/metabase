@@ -19,8 +19,8 @@
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
 
-(mu/defn synced-field-user-settings-clause :- [:fn vector?]
-  "The clause over the FieldUserSettings table aliased `alias` selecting the settings of synced tables' fields."
+(mu/defn synced-field-clause :- [:fn vector?]
+  "The clause over the table aliased `alias`, with a `field_id` column, selecting the rows of synced tables' fields."
   [alias :- :keyword
    opts  :- ::remote-sync.schema/synced-filter-opts]
   [:in (u/qualified-key alias :field_id) ^:allow-subquery {:select [:f.id]
@@ -569,3 +569,13 @@
         (t2/hydrate [:field [:table [:collection :effective_ancestors]]])
         (->> (mapv (fn [settings]
                      (update-in settings [:field :table] #(some-> % (collection.root/hydrate-root-collection root)))))))))
+
+(mu/defn synced-dimension-items :- [:sequential ::warehouse-schema.schema/dimension]
+  "The Dimensions with `ids`, with their Field, its Table, and that Table's Collection and ancestors, as remote sync
+  lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Dimension :id :field_id :name] :id [:in ids])
+        (t2/hydrate [:field [:table [:collection :effective_ancestors]]])
+        (->> (mapv (fn [dimension]
+                     (update-in dimension [:field :table] #(some-> % (collection.root/hydrate-root-collection root)))))))))

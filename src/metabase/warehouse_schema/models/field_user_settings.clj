@@ -155,4 +155,4 @@
 (defmethod remote-sync/spec :model/FieldUserSettings
   [_model]
   {:synced-items         warehouse-schema.db/synced-field-user-settings-items
-   :synced-filter-clause warehouse-schema.db/synced-field-user-settings-clause})
+   :synced-filter-clause warehouse-schema.db/synced-field-clause})

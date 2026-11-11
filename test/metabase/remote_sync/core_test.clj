@@ -71,8 +71,8 @@
 (deftest items-test
   (doseq [model (remote-sync/synced-models)
           :let  [items (:synced-items (remote-sync/spec model))]]
-    (testing (str model " has items unless it is a SerDes child, and its items query runs on the app DB")
-      (if (:parent (serialization/spec model))
+    (testing (str model " has items unless it is a SerDes child nested in its parent, and its items query runs on the app DB")
+      (if (when-let [parent (:parent (serialization/spec model))] (not (:import-only? parent)))
         (is (nil? items))
         (is (= [] (items [Integer/MAX_VALUE])))))))
 

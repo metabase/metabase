@@ -37,6 +37,7 @@ const MODEL_ICONS: Record<RemoteSyncItemModel, IconName> = {
   collection: "folder",
   dashboard: "dashboard",
   dataapp: "app",
+  dimension: "field",
   document: "document",
   fieldusersettings: "field",
   glossary: "glossary",
@@ -87,6 +88,7 @@ export function getItemCollections(
     case "measure":
       return getCollectionPath(item.data?.table?.collection);
     case "fieldusersettings":
+    case "dimension":
       return getCollectionPath(item.data?.field?.table?.collection);
     case "action":
       return getCollectionPath(
@@ -116,6 +118,7 @@ export function getItemTable(
     case "measure":
       return item.data?.table ?? null;
     case "fieldusersettings":
+    case "dimension":
       return item.data?.field?.table ?? null;
     default:
       return null;
@@ -145,6 +148,7 @@ export function getItemSection(
   switch (item.model) {
     case "tableusersettings":
     case "fieldusersettings":
+    case "dimension":
     case "segment":
     case "measure":
       return { ...DATA_SECTION, name: t`Data` };
@@ -177,6 +181,7 @@ function getItemModelAreas(
   switch (item.model) {
     case "tableusersettings":
     case "fieldusersettings":
+    case "dimension":
     case "segment":
     case "measure":
       return ["library"];
@@ -257,6 +262,13 @@ export function getItemUrl(item: RemoteSyncItemOrDirtyItem): string | null {
     case "fieldusersettings":
       return item.data?.field
         ? Urls.dataStudioTableFields(item.data.field.table_id, item.id)
+        : null;
+    case "dimension":
+      return item.data?.field
+        ? Urls.dataStudioTableFields(
+            item.data.field.table_id,
+            item.data.field_id,
+          )
         : null;
     case "segment":
       return item.data

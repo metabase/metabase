@@ -12,6 +12,7 @@ import type {
   RemoteSyncCollectionData,
   RemoteSyncDashboardData,
   RemoteSyncDataAppData,
+  RemoteSyncDimensionData,
   RemoteSyncDirtyItem,
   RemoteSyncDocumentData,
   RemoteSyncFieldUserSettingsData,
@@ -79,6 +80,12 @@ export function createMockRemoteSyncDataAppData(
   opts?: Partial<RemoteSyncDataAppData>,
 ): RemoteSyncDataAppData {
   return { id: 1, slug: "app", name: "App", ...opts };
+}
+
+export function createMockRemoteSyncDimensionData(
+  opts?: Partial<RemoteSyncDimensionData>,
+): RemoteSyncDimensionData {
+  return { id: 1, field_id: 1, name: "Dimension", ...opts };
 }
 
 export function createMockRemoteSyncDocumentData(

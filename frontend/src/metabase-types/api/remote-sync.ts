@@ -5,7 +5,7 @@ import type { Dashboard } from "./dashboard";
 import type { DataApp } from "./data-app";
 import type { CardTest, TransformTest } from "./data-test";
 import type { Document } from "./document";
-import type { FieldUserSettings } from "./field";
+import type { FieldDimension, FieldUserSettings } from "./field";
 import type { GlossaryItem } from "./glossary";
 import type { Measure } from "./measure";
 import type { Segment } from "./segment";
@@ -46,6 +46,11 @@ export type RemoteSyncDashboardData = Pick<
 >;
 
 export type RemoteSyncDataAppData = Pick<DataApp, "id" | "slug" | "name">;
+
+export type RemoteSyncDimensionData = Pick<
+  FieldDimension,
+  "id" | "field_id" | "name" | "field"
+>;
 
 export type RemoteSyncDocumentData = Pick<
   Document,
@@ -107,6 +112,7 @@ type RemoteSyncItemDataByModel = {
   collection: RemoteSyncCollectionData;
   dashboard: RemoteSyncDashboardData;
   dataapp: RemoteSyncDataAppData;
+  dimension: RemoteSyncDimensionData;
   document: RemoteSyncDocumentData;
   fieldusersettings: RemoteSyncFieldUserSettingsData;
   glossary: RemoteSyncGlossaryData;

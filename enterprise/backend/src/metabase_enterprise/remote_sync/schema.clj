@@ -59,6 +59,7 @@
    "collection"         ::collections.schema/collection
    "dashboard"          ::dashboards.schema/dashboard
    "dataapp"            ::data-apps.schema/data-app
+   "dimension"          ::warehouse-schema.schema/dimension
    "document"           ::documents.schema/document
    "fieldusersettings"  ::warehouse-schema.schema/field-user-settings
    "glossary"           ::glossary.schema/glossary

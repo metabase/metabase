@@ -145,6 +145,38 @@
                        (filter (comp #{"fieldusersettings" "segment"} :model))
                        (sort-by :model)))))))))
 
+(deftest dimension-push-and-pull-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection        synced    {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Table             table     {:db_id         (mt/id)
+                                                           :name          "synced_table"
+                                                           :is_published  true
+                                                           :collection_id (:id synced)}
+                       :model/Field             field     {:table_id (:id table) :name "id" :base_type :type/Integer}
+                       :model/TableUserSettings _         {:table_id (:id table) :is_published true :collection_id (:id synced)}
+                       :model/Dimension         dimension {:field_id (:id field) :name "Remapped id" :type :internal}]
+          (testing "a remapping of a synced table's field is dirty, with its field, table and collection in its data"
+            (is (=? [{:model       "dimension"
+                      :id          (:id dimension)
+                      :name        "Remapped id"
+                      :sync_status "create"
+                      :data        {:field {:id    (:id field)
+                                            :table {:id (:id table) :collection {:id (:id synced)}}}}}]
+                    (filter (comp #{"dimension"} :model)
+                            (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))))))
+          (testing "a push commits the remapping, after which nothing is dirty"
+            (is (=? {:status "successful" :outcome {:kind "pushed"}} (push!)))
+            (is (some? (remote-sync.tu/entity-path! url "main" dimension)))
+            (is (= {:is_dirty false} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty"))))
+          (testing "a pull loads the remapping changed remotely"
+            (rename-remotely! url dimension "Renamed remotely")
+            (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "main"})]
+              (is (=? {:status "successful" :outcome {:kind "pulled"}}
+                      (remote-sync.tu/wait-for-task! task_id))))
+            (is (= "Renamed remotely" (t2/select-one-fn :name :model/Dimension :id (:id dimension))))))))))
+
 (deftest data-app-bundle-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
