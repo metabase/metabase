@@ -23,7 +23,7 @@ Transform tests follow the permissions of the transform they belong to. To see a
 
 Each test has a name, an optional description, inputs, and checks.
 
-**Inputs** are the test data that stands in for the tables the transform reads. You can write out the rows column by column, or use the results of a SQL query that runs against the transform's source database. Every table the transform reads needs an input, or the test won't run.
+**Inputs** are the test data that stands in for the tables the transform reads. You can specify the data values, or use the results of a SQL query that runs against the transform's source database. Every table the transform reads needs an input, or the test won't run.
 
 **Checks** describe the output you expect. A check can require the output to contain exactly the rows you list (or the rows a query returns), or it can require a query against the output to return no rows.
 
@@ -31,9 +31,9 @@ Each test has a name, an optional description, inputs, and checks.
 
 _Data Studio > Data transformation > [transform name] > Tests_
 
-The **Tests** tab lists the transform's tests, their checks, and the time and status of each test's last run. Click a test to open its page.
+The **Tests** tab on a transform page lists the transform's tests, their checks, and the time and status of each test's last run. Click a test to open its page.
 
-On the test's **Overview** tab, you'll see the status of the last run, a button to run the test, and a link to see all its runs. The **Inputs** and **Output** sections show the test data and the checks.
+On the test's **Overview** tab, you'll see the status of the last run, a button to run the test, and a link to see all its runs. The **Inputs** and **Output** sections show the test's input data and checks.
 
 ## Run a test
 
@@ -48,42 +48,36 @@ A test run can end with one of these statuses:
 - **Error**: the test itself couldn't finish, for example because the database couldn't load the test data or run the transform's query.
 - **Timeout**: the run took too long and Metabase stopped it.
 
-## Review past test runs
-
-_Data Studio > Data transformation > [transform name] > Tests > [test name] > Runs_
-
-The test's **Runs** tab lists every run of the test, newest first. You can filter runs by **Started at**, **Ended at**, and **Status**. Click a run to see when it started and ended, its status, and who ran it.
+The test's **Runs** tab lists every run of the test, newest first. Click a run to see when it started and ended, its status, and who ran it.
 
 ## Use an AI agent to write transforms and tests
 
 To create a test, ask an AI agent to write it with the Metabase CLI. If you haven't already, install the [Metabase CLI](../../installation-and-operation/metabase-cli.md) and its [`/metabase-cli` skill](../../installation-and-operation/metabase-cli.md#the-metabase-cli-skill). The CLI comes with instructions that teach the agent how to plan and write transform tests.
 
-Here's an example prompt that creates a transform and a test for the **Orders** table in a database similar to the **Sample** database included in Metabase:
+Here's an example prompt that creates a transform and tests for the **Orders** table in a database similar to the **Sample** database included in Metabase:
 
 > Write a new transform for the Orders table in the Warehouse database
 > that keeps only orders with a positive discount. Add a test to
 > check that only orders with a discount are returned, and that all
-> of them are in the result. Also add tests for any edge cases that make
-> sense. Add it to a new folder called "Warehouse." Run the test and iterate
+> of them are in the result. Also add tests for any edge cases that apply.
+> Add it to a new folder called "Warehouse." Run the test and iterate
 > if necessary until the tests pass.
 
 Using this prompt, the agent creates a transform that writes a table with the same columns as **Orders**, and a test whose input includes **Discount** values of 0, 0.0001, -2, 5, and `null`. The test has a separate check for each condition: _no order without a positive discount_; _every order with a positive discount is in the output, unchanged_; _no order that is not in the input_; _each order at most once_; and _as many orders as the input has with a positive discount_. Agents don't produce the same result every time, so your test will probably look different.
 
 To review the checks the agent wrote, open the transform's **Tests** tab and click the test's name.
 
-## Version your tests with Remote Sync
+## Version and transfer your tests with Remote Sync
 
 If you use [Remote Sync](../../installation-and-operation/remote-sync.md#8-configure-transforms-syncing-optional), your transform tests live in your Git repository as YAML files, next to the transforms they test. How you add tests depends on your Metabase's sync mode.
 
 - In **read-write mode**, create tests with an agent and the Metabase CLI, as described above. Then push them to your repository like any other synced content.
-- In **read-only mode**, write tests as files in your repository. A read-only Metabase won't allow edits to transforms or tests. Instead, run your agent in a local checkout of the repository to write transforms and tests as YAML files. If the agent tries to edit Metabase directly, tell it to use the [`@metabase/representations`](https://github.com/metabase/representations) package to write the files. Once the files are written, commit them, push, and open a pull request. After the pull request is merged, Metabase picks up the new tests the next time it pulls changes.
+- If your instance is in **read-only mode**, run your agent in a local checkout of the repository to write transforms and tests as YAML files. If the agent tries to edit Metabase directly, tell it to use the [`@metabase/representations`](https://github.com/metabase/representations) package to write the files. Once the files are written, commit them, push, and open a pull request. After the pull request is merged, Metabase picks up the new tests the next time it pulls changes.
 
 In either mode, you can have CI run your transform tests before changes reach production. For example, a GitHub Action can start a temporary Metabase in Docker, import the content from the pull request's commit, and use the Metabase CLI to run every test.
 
 ## Further reading
 
 - [Transforms overview](transforms-overview.md)
-- [Query transforms](query.md)
 - [Transform inspector](inspector.md)
 - [Remote Sync](../../installation-and-operation/remote-sync.md)
-- [Agent-driven development](../../ai/agent-driven-development.md)
