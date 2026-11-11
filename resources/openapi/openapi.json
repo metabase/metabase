@@ -23599,6 +23599,13 @@
                       "type" : "null"
                     } ]
                   },
+                  "tab_id" : {
+                    "anyOf" : [ {
+                      "type" : "integer"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "type" : {
                     "enum" : [ "model", "question", "metric", "adhoc" ],
                     "type" : "string"
@@ -24237,6 +24244,13 @@
                   "sql_engine" : {
                     "anyOf" : [ {
                       "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "tab_id" : {
+                    "anyOf" : [ {
+                      "type" : "integer"
                     }, {
                       "type" : "null"
                     } ]
