@@ -514,7 +514,7 @@ describe("DashboardClickAction", () => {
     const thunk = action.action();
     expect(typeof thunk).toBe("function");
     if (typeof thunk === "function") {
-      thunk(dispatch, jest.fn(), undefined);
+      thunk(dispatch, jest.fn());
     }
 
     expect(dispatch.mock.calls).toEqual([
