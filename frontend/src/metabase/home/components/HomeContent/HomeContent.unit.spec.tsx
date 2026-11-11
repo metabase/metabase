@@ -192,15 +192,22 @@ describe("HomeContent", () => {
     ).not.toBeInTheDocument();
   });
 
-  it.each([true, false])(
-    "should render sample x-rays only when the x-rays feature is enabled (enable-xrays: %s) (metabase#26571)",
-    async (isXrayEnabled) => {
+  describe("sample database x-rays (metabase#26571)", () => {
+    const XRAY_TEXTS = [
+      /Try out these sample x-rays/,
+      /^A look at/,
+      /^A summary of/,
+      /^A glance at/,
+      /^Some insights about/,
+    ];
+
+    const setupSampleXrays = (isXrayEnabled: boolean) => {
       const database = createMockDatabase({
         is_sample: true,
         tables: [createMockTable()],
       });
 
-      await setup({
+      return setup({
         user: createMockUser({
           is_installer: true,
           has_question_and_dashboard: false,
@@ -221,23 +228,24 @@ describe("HomeContent", () => {
         },
         isXrayEnabled,
       });
+    };
 
-      const xrayTexts = [
-        /Try out these sample x-rays/,
-        /^A look at/,
-        /^A summary of/,
-        /^A glance at/,
-        /^Some insights about/,
-      ];
-      xrayTexts.forEach((text) => {
-        if (isXrayEnabled) {
-          expect(screen.getByText(text)).toBeInTheDocument();
-        } else {
-          expect(screen.queryByText(text)).not.toBeInTheDocument();
-        }
+    it("should render sample x-rays when the x-rays feature is enabled", async () => {
+      await setupSampleXrays(true);
+
+      XRAY_TEXTS.forEach((text) => {
+        expect(screen.getByText(text)).toBeInTheDocument();
       });
-    },
-  );
+    });
+
+    it("should not render sample x-rays when the x-rays feature is disabled", async () => {
+      await setupSampleXrays(false);
+
+      XRAY_TEXTS.forEach((text) => {
+        expect(screen.queryByText(text)).not.toBeInTheDocument();
+      });
+    });
+  });
 
   it("should render nothing if there are no databases", async () => {
     await setup({
