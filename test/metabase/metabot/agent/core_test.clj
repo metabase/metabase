@@ -209,26 +209,36 @@
   []
   (metabot-row metabot.config/internal-metabot-id))
 
+(defn- declares-show-chart?
+  "Whether the turn's `tools` declare `show_chart` on the tool named `tool-name`."
+  [tools tool-name]
+  (-> (get tools tool-name)
+      :declaration
+      deref
+      (get-in [:parameters :properties])
+      (contains? :show_chart)))
+
+(defn- init-agent-as-admin
+  "Initializes a turn with every Metabot permission, as the agent loop would for an admin. Returns its tools and
+   system message."
+  [conversation-id capabilities metabot profile-id]
+  (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+            scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
+    (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
+                         :metabot         metabot
+                         :profile-id      profile-id
+                         :conversation-id conversation-id
+                         :context         {:capabilities capabilities}})))
+
 (defn- run-query-offered-at-turn-start
   "Whether the turn starts with `run_query` among its tools, whether its system message says results can be read, and
    whether it declares `show_chart` on construct_notebook_query. Reads them where the decision is made rather than
-   running a turn. The bindings stand in for the ones the agent loop makes."
+   running a turn."
   [conversation-id capabilities metabot profile-id]
-  (let [{:keys [tools system-msg]}
-        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
-                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
-          (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
-                               :metabot         metabot
-                               :profile-id      profile-id
-                               :conversation-id conversation-id
-                               :context         {:capabilities capabilities}}))]
+  (let [{:keys [tools system-msg]} (init-agent-as-admin conversation-id capabilities metabot profile-id)]
     {:tool?       (contains? tools "run_query")
      :prompt?     (str/includes? (pr-str system-msg) "You can see results only")
-     :show-chart? (-> (get tools "construct_notebook_query")
-                      :declaration
-                      deref
-                      (get-in [:parameters :properties])
-                      (contains? :show_chart))}))
+     :show-chart? (declares-show-chart? tools "construct_notebook_query")}))
 
 (deftest client-claimed-feature-capability-cannot-override-settings-test
   ;; In a conversation the user owns, so the setting decides and not the rule for shared conversations.
@@ -276,6 +286,28 @@
               (testing "the embedded Metabot does not, and its prompt does not promise results"
                 (is (=? {:tool? false, :prompt? false}
                         (run-query-offered-at-turn-start own [] embedded profile-id)))))))))))
+
+(deftest sql-tools-declare-show-chart-only-where-sql-results-can-be-read-test
+  (let [rasta     (mt/user->id :rasta)
+        sql-tools ["create_sql_query" "edit_sql_query" "replace_sql_query"]
+        declared  (fn [conversation-id]
+                    (let [{:keys [tools]} (init-agent-as-admin conversation-id ["permission:write_sql_queries"]
+                                                               (internal-metabot) :internal)]
+                      (into {} (map (juxt identity #(declares-show-chart? tools %))) sql-tools)))
+        all-of    (fn [declared?] (zipmap sql-tools (repeat declared?)))]
+    (mt/with-temp [:model/MetabotConversation {own :id}     {:user_id rasta}
+                   :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (mt/with-current-user rasta
+          (testing "with SQL execution on, the user's own conversation declares show_chart on every SQL tool"
+            (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+              (is (= (all-of true) (declared own)))))
+          (testing "with SQL execution off, no SQL tool declares it"
+            (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
+              (is (= (all-of false) (declared own)))))
+          (testing "without run_query, as in a conversation someone else started, no SQL tool declares it"
+            (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+              (is (= (all-of false) (declared someone))))))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!

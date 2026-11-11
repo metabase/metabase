@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { jt, t } from "ttag";

@@ -10,7 +10,7 @@
   "Select a subset of keys from `query-metadata-result` to help debugging failed test assertions.
 
   `query-metadata-result` should be the result of some call to one of the query_metadata endpoints that return these
-  keys: :fields, :databases, :tables.
+  keys: :fields, :databases, :tables, :cards.
 
   At time of writing, these endpoints include:
 
@@ -24,7 +24,8 @@
     ;; exception and obscure the true failure. If it is a map, select specific keys to make the output easier to debug.
     (map? query-metadata-result) (-> (update :fields #(map (fn [x] (select-keys x [:id])) %))
                                      (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-                                     (update :tables #(map (fn [x] (select-keys x [:id :name])) %)))))
+                                     (update :tables #(map (fn [x] (select-keys x [:id :name])) %))
+                                     (update :cards #(map (fn [x] (select-keys x [:id :name])) %)))))
 
 (defn before-and-after-deleted-card
   "Helper for testing behavior before and after deleting a card.

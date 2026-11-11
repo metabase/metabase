@@ -67,7 +67,7 @@ describe("Reference utils.js", () => {
         tableId,
       });
 
-      const query = new Question(card).query();
+      const query = new Question(card, createMockMetadata()).query();
       expect(Lib.primarySourceTableId(query)).toBe(tableId);
     });
 
@@ -78,7 +78,7 @@ describe("Reference utils.js", () => {
         getCount: true,
       });
 
-      const query = new Question(card).query();
+      const query = new Question(card, createMockMetadata()).query();
       expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
     });
 
@@ -89,7 +89,7 @@ describe("Reference utils.js", () => {
         breakoutField: field,
       });
 
-      const query = new Question(card).query();
+      const query = new Question(card, createMockMetadata()).query();
       expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
     });
 
@@ -102,7 +102,7 @@ describe("Reference utils.js", () => {
         visualization: "bar",
       });
 
-      const query = new Question(card).query();
+      const query = new Question(card, createMockMetadata()).query();
       expect(card?.display).toBe("bar");
       expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
       expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
@@ -117,7 +117,7 @@ describe("Reference utils.js", () => {
         visualization: "pie",
       });
 
-      const query = new Question(card).query();
+      const query = new Question(card, createMockMetadata()).query();
       expect(card?.display).toBe("pie");
       expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
       expect(Lib.breakouts(query, stageIndex)).toHaveLength(1);
@@ -130,7 +130,7 @@ describe("Reference utils.js", () => {
         segmentId,
       });
 
-      const query = new Question(card).query();
+      const query = new Question(card, createMockMetadata()).query();
       expect(Lib.filters(query, stageIndex)).toHaveLength(1);
     });
 
@@ -142,7 +142,7 @@ describe("Reference utils.js", () => {
         getCount: true,
       });
 
-      const query = new Question(card).query();
+      const query = new Question(card, createMockMetadata()).query();
       expect(Lib.filters(query, stageIndex)).toHaveLength(1);
       expect(Lib.aggregations(query, stageIndex)).toHaveLength(1);
     });

@@ -1,5 +1,6 @@
 ---
 title: Running Metabase on Microsoft Azure
+summary: Run Metabase on Microsoft Azure with Docker and a managed PostgreSQL application database.
 redirect_from:
   - /docs/latest/operations-guide/running-metabase-on-azure
 ---

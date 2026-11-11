@@ -1,8 +1,11 @@
+import fetchMock from "fetch-mock";
+
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { render, renderWithProviders, screen } from "__support__/ui";
-import { createMockField } from "metabase-types/api/mocks";
-import { ORDERS, createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { createMockField, createMockParameter } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { ParameterFieldWidgetValue } from "./ParameterFieldWidgetValue";
 
@@ -24,45 +27,46 @@ describe("when a field remaps its values", () => {
   const PEOPLE_ID = 10;
   const PEOPLE_NAME_ID = 11;
 
-  // the shape the backend hydrates into `param_fields`: a PK carries the
-  // `type/Name` field of its table, which is what its values remap to
-  const nameField = createMockField({
-    id: PEOPLE_NAME_ID,
-    name: "NAME",
-    display_name: "Name",
-    base_type: "type/Text",
-    semantic_type: "type/Name",
-    has_field_values: "list",
-  });
-
-  const idField = createMockField({
-    id: PEOPLE_ID,
-    name: "ID",
-    display_name: "ID",
-    base_type: "type/BigInteger",
-    semantic_type: "type/PK",
-    has_field_values: "none",
-    name_field: nameField,
-  });
-
-  it("renders the remapped label the store accumulated for the value", () => {
-    const state = createMockState({
-      entities: createMockEntitiesState({
-        databases: [createSampleDatabase()],
-      }),
-    });
-    state.entities.fields[PEOPLE_ID] = {
-      ...state.entities.fields[ORDERS.ID],
+  const idField = getParameterFieldInfo(
+    createMockField({
       id: PEOPLE_ID,
-      uniqueId: String(PEOPLE_ID),
-      remappings: [[2, "Domenica Williamson"]],
-    };
+      display_name: "ID",
+      base_type: "type/BigInteger",
+      semantic_type: "type/PK",
+      has_field_values: "none",
+      name_field: createMockField({
+        id: PEOPLE_NAME_ID,
+        display_name: "Name",
+        semantic_type: "type/Name",
+      }),
+    }),
+  );
+
+  it("should render remapped label for value", async () => {
+    fetchMock.post("path:/api/dataset/parameter/remapping", [
+      2,
+      "Domenica Williamson",
+    ]);
 
     renderWithProviders(
-      <ParameterFieldWidgetValue value={[2]} fields={[idField]} />,
-      { storeInitialState: state },
+      <ParameterFieldWidgetValue
+        value={[2]}
+        fields={[idField]}
+        parameter={createMockParameter({
+          id: "p1",
+          type: "id",
+          sectionId: "id",
+        })}
+      />,
+      {
+        storeInitialState: createMockState({
+          entities: createMockEntitiesState({
+            databases: [createSampleDatabase()],
+          }),
+        }),
+      },
     );
 
-    expect(screen.getByText("Domenica Williamson")).toBeInTheDocument();
+    expect(await screen.findByText("Domenica Williamson")).toBeInTheDocument();
   });
 });

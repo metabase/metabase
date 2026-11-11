@@ -73,7 +73,8 @@
                                       "vector_dimensions int NOT NULL, table_name text NOT NULL UNIQUE, "
                                       "index_version int NOT NULL, index_created_at timestamptz NOT NULL)")])
         (jdbc/execute! pgvector ["CREATE TABLE index_control (id bigint PRIMARY KEY, version text NOT NULL, active_id int, active_updated_at timestamptz)"])
-        (jdbc/execute! pgvector [(format "CREATE TABLE %s (id text PRIMARY KEY)" table-name)])
+        ;; content is here for later dynamic migrations to index
+        (jdbc/execute! pgvector [(format "CREATE TABLE %s (id text PRIMARY KEY, content text)" table-name)])
         (jdbc/execute! pgvector [(str "INSERT INTO index_metadata "
                                       "(id, provider, model_name, vector_dimensions, table_name, index_version, index_created_at) "
                                       "VALUES (7, 'openai', 'legacy-model', 4, ?, 5, NOW())")
@@ -554,3 +555,38 @@
         (is (contains? ids (str od))      "dashboards in official collections are backfilled")
         (is (not (contains? ids (str nd))) "dashboards in normal collections are not")
         (is (not (contains? ids (str ad))) "archived dashboards are skipped")))))
+
+(deftest migration-6-content-hash-index-test
+  (testing "migration 6 replaces the B-tree index on content with a hash index"
+    (mt/with-premium-features #{:semantic-search}
+      (semantic.tu/with-test-db! {:mode :mock-initialized}
+        (let [pgvector       (semantic.env/get-pgvector-datasource!)
+              index-metadata (semantic.env/get-index-metadata)
+              table-name     (active-index-table-name! pgvector index-metadata)
+              content-index  (semantic.index/content-index-name {:table-name table-name})]
+          (semantic.tu/restore-content-btree! pgvector index-metadata table-name)
+          ;; a B-tree under a name the migration can't derive, as when Postgres truncated a long legacy name
+          (jdbc/execute! pgvector [(format "CREATE INDEX truncated_content_idx ON %s (content)"
+                                           (semantic.util/quote-table table-name))])
+          (is (= {content-index :btree, "truncated_content_idx" :btree}
+                 (semantic.tu/content-indexes table-name)))
+          (semantic.core/init! (semantic.tu/mock-documents) nil)
+          (is (= {content-index :hash} (semantic.tu/content-indexes table-name)))
+          (testing "and a version from before the migration keeps the hash index when it starts up"
+            (semantic.tu/create-content-index-as-before-migration-6! pgvector table-name)
+            (is (= {content-index :hash} (semantic.tu/content-indexes table-name)))))))))
+
+(deftest content-btree-index-names-test
+  (testing "migration 6 finds a B-tree on content by catalog structure, whatever the session quotes"
+    (mt/with-premium-features #{:semantic-search}
+      (semantic.tu/with-test-db! {:mode :mock-initialized}
+        (let [pgvector       (semantic.env/get-pgvector-datasource!)
+              index-metadata (semantic.env/get-index-metadata)
+              table-name     (active-index-table-name! pgvector index-metadata)]
+          ;; the table already has the hash index on content, which must not be picked up
+          (jdbc/execute! pgvector [(format "CREATE INDEX truncated_content_idx ON %s (content)"
+                                           (semantic.util/quote-table table-name))])
+          (jdbc/with-transaction [tx pgvector {:rollback-only true}]
+            (jdbc/execute! tx ["SET LOCAL quote_all_identifiers = on"])
+            (is (= ["truncated_content_idx"]
+                   (#'semantic.db.migration.impl/content-btree-index-names tx table-name)))))))))

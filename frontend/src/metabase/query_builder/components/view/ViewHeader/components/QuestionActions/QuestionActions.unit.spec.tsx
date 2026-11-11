@@ -21,7 +21,7 @@ import {
 import { MODAL_TYPES } from "metabase/querying/constants";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -103,8 +103,7 @@ function setup({
   });
 
   const metadata = createMockMetadataFromState(state);
-  // Unjustified type cast. FIXME
-  const question = metadata.question(card.id) as Question;
+  const question = new Question(card, metadata);
   const onOpenModal = jest.fn();
   const onSetQueryBuilderMode = jest.fn();
 

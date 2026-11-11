@@ -101,43 +101,44 @@
 (deftest transform-query-ingestion-test
   (testing "Contents of SQL and Python transform sources are extracted and indexed for full-text search"
     (when (= (mdb/db-type) :postgres)
-      (mt/with-temp [:model/Transform _ {:target {:type "table" :database (mt/id)
-                                                  :name "test_table"}
-                                         :name "Test SQL transform"
-                                         :source {:type :query
-                                                  :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
-        (let [ingested-transform (ingest-then-fetch! "transform" "Test SQL transform")
-              vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
-          (is (string? vector-value))
-          (is (re-find #"select" vector-value))
-          (is (re-find #"sql" vector-value))))
-      (mt/when-ee-evailable
-       (mt/with-temp [:model/Transform _ {:target {:type "table" :database (mt/id) :name "python_target"}
-                                          :source {:type :python
-                                                   :source-tables []
-                                                   :source-database (mt/id)
-                                                   :body "import pandas as pd\n"}
-                                          :name "Test python transform"}]
-         (let [ingested-transform (ingest-then-fetch! "transform" "Test python transform")
-               vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
-           (is (string? vector-value))
-           (is (re-find #"import" vector-value))
-           (is (re-find #"panda" vector-value)))))
-      (testing "MBQL queries are not indexed in with_native_query_vector"
+      (search.tu/with-temp-index-table
         (mt/with-temp [:model/Transform _ {:target {:type "table" :database (mt/id)
-                                                    :name "test_mbql_table"}
-                                           :name "Test MBQL transform"
+                                                    :name "test_table"}
+                                           :name "Test SQL transform"
                                            :source {:type :query
-                                                    :query (-> (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
-                                                               (lib/limit 10))}}]
-          (let [ingested-transform (ingest-then-fetch! "transform" "Test MBQL transform")
+                                                    :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
+          (let [ingested-transform (ingest-then-fetch! "transform" "Test SQL transform")
                 vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
             (is (string? vector-value))
-            (is (re-find #"test" vector-value))
-            (is (re-find #"mbql" vector-value))
-            ;; Ensure that the actual MQBL query isn't indexed
-            (is (not (re-find #"source" vector-value)))
-            (is (not (re-find #"table" vector-value)))))))))
+            (is (re-find #"select" vector-value))
+            (is (re-find #"sql" vector-value))))
+        (mt/when-ee-evailable
+         (mt/with-temp [:model/Transform _ {:target {:type "table" :database (mt/id) :name "python_target"}
+                                            :source {:type :python
+                                                     :source-tables []
+                                                     :source-database (mt/id)
+                                                     :body "import pandas as pd\n"}
+                                            :name "Test python transform"}]
+           (let [ingested-transform (ingest-then-fetch! "transform" "Test python transform")
+                 vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
+             (is (string? vector-value))
+             (is (re-find #"import" vector-value))
+             (is (re-find #"panda" vector-value)))))
+        (testing "MBQL queries are not indexed in with_native_query_vector"
+          (mt/with-temp [:model/Transform _ {:target {:type "table" :database (mt/id)
+                                                      :name "test_mbql_table"}
+                                             :name "Test MBQL transform"
+                                             :source {:type :query
+                                                      :query (-> (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+                                                                 (lib/limit 10))}}]
+            (let [ingested-transform (ingest-then-fetch! "transform" "Test MBQL transform")
+                  vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
+              (is (string? vector-value))
+              (is (re-find #"test" vector-value))
+              (is (re-find #"mbql" vector-value))
+              ;; Ensure that the actual MQBL query isn't indexed
+              (is (not (re-find #"source" vector-value)))
+              (is (not (re-find #"table" vector-value))))))))))
 
 (deftest transform-deletion-test
   (search.tu/with-temp-index-table

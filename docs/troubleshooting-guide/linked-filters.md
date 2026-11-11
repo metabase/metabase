@@ -1,5 +1,6 @@
 ---
 title: My linked filters don't work
+summary: Fix linked dashboard filters that show no results, have no effect, or list the wrong values.
 ---
 
 # My linked filters don't work

@@ -1,5 +1,6 @@
 (ns mage.kondo-ratchet-test
   (:require
+   [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -582,8 +583,11 @@
     (testing "a chain through an unconfigured var ends at the last configured one"
       (is (= '{a/f c/f}
              (kondo-ratchet/source-aliases '{a/f b/f, b/f c/f} '#{a/f c/f}))))
-    (testing "a cycle stops instead of looping"
-      (is (= {} (kondo-ratchet/source-aliases '{a/f b/f, b/f a/f} '#{a/f}))))
+    (testing "a cycle throws, naming its vars"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Re-export cycle: a/f -> b/f -> a/f"
+                            (kondo-ratchet/source-aliases '{a/f b/f, b/f a/f} '#{a/f})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Re-export cycle: x/f -> a/f -> b/f -> a/f"
+                            (kondo-ratchet/source-aliases '{x/f a/f, a/f b/f, b/f a/f} '#{x/f}))))
     (testing "a var whose source isn't configured counts under itself"
       (is (= {} (kondo-ratchet/source-aliases edges '#{lib.core/g}))))))
 
@@ -599,6 +603,60 @@
       (is (= '{a/f b/f, b/f c/f}
              (kondo-ratchet/alias-edges! '#{a/f c/f} #(vector (str % ".clj")) analyze)))
       (is (= [["a.clj" "c.clj"] ["b.clj"]] @linted)))))
+
+(deftest alias-edges!-kondo-test
+  (testing "a real kondo pass over an import-vars re-export and an OSS defenterprise finds both edges"
+    (let [dir  (fs/create-temp-dir)
+          file (str (fs/file dir "oss.clj"))]
+      (try
+        (spit file (str/join "\n" ["(ns fixture.oss"
+                                   "  (:require"
+                                   "   [fixture.impl]"
+                                   "   [metabase.premium-features.core :refer [defenterprise]]"
+                                   "   [potemkin :as p]))"
+                                   ""
+                                   "(p/import-vars [fixture.impl g])"
+                                   ""
+                                   "(defenterprise f"
+                                   "  \"Docstring.\""
+                                   "  metabase-enterprise.fixture"
+                                   "  [x]"
+                                   "  x)"
+                                   ""]))
+        (is (= '{fixture.oss/g                 fixture.impl/g
+                 metabase-enterprise.fixture/f fixture.oss/f}
+               (kondo-ratchet/alias-edges! '#{fixture.oss/g metabase-enterprise.fixture/f}
+                                           #(when (= 'fixture.oss (symbol %)) [file])
+                                           #'kondo-ratchet/analyze-for-aliases!)))
+        (finally
+          (fs/delete-tree dir))))))
+
+(deftest alias-keys-test
+  (testing "an alias and its source are keyed as in the ratchet files"
+    (is (= {:lib.core/->legacy-MBQL :lib.convert/->legacy-MBQL
+            :ee.search.core/f       :search.core/f}
+           (kondo-ratchet/alias-keys '{metabase.lib.core/->legacy-MBQL   metabase.lib.convert/->legacy-MBQL
+                                       metabase-enterprise.search.core/f metabase.search.core/f}
+                                     '#{metabase-enterprise.search.core/f
+                                        metabase.lib.convert/->legacy-MBQL
+                                        metabase.lib.core/->legacy-MBQL
+                                        metabase.search.core/f})))))
+
+(deftest ratchet-options-test
+  (testing "attribution and the aliases share one run of the alias passes over the configured vars"
+    (let [runs    (atom [])
+          options (kondo-ratchet/ratchet-options (fn [vars] (swap! runs conj vars) {}))]
+      ((:attribute options) [[]])
+      (is (= {} ((:aliases options))))
+      (is (= [(#'kondo-ratchet/discouraged-vars)] @runs))))
+  (testing "a failed run's own exception reaches both, and the run isn't repeated"
+    (let [runs    (atom 0)
+          options (kondo-ratchet/ratchet-options (fn [_vars]
+                                                   (swap! runs inc)
+                                                   (throw (ex-info "alias passes failed" {}))))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"alias passes failed" ((:attribute options) [[]])))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"alias passes failed" ((:aliases options))))
+      (is (= 1 @runs)))))
 
 (deftest attribute-discouraged-alias-test
   (testing "an ignore on a re-exported var counts under its source"

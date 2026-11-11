@@ -101,6 +101,7 @@
   }
 
   .footer {
+    gap: var(--mantine-spacing-lg);
     margin-top: var(--mantine-spacing-xl);
   }
 }

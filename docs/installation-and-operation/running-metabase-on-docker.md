@@ -1,5 +1,6 @@
 ---
 title: Running Metabase on Docker
+summary: Run Metabase with the official Docker image, from a quick local start to a production setup.
 redirect_from:
   - /docs/latest/operations-guide/running-metabase-on-docker
 ---

@@ -1,4 +1,4 @@
-import { type ComponentType, type ReactNode, Suspense } from "react";
+import { type ComponentType, type ReactNode, Suspense, useEffect } from "react";
 import {
   type BaseRouteObject,
   type LazyRouteFunction,
@@ -7,6 +7,8 @@ import {
 } from "react-router";
 
 import { isProduction } from "metabase/env";
+
+import type { ChunkErrorRecovery } from "./lazy-route";
 
 /**
  * How long a navigation into a code-split route waits for its chunk before it
@@ -23,12 +25,24 @@ export const CHUNK_WAIT_MS = 1000;
 
 type LazyFunction = LazyRouteFunction<BaseRouteObject>;
 
-type LazyPage = {
-  Component: ComponentType;
-  load: () => Promise<unknown>;
+export type ChunkFallbackOptions = {
+  /** Stands in for the page for as long as its chunk is on its way. */
+  fallback?: ReactNode;
+  /** What to do about a chunk that never arrives. Pages reject without it. */
+  recovery?: ChunkErrorRecovery;
 };
 
-const pages = new WeakMap<LazyFunction, LazyPage>();
+/**
+ * What the page's slot holds. A page that recovered is `unavailable` rather
+ * than `ready`: it renders, but opening the route again asks for the chunk.
+ */
+type PageState =
+  | { status: "loading" }
+  | { status: "ready"; Component: ComponentType }
+  | { status: "unavailable"; Component: ComponentType }
+  | { status: "failed"; error: unknown };
+
+const pages = new WeakMap<LazyFunction, LazyFunction>();
 
 /**
  * Caps how long each `lazy` route in the tree blocks a navigation, and renders
@@ -41,12 +55,12 @@ const pages = new WeakMap<LazyFunction, LazyPage>();
  */
 export function withChunkFallback(
   routes: RouteObject[],
-  fallback?: ReactNode,
+  options: ChunkFallbackOptions = {},
 ): RouteObject[] {
   return routes.map((route) => {
     const lazy =
       typeof route.lazy === "function"
-        ? timeBoxed(route.lazy, fallback)
+        ? timeBoxedPage(route.lazy, options)
         : route.lazy;
 
     return route.index
@@ -55,14 +69,9 @@ export function withChunkFallback(
           ...route,
           lazy,
           children:
-            route.children && withChunkFallback(route.children, fallback),
+            route.children && withChunkFallback(route.children, options),
         };
   });
-}
-
-function timeBoxed(load: LazyFunction, fallback?: ReactNode): LazyFunction {
-  const { Component, load: start } = pageFor(load, fallback);
-  return () => waitForChunk(start()).then(() => ({ Component }));
 }
 
 /**
@@ -70,55 +79,88 @@ function timeBoxed(load: LazyFunction, fallback?: ReactNode): LazyFunction {
  * A dozen routes mount the query builder, and moving between two of them must
  * not remount it.
  */
-function pageFor(load: LazyFunction, fallback?: ReactNode): LazyPage {
+function timeBoxedPage(
+  load: LazyFunction,
+  { fallback, recovery }: ChunkFallbackOptions,
+): LazyFunction {
   const cached = pages.get(load);
   if (cached) {
     return cached;
   }
 
-  let loading: Promise<unknown> | null = null;
-  let failure: unknown = null;
-  let Loaded: ComponentType | null = null;
+  let attempt: Promise<void> | null = null;
+  let state: PageState = { status: "loading" };
+  let isReplacingDocument = false;
 
-  const start = () =>
-    (loading ??= load().then(
-      (route) => {
-        warnOnDroppedProperties(route);
-        Loaded = route.Component ?? Outlet;
-      },
-      (error) => {
-        failure = error;
+  async function fetchPage(): Promise<void> {
+    try {
+      const route = await (recovery ? recovery.retry(load) : load());
+      warnOnDroppedProperties(route);
+      state = { status: "ready", Component: route.Component ?? Outlet };
+    } catch (error) {
+      const recovered = recovery?.recover(error);
+      if (!recovered) {
+        state = { status: "failed", error };
         throw error;
-      },
-    ));
+      }
+
+      if (recovered.after) {
+        // Hold the location where it is while the document is replaced. The old
+        // page stays on screen until it goes, and a same-document `pushState`
+        // never races a load that the browser has already started.
+        isReplacingDocument = true;
+        await recovered.after;
+        isReplacingDocument = false;
+      }
+
+      state = { status: "unavailable", Component: recovered.Component };
+    }
+  }
+
+  const start = () => (attempt ??= fetchPage());
 
   /**
    * The chunk's component, suspending for as long as the module is on its way.
    *
-   * `Loaded` is set one step before the step that commits the location, so a
+   * `state` is set one step before the step that commits the location, so a
    * chunk that arrives before the wait runs out renders without suspending:
    * nothing waits, and the fallback never mounts.
    *
-   * A chunk that failed keeps failing, for every route that shares it, until
-   * the page is reloaded. react-router caches a rejected `lazy` per route, so
-   * this is wider, but a chunk fails by its URL and every route in it asks for
-   * the same one. Dropping the failure to let a later mount try again is what
-   * cannot be done: React re-renders a component that throws, which would make
-   * the retry a fetch loop.
+   * A module that threw once loaded keeps throwing, for every route that shares
+   * it, until the page is reloaded. Dropping that one to let a later render try
+   * again is what cannot be done: React re-renders a component that throws,
+   * which would make the retry a fetch loop. A missing chunk renders instead of
+   * throwing, so `Page` can drop it safely.
    */
   function Chunk() {
-    if (failure) {
-      throw failure;
+    if (state.status === "failed") {
+      throw state.error;
     }
-
-    if (!Loaded) {
+    if (state.status === "loading") {
       throw start();
     }
 
-    return <Loaded />;
+    const { Component } = state;
+    return <Component />;
   }
 
-  function LazyPage() {
+  function Page() {
+    useEffect(
+      () => () => {
+        // Leaving a page that could not be downloaded ends its recovery, so
+        // opening it again asks for the chunk. Otherwise the error is this
+        // route's component for the rest of the session, and the deploy that
+        // removed the chunk has usually finished by the next visit. On unmount
+        // rather than on mount, so the visit that recovered keeps its error on
+        // screen.
+        if (state.status === "unavailable") {
+          state = { status: "loading" };
+          attempt = null;
+        }
+      },
+      [],
+    );
+
     return (
       <Suspense fallback={fallback}>
         <Chunk />
@@ -126,9 +168,13 @@ function pageFor(load: LazyFunction, fallback?: ReactNode): LazyPage {
     );
   }
 
-  const page = { Component: LazyPage, load: start };
-  pages.set(load, page);
-  return page;
+  const timeBoxed: LazyFunction = () =>
+    waitForChunk(start(), () => isReplacingDocument).then(() => ({
+      Component: Page,
+    }));
+
+  pages.set(load, timeBoxed);
+  return timeBoxed;
 }
 
 function warnOnDroppedProperties(route: object): void {
@@ -148,10 +194,21 @@ function warnOnDroppedProperties(route: object): void {
  * Resolves when the chunk arrives or when the wait runs out, whichever is
  * first. A chunk that fails still rejects, so the router reports a failed
  * fetch the way it did before there was a wait to run out.
+ *
+ * The wait runs on while a full page load is on its way: committing a location
+ * into a document that is leaving buys nothing, and the page being left is
+ * better to look at than a fallback for a page that will never render.
  */
-function waitForChunk(loading: Promise<unknown>): Promise<void> {
+function waitForChunk(
+  loading: Promise<unknown>,
+  isReplacingDocument: () => boolean,
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, CHUNK_WAIT_MS);
+    const timer = setTimeout(() => {
+      if (!isReplacingDocument()) {
+        resolve();
+      }
+    }, CHUNK_WAIT_MS);
     loading.then(
       () => {
         clearTimeout(timer);

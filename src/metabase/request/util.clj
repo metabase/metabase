@@ -10,6 +10,7 @@
    [metabase.request.current :as request.current]
    [metabase.request.schema :as request.schema]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -46,18 +47,30 @@
   "apps")
 
 (def data-app-embed-prefix
-  "URL prefix the BE serves the internal data-app iframe entrypoint at."
+  "URL prefix for the data app iframe runtime."
   (str "/embed/" data-app-url-segment))
 
+(def embedded-data-app-prefix
+  "URL prefix for the SSO-embedded data app runtime."
+  "/embed/embedded-apps")
+
 (def ^:private data-app-uri-regex
-  (re-pattern (str "^" data-app-embed-prefix "/.*$")))
+  (re-pattern (str "^(?:" data-app-embed-prefix "|" embedded-data-app-prefix ")/.*$")))
 
 (defn data-app?
-  "Is this ring request the internal data-app iframe entrypoint (`/embed/apps/...`)?
-   It is only ever framed by the same-origin Metabase app, so it gets
-   `frame-ancestors 'self'` rather than the open embedding `*`."
+  "Is this request for an internal or SSO-embedded data app document?"
   [{:keys [uri]}]
-  (re-matches data-app-uri-regex uri))
+  (when uri (re-matches data-app-uri-regex uri)))
+
+(defn internal-data-app?
+  "Whether the request targets the internal data app iframe route."
+  [{:keys [uri]}]
+  (boolean (and uri (str/starts-with? uri (str data-app-embed-prefix "/")))))
+
+(defn embedded-data-app?
+  "Whether the request targets the dedicated SSO embedding route."
+  [{:keys [uri]}]
+  (boolean (and uri (str/starts-with? uri (str embedded-data-app-prefix "/")))))
 
 (defn embed-sdk-eajs-entrypoint?
   "Is this ring request the modular embedding (EAJS) entrypoint page, served by `index/embed-sdk`?
@@ -73,18 +86,13 @@
   safe: changed content always arrives at a new URL."
   #"^/app/dist/(?:.+\.)?[a-f0-9]{8,}(?:\.[a-z0-9]+)+$")
 
-(def ^:private static-font-pattern
-  "Matches a bundled font. Fonts ship at a stable path and are treated as static."
-  #"^/app/fonts/.+\.(?:woff2?|ttf|otf|eot)$")
-
 (defn cacheable?
   "Can the ring request be permanently cached?"
   [{:keys [request-method uri], :as _request}]
   (boolean
    (and (= request-method :get)
         uri
-        (or (re-matches cache-busted-asset-pattern uri)
-            (re-matches static-font-pattern uri)))))
+        (re-matches cache-busted-asset-pattern uri))))
 
 (def https-state
   "Whether the original request reached us over HTTPS: `:https`, `:http`, or `:unknown`. Require `:https` to skip a
@@ -103,6 +111,24 @@
   `Referrer-Policy: no-referrer` or cross-origin restrictions."
   [request]
   (get-in request [:headers "referer"]))
+
+(defn host-names
+  "The host names `request` may have reached Metabase under: the first `X-Forwarded-Host` entry, which a proxy sets
+  and a client can forge, then `Host`."
+  [{:keys [headers]}]
+  (keep u.http/host-name [(some-> (get headers "x-forwarded-host") (str/split #",") first)
+                          (get headers "host")]))
+
+(defn cookie-header-entries
+  "The `[name value]` pairs of `request`'s `Cookie` header in order, or nil when it has none. Ring's `:cookies` keeps
+  only the last value of a name, and also splits on `,`, which a value may contain; a browser separates cookies with
+  `;` only. An entry without `=` is a cookie with no name, which a browser sends as its value alone."
+  [request]
+  (when-let [header (get-in request [:headers "cookie"])]
+    (vec (for [entry (map str/trim (str/split header #";"))
+               :when (seq entry)
+               :let  [[cookie-name value] (str/split entry #"=" 2)]]
+           (if value [cookie-name value] ["" cookie-name])))))
 
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."

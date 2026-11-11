@@ -1,5 +1,6 @@
 (ns metabase.collections.schema
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
@@ -127,6 +128,14 @@
    [:can_restore         {:optional true} :boolean]
    [:can_delete          {:optional true} :boolean]])
 
+(mr/def ::effective-ancestor
+  "A collection that `:effective_ancestors` lists, other than the Root Collection placeholder."
+  [:map {:closed true}
+   [:id                ::lib.schema.id/collection]
+   [:name              :string]
+   [:type              [:maybe :string]]
+   [:personal_owner_id [:maybe ms/PositiveInt]]])
+
 (mr/def ::collection-or-root
   "A Collection row, or the Root Collection placeholder."
   [:multi {:dispatch (fn [x] (if (:metabase.collections.models.collection.root/is-root? x) :root :row))}
@@ -142,11 +151,11 @@
    [:location             {:optional true} [:maybe :string]]
    [:personal_owner_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:slug                 {:optional true} [:maybe :string]]
-   [:namespace            {:optional true} [:maybe [:or :keyword :string]]]
-   [:authority_level      {:optional true} [:maybe [:or :keyword :string]]]
+   [:namespace            {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:authority_level      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:entity_id            {:optional true} [:maybe :string]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
-   [:type                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:type                 {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:is_sample            {:optional true} [:maybe :boolean]]
    [:archive_operation_id {:optional true} [:maybe :string]]
    [:archived_directly    {:optional true} [:maybe :boolean]]
