@@ -28,13 +28,14 @@ describe("scenarios > actions > table editing", () => {
     });
 
     cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
+    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "api/ee/action-v2/execute-bulk").as("executeBulk");
 
     H.getTableId({ name: "scoreboard_actions" }).then((tableId) => {
       cy.visit(`/browse/databases/${WRITABLE_DB_ID}/tables/${tableId}/edit`);
     });
 
-    cy.wait("@getTableMetadata");
+    waitForGrid();
 
     cy.log("create a row");
     cy.findByTestId("new-record-button").click();
@@ -81,7 +82,7 @@ describe("scenarios > actions > table editing", () => {
 
     cy.log("the created and edited row is stored");
     cy.reload();
-    cy.wait("@getTableMetadata");
+    waitForGrid();
     getRowByText("New York Bricks")
       .should("contain.text", "987")
       .and("contain.text", "inactive");
@@ -102,7 +103,7 @@ describe("scenarios > actions > table editing", () => {
 
     cy.log("the deleted rows are gone from the table");
     cy.reload();
-    cy.wait("@getTableMetadata");
+    waitForGrid();
     cy.findByTestId("table-root").within(() => {
       cy.findByText("Amorous Aardvarks").should("be.visible");
       cy.findByText("New York Bricks").should("not.exist");
@@ -117,6 +118,15 @@ function setTableEditingEnabledForDB(dbId: number, enabled = true) {
       "database-enable-table-editing": enabled,
     },
   });
+}
+
+/**
+ * The grid remounts while the dataset loads, so elements found before that
+ * point can detach before a click.
+ */
+function waitForGrid() {
+  cy.wait(["@getTableMetadata", "@dataset"]);
+  cy.findByTestId("edit-table-data-loading-overlay").should("not.exist");
 }
 
 /**
