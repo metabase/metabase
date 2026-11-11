@@ -692,10 +692,10 @@ describe("fetchCardDataAction", () => {
       });
     });
 
-    await store.dispatch(fetchCardDataAction({ card, dashcard }));
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
     expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(1);
 
-    await store.dispatch(fetchCardDataAction({ card, dashcard }));
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
     expect(fetchMock.callHistory.calls(queryUrl)).toHaveLength(1);
   });
 });
