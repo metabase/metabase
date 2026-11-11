@@ -1,5 +1,6 @@
 import * as d3 from "d3";
-import ss from "simple-statistics";
+// simple-statistics 3 is CommonJS, so its index pulls in every module. Import only ckmeans.
+import ckmeans from "simple-statistics/src/ckmeans";
 
 import { formatValue } from "metabase/value-formatting";
 import {
@@ -52,7 +53,7 @@ export function buildColorScale(
     .slice(-domain.length)
     .map(transformColor);
 
-  const groups = ss.ckmeans(domain, heatMapColors.length);
+  const groups = ckmeans(domain, heatMapColors.length);
   const groupBoundaries = groups.slice(1).map((cluster) => cluster[0]);
 
   const colorScale = d3
