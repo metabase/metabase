@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
@@ -554,6 +555,20 @@
 (defmethod sql-jdbc.execute/set-timezone-sql :redshift
   [_]
   "SET TIMEZONE TO %s;")
+
+(defn- normalize-details
+  "Get rid of details that were added that aren't relevant anymore."
+  [details]
+  (let [details (if (nil? (:auth-mode details))
+                  (assoc details :auth-mode "password")
+                  details)]
+    (if (= (:auth-mode details) "password")
+      details
+      (dissoc details :username :password))))
+
+(defmethod driver/normalize-db-details :redshift
+  [_ database]
+  (m/update-existing database :details normalize-details))
 
 ;; This impl is basically the same as the default impl in [[metabase.driver.sql-jdbc.execute]], but doesn't attempt to
 ;; make the connection read-only, because that seems to be causing problems for people

@@ -889,6 +889,19 @@
         (is (= [{:name "readable", :schema "s", :description nil}]
                (into [] (#'redshift/describe-database-tables (driver.u/lib-database (:id db))))))))))
 
+(deftest ^:parallel normalize-details-removes-irrelevant-fields
+  (let [db {:details {:auth-mode "iam-instance-profile"
+                      :username "glitchwitch"
+                      :password "57121092-73d7-4294-a3df-4bd24f50e864"}}
+        db2 {:details {:username "nullCh!LL"
+                       :password "a1b32feb-8c7b-401d-9459-150c9fba9e12"}}
+        normalized (driver/normalize-db-details :redshift db)
+        normalized2 (driver/normalize-db-details :redshift db2)]
+    (is (not (contains? normalized :username)))
+    (is (not (contains? normalized :password)))
+    (is (not (contains? normalized2 :username)))
+    (is (not (contains? normalized2 :password)))))
+
 (deftest ^:parallel url-building-details-reject-separators-test
   (doseq [details [{:host "r.example.com" :port 5439 :user "u" :db "a?b"}]]
     (testing (pr-str details)
