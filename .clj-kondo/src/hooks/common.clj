@@ -488,6 +488,14 @@
                 body))]
     {:node node*}))
 
+(defn ns-analysis
+  "Like `hooks/ns-analysis`, but nil when kondo can't read the namespace's cache entry."
+  [ns-sym]
+  ;; kondo throws on the cache of a cljc namespace with `:deprecated` metadata, e.g. `metabase.legacy-mbql.util`.
+  (try
+    (hooks/ns-analysis ns-sym)
+    (catch Exception _ nil)))
+
 (defn node->qualified-symbol
   "If the node is a symbol, return it as a qualified symbol if it's not already. Otherwise return nil."
   [node]

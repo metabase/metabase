@@ -1,20 +1,46 @@
 (ns hooks.clojure.core.let
   (:require
-   [clj-kondo.hooks-api :as hooks]))
+   [clj-kondo.hooks-api :as hooks]
+   [hooks.common :as common]))
 
 (def ^:private dynamic-redefs-macros
   '#{metabase.test/with-dynamic-fn-redefs
      metabase.test.util.dynamic-redefs/with-dynamic-fn-redefs})
 
-(defn- resolved-var
-  "The fully qualified symbol `node` names, when it is a symbol that resolves to a var."
-  [node]
-  (when (hooks/token-node? node)
-    (let [sym (hooks/sexpr node)]
-      (when (symbol? sym)
-        (let [{ns-sym :ns var-sym :name} (hooks/resolve {:name sym})]
-          (when (symbol? ns-sym)
-            (symbol (name ns-sym) (name var-sym))))))))
+(defn- captured-var-node
+  "The symbol node naming the var whose value `init` captures: `x`, `@#'x` or `(deref #'x)`. Otherwise nil."
+  [init]
+  (let [var-quoted (fn [node]
+                     (when (= :var (hooks/tag node))
+                       (first (:children node))))]
+    (case (hooks/tag init)
+      :token init
+      :deref (var-quoted (first (:children init)))
+      :list  (let [[f x & more] (:children init)]
+               (when (and x
+                          (not more)
+                          (= 'clojure.core/deref (common/node->qualified-symbol f)))
+                 (var-quoted x)))
+      nil)))
+
+(defn- reexported-from
+  "The vars that `var-sym` could be a potemkin re-export of.
+   That is a var of the same name in each namespace that its own namespace imports from."
+  [var-sym]
+  (let [var-name (symbol (name var-sym))]
+    (for [ns-sym (get-in (common/ns-analysis (symbol (namespace var-sym))) [:clj :proxied-namespaces])
+          :when  (get-in (common/ns-analysis ns-sym) [:clj var-name])]
+      (symbol (name ns-sym) (name var-name)))))
+
+(defn- var-and-sources
+  "The set of `var-sym` and every var it re-exports, directly or through other re-exports."
+  [var-sym]
+  (loop [found #{var-sym}
+         todo  [var-sym]]
+    (if-let [[v & more] (seq todo)]
+      (let [new-vars (remove found (reexported-from v))]
+        (recur (into found new-vars) (concat more new-vars)))
+      found)))
 
 (defn- symbols
   "Every symbol that appears in `node`."
@@ -30,11 +56,20 @@
   [nodes]
   (for [node  (mapcat #(tree-seq :children :children %) nodes)
         :when (and (hooks/list-node? node)
-                   (dynamic-redefs-macros (resolved-var (first (:children node)))))
+                   (dynamic-redefs-macros (common/node->qualified-symbol (first (:children node)))))
         :let  [[_ bindings] (:children node)]
         :when (hooks/vector-node? bindings)]
-    {:vars    (into #{} (keep resolved-var) (take-nth 2 (:children bindings)))
+    {:vars    (into #{} (keep common/node->qualified-symbol) (take-nth 2 (:children bindings)))
      :symbols (symbols node)}))
+
+(defn- redefined-while-used?
+  "Whether a form in `redefs` uses `local` while redefining `captured` or a var that `captured` re-exports."
+  [redefs local captured]
+  ;; Calling a captured re-export calls whatever its source's proxy calls, so redefining the source counts.
+  ;; The reverse is fine: redefining a re-export only intercepts calls made through the re-export.
+  (when-let [using (seq (filter #((:symbols %) local) redefs))]
+    (let [targets (var-and-sources captured)]
+      (some #(some (:vars %) targets) using))))
 
 (defn- message [sym]
   (str "This captures " sym ", which with-dynamic-fn-redefs redefines below. "
@@ -51,16 +86,20 @@
     (when (hooks/vector-node? bindings)
       (let [pairs    (partition 2 (:children bindings))
             captures (for [[local init] pairs
-                           :let  [v (resolved-var init)]
-                           :when (and v (hooks/token-node? local))]
-                       {:local (hooks/sexpr local), :init init, :captured v})]
+                           :let  [var-node (captured-var-node init)
+                                  captured (common/node->qualified-symbol var-node)]
+                           :when (and captured (hooks/token-node? local))]
+                       {:local    (hooks/sexpr local)
+                        :init     init
+                        :var-node var-node
+                        :captured captured})]
         ;; Only walk the scope when some binding captures a var, which few do.
         (when (seq captures)
           (let [redefs (dynamic-redefs (concat (map second pairs) body))]
-            (doseq [{:keys [local init captured]} captures
-                    :when                         (some #(and ((:vars %) captured) ((:symbols %) local)) redefs)]
+            (doseq [{:keys [local init var-node captured]} captures
+                    :when (redefined-while-used? redefs local captured)]
               (hooks/reg-finding!
                (assoc (meta init)
-                      :message (message (hooks/sexpr init))
+                      :message (message (hooks/sexpr var-node))
                       :type    :metabase/dynamic-redefs-captured-proxy))))))))
   {:node node})

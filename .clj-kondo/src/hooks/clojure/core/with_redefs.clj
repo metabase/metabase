@@ -1,14 +1,7 @@
 (ns hooks.clojure.core.with-redefs
   (:require
-   [clj-kondo.hooks-api :as hooks]))
-
-(defn- ns-analysis
-  "Like `hooks/ns-analysis`, but nil when kondo can't read the namespace's cache entry."
-  [ns-sym]
-  ;; kondo throws on the cache of a cljc namespace with `:deprecated` metadata, e.g. `metabase.legacy-mbql.util`.
-  (try
-    (hooks/ns-analysis ns-sym)
-    (catch Exception _ nil)))
+   [clj-kondo.hooks-api :as hooks]
+   [hooks.common :as common]))
 
 (defn- defn-arity?
   "Whether `var-sym` is a `defn`-style function on the `:clj` side of `analysis`, the result of `hooks/ns-analysis`.
@@ -31,7 +24,7 @@
         ;; Only the namespaces on the current path are in `seen`, so a source reached by two routes is still followed.
         (let [proxied (into {} (for [ns-sym (get-in analysis [:clj :proxied-namespaces])
                                      :when  (not (seen ns-sym))]
-                                 [ns-sym (:clj (ns-analysis ns-sym))]))
+                                 [ns-sym (:clj (common/ns-analysis ns-sym))]))
               ;; Skip private vars: a renamed import can share its name with an unrelated private var in a source.
               sources (for [[ns-sym vars] proxied
                             :let  [v (get vars var-sym)]
@@ -61,7 +54,7 @@
        (let [resolved (hooks/resolve {:name (hooks/sexpr lhs)})
              ns-sym   (:ns resolved)]
          (and (symbol? ns-sym) ; not :clj-kondo/unknown-namespace
-              (defn-arity? (ns-analysis ns-sym) (:name resolved))))))
+              (defn-arity? (common/ns-analysis ns-sym) (:name resolved))))))
 
 (defn lint-with-redefs
   "Suggest `with-dynamic-fn-redefs` when every LHS is known to be a `defn`-style var.
