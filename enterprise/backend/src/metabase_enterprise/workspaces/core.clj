@@ -216,13 +216,14 @@
   on one throwable). The message is the messages the databases returned, joined
   into one line. The ex-data is shaped so the API error middleware returns just
   that message — without it, an uncaught 500 dumps the full `Throwable->map`
-  cause chain into the response."
-  ^Throwable [throwables]
+  cause chain into the response. `data` is merged in, and must carry the
+  `:status-code`."
+  ^Throwable [throwables data]
   (let [message       (str/join "; " (map #(or (ex-message %) (str (class %))) throwables))
         ^Throwable ex (ex-info message
-                               {:status-code 500
-                                :message     message
-                                :errors      {:_error message}}
+                               (merge {:message message
+                                       :errors  {:_error message}}
+                                      data)
                                (first throwables))]
     (run! #(.addSuppressed ex ^Throwable %) (rest throwables))
     ex))
@@ -240,7 +241,8 @@
   row gets its attempt: rows whose teardown succeeds are deleted immediately
   (progress is persisted per row, so an instance crash midway loses nothing);
   rows whose teardown fails are kept. Throws the combined failures when any
-  teardown failed."
+  teardown failed: with the failure's own `:status-code` when there is one
+  failure, else 500."
   [workspace-id]
   (let [failures (into []
                        (keep (fn [wsd]
@@ -250,7 +252,11 @@
                                  (catch Throwable t t))))
                        (ws.db/workspace-databases workspace-id))]
     (when (seq failures)
-      (throw (combined-exception failures)))))
+      ;; a single failure keeps its status, such as a driver's 409 naming what must happen before a retry
+      (throw (combined-exception failures
+                                 {:status-code (or (when (= 1 (count failures))
+                                                     (:status-code (ex-data (first failures))))
+                                                   500)})))))
 
 (defn create-workspace!
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
@@ -297,7 +303,7 @@
               (workspace/delete-workspace! (:id ws))
               (catch Throwable delete-t
                 (.addSuppressed t delete-t)))
-            (throw (combined-exception [t]))))))
+            (throw (combined-exception [t] {:status-code 500}))))))
     (workspace/get-workspace (:id ws))))
 
 (defn delete-workspace!

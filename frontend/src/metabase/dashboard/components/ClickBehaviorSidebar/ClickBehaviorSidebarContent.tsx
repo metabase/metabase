@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
-import { getIn } from "icepick";
 import { useMemo } from "react";
 
 import { getDashcardData } from "metabase/dashboard/selectors";
@@ -58,7 +56,7 @@ export function ClickBehaviorSidebarContent({
     !hasSelectedColumn &&
     dashcard.card_id
   ) {
-    const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
+    const columns = dashcardData?.[dashcard.card_id]?.data?.cols ?? [];
     return (
       <TableClickBehaviorView
         columns={columns}

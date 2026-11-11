@@ -24,7 +24,7 @@
                                                                       :native   {:query "SELECT 1"}}}]
       (let [exported (extract-one :model/Action (t2/select-one :model/Action :id (:id action)))
             db-name  (t2/select-one-fn :name :model/Database :id (mt/id))]
-        (is (=? {:type  "query"
+        (is (=? {:type  :query
                  :query [{:database_id db-name :dataset_query {:database db-name}}]}
                 exported))
         (t2/delete! :model/QueryAction :action_id (:id action))

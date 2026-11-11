@@ -91,7 +91,7 @@
         description     (assoc :description description)
         parent-id       (assoc :parent_id parent-id)
         coll-namespace  (assoc :namespace coll-namespace)
-        authority_level (assoc :authority_level authority_level))))))
+        authority_level (assoc :authority_level (keyword authority_level)))))))
 
 (defn- update!
   [id {:keys [description parent_id archived authority_level], coll-name :name, :as args}]
@@ -106,7 +106,7 @@
         (contains? args :description)     (assoc :description description)
         (contains? args :parent_id)       (assoc :parent_id (v2.resolve/resolve-collection-id parent_id))
         (contains? args :archived)        (assoc :archived (boolean archived))
-        (contains? args :authority_level) (assoc :authority_level authority_level))))))
+        (contains? args :authority_level) (assoc :authority_level (some-> authority_level keyword)))))))
 
 (def ^:private collection-write-args-schema
   [:map {:closed true}

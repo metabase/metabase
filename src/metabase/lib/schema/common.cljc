@@ -22,6 +22,10 @@
   (cond-> x
     (string? x) keyword))
 
+(mr/def ::keyword
+  "A keyword, normalized from its name."
+  [:keyword {:decode/normalize normalize-keyword}])
+
 (defn normalize-keyword-lower
   "Base normalization behavior for something that should be a keyword: calls [[clojure.core/keyword]] on it if it is a
   string. This is preferable to using [[clojure.core/keyword]] directly, because that will be tried on things that
@@ -153,13 +157,6 @@
    {:error/message "positive number"
     :json-schema   {:type "number" :exclusiveMinimum 0}}
    (every-pred number? pos?)])
-
-(mr/def ::visualization-settings
-  "Chart-rendering settings authored by the frontend. The backend stores and echoes them and reads no fixed key set, so
-  the keys are whatever the visualization the user picked needs. This is the `.cljc` equivalent
-  of [[metabase.util.malli.schema/VisualizationSettings]], which we cannot use here because that namespace is `.clj`
-  only."
-  [:map {:closed false, ::mr/deliberately-open true, :description "visualization settings", :decode/normalize normalize-map-no-kebab-case}])
 
 (mr/def ::clause-options
   "The options map of any MBQL clause, MBQL 5 or legacy, possibly not yet normalized; its keys depend on the clause."

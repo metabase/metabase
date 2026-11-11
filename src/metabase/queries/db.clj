@@ -11,6 +11,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -21,10 +22,12 @@
 
 (mu/defn synced-cards-clause :- [:fn vector?]
   "The clause over the Card table aliased `alias` selecting the Cards remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   [:and
-   [:= (u/qualified-key alias :archived) false]
-   (remote-sync/synced-fk-clause alias :collection_id :model/Collection)])
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn card
   "The Card with `card-id`, or nil."
