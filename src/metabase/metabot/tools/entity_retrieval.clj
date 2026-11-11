@@ -16,7 +16,6 @@
   Runs in the enterprise pgvector store via [[metabase.search.entity-retrieval.core]]."
   (:require
    [clojure.string :as str]
-   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
@@ -214,18 +213,15 @@
 ;; to, or by database, so it is withheld wherever those limits apply (see [[confined-discovery?]]; the SQL profile
 ;; doesn't list it). Add those filters to offer it there too.
 (defn- confined-discovery?
-  "Whether this request confines discovery to a collection, which library retrieval can't honour yet: the embedded
-  metabot, or the NLQ profile, with a configured collection."
+  "Whether this request confines discovery to a collection, which library retrieval can't honour yet."
   [{:keys [metabot profile-id]}]
-  (boolean
-   (and (:collection_id metabot)
-        (or (= (:entity_id metabot) metabot.config/embedded-metabot-id)
-            (= "nlq" (some-> profile-id name))))))
+  (some? (tools.search/confined-collection-id metabot profile-id)))
 
 (defn- library-available?
   [ctx]
-  (and (entity-retrieval/entity-retrieval-available?)
-       (not (confined-discovery? ctx))))
+  ;; The confined check is free; the availability check probes the vector store.
+  (and (not (confined-discovery? ctx))
+       (entity-retrieval/entity-retrieval-available?)))
 
 (defn- library-unavailable-note
   "What the prompt says about library retrieval when it isn't offered, as text safe to show any user."

@@ -491,12 +491,13 @@
       ;; Create futures for parallel execution
       (mapv deref (mapv #(future (attempt %)) all-queries)))))
 
-(defn- confined-collection-id
-  "The collection that a search for `metabot` must stay inside, or nil. A confined metabot (embedded, or
-  the nlq profile) may only search inside its own collection."
+(defn confined-collection-id
+  "The collection that discovery for `metabot` must stay inside, or nil.
+  A confined metabot (embedded, or the nlq profile) may only search inside its own collection.
+  Takes `profile-id` as a string or a keyword."
   [metabot profile-id]
   (when (or (= (:entity_id metabot) metabot.config/embedded-metabot-id)
-            (= profile-id "nlq"))
+            (= "nlq" (some-> profile-id name)))
     (:collection_id metabot)))
 
 (defn- scoped-collection-id
