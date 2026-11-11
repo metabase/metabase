@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
@@ -143,19 +144,43 @@
   ^long [request]
   (alength (.getBytes ^String (json/encode (openrouter/openrouter-request-body request)) "UTF-8")))
 
-(deftest generate-content-listing-size-test
-  (testing "with 200 models in scope, the request after `list_available_data_sources` stays under 100 KB"
-    (let [mp     (mt/metadata-provider)
-          orders (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-      (mt/with-model-cleanup [:model/Card]
-        (t2/insert! :model/Card (for [i (range 200)]
-                                  {:name                   (str "Orders model " i)
-                                   :type                   :model
-                                   :display                :table
-                                   :dataset_query          orders
-                                   :visualization_settings {}
-                                   :creator_id             (mt/user->id :crowberto)
-                                   :database_id            (mt/id)}))
+(defn- sized-text
+  "`text`, padded with \"x\" or cut to `n` characters."
+  [text n]
+  (subs (str text (apply str (repeat n "x"))) 0 n))
+
+(defn- insert-sized-cards!
+  "Insert `n` cards of `card-type` over ORDERS into `collection-id`. Each card gets the name and description that
+  `text-fn` gives for its index and name, as `[name description]`. Every card gets one `last_used_at`, so the order
+  does not depend on the insert time."
+  [n card-type collection-id text-fn]
+  (let [mp     (mt/metadata-provider)
+        orders (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+    (t2/insert! :model/Card (for [i (range n)
+                                  :let [[card-name description] (text-fn i (str "Stats " (name card-type) " " i))]]
+                              {:name                   card-name
+                               :description            description
+                               :type                   card-type
+                               :display                :table
+                               :dataset_query          (cond-> orders
+                                                         (= card-type :metric) (lib/aggregate (lib/count)))
+                               :visualization_settings {}
+                               :collection_id          collection-id
+                               :creator_id             (mt/user->id :crowberto)
+                               :database_id            (mt/id)
+                               :last_used_at           (java.time.OffsetDateTime/parse "2026-01-01T00:00:00Z")}))))
+
+(defn- listing-request!
+  "Insert the cards that `insert!` adds to a new collection, given its id, with the internal Metabot confined to that
+  collection. Return request 2 of a turn whose first reply calls `list_available_data_sources`."
+  [insert!]
+  (mt/initialize-if-needed! :db)
+  (mt/with-temp [:model/Collection {coll-id :id} {}]
+    (mt/with-model-cleanup [:model/Card]
+      (insert! coll-id)
+      ;; The endpoint uses the internal Metabot, so the test confines it to the new collection for exact counts.
+      (mt/with-temp-vals-in-db :model/Metabot (:id (metabot.config/resolve-metabot nil))
+                               {:collection_id coll-id :use_verified_content false}
         (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                            llm-metabot-provider test-provider]
           (let [requests (atom [])]
@@ -166,9 +191,38 @@
                                                                   :arguments {}}]])]
               (mt/user-http-request :crowberto :post 200 "metabot/document/generate-content"
                                     {:instructions "count of orders"}))
-            (let [size (request-body-bytes (second @requests))]
-              (is (< size (* 100 1024))
-                  (format "request 2 is %d bytes" size)))))))))
+            (second @requests)))))))
+
+(defn- input-match-count
+  "The number of matches of `re` in the strings of the input of the LLM `request`."
+  [request re]
+  (transduce (comp (filter string?) (map #(count (re-seq re %))))
+             +
+             (tree-seq coll? seq (:input request))))
+
+(deftest generate-content-stats-shaped-size-test
+  (testing "with 180 models and 20 metrics in scope, request 2 is under 100 KB and lists 20 metrics and 130 models"
+    (let [text-fn (fn [i card-name]
+                    (if (zero? (mod i 10))
+                      [(sized-text card-name 100) (sized-text "A long description" 2000)]
+                      [(sized-text card-name 30) (sized-text "A typical description" 134)]))
+          request (listing-request! (fn [coll-id]
+                                      (insert-sized-cards! 180 :model coll-id text-fn)
+                                      (insert-sized-cards! 20 :metric coll-id text-fn)))
+          size    (request-body-bytes request)]
+      (is (< size (* 100 1024)) (format "request 2 is %d bytes" size))
+      (is (= 20 (input-match-count request #"<metric id=")))
+      (is (= 130 (input-match-count request #"<metabase-model id="))))))
+
+(deftest generate-content-long-entries-size-test
+  (testing "with 151 long models (100-character names, 2,000-character descriptions), request 2 is under 100 KB"
+    (let [request (listing-request! #(insert-sized-cards! 151 :model %
+                                                          (fn [_ card-name]
+                                                            [(sized-text card-name 100)
+                                                             (sized-text "A long description" 2000)])))
+          size    (request-body-bytes request)]
+      (is (< size (* 100 1024)) (format "request 2 is %d bytes" size))
+      (is (= 150 (input-match-count request #"<(metabase-model|metric) id="))))))
 
 (deftest generate-content-model-chart-round-trip-test
   (testing "the model lists the data sources, reads the model's columns, loads the query skills, then charts the model"

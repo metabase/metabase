@@ -735,8 +735,8 @@
   "Honey SQL query selecting the metric and model Cards in scope of the Metabot with `metabot-id` that are visible to
   the current user, ignoring analytics content. If the Metabot has `:use_verified_content` enabled, restricts to
   verified-or-curated content (verified, official-collection, or library-published). `limit`, if given, caps the
-  number of rows."
-  [metabot-id limit]
+  number of rows. `card-type`, if given, selects only the Cards of that type (`:metric` or `:model`)."
+  [metabot-id limit & {:keys [card-type]}]
   (let [metabot-instance       (metabot metabot-id)
         metabot-collection-id  (:collection_id metabot-instance)
         use-verified-content?  (:use_verified_content metabot-instance)
@@ -765,7 +765,9 @@
                                      :where [:and
                                              [:!= :report_card.database_id audit-app/audit-db-id]
                                              collection-filter
-                                             [:in :report_card.type ["metric" "model"]]
+                                             (if card-type
+                                               [:= :report_card.type [:auto/param (name card-type)]]
+                                               [:in :report_card.type ["metric" "model"]])
                                              [:= :report_card.archived false]
                                              (when api/*current-user-id*
                                                (collection.model/visible-collection-filter-clause :report_card.collection_id))]}]
@@ -805,6 +807,25 @@
   (t2/select :model/Card (h2x/assert-map-or-nil!
                           (-> (metabot-metrics-and-models-query metabot-id limit)
                               (update :order-by (fnil conj []) [:report_card.id])))))
+
+(mu/defn metabot-cards-of-type
+  "The Cards of `card-type` in scope of the Metabot with `metabot-id` that are visible to the current user.
+
+  See [[metabot-metrics-and-models-query]] for the scope. The order is curated first, then the most recently used,
+  then by Card id. `limit`, if given, caps the number of rows returned."
+  [metabot-id :- ms/PositiveInt
+   card-type  :- [:enum :metric :model]
+   limit      :- [:maybe ms/PositiveInt]]
+  ;; MySQL has no NULLS LAST, but it sorts NULL last on DESC:
+  ;; https://dev.mysql.com/doc/refman/8.4/en/working-with-null.html
+  (let [last-used-desc (case (mdb/db-type)
+                         (:postgres :h2) :desc-nulls-last
+                         :mysql          :desc)]
+    (t2/select :model/Card (h2x/assert-map-or-nil!
+                            (-> (metabot-metrics-and-models-query metabot-id limit :card-type card-type)
+                                (update :order-by (fnil into [])
+                                        [[:report_card.last_used_at last-used-desc]
+                                         [:report_card.id]]))))))
 
 (mu/defn card-entity-ids
   "A map of Card ID to entity ID for `card-ids`."

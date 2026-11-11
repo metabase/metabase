@@ -148,10 +148,20 @@
        "<instructions>\n" instruction-text "\n</instructions>"))
 
 ;; Every later request of the turn sends the list again, so a long list can pass the model's context window or the
-;; provider's request size limit.
+;; provider's request size limit. A long entry has a 100-character ASCII name and a description cut to 200
+;; characters. It is about 449 B of request JSON. The request without the list is about 15,476 B. So 150 long
+;; entries give 15,476 + 150 × 449 = 82,826 B, under the 102,400 B target, and 200 entries give 105,276 B.
+;; Names are not cut, and a card name can have 254 characters. With 254-character ASCII names, 150 entries give
+;; about 105,926 B, over the target. Selmer escapes `"` and `&`, and UTF-8 uses 2-4 B for a non-ASCII character,
+;; so an entry can be larger again. An entry is at most about 2,873 B, so 150 entries give at most about 446 KB.
+;; That is far under the 8 MB provider limit.
 (def ^:private max-answer-sources
   "The most entries that `list_available_data_sources` lists."
-  50)
+  150)
+
+(def ^:private max-answer-source-metrics
+  "The most metric entries that `list_available_data_sources` lists. The places that metrics do not use go to models."
+  30)
 
 (defn- collection-browse-uris
   "The `read_resource` URIs, each with what it gives, that find the data sources in the collection `collection-id`."
@@ -171,16 +181,21 @@
                database-ids)))
 
 (defn- more-answer-sources-note
-  "A note that the scope holds more data sources than the list shows, with the URIs that `read_resource` can
-  browse."
-  [{:keys [collection_id database_ids]}]
+  "A note that the scope holds more models or metrics than the list shows.
+
+  The note gives the URIs that `read_resource` can browse, and the SQL path for when no listed source fits."
+  [{:keys [collection_id database_ids more-models? more-metrics?]}]
   (let [uris (if collection_id
                (collection-browse-uris collection_id)
                (instance-browse-uris database_ids))]
     (str "<more-data-sources>\n"
-         "This list does not show all data sources. More data sources exist. "
+         "This list does not show all data sources. "
+         (when more-models? "More models exist. ")
+         (when more-metrics? "More metrics exist. ")
          "To find them, call `read_resource` with one of these URIs:\n"
          (str/join "\n" (map #(str "- " %) uris)) "\n"
+         "If no listed model or metric fits the request, call `document_schema_collect`, then build a SQL chart with "
+         "`document_construct_sql_chart`.\n"
          "</more-data-sources>")))
 
 (defn- short-answer-source
@@ -190,7 +205,7 @@
                        :source_unavailable]))
 
 (defn- format-answer-sources-output
-  [{:keys [metrics models more?] :as sources}]
+  [{:keys [metrics models more-models? more-metrics?] :as sources}]
   (let [content (str (when (seq metrics)
                        (str "<metrics>\n"
                             (str/join "\n" (map llm-shape/data-source-entry->xml metrics))
@@ -199,7 +214,7 @@
                        (str "<metabase-models>\n"
                             (str/join "\n" (map llm-shape/data-source-entry->xml models))
                             "\n</metabase-models>\n"))
-                     (when more?
+                     (when (or more-models? more-metrics?)
                        (more-answer-sources-note sources)))]
     (format-with-instructions content instructions/answer-sources-instructions)))
 
@@ -228,8 +243,9 @@
   tools/Tool
   (declaration [_]
     {:name "list_available_data_sources"
-     :description (str "List up to " max-answer-sources " data sources (metrics and models) available to the "
-                       "metabot instance, curated first. Each entry holds the id, name, description and database. "
+     :description (str "List up to " max-answer-sources " data sources (metrics and models, at most "
+                       max-answer-source-metrics " metrics) available to the metabot instance, curated first, then "
+                       "the most recently used. Each entry holds the id, name, description and database. "
                        "Call `list_available_fields` to get the columns of a model. Call `read_resource` with "
                        "`metabase://metric/{id}/dimensions` to get the dimensions of a metric.")
      :scope scope/agent-metadata-read
@@ -240,6 +256,7 @@
     (add-output
      (update (entity-details-tools/answer-sources {:metabot            metabot
                                                    :limit              max-answer-sources
+                                                   :max-metrics        max-answer-source-metrics
                                                    :with-field-values? false})
              :structured-output
              (fn [sources]

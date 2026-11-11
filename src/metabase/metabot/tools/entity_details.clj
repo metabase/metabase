@@ -741,26 +741,42 @@
    :with-queryable-dimensions?      false
    :with-default-temporal-breakout? false})
 
-(defn- scope-rows
-  "The first `limit` metric and model rows in the scope of the Metabot with `metabot-id`, curated first, and whether
-  more rows exist. A nil `limit` returns every row."
-  [metabot-id limit]
-  (let [rows (metabot.tools.u/get-metrics-and-models metabot-id :limit (some-> limit inc))]
+(defn- typed-rows
+  "The first `limit` rows of `card-type` in the scope of the Metabot with `metabot-id`, and whether more rows exist.
+  A nil `limit` returns every row."
+  [metabot-id card-type limit]
+  ;; One extra row tells whether more rows exist.
+  (let [rows (metabot.tools.u/get-cards-of-type metabot-id card-type :limit (some-> limit inc))]
     (if (and limit (> (count rows) limit))
       {:rows (take limit rows) :more? true}
       {:rows rows :more? false})))
 
+(defn- scope-rows
+  "The metric and model rows in the scope of the Metabot with `metabot-id`, and whether each type has more rows.
+
+  The rows hold at most `max-metrics` metrics and at most `limit` rows in all. The places that metrics do not use go
+  to models. Each type is curated first, then the most recently used. A nil `limit` caps only the metrics, at
+  `max-metrics`. With both nil, no rows are capped."
+  [metabot-id limit max-metrics]
+  (let [metric-limit (if (and limit max-metrics) (min limit max-metrics) (or limit max-metrics))
+        metrics      (typed-rows metabot-id :metric metric-limit)
+        models       (typed-rows metabot-id :model (some-> limit (- (count (:rows metrics)))))]
+    {:rows          (concat (:rows metrics) (:rows models))
+     :more-metrics? (:more? metrics)
+     :more-models?  (:more? models)}))
+
 (defn answer-sources
   "Get the metrics and models in the scope of a Metabot row, with light detail.
 
-  Accepts a map with `:metabot`, an optional `:limit` on the number of rows, and optional options for field values.
-  The structured output holds `:metrics`, `:models`, `:more?` (true when the scope holds more than `:limit` rows),
-  the Metabot's `:collection_id`, and the `:database_ids` of the listed rows."
-  [{:keys [metabot limit] :as options}]
+  Accepts a map with `:metabot` and optional options for field values. An optional `:limit` caps the rows, and an
+  optional `:max-metrics` caps the metrics. The structured output holds `:metrics`, `:models`,
+  `:more-metrics?`, `:more-models?`, the Metabot's `:collection_id`, and the `:database_ids` of the listed rows.
+  `:more-metrics?` and `:more-models?` are true when the scope holds more rows of that type than the list."
+  [{:keys [metabot limit max-metrics] :as options}]
   (if-let [metabot-id (:id metabot)]
     (lib-be/with-metadata-provider-cache
-      (let [{:keys [rows more?]} (scope-rows metabot-id limit)
-            options (merge (dissoc options :metabot :limit) answer-source-options)
+      (let [{:keys [rows more-metrics? more-models?]} (scope-rows metabot-id limit max-metrics)
+            options (merge (dissoc options :metabot :limit :max-metrics) answer-source-options)
             {metrics :metric, models :model}
             (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) rows)
                        detail (cards-details card-type database-id cards options)]
@@ -773,7 +789,8 @@
         {:structured-output {:result-type   :answer-sources
                              :metrics       (vec metrics)
                              :models        (vec models)
-                             :more?         more?
+                             :more-metrics? more-metrics?
+                             :more-models?  more-models?
                              :collection_id (:collection_id metabot)
                              :database_ids  (into (sorted-set) (keep :database_id) rows)}}))
     (throw (ex-info (i18n/tru "Unknown Metabot.")
