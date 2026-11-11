@@ -1,0 +1,1056 @@
+name: Docrunner
+run-name: "Docrunner for #${{ inputs.issue || github.event.issue.number }}"
+
+# A writer reads a GitHub issue, then adds the label `Docrunner`. Docrunner writes the docs change and opens a draft PR.
+# A second job takes the screenshots that the change needs, and pushes them to the PR.
+# Prompt templates: dev/bot/docrunner-agent.md and dev/bot/docrunner-screenshots-agent.md.
+# For a label run, claude-code-action stops if the person who added the label cannot write to the repo.
+# The writer can also add the label to the synced Linear issue. Then Linear adds it on GitHub as `linear[bot]`.
+# For that path, `allowed_bots: linear` in each agent step lets the run continue. The action accepts each `[bot]`
+# actor with no check of its access, thus it does not check the person who added the label in Linear: each member
+# of the Linear workspace can start Docrunner. repro-bot.yml uses the same rule.
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: "Issue number"
+        required: true
+        type: string
+      dry_run:
+        description: "Dry run: upload the results as an artifact. Do not open a PR, push, or comment"
+        required: false
+        default: false
+        type: boolean
+
+permissions: {}
+
+# Each label on an issue starts this workflow. A run for another label gets its own group: in a shared group,
+# a new pending run cancels the older pending run, and that run can be the Docrunner run.
+concurrency:
+  group: >-
+    ${{ (github.event_name == 'workflow_dispatch' || github.event.label.name == 'Docrunner')
+    && format('docrunner-{0}', inputs.issue || github.event.issue.number)
+    || format('docrunner-other-{0}', github.run_id) }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  ISSUE: ${{ inputs.issue || github.event.issue.number }}
+  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  # The JSON schema of the docs agent also uses this regex, thus it has no backslash.
+  IMAGE_PATH_RE: '^docs/([A-Za-z0-9_-]+/)*images/[A-Za-z0-9_-][A-Za-z0-9_.-]*[.]png$'
+  # A new Markdown file must have a path of the same form. See "Remove files that are not Markdown".
+  MD_PATH_RE: '^docs/([A-Za-z0-9_-]+/)*[A-Za-z0-9_-][A-Za-z0-9_.-]*[.]md$'
+  # The lines of .github/CODEOWNERS for generated paths in docs/. Both jobs keep Docrunner out of these paths.
+  GENERATED_RE: '^/?docs/[^[:space:]]+[[:space:]]+#[[:space:]]*auto-generated'
+  DOCRUNNER_MODEL: claude-opus-5-5
+  DOCRUNNER_MAX_TURNS: "100"
+  SCREENSHOTS_MODEL: claude-sonnet-5-5
+  SCREENSHOTS_MAX_TURNS: "150"
+  # The cost limit of one agent run, in USD. Claude Code calculates the cost from the token counts at list price,
+  # thus the cost is an estimate, not the bill. Claude Code compares the cost with the limit after each model
+  # response, thus a run can go above the limit by the cost of one response. Each limit is for one run: this
+  # workflow has no limit for the total of all runs.
+  DOCRUNNER_MAX_BUDGET_USD: "10"
+  SCREENSHOTS_MAX_BUDGET_USD: "5"
+  # `run_usage` reads an agent transcript, and gives the data of its last `result` message: why the agent stopped,
+  # and what the run cost. A failed run also has this message. `modelUsage` and `total_cost_usd` include the
+  # response that got to the cost limit, and `usage` does not. `usage_table` makes the table for the run summary.
+  USAGE_JQ: |
+    def num: if type == "number" then . else 0 end;
+    def run_usage:
+      ([.[] | select(.type == "result")] | last // {}) as $r
+      | [$r.modelUsage // {} | .[]] as $m
+      | {stop: ($r.subtype // "none" | tostring | gsub("[^A-Za-z_]"; "")),
+         turns: ($r.num_turns | num),
+         cost_usd: ($r.total_cost_usd | num),
+         input: ($m | map(.inputTokens | num) | add // 0),
+         cache_write: ($m | map(.cacheCreationInputTokens | num) | add // 0),
+         cache_read: ($m | map(.cacheReadInputTokens | num) | add // 0),
+         output: ($m | map(.outputTokens | num) | add // 0)};
+    def usage_table($agent):
+      "| Agent | Result | Turns | Cost (USD, estimate) | Input tokens | Cache write tokens | Cache read tokens | Output tokens |\n"
+      + "| --- | --- | --- | --- | --- | --- | --- | --- |\n"
+      + "| \($agent) | \(.stop) | \(.turns) | \((.cost_usd * 10000 | round) / 10000) | \(.input) | \(.cache_write) | \(.cache_read) | \(.output) |";
+  # The bot posts text from the agents, and no person reviews it first. `sanitize` makes this text safer.
+  # It adds zero-width spaces, not code spans: a zero-width space has the same effect in each Markdown context.
+  # If the filter puts a URL in backticks, and the URL is already in a code span, the URL comes out of the span.
+  # - A URL that is not on github.com/metabase or metabase.com gets a zero-width space after its first character
+  #   (`defang`), thus it is not a link. `defang` also puts one after each `@` in that URL, because GitHub makes
+  #   a `mailto:` link of `host@other-host`. First, the filter removes each backslash before `:` or `/`, and escapes
+  #   each `&` before an entity, because Markdown can hide a URL with them. A browser reads `\` as `/` in a URL,
+  #   thus `/\host` and `\\host` are URLs to other sites. An allowed URL with `..`, `%2e`, or `\` is also not
+  #   permitted, because a browser opens `https://github.com/metabase/../x` as `https://github.com/x`.
+  #   The `https?:` form has no lookbehind: GitHub also makes a link of a URL that follows `:`, `-`, `_`, `.`,
+  #   or a digit. The `www.` form is a link after `_`, thus `_` is not in the lookbehind.
+  # - A Markdown link is permitted only to an allowed URL or to `#anchor`. For each other target (for example
+  #   `/other-org/repo`), a zero-width space after the `]` of `](` and of `]:` stops the link. This rule does not
+  #   use the line start, because a link definition can be in a block quote or a list. `<a` becomes `&lt;a`.
+  # - A closing keyword before a GitHub URL also defangs the URL. A zero-width space after the `#` of a
+  #   closing keyword (for example `Fixes #123`) stops the reference. Thus a merge does not close that issue.
+  # - A zero-width space after each `@` stops the mentions, also in code spans.
+  # Not changed: an email address in plain text, which GitHub shows as a `mailto:` link.
+  SANITIZE_JQ: |
+    def defang: .[0:1] + "\u200b" + (.[1:] | gsub("@"; "@\u200b"));
+    def sanitize:
+      gsub("\\\\(?=[:/])"; "")
+      | gsub("&(?=#?[A-Za-z0-9]+;)"; "&amp;")
+      | gsub("<(?=/?a[\\s/>])"; "&lt;"; "i")
+      | gsub("(?<u>https?:[^\\s<>()\\[\\]\"'`]+)";
+          if (.u | test("^https://(?:github\\.com/metabase/|(?:[a-z0-9-]+\\.)*metabase\\.com(?:[/?#]|$))"; "i"))
+            and (.u | test("/[.][.]|%2e|\\\\"; "i") | not)
+          then .u else (.u | defang) end; "i")
+      | gsub("(?<![A-Za-z0-9/\\\\:.@-])(?<u>(?:[/\\\\]{2}|www\\.)[^\\s<>()\\[\\]\"'`]+)"; .u | defang; "i")
+      | gsub("\\](?=[(:](?!\\s*(?:https://|#)))"; "]\u200b"; "i")
+      | gsub("(?<k>\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\\s*:?\\s*)(?<u>https://github\\.com/[^\\s<>()\\[\\]\"'`]+)";
+          "\(.k)\(.u | defang)"; "i")
+      | gsub("(?<k>\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\\s*:?\\s*)(?<r>(?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#)(?=[0-9])";
+          "\(.k)\(.r)\u200b"; "i")
+      | gsub("(?<a>^|[^A-Za-z0-9_])@(?<n>[A-Za-z0-9])"; "\(.a)@\u200b\(.n)");
+
+jobs:
+  docrunner:
+    name: Write the docs change
+    if: >-
+      github.repository == 'metabase/metabase' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.label.name == 'Docrunner' && github.event.issue.state == 'open'))
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      status: ${{ steps.status.outputs.status }}
+      images: ${{ steps.status.outputs.images }}
+      pr_number: ${{ steps.pr.outputs.pull-request-number }}
+      pr_branch: ${{ steps.pr.outputs.pull-request-branch }}
+    steps:
+      # The `runner` context is not available in job-level `env`. Thus the first step of each job sets `T` (temporary
+      # files) and `OUT` (the files for the artifact) for all the steps after it, also the `always()` steps.
+      - name: Set the paths
+        run: printf 'T=%s\nOUT=%s\n' "$RUNNER_TEMP/docrunner" "$RUNNER_TEMP/docrunner/out" >> "$GITHUB_ENV"
+
+      # The PR goes to the person who added the label, or who started the dispatch. For a label from Linear, the
+      # sender is `linear[bot]`, and GitHub does not know which person added the label. Then the PR goes to the
+      # assignees of the issue: Linear copies the Linear assignee to GitHub if that person linked a GitHub account.
+      - name: Check the issue
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SENDER: ${{ github.event.sender.login }}
+          SENDER_TYPE: ${{ github.event.sender.type }}
+        run: |
+          if ! [[ "$ISSUE" =~ ^[0-9]+$ ]]; then
+            echo "::error::The issue must be a number."
+            exit 1
+          fi
+          mkdir -p "$T"
+          gh api -H "Accept: application/vnd.github.full+json" \
+            "repos/$GITHUB_REPOSITORY/issues/$ISSUE" > "$T/issue.json"
+          if jq -e '.pull_request' "$T/issue.json" > /dev/null; then
+            echo "::error::#$ISSUE is a pull request. Docrunner reads issues only."
+            exit 1
+          fi
+          if [ "$SENDER_TYPE" = User ]; then
+            assignees=$SENDER
+          else
+            assignees=$(jq -r '[.assignees[]?.login] | join(",")' "$T/issue.json")
+          fi
+          echo "assignees=$assignees" >> "$GITHUB_OUTPUT"
+          echo "PR assignees: ${assignees:-none}"
+
+      # No `ref`: an `issues` run gets the default branch, and a dispatch run gets the branch of the run.
+      # Thus a test on a branch uses the prompt templates of that branch.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # A dry run opens no PR, thus it does not need this check. Then a writer can test a prompt change on an issue
+      # that has an open docrunner PR. A skipped step gives an empty `url`, and the steps after it continue.
+      - name: Find an open docrunner PR
+        id: existing
+        if: inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          url=$(gh api "repos/$GITHUB_REPOSITORY/pulls?state=open&head=${GITHUB_REPOSITORY_OWNER}:docrunner/issue-$ISSUE" \
+            --jq '.[0].html_url // ""')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          if [ -n "$url" ]; then
+            echo "This issue has an open docrunner PR: $url"
+          fi
+
+      # The agent gets only the text that the writer saw:
+      # - Rendered HTML has no HTML comments. `visible` also removes the `alt` and `title` attributes, because the
+      #   page does not show them. Text in a closed `<details>` block still gets to the agent.
+      # - GitHub keeps invisible characters in the HTML, and they can hold text that the writer cannot see. `visible`
+      #   removes them: zero-width characters, direction controls, variation selectors, and Unicode tag characters.
+      # - The writer read the issue, then added the label. Comments and timeline links from after that time do not
+      #   get to the agent. If the title or the body of the issue changed after that time, Docrunner stops. For a
+      #   dispatch, the cutoff is the start of this step.
+      # - The linked PRs come from the visible HTML and from the timeline. A person who writes a PR can put any text
+      #   in it. Thus Docrunner uses only PRs from people who can write to the repo, the same rule that
+      #   claude-code-action uses for a person who adds the label on GitHub.
+      - name: Write the context for the agent
+        if: steps.existing.outputs.url == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LABELED_AT: ${{ github.event.issue.updated_at }}
+          VISIBLE_JQ: >-
+            def visible: gsub("\\s(?:alt|title)=\"[^\"]*\""; "")
+            | gsub("[\\x{200B}-\\x{200F}\\x{202A}-\\x{202E}\\x{2060}-\\x{2069}\\x{FE00}-\\x{FE0F}\\x{FEFF}\\x{E0000}-\\x{E0FFF}]"; "");
+        run: |
+          accept="Accept: application/vnd.github.full+json"
+          mkdir -p .docrunner/prs
+          cutoff="${LABELED_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+          echo "Cutoff: $cutoff"
+
+          # `lastEditedAt` is only for the body. A change to the title is a `RenamedTitleEvent` on the timeline.
+          # `edited` is the later of the two times. The `$` names in the query are GraphQL variables.
+          # shellcheck disable=SC2016
+          edited=$(gh api graphql -F number="$ISSUE" -f owner="$GITHUB_REPOSITORY_OWNER" -f name="${GITHUB_REPOSITORY#*/}" \
+            -f query='query($owner: String!, $name: String!, $number: Int!) {
+              repository(owner: $owner, name: $name) { issue(number: $number) {
+                lastEditedAt
+                timelineItems(itemTypes: [RENAMED_TITLE_EVENT], last: 1) { nodes { ... on RenamedTitleEvent { createdAt } } }
+              } } }' \
+            --jq '.data.repository.issue | [.lastEditedAt, .timelineItems.nodes[]?.createdAt] | map(select(. != null)) | max // ""')
+          if [[ "$edited" > "$cutoff" ]]; then
+            echo "Docrunner did not run, because a person changed the title or the body of the issue after the label was added ($edited). Read the issue again." > "$T/reason.md"
+            echo "::error::The issue title or body changed after the cutoff."
+            exit 1
+          fi
+
+          gh api -H "$accept" --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" \
+            | jq -s 'add // []' > "$T/all-comments.json"
+          jq --arg c "$cutoff" '[.[] | select(.updated_at <= $c)]' "$T/all-comments.json" > "$T/comments.json"
+          late=$(jq --arg c "$cutoff" '[.[] | select(.updated_at > $c)] | length' "$T/all-comments.json")
+          echo "Comments from after the cutoff, not used: $late"
+
+          {
+            jq -r "$VISIBLE_JQ"' .body_html // "" | visible' "$T/issue.json"
+            jq -r "$VISIBLE_JQ"' .[].body_html // "" | visible' "$T/comments.json"
+          } > "$T/body.html"
+          # A PR that says "Closes #N" shows only on the timeline.
+          gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE/timeline" \
+            | jq -s -r --arg repo "$GITHUB_REPOSITORY" --arg c "$cutoff" 'add // [] | .[]
+                | select(.event == "cross-referenced" and .created_at <= $c) | .source.issue // empty
+                | select(.html_url // "" | startswith("https://github.com/\($repo)/pull/"))
+                | .number' > "$T/timeline-refs.txt" || true
+          # GitHub renders a full PR link, and a reference like `#12345` to a PR, as a link to `.../pull/<number>`.
+          # A reference to an issue links to `.../issues/<number>`.
+          { { cat "$T/timeline-refs.txt"
+              grep -oE 'github\.com/metabase/metabase/pull/[0-9]+' "$T/body.html" | grep -oE '[0-9]+$'
+            } | awk '!seen[$0]++' | head -20 > "$T/refs.txt"; } || true
+
+          prs=()
+          while read -r n; do
+            [ "${#prs[@]}" -lt 5 ] || break
+            [ "$n" != "$ISSUE" ] || continue
+            gh api -H "$accept" "repos/$GITHUB_REPOSITORY/pulls/$n" > "$T/pr.json" 2> /dev/null < /dev/null || continue
+            author=$(jq -r 'select(.user.type == "User") | .user.login' "$T/pr.json")
+            perm=""
+            if [ -n "$author" ]; then
+              perm=$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$author/permission" --jq '.permission' 2> /dev/null < /dev/null || true)
+            fi
+            if [ "$perm" != admin ] && [ "$perm" != write ]; then
+              echo "Not used: #$n. The author cannot write to the repo."
+              continue
+            fi
+            # The shell has `pipefail`: without the `if`, one failed call stops the step.
+            if ! gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$n/files" < /dev/null | jq -s 'add // []' > "$T/files.json"; then
+              echo "Not used: #$n. Docrunner could not get its changed files."
+              continue
+            fi
+            {
+              jq -r "$VISIBLE_JQ"' "# Pull request #\(.number): \(.title)\n\nURL: \(.html_url)\nState: \(.state)\(if .merged then ", merged" else "" end)\nBase branch: \(.base.ref)\n\n## Description (rendered HTML)\n\n\(.body_html // "" | visible)\n\n## Changed files\n"' "$T/pr.json"
+              jq -r '.[] | "### \(.filename) (\(.status), +\(.additions) -\(.deletions))\n\n" +
+                (if .patch == null then "No text patch.\n"
+                 elif .changes <= 2000 then "~~~~~diff\n\(.patch)\n~~~~~\n"
+                 else "The patch is not included: \(.changes) changed lines.\n" end)' "$T/files.json"
+            } > ".docrunner/prs/$n.md"
+            prs+=("#$n")
+          done < "$T/refs.txt"
+
+          {
+            jq -r "$VISIBLE_JQ"' "# Issue #\(.number): \(.title)\n\nURL: \(.html_url)\nState: \(.state)\nLabels: \([.labels[].name] | join(", "))\n\n## Issue body (rendered HTML)\n\n\(.body_html // "" | visible)\n"' "$T/issue.json"
+            jq -r "$VISIBLE_JQ"' .[] | "## Comment by \(.user.login) on \(.created_at)\n\n\(.body_html // "" | visible)\n"' "$T/comments.json"
+            if [ "$late" -gt 0 ]; then
+              printf '## Comments that are not included\n\n%s comments were added or changed after the label was added. This file does not include them.\n\n' "$late"
+            fi
+            echo "## Linked pull requests"
+            echo
+            if [ "${#prs[@]}" -gt 0 ]; then
+              echo "${prs[*]}. See the files in \`.docrunner/prs/\`."
+            else
+              echo "None."
+            fi
+          } > .docrunner/context.md
+          echo "Linked PRs: ${prs[*]:-none}"
+
+      # While a skill is active, Claude Code uses its `allowed-tools` as allow rules, also in dontAsk mode. Thus each
+      # grant of docs-write and docs-review must be a rule that the agent step already permits or denies:
+      # `Edit(docs/**/*.md)`, or a Bash rule (the Bash deny is stronger than a grant). `hooks` can run commands.
+      # Claude Code does not expand an `@` import in a skill (tested with 2.1.150 and 2.1.322). Thus each skill links to
+      # the style guide, and the agent reads it. A link that does not resolve gives no error, thus this step checks it.
+      # The agent needs no other skill, thus this step removes the other skills and the commands. A new skill
+      # cannot change what the agent can do. "Restore the skills" puts them back after the agent.
+      - name: Check the docs skills
+        if: steps.existing.outputs.url == ''
+        run: |
+          find .claude/skills -mindepth 1 -maxdepth 1 ! -name docs-write ! -name docs-review ! -name _shared \
+            -exec rm -rf -- {} +
+          rm -rf .claude/commands
+          errors=()
+          for skill in docs-write docs-review; do
+            f=".claude/skills/$skill/SKILL.md"
+            if [ ! -f "$f" ]; then
+              errors+=("\`$f\` does not exist.")
+              continue
+            fi
+            # The front matter: the lines between the first two `---` lines.
+            front=$(awk 'NR == 1 { if ($0 != "---") exit; next } $0 == "---" { exit } { print }' "$f")
+            if grep -qE '^hooks:' <<< "$front"; then
+              errors+=("\`$f\` has \`hooks\`.")
+            fi
+            # The value of `allowed-tools`: on the same line, or a list on the next lines. An unknown grant fails.
+            grants=$(awk '/^allowed-tools:/ { on = 1; sub(/^allowed-tools:/, ""); print; next }
+                          on && /^[^[:space:]-]/ { on = 0 }
+                          on { print }' <<< "$front" \
+              | grep -oE '[A-Za-z_][A-Za-z0-9_]*(\([^)]*\))?' || true)
+            while IFS= read -r g; do
+              case "$g" in
+                '' | 'Edit(docs/**/*.md)' | Bash | 'Bash('*')') ;;
+                *) errors+=("\`$f\` grants \`$g\`. Docrunner permits only \`Edit(docs/**/*.md)\` and Bash rules.") ;;
+              esac
+            done <<< "$grants"
+            # A relative link starts at the folder of the skill.
+            links=$(grep -oE '\]\(\.\./_shared/[^)#]+' "$f" | cut -c3- || true)
+            if [ -z "$links" ]; then
+              errors+=("\`$f\` has no link to the style guide in \`.claude/skills/_shared/\`.")
+            fi
+            while IFS= read -r link; do
+              if [ -n "$link" ] && [ ! -f ".claude/skills/$skill/$link" ]; then
+                errors+=("\`$f\` links to \`$link\`, but that file does not exist.")
+              fi
+            done <<< "$links"
+          done
+          if [ "${#errors[@]}" -gt 0 ]; then
+            {
+              echo "Docrunner did not run, because a docs skill is not safe, or a file of it is missing:"
+              echo
+              printf -- '- %s\n' "${errors[@]}"
+            } > "$T/reason.md"
+            cat "$T/reason.md"
+            echo "::error::A docs skill did not pass the checks."
+            exit 1
+          fi
+          echo "The docs skills pass the checks."
+
+      # Tool rules (see https://code.claude.com/docs/en/permissions):
+      # - dontAsk denies each call that no allow rule permits. Reads are permitted only in the working folder,
+      #   because no rule allows a bare Read, Glob, or Grep. Thus no reads of /proc or of the home folder.
+      # - The Bash deny removes the shell. On Linux, Claude Code leaves out Glob and Grep by default, and 2.1.119 and
+      #   later give them back when Bash is denied. The action installs 2.1.322 (tested). Do not name Glob or Grep in
+      #   --allowedTools: a bare allow rule permits searches outside the working folder. "Find the status" fails the
+      #   run if the agent did not have them.
+      # - `Agent` and `Workflow` start subagents, and `SendMessage` sends messages to other agents. Deny them.
+      # - The Skill tool loads only docs-write and docs-review: in dontAsk mode, a skill with `allowed-tools` loads only
+      #   if an allow rule names it. "Check the docs skills" removes the other skills, and checks the grants of these two.
+      #   Do not deny Skill: a deny is stronger than the allow rules, and then no skill loads.
+      # - `Edit(docs/**/*.md)` controls the Edit and Write tools. The agent can write only Markdown files in `docs/`.
+      #   Thus it cannot write a config file that a later step runs, for example `docs/.prettierrc.mjs`.
+      # - The `Edit` denies: `docs/**/*.md` also matches Claude Code files. Claude Code loads a nested `CLAUDE.md`
+      #   or skill during the session, when the agent reads a file in that folder. A `CLAUDE.md` can import a file
+      #   with `@`, and a skill can have `hooks`. "Check the docs skills" cannot see a file from the agent.
+      # - `Read(./.git/**)`: the action puts the job token in `.git/config`.
+      - name: Run the docs agent
+        id: claude
+        if: steps.existing.outputs.url == ''
+        continue-on-error: true
+        timeout-minutes: 30
+        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1.0.271
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          # A label from Linear. See the comment at the top of this file.
+          allowed_bots: linear
+          prompt: |
+            Read and follow `dev/bot/docrunner-agent.md`.
+          claude_args: |
+            --model ${{ env.DOCRUNNER_MODEL }}
+            --max-turns ${{ env.DOCRUNNER_MAX_TURNS }}
+            --max-budget-usd ${{ env.DOCRUNNER_MAX_BUDGET_USD }}
+            --permission-mode dontAsk
+            --allowedTools "Edit(docs/**/*.md),Skill(docs-write),Skill(docs-review)"
+            --disallowedTools "Bash,NotebookEdit,WebFetch,WebSearch,Agent,Workflow,SendMessage,Monitor,Read(//proc/**),Read(./.git/**),Edit(docs/**/CLAUDE.md),Edit(docs/**/CLAUDE.local.md),Edit(docs/**/AGENTS.md),Edit(docs/**/.claude/**)"
+            --json-schema '{"type":"object","additionalProperties":false,"required":["status","title","body","images"],"properties":{"status":{"type":"string","enum":["done","no-change"]},"title":{"type":"string"},"body":{"type":"string"},"images":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["path","shows","steps"],"properties":{"path":{"type":"string","pattern":"${{ env.IMAGE_PATH_RE }}"},"shows":{"type":"string"},"steps":{"type":"string"}}}}}}'
+
+      - name: Remove the token from the git remote
+        if: always() && steps.claude.outcome != 'skipped'
+        run: |
+          git remote set-url origin "https://github.com/$GITHUB_REPOSITORY.git"
+          git config --unset-all "http.https://github.com/.extraheader" || true
+
+      # The tool rules do not let the agent write in `.claude/`, thus this restores only what "Check the docs skills" removed.
+      - name: Restore the skills
+        if: always() && steps.claude.outcome != 'skipped'
+        run: git checkout -- .claude
+
+      # The tool rules permit only Markdown files in `docs/`. This step makes sure of it, because a later step can run
+      # code from a file in the workspace (prettier loads a JS config). `--others` without `--exclude-standard` also
+      # lists ignored files, thus a `.gitignore` from the agent cannot hide a file.
+      # A new file must also have a path that matches `MD_PATH_RE`: the PR is on a branch of this repo, thus its CI
+      # gets secrets, and a CI step can put a file name in a shell command. `LC_ALL=C` makes `A-Z` only ASCII letters.
+      - name: Remove files that are not Markdown
+        if: always() && steps.claude.outcome != 'skipped'
+        env:
+          LC_ALL: C
+        run: |
+          git checkout -- docs ':(exclude)docs/*.md'
+          git ls-files -z --others -- docs | while IFS= read -r -d '' f; do
+            if ! [[ "$f" =~ $MD_PATH_RE ]]; then
+              printf 'Removed: %q\n' "$f"
+              rm -f -- "$f"
+            fi
+          done
+
+      # This rule does not depend on the prompt. "Write the image list" in the screenshots job uses the same rule.
+      - name: Remove changes to generated files
+        if: always() && steps.claude.outcome != 'skipped'
+        run: |
+          grep -E "$GENERATED_RE" .github/CODEOWNERS \
+            | awk '{ sub(/^\//, "", $1); print $1 }' \
+            | while read -r path; do
+                git checkout -- "$path" 2> /dev/null || true
+                git clean -fdq -- "$path"
+              done
+
+      # The docs-write skill says to run prettier. The agent has no shell, thus the workflow runs it.
+      # 3.3.3 is the version in bun.lock. `--config`: prettier uses only the config of the repo root, and does not
+      # look for a config in the folders of the files.
+      - name: Format the changed Markdown files
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        run: |
+          mapfile -t files < <(git ls-files --modified --others --exclude-standard -- 'docs/*.md')
+          if [ "${#files[@]}" -gt 0 ]; then
+            npx --yes prettier@3.3.3 --config .prettierrc --write -- "${files[@]}"
+          fi
+
+      - name: Find the status
+        id: status
+        if: always() && steps.check.outcome == 'success'
+        env:
+          EXISTING_URL: ${{ steps.existing.outputs.url }}
+          AGENT_OUTCOME: ${{ steps.claude.outcome }}
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+          EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          mkdir -p "$OUT"
+          changed=$(git ls-files --modified --others --exclude-standard -- 'docs/*.md')
+
+          # Why the agent stopped, and what the run cost. See USAGE_JQ. The action also gives the transcript of a
+          # failed run.
+          stop=""
+          if [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ] \
+              && jq -c "$USAGE_JQ"' run_usage' "$EXEC_FILE" > "$OUT/usage.json" 2> /dev/null; then
+            stop=$(jq -r '.stop' "$OUT/usage.json")
+            jq -r "$USAGE_JQ"' usage_table("Docs")' "$OUT/usage.json" >> "$GITHUB_STEP_SUMMARY"
+            echo "Agent usage: $(cat "$OUT/usage.json")"
+          else
+            rm -f "$OUT/usage.json"
+          fi
+
+          if [ -n "$EXISTING_URL" ]; then
+            status=exists
+          elif [ "$AGENT_OUTCOME" != success ] || ! jq -e 'type == "object"' <<< "$RESULT" > /dev/null 2>&1; then
+            status=failed
+            # A stop at a limit gives no result JSON, thus Docrunner opens no PR. The artifact has the partial change.
+            limit=""
+            case "$stop" in
+              error_max_budget_usd) limit="the cost limit of one run ($DOCRUNNER_MAX_BUDGET_USD USD, \`DOCRUNNER_MAX_BUDGET_USD\`)" ;;
+              error_max_turns) limit="the limit of $DOCRUNNER_MAX_TURNS turns (\`DOCRUNNER_MAX_TURNS\`)" ;;
+            esac
+            if [ -n "$limit" ]; then
+              {
+                echo "Docrunner stopped, because the agent got to $limit before it finished. It opened no PR. The partial change is in the artifact of the run (\`changes.diff\`)."
+                echo
+                echo "Make the request in the issue smaller, or increase the limit in \`.github/workflows/docrunner.yml\`."
+              } > "$T/reason.md"
+              echo "::error::The agent got to a limit: $stop."
+            fi
+          elif [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ] && ! jq -e \
+              '(["Glob", "Grep"] - [.[] | select(.type == "system" and .subtype == "init") | .tools[]?]) == []' \
+              "$EXEC_FILE" > /dev/null 2>&1; then
+            # The prompt tells the agent to search with Glob and Grep. See the tool rules at "Run the docs agent".
+            status=failed
+            echo "Docrunner failed: the agent did not have the Glob and Grep tools, thus it could not search the docs." > "$T/reason.md"
+            echo "::error::The agent session did not have the Glob and Grep tools."
+          elif [ "$(jq -r '.status' <<< "$RESULT")" = no-change ]; then
+            status=no-change
+            jq -r "$SANITIZE_JQ"' .body // "" | sanitize' <<< "$RESULT" > "$T/agent-body.md"
+          elif [ -z "$changed" ]; then
+            status=no-change
+            {
+              echo "Docrunner did not change a Markdown file in \`docs/\` that it can commit. It removes all changes to generated files, and each new file with characters in its path that are not safe."
+              echo
+              echo "The notes of the agent:"
+              echo
+              jq -r "$SANITIZE_JQ"' .body // "" | sanitize' <<< "$RESULT"
+            } > "$T/agent-body.md"
+          else
+            status="done"
+          fi
+
+          images='[]'
+          if [ "$status" = "done" ]; then
+            # The JSON schema checks each path and the count. "Check the screenshots" checks each path again before the push.
+            # The screenshots job uses `index`.
+            images=$(jq -c '.images // [] | unique_by(.path) | to_entries | map(.value + {index: (.key + 1)})' <<< "$RESULT")
+            # `.[0:200]` counts characters, not bytes, thus it does not cut a character in two.
+            title=$(jq -r "$SANITIZE_JQ"' .title // "" | gsub("\\s+"; " ") | sub("^ "; "") | sub(" $"; "") | sanitize | .[0:200]' <<< "$RESULT")
+            if [ -z "$title" ]; then
+              title="docs: draft for #$ISSUE"
+            fi
+            # The prompt tells the agent to load both docs skills, and the skills tell it to read the style guide. If the
+            # agent did not, it is not an error, but the writer must know about it.
+            missing=""
+            for s in docs-write docs-review; do
+              if [ -z "$EXEC_FILE" ] || [ ! -f "$EXEC_FILE" ] || ! jq -e --arg s "$s" \
+                  'any(.[] | select(.type == "assistant") | .message.content[]?;
+                       .type == "tool_use" and .name == "Skill" and .input.skill == $s)' "$EXEC_FILE" > /dev/null 2>&1; then
+                missing="${missing:+$missing and }\`$s\`"
+              fi
+            done
+            if [ -z "$EXEC_FILE" ] || [ ! -f "$EXEC_FILE" ] || ! jq -e \
+                'any(.[] | select(.type == "assistant") | .message.content[]?;
+                     .type == "tool_use" and .name == "Read" and (.input.file_path // "" | endswith("_shared/metabase-style-guide.md")))' \
+                "$EXEC_FILE" > /dev/null 2>&1; then
+              missing="${missing:+$missing and }the style guide"
+            fi
+            {
+              jq -r "$SANITIZE_JQ"' .body | sanitize' <<< "$RESULT"
+              if [ "$images" != '[]' ]; then
+                # shellcheck disable=SC2016
+                printf '\n## Images\n\nThe `screenshots` job tries to add these images in a second commit. Examine each image.\n\n'
+                jq -r "$SANITIZE_JQ"' .[] | "- `\(.path)`: \(.shows | gsub("\\s+"; " ") | sanitize)\n  - Steps: \(.steps | gsub("\\s+"; " ") | sanitize)"' <<< "$images"
+              fi
+              if [ -n "$missing" ]; then
+                printf '\n## Skills\n\nDocrunner did not load %s. Examine the style of the change.\n' "$missing"
+              fi
+              printf '\n---\n\nResolves #%s\n\n' "$ISSUE"
+              # shellcheck disable=SC2016
+              printf 'Check the backport label. For a feature that is only on `master`, change it to `no-backport`.\n\n'
+              printf 'Docrunner made this draft. Run: %s\n' "$RUN_URL"
+            } > "$T/pr-body.md"
+            echo "title=$title" >> "$GITHUB_OUTPUT"
+          fi
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "images=$images" >> "$GITHUB_OUTPUT"
+          echo "Status: $status"
+
+          # The files for the artifact.
+          echo "$status" > "$OUT/status.txt"
+          if jq -e . <<< "$RESULT" > /dev/null 2>&1; then
+            jq . <<< "$RESULT" > "$OUT/agent-result.json"
+          fi
+          for f in pr-body.md agent-body.md reason.md; do
+            if [ -f "$T/$f" ]; then cp "$T/$f" "$OUT/$f"; fi
+          done
+          if [ -d .docrunner ]; then cp -R .docrunner "$OUT/context"; fi
+          if [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ]; then cp "$EXEC_FILE" "$OUT/transcript.json"; fi
+          git diff -- 'docs/*.md' > "$OUT/changes.diff"
+          git ls-files -z --others --exclude-standard -- 'docs/*.md' \
+            | while IFS= read -r -d '' f; do git diff --no-index -- /dev/null "$f" >> "$OUT/changes.diff" || true; done
+
+      # The transcript helps to tune the prompt. For a dry run, the diff and the result JSON are the output.
+      - name: Upload the results
+        if: always() && steps.status.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: docrunner-issue-${{ env.ISSUE }}
+          path: ${{ runner.temp }}/docrunner/out/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      # The write token exists only after the agent step.
+      - name: Make the write token
+        id: token
+        if: always() && steps.check.outcome == 'success' && inputs.dry_run != true
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+
+      # The app token, not GITHUB_TOKEN: a PR from GITHUB_TOKEN does not start CI.
+      # `docs/*.md`: in a pathspec, `*` also matches `/`. Thus this is all Markdown files in `docs/`, and no other file.
+      # A draft PR gets no code owner request. GitHub requests @metabase/tech-writers when it is ready for review.
+      - name: Open the draft PR
+        id: pr
+        if: steps.status.outputs.status == 'done' && inputs.dry_run != true
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.token.outputs.token }}
+          branch: docrunner/issue-${{ env.ISSUE }}
+          base: master
+          draft: true
+          add-paths: docs/*.md
+          sign-commits: true
+          commit-message: |
+            ${{ steps.status.outputs.title }}
+
+            Docrunner draft for #${{ env.ISSUE }}.
+          title: ${{ steps.status.outputs.title }}
+          body-path: ${{ runner.temp }}/docrunner/pr-body.md
+          labels: |
+            Type:Documentation
+            single-backport
+          assignees: ${{ steps.check.outputs.assignees }}
+
+      # Docrunner does not remove the label, thus the label shows that Docrunner ran on the issue. Linear also syncs
+      # labels. If Linear adds the label again, the issue already has it, and GitHub sends no `labeled` event. A different
+      # label does not start a run, because the job checks `github.event.label.name`. To run again, a person removes the
+      # label, then adds it again.
+      - name: Report on the issue
+        if: always() && steps.token.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          STATUS: ${{ steps.status.outputs.status || 'failed' }}
+          IMAGES: ${{ steps.status.outputs.images }}
+          PR_URL: ${{ steps.pr.outputs.pull-request-url }}
+          EXISTING_URL: ${{ steps.existing.outputs.url }}
+        run: |
+          f="$T/comment.md"
+          case "$STATUS" in
+            "done")
+              if [ -n "$PR_URL" ]; then
+                echo "Docrunner opened a draft PR: $PR_URL" > "$f"
+                if [ -n "$IMAGES" ] && [ "$IMAGES" != '[]' ]; then
+                  printf '\nThe screenshots job adds the images to the PR in a second commit.\n' >> "$f"
+                fi
+              else
+                echo "Docrunner wrote a change, but it could not open the PR. Run: $RUN_URL" > "$f"
+              fi
+              ;;
+            exists)
+              {
+                echo "Docrunner did not run, because this issue has an open docrunner PR: $EXISTING_URL"
+                # shellcheck disable=SC2016
+                printf '\nTo run Docrunner again, close that PR. Then remove the label `Docrunner`, and add it again.\n'
+              } > "$f"
+              ;;
+            no-change)
+              {
+                if [ -s "$T/agent-body.md" ]; then
+                  printf '_Docrunner wrote this comment. A person did not review it._\n\n'
+                  cat "$T/agent-body.md"
+                  printf '\n---\n\n'
+                fi
+                printf 'Docrunner made no change. Run: %s\n' "$RUN_URL"
+              } > "$f"
+              ;;
+            *)
+              {
+                if [ -s "$T/reason.md" ]; then cat "$T/reason.md"; else echo "Docrunner failed."; fi
+                printf '\nRun: %s\n' "$RUN_URL"
+              } > "$f"
+              ;;
+          esac
+          if [ "$GITHUB_EVENT_NAME" = issues ] && [ "$STATUS" != "done" ] && [ "$STATUS" != exists ]; then
+            # shellcheck disable=SC2016
+            printf '\nTo run Docrunner again, remove the label `Docrunner`, then add it again.\n' >> "$f"
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" -F body=@"$f" > /dev/null
+
+      # `continue-on-error` keeps the agent step green. This step makes a failed run red in the list of runs.
+      - name: Fail the job if Docrunner failed
+        if: always() && steps.status.outputs.status == 'failed'
+        run: |
+          echo "::error::Docrunner failed. See the agent step and the artifact."
+          exit 1
+
+  screenshots:
+    name: Take the screenshots
+    needs: docrunner
+    if: >-
+      needs.docrunner.outputs.status == 'done' &&
+      needs.docrunner.outputs.images != '' &&
+      needs.docrunner.outputs.images != '[]' &&
+      (inputs.dry_run == true || needs.docrunner.outputs.pr_number != '')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      IMAGES: ${{ needs.docrunner.outputs.images }}
+      PR_NUMBER: ${{ needs.docrunner.outputs.pr_number }}
+      PR_BRANCH: ${{ needs.docrunner.outputs.pr_branch }}
+      MB_URL: http://localhost:3000
+    steps:
+      # The same `T` and `OUT` as in the docrunner job.
+      - name: Set the paths
+        run: printf 'T=%s\nOUT=%s\n' "$RUNNER_TEMP/docrunner" "$RUNNER_TEMP/docrunner/out" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # The agent gets the image list, not the issue text.
+      # An image in a generated path does not go to the agent. The rule is the same as in "Remove changes to generated
+      # files" in the docrunner job. This step reads CODEOWNERS before the agent starts, because
+      # `browser_take_screenshot` can write a file at each path in the workspace. The agent cannot change a step
+      # output, thus "Check the screenshots" uses `generated`.
+      - name: Write the image list
+        id: list
+        run: |
+          mkdir -p .docrunner/shots "$OUT"
+          mapfile -t paths < <(grep -E "$GENERATED_RE" .github/CODEOWNERS | awk '{ sub(/^\//, "", $1); print $1 }')
+          generated='[]'
+          while IFS= read -r item; do
+            i=$(jq -r '.index' <<< "$item")
+            dest=$(jq -r '.path' <<< "$item")
+            for p in "${paths[@]}"; do
+              # `$p` has no quotes, thus a `*` in it matches as in a git pathspec, also across `/`.
+              # shellcheck disable=SC2053
+              if [[ "$dest" == $p || "$dest" == $p/* ]]; then
+                echo "Not used: $dest. It is in the generated path $p."
+                generated=$(jq -c --argjson i "$i" '. + [$i]' <<< "$generated")
+                break
+              fi
+            done
+          done < <(jq -c '.[] | {index, path}' <<< "$IMAGES")
+          echo "generated=$generated" >> "$GITHUB_OUTPUT"
+          jq --argjson g "$generated" '[.[] | select(.index | IN($g[]) | not) | {index, path, shows, steps}]' <<< "$IMAGES" \
+            > .docrunner/images.json
+          cp .docrunner/images.json "$OUT/images.json"
+
+      # metabase-enterprise-head is the build of master. The license token turns on the paid features.
+      # The PR environments use the same token. The image runs in prod mode, thus it checks the token on
+      # token-check.metabase.com, and a staging token (for example STAGING_MB_ALL_FEATURES_TOKEN) does not work.
+      # Only this step gets the token. `--env NAME` without a value copies it from the environment, thus it is not in
+      # the command line. Metabase does not return a setting from an env var through the API, thus the browser
+      # cannot show the token.
+      - name: Start Metabase
+        env:
+          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
+        run: |
+          args=(--env MB_CHECK_FOR_UPDATES=false --env MB_ANON_TRACKING_ENABLED=false)
+          if [ -n "$MB_PREMIUM_EMBEDDING_TOKEN" ]; then
+            args+=(--env MB_PREMIUM_EMBEDDING_TOKEN)
+          else
+            echo "::warning::The secret PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN is empty. Metabase starts without paid features."
+          fi
+          docker run --detach --name metabase --publish 127.0.0.1:3000:3000 "${args[@]}" \
+            metabase/metabase-enterprise-head:latest
+          for _ in $(seq 1 90); do
+            if curl --silent --fail "$MB_URL/api/health" | grep -q '"ok"'; then break; fi
+            sleep 5
+          done
+          curl --silent --show-error --fail "$MB_URL/api/health"
+          echo
+
+          setup_token=$(curl --silent --show-error --fail "$MB_URL/api/session/properties" | jq -r '."setup-token"')
+          password="Docs-$(openssl rand -hex 16)"
+          session=$(jq -n --arg t "$setup_token" --arg p "$password" \
+              '{token: $t, user: {email: "docs-writer@example.com", password: $p, first_name: "Docs", last_name: "Writer"},
+                prefs: {site_name: "Metabase", site_locale: "en"}}' \
+            | curl --silent --show-error --fail -X POST "$MB_URL/api/setup" \
+                -H "Content-Type: application/json" --data @- \
+            | jq -r '.id')
+          echo "::add-mask::$session"
+
+          # Wait for the first sync of the Sample Database.
+          synced=false
+          for _ in $(seq 1 24); do
+            if curl --silent --fail -H "X-Metabase-Session: $session" "$MB_URL/api/database" \
+                | jq -e '.data[]? | select(.is_sample and .initial_sync_status == "complete")' > /dev/null; then
+              synced=true
+              break
+            fi
+            sleep 5
+          done
+          if [ "$synced" != true ]; then
+            echo "::warning::The first sync of the Sample Database is not complete after 2 minutes. Screenshots can show missing data."
+          fi
+
+          # The feature names are not secret. The token is.
+          features=$(curl --silent --show-error --fail -H "X-Metabase-Session: $session" "$MB_URL/api/session/properties" \
+            | jq -r '[."token-features" // {} | to_entries[] | select(.value == true) | .key] | sort | join(", ")')
+          if [ -n "$features" ]; then
+            echo "Paid features: $features"
+          else
+            echo "::warning::The license token gives no paid features. Screenshots of paid features are not possible."
+          fi
+
+          # The browser starts logged in. The agent does not get the password.
+          jq -n --arg s "$session" \
+            '{cookies: [{name: "metabase.SESSION", value: $s, domain: "localhost", path: "/", expires: -1,
+                         httpOnly: true, secure: false, sameSite: "Lax"}], origins: []}' > "$T/storage-state.json"
+
+      # The agent operates Metabase as an admin, and the `steps` come from the issue. An injected step can set up a
+      # webhook, an HTTP channel, an email server, or a database on another host. Metabase opens that connection from
+      # the server, thus the browser proxy does not stop it, and the license token is in the environment of the
+      # container. This step blocks all new connections from the container to other hosts and to the runner, also DNS.
+      # A reply to the browser is not a new connection, thus it is not blocked.
+      # The first token check is complete ("Start Metabase" reads the paid features). Metabase keeps that status for
+      # 36 hours, also when a refresh fails: see `grace-period` in metabase.premium-features.token-check.
+      # The test before the block makes sure that the test after the block can find a connection.
+      - name: Block connections from Metabase to other hosts
+        run: |
+          probe() { docker exec metabase curl --silent --max-time 10 --output /dev/null https://github.com/; }
+          if ! probe; then
+            echo "::error::The connection test does not work: the container cannot open https://github.com/ before the block."
+            exit 1
+          fi
+          if [ -n "$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.GlobalIPv6Address}}{{end}}' metabase)" ]; then
+            echo "::error::The container has an IPv6 address. This step blocks only IPv4."
+            exit 1
+          fi
+          ips=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' metabase)
+          if [ -z "${ips// /}" ]; then
+            echo "::error::The container has no IPv4 address."
+            exit 1
+          fi
+          for ip in $ips; do
+            # DOCKER-USER is in the FORWARD chain: connections to other hosts. INPUT: connections to the runner.
+            sudo iptables -w -I DOCKER-USER -s "$ip" -j REJECT
+            sudo iptables -w -I INPUT -s "$ip" -m conntrack --ctstate NEW -j REJECT
+          done
+          if probe; then
+            echo "::error::The block does not work: the container can still open https://github.com/."
+            exit 1
+          fi
+          curl --silent --show-error --fail "$MB_URL/api/health" > /dev/null
+          echo "Metabase cannot connect to other hosts, and the browser can connect to Metabase."
+
+      # --allowed-origins "does not serve as a security boundary and does not affect redirects" (Playwright MCP README).
+      # Thus the browser also sends all requests to a proxy that does not exist, except requests to localhost.
+      - name: Install Playwright MCP
+        run: |
+          npm install --prefix "$T/playwright-mcp" --no-save --no-audit --no-fund @playwright/mcp@0.0.83
+          "$T/playwright-mcp/node_modules/.bin/playwright" install --with-deps chromium
+
+          jq -n '{
+            browser: {
+              browserName: "chromium",
+              isolated: true,
+              launchOptions: {
+                headless: true,
+                proxy: {server: "http://127.0.0.1:9", bypass: "localhost,127.0.0.1,[::1]"}
+              },
+              contextOptions: {viewport: {width: 1440, height: 900}, deviceScaleFactor: 2}
+            },
+            network: {allowedOrigins: ["http://localhost:3000"]}
+          }' > "$T/playwright.json"
+
+          jq -n --arg cli "$T/playwright-mcp/node_modules/@playwright/mcp/cli.js" \
+                --arg config "$T/playwright.json" \
+                --arg state "$T/storage-state.json" \
+                --arg outdir "$T/playwright-output" \
+            '{mcpServers: {playwright: {type: "stdio", command: "node",
+               args: [$cli, "--config", $config, "--storage-state", $state, "--output-dir", $outdir]}}}' > "$T/mcp.json"
+
+      # No shell, no file edits, and no Playwright tool that runs code or uploads files.
+      - name: Run the screenshot agent
+        id: claude
+        continue-on-error: true
+        timeout-minutes: 30
+        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1.0.271
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          # This job has the actor of the label event too, thus it also needs this for a label from Linear.
+          allowed_bots: linear
+          prompt: |
+            Read and follow `dev/bot/docrunner-screenshots-agent.md`.
+          claude_args: |
+            --model ${{ env.SCREENSHOTS_MODEL }}
+            --max-turns ${{ env.SCREENSHOTS_MAX_TURNS }}
+            --max-budget-usd ${{ env.SCREENSHOTS_MAX_BUDGET_USD }}
+            --permission-mode dontAsk
+            --mcp-config ${{ runner.temp }}/docrunner/mcp.json
+            --strict-mcp-config
+            --allowedTools "mcp__playwright__browser_navigate,mcp__playwright__browser_navigate_back,mcp__playwright__browser_snapshot,mcp__playwright__browser_click,mcp__playwright__browser_hover,mcp__playwright__browser_type,mcp__playwright__browser_fill_form,mcp__playwright__browser_press_key,mcp__playwright__browser_select_option,mcp__playwright__browser_drag,mcp__playwright__browser_wait_for,mcp__playwright__browser_resize,mcp__playwright__browser_handle_dialog,mcp__playwright__browser_take_screenshot"
+            --disallowedTools "Bash,Edit,Write,NotebookEdit,Skill,WebFetch,WebSearch,Agent,Workflow,SendMessage,Monitor,Read(//proc/**),Read(./.git/**),mcp__playwright__browser_evaluate,mcp__playwright__browser_run_code_unsafe,mcp__playwright__browser_file_upload,mcp__playwright__browser_drop,mcp__playwright__browser_tabs"
+            --json-schema '{"type":"object","additionalProperties":false,"required":["images"],"properties":{"images":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["index","saved","note"],"properties":{"index":{"type":"integer"},"saved":{"type":"boolean"},"note":{"type":"string"}}}}}}'
+
+      # Use only the list from the first job and the outputs of "Write the image list", not the files in the workspace:
+      # the agent can write files there. Rules: only paths from the list, only docs/**/images/*.png, no generated paths,
+      # only PNG files of 3 MB or less, and only images that the agent confirmed.
+      - name: Check the screenshots
+        id: check
+        if: always()
+        env:
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+          EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
+          GENERATED: ${{ steps.list.outputs.generated }}
+        run: |
+          max=$((3 * 1024 * 1024))
+          rm -rf "$OUT/shots" "$OUT/all-shots"
+          mkdir -p "$OUT/shots" "$OUT/all-shots"
+          if jq -e 'type == "object"' <<< "$RESULT" > /dev/null 2>&1; then
+            jq . <<< "$RESULT" > "$OUT/agent-result.json"
+          else
+            echo '{}' > "$OUT/agent-result.json"
+          fi
+          if [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ]; then cp "$EXEC_FILE" "$OUT/transcript.json"; fi
+
+          # Why the agent stopped, and what the run cost. See USAGE_JQ. Only the two limit values go to the step
+          # output, thus no other text from the transcript gets to "Report on the PR".
+          if [ -f "$OUT/transcript.json" ] \
+              && jq -c "$USAGE_JQ"' run_usage' "$OUT/transcript.json" > "$OUT/usage.json" 2> /dev/null; then
+            jq -r "$USAGE_JQ"' usage_table("Screenshots")' "$OUT/usage.json" >> "$GITHUB_STEP_SUMMARY"
+            echo "Agent usage: $(cat "$OUT/usage.json")"
+            case "$(jq -r '.stop' "$OUT/usage.json")" in
+              error_max_budget_usd) echo "stop=error_max_budget_usd" >> "$GITHUB_OUTPUT" ;;
+              error_max_turns) echo "stop=error_max_turns" >> "$GITHUB_OUTPUT" ;;
+            esac
+          else
+            rm -f "$OUT/usage.json"
+          fi
+
+          results='[]'
+          while IFS= read -r item; do
+            i=$(jq -r '.index' <<< "$item")
+            dest=$(jq -r '.path' <<< "$item")
+            src=".docrunner/shots/$i.png"
+            saved=$(jq -r --argjson i "$i" '[.images[]? | select(.index == $i) | .saved][0] // false' "$OUT/agent-result.json")
+            note=$(jq -r --argjson i "$i" '[.images[]? | select(.index == $i) | .note][0] // "" | gsub("\\s+"; " ")' "$OUT/agent-result.json")
+            reason=""
+            if [ -f "$src" ] && [ ! -L "$src" ]; then cp "$src" "$OUT/all-shots/$i.png"; fi
+            if ! [[ "$dest" =~ $IMAGE_PATH_RE ]]; then
+              reason="the path is not in docs/**/images/*.png"
+            elif jq -e --argjson i "$i" 'any(.[]; . == $i)' <<< "${GENERATED:-[]}" > /dev/null; then
+              reason="the path is in a generated folder"
+            elif [ ! -f "$src" ] || [ -L "$src" ]; then
+              reason="no screenshot"
+            elif [ "$saved" != true ]; then
+              reason="the agent did not confirm the screenshot"
+            elif [ "$(file --brief --mime-type "$src")" != image/png ]; then
+              reason="the file is not a PNG"
+            elif [ "$(stat -c %s "$src")" -gt "$max" ]; then
+              reason="the file is larger than 3 MB"
+            fi
+            if [ -z "$reason" ]; then cp "$src" "$OUT/shots/$i.png"; fi
+            results=$(jq -c --argjson i "$i" --arg p "$dest" --arg r "$reason" --arg n "$note" \
+              '. + [{index: $i, path: $p, saved: ($r == ""), reason: $r, note: $n}]' <<< "$results")
+          done < <(jq -c '.[] | {index, path}' <<< "$IMAGES")
+
+          jq . <<< "$results" > "$OUT/screenshots.json"
+          count=$(jq '[.[] | select(.saved)] | length' <<< "$results")
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "Screenshots that pass the checks: $count of $(jq length <<< "$results")"
+
+      - name: Upload the results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: docrunner-screenshots-issue-${{ env.ISSUE }}
+          path: ${{ runner.temp }}/docrunner/out/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Make the write token
+        id: token
+        if: always() && inputs.dry_run != true
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+          # This job writes only to the PR. For a PR, the label and comment endpoints accept `pull-requests: write`.
+          permission-contents: write
+          permission-pull-requests: write
+
+      # One commit through the API, on top of the PR branch: GitHub signs it, and no git command runs in the
+      # workspace that the agent used.
+      - name: Push the screenshots to the PR
+        id: push
+        if: steps.check.outputs.count > 0 && steps.token.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$PR_BRANCH" --jq '.object.sha')
+          base_tree=$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$head" --jq '.tree.sha')
+          entries='[]'
+          while IFS= read -r item; do
+            i=$(jq -r '.index' <<< "$item")
+            dest=$(jq -r '.path' <<< "$item")
+            jq -n --rawfile content <(base64 -w0 "$OUT/shots/$i.png") '{content: $content, encoding: "base64"}' > "$T/blob.json"
+            sha=$(gh api "repos/$GITHUB_REPOSITORY/git/blobs" --input "$T/blob.json" --jq '.sha')
+            entries=$(jq -c --arg p "$dest" --arg s "$sha" '. + [{path: $p, mode: "100644", type: "blob", sha: $s}]' <<< "$entries")
+          done < <(jq -c '.[] | select(.saved)' "$OUT/screenshots.json")
+
+          tree=$(jq -n --arg b "$base_tree" --argjson t "$entries" '{base_tree: $b, tree: $t}' \
+            | gh api "repos/$GITHUB_REPOSITORY/git/trees" --input - --jq '.sha')
+          commit=$(jq -n --arg m "docs: add screenshots for #$ISSUE" --arg t "$tree" --arg p "$head" \
+              '{message: $m, tree: $t, parents: [$p]}' \
+            | gh api "repos/$GITHUB_REPOSITORY/git/commits" --input - --jq '.sha')
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/heads/$PR_BRANCH" -f sha="$commit" -F force=false > /dev/null
+          echo "sha=$commit" >> "$GITHUB_OUTPUT"
+
+      # optimize-images.yml starts only when a PR gets a label, and only for a PR with `Type:Documentation`.
+      # `|| true`: if a person removed the label, the DELETE gives 404. The next call adds the label again.
+      - name: Start the image optimization
+        if: steps.push.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels/Type%3ADocumentation" > /dev/null || true
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels" -f "labels[]=Type:Documentation" > /dev/null
+
+      - name: Report on the PR
+        if: always() && steps.token.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          SHA: ${{ steps.push.outputs.sha }}
+          STOP: ${{ steps.check.outputs.stop }}
+        run: |
+          f="$T/pr-comment.md"
+          {
+            if [ -f "$OUT/screenshots.json" ]; then
+              echo "Docrunner screenshots. The notes are from the agent, and a person did not review them:"
+              echo
+              jq -r "$SANITIZE_JQ"' .[] | if .saved
+                then "- Added `\(.path)`. \(.note | sanitize)"
+                else "- Not added: `\(.path)` (\(.reason)). \(.note | sanitize)" end' "$OUT/screenshots.json"
+              echo
+              if [ -n "$SHA" ]; then
+                echo "Commit: $SHA. Examine each image: the state, the crop, and the size."
+              else
+                echo "Docrunner pushed no image."
+              fi
+              # A stop at a limit gives no result JSON, thus the agent confirmed no image.
+              limit=""
+              case "$STOP" in
+                error_max_budget_usd) limit="the cost limit of one run ($SCREENSHOTS_MAX_BUDGET_USD USD, \`SCREENSHOTS_MAX_BUDGET_USD\`)" ;;
+                error_max_turns) limit="the limit of $SCREENSHOTS_MAX_TURNS turns (\`SCREENSHOTS_MAX_TURNS\`)" ;;
+              esac
+              if [ -n "$limit" ]; then
+                echo
+                echo "The screenshot agent got to $limit before it finished, thus it confirmed no image. The screenshots that it took are in the artifact of the run (\`all-shots/\`)."
+              fi
+            else
+              echo "The Docrunner screenshots job failed."
+            fi
+            echo
+            echo "Run: $RUN_URL"
+          } > "$f"
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" -F body=@"$f" > /dev/null
+
+      - name: Fail the job if the screenshot agent failed
+        if: always() && steps.claude.outcome == 'failure'
+        run: |
+          echo "::error::The screenshot agent failed. See the agent step and the artifact."
+          exit 1

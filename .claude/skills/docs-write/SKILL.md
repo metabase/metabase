@@ -1,12 +1,14 @@
 ---
 name: docs-write
 description: Write documentation following Metabase's conversational, clear, and user-focused style. Use when creating or editing documentation files (markdown, MDX, etc.).
-allowed-tools: Read, Write, Grep, Bash, Glob
+allowed-tools:
+  - Edit(docs/**/*.md)
+  - Bash(bun run prettier --write *)
 ---
 
 # Documentation Writing Skill
 
-@./../_shared/metabase-style-guide.md
+Before you start, read the [Metabase writing style guide](../_shared/metabase-style-guide.md).
 
 ## When writing documentation
 

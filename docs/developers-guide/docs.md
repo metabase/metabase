@@ -1,6 +1,6 @@
 ---
 title: Developing Metabase documentation
-summary: Preview docs as you write them, check for broken links, and regenerate the pages that are built from source.
+summary: Preview docs as you write them, draft docs changes with Docrunner, check for broken links, and regenerate the pages that are built from source.
 ---
 
 # Developing Metabase documentation
@@ -40,6 +40,38 @@ You'll need [Bun](https://bun.sh) and a checkout of the private `metabase-dot-co
 Your browser opens `http://localhost:4000/docs/latest/`, and your edits show up as you save them. Only `/docs/latest/` pages work.
 
 To preview a worktree or another checkout, pass its path. If `metabase-dot-com` is somewhere else, pass `--site DIR` or set `METABASE_DOT_COM_DIR`.
+
+## Draft docs changes with Docrunner
+
+People with write access to Metabase can add the `Docrunner` label to an open issue.
+
+You can also add the label in Linear, to the issue that's synced with the GitHub issue. Linear adds the label on GitHub, and Docrunner starts. The Linear label must be named exactly `Docrunner`.
+
+Docrunner reads the issue, its comments, and the PRs that the issue links to (only PRs from people with write access). Docrunner reads only what was there when you added the label: it ignores later comments, and it stops if someone edits the issue title or body after that.
+
+Docrunner also reads text that the issue page hides, such as the contents of a collapsed `<details>` section. This is by design, so expand and read those sections before you add the label.
+
+When Docrunner finishes, it comments on the issue. The label stays on the issue, so you can see which issues Docrunner ran on. If it made a change, the comment links to a draft PR that's assigned to you. If you added the label in Linear, GitHub doesn't know who you are, so Docrunner assigns the PR to the people who are assigned to the GitHub issue. The PR description lists what changed and the facts to check against the code. If Docrunner didn't make a change, the comment says why and asks questions. Answer them in the issue, then remove the label and add it again.
+
+If the change needs images, a second job takes the screenshots in a Metabase Enterprise Edition built from `master`, with the Sample Database. This Metabase can't connect to other hosts, so the job can't take screenshots that need a connection to another database, a webhook, email, or Slack. The job pushes the images to the PR in a second commit, and comments on the PR with a note for each image. Check the state and the crop of each image.
+
+GitHub doesn't ask the tech writers to review a draft PR, so mark the PR ready for review when you're done with it. Docrunner adds the `single-backport` label. For a feature that's only on `master`, change it to `no-backport`.
+
+Docrunner won't run if the issue already has an open Docrunner PR. To start over, close that PR, then remove the label and add it again.
+
+### Test prompt changes with a dry run
+
+The agent prompts are in `dev/bot/docrunner-agent.md` and `dev/bot/docrunner-screenshots-agent.md`. To test a change to them, push your branch to the `metabase/metabase` repo. Then go to **Actions** > **Docrunner** > **Run workflow**, pick your branch, enter the issue number, and check **Dry run**. A run from a branch uses the prompts on that branch.
+
+Each run uploads its results as workflow artifacts: the docs change, the PR description, the screenshots, and the agent transcripts. A dry run does only that. It doesn't open a PR, push commits, or comment.
+
+### Limit what a run costs
+
+Each agent run has a cost limit and a turn limit, set at the top of `.github/workflows/docrunner.yml`. The limits apply to one run, not to the total across runs.
+
+If the docs agent reaches a limit before it finishes, Docrunner doesn't open a PR, and its comment on the issue says which limit it reached. Narrow the request in the issue or raise the limit, then remove the label and add it again. If the screenshot agent reaches a limit, the job doesn't add images, and its comment on the PR says why.
+
+To see what a run cost, go to the run's summary page. It shows a table for each agent with the turns, the token counts, and the cost in USD. Claude Code calculates the cost from the token counts, so it's an estimate, not the bill.
 
 ## Regenerate docs built from source
 
