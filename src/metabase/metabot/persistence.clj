@@ -574,7 +574,7 @@
   [messages]
   (some (fn [turn-rows]
           (when-let [{:keys [rows]} (replayable-turn turn-rows)]
-            (when-let [user-row (first (filter user-row? rows))]
+            (when-let [user-row (u/seek user-row? rows)]
               (let [content (message-text user-row)]
                 (when-not (str/blank? content)
                   {:content content :profile-id (:profile_id user-row)})))))
@@ -583,7 +583,7 @@
 (defn- turn->llm-messages
   [turn-rows]
   (when-let [{:keys [rows reply]} (replayable-turn turn-rows)]
-    (let [user-row (first (filter user-row? rows))]
+    (let [user-row (u/seek user-row? rows)]
       (concat (when user-row [(user-row->llm-message user-row)])
               (assistant-row->llm-messages reply)))))
 

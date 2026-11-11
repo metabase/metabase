@@ -86,7 +86,7 @@
   (let [detailed-keys (or detailed-keys concise-keys)
         project-fn    (fn [ks]
                         (if compact?
-                          #(m/remove-vals nil? (select-keys % ks))
+                          #(u/select-non-nil-keys % ks)
                           #(select-keys % ks)))]
     (register-projection!
      type
@@ -246,7 +246,7 @@
     :size_x            (:size_x dc)
     :size_y            (:size_y dc)
     :series            (not-empty
-                        (mapv #(m/remove-vals nil? (select-keys % [:id :name])) (:series dc)))
+                        (mapv #(u/select-non-nil-keys % [:id :name]) (:series dc)))
     :inline_parameters (not-empty (:inline_parameters dc))}))
 
 (defn parameter-dashcard-ids
@@ -366,8 +366,7 @@
     :created_at    (:created_at notification)
     :updated_at    (:updated_at notification)
     :payload       (not-empty
-                    (m/remove-vals nil? (select-keys (:payload notification)
-                                                     [:card_id :send_condition :send_once])))
+                    (u/select-non-nil-keys (:payload notification) [:card_id :send_condition :send_once]))
     :subscriptions (mapv #(m/remove-vals nil?
                                          {:type            (some-> (:type %) u/qualified-name)
                                           :cron_schedule   (:cron_schedule %)
@@ -398,19 +397,15 @@
 
 ;;; ------------------------------------------------ subscription --------------------------------------------------
 
-(defn- compact
-  [m]
-  (m/remove-vals nil? m))
-
 (defn subscription-row
   "The projection row for `pulse-row`, a Pulse already hydrated and redacted. Both `get_content`
    and `subscription_write` return this shape."
   [pulse-row]
-  (compact
+  (u/remove-nils
    (-> (select-keys pulse-row [:id :name :dashboard_id :skip_if_empty :parameters :collection_id
                                :entity_id :creator_id :archived :created_at :updated_at])
        (assoc :channels (mapv (fn [channel]
-                                (compact
+                                (u/remove-nils
                                  (-> (select-keys channel [:id :channel_type :schedule_type
                                                            :schedule_hour :schedule_day
                                                            :schedule_frame :enabled :details])
@@ -422,11 +417,11 @@
                                      (m/dissoc-in [:details :emails])
                                      (assoc :recipients
                                             (some->> (:recipients channel)
-                                                     (mapv #(compact (select-keys % [:id :email]))))))))
+                                                     (mapv #(u/select-non-nil-keys % [:id :email])))))))
                               (:channels pulse-row))
               :cards (some->> (:cards pulse-row)
-                              (mapv #(compact (select-keys % [:id :name :include_csv :include_xls
-                                                              :format_rows]))))))))
+                              (mapv #(u/select-non-nil-keys % [:id :name :include_csv :include_xls
+                                                               :format_rows])))))))
 
 (def ^:private subscription-pulse-concise-keys
   [:id :name :dashboard_id :channels :cards :skip_if_empty :archived :creator_id])
@@ -448,12 +443,12 @@
  :subscription
  {:concise  (fn [row]
               (if (:handlers row)
-                (compact (select-keys row alert-concise-keys))
-                (compact (select-keys row subscription-pulse-concise-keys))))
+                (u/select-non-nil-keys row alert-concise-keys)
+                (u/select-non-nil-keys row subscription-pulse-concise-keys)))
   :detailed (fn [row]
               (if (:handlers row)
-                (compact (select-keys row alert-detailed-keys))
-                (compact (select-keys row subscription-pulse-detailed-keys))))
+                (u/select-non-nil-keys row alert-detailed-keys)
+                (u/select-non-nil-keys row subscription-pulse-detailed-keys)))
   :sample   subscription-sample
   ;; The projection dispatches on row shape (pulse-backed vs. notification-backed), so no single
   ;; sample captures it — the `fields` catalog is the union of both shapes' detailed paths.

@@ -953,7 +953,7 @@
         partial?            (and field_values_total
                                  (or has_more_values (< shown field_values_total)))
 
-        stats-map   (into {} (filter (fn [[_ v]] (some? v)) statistics))
+        stats-map   (u/remove-nils statistics)
         stats-table (when (seq stats-map)
                       (te/markdown-table
                        (update-keys stats-map #(->> % name (str "sample-")))

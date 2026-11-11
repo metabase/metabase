@@ -131,8 +131,7 @@
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."
   [results]
-  (let [user-ids             (set (flatten (for [result results]
-                                             (remove nil? ((juxt :last_editor_id :creator_id) result)))))
+  (let [user-ids             (into #{} (comp (mapcat (juxt :last_editor_id :creator_id)) (remove nil?)) results)
         user-id->common-name (if (pos? (count user-ids))
                                (search.db/user-common-names user-ids)
                                {})]

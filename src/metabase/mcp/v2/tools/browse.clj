@@ -381,13 +381,9 @@
                 (update :fields (partial mapv #(dissoc % :fingerprint)))))
             tables))))
 
-(defn- compact
-  [m]
-  (into {} (remove (comp nil? val)) m))
-
 (defn- brief-row
   [row]
-  (compact (select-keys row [:id :name :description])))
+  (u/select-non-nil-keys row [:id :name :description]))
 
 (defn- table-metadata-row
   "Build the get_fields response row for one batch-fetched `table`, at detail level `fmt`.
@@ -396,9 +392,9 @@
   (let [field-keys (case fmt
                      :concise  field-concise-keys
                      :detailed field-detailed-keys)]
-    (-> (compact (select-keys table [:id :name :display_name :schema :db_id :description]))
+    (-> (u/select-non-nil-keys table [:id :name :display_name :schema :db_id :description])
         (assoc :fields         (into []
-                                     (map #(compact (select-keys % field-keys)))
+                                     (map #(u/select-non-nil-keys % field-keys))
                                      (sort-by #(or (:position %) 0) (:fields table)))
                :measures       (mapv brief-row (:measures table))
                :segments       (mapv brief-row (:segments table))
