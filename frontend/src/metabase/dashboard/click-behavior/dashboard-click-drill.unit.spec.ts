@@ -253,7 +253,7 @@ describe("getDashboardDrillType", () => {
           parameterMapping: {},
         },
       }),
-      extraData: { dashboard: createMockDashboard({ id: 1 }) },
+      extraData: { dashboard: createMockDashboard({ id: 1 }), questions: {} },
     });
 
     expect(type).toBeNull();
