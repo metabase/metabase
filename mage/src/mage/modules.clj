@@ -56,11 +56,6 @@
           (keep #(file->module prefix->module %))
           updated-files)))
 
-(defn- updated-modules [git-ref]
-  (let [git-ref (or git-ref "master")
-        updated-files (u/updated-files git-ref)]
-    (updated-files->updated-modules updated-files)))
-
 (def ^:private backend-test-source-file-extensions
   [".clj" ".cljc"])
 
@@ -276,6 +271,30 @@
      (boolean
       (some #(not (contains? unaffected %)) triggers)))))
 
+(defn- changes-important-file-for-drivers?
+  "Whether we should always run driver tests because `updated-files` touches something important like
+  `deps.edn`."
+  [updated-files]
+  (some (fn [filename]
+          (when (or (str/includes? filename "deps.edn")
+                    (str/includes? filename "modules/drivers/"))
+            (when-not *github-output-only?*
+              (println (str "Running driver tests because " (pr-str filename) " was changed")))
+            filename))
+        updated-files))
+
+(defn driver-tests-needed?
+  "Whether CI runs driver tests beyond H2 and Postgres for a change to `updated-files`.
+  The `updated` modules are the ones those files belong to.
+  True when an important file changed, a module in [[modules-triggering-cloud-drivers]] changed itself,
+  or [[driver-deps-affected?]] holds."
+  [deps updated-files updated]
+  (boolean
+   (or (changes-important-file-for-drivers? updated-files)
+       ;; A cloud-driver trigger runs the cloud drivers even when it is exempt, like `enterprise/transforms`.
+       (seq (set/intersection (set updated) modules-triggering-cloud-drivers))
+       (driver-deps-affected? deps updated))))
+
 (defn- print-updated-and-unaffected-modules [deps updated drivers-affected?]
   (let [unaffected (unaffected-modules deps updated)]
     (println "These modules have changed:" (pr-str updated))
@@ -294,12 +313,12 @@
 (defn cli-print-affected-modules
   "CLI entry point: print modules affected by changes since `git-ref`, plus driver-test guidance."
   [[git-ref, :as _command-line-args]]
-  (let [modules-config    (read-modules-config)
-        deps              (dependencies)
-        updated           (updated-modules git-ref)
-        affected          (affected-modules deps updated)
-        drivers-affected? (driver-deps-affected? deps updated)]
-    (print-updated-and-unaffected-modules deps updated drivers-affected?)
+  (let [modules-config (read-modules-config)
+        deps           (dependencies)
+        updated-files  (u/updated-files (or git-ref "master"))
+        updated        (updated-files->updated-modules updated-files)
+        affected       (affected-modules deps updated)]
+    (print-updated-and-unaffected-modules deps updated (driver-tests-needed? deps updated-files updated))
     (println)
     (println)
     (println "You can run tests for these modules and all downstream modules as follows:")
@@ -673,18 +692,6 @@
                                  ")")))))
     (u/exit 0)))
 
-(defn- changes-important-file-for-drivers?
-  "Whether we should always run driver tests because `updated-files` touches something important like
-  `deps.edn`."
-  [updated-files]
-  (some (fn [filename]
-          (when (or (str/includes? filename "deps.edn")
-                    (str/includes? filename "modules/drivers/"))
-            (when-not *github-output-only?*
-              (println (str "Running driver tests because " (pr-str filename) " was changed")))
-            filename))
-        updated-files))
-
 (defn cli-can-skip-driver-tests
   "Exits with zero status code if we can skip driver tests, nonzero if we cannot.
 
@@ -692,17 +699,13 @@
 
     ./bin/mage can-skip-driver-tests [git-ref]"
   [[git-ref, :as _arguments]]
-  (let [deps (dependencies)
-        git-ref (or git-ref "master")
-        updated-files (u/updated-files git-ref)
-        updated (updated-files->updated-modules updated-files)
-        drivers-affected? (driver-deps-affected? deps updated)]
+  (let [deps          (dependencies)
+        updated-files (u/updated-files (or git-ref "master"))
+        updated       (updated-files->updated-modules updated-files)
+        needed?       (driver-tests-needed? deps updated-files updated)]
     ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
-    (print-updated-and-unaffected-modules deps updated drivers-affected?)
-    (u/exit (cond
-              (changes-important-file-for-drivers? updated-files) 1
-              drivers-affected? 1
-              :else 0))))
+    (print-updated-and-unaffected-modules deps updated needed?)
+    (u/exit (if needed? 1 0))))
 
 ;;;; =============================================================================
 ;;;; Fix modules config

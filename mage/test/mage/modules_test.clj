@@ -347,6 +347,18 @@
       'x.t               true
       'both              false)))
 
+(deftest driver-tests-needed-test
+  (let [deps (mage.modules/dependencies)]
+    (are [files modules expected] (= expected (mage.modules/driver-tests-needed? deps files modules))
+      ;; important files
+      ["deps.edn"]                          []                       true
+      ["modules/drivers/oracle/src/x.clj"]  []                       true
+      ;; a cloud-driver trigger, even an exempt one
+      []                                    '[enterprise/transforms] true
+      ;; a trigger, and an exempt module
+      []                                    '[driver]                true
+      []                                    '[util]                  false)))
+
 ;;; =============================================================================
 ;;; Regression test: module graph should not become more connected
 ;;; =============================================================================
