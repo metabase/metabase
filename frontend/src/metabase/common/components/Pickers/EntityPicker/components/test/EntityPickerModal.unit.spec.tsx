@@ -286,6 +286,8 @@ describe("EntityPickerModal", () => {
               model: "collection",
               name: "Trash",
               type: "trash",
+              here: ["card", "dataset", "collection"],
+              below: ["card", "dataset", "collection"],
               collection_id: null,
             }),
           ],

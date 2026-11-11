@@ -56,7 +56,6 @@ describe("Admin > CollectionPermissionsPage", () => {
         id: 20000000,
         name: "Trash",
         type: "trash",
-        archived: true,
       });
       await setup({ collections: [...defaultCollections, trashCollection] });
 

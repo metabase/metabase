@@ -184,7 +184,6 @@ describe("CollectionContent > trash", () => {
     it("should list pinned items in the table instead of a pinned section", async () => {
       await setup({ collectionItems: trashItems });
 
-      expect(await screen.findByText(pinnedModel.name)).toBeInTheDocument();
       expect(
         within(screen.getByTestId("collection-table")).getByText(
           pinnedModel.name,
