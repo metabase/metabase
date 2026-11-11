@@ -75,8 +75,9 @@ Reference items using: [name](metabase://type/id)")
   "Generate instructions for a newly created SQL query, embedding the query ID
    in the link template. Matches Python CreateSQLQueryToolV2._create_result.
    With `results-readable?`, the model is told it can read the results with `run_query`.
-   With `chart-id`, the query already has that chart, so the model is told to change it rather than make another."
-  [query-id results-readable? & [chart-id]]
+   With `chart-id`, the query already has that chart, so the model is told not to make another, and with
+   `edit-chart?` how to change its chart type."
+  [query-id results-readable? & [chart-id edit-chart?]]
   (str "The assistant needs to:\n"
        (if results-readable?
          "- Run the query with `run_query` when the answer needs a value from its results\n"
@@ -85,8 +86,9 @@ Reference items using: [name](metabase://type/id)")
        "so the user can open it themselves\n"
        not-saved-instruction "\n"
        (if chart-id
-         (str "- It is already drawn as a chart with `chart_id` `" chart-id "`. To show another chart type, call "
-              "`edit_chart` with that `chart_id` rather than `create_chart`\n")
+         (str "- It is already drawn as a chart with `chart_id` `" chart-id "`, so don't call `create_chart` for it"
+              (when edit-chart? ". To show another chart type, call `edit_chart` with that `chart_id`")
+              "\n")
          "- Consider whether to create a chart or graph when that better matches the user's intent\n")
        "- Present the results in a way that matches the user's intent and follow up if they need clarification"))
 

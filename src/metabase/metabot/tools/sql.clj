@@ -173,7 +173,8 @@
           instr         (case delivery
                           :editor instructions/query-loaded-in-editor-instructions
                           :hidden (instructions/query-hidden-instructions-for query-id)
-                          :link   (instructions/query-created-instructions-for query-id readable? (:chart-id chart)))
+                          :link   (instructions/query-created-instructions-for
+                                   query-id readable? (:chart-id chart) (shared/tool-offered? "edit_chart")))
           instr         (cond-> instr
                           (and chart (shared/tool-offered? "write_dashboard"))
                           (str "\n" (instructions/add-to-dashboard-instruction (:chart-id chart))))]
