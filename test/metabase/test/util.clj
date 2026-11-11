@@ -567,6 +567,18 @@
                [`(with-temp-env-var-value! ~(vec more) ~@body)]
                body))))
 
+(defmacro ^:private with-temp-system-property!
+  "Run `body` with Java system property `k` set to `v`, restoring whatever it was afterwards."
+  [[k v] & body]
+  `(let [k# ~k, before# (System/getProperty k#)]
+     (try
+       (System/setProperty k# ~v)
+       ~@body
+       (finally
+         (if before#
+           (System/setProperty k# before#)
+           (System/clearProperty k#))))))
+
 (setting/defsetting with-temp-env-var-value-test-setting
   "Setting for the `with-temp-env-var-value-test` test."
   :visibility :internal

@@ -194,31 +194,24 @@
   ;; `GOOGLE_CLOUD_PROJECT` is where the Google SDK looks first for the server's default project, so setting it pins
   ;; down what credentials that carry no project of their own fall back to, whatever the machine running the tests
   ;; has configured.
-  (let [prop   "GOOGLE_CLOUD_PROJECT"
-        before (System/getProperty prop)]
-    (try
-      (System/setProperty prop "env-project")
-      (testing "a credential configuration file (Workload Identity Federation) builds a client"
-        (let [details {:credential-config-json (credential-config-json)
-                       :auth-mode              "credential-config"}
-              client  (#'bigquery/database-details->client (assoc details :billing-project-id "billing"))]
-          (is (instance? ExternalAccountCredentials (.getCredentials (.getOptions ^BigQuery client))))
-          (testing "whose jobs run in the billing project when one is set"
-            (is (= "billing" (.getProjectId (.getOptions ^BigQuery client)))))
-          (testing "and in the server's default project otherwise"
-            (is (= "env-project"
-                   (.getProjectId (.getOptions ^BigQuery (#'bigquery/database-details->client details))))))))
-      (testing "with neither file, the server's Application Default Credentials build the client"
-        (let [adc (GoogleCredentials/create (AccessToken. "token" nil))]
-          (mt/with-dynamic-fn-redefs [bigquery.common/application-default-credentials (constantly adc)]
-            (let [client (#'bigquery/database-details->client {:project-id "data"
-                                                               :auth-mode  "application-default"})]
-              (is (identical? adc (.getCredentials (.getOptions ^BigQuery client))))
-              (is (= "env-project" (.getProjectId (.getOptions ^BigQuery client))))))))
-      (finally
-        (if before
-          (System/setProperty prop before)
-          (System/clearProperty prop))))))
+  (mt/with-temp-system-property! ["GOOGLE_CLOUD_PROJECT" "env-project"]
+    (testing "a credential configuration file (Workload Identity Federation) builds a client"
+      (let [details {:credential-config-json (credential-config-json)
+                     :auth-mode              "credential-config"}
+            client  (#'bigquery/database-details->client (assoc details :billing-project-id "billing"))]
+        (is (instance? ExternalAccountCredentials (.getCredentials (.getOptions ^BigQuery client))))
+        (testing "whose jobs run in the billing project when one is set"
+          (is (= "billing" (.getProjectId (.getOptions ^BigQuery client)))))
+        (testing "and in the server's default project otherwise"
+          (is (= "env-project"
+                 (.getProjectId (.getOptions ^BigQuery (#'bigquery/database-details->client details))))))))
+    (testing "with neither file, the server's Application Default Credentials build the client"
+      (let [adc (GoogleCredentials/create (AccessToken. "token" nil))]
+        (mt/with-dynamic-fn-redefs [bigquery.common/application-default-credentials (constantly adc)]
+          (let [client (#'bigquery/database-details->client {:project-id "data"
+                                                             :auth-mode  "application-default"})]
+            (is (identical? adc (.getCredentials (.getOptions ^BigQuery client))))
+            (is (= "env-project" (.getProjectId (.getOptions ^BigQuery client))))))))))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk

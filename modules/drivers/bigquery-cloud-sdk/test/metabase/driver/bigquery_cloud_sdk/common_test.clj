@@ -21,18 +21,6 @@
                                             "metabase@my-project.iam.gserviceaccount.com:generateAccessToken")
    "credential_source"                 {"file" "/var/run/secrets/tokens/gcp-token"}})
 
-(defmacro ^:private with-system-property
-  "Run `body` with Java system property `k` set to `v`, restoring whatever it was afterwards."
-  [[k v] & body]
-  `(let [k# ~k, before# (System/getProperty k#)]
-     (try
-       (System/setProperty k# ~v)
-       ~@body
-       (finally
-         (if before#
-           (System/setProperty k# before#)
-           (System/clearProperty k#))))))
-
 (deftest ^:parallel credential-config-json->credentials-test
   (testing "a Workload Identity Federation configuration becomes external account credentials"
     (let [creds (bigquery.common/credential-config-json->credentials (json/encode wif-config))]
@@ -68,7 +56,7 @@
 
 (deftest credential-project-id-test
   (testing "credentials that carry no project of their own fall back to the server's default project"
-    (with-system-property ["GOOGLE_CLOUD_PROJECT" "env-project"]
+    (mt/with-temp-system-property! ["GOOGLE_CLOUD_PROJECT" "env-project"]
       (is (= "env-project"
              (bigquery.common/database-details->credential-project-id
               {:auth-mode "credential-config"
