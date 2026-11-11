@@ -89,10 +89,9 @@
   (if (empty? template_tags)
     query
     (let [extracted (get-in query [:stages 0 :template-tags])
-          present (into #{} (map :name) extracted)
           existing-by-name (u/index-by :name extracted)]
       (doseq [tag-name (keys template_tags)]
-        (when-not (contains? present (name tag-name))
+        (when-not (contains? existing-by-name (name tag-name))
           (common/throw-teaching-error
            (message/msg ["Template tag %s does not appear in the SQL — add %s to the query or drop the tag."]
                         (name tag-name) (str "{{" (name tag-name) "}}")))))

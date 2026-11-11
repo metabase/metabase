@@ -132,7 +132,7 @@
   "Hydrate common-name for last_edited_by and created_by for each result."
   [results]
   (let [user-ids             (into #{} (comp (mapcat (juxt :last_editor_id :creator_id)) (remove nil?)) results)
-        user-id->common-name (if (pos? (count user-ids))
+        user-id->common-name (if (seq user-ids)
                                (search.db/user-common-names user-ids)
                                {})]
     (mapv (fn [{:keys [creator_id last_editor_id] :as result}]
