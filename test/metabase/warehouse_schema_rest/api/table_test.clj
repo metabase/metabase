@@ -1432,7 +1432,7 @@
   heap in #83937, so these tests assert it never runs at all on that path."
   [thunk]
   (let [calls (atom 0)
-        orig  lib-metric.dimension.jvm/compute-dimension-pairs]
+        orig  (mt/original-fn #'lib-metric.dimension.jvm/compute-dimension-pairs)]
     (mt/with-dynamic-fn-redefs [lib-metric.dimension.jvm/compute-dimension-pairs
                                 (fn [& args]
                                   (clojure.core/swap! calls inc)
