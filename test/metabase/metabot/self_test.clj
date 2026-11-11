@@ -5,8 +5,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [malli.core :as mc]
-   [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.test-util :as llm.tu]
@@ -2214,16 +2214,22 @@
 
 ;;; ===================== Prometheus Metrics Tests =====================
 
-(defn- tool-executor-metrics
-  "The tool executor histograms in `system`, each a map with `:count` and `:sum`."
+(defn- tool-executor-wait
+  "The wait histogram of the tool executor in `system`: a map with `:count` and `:sum`."
   [system]
-  {:utilization (mt/metric-value system :metabase-metabot/tool-executor-utilization)
-   :queue-depth (mt/metric-value system :metabase-metabot/tool-executor-queue-depth)
-   :wait-ms     (mt/metric-value system :metabase-metabot/tool-executor-wait-ms)})
+  (mt/metric-value system :metabase-metabot/tool-executor-wait-ms))
+
+(defn- tool-executor-gauges
+  "Runs the pull collector of the tool executor, as a scrape does, then returns its gauges in `system`."
+  [system]
+  ((:f (analytics.core/pull-collector ::self.core/tool-executor)))
+  {:pool-size (mt/metric-value system :metabase-metabot/tool-executor-pool-size)
+   :active    (mt/metric-value system :metabase-metabot/tool-executor-active)
+   :queued    (mt/metric-value system :metabase-metabot/tool-executor-queued)})
 
 (defn- hold-tool-executor-threads!
   "Holds `n` threads of the tool executor until `release` is delivered. Returns true once all `n` are held. The held
-   threads go straight to the pool, so no metric observes them."
+   threads go straight to the pool, so the wait histogram does not observe them."
   [n release]
   (let [held (java.util.concurrent.CountDownLatch. n)]
     (dotimes [_ n]
@@ -2235,7 +2241,7 @@
 
 (deftest tool-executor-metrics-test
   (mt/with-prometheus-system! [_ system]
-    (testing "every call is observed, the one that waits on a runs-alone call included"
+    (testing "the wait of every call is observed, the one that waits on a runs-alone call included"
       (let [tools  (assoc test-util/TOOLS
                           "alone" {:tool-name   "alone"
                                    :doc         "Runs alone."
@@ -2248,10 +2254,7 @@
                      {:type :tool-input :id "call-2" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
             result (into [] (self.core/tool-executor-xf tools) chunks)]
         (is (= #{"call-1" "call-2"} (set (map :toolCallId (take-last 2 result)))))
-        (is (=? {:utilization {:count 2.0}
-                 :queue-depth {:count 2.0}
-                 :wait-ms     {:count 2.0}}
-                (tool-executor-metrics system)))))))
+        (is (=? {:count 2.0} (tool-executor-wait system)))))))
 
 (deftest submit-virtual-observes-a-waiting-call-when-it-reaches-the-pool-test
   (mt/with-prometheus-system! [_ system]
@@ -2262,24 +2265,19 @@
         (is (deref started 5000 false))
         (let [waiting (#'self.core/submit-virtual [earlier] (constantly :waiting))
               timer   (u/start-timer)]
-          (testing "while the earlier call runs, the waiting call does not start and only the earlier call is observed"
+          (testing "while the earlier call runs, the waiting call does not start"
             (is (= ::not-started (deref waiting 100 ::not-started)))
-            (is (=? {:utilization {:count 1.0 :sum 0.0}
-                     :queue-depth {:count 1.0 :sum 0.0}
-                     :wait-ms     {:count 1.0}}
-                    (tool-executor-metrics system))))
+            (testing "it takes no thread and is not in the queue"
+              (is (= {:pool-size 20.0 :active 1.0 :queued 0.0} (tool-executor-gauges system))))
+            (testing "only the wait of the earlier call is observed"
+              (is (=? {:count 1.0} (tool-executor-wait system)))))
           (let [waited-on-earlier (u/since-ms timer)]
             (deliver release true)
             (is (= :waiting (deref waiting 5000 ::timeout)))
-            (let [metrics (tool-executor-metrics system)]
-              (testing "the waiting call is observed when the earlier call finishes"
-                ;; The earlier call's thread hands the waiting call to the pool, so it still counts as active: 1 of 20
-                (is (=? {:utilization {:count 2.0 :sum 0.05}
-                         :queue-depth {:count 2.0 :sum 0.0}
-                         :wait-ms     {:count 2.0}}
-                        metrics)))
-              (testing "the time it waited on the earlier call is not in its wait for a thread"
-                (is (< (:sum (:wait-ms metrics)) waited-on-earlier))))))
+            (testing "the wait of the waiting call is observed when the earlier call finishes"
+              (is (=? {:count 2.0} (tool-executor-wait system))))
+            (testing "the time it waited on the earlier call is not in its wait for a thread"
+              (is (< (:sum (tool-executor-wait system)) waited-on-earlier)))))
         (finally
           (deliver release true))))))
 
@@ -2297,22 +2295,17 @@
                 timer   (u/start-timer)]
             (testing "a call that finds every thread busy waits in the queue"
               (is (= ::not-started (deref queued 100 ::not-started)))
-              ;; The earlier call found 19 of 20 threads busy, the queued call 20 of 20
-              (is (=? {:utilization {:count 2.0 :sum (=?/approx [1.95 1e-9])}
-                       :queue-depth {:count 2.0 :sum 0.0}
-                       :wait-ms     {:count 1.0}}
-                      (tool-executor-metrics system))))
+              (testing "the call that waits on the earlier call is not in the queue"
+                (is (= {:pool-size 20.0 :active 20.0 :queued 1.0} (tool-executor-gauges system))))
+              (testing "only the wait of the earlier call is observed"
+                (is (=? {:count 1.0} (tool-executor-wait system)))))
             (let [queued-for (u/since-ms timer)]
               (deliver release-earlier true)
               (is (= [:queued :waiting] [(deref queued 5000 ::timeout) (deref waiting 5000 ::timeout)]))
-              (let [metrics (tool-executor-metrics system)]
-                (testing "the waiting call reaches the full pool when the earlier call finishes, behind the queued call"
-                  (is (=? {:utilization {:count 3.0 :sum (=?/approx [2.95 1e-9])}
-                           :queue-depth {:count 3.0 :sum 1.0}
-                           :wait-ms     {:count 3.0}}
-                          metrics)))
-                (testing "the wait for a thread covers the time in the queue"
-                  (is (<= queued-for (:sum (:wait-ms metrics)))))))))
+              (testing "the wait of the queued call and of the waiting call is observed when each starts"
+                (is (=? {:count 3.0} (tool-executor-wait system))))
+              (testing "the wait for a thread covers the time in the queue"
+                (is (<= queued-for (:sum (tool-executor-wait system))))))))
         (finally
           (run! #(deliver % true) [release-held release-earlier]))))))
 

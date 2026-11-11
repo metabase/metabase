@@ -8,6 +8,7 @@
    [malli.core :as mc]
    [metabase.ai-tracing.core :as ait]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.tools.error :as tools.error]
@@ -988,14 +989,18 @@
    20
    (.. (Thread/ofVirtual) (name "tool-executor-") factory)))
 
+(defmethod analytics.core/pull-collector ::tool-executor [_]
+  ;; Reading the pool's counters is cheap, so every scrape refreshes them.
+  {:min-interval-s 0
+   :f (fn []
+        (analytics/set-gauge! :metabase-metabot/tool-executor-pool-size (.getMaximumPoolSize tool-executor))
+        (analytics/set-gauge! :metabase-metabot/tool-executor-active (.getActiveCount tool-executor))
+        (analytics/set-gauge! :metabase-metabot/tool-executor-queued (.size (.getQueue tool-executor))))})
+
 (def ^:private ^Executor observed-tool-executor
-  "Runs each task on [[tool-executor]]. Observes the pool utilization and queue depth the task finds when it reaches
-  the pool, and the time it then waits for a free thread."
+  "Runs each task on [[tool-executor]] and observes the time the task waits there for a free thread."
   (reify Executor
     (execute [_ task]
-      (analytics/observe! :metabase-metabot/tool-executor-utilization
-                          (/ (.getActiveCount tool-executor) (double (.getMaximumPoolSize tool-executor))))
-      (analytics/observe! :metabase-metabot/tool-executor-queue-depth (.size (.getQueue tool-executor)))
       (let [submitted (u/start-timer)]
         (.execute tool-executor
                   ^Runnable (fn []
@@ -1011,8 +1016,8 @@
   Waiting takes no thread from the pool. Returns a CompletableFuture of the thunk's value."
   [after thunk]
   (if (seq after)
-    ;; `handleAsync` hands the thunk to the executor only when `after` completes, so the executor observes it as it
-    ;; reaches the pool and the wait on `after` is in no metric.
+    ;; `handleAsync` hands the thunk to the executor only when `after` completes, so the wait timer starts when the
+    ;; thunk reaches the pool and the wait on `after` is in no metric.
     (.handleAsync (CompletableFuture/allOf (into-array CompletableFuture after))
                   (reify BiFunction (apply [_ _ _] (thunk)))
                   observed-tool-executor)
