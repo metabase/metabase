@@ -3,6 +3,6 @@
 // POST /api/database and its sync are not in the specs, so they are not steps. The two settings operations
 // are x-status: hardening, so this flow only passes in a view that includes hardening.
 mbcode -> parent: getWorkspaceConfig
-mbcode -> sidecar: setDatabaseWorkspaceSchema
-mbcode -> sidecar: setWorkspacesEnabled
+mbcode -> sidecar: setDatabaseWorkspaceSchema <- {settings.database-workspace-schema}
+mbcode -> sidecar: setWorkspacesEnabled <- {value}
 mbcode -> sidecar: getCurrentWorkspace {data.databases.database_id, data.databases.schema}
