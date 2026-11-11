@@ -154,28 +154,87 @@
                                                            :name          "synced_table"
                                                            :is_published  true
                                                            :collection_id (:id synced)}
-                       :model/Field             field     {:table_id (:id table) :name "id" :base_type :type/Integer}
+                       :model/Field             field     {:table_id (:id table) :name "user_id" :base_type :type/Integer}
+                       :model/Field             target    {:table_id (:id table) :name "user_name" :base_type :type/Text}
                        :model/TableUserSettings _         {:table_id (:id table) :is_published true :collection_id (:id synced)}
-                       :model/Dimension         dimension {:field_id (:id field) :name "Remapped id" :type :internal}]
+                       :model/Dimension         dimension {:field_id                (:id field)
+                                                           :name                    "User"
+                                                           :type                    :external
+                                                           :human_readable_field_id (:id target)}]
           (testing "a remapping of a synced table's field is dirty, with its field, table and collection in its data"
             (is (=? [{:model       "dimension"
                       :id          (:id dimension)
-                      :name        "Remapped id"
+                      :name        "User"
                       :sync_status "create"
                       :data        {:field {:id    (:id field)
                                             :table {:id (:id table) :collection {:id (:id synced)}}}}}]
                     (filter (comp #{"dimension"} :model)
                             (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))))))
-          (testing "a push commits the remapping, after which nothing is dirty"
+          (testing "a push commits the remapping with its human-readable field by name, after which nothing is dirty"
             (is (=? {:status "successful" :outcome {:kind "pushed"}} (push!)))
-            (is (some? (remote-sync.tu/entity-path! url "main" dimension)))
+            (let [yaml (remote-sync.tu/read-file! url "main" (remote-sync.tu/entity-path! url "main" dimension))]
+              (is (re-find #"(?s)human_readable_field_id:.*synced_table.*user_name" yaml))
+              (is (not (re-find (re-pattern (str "human_readable_field_id: " (:id target) "\\b")) yaml))))
             (is (= {:is_dirty false} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty"))))
-          (testing "a pull loads the remapping changed remotely"
+          (testing "a pull loads the remapping changed remotely, with its human-readable field by its local id"
             (rename-remotely! url dimension "Renamed remotely")
             (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "main"})]
               (is (=? {:status "successful" :outcome {:kind "pulled"}}
                       (remote-sync.tu/wait-for-task! task_id))))
-            (is (= "Renamed remotely" (t2/select-one-fn :name :model/Dimension :id (:id dimension))))))))))
+            (is (=? {:name "Renamed remotely" :type :external :human_readable_field_id (:id target)}
+                    (t2/select-one :model/Dimension :id (:id dimension)))))
+          (testing "a remapping removed locally is dirty, and a push removes its file"
+            (let [path (remote-sync.tu/entity-path! url "main" dimension)]
+              (t2/delete! :model/Dimension :id (:id dimension))
+              (is (=? [{:model "dimension" :sync_status "delete"}]
+                      (filter (comp #{"dimension"} :model)
+                              (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))))
+              (is (=? {:status "successful" :outcome {:kind "pushed"}} (push!)))
+              (is (not (contains? (set (remote-sync.tu/files! url "main")) path))))))))))
+
+(deftest dimension-removed-remotely-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection        synced    {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Table             table     {:db_id         (mt/id)
+                                                           :name          "synced_table"
+                                                           :is_published  true
+                                                           :collection_id (:id synced)}
+                       :model/Field             field     {:table_id (:id table) :name "id" :base_type :type/Integer}
+                       :model/TableUserSettings _         {:table_id (:id table) :is_published true :collection_id (:id synced)}
+                       :model/Dimension         dimension {:field_id (:id field) :name "Remapped id" :type :internal}]
+          (is (=? {:status "successful" :outcome {:kind "pushed"}} (push!)))
+          (testing "a remapping whose file is removed remotely is deleted by a pull"
+            (remote-sync.tu/commit! url "main" {(remote-sync.tu/entity-path! url "main" dimension) nil})
+            (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "main"})]
+              (is (=? {:status "successful" :outcome {:kind "pulled"}}
+                      (remote-sync.tu/wait-for-task! task_id))))
+            (is (not (t2/exists? :model/Dimension :id (:id dimension))))))))))
+
+(deftest dimension-of-unsynced-table-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection        synced      {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Collection        unsynced    {:name "Unsynced" :location "/"}
+                     :model/Table             unpublished {:db_id (mt/id) :name "unpublished_table"}
+                     :model/Table             elsewhere   {:db_id         (mt/id)
+                                                           :name          "elsewhere_table"
+                                                           :is_published  true
+                                                           :collection_id (:id unsynced)}
+                     :model/Field             field-1     {:table_id (:id unpublished) :name "id" :base_type :type/Integer}
+                     :model/Field             field-2     {:table_id (:id elsewhere) :name "id" :base_type :type/Integer}
+                     :model/TableUserSettings _           {:table_id      (:id unpublished)
+                                                           :is_published  false
+                                                           :collection_id (:id synced)}
+                     :model/TableUserSettings _           {:table_id      (:id elsewhere)
+                                                           :is_published  true
+                                                           :collection_id (:id unsynced)}
+                     :model/Dimension         _           {:field_id (:id field-1) :name "Unpublished" :type :internal}
+                     :model/Dimension         _           {:field_id (:id field-2) :name "Elsewhere" :type :internal}]
+        (testing "remappings of unpublished tables and of tables published in unsynced collections are not dirty"
+          (is (empty? (filter (comp #{"dimension"} :model)
+                              (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))))))))))
 
 (deftest data-app-bundle-test
   (remote-sync.tu/with-repository [url]
