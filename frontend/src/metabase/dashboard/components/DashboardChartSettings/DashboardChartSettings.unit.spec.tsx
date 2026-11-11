@@ -79,6 +79,52 @@ describe("DashboardChartSettings", () => {
       },
     });
   });
+
+  it("reset settings should keep column click behaviors (metabase#14919)", async () => {
+    const onChange = jest.fn();
+    const originalVizSettings = createMockVisualizationSettings({
+      "table.pivot": false,
+    });
+    const columnKey = JSON.stringify(["name", "CATEGORY"]);
+
+    setup({
+      dashcard: createMockDashboardCard({
+        card: createMockCard({ visualization_settings: originalVizSettings }),
+      }),
+      settings: createMockVisualizationSettings({
+        "table.pivot": true,
+        column_settings: {
+          [columnKey]: {
+            column_title: "Renamed",
+            click_behavior: {
+              type: "link",
+              linkType: "url",
+              linkTemplate: "/",
+              linkTextTemplate: "Home",
+            },
+          },
+        },
+      }),
+      onChange,
+    });
+
+    await userEvent.click(screen.getByText("Reset to defaults"));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith({
+      ...originalVizSettings,
+      column_settings: {
+        [columnKey]: {
+          click_behavior: {
+            type: "link",
+            linkType: "url",
+            linkTemplate: "/",
+            linkTextTemplate: "Home",
+          },
+        },
+      },
+    });
+  });
 });
 
 describe("DashboardChartSettings trend line customization", () => {
