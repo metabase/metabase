@@ -968,6 +968,29 @@ describe("DashCard", () => {
       expect(screen.getByLabelText("Replace")).toBeInTheDocument();
     });
 
+    it("should hide the actions panel of a new iframe card until its editing is done", async () => {
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTime,
+      });
+      const dashcard = createMockIFrameDashboardCard({ justAdded: true });
+      setup({
+        dashboard: { ...testDashboard, dashcards: [dashcard] },
+        dashcard,
+        dashcardData: {},
+        isEditing: true,
+      });
+
+      expect(
+        screen.queryByTestId("dashboardcard-actions-panel"),
+      ).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Done" }));
+
+      expect(
+        screen.getByTestId("dashboardcard-actions-panel"),
+      ).toBeInTheDocument();
+    });
+
     it("should not show the chevron icon (VIZ-1111)", () => {
       setup({
         isEditing: true,

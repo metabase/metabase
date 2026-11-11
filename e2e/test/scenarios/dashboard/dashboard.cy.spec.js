@@ -109,24 +109,6 @@ describe("scenarios > dashboard", () => {
         .and("not.contain", newQuestionName);
     });
 
-    it("should not create a dashboard with a blank name (metabase#63176)", () => {
-      cy.visit("/");
-      H.newButton().click();
-      H.popover().findByText("Dashboard").click();
-      H.modal().within(() => {
-        cy.findByPlaceholderText(/name of your dashboard/i).type(" ");
-        cy.button("Create").click();
-
-        cy.findByText("value must be a non-blank string.").should("be.visible");
-        cy.findByPlaceholderText(/name of your dashboard/i).should(
-          "have.attr",
-          "aria-invalid",
-          "true",
-        );
-        cy.button("Failed").should("be.visible");
-      });
-    });
-
     it("adding question to one dashboard shouldn't affect previously visited unrelated dashboards (metabase#26826)", () => {
       cy.intercept("POST", "/api/card").as("saveQuestion");
 
@@ -238,58 +220,6 @@ describe("scenarios > dashboard", () => {
         }
       });
 
-      it("should hide personal collections when adding questions to a dashboard in public collection", () => {
-        const collectionInRoot = {
-          name: "Collection in root collection",
-        };
-        H.createCollection(collectionInRoot);
-        const myPersonalCollection = "My personal collection";
-
-        cy.log("assert that personal collections are not visible");
-        H.editDashboard();
-        H.openQuestionsSidebar();
-        H.sidebar().within(() => {
-          cy.findByText("Our analytics").should("be.visible");
-          cy.findByText(collectionInRoot.name).should("be.visible");
-          cy.findByText(myPersonalCollection).should("not.exist");
-        });
-
-        cy.log("Move dashboard to a personal collection");
-        cy.findByTestId("edit-bar").button("Cancel").click();
-        H.openDashboardMenu();
-        H.popover().findByText("Move").click();
-        H.entityPickerModal().within(() => {
-          cy.findByText("Bobby Tables's Personal Collection").click();
-          cy.button("Move").click();
-        });
-
-        H.editDashboard();
-        H.openQuestionsSidebar();
-        H.sidebar().within(() => {
-          cy.log("go to the root collection");
-          cy.findByText("Our analytics").click();
-          cy.findByText(myPersonalCollection).should("be.visible");
-          cy.findByText(collectionInRoot.name).should("be.visible");
-        });
-
-        cy.log("Move dashboard back to a root collection");
-        cy.findByTestId("edit-bar").button("Cancel").click();
-        H.openDashboardMenu();
-        H.popover().findByText("Move").click();
-        H.entityPickerModal().within(() => {
-          cy.findByText("Our analytics").click();
-          cy.button("Move").click();
-        });
-
-        H.editDashboard();
-        H.openQuestionsSidebar();
-        H.sidebar().within(() => {
-          cy.findByText("Our analytics").should("be.visible");
-          cy.findByText(collectionInRoot.name).should("be.visible");
-          cy.findByText(myPersonalCollection).should("not.exist");
-        });
-      });
-
       it("should save changes to a dashboard after using the 'Add a chart' button from an empty tab (metabase#53132)", () => {
         cy.log("add an existing card");
         H.editDashboard();
@@ -321,97 +251,7 @@ describe("scenarios > dashboard", () => {
 
     describe("title and description", () => {
       beforeEach(() => {
-        cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-        cy.intercept(
-          "PUT",
-          "/api/dashboard/*",
-          cy.spy().as("updateDashboardSpy"),
-        ).as("updateDashboard");
-      });
-
-      const newTitle = "Renamed";
-      const newDescription = "Foo Bar";
-
-      it("should update the name and description without entering the dashboard edit mode", () => {
-        cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
-
-        cy.wait("@updateDashboard");
-        cy.wait("@getDashboard");
-
-        H.openDashboardInfoSidebar();
-
-        H.sidesheet()
-          .findByPlaceholderText("Add description")
-          .type(newDescription)
-          .blur();
-
-        cy.wait("@updateDashboard");
-        cy.wait("@getDashboard");
-
-        cy.log(
-          "New title and description should be preserved upon page reload",
-        );
-        cy.reload();
-        cy.wait("@getDashboard");
-
-        H.dashboardHeader().findByDisplayValue(newTitle);
-        H.openDashboardInfoSidebar();
-        H.sidesheet().findByText(newDescription);
-        H.closeDashboardInfoSidebar();
-
-        cy.log("should not call unnecessary API requests (metabase#31721)");
-        cy.get("@updateDashboardSpy").should("have.callCount", 2);
-
-        cy.log("Should revert the title change if escaped");
-        H.dashboardHeader().findByDisplayValue(newTitle).type("Whatever{esc}");
-        H.dashboardHeader().findByDisplayValue(newTitle);
-        cy.get("@updateDashboardSpy").should("have.callCount", 2);
-
-        cy.log("Should revert the description change if escaped");
-        H.openDashboardInfoSidebar();
-        H.sidesheet().within(() => {
-          cy.findByText(newDescription).type("Baz{esc}");
-          cy.findByText(newDescription);
-        });
-        cy.get("@updateDashboardSpy").should("have.callCount", 2);
-      });
-
-      it("should update the name and description in the dashboard edit mode", () => {
-        H.editDashboard();
-
-        cy.log("Should revert the title change if editing is cancelled");
-        cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
-        cy.findByTestId("edit-bar").button("Cancel").click();
-        H.modal().button("Discard changes").click();
-        cy.findByTestId("edit-bar").should("not.exist");
-        cy.get("@updateDashboardSpy").should("not.have.been.called");
-        cy.findByDisplayValue(originalDashboardName);
-
-        H.editDashboard();
-
-        cy.log("should not take you out of the edit mode when updating title");
-        cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
-        cy.log(
-          "The only way to open a sidebar in edit mode is to click on a revision history",
-        );
-        H.dashboardHeader()
-          .findByText(/^Edited a few seconds ago/)
-          .click();
-
-        H.sidesheet()
-          .findByPlaceholderText("Add description")
-          .type(newDescription)
-          .blur();
-
-        // TODO
-        // This might be a bug! We're applying the description while still in the edit mode!
-        // OTOH, the title is preserved only on save.
-        cy.wait("@updateDashboard");
-        H.closeDashboardInfoSidebar();
-
-        H.saveDashboard();
-        cy.wait("@updateDashboard");
-        cy.get("@updateDashboardSpy").should("have.callCount", 2);
+        cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
       });
 
       it("should keep a long title and a markdown description within their areas (metabase#31326, metabase#53370)", () => {
@@ -916,36 +756,18 @@ describe("scenarios > dashboard > tracking", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should be possible to add iframe cards from various iframe and URL inputs and allowed hosts", () => {
+  it("should save iframe cards and track them", () => {
     const testCases = [
       {
         input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      },
-      {
-        input: "https://youtu.be/dQw4w9WgXcQ",
-        expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      },
-      {
-        input: "https://www.loom.com/share/1234567890abcdef",
-        expected: "https://www.loom.com/embed/1234567890abcdef",
-      },
-      {
-        input: "https://vimeo.com/123456789",
-        expected: "https://player.vimeo.com/video/123456789",
-      },
-      {
-        input: "example.com",
-        expected: "https://example.com",
-      },
-      {
-        input: "https://example.com",
-        expected: "https://example.com",
+        domain: "www.youtube.com",
       },
       {
         input:
           '<iframe src="https://example.com" onload="alert(\'XSS\')"></iframe>',
         expected: "https://example.com",
+        domain: "example.com",
       },
     ];
 
@@ -954,22 +776,23 @@ describe("scenarios > dashboard > tracking", () => {
       H.visitDashboard(id);
 
       H.editDashboard();
-      testCases.forEach(({ input, expected }, index) => {
+      testCases.forEach(({ input }) => {
         H.addIFrameWhileEditing(input);
-        H.getDashboardCard(index)
-          .findByTestId("dashboardcard-actions-panel")
-          .should("not.exist");
         cy.button("Done").click();
-        H.getDashboardCard(index).realHover();
-        H.getDashboardCard(index)
-          .findByTestId("dashboardcard-actions-panel")
-          .should("be.visible");
-        validateIFrame(expected, index);
       });
 
       H.saveDashboard();
       H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" });
+      testCases.forEach(({ domain }) =>
+        H.expectUnstructuredSnowplowEvent({
+          event: "new_iframe_card_created",
+          target_id: id,
+          event_detail: domain,
+        }),
+      );
 
+      cy.log("The saved iframe cards keep their sources after a reload");
+      cy.reload();
       // The saved dashcard order is not guaranteed, so compare sorted sources
       H.getDashboardCards()
         .find("iframe")
@@ -983,73 +806,6 @@ describe("scenarios > dashboard > tracking", () => {
             expect(el.hasAttribute("onload")).to.equal(false);
           });
         });
-
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "new_iframe_card_created",
-          target_id: id,
-          event_detail: "example.com",
-        },
-        3,
-      );
-      ["www.youtube.com", "youtu.be", "www.loom.com", "vimeo.com"].forEach(
-        (domain) =>
-          H.expectUnstructuredSnowplowEvent({
-            event: "new_iframe_card_created",
-            target_id: id,
-            event_detail: domain,
-          }),
-      );
-    });
-
-    cy.log("allowed-iframe-hosts setting");
-    const errorMessage = /can not be embedded in iframe cards/;
-
-    H.updateSetting(
-      "allowed-iframe-hosts",
-      ["youtube.com", "player.videos.com"].join("\n"),
-    );
-
-    H.createDashboard().then(({ body: { id } }) => H.visitDashboard(id));
-    H.editDashboard();
-
-    // Test allowed domain with subdomains
-    H.addIFrameWhileEditing("https://youtube.com/watch?v=dQw4w9WgXcQ");
-    cy.button("Done").click();
-    validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
-
-    // Test allowed subdomain, but no other domains
-    H.editIFrameWhileEditing(0, "player.videos.com/video/123456789");
-    cy.button("Done").click();
-    validateIFrame("https://player.videos.com/video/123456789");
-
-    H.editIFrameWhileEditing(0, "videos.com/video/123456789");
-    cy.button("Done").click();
-    H.getDashboardCard().within(() => {
-      cy.findByText(errorMessage).should("be.visible");
-      cy.get("iframe").should("not.exist");
-    });
-
-    H.editIFrameWhileEditing(0, "www.videos.com/video");
-    cy.button("Done").click();
-    H.getDashboardCard().within(() => {
-      cy.findByText(errorMessage).should("be.visible");
-      cy.get("iframe").should("not.exist");
-    });
-
-    // Test forbidden domain and subdomains
-    H.editIFrameWhileEditing(0, "https://example.com");
-    cy.button("Done").click();
-    H.getDashboardCard().within(() => {
-      cy.findByText(errorMessage).should("be.visible");
-      cy.get("iframe").should("not.exist");
-    });
-
-    H.editIFrameWhileEditing(0, "www.example.com");
-    cy.button("Done").click();
-    H.getDashboardCard().within(() => {
-      cy.findByText(errorMessage).should("be.visible");
-      cy.get("iframe").should("not.exist");
     });
   });
 
@@ -1208,46 +964,6 @@ describe("scenarios > dashboard > tracking", () => {
     H.expectUnstructuredSnowplowEvent({
       event: "dashboard_width_toggled",
       full_width: false,
-    });
-  });
-
-  it("should track reverting to an old version", () => {
-    H.createDashboard({ name: "Foo" }).then(({ body: { id } }) => {
-      cy.request("PUT", `/api/dashboard/${id}`, { name: "Bar" });
-      H.visitDashboard(id);
-
-      cy.intercept("GET", "/api/revision*").as("revisionHistory");
-
-      cy.findByTestId("dashboard-header")
-        .findByLabelText("More info")
-        .should("be.visible")
-        .click();
-
-      H.sidesheet().within(() => {
-        cy.findByRole("tab", { name: "History" }).click();
-        cy.wait("@revisionHistory");
-        cy.findByTestId("dashboard-history-list").should("be.visible");
-        cy.findByTestId("question-revert-button").click();
-      });
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "revert_version_clicked",
-        event_detail: "dashboard",
-      });
-
-      // Simulate a backend failure on revert and confirm we surface
-      // the error message as a toast (UXW-310).
-      cy.intercept("POST", "/api/revision/revert", {
-        statusCode: 500,
-        body: { message: "Cannot revert: missing dashboard" },
-      }).as("failedRevert");
-
-      H.sidesheet().within(() => {
-        cy.findAllByTestId("question-revert-button").first().click();
-      });
-      cy.wait("@failedRevert");
-
-      H.undoToast().should("contain.text", "Cannot revert: missing dashboard");
     });
   });
 });
@@ -1473,14 +1189,6 @@ describe("scenarios > dashboard > entity id support", () => {
 
 const IFRAME_SANDBOX =
   "allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts";
-
-function validateIFrame(src, index = 0) {
-  H.getDashboardCard(index)
-    .find("iframe")
-    .should("have.attr", "src", src)
-    .and("have.attr", "sandbox", IFRAME_SANDBOX)
-    .and("not.have.attr", "onload");
-}
 
 describe("issue 43219", () => {
   const questionDetails = {

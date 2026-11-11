@@ -1,8 +1,10 @@
+import * as Analytics from "metabase/analytics";
 import {
   createMockActionDashboardCard,
   createMockDashboard,
   createMockDashboardCard,
   createMockHeadingDashboardCard,
+  createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
@@ -13,6 +15,7 @@ import {
   getDashCardMoveToTabUndoMessage,
   hasDashboardChanged,
   haveDashboardCardsChanged,
+  trackAddedIFrameDashcards,
 } from "./utils";
 
 describe("dashboard > actions > utils", () => {
@@ -218,6 +221,58 @@ describe("dashboard > actions > utils", () => {
       expect(getDashCardMoveToTabUndoMessage(dashCard)).toBe(
         "Heading card moved",
       );
+    });
+  });
+
+  describe("trackAddedIFrameDashcards", () => {
+    it("should track each added iframe card with its domain name", () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+      // `isAdded` is set by the store on cards added while editing
+      const addedYouTubeCard = {
+        ...createMockIFrameDashboardCard({
+          id: 1,
+          iframe: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        }),
+        isAdded: true,
+      };
+      const addedExampleCard = {
+        ...createMockIFrameDashboardCard({
+          id: 2,
+          iframe: '<iframe src="https://example.com"></iframe>',
+        }),
+        isAdded: true,
+      };
+      const existingIFrameCard = createMockIFrameDashboardCard({
+        id: 3,
+        iframe: "vimeo.com/1",
+      });
+      const addedTextCard = {
+        ...createMockTextDashboardCard({ id: 4 }),
+        isAdded: true,
+      };
+      const dashboard = createMockDashboard({
+        id: 5,
+        dashcards: [
+          addedYouTubeCard,
+          addedExampleCard,
+          existingIFrameCard,
+          addedTextCard,
+        ],
+      });
+
+      trackAddedIFrameDashcards(dashboard);
+
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(2);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "new_iframe_card_created",
+        target_id: 5,
+        event_detail: "www.youtube.com",
+      });
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "new_iframe_card_created",
+        target_id: 5,
+        event_detail: "example.com",
+      });
     });
   });
 });
