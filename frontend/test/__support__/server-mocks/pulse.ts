@@ -45,3 +45,9 @@ export const setupUnsubscribeFromSubscriptionEndpoint = (
 ) => {
   fetchMock.delete(`path:/api/pulse/${subscription.id}/subscription`, response);
 };
+
+export const setupSubscriptionsEndpoint = (
+  subscriptions: DashboardSubscription[],
+) => {
+  fetchMock.get("path:/api/pulse", subscriptions);
+};

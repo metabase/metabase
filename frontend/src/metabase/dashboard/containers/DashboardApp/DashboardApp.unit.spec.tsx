@@ -14,7 +14,10 @@ import {
   setupSearchEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
-import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import {
+  setupNotificationChannelsEndpoints,
+  setupSubscriptionsEndpoint,
+} from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import { createMockDashboardState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
@@ -22,7 +25,9 @@ import {
   act,
   renderWithProviders,
   screen,
+  waitFor,
   waitForDashboardToLoad,
+  within,
 } from "__support__/ui";
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
@@ -39,6 +44,7 @@ import {
   createMockDashboardTab,
   createMockDatabase,
   createMockHeadingDashboardCard,
+  createMockParameter,
   createMockTable,
   createMockTextDashboardCard,
   createMockUser,
@@ -345,6 +351,50 @@ describe("DashboardApp", () => {
         expect(screen.queryByText(CREATE_PROMPT)).not.toBeInTheDocument();
       });
     });
+  });
+
+  it("should let the values of a filter be edited once the filter linked to it is removed (metabase#49556)", async () => {
+    const targetParameter = createMockParameter({
+      id: "target",
+      name: "Target",
+      slug: "target",
+      type: "category",
+      filteringParameters: ["source"],
+    });
+    const sourceParameter = createMockParameter({
+      id: "source",
+      name: "Source",
+      slug: "source",
+      type: "category",
+    });
+    setupSubscriptionsEndpoint([]);
+    await setup({
+      dashboard: { parameters: [targetParameter, sourceParameter] },
+    });
+
+    await userEvent.click(screen.getByLabelText("Edit dashboard"));
+    const filters = screen.getByTestId("fixed-width-filters");
+
+    await userEvent.click(within(filters).getByText("Target"));
+    const sidebar = await screen.findByTestId("dashboard-parameter-sidebar");
+    expect(
+      within(sidebar).getByRole("button", { name: "Edit" }),
+    ).toBeDisabled();
+
+    await userEvent.click(within(filters).getByText("Source"));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Remove" }),
+    );
+    await waitFor(() =>
+      expect(within(filters).queryByText("Source")).not.toBeInTheDocument(),
+    );
+
+    await userEvent.click(within(filters).getByText("Target"));
+    expect(
+      within(
+        await screen.findByTestId("dashboard-parameter-sidebar"),
+      ).getByRole("button", { name: "Edit" }),
+    ).toBeEnabled();
   });
 
   it("should not show an error when the fetch of a dashboard is cancelled by opening another one (metabase#47170)", async () => {
