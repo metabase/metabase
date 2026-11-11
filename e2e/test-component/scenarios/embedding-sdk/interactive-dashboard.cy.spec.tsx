@@ -236,7 +236,6 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
       cy.log("Go back to the bucket step");
       H.popover().within(() => {
         cy.icon("chevronleft").click();
-        cy.icon("chevronleft").click();
 
         cy.findByText("Raw Data").should("be.visible");
         cy.findByText("Models").should("be.visible");
