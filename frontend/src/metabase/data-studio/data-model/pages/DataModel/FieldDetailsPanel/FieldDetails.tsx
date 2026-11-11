@@ -28,6 +28,12 @@ import type { Field, FieldId, Table } from "metabase-types/api";
 import { trackMetadataChange } from "../../../analytics";
 import { DetailsEditableText } from "../DetailPanel";
 
+import {
+  AttributeHistorySection,
+  RelationshipVersionSection,
+  useCanChangeOverTime,
+  useCanPickRelationshipVersion,
+} from "./ChangesOverTime";
 import { CustomFieldSection } from "./CustomFieldSection";
 import S from "./FieldDetails.module.css";
 import {
@@ -72,6 +78,11 @@ export function FieldDetails({ field, table, header }: FieldDetailsProps) {
   const readOnly = !table.can_write;
   const isHistoryTable = useIsHistoryTable(table);
   const isHistoryAttribute = useIsHistoryAttribute(field, table);
+  const canChangeOverTime = useCanChangeOverTime(field, table);
+  const canPickRelationshipVersion = useCanPickRelationshipVersion(
+    field,
+    table,
+  );
   const { handleNameChange, handleDescriptionChange } = useFieldUpdateHandlers({
     field,
   });
@@ -218,6 +229,20 @@ export function FieldDetails({ field, table, header }: FieldDetailsProps) {
               )}
             </DetailsTable>
           </SidebarSection>
+          {canChangeOverTime && (
+            <AttributeHistorySection
+              field={field}
+              table={table}
+              disabled={readOnly}
+            />
+          )}
+          {canPickRelationshipVersion && (
+            <RelationshipVersionSection
+              field={field}
+              table={table}
+              disabled={readOnly}
+            />
+          )}
           <CustomFieldSection field={field} table={table} />
           <FieldSemanticsSection field={field} table={table} />
         </Stack>
