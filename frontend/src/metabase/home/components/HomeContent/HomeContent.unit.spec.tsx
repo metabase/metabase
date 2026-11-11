@@ -192,6 +192,53 @@ describe("HomeContent", () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([true, false])(
+    "should render sample x-rays only when the x-rays feature is enabled (enable-xrays: %s) (metabase#26571)",
+    async (isXrayEnabled) => {
+      const database = createMockDatabase({
+        is_sample: true,
+        tables: [createMockTable()],
+      });
+
+      await setup({
+        user: createMockUser({
+          is_installer: true,
+          has_question_and_dashboard: false,
+          first_login: "2020-01-10T00:00:00Z",
+        }),
+        databases: [database],
+        candidates: {
+          [database.id]: [
+            createMockDatabaseCandidate({
+              tables: [
+                createMockTableCandidate({ title: "Orders", url: "/a" }),
+                createMockTableCandidate({ title: "People", url: "/b" }),
+                createMockTableCandidate({ title: "Products", url: "/c" }),
+                createMockTableCandidate({ title: "Reviews", url: "/d" }),
+              ],
+            }),
+          ],
+        },
+        isXrayEnabled,
+      });
+
+      const xrayTexts = [
+        /Try out these sample x-rays/,
+        /^A look at/,
+        /^A summary of/,
+        /^A glance at/,
+        /^Some insights about/,
+      ];
+      xrayTexts.forEach((text) => {
+        if (isXrayEnabled) {
+          expect(screen.getByText(text)).toBeInTheDocument();
+        } else {
+          expect(screen.queryByText(text)).not.toBeInTheDocument();
+        }
+      });
+    },
+  );
+
   it("should render nothing if there are no databases", async () => {
     await setup({
       user: createMockUser({
