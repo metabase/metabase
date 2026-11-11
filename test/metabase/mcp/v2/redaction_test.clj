@@ -320,6 +320,7 @@
                     :visualization_settings {:series_settings       {:Open                            {:color "#111"}
                                                                      (keyword "Hidden Series")        {:color "#222"}
                                                                      (keyword "Hidden Series: Count") {:color "#333"}}
+                                             :graph.series_order    [{:key "Hidden Series: Secret", :enabled true}]
                                              :graph.series_labels   ["Open" "Hidden Series" "Open Series"]
                                              :graph.tooltip_columns ["[\"name\",\"salary\"]"]
                                              :column_settings       {"[\"name\",\"salary\"]" {:column_title "Salary"}}

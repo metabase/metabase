@@ -26,12 +26,19 @@
 
 (def ^:private series-describing-viz-keys
   "`:visualization_settings` keys that describe every card on a dashcard, its series cards included.
-   The frontend keys `:series_settings` entries by a card's name, alone or followed by a column name or breakout value.
+   The frontend keys `:series_settings` entries and `:graph.series_order` items by a card's name, alone or followed by
+   a column name or breakout value.
    The legacy `:graph.series_labels` lists the cards' names in series order.
    Column settings, additional tooltip columns and click mappings may name columns from any series card's results.
    Click behaviors also name other entities.
    A visualizer dashcard's `:visualization` maps its columns to the cards and columns they come from."
-  [:series_settings :graph.series_labels :graph.tooltip_columns :column_settings :click_behavior :visualization])
+  [:series_settings
+   :graph.series_order
+   :graph.series_labels
+   :graph.tooltip_columns
+   :column_settings
+   :click_behavior
+   :visualization])
 
 (def ^:private card-describing-viz-keys
   "`:visualization_settings` keys that describe the main card rather than the grid slot: its author-written title
