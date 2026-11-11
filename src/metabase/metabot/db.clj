@@ -465,6 +465,17 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
+(mu/defn active-visible-tables-named
+  "The ID, schema, and name of the active, unhidden Tables in the Database with `database-id` whose name is one of
+  `table-names`."
+  [database-id :- ::lib.schema.id/database
+   table-names :- [:sequential {:min 1} :string]]
+  (t2/select [:model/Table :id :schema :name]
+             :db_id database-id
+             :name [:in table-names]
+             :active true
+             :visibility_type nil))
+
 (mu/defn active-table-with-columns
   "The `columns` of the active Table with `table-id`, or nil."
   [columns :- [:sequential :keyword]
