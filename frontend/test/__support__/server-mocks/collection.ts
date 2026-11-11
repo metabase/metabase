@@ -90,8 +90,11 @@ export function setupCollectionsEndpoints({
         return false;
       }
 
-      // Filter out archived collections if requested
-      if (excludeArchived && collection.archived) {
+      // Filter out archived collections, and the trash, if requested
+      if (
+        excludeArchived &&
+        (collection.archived || collection.type === "trash")
+      ) {
         return false;
       }
 
