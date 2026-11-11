@@ -134,7 +134,7 @@
 (register-profile!
  {:name            :embedding_next
   :prompt-template "embedding-next.selmer"
-  :max-iterations  15
+  :max-iterations  20
   :system-prompt-context #'embedding-system-prompt-context
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
@@ -161,7 +161,7 @@
 (register-profile!
  {:name            :internal
   :prompt-template "internal.selmer"
-  :max-iterations  15
+  :max-iterations  20
   :tools           internal-tools})
 
 ;; :internal without the notebook query builder: the model writes a query with create_sql_query and reads it with
@@ -173,7 +173,7 @@
 (register-profile!
  {:name            :internal-sql
   :prompt-template "internal.selmer"
-  :max-iterations  15
+  :max-iterations  20
   :tools           (into []
                          (comp (remove #{#'tools/construct-notebook-query-tool})
                                (replace {#'tools/run-query-tool     #'tools/run-sql-query-tool
@@ -217,7 +217,7 @@
 (register-profile!
  {:name            :nlq
   :prompt-template "natural-language-querying-only.selmer"
-  :max-iterations  15
+  :max-iterations  20
   :tools           [#'tools/retrieve-library-entities-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
@@ -229,7 +229,7 @@
 (register-profile!
  {:name            :nlq-fallback
   :prompt-template "natural-language-querying-fallback.selmer"
-  :max-iterations  15
+  :max-iterations  20
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
@@ -241,7 +241,7 @@
 (register-profile!
  {:name            :document-generate-content
   :prompt-template "document-generate-content.selmer"
-  :max-iterations  15
+  :max-iterations  20
   :required-tool-call? true
   ;; Producing a chart draft is the answer; a successful construct ends the turn (schema collection
   ;; is a non-terminal preparatory step). Failed constructs don't terminate, so the model retries.
@@ -259,7 +259,7 @@
 (register-profile!
  {:name            :slackbot
   :prompt-template "slackbot.selmer"
-  :max-iterations  15
+  :max-iterations  20
   :tools           [#'tools/search-tool
                     #'tools/slackbot-construct-notebook-query-tool
                     #'tools/list-available-fields-tool
@@ -271,7 +271,7 @@
 (register-profile!
  {:name            :explorations
   :prompt-template "explorations.selmer"
-  :max-iterations  15
+  :max-iterations  20
   :temperature     0.3
   :system-prompt-context #'tools.explorations/research-plan-system-context
   :skills?         false
