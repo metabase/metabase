@@ -314,16 +314,17 @@
               (is (= [{:id hidden-series}] (:series (get refs open-dc)))))))))))
 
 (deftest get-content-dashboard-layout-redacts-unreadable-series-card-test
-  (testing "BOT-2561: with a readable main card and a series card the caller cannot read, the `layout` include
-            names the series card nowhere and keeps no filter mapping to it. Its `series_settings` entry is
-            keyed by its name, and its mapping carries its field ids."
+  ;; The series card's `series_settings` entry is keyed by its name, and its filter mapping carries its field ids.
+  (testing "BOT-2561: the layout include names an unreadable series card nowhere and keeps no mapping to it"
     (mt/with-temp [:model/Collection    {open-id :id}       {}
                    :model/Collection    {locked-id :id}     {}
                    :model/Dashboard     {dash-id :id}       {:collection_id open-id
-                                                             :parameters    [{:id "p" :name "P" :slug "p"
+                                                             :parameters    [{:id   "p"
+                                                                              :name "P"
+                                                                              :slug "p"
                                                                               :type "category"}]}
-                   :model/Card          {open-card :id}     {:name "Open" :collection_id open-id}
-                   :model/Card          {hidden-series :id} {:name "SECRET Series" :collection_id locked-id}
+                   :model/Card          {open-card :id}     {:name "Open", :collection_id open-id}
+                   :model/Card          {hidden-series :id} {:name "SECRET Series", :collection_id locked-id}
                    :model/DashboardCard {dc-id :id}         {:dashboard_id           dash-id
                                                              :card_id                open-card
                                                              :row                    0
@@ -343,7 +344,7 @@
                                                              :position         0}]
       (mt/with-non-admin-groups-no-collection-perms locked-id
         (let [layout-dashcard (fn []
-                                (->> (content-one {:items [{:type "dashboard" :id dash-id}] :include ["layout"]})
+                                (->> (content-one {:items [{:type "dashboard", :id dash-id}], :include ["layout"]})
                                      :layout
                                      :dashcards
                                      (some #(when (= dc-id (:id %)) %))))]

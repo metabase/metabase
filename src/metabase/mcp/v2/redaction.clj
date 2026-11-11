@@ -12,6 +12,7 @@
    These read `metabase.api.common/*current-user*` (the dashboard side through the model read
    checks) and so must be called as the requesting user; the projections they feed are pure."
   (:require
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.mcp.db :as mcp.db]
    [metabase.models.interface :as mi]
@@ -40,27 +41,26 @@
   (and (t2/instance-of? :model/Card card) (mi/can-read? card)))
 
 (defn- redact-hidden-series
-  "`dashcard` with the series cards the current user cannot read reduced to their ids, and the stored settings that
-   describe them removed: their `:series_settings` entries, which are keyed by card name, and the
-   `:parameter_mappings` to them, which carry the field ids their filters are wired to.
-   A name that a readable card on the dashcard also has is not withheld, and its entry describes that card too, so it
-   stays."
+  "The dashcard with the series cards the current user cannot read reduced to their ids.
+   Their `:series_settings` entries, keyed by card name, and the `:parameter_mappings` to them, which carry their
+   field ids, are removed too.
+   An entry whose name a readable card on the dashcard shares stays.
+   Takes a dashcard whose `:card`, if it still has one, is readable."
   [dashcard]
-  (let [hidden       (remove readable-card? (:series dashcard))
-        hidden-ids   (into #{} (map :id) hidden)
-        shown-names  (into #{}
-                           (comp (filter readable-card?) (map :name))
-                           (cons (:card dashcard) (:series dashcard)))
-        hidden-name? (into #{} (comp (keep :name) (remove shown-names)) hidden)
-        hidden-key?  (comp hidden-name? u/qualified-name)
-        settings     (:series_settings (:visualization_settings dashcard))]
-    (cond-> (update dashcard :series (partial mapv #(cond-> % (not (readable-card? %)) (select-keys [:id]))))
+  (let [{shown true, hidden false} (group-by readable-card? (:series dashcard))
+        hidden-ids                 (into #{} (keep :id) hidden)
+        ;; A shared name is not withheld, and its entry styles the readable card too.
+        shown-names                (into #{} (keep :name) (cons (:card dashcard) shown))
+        hidden-name?               (into #{} (comp (keep :name) (remove shown-names)) hidden)
+        hidden-key?                (comp hidden-name? u/qualified-name)
+        settings                   (:series_settings (:visualization_settings dashcard))]
+    (cond-> (update dashcard :series (partial mapv #(cond-> % (hidden-ids (:id %)) (select-keys [:id]))))
       (some (comp hidden-ids :card_id) (:parameter_mappings dashcard))
-      (update :parameter_mappings (partial filterv (comp not hidden-ids :card_id)))
+      (update :parameter_mappings (partial into [] (remove (comp hidden-ids :card_id))))
 
       (some hidden-key? (keys settings))
       (update :visualization_settings
-              #(if-let [kept (not-empty (into {} (remove (comp hidden-key? key)) settings))]
+              #(if-let [kept (not-empty (m/remove-keys hidden-key? settings))]
                  (assoc % :series_settings kept)
                  (dissoc % :series_settings))))))
 
@@ -94,9 +94,10 @@
       redact-hidden-series)))
 
 (defn redact-dashboard
-  "`dash`, with its dashcards' `:card` and `:series` populated — by hydration on a saved dashboard,
-   by hand on a compiled one — and the cards the current user cannot read reduced to their ids, the
-   same collapse the REST dashboard response does."
+  "The dashboard `dash`, with the cards the current user cannot read reduced to their ids.
+   Its dashcards' `:card` and `:series` must be populated, by hydration on a saved dashboard and by hand on a
+   compiled one.
+   The stored settings and filter mappings that describe a hidden card are removed with it."
   [dash]
   (update dash :dashcards (partial mapv redact-dashcard)))
 
