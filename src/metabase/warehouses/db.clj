@@ -59,7 +59,7 @@
 
 (defn- table-ids-of-database-query
   [database-id]
-  ^:allow-subquery {:from [(t2/table-name :model/Table)], :select [:id], :where [:= :db_id database-id]})
+  (t2/fragment {:from [(t2/table-name :model/Table)], :select [:id], :where [:= :db_id database-id]}))
 
 (mu/defn fields-exist-for-database?
   "Whether any Field belongs to a Table of the Database with `database-id`."
@@ -73,16 +73,16 @@
         extra-clause    (if (= (mdb/db-type) :mysql)
                           ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
                           ;; DELETE target
-                          [:not-in :id ^:allow-subquery {:select [:parent_id]
-                                                         :from   [[^:allow-subquery {:select [:parent_id]
-                                                                                     :from   [(t2/table-name :model/Field)]
-                                                                                     :where  [:and
-                                                                                              [:not= :parent_id nil]
-                                                                                              [:in :table_id table-ids-query]]}
-                                                                   :parent_fields]]}]
-                          [:not [:exists ^:allow-subquery {:select [1]
-                                                           :from   [[(t2/table-name :model/Field) :child_field]]
-                                                           :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+                          [:not-in :id (t2/fragment {:select [:parent_id]
+                                                     :from   [[^:allow-subquery {:select [:parent_id]
+                                                                                 :from   [(t2/table-name :model/Field)]
+                                                                                 :where  [:and
+                                                                                          [:not= :parent_id nil]
+                                                                                          [:in :table_id table-ids-query]]}
+                                                               :parent_fields]]})]
+                          (t2/fragment [:not [:exists (t2/fragment {:select [1]
+                                                                    :from   [[(t2/table-name :model/Field) :child_field]]
+                                                                    :where  [:= :child_field.parent_id :metabase_field.id]})]]))]
     (t2/query-one {:delete-from (t2/table-name :model/Field)
                    :where       [:and
                                  [:in :table_id table-ids-query]
