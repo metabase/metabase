@@ -34,9 +34,8 @@
    lease-cutoff        :- Temporal
    started-at          :- Temporal]
   (t2/update! (t2/table-name :model/QueryCache)
-              {:where [:and
-                       [:= :query_hash query-hash]
-                       [:< [:coalesce :refresh_started_at lease-free-sentinel] lease-cutoff]]}
+              {:query_hash                                         query-hash
+               [:coalesce :refresh_started_at lease-free-sentinel] [:< lease-cutoff]}
               {:refresh_started_at started-at}))
 
 (mu/defn- delete-cache-entry!
