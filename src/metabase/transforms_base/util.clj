@@ -600,11 +600,8 @@
 
 (mu/defn record-workspace-target-remapping! :- :nil
   "Record the workspace `TableRemapping` for a transform whose target [[resolve-workspace-target]]
-  rewrote to a workspace copy. Call once the run's write has returned and its watermark is saved, and
-  before the run is marked succeeded: a failure here then fails the run without making a retry append the
-  same rows again, and the post-run sync in [[complete-execution!]]
-  looks the canonical table up through the remapping. A no-op for a transform that wasn't
-  rewritten."
+  rewrote to a workspace copy. The post-run sync in [[complete-execution!]] looks the canonical table up
+  through it. A no-op for a transform that wasn't rewritten."
   [transform :- ::transforms-base.schema/transform]
   (when-let [canonical (:workspace-canonical-target transform)]
     (transforms-base.workspace-hooks/record-workspace-target-remapping!

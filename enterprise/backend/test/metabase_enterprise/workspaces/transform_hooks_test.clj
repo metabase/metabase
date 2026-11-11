@@ -77,6 +77,17 @@
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
 
+(defn- with-stubbed-execute-multimethod!
+  "Replace `transforms.i/execute!` with a stub that captures the transform map it receives.
+  Returns the captured value via the supplied atom. The hook still fires before dispatch
+  (wired in `transforms.execute/execute!`), so the captured target reflects the post-rewrite
+  state — the question this helper answers is 'what does the per-type method actually see?'."
+  [captured-atom body-fn]
+  (with-redefs [transforms.i/execute! (fn [transform _opts]
+                                        (reset! captured-atom transform)
+                                        {:status :succeeded})]
+    (body-fn)))
+
 (deftest colliding-copy-name-is-refused-before-the-write-test
   (testing "two targets whose schema__table names collide: the second is refused with a 409, the first keeps working"
     (with-instance-workspace-for-db! "ws_test_schema"
@@ -91,22 +102,24 @@
             (is (= 409 (:status-code (try (ws.transform-hooks/workspace-transform-target (mt/id) second-target)
                                           nil
                                           (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-                "a run of the second target would overwrite the first one's copy, so it is refused before it writes")
+                "resolving the second target's copy is refused")
+            (let [captured (atom nil)]
+              (with-stubbed-execute-multimethod!
+                captured
+                (fn []
+                  (is (= 409 (:status-code (try (transforms.execute/execute!
+                                                 {:id     998
+                                                  :source {:type :python :body "" :source-tables []}
+                                                  :target {:database (mt/id) :schema "A" :name "B__C" :type "table"}})
+                                                nil
+                                                (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+                      "a run of the second target fails with the 409")))
+              (is (nil? @captured)
+                  "the run is refused before the executor writes"))
             (is (= 1 (t2/count :model/TableRemapping :database_id (mt/id)))
                 "nothing was recorded for the second target"))
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
-
-(defn- with-stubbed-execute-multimethod!
-  "Replace `transforms.i/execute!` with a stub that captures the transform map it receives.
-  Returns the captured value via the supplied atom. The hook still fires before dispatch
-  (wired in `transforms.execute/execute!`), so the captured target reflects the post-rewrite
-  state — the question this helper answers is 'what does the per-type method actually see?'."
-  [captured-atom body-fn]
-  (with-redefs [transforms.i/execute! (fn [transform _opts]
-                                        (reset! captured-atom transform)
-                                        {:status :succeeded})]
-    (body-fn)))
 
 (deftest python-transforms-inherit-target-rewrite-test
   (testing "Python transforms see the rewritten target via the wrapper-level gate"
@@ -419,6 +432,35 @@
                    (t2/select [:model/TableRemapping :from_schema :from_table_name :to_schema :to_table_name] :database_id (mt/id)))
                 "the remapping is recorded after the write")
             (is (= :succeeded (t2/select-one-fn :status :model/TransformRun :transform_id (:id @transform))))
+            (finally
+              (when-let [{transform-id :id} @transform]
+                (t2/delete! :model/TransformRun :transform_id transform-id)
+                (t2/delete! :model/Transform :id transform-id))
+              (ws.table-remapping/clear-mappings-for-db! (mt/id)))))))))
+
+(deftest full-create-index-failure-keeps-its-remapping-test
+  (testing "a full-create run whose index step throws fails, and keeps the remapping to the copy it wrote"
+    (with-instance-workspace-for-db! "ws_test_schema"
+      (fn []
+        (let [transform (atom nil)]
+          (try
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))
+            (reset! transform (t2/insert-returning-instance!
+                               :model/Transform
+                               {:name   "ws-index-fails"
+                                :source {:type :query :query (lib/native-query (mt/metadata-provider) "SELECT 1 AS X")}
+                                :target {:type :table :schema "PUBLIC" :name "INDEX_FAILS"}}))
+            (mt/with-premium-features #{:workspaces :transforms-basic}
+              (with-redefs [driver/schema-exists?                   (constantly true)
+                            transforms-base.i/execute-base!         (constantly {:status :succeeded})
+                            transforms-base.u/apply-target-indexes! (fn [_] (throw (ex-info "index failed" {})))
+                            transforms-base.u/complete-execution!   (constantly nil)]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"index failed"
+                                      (transforms.execute/execute! @transform {:run-method :manual})))))
+            (is (= :failed (t2/select-one-fn :status :model/TransformRun :transform_id (:id @transform))))
+            (is (= [{:from_schema "PUBLIC" :from_table_name "INDEX_FAILS" :to_schema "ws_test_schema" :to_table_name "PUBLIC__INDEX_FAILS"}]
+                   (t2/select [:model/TableRemapping :from_schema :from_table_name :to_schema :to_table_name] :database_id (mt/id)))
+                "the copy was written, so its remapping stays")
             (finally
               (when-let [{transform-id :id} @transform]
                 (t2/delete! :model/TransformRun :transform_id transform-id)

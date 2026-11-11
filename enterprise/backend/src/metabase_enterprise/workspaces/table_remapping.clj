@@ -635,15 +635,18 @@
   "Throw a 409 when a remapping from a different source already points at `to-spec`.
 
    The copy's name is `schema__table` with no escaping, so two sources can share it: `a__b.c` and
-   `a.b__c` both become `a__b__c`. A run records its remapping only after its write, so without this
-   check the second transform would overwrite the first one's copy, and dropping its target would
-   drop that copy."
+   `a.b__c` both become `a__b__c`. This guards the sequential case only. Two colliding transforms
+   whose first runs overlap both pass, because neither has a row yet; the unique constraint then
+   fails the second run's record, after its write."
   [db-id from-spec to-spec]
-  (let [k     #(select-keys (normalize-spec %) [:db :schema :table])
-        from  (k from-spec)
-        to    (k to-spec)
-        other (some (fn [[f t]] (when (and (= (k t) to) (not= (k f) from)) (k f)))
-                    (ws.remapping/remappings-for-db db-id))]
+  (let [table-key #(select-keys (normalize-spec %) [:db :schema :table])
+        from      (table-key from-spec)
+        to        (table-key to-spec)
+        other     (some (fn [[other-from other-to]]
+                          (when (and (= (table-key other-to) to)
+                                     (not= (table-key other-from) from))
+                            (table-key other-from)))
+                        (ws.remapping/remappings-for-db db-id))]
     (when other
       (throw (ex-info (tru "Another table''s workspace copy already uses the name {0}." (:table to))
                       {:status-code 409
