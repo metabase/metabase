@@ -29,7 +29,6 @@
   See [[try-resolve-card-source-info]]."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
@@ -48,6 +47,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
+   [metabase.util.performance :as perf]
    [metabase.util.quoting :as quoting]))
 
 (set! *warn-on-reflection* true)
@@ -353,7 +353,7 @@
 ;;; their arity isn't fixed, so a trailing map could be a legitimate arg.
 ;;;
 ;;; Repair condition (all four required):
-;;;   * clause-shaped vector (string head, not a map-entry, not an FK path);
+;;;   * clause-shaped vector (string head, not an FK path);
 ;;;   * head matches a known fixed-arity clause;
 ;;;   * count is exactly `expected + 1` (count off by >=2 is too ambiguous - the
 ;;;     schema validator will reject it with a friendly tuple-shape error);
@@ -1339,7 +1339,7 @@
                                                v
                                                (rewrite v))))
                            (empty node) node)
-                (walk/walk rewrite repair-day-and-default-comparison node)))]
+                (perf/walk rewrite repair-day-and-default-comparison node)))]
       (rewrite form))
     form))
 
@@ -2154,7 +2154,6 @@
   accepts numeric ids — a numeric field id."
   [v]
   (and (vector? v)
-       (not (map-entry? v))
        (>= (count v) 3)
        (= "field" (nth v 0))
        (map? (nth v 1))
@@ -2677,11 +2676,11 @@
     (update "joins" (partial mapv #(if (map? %) (apply dissoc % (hidden-join-keys %)) %)))))
 
 (defn- postwalk-outside-join-stages
-  "Apply `f` with `walk/postwalk` to the parts of `stage` that [[without-join-stages]] keeps.
+  "Apply `f` with `perf/postwalk` to the parts of `stage` that [[without-join-stages]] keeps.
   Each join's [[hidden-join-keys]] come back unchanged."
   [f stage]
   (let [joins (get stage "joins")]
-    (cond-> (walk/postwalk f (without-join-stages stage))
+    (cond-> (perf/postwalk f (without-join-stages stage))
       (sequential? joins)
       (update "joins" #(mapv (fn [walked join]
                                (cond-> walked
@@ -2947,10 +2946,9 @@
 ;;; ============================================================
 
 (defn- join-alias-string-field-clause? [v]
-  (and (not (map-entry? v))
-       (match/matches? v ["field"
-                          {"join-alias" (_ :guard non-blank-string?)}
-                          (_ :guard non-blank-string?)])))
+  (match/matches? v ["field"
+                     {"join-alias" (_ :guard non-blank-string?)}
+                     (_ :guard non-blank-string?)]))
 
 (defn- join-alias-path-field-clause?
   "True if `v` is a concrete-column field ref (portable path or numeric id) through an explicit
