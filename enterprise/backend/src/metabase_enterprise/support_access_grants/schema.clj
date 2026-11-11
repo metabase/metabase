@@ -40,8 +40,7 @@
    [:revoked_at [:maybe ::timestamp]]
    [:revoked_by_user_id [:maybe ms/PositiveInt]]
    [:created_at ::timestamp]
-   [:updated_at ::timestamp]
-   [:token {:optional true} [:maybe :string]]])
+   [:updated_at ::timestamp]])
 
 (mr/def ::list-grants-response
   "Schema for GET /api/ee/support-access-grants response (paginated list)."
