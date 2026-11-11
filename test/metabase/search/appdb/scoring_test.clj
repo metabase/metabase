@@ -12,6 +12,7 @@
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
@@ -171,8 +172,8 @@
                (search-results :exact "revenue income" :search-expr {:op "or" :args ["revenue" "income"]})))))))
 
 (deftest ^:parallel search-expr-deep-tree-no-name-boost-test
-  ;; The scorers dispatch on the app DB, and only Postgres and H2 have an app-db search specialization.
-  (when (#{:h2 :postgres} (mdb/db-type))
+  ;; The scorers dispatch on the app DB, which needs an app-db search specialization.
+  (when (search.engine/supported-engine? :search.engine/appdb)
     (testing "a tree deeper than one flat node gets no exact or prefix name score"
       (let [deep {:op "and" :args ["revenue" {:op "or" :args ["forecast" "projection"]}]}]
         (is (= {:exact [:inline 0], :prefix [:inline 0]}
