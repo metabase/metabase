@@ -46,15 +46,30 @@
   [_method]
   (< (rand) (sql-parsing.settings/sql-parsing-shadow-sample-rate)))
 
+(defonce ^:private shadow-difference-recorder
+  (atom nil))
+
+(defn set-shadow-difference-recorder!
+  "Make `f` receive each difference that a shadow backend finds, on the background thread of the comparison. See
+  `record-difference!` in [[metabase.sql-parsing.shadow/parser]] for the argument. Nil removes it."
+  [f]
+  (reset! shadow-difference-recorder f))
+
+(defn- record-shadow-difference!
+  [difference]
+  (when-let [f @shadow-difference-recorder]
+    (f difference)))
+
 (def ^:private shadow-parsers
   "One parser per shadow backend for the life of the process: each owns the thread pool its comparisons run on."
   (update-vals shadow-backends
                (fn [[primary-backend shadow-backend]]
-                 (delay (shadow/parser {:primary-backend primary-backend
-                                        :primary         (base-parser primary-backend)
-                                        :shadow-backend  shadow-backend
-                                        :shadow          (base-parser shadow-backend)
-                                        :sample?         sample?})))))
+                 (delay (shadow/parser {:primary-backend    primary-backend
+                                        :primary            (base-parser primary-backend)
+                                        :shadow-backend     shadow-backend
+                                        :shadow             (base-parser shadow-backend)
+                                        :sample?            sample?
+                                        :record-difference! record-shadow-difference!})))))
 
 (def backends
   "Every backend name [[parser]] accepts."

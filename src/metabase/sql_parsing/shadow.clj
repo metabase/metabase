@@ -6,7 +6,8 @@
   everything else here, sampling and metrics included, runs on the background thread or cannot throw. The comparison
   produces Prometheus counts, and a log line when the parsers differ that names the method, the dialect and the
   caller's thread, so the logs around it show what was being parsed. Nothing here logs SQL or a parser's error
-  message, since both can hold customer SQL.
+  message, since both can hold customer SQL. A caller that wants the SQL of each difference gives a
+  `record-difference!` function (see [[parser]]).
 
   The parsers are compared on what callers get from [[metabase.sql-parsing.core]] (the tables, the fields, the
   verdict, the SQL as tokens), not on the raw values a parser returns: two parsers that differ only in shape, layout
@@ -116,12 +117,20 @@
           caller-thread))
 
 (defn- quietly
-  "Call `f`, ignoring any exception: a metric that cannot be written must not change what the caller sees."
+  "Call `f`, ignoring any exception: a metric or a record that cannot be written must not change what the caller
+  sees."
   [f]
   (try
     (f)
     (catch Throwable e
-      (log/debugf "Could not record a shadow parser metric: %s" (.getName (class e))))))
+      (log/debugf "Could not record a shadow parser comparison: %s" (.getName (class e))))))
+
+(defn- recorded-outcome
+  "An [[outcome]] as a difference record keeps it: the value, or the type and message of the error."
+  [{:keys [value thrown]}]
+  (if thrown
+    {:error (error-type thrown), :message (ex-message thrown)}
+    {:value value}))
 
 (defn- executor
   "Two threads and at most 64 waiting comparisons. When all are taken the comparison is dropped, so a slow or stuck
@@ -141,12 +150,16 @@
   outcome (see [[classify]]); one that finds no room in the background queue counts as `dropped`, and one that
   throws as `comparison-failed`. The gauge `metabase-sql-parsing/shadow-in-flight` counts the comparisons running
   or waiting. A comparison that is not a match also logs one INFO line (see [[difference-message]]), at most one per
-  method a minute, through `log-difference!` (default: `log/info`). The backend keywords label the metrics. A
-  `sample?` that throws means no comparison.
+  method a minute, through `log-difference!` (default: `log/info`), and calls `record-difference!` (default: do
+  nothing) on the background thread with a map of `:method`, `:dialect`, `:outcome`, `:primary-backend`,
+  `:shadow-backend`, `:sql`, `:args` (the other arguments of the method), and `:primary` and `:shadow` (each
+  `{:value v}` or `{:error type, :message m}`). The backend keywords label the metrics. A `sample?` that throws
+  means no comparison.
 
   Each call makes a thread pool, so callers keep the parser for the life of the process."
-  [{:keys [primary-backend primary shadow-backend shadow sample? log-difference!]
-    :or   {log-difference! #(log/info %)}}]
+  [{:keys [primary-backend primary shadow-backend shadow sample? log-difference! record-difference!]
+    :or   {log-difference!    #(log/info %)
+           record-difference! (fn [_])}}]
   (let [executor  (executor)
         in-flight (AtomicLong.)
         last-logged (atom {})
@@ -165,15 +178,25 @@
                       (catch Throwable e
                         (log/debugf "Could not decide whether to sample a shadow comparison: %s" (.getName (class e)))
                         false)))
-        compare!  (fn [method dialect call primary-outcome caller-thread]
+        compare!  (fn [method dialect sql args call primary-outcome caller-thread]
                     (try
                       (record-duration! primary-backend method (:ms primary-outcome))
                       (let [shadow-outcome (outcome #(call shadow))
                             result         (classify method primary-outcome shadow-outcome)]
                         (record-duration! shadow-backend method (:ms shadow-outcome))
-                        (when (and (not= :match result) (log-due? method))
-                          (quietly #(log-difference! (difference-message result method dialect primary-backend
-                                                                         shadow-backend caller-thread))))
+                        (when (not= :match result)
+                          (when (log-due? method)
+                            (quietly #(log-difference! (difference-message result method dialect primary-backend
+                                                                           shadow-backend caller-thread))))
+                          (quietly #(record-difference! {:method          method
+                                                         :dialect         dialect
+                                                         :outcome         result
+                                                         :primary-backend primary-backend
+                                                         :shadow-backend  shadow-backend
+                                                         :sql             sql
+                                                         :args            args
+                                                         :primary         (recorded-outcome primary-outcome)
+                                                         :shadow          (recorded-outcome shadow-outcome)})))
                         (record-comparison! method dialect result))
                       (catch Throwable e
                         (quietly #(record-comparison! method dialect :comparison-failed))
@@ -182,13 +205,14 @@
                       (finally
                         (.decrementAndGet in-flight)
                         (quietly #(record-in-flight! shadow-backend in-flight)))))
-        run       (fn [method dialect call]
+        run       (fn [method dialect sql args call]
                     (let [primary-outcome (outcome #(call primary))]
                       (when (sampled? method)
                         (.incrementAndGet in-flight)
                         (try
                           (let [caller-thread (.getName (Thread/currentThread))]
-                            (.execute executor ^Runnable #(compare! method dialect call primary-outcome caller-thread)))
+                            (.execute executor ^Runnable #(compare! method dialect sql args call primary-outcome
+                                                                            caller-thread)))
                           (catch RejectedExecutionException _
                             (.decrementAndGet in-flight)
                             (quietly #(record-comparison! method dialect :dropped))))
@@ -198,25 +222,26 @@
                         (:value primary-outcome))))]
     (reify protocol/SqlParser
       (referenced-tables [_ dialect sql]
-        (run :referenced-tables dialect #(protocol/referenced-tables % dialect sql)))
+        (run :referenced-tables dialect sql [] #(protocol/referenced-tables % dialect sql)))
       (referenced-fields [_ dialect sql]
-        (run :referenced-fields dialect #(protocol/referenced-fields % dialect sql)))
+        (run :referenced-fields dialect sql [] #(protocol/referenced-fields % dialect sql)))
       (returned-columns-lineage [_ dialect sql default-table-schema sqlglot-schema]
-        (run :returned-columns-lineage dialect
+        (run :returned-columns-lineage dialect sql [default-table-schema sqlglot-schema]
              #(protocol/returned-columns-lineage % dialect sql default-table-schema sqlglot-schema)))
       (validate-query [_ dialect sql default-table-schema sqlglot-schema]
-        (run :validate-query dialect #(protocol/validate-query % dialect sql default-table-schema sqlglot-schema)))
+        (run :validate-query dialect sql [default-table-schema sqlglot-schema]
+             #(protocol/validate-query % dialect sql default-table-schema sqlglot-schema)))
       (simple-query [_ dialect sql]
-        (run :simple-query dialect #(protocol/simple-query % dialect sql)))
+        (run :simple-query dialect sql [] #(protocol/simple-query % dialect sql)))
       (add-into-clause [_ dialect sql table-name]
-        (run :add-into-clause dialect #(protocol/add-into-clause % dialect sql table-name)))
+        (run :add-into-clause dialect sql [table-name] #(protocol/add-into-clause % dialect sql table-name)))
       (add-insert-clause [_ dialect sql table-name]
-        (run :add-insert-clause dialect #(protocol/add-insert-clause % dialect sql table-name)))
+        (run :add-insert-clause dialect sql [table-name] #(protocol/add-insert-clause % dialect sql table-name)))
       (field-references [_ dialect sql]
-        (run :field-references dialect #(protocol/field-references % dialect sql)))
+        (run :field-references dialect sql [] #(protocol/field-references % dialect sql)))
       (replace-names [_ dialect sql replacements]
-        (run :replace-names dialect #(protocol/replace-names % dialect sql replacements)))
+        (run :replace-names dialect sql [replacements] #(protocol/replace-names % dialect sql replacements)))
       (single-stmt-of-type [_ dialect sql stmt-type]
-        (run :single-stmt-of-type dialect #(protocol/single-stmt-of-type % dialect sql stmt-type)))
+        (run :single-stmt-of-type dialect sql [stmt-type] #(protocol/single-stmt-of-type % dialect sql stmt-type)))
       (transpile-sql [_ sql from-dialect to-dialect]
-        (run :transpile-sql from-dialect #(protocol/transpile-sql % sql from-dialect to-dialect))))))
+        (run :transpile-sql from-dialect sql [to-dialect] #(protocol/transpile-sql % sql from-dialect to-dialect))))))
