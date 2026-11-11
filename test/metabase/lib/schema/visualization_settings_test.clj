@@ -182,3 +182,19 @@
            (mc/decode ::lib.schema.visualization-settings/visualization-settings
                       {"table.pivot" true "qp/display" "table" "qp/global-column-settings" {}}
                       (mtx/transformer {:name :api}))))))
+
+(deftest ^:parallel normalize-keeps-click-behavior-parameter-mapping-shapes-test
+  (testing "the ids and types of parameter mappings the backend doesn't read are kept as the frontend wrote them"
+    (let [mapping {"id"     ["[\"dimension\",[\"field\",1,null]]"]
+                   "source" {"type" "userAttribute" "id" "attr_uid" "name" "attr_uid"}
+                   "target" {"type" "dimension"
+                             "id"   ["[\"dimension\",[\"field\",1,null]]"]
+                             "dimension" ["dimension" ["field" 1 nil]]}}]
+      (is (= {:id     ["[\"dimension\",[\"field\",1,null]]"]
+              :source {:type "userAttribute" :id "attr_uid" :name "attr_uid"}
+              :target {:type      "dimension"
+                       :id        ["[\"dimension\",[\"field\",1,null]]"]
+                       :dimension ["dimension" [:field 1 nil]]}}
+             (get-in (lib/normalize ::lib.schema.visualization-settings/visualization-settings
+                                    {"click_behavior" {"type" "link" "parameterMapping" {"k" mapping}}})
+                     [:click_behavior :parameterMapping "k"]))))))

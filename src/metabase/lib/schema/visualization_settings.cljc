@@ -73,11 +73,8 @@
    :any])
 
 (mr/def ::click-behavior.parameter-ref
-  "The source or target of a click behavior parameter: a column, parameter, variable or dimension, by id and name."
+  "The source or target of a click behavior parameter, with the dimension a target of type `dimension` maps to."
   (settings-map {:description "click behavior parameter reference"}
-                [:id        :string]
-                [:name      :string]
-                [:type      [:enum "column" "parameter" "variable" "dimension"]]
                 [:dimension ::click-behavior.dimension]))
 
 (mr/def ::click-behavior.parameter-mapping
@@ -86,7 +83,6 @@
   [:map-of {:decode/normalize #(cond-> % (map? %) (perf/update-keys lib.schema.common/normalize-string-key))}
    :string
    [:maybe (settings-map {:description "click behavior parameter mapping"}
-                         [:id     :string]
                          [:source ::click-behavior.parameter-ref]
                          [:target ::click-behavior.parameter-ref])]])
 
