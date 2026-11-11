@@ -1,26 +1,26 @@
 import { t } from "ttag";
 
-import type { FieldValuesSearchInfo } from "metabase-lib";
+import type { FieldSearchInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
 
 export function canListFieldValues({
   fieldId,
   hasFieldValues,
-}: FieldValuesSearchInfo): boolean {
+}: FieldSearchInfo): boolean {
   return fieldId != null && hasFieldValues === "list";
 }
 
 export function canSearchFieldValues({
   searchFieldId,
   hasFieldValues,
-}: FieldValuesSearchInfo): boolean {
+}: FieldSearchInfo): boolean {
   return searchFieldId != null && hasFieldValues === "search";
 }
 
 export function canRemapFieldValues({
   fieldId,
   searchFieldId,
-}: FieldValuesSearchInfo): boolean {
+}: FieldSearchInfo): boolean {
   return fieldId != null && searchFieldId != null && fieldId !== searchFieldId;
 }
 

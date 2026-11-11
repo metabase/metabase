@@ -11,6 +11,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]))
@@ -44,6 +45,7 @@
             [:source :string]]]
   ;; Check permission directly since this is an upsert endpoint - the library may not exist yet.
   (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))
+  (api/check-403 (not (remote-sync/read-only?)))
   (python-library/update-python-library-source! path (:source body)))
 
 (api.macros/defendpoint :post "/test-run"

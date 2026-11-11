@@ -213,7 +213,7 @@ describe("scenarios > dashboard > parameters", () => {
             name: "filter",
             "display-name": "Native Filter",
             type: "dimension",
-            dimension: ["field", PRODUCTS.CATEGORY, null],
+            "field-id": PRODUCTS.CATEGORY,
             "widget-type": "string/=",
             default: null,
           },

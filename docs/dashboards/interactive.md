@@ -1,5 +1,6 @@
 ---
 title: Dashboard interactivity
+summary: Customize what happens when people click a chart, sending them to another dashboard, a question, or a URL, or using a chart to filter the dashboard.
 redirect_from:
   - /docs/latest/users-guide/interactive-dashboards
 ---

@@ -22,8 +22,8 @@
 
 (defn app-url
   "The API URL of the data `app`, followed by `parts`."
-  [{app-name :name} & parts]
-  (str/join "/" (list* "ee/apps" app-name parts)))
+  [{slug :slug} & parts]
+  (str/join "/" (list* "ee/apps" slug parts)))
 
 (defn collection-entity-id
   "A stable resource collection entity ID for the app in `data_apps/<slug>`."
@@ -103,7 +103,7 @@
   (merge instance-fields
          {:entity_id entity_id :name name :type :question :display :table :description nil
           :creator_id (mt/user->id :crowberto)
-          :collection_preview true :card_schema nil :database_id (:database query)
+          :card_schema nil :database_id (:database query)
           :dataset_query (lib/prepare-for-serialization query) :visualization_settings {}
           :parameters [] :parameter_mappings [] :result_metadata nil :dimensions nil :dimension_mappings nil}))
 
@@ -155,7 +155,7 @@
   the app afterwards deletes what it holds."
   [f]
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:name "birds"}]
+    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:slug "birds"}]
       (f collection-id))))
 
 (defn do-with-library!

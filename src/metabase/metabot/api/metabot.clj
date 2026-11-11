@@ -108,22 +108,14 @@
      :offset  offset
      :total   total}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id/prompt-suggestions"
+(api.macros/defendpoint :delete "/:id/prompt-suggestions" :- ::api/generic-204-no-content
   "Delete all prompt suggestions for the metabot instance with `id`."
   [{:keys [id]} :- [:map {:closed true} [:id pos-int?]]]
   (api/check-superuser)
   (metabot.suggested-prompts/delete-all-metabot-prompts id)
   api/generic-204-no-content)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id/prompt-suggestions/:prompt-id"
+(api.macros/defendpoint :delete "/:id/prompt-suggestions/:prompt-id" :- ::api/generic-204-no-content
   "Delete the prompt suggestion with ID `prompt-id` for the metabot instance with `id`."
   [{:keys [id prompt-id]} :- [:map {:closed true}
                               [:id pos-int?]

@@ -1,11 +1,13 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { selectMetadataProvider } from "metabase/metadata-store";
+import {
+  selectMetadataProvider,
+  selectQuestionFromOptsBuilder,
+} from "metabase/metadata-store";
 import type { State } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { ForeignKey, RowValue } from "metabase-types/api";
 
 const STAGE_INDEX = 0;
@@ -83,8 +85,11 @@ export function getForeignKeyCountQuery(fkQuery: Lib.Query) {
   return Lib.aggregateByCount(fkQuery, STAGE_INDEX);
 }
 
-export const getForeignKeyQuestionUrl = (query: Lib.Query): string => {
-  const question = Question.create({
+export const getForeignKeyQuestionUrl = (
+  state: State,
+  query: Lib.Query,
+): string => {
+  const question = selectQuestionFromOptsBuilder(state)({
     dataset_query: Lib.toJsQuery(query),
   });
 

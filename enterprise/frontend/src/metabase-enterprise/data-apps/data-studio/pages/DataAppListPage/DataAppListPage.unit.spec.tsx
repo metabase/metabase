@@ -46,14 +46,14 @@ describe("DataAppListPage", () => {
     setup({
       apps: [
         createMockDataApp({
-          name: "order-desk",
-          display_name: "Order desk",
+          slug: "order-desk",
+          name: "Order desk",
           enabled: true,
         }),
         createMockDataApp({
           id: 2,
-          name: "inventory",
-          display_name: "Inventory",
+          slug: "inventory",
+          name: "Inventory",
           enabled: true,
           outdated: true,
         }),

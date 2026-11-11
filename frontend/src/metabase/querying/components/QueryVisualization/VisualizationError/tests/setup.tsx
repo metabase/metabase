@@ -6,7 +6,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
+import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   Database,
@@ -66,7 +66,7 @@ export const setup = ({
     questions: [card],
     databases: [database],
   });
-  const question = checkNotNull(metadata.question(card.id));
+  const question = new Question(card, metadata);
 
   renderWithProviders(
     <VisualizationError

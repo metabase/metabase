@@ -63,6 +63,16 @@ describe("enclosingFunction", () => {
     expect(setup("concat(First, Middle, Last |")).toEqual(result);
   });
 
+  it("should match a function right after its opening parenthesis", () => {
+    expect(setup("lower(|")).toEqual({
+      name: "lower",
+      from: 0,
+      to: 6,
+      arg: null,
+    });
+    expect(setup("lower(|)")?.name).toEqual("lower");
+  });
+
   it("should handle nested function calls", () => {
     expect(setup("Concat(X,Lower(Y,Z|")?.name).toEqual("lower");
     expect(setup("Concat(X|,Lower(Y,Z")?.name).toEqual("concat");

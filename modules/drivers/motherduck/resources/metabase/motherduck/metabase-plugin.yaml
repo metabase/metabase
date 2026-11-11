@@ -1,0 +1,61 @@
+info:
+  name: Metabase MotherDuck Driver
+  version: 1.0.0
+  description: Allows Metabase to connect to MotherDuck over the Postgres wire protocol.
+driver:
+  name: motherduck
+  display-name: MotherDuck
+  lazy-load: true
+  parent: postgres
+  connection-properties:
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - merge:
+              - host
+              - placeholder: pg.us-east-1-aws.motherduck.com
+                helper-text: MotherDuck's Postgres endpoint for your organization's region, such as pg.us-east-1-aws.motherduck.com or pg.eu-central-1-aws.motherduck.com.
+                required: true
+          - merge:
+              - port
+              - placeholder: 5432
+    - merge:
+        - dbname
+        - placeholder: my_db
+          helper-text: The name of a database in your MotherDuck account, or of a share attached to it.
+          required: true
+    - name: schema-filters
+      type: schema-filters
+      display-name: Schemas
+      visible-if:
+        destination-database: false
+    # The endpoint takes the token as the password and ignores the user name, so there's no user field; the driver
+    # sends the user name MotherDuck documents. It always uses TLS, so there's no SSL toggle either.
+    - name: token-info
+      type: info
+      placeholder: >-
+        Use a [MotherDuck access token](https://motherduck.com/docs/key-tasks/authenticating-and-connecting-to-motherduck/authenticating-to-motherduck/).
+        People who can write SQL in Metabase can do anything the token can, in any database in the account, so use a
+        [read scaling token](https://motherduck.com/docs/key-tasks/authenticating-and-connecting-to-motherduck/read-scaling/)
+        or a token for a dedicated account rather than a personal token.
+    - merge:
+        - password
+        - display-name: Access token
+          placeholder: "eyJhbGciOi..."
+          helper-text: A MotherDuck access token. Prefer a read scaling token, or a token for an account with access to only this data.
+          required: true
+    - cloud-ip-address-info
+    - ssh-tunnel
+    - advanced-options-start
+    - json-unfolding
+    - merge:
+        - additional-options
+        - placeholder: "connectTimeout=20"
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.postgres
+  - step: load-namespace
+    namespace: metabase.driver.motherduck
+  - step: register-jdbc-driver
+    class: org.postgresql.Driver

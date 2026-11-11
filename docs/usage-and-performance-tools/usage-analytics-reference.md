@@ -568,6 +568,11 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - card-delete
 - card-public-link-created
 - card-public-link-deleted
+- card-test-create
+- card-test-delete
+- card-test-run-start
+- card-test-run-timeout
+- card-test-update
 - card-update
 - channel-create
 - channel-update
@@ -679,7 +684,6 @@ The Query Source column on the [Query log](#query-log) model takes one of:
 - ad-hoc
 - agent
 - cache-refresh
-- collection
 - csv-download
 - dashboard
 - dashboard-subscription

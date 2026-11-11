@@ -1,8 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
 import type { JsMetricDefinition } from "metabase-types/api";
 import {
-  createMockMetric,
   createMockMetricDimension,
+  createMockNormalizedMetric,
 } from "metabase-types/api/mocks/metric";
 
 import * as LibMetric from "./core";
@@ -12,7 +12,7 @@ import type {
   MetricMetadata,
 } from "./types";
 
-const SAMPLE_METRIC = createMockMetric({
+const SAMPLE_METRIC = createMockNormalizedMetric({
   id: 1,
   name: "Revenue",
   description: "Total revenue",
@@ -77,13 +77,10 @@ const DIM_IDX = {
 };
 
 function createSampleMetadata() {
-  const metadata = createMockMetadata();
-
-  metadata.metrics = {
-    [SAMPLE_METRIC.id]: SAMPLE_METRIC,
+  return {
+    ...createMockMetadata(),
+    metrics: { [SAMPLE_METRIC.id]: SAMPLE_METRIC },
   };
-
-  return metadata;
 }
 
 /**

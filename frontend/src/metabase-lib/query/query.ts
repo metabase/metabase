@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import * as ML from "cljs/metabase.lib.js";
-import { type Metadata, metadataProvider } from "metabase-lib";
+import { type JsMetadata, metadataProvider } from "metabase-lib";
 import type {
   CardId,
   CardType,
@@ -165,7 +166,7 @@ export function fromJsQuery(
 }
 
 export function fromJsQueryAndMetadata(
-  metadata: Metadata,
+  metadata: JsMetadata,
   jsQuery: OpaqueDatasetQuery | DatasetQuery,
 ): Query {
   return fromJsQuery(metadataProvider(jsQuery.database, metadata), jsQuery);

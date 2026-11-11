@@ -1,4 +1,4 @@
-import { getIn } from "icepick";
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import _ from "underscore";
 
 import type {
@@ -33,8 +33,8 @@ export function mergeSettings(
       merged[key] = {};
       for (const nestedKey of Object.keys({ ...first[key], ...second[key] })) {
         merged[key][nestedKey] = mergeSettings(
-          getIn(first, [key, nestedKey]) || {},
-          getIn(second, [key, nestedKey]) || {},
+          first[key]?.[nestedKey] || {},
+          second[key]?.[nestedKey] || {},
         );
       }
     }

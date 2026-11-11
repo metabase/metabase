@@ -231,7 +231,7 @@
                                                    :display-name "date"
                                                    :type         :dimension
                                                    :widget-type  :date/all-options
-                                                   :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                                   :field-id     (mt/id :checkins :date)}}}
               :parameters [{:type :date/all-options
                             :target [:dimension [:template-tag "date"]]
                             :value "past30years"}]}))))))

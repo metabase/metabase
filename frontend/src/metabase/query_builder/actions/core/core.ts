@@ -1,22 +1,18 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import _ from "underscore";
 
 import {
   cardApi,
-  databaseApi,
   invalidateNotificationsApiCache,
   revisionApi,
   timelineApi,
 } from "metabase/api";
-import { listTag } from "metabase/api/tags";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
-import {
-  getShallowDatabases,
-  selectQuestionFromCard,
-} from "metabase/metadata-store";
+import { selectQuestionFromCard } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
@@ -44,15 +40,9 @@ import {
   getRegisteredDefaultSize,
 } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
-import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type {
-  Card,
-  CardId,
-  DashboardTabId,
-  DatasetQuery,
-} from "metabase-types/api";
+import type { Card, CardId, DashboardTabId } from "metabase-types/api";
 
 import {
   trackNewQuestionSaved,
@@ -119,7 +109,9 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     dispatch(loadMetadataForCard(card));
 
     // if the name of the card changed this will update the url slug
-    dispatch(updateUrl(new Question(card), { dirty: false }));
+    dispatch(
+      updateUrl(selectQuestionFromCard(getState(), card), { dirty: false }),
+    );
 
     return card;
   };
@@ -226,20 +218,15 @@ export const navigateToNewCardInsideQB = createThunkAction(
   },
 );
 
-// DEPRECATED, still used in a couple places
-export const setDatasetQuery =
-  (datasetQuery: DatasetQuery) => (dispatch: Dispatch, getState: GetState) => {
-    if (datasetQuery instanceof NativeQuery) {
-      datasetQuery = datasetQuery.datasetQuery();
-    }
-
+export const setQuery =
+  (query: Lib.Query) => (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
 
     if (!question) {
       return;
     }
 
-    dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
+    dispatch(updateQuestion(question.setQuery(query)));
   };
 
 export type OnCreateOptions = {
@@ -308,11 +295,6 @@ export const apiCreateQuestion = (
       dispatch,
       options,
     );
-
-    const databases = Object.values(getShallowDatabases(getState()));
-    if (!databases.some((database) => database.is_saved_questions)) {
-      dispatch(databaseApi.util.invalidateTags([listTag("database")]));
-    }
 
     trackNewQuestionSaved(
       question,

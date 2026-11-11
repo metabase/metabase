@@ -2,9 +2,9 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useGetDatabaseQuery } from "metabase/api";
-import { BrowseCard } from "metabase/browse/components/BrowseCard";
-import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
 import { DatabaseQuickLinksMenu } from "metabase/browse/components/DatabaseQuickLinksMenu";
+import { BrowseCard } from "metabase/common/components/BrowseCard";
+import { BrowseGrid } from "metabase/common/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
