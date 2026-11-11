@@ -431,6 +431,17 @@
           (str fqn " (via " table_reference ")")
           fqn)))))
 
+(defn- dimension-cell
+  "Render the value under `k` for a cell of a metric dimensions table."
+  [k v]
+  (cond
+    (nil? v)         ""
+    (keyword? v)     (markdown-cell (clojure.core/name v))
+    ;; `reference` is a JSON array the LLM copies verbatim. Keep the cell valid
+    ;; JSON by encoding pipes as `\u007c` instead of markdown `\|`.
+    (= k :reference) (json-cell-safe (escape-xml-content v))
+    :else            (markdown-cell v)))
+
 (defn format-metric-dimensions-table
   "Render a metric's dimensions with their source tables and field references.
 
@@ -452,14 +463,7 @@
         dims)
    {:name "Field Name" :field_id "Field ID" :type "Type" :source "Source table"
     :reference "Reference (copy as is if it starts with [\"field\"; else put it in a field clause)"}
-   {:value-fn (fn [k v]
-                (cond
-                  (nil? v)         ""
-                  (keyword? v)     (markdown-cell (clojure.core/name v))
-                  ;; `reference` is a JSON array the LLM copies verbatim. Keep the cell valid
-                  ;; JSON by encoding pipes as `\u007c` instead of markdown `\|`.
-                  (= k :reference) (json-cell-safe (escape-xml-content v))
-                  :else            (markdown-cell v)))}))
+   {:value-fn dimension-cell}))
 
 (defn- format-join-required-dimensions-table
   "Like [[format-metric-dimensions-table]] but the Reference is the FULL alias-qualified field clause
@@ -471,12 +475,7 @@
    (map (fn [d] (assoc d :reference (some-> (:reference d) json/encode))) dims)
    {:name "Field Name" :field_id "Field ID" :type "Type"
     :reference "Reference (copy as is if it starts with [\"field\"; else put it in a field clause)"}
-   {:value-fn (fn [k v]
-                (cond
-                  (nil? v)         ""
-                  (keyword? v)     (markdown-cell (clojure.core/name v))
-                  (= k :reference) (json-cell-safe (escape-xml-content v))
-                  :else            (markdown-cell v)))}))
+   {:value-fn dimension-cell}))
 
 (defn- format-metric-join-required-dimensions
   "Render the metric's FK-less join dimensions — the columns the metric reaches through an explicit
