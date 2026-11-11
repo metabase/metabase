@@ -29,17 +29,20 @@ import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/Dashboa
 import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
   createMockDashboardQueryMetadata,
+  createMockDashboardTab,
   createMockDatabase,
   createMockHeadingDashboardCard,
   createMockTable,
   createMockTextDashboardCard,
+  createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 
 const TEST_COLLECTION = createMockCollection();
@@ -62,6 +65,9 @@ const TestHome = () => <div />;
 interface Options {
   dashboard?: Partial<Dashboard>;
   slug?: string;
+  currentUser?: User;
+  /** Holds the dashboard response until `resolveDashboard` is called. */
+  deferDashboard?: boolean;
   /** Holds the query metadata response until `resolveQueryMetadata` is called. */
   deferQueryMetadata?: boolean;
 }
@@ -70,6 +76,8 @@ function renderDashboardApp({
   dashboard,
   slug,
   deferQueryMetadata = false,
+  currentUser = createMockUser(),
+  deferDashboard = false,
 }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
@@ -77,11 +85,18 @@ function renderDashboardApp({
     databases: [TEST_DATABASE_WITH_ACTIONS],
   });
   const queryMetadataRequest = defer();
+  const dashboardRequest = defer();
 
   setupNotificationChannelsEndpoints({});
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
-  setupDashboardEndpoints(mockDashboard);
+  if (deferDashboard) {
+    fetchMock.get(`path:/api/dashboard/${dashboardId}`, () =>
+      dashboardRequest.promise.then(() => mockDashboard),
+    );
+  } else {
+    setupDashboardEndpoints(mockDashboard);
+  }
   if (deferQueryMetadata) {
     fetchMock.get(`path:/api/dashboard/${dashboardId}/query_metadata`, () =>
       queryMetadataRequest.promise.then(() => queryMetadata),
@@ -121,6 +136,7 @@ function renderDashboardApp({
       initialRoute: `/dashboard/${slug ?? dashboardId}`,
       withRouter: true,
       storeInitialState: {
+        currentUser,
         dashboard: createMockDashboardState(),
         entities: createMockEntitiesState({
           databases: [TEST_DATABASE_WITH_ACTIONS],
@@ -136,6 +152,7 @@ function renderDashboardApp({
     store,
     mockEventListener,
     resolveQueryMetadata: () => queryMetadataRequest.resolve(),
+    resolveDashboard: () => dashboardRequest.resolve(),
   };
 }
 
@@ -268,6 +285,103 @@ describe("DashboardApp", () => {
         screen.queryByRole("button", { name: "Add a chart" }),
       ).not.toBeInTheDocument();
     });
+
+    describe("in editing mode", () => {
+      const NO_CREATE_PROMPT =
+        "Browse your collections to find and add existing questions.";
+      const CREATE_PROMPT =
+        "Create a new question or browse your collections for an existing one.";
+
+      const userWithPermissions = (canCreateQueries: boolean) =>
+        createMockUser({
+          permissions: createMockUserPermissions({
+            can_create_queries: canCreateQueries,
+            can_create_native_queries: false,
+          }),
+        });
+
+      it("should suggest creating a question to a user who can create queries", async () => {
+        await setup({ currentUser: userWithPermissions(true) });
+
+        await userEvent.click(screen.getByLabelText("Edit dashboard"));
+
+        expect(screen.getByText(CREATE_PROMPT)).toBeInTheDocument();
+        expect(screen.queryByText(NO_CREATE_PROMPT)).not.toBeInTheDocument();
+      });
+
+      it("should not suggest creating a question to a user who cannot create queries on an empty dashboard (metabase#44937)", async () => {
+        await setup({ currentUser: userWithPermissions(false) });
+
+        await userEvent.click(screen.getByLabelText("Edit dashboard"));
+
+        expect(screen.getByText(NO_CREATE_PROMPT)).toBeInTheDocument();
+        expect(screen.queryByText(CREATE_PROMPT)).not.toBeInTheDocument();
+      });
+
+      it("should not suggest creating a question to a user who cannot create queries on an empty tab (metabase#44937)", async () => {
+        await setup({
+          currentUser: userWithPermissions(false),
+          dashboard: {
+            tabs: [
+              createMockDashboardTab({ id: 1, name: "Tab 1" }),
+              createMockDashboardTab({ id: 2, name: "Tab 2" }),
+            ],
+            dashcards: [
+              createMockTextDashboardCard({
+                id: 1,
+                dashboard_tab_id: 1,
+                text: "Card on the first tab",
+              }),
+            ],
+          },
+        });
+
+        await userEvent.click(screen.getByLabelText("Edit dashboard"));
+        expect(screen.queryByText(NO_CREATE_PROMPT)).not.toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole("tab", { name: "Tab 2" }));
+
+        expect(await screen.findByText(NO_CREATE_PROMPT)).toBeInTheDocument();
+        expect(screen.queryByText(CREATE_PROMPT)).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  it("should not show an error when the fetch of a dashboard is cancelled by opening another one (metabase#47170)", async () => {
+    const otherDashboard = createMockDashboard({
+      id: 2,
+      name: "Dashboard A",
+    });
+    setupDashboardEndpoints(otherDashboard);
+    setupDashboardQueryMetadataEndpoint(
+      otherDashboard,
+      createMockDashboardQueryMetadata(),
+    );
+
+    const { router, store, resolveDashboard } = renderDashboardApp({
+      deferDashboard: true,
+    });
+
+    try {
+      expect(
+        await screen.findByTestId("dashboard-header-skeleton"),
+      ).toBeInTheDocument();
+
+      act(() => {
+        router.navigate(`/dashboard/${otherDashboard.id}`);
+      });
+
+      await waitForDashboardToLoad();
+      expect(
+        await screen.findByDisplayValue(otherDashboard.name),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Something’s gone wrong"),
+      ).not.toBeInTheDocument();
+      expect(store.getState().app.errorPage).toBeNull();
+    } finally {
+      resolveDashboard();
+    }
   });
 
   /**
