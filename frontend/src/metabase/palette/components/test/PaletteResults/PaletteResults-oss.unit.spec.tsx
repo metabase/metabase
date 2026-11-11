@@ -197,6 +197,31 @@ describe("PaletteResults", () => {
     expect(option).not.toHaveTextContent("Shorebirds");
   });
 
+  it("should label a dashboard question search result with its dashboard, not its collection", async () => {
+    setup({
+      query: "Total",
+      searchItems: [
+        createMockSearchResult({
+          id: 8,
+          model: "card",
+          name: "Total Orders Dashboard Question",
+          collection: createMockCollection({ name: "Shorebirds" }),
+          dashboard: {
+            id: 5,
+            name: "Orders in a dashboard",
+            moderation_status: null,
+          },
+        }),
+      ],
+    });
+
+    const option = await screen.findByRole("option", {
+      name: "Total Orders Dashboard Question",
+    });
+    expect(option).toHaveTextContent("Orders in a dashboard");
+    expect(option).not.toHaveTextContent("Shorebirds");
+  });
+
   it("should display collections that search results are from", async () => {
     setup({
       query: "ques",
