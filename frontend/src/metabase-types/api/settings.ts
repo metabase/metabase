@@ -514,7 +514,6 @@ interface AdminSettings {
   "custom-geojson-enabled": boolean;
   "encryption-enabled": boolean;
   "metabot-query-execution-enabled?": boolean;
-  "deprecated-agent-api-enabled?": boolean;
   "deprecation-notice-version"?: string;
   "disable-cors-on-localhost": boolean;
   "embedding-secret-key"?: string;
@@ -593,6 +592,7 @@ interface PublicSettings {
   "csp-img-allowed-hosts": string;
   "csp-img-enabled": boolean;
   "ai-features-enabled?": boolean;
+  "deprecated-agent-api-enabled?": boolean;
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "metaplow-tracking-enabled": boolean;

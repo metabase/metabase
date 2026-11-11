@@ -25,6 +25,6 @@
 (defsetting deprecated-agent-api-enabled?
   (deferred-tru "Whether the deprecated Agent API stays available. The Agent API is deprecated and will be removed in Metabase 68; use the MCP server for agents instead. Off by default; an admin turns it on to keep using the Agent API until it is removed.")
   :type       :boolean
-  :visibility :admin
+  :visibility :public
   :default    false
   :export?    true)
