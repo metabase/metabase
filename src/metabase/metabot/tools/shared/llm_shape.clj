@@ -614,9 +614,10 @@
   "Format query result rows as a markdown table.
    Note: Uses |safe in template, so values must be escaped."
   [columns rows]
-  (let [header    (format-markdown-row (map :name columns))
+  (let [cell      #(escape-pipes (escape-xml (str %)))
+        header    (format-markdown-row (map (comp cell :name) columns))
         data-rows (map (fn [row]
-                         (format-markdown-row (map #(escape-xml (str %)) row)))
+                         (format-markdown-row (map cell row)))
                        rows)]
     (str header "\n" (str/join "\n" data-rows) "\n")))
 

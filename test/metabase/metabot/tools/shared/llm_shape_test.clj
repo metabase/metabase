@@ -457,6 +457,12 @@
       (is (str/includes? xml "type=\"notebook\""))
       (is (not (str/includes? xml "<query_results>"))))))
 
+(deftest ^:parallel query-result->xml-escapes-pipes-test
+  (testing "a pipe in a cell or column name cannot split the markdown row"
+    (let [xml (llm-shape/query-result->xml {:result_columns [{:name "a|b" :type "text"}]
+                                            :rows           [["x|y<z"]]})]
+      (is (str/includes? xml "| a\\|b |\n| x\\|y&lt;z |")))))
+
 (deftest ^:parallel chart->xml-test
   (testing "formats chart (simplified version)"
     (let [chart {:chart-id "ch-abc-123"
