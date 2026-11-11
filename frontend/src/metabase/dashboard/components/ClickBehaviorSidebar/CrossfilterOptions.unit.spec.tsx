@@ -102,7 +102,10 @@ describe("CrossfilterOptions", () => {
     async (filterName) => {
       setup();
 
-      await userEvent.click(await screen.findByText(filterName));
+      const filters = await screen.findByTestId("unset-click-mappings");
+      await userEvent.click(
+        within(filters).getByRole("button", { name: filterName }),
+      );
 
       const listbox = await screen.findByRole("listbox");
       expect(within(listbox).getByText("Columns")).toBeInTheDocument();
