@@ -5,10 +5,11 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { RemoteSyncChangesTarget } from "metabase/plugins";
-import type { RemoteSyncEntity, RemoteSyncType } from "metabase-types/api";
+import type { RemoteSyncDirtyItem, RemoteSyncType } from "metabase-types/api";
 import {
-  createMockRemoteSyncEntity,
-  createMockRemoteSyncEntityCollection,
+  createMockCollection,
+  createMockRemoteSyncCardData,
+  createMockRemoteSyncDirtyItem,
   createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -17,7 +18,7 @@ import { ChangesBadge } from "./ChangesBadge";
 
 type SetupOpts = {
   target: RemoteSyncChangesTarget;
-  dirty?: RemoteSyncEntity[];
+  dirty?: RemoteSyncDirtyItem[];
   isAdmin?: boolean;
   syncType?: RemoteSyncType;
 };
@@ -49,8 +50,12 @@ describe("ChangesBadge", () => {
     setup({
       target: { type: "collection", id: 1 },
       dirty: [
-        createMockRemoteSyncEntity({
-          collection: createMockRemoteSyncEntityCollection({ id: 1 }),
+        createMockRemoteSyncDirtyItem({
+          model: "card",
+          data: createMockRemoteSyncCardData({
+            collection_id: 1,
+            collection: createMockCollection({ id: 1 }),
+          }),
         }),
       ],
     });
@@ -62,8 +67,12 @@ describe("ChangesBadge", () => {
     setup({
       target: { type: "collection", id: 1 },
       dirty: [
-        createMockRemoteSyncEntity({
-          collection: createMockRemoteSyncEntityCollection({ id: 2 }),
+        createMockRemoteSyncDirtyItem({
+          model: "card",
+          data: createMockRemoteSyncCardData({
+            collection_id: 2,
+            collection: createMockCollection({ id: 2 }),
+          }),
         }),
       ],
     });
@@ -87,8 +96,12 @@ describe("ChangesBadge", () => {
     setup({
       target: { type: "collection", id: 1 },
       dirty: [
-        createMockRemoteSyncEntity({
-          collection: createMockRemoteSyncEntityCollection({ id: 1 }),
+        createMockRemoteSyncDirtyItem({
+          model: "card",
+          data: createMockRemoteSyncCardData({
+            collection_id: 1,
+            collection: createMockCollection({ id: 1 }),
+          }),
         }),
       ],
       isAdmin,

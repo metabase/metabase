@@ -19,12 +19,12 @@ import type {
   RemoteSyncUnsyncedDependenciesErrorData,
 } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockCollectionItem,
-  createMockRemoteSyncEntityCollection,
-  createMockRemoteSyncEntityCollectionAncestor,
-  createMockRemoteSyncEntityRef,
+  createMockRemoteSyncCardData,
+  createMockRemoteSyncDashboardData,
+  createMockRemoteSyncItem,
   createMockRemoteSyncUnsyncedDependenciesErrorData,
-  createMockRemoteSyncUnsyncedDependency,
   createMockSettingDefinition,
   createMockSettings,
   createMockUser,
@@ -51,19 +51,25 @@ const SALES = createMockCollectionItem({
 const UNSYNCED_DEPENDENCIES_ERROR =
   createMockRemoteSyncUnsyncedDependenciesErrorData({
     unsynced_dependencies: [
-      createMockRemoteSyncUnsyncedDependency({
-        name: "Revenue",
-        collection: createMockRemoteSyncEntityCollection({
-          id: 31,
-          name: "Reports",
-          effective_ancestors: [
-            createMockRemoteSyncEntityCollectionAncestor({
-              id: SALES.id,
-              name: SALES.name,
-            }),
-          ],
+      createMockRemoteSyncItem({
+        model: "card",
+        data: createMockRemoteSyncCardData({
+          name: "Revenue",
+          collection_id: 31,
+          collection: createMockCollection({
+            id: 31,
+            name: "Reports",
+            effective_ancestors: [
+              createMockCollection({ id: SALES.id, name: SALES.name }),
+            ],
+          }),
         }),
-        used_by: [createMockRemoteSyncEntityRef({ name: "Overview" })],
+        used_by: [
+          createMockRemoteSyncItem({
+            model: "dashboard",
+            data: createMockRemoteSyncDashboardData({ name: "Overview" }),
+          }),
+        ],
       }),
     ],
   });

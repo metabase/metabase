@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.schema :as measures.schema]
    [metabase.remote-sync.core :as remote-sync]
@@ -69,3 +70,11 @@
    dimensions         :- [:maybe sequential?]
    dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
   (t2/update! :model/Measure :id id {:dimensions dimensions, :dimension_mappings dimension-mappings}))
+
+(mu/defn synced-measure-items :- [:sequential ::measures.schema/measure]
+  "The Measures with `ids`, with their Table and its Collection and ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Measure :id :name :table_id] :id [:in ids])
+        (t2/hydrate [:table [:collection :effective_ancestors]])
+        (->> (mapv (fn [row] (update row :table #(some-> % (collection.root/hydrate-root-collection root)))))))))

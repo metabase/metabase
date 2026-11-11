@@ -1,32 +1,42 @@
-import type {
-  CollectionType,
-  RemoteSyncEntityId,
-  RemoteSyncUnsyncedDependency,
-} from "metabase-types/api";
+import type { RemoteSyncItem, RemoteSyncItemId } from "metabase-types/api";
+
+import { getItemCollections, getItemName } from "../../../utils";
 
 export type DependencyGroupCollection = {
-  id: RemoteSyncEntityId;
+  id: RemoteSyncItemId;
   name: string;
-  type: CollectionType | null;
 };
 
 export type DependencyGroup = {
   key: string;
   collection: DependencyGroupCollection | null;
-  dependencies: RemoteSyncUnsyncedDependency[];
+  dependencies: RemoteSyncItem[];
 };
 
-const getTopLevelCollection = ({
-  collection,
-}: RemoteSyncUnsyncedDependency): DependencyGroupCollection | null => {
-  const topLevel = collection?.effective_ancestors[0] ?? collection;
+const getTopLevelCollection = (
+  dependency: RemoteSyncItem,
+): DependencyGroupCollection | null => {
+  const [topLevel] = getItemCollections(dependency);
   return topLevel != null && typeof topLevel.id === "number"
-    ? { id: topLevel.id, name: topLevel.name, type: topLevel.type }
+    ? { id: topLevel.id, name: topLevel.name }
     : null;
 };
 
+const compareNames = (a: string, b: string) =>
+  a.localeCompare(b, undefined, { sensitivity: "base" });
+
+export const sortItems = (items: RemoteSyncItem[]): RemoteSyncItem[] =>
+  [...items].sort((a, b) => compareNames(getItemName(a), getItemName(b)));
+
+const sortGroups = (groups: DependencyGroup[]): DependencyGroup[] =>
+  [...groups].sort((a, b) =>
+    a.collection == null || b.collection == null
+      ? Number(a.collection == null) - Number(b.collection == null)
+      : compareNames(a.collection.name, b.collection.name),
+  );
+
 export const getDependencyGroups = (
-  dependencies: RemoteSyncUnsyncedDependency[],
+  dependencies: RemoteSyncItem[],
 ): DependencyGroup[] => {
   const groups = new Map<string, DependencyGroup>();
   dependencies.forEach((dependency) => {
@@ -38,5 +48,10 @@ export const getDependencyGroups = (
       dependencies: [...group.dependencies, dependency],
     });
   });
-  return [...groups.values()];
+  return sortGroups(
+    [...groups.values()].map((group) => ({
+      ...group,
+      dependencies: sortItems(group.dependencies),
+    })),
+  );
 };

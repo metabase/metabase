@@ -13,9 +13,9 @@ import {
   type StackProps,
   Text,
 } from "metabase/ui";
-import type { RemoteSyncEntity } from "metabase-types/api";
+import type { RemoteSyncDirtyItem } from "metabase-types/api";
 
-import { getEntityUrl, getModelIcon } from "../../../../utils";
+import { getItemUrl, getModelIcon } from "../../../../utils";
 
 import {
   type ChangesGroup,
@@ -26,7 +26,7 @@ import {
 } from "./utils";
 
 type ChangesListProps = {
-  entities: RemoteSyncEntity[];
+  entities: RemoteSyncDirtyItem[];
 };
 
 export const ChangesList = ({ entities }: ChangesListProps) => (
@@ -103,7 +103,7 @@ const ItemSection = ({ item }: ItemSectionProps) => (
 );
 
 type EntityProps = {
-  entity: RemoteSyncEntity;
+  entity: RemoteSyncDirtyItem;
 };
 
 const EntityRow = ({ entity }: EntityProps) => (
@@ -115,7 +115,7 @@ const EntityRow = ({ entity }: EntityProps) => (
 );
 
 const EntityName = ({ entity }: EntityProps) => {
-  const url = getEntityUrl(entity);
+  const url = getItemUrl(entity);
 
   return url != null ? (
     <Anchor component={Link} to={url} target="_blank" truncate>

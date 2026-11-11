@@ -24,8 +24,8 @@ import {
 } from "metabase-enterprise/api";
 import type {
   RegularCollectionId,
+  RemoteSyncItem,
   RemoteSyncTaskId,
-  RemoteSyncUnsyncedDependency,
 } from "metabase-types/api";
 import { isRemoteSyncUnsyncedDependenciesError } from "metabase-types/guards";
 
@@ -86,7 +86,7 @@ const LoadedSettingsForm = ({
   const [createLibrary] = useCreateLibraryMutation();
   const [taskId, setTaskId] = useState<RemoteSyncTaskId | null>(null);
   const [unsyncedDependencies, setUnsyncedDependencies] = useState<
-    RemoteSyncUnsyncedDependency[] | null
+    RemoteSyncItem[] | null
   >(null);
 
   const getLibraryChange = async (): Promise<

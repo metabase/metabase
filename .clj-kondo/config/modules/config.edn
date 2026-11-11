@@ -1201,7 +1201,10 @@
 
   glossary
   {:team "Gadget"
-   :api  #{metabase.glossary.api metabase.glossary.core metabase.glossary.init}
+   :api  #{metabase.glossary.api
+           metabase.glossary.core
+           metabase.glossary.init
+           metabase.glossary.schema}
    :uses #{api
            events
            lib.schema
@@ -3996,9 +3999,11 @@
    :api #{metabase-enterprise.data-testing.api
           metabase-enterprise.data-testing.card-api
           metabase-enterprise.data-testing.init
-          metabase-enterprise.data-testing.run-api}
+          metabase-enterprise.data-testing.run-api
+          metabase-enterprise.data-testing.schema}
    :uses #{api
            audit-app
+           collections
            driver
            events
            lib
@@ -4435,20 +4440,34 @@
   {:team       "Data Apps"
    :codeowners true
    :api  #{metabase-enterprise.remote-sync.api metabase-enterprise.remote-sync.init}
-   :uses #{api
+   :uses #{actions
+           api
            app-db
            collections
+           dashboards
+           data-apps
+           documents
            events
+           glossary
            lib.schema
+           measures
            models
+           native-query-snippets
            premium-features
+           queries
            remote-sync
+           segments
            serialization
            settings
            startup
            task
+           timeline
+           transforms
            util
-           enterprise/serialization}
+           warehouses.schema
+           enterprise/data-testing
+           enterprise/serialization
+           enterprise/transforms.python}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
@@ -4743,7 +4762,7 @@
   enterprise/transforms.python
   {:team "Graphy"
    :ns-prefix "metabase-enterprise.transforms-python"
-   :api  #{metabase-enterprise.transforms-python.api metabase-enterprise.transforms-python.init}
+   :api  #{metabase-enterprise.transforms-python.api metabase-enterprise.transforms-python.init metabase-enterprise.transforms-python.schema}
    :uses #{analytics.interface
            api
            app-db

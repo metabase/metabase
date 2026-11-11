@@ -96,7 +96,7 @@
           (testing "the synced content not pushed yet is dirty"
             (is (= {:is_dirty true} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")))
             (is (=? {:dirty [{:id (:id card) :name "Synced card" :model "card" :sync_status "create"
-                              :collection {:id (:id synced) :name "Synced" :effective_ancestors []}}]}
+                              :data {:collection {:id (:id synced) :name "Synced"}}}]}
                     (update (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
                             :dirty #(filterv (comp #{"card"} :model) %)))))
           (testing "a push commits it, after which nothing is dirty and the remote has no changes"
@@ -121,7 +121,10 @@
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
       (mt/with-temp [:model/Collection        synced  {:name "Synced" :is_remote_synced true :location "/"}
-                     :model/Table             table   {:db_id (mt/id) :name "synced_table"}
+                     :model/Table             table   {:db_id         (mt/id)
+                                                       :name          "synced_table"
+                                                       :is_published  true
+                                                       :collection_id (:id synced)}
                      :model/Field             field   {:table_id (:id table) :name "id" :base_type :type/Integer}
                      :model/TableUserSettings _       {:table_id (:id table) :is_published true :collection_id (:id synced)}
                      :model/FieldUserSettings _       {:field_id (:id field) :description "Synced"}
@@ -130,9 +133,13 @@
                                                        :definition (let [mp (mt/metadata-provider)]
                                                                      (-> (lib/query mp (lib.metadata/table mp (:id table)))
                                                                          (lib/filter (lib/= (lib.metadata/field mp (:id field)) 1))))}]
-        (testing "the changes of a table's segments and fields carry the table as their parent"
-          (is (=? [{:model "fieldusersettings" :id (:id field) :parent {:model "tableusersettings" :id (:id table) :name "synced_table"}}
-                   {:model "segment" :id (:id segment) :parent {:model "tableusersettings" :id (:id table) :name "synced_table"}}]
+        (testing "the changes of a table's segments and fields carry their table and its collection in their data"
+          (is (=? [{:model "fieldusersettings"
+                    :id    (:id field)
+                    :data  {:field {:table {:id (:id table) :name "synced_table" :collection {:id (:id synced)}}}}}
+                   {:model "segment"
+                    :id    (:id segment)
+                    :data  {:table {:id (:id table) :name "synced_table" :collection {:id (:id synced)}}}}]
                   (->> (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))
                        (filter (comp #{(:id field) (:id segment)} :id))
                        (filter (comp #{"fieldusersettings" "segment"} :model))
@@ -241,11 +248,13 @@
                         (update response :unsynced_dependencies #(filterv (comp #{(:id card)} :id) %)))]
           (testing "syncing a collection whose content uses content that isn't synced is refused, naming it"
             (is (=? {:error-code            "unsynced-dependencies"
-                     :unsynced_dependencies [{:id         (:id card)
-                                              :name       "Card in Unsynced"
-                                              :model      "card"
-                                              :collection {:id (:id unsynced) :name "Unsynced" :effective_ancestors []}
-                                              :used_by    [{:id (:id dashboard) :name "Dashboard in Synced" :model "dashboard"}]}]}
+                     :unsynced_dependencies [{:id      (:id card)
+                                              :model   "card"
+                                              :data    {:name       "Card in Unsynced"
+                                                        :collection {:id (:id unsynced) :name "Unsynced"}}
+                                              :used_by [{:id    (:id dashboard)
+                                                         :model "dashboard"
+                                                         :data  {:name "Dashboard in Synced"}}]}]}
                     (listed (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                                   {:collections {(:id synced) true}}))))
             (is (false? (synced? synced))))
@@ -259,34 +268,6 @@
                     (listed (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                                   {:collections {(:id unsynced) false}}))))
             (is (true? (synced? unsynced)))))))))
-
-(deftest settings-unsynced-dependencies-order-test
-  (remote-sync.tu/with-repository [url]
-    (remote-sync.tu/with-remote-sync [url :read-write]
-      (mt/with-temp [:model/Collection    synced  {:name "Synced" :location "/"}
-                     :model/Collection    beta    {:name "beta" :location "/"}
-                     :model/Collection    alpha   {:name "Alpha" :location "/"}
-                     :model/Collection    nested  {:name "Nested" :location (str "/" (:id beta) "/")}
-                     :model/Card          root    {:name "Card in no collection" :collection_id nil}
-                     :model/Card          b-card  {:name "B card" :collection_id (:id beta)}
-                     :model/Card          a-card  {:name "a card" :collection_id (:id nested)}
-                     :model/Card          z-card  {:name "Z card" :collection_id (:id alpha)}
-                     :model/Dashboard     dash-y  {:name "Y dashboard" :collection_id (:id synced)}
-                     :model/Dashboard     dash-x  {:name "x dashboard" :collection_id (:id synced)}
-                     :model/DashboardCard _       {:dashboard_id (:id dash-y) :card_id (:id z-card)}
-                     :model/DashboardCard _       {:dashboard_id (:id dash-x) :card_id (:id z-card)}
-                     :model/DashboardCard _       {:dashboard_id (:id dash-y) :card_id (:id root)}
-                     :model/DashboardCard _       {:dashboard_id (:id dash-y) :card_id (:id b-card)}
-                     :model/DashboardCard _       {:dashboard_id (:id dash-y) :card_id (:id a-card)}]
-        (testing "unsynced dependencies are listed by top-level collection, those in no collection last, then by name"
-          (let [ids      #{(:id root) (:id b-card) (:id a-card) (:id z-card)}
-                response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                               {:collections {(:id synced) true}})
-                listed   (filterv (comp ids :id) (:unsynced_dependencies response))]
-            (is (= ["Z card" "a card" "B card" "Card in no collection"]
-                   (map :name listed)))
-            (is (= ["x dashboard" "Y dashboard"]
-                   (map :name (:used_by (first listed)))))))))))
 
 (deftest export-preflight-test
   (remote-sync.tu/with-repository [url]

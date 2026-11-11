@@ -1,25 +1,45 @@
 import {
-  createMockRemoteSyncEntity,
-  createMockRemoteSyncEntityCollection,
-  createMockRemoteSyncEntityParent,
+  createMockCard,
+  createMockCollection,
+  createMockRemoteSyncCardData,
+  createMockRemoteSyncCardTestData,
+  createMockRemoteSyncCollectionData,
+  createMockRemoteSyncDirtyItem,
+  createMockRemoteSyncSegmentData,
+  createMockRemoteSyncTableUserSettingsData,
+  createMockTable,
 } from "metabase-types/api/mocks";
 
 import { groupChanges } from "./utils";
 
+const SALES = createMockCollection({ id: 1, name: "Sales" });
+const DATA = createMockCollection({ id: 2, name: "Data" });
+const ORDERS = createMockTable({
+  id: 5,
+  name: "orders",
+  display_name: "Orders",
+  collection_id: DATA.id,
+  collection: DATA,
+});
+
 describe("groupChanges", () => {
   it("shows collection change on its group header", () => {
-    const collection = createMockRemoteSyncEntityCollection({
-      id: 1,
-      name: "Sales",
-    });
     const groups = groupChanges([
-      createMockRemoteSyncEntity({
+      createMockRemoteSyncDirtyItem({
         id: 1,
         model: "collection",
         name: "Sales",
-        collection,
+        data: createMockRemoteSyncCollectionData({ id: 1, name: "Sales" }),
       }),
-      createMockRemoteSyncEntity({ id: 2, name: "Revenue", collection }),
+      createMockRemoteSyncDirtyItem({
+        id: 2,
+        model: "card",
+        name: "Revenue",
+        data: createMockRemoteSyncCardData({
+          collection_id: SALES.id,
+          collection: SALES,
+        }),
+      }),
     ]);
 
     expect(groups).toHaveLength(1);
@@ -28,23 +48,52 @@ describe("groupChanges", () => {
     expect(groups[0].items.map((item) => item.name)).toEqual(["Revenue"]);
   });
 
-  it("nests segments under their changed table", () => {
-    const collection = createMockRemoteSyncEntityCollection({
-      id: 1,
-      name: "Data",
+  it("shows nested collections as one header path, without the root", () => {
+    const europe = createMockCollection({
+      id: 3,
+      name: "Europe",
+      effective_ancestors: [
+        createMockCollection({ id: "root", name: "Our analytics" }),
+        SALES,
+      ],
     });
     const groups = groupChanges([
-      createMockRemoteSyncEntity({
-        id: 5,
+      createMockRemoteSyncDirtyItem({
+        model: "card",
+        name: "Revenue",
+        data: createMockRemoteSyncCardData({
+          collection_id: europe.id,
+          collection: europe,
+        }),
+      }),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe("collection-3");
+    expect(groups[0].path).toEqual(["Sales", "Europe"]);
+  });
+
+  it("nests segments under their changed table", () => {
+    const groups = groupChanges([
+      createMockRemoteSyncDirtyItem({
+        id: ORDERS.id,
         model: "tableusersettings",
         name: "Orders",
-        collection,
+        data: createMockRemoteSyncTableUserSettingsData({
+          table_id: ORDERS.id,
+          collection_id: DATA.id,
+          table: ORDERS,
+          collection: DATA,
+        }),
       }),
-      createMockRemoteSyncEntity({
+      createMockRemoteSyncDirtyItem({
         id: 7,
         model: "segment",
         name: "Big orders",
-        parent: createMockRemoteSyncEntityParent({ id: 5, name: "Orders" }),
+        data: createMockRemoteSyncSegmentData({
+          table_id: ORDERS.id,
+          table: ORDERS,
+        }),
       }),
     ]);
 
@@ -56,13 +105,16 @@ describe("groupChanges", () => {
     ]);
   });
 
-  it("nests segments under their unchanged table by name", () => {
+  it("nests segments under their unchanged table by its name", () => {
     const groups = groupChanges([
-      createMockRemoteSyncEntity({
+      createMockRemoteSyncDirtyItem({
         id: 7,
         model: "segment",
         name: "Big orders",
-        parent: createMockRemoteSyncEntityParent({ id: 5, name: "Orders" }),
+        data: createMockRemoteSyncSegmentData({
+          table_id: ORDERS.id,
+          table: ORDERS,
+        }),
       }),
     ]);
 
@@ -75,20 +127,13 @@ describe("groupChanges", () => {
     ]);
   });
 
-  it("shows a card test under the collection of its card", () => {
+  it("shows a card test in the collection of its card", () => {
     const groups = groupChanges([
-      createMockRemoteSyncEntity({
-        id: 3,
+      createMockRemoteSyncDirtyItem({
         model: "cardtest",
         name: "Row count",
-        collection: createMockRemoteSyncEntityCollection({
-          id: 1,
-          name: "Sales",
-        }),
-        parent: createMockRemoteSyncEntityParent({
-          model: "card",
-          id: 2,
-          name: "Orders",
+        data: createMockRemoteSyncCardTestData({
+          card: createMockCard({ collection_id: SALES.id, collection: SALES }),
         }),
       }),
     ]);
@@ -98,13 +143,14 @@ describe("groupChanges", () => {
     expect(groups[0].items.map((item) => item.name)).toEqual(["Row count"]);
   });
 
-  it("shows a card test without a collection under other content", () => {
+  it("shows a deleted card test under other content", () => {
     const groups = groupChanges([
-      createMockRemoteSyncEntity({
+      createMockRemoteSyncDirtyItem({
         id: 0,
         model: "cardtest",
         name: "Test of deleted card",
         sync_status: "delete",
+        data: null,
       }),
     ]);
 

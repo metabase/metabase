@@ -174,3 +174,10 @@ export interface UpdateFieldValuesRequest {
   id: FieldId;
   values: FieldValue[];
 }
+
+export type FieldUserSettings = {
+  field_id: FieldId;
+  display_name: string | null;
+  description: string | null;
+  field?: Field;
+};
