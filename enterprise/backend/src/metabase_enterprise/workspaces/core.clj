@@ -39,8 +39,6 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.settings.core :as setting]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -117,16 +115,6 @@
                                 [(:id database) schema])))
                       (ws.db/all-databases))}))
 
-(defn- check-not-set-by-env-var!
-  "Throw a 400 when `MB_WORKSPACES_ENABLED` holds a value other than `wanted`: the env
-   var wins over the stored value, so a write would report success and change nothing."
-  [wanted]
-  (when-let [env-value (setting/env-var-value :workspaces-enabled)]
-    (when (not= (str wanted) (u/lower-case-en env-value))
-      (throw (ex-info (str "workspaces-enabled is set to " env-value " by the MB_WORKSPACES_ENABLED env var"
-                           " and can't be changed at runtime.")
-                      {:status-code 400})))))
-
 (mu/defn set-instance-workspace! :- :nil
   "Make this instance a workspace: set each database's `database-workspace-schema` from
    `schemas`, a map of database id to schema, then turn `workspaces-enabled` on. Clears
@@ -136,7 +124,6 @@
    Trims each schema, so a repeat call with `\" ws \"` matches the stored `\"ws\"`
    and keeps the remap rows."
   [schemas :- [:map-of ::lib.schema.id/database ms/NonBlankString]]
-  (check-not-set-by-env-var! true)
   (t2/with-transaction [_conn]
     (let [schemas   (update-vals schemas str/trim)
           databases (ws.db/all-databases)]
@@ -170,7 +157,6 @@
    while the instance is not a workspace. Throws a 400 when `MB_WORKSPACES_ENABLED=true`,
    since that value wins over the stored one."
   []
-  (check-not-set-by-env-var! false)
   (ws.settings/workspaces-enabled! false)
   ;; The setting's :on-change deletes them only when the value changes; delete them
   ;; here too so stale rows from an earlier run go regardless.

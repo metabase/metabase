@@ -27,6 +27,13 @@
   :export?    false
   :audit      :getter
   :setter     (fn [new-value]
+                ;; The env var wins over the stored value, so a different write would report success and change
+                ;; nothing, while its :on-change still deleted every remap row.
+                (when-let [env-value (setting/env-var-value :workspaces-enabled)]
+                  (when (not= (u/lower-case-en (str new-value)) (u/lower-case-en env-value))
+                    (throw (ex-info (str "workspaces-enabled is set to " env-value " by the MB_WORKSPACES_ENABLED env var"
+                                         " and can't be changed at runtime.")
+                                    {:status-code 400}))))
                 (when (and (= "true" (u/lower-case-en (str new-value))) (ws.db/any-workspace-exists?))
                   (throw (ex-info (tru "This instance has workspaces of its own, so it can''t be a workspace.")
                                   {:status-code 400})))

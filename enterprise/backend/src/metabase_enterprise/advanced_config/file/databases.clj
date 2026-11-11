@@ -50,7 +50,10 @@
            (:auto-cruft-columns settings
                                 (:auto_cruft_columns settings))]
           (remove nil?)
-          (every? valid-regex-patterns?)))))
+          (every? valid-regex-patterns?)))
+   ;; Every reader trims it, so a number or boolean from YAML would break them.
+   (fn workspace-schema-is-a-string? [settings]
+     ((some-fn nil? string?) (:database-workspace-schema settings)))))
 
 (s/def ::config-file-spec
   (s/keys :req-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/engine

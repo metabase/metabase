@@ -1069,11 +1069,18 @@
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
 
 (defn validate-settable-for-db!
-  "Check whether the given setting can be set for the given database."
+  "Check whether the given setting can be set for the given database. `database` is the database as it would be after
+  the write, so its `:settings` hold the new value; a `:string` setting refuses a non-string one."
   [setting-definition-or-name database driver-supports?]
   (let [{:keys [driver-feature] :as setting} (resolve-setting setting-definition-or-name)
-        s-name (setting-name setting)]
+        s-name (setting-name setting)
+        value  (get-in database [:settings (keyword s-name)])]
     (validate-settable! setting)
+    ;; Database-local values skip the setter, so nothing else checks their type.
+    (when (and (= :string (:type setting)) (some? value) (not (string? value)))
+      (throw (ex-info (tru "Setting {0} must be a string." s-name)
+                      {:setting     s-name
+                       :database-id (:id database)})))
     (when (and driver-feature (not (driver-supports? database driver-feature)))
       (throw (ex-info (tru "Setting {0} requires driver feature {1}, but the database does not support it" s-name driver-feature)
                       {:setting s-name

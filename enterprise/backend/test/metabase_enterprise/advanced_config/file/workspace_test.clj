@@ -342,3 +342,17 @@
                   (testing "changed schema deletes them"
                     (initialize! "ws_new")
                     (is (zero? (t2/count :model/TableRemapping :database_id db-id)))))))))))))
+
+(deftest databases-section-refuses-non-string-workspace-schema-test
+  (testing "databases[].settings.database-workspace-schema must be a string, which every read relies on"
+    (binding [driver.settings/*allow-testing-h2-connections* true]
+      (mt/with-premium-features #{:config-text-file :workspaces}
+        (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :h2 :details (:details (mt/db))}]
+          (is (thrown? ExceptionInfo
+                       (advanced-config.file/initialize!
+                        {:version 1
+                         :config  {:databases [{:name     db-name
+                                                :engine   "h2"
+                                                :details  (:details (mt/db))
+                                                :settings {:database-workspace-schema 5}}]}})))
+          (is (nil? (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema]))))))))
