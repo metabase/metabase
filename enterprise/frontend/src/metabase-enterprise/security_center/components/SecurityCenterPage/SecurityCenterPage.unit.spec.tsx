@@ -37,11 +37,15 @@ function setup(
   advisories: Advisory[] = [],
   {
     lastCheckedAt = null,
+    lastSyncAttemptedAt = null,
+    lastSyncError = null,
     initialRoute = "/",
     isError = false,
     versionInfo,
   }: {
     lastCheckedAt?: string | null;
+    lastSyncAttemptedAt?: string | null;
+    lastSyncError?: string | null;
     initialRoute?: string;
     isError?: boolean;
     versionInfo?: VersionInfo;
@@ -50,6 +54,8 @@ function setup(
   jest.spyOn(advisoriesHook, "useSecurityAdvisories").mockReturnValue({
     data: advisories,
     lastCheckedAt,
+    lastSyncAttemptedAt,
+    lastSyncError,
     isLoading: false,
     isError,
     acknowledgeAdvisory: mockAcknowledge,
@@ -84,6 +90,7 @@ function setup(
 
   renderWithProviders(<Route path="*" element={<SecurityCenterPage />} />, {
     withRouter: true,
+    withUndos: true,
     initialRoute,
     storeInitialState: {
       settings: createMockSettingsState({
@@ -92,6 +99,22 @@ function setup(
     },
   });
 }
+
+type SyncResult = Pick<
+  ReturnType<typeof advisoriesHook.useSecurityAdvisories>,
+  "lastCheckedAt" | "lastSyncAttemptedAt" | "lastSyncError"
+>;
+
+const mockSyncFinished = (syncResult: SyncResult) => {
+  jest.spyOn(advisoriesHook, "useSecurityAdvisories").mockReturnValue({
+    data: [],
+    ...syncResult,
+    isLoading: false,
+    isError: false,
+    acknowledgeAdvisory: mockAcknowledge,
+    acknowledgeAdvisories: mockAcknowledgeAll,
+  });
+};
 
 describe("SecurityCenterPage", () => {
   afterEach(() => {
@@ -495,6 +518,41 @@ describe("SecurityCenterPage", () => {
     });
   });
 
+  describe("last sync status", () => {
+    it("shows 'Never' when advisories have never been fetched", () => {
+      setup();
+
+      expect(screen.getByTestId("last-checked-at")).toHaveTextContent(
+        "Last successful check: Never",
+      );
+    });
+
+    it("shows the time of the last successful check", () => {
+      setup([], { lastCheckedAt: "2026-11-10T12:00:00Z" });
+
+      expect(screen.getByTestId("last-checked-at")).toHaveTextContent(
+        /Last successful check: .*2026/,
+      );
+    });
+
+    it("warns when the last check failed", () => {
+      setup([], {
+        lastCheckedAt: "2026-11-10T12:00:00Z",
+        lastSyncError: "Advisory fetch failed with status 502",
+      });
+
+      expect(screen.getByTestId("last-sync-error")).toHaveTextContent(
+        "The last check for security advisories failed. Advisories may be out of date.",
+      );
+    });
+
+    it("does not warn when the last check succeeded", () => {
+      setup([], { lastCheckedAt: "2026-11-10T12:00:00Z" });
+
+      expect(screen.queryByTestId("last-sync-error")).not.toBeInTheDocument();
+    });
+  });
+
   describe("sync polling", () => {
     it("disables the sync button while syncing", async () => {
       fetchMock.post("path:/api/ee/security-center/sync", 200);
@@ -517,6 +575,49 @@ describe("SecurityCenterPage", () => {
 
       // After sync, the hook should be called with polling enabled
       expect(spy).toHaveBeenCalledWith(true);
+    });
+
+    it("reports a failed check instead of 'up to date' when the sync fails", async () => {
+      fetchMock.post("path:/api/ee/security-center/sync", 200);
+      setup([], {
+        lastCheckedAt: "2026-11-10T12:00:00Z",
+        lastSyncAttemptedAt: "2026-11-10T12:00:00Z",
+      });
+      mockSyncFinished({
+        lastCheckedAt: "2026-11-10T12:00:00Z",
+        lastSyncAttemptedAt: "2026-11-11T12:00:00Z",
+        lastSyncError: "Advisory fetch failed with status 502",
+      });
+
+      await userEvent.click(screen.getByTestId("sync-advisories"));
+
+      expect(
+        screen.getByText(
+          "Couldn't check for security advisories. Advisories may be out of date.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Security advisories are up to date"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("reports 'up to date' when the sync succeeds", async () => {
+      fetchMock.post("path:/api/ee/security-center/sync", 200);
+      setup([], {
+        lastCheckedAt: "2026-11-10T12:00:00Z",
+        lastSyncAttemptedAt: "2026-11-10T12:00:00Z",
+      });
+      mockSyncFinished({
+        lastCheckedAt: "2026-11-11T12:00:00Z",
+        lastSyncAttemptedAt: "2026-11-11T12:00:00Z",
+        lastSyncError: null,
+      });
+
+      await userEvent.click(screen.getByTestId("sync-advisories"));
+
+      expect(
+        screen.getByText("Security advisories are up to date"),
+      ).toBeInTheDocument();
     });
   });
 });

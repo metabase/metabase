@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
+import { DateTime } from "metabase/common/components/DateTime";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
@@ -47,6 +48,8 @@ export function SecurityCenterPage() {
   const {
     data: advisories,
     lastCheckedAt,
+    lastSyncAttemptedAt,
+    lastSyncError,
     isError,
     acknowledgeAdvisory,
     acknowledgeAdvisories,
@@ -62,11 +65,11 @@ export function SecurityCenterPage() {
   const [sendToast] = useToast();
   const isSmallScreen = useIsSmallScreen();
 
-  const lastCheckedAtBeforeSync = useRef<string | null>(null);
+  const lastSyncAttemptedAtBeforeSync = useRef<string | null>(null);
   const pollCountRef = useRef(0);
 
   const handleSync = useCallback(async () => {
-    lastCheckedAtBeforeSync.current = lastCheckedAt;
+    lastSyncAttemptedAtBeforeSync.current = lastSyncAttemptedAt;
     pollCountRef.current = 0;
 
     try {
@@ -82,7 +85,7 @@ export function SecurityCenterPage() {
         message: t`Failed to check for security advisories`,
       });
     }
-  }, [lastCheckedAt, syncAdvisories, sendToast]);
+  }, [lastSyncAttemptedAt, syncAdvisories, sendToast]);
 
   useEffect(() => {
     if (!isPolling) {
@@ -92,10 +95,16 @@ export function SecurityCenterPage() {
     pollCountRef.current += 1;
 
     const syncCompleted =
-      lastCheckedAt !== null &&
-      lastCheckedAt !== lastCheckedAtBeforeSync.current;
+      lastSyncAttemptedAt !== null &&
+      lastSyncAttemptedAt !== lastSyncAttemptedAtBeforeSync.current;
 
-    if (syncCompleted) {
+    if (syncCompleted && lastSyncError !== null) {
+      setIsPolling(false);
+      sendToast({
+        variant: "negative",
+        message: t`Couldn't check for security advisories. Advisories may be out of date.`,
+      });
+    } else if (syncCompleted) {
       setIsPolling(false);
       sendToast({
         icon: "check_filled",
@@ -108,7 +117,7 @@ export function SecurityCenterPage() {
         message: t`Security advisory check is taking longer than expected. Results will appear when ready.`,
       });
     }
-  }, [isPolling, lastCheckedAt, sendToast]);
+  }, [isPolling, lastSyncAttemptedAt, lastSyncError, sendToast]);
 
   const isSyncInProgress = isSyncing || isPolling;
 
@@ -174,6 +183,10 @@ export function SecurityCenterPage() {
             <Text c="text-secondary" data-testid="current-version">
               {t`Current version`}: {currentVersion}
             </Text>
+            <LastSyncStatus
+              lastCheckedAt={lastCheckedAt}
+              lastSyncError={lastSyncError}
+            />
             <UpgradeBanner targetVersion={targetVersion} />
           </Stack>
           <Stack gap="xxl" className={S.content}>
@@ -198,3 +211,29 @@ export function SecurityCenterPage() {
     </NotificationConfigProvider>
   );
 }
+
+type LastSyncStatusProps = {
+  lastCheckedAt: string | null;
+  lastSyncError: string | null;
+};
+
+const LastSyncStatus = ({
+  lastCheckedAt,
+  lastSyncError,
+}: LastSyncStatusProps) => (
+  <Stack gap="xs">
+    <Text c="text-secondary" data-testid="last-checked-at">
+      {t`Last successful check`}:{" "}
+      {lastCheckedAt ? (
+        <DateTime value={lastCheckedAt} unit="minute" />
+      ) : (
+        t`Never`
+      )}
+    </Text>
+    {lastSyncError !== null && (
+      <Text c="feedback-negative" data-testid="last-sync-error">
+        {t`The last check for security advisories failed. Advisories may be out of date.`}
+      </Text>
+    )}
+  </Stack>
+);
