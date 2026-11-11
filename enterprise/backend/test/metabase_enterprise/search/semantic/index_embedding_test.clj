@@ -24,6 +24,7 @@
       (doseq [name-func [#'semantic.index/hnsw-index-name
                          #'semantic.index/fts-index-name
                          #'semantic.index/fts-native-index-name
+                         #'semantic.index/content-index-name
                          :table-name]]
         (testing (str name-func)
           (testing "long"
