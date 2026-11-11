@@ -21,6 +21,7 @@ import {
   TEST_MODEL_DATASET,
   TEST_NATIVE_CARD,
   TEST_NATIVE_CARD_DATASET,
+  TEST_STRUCTURED_CARD,
   TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
   TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
   setup,
@@ -116,6 +117,14 @@ describe("QueryBuilder", () => {
           const element = screen.getByTestId("question-row-count");
           expect(element).toBeVisible();
         },
+      );
+    });
+
+    it("uses the question name as the document title (metabase#42165)", async () => {
+      await setup({ card: TEST_STRUCTURED_CARD });
+
+      await waitFor(() =>
+        expect(document.title).toBe(TEST_STRUCTURED_CARD.name),
       );
     });
 
