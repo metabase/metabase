@@ -5,6 +5,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
@@ -12,14 +13,13 @@
   [expr & [filter]]
   (let [mp        (mt/metadata-provider)
         venues    (lib.metadata/table mp (mt/id :venues))
-        venues-id (lib.metadata/field mp (mt/id :venues :id))
         query     (as-> (lib/query mp venues) q
                     (lib/expression q "test" expr)
                     (lib/with-fields q [(lib/expression-ref q "test")])
                     ;; filter clause is optional
                     (cond-> q filter (lib/filter filter))
                     ;; To ensure stable ordering
-                    (lib/order-by q venues-id)
+                    (lib.tu.notebook/add-order-by q "Venues" "ID")
                     (lib/limit q 1))]
     (mt/with-native-query-testing-context query
       (->> query
@@ -172,7 +172,6 @@
       (mt/dataset test-data
         (let [mp                (mt/metadata-provider)
               orders            (lib.metadata/table mp (mt/id :orders))
-              orders-id         (lib.metadata/field mp (mt/id :orders :id))
               orders-product-id (lib.metadata/field mp (mt/id :orders :product_id))
               products          (lib.metadata/table mp (mt/id :products))
               products-category (-> (lib.metadata/field mp (mt/id :products :category))
@@ -186,7 +185,7 @@
                                                                (lib/with-join-alias "Products")))])
                                                   (lib/with-join-fields :all)))
                                     (lib/expression "regex" (lib/regex-match-first products-category ".*"))
-                                    (lib/order-by orders-id)
+                                    (lib.tu.notebook/add-order-by "Orders" "ID")
                                     (lib/limit 2))]
           (mt/with-native-query-testing-context query
             (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2

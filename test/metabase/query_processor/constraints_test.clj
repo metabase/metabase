@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
@@ -11,11 +12,10 @@
 (defn- mbql-query []
   (let [mp          (mt/metadata-provider)
         venues      (lib.metadata/table mp (mt/id :venues))
-        venues-name (lib.metadata/field mp (mt/id :venues :name))
-        venues-id   (lib.metadata/field mp (mt/id :venues :id))]
+        venues-name (lib.metadata/field mp (mt/id :venues :name))]
     (-> (lib/query mp venues)
         (lib/with-fields [venues-name])
-        (lib/order-by venues-id))))
+        (lib.tu.notebook/add-order-by "Venues" "ID"))))
 
 (defn- native-query []
   (qp.compile/compile (mbql-query)))

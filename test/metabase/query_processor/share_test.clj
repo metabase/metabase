@@ -114,13 +114,14 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Share containing a Segment"
       (let [mp      (mt/metadata-provider)
+            venues  (lib.metadata/table mp (mt/id :venues))
             mock-mp (lib.tu/mock-metadata-provider
                      mp
                      {:segments [{:id         1
                                   :table-id   (mt/id :venues)
-                                  :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                  :definition (-> (lib/query mp venues)
                                                   (lib/filter (lib/< (lib.metadata/field mp (mt/id :venues :price)) 4)))}]})
-            query   (-> (lib/query mock-mp (lib.metadata/table mock-mp (mt/id :venues)))
+            query   (-> (lib/query mock-mp venues)
                         (lib/aggregate (lib/share (lib/segment 1))))]
         (is (= [[0.94]]
                (mt/formatted-rows
@@ -139,7 +140,7 @@
                                     :dataset-query (-> (lib/query mp venues)
                                                        (lib/aggregate (lib/share (lib/< venues-price 4))))
                                     :type          :metric}]})
-            query        (-> (lib/query mock-mp (lib.metadata/table mock-mp (mt/id :venues)))
+            query        (-> (lib/query mock-mp venues)
                              (lib/aggregate (lib.metadata/metric mock-mp 1)))]
         (is (= [[0.94]]
                (mt/formatted-rows

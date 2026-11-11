@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.query-processor :as qp]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -19,9 +20,8 @@
 (defn- venues-cols-from-query []
   (let [mp        (mt/metadata-provider)
         venues    (lib.metadata/table mp (mt/id :venues))
-        venues-id (lib.metadata/field mp (mt/id :venues :id))
         query     (-> (lib/query mp venues)
-                      (lib/order-by venues-id)
+                      (lib.tu.notebook/add-order-by "Venues" "ID")
                       (lib/limit 1))]
     (mt/with-native-query-testing-context query
       (-> (qp/process-query query)
@@ -46,9 +46,8 @@
     (testing "Make sure :sensitive information fields are never returned by the QP"
       (let [mp       (mt/metadata-provider)
             users    (lib.metadata/table mp (mt/id :users))
-            users-id (lib.metadata/field mp (mt/id :users :id))
             query    (-> (lib/query mp users)
-                         (lib/order-by users-id))]
+                         (lib.tu.notebook/add-order-by "Users" "ID"))]
         (mt/with-native-query-testing-context query
           (is (=? {:cols (qp.test-util/expected-cols :users [:id :name :last_login])
                    :rows [[1 "Plato Yeshua"]

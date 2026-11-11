@@ -116,7 +116,7 @@
                                      :table-id   (mt/id :venues)
                                      :definition (-> (lib/query mp venues)
                                                      (lib/filter (lib/< venues-price 4)))}]})
-          query        (-> (lib/query mock-mp (lib.metadata/table mock-mp (mt/id :venues)))
+          query        (-> (lib/query mock-mp venues)
                            (lib/aggregate (lib/sum-where venues-price (lib/segment 1))))]
       (qp.store/with-metadata-provider mock-mp
         (mt/with-native-query-testing-context query
@@ -139,7 +139,7 @@
                                   :dataset-query (-> (lib/query mp venues)
                                                      (lib/aggregate (lib/sum-where venues-price (lib/< venues-price 4))))
                                   :type          :metric}]})
-          query        (-> (lib/query mock-mp (lib.metadata/table mock-mp (mt/id :venues)))
+          query        (-> (lib/query mock-mp venues)
                            (lib/aggregate (lib.metadata/metric mock-mp 1)))]
       (qp.store/with-metadata-provider mock-mp
         (mt/with-native-query-testing-context query

@@ -114,15 +114,16 @@
 (deftest ^:parallel segment-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where)
     (let [mp           (mt/metadata-provider)
+          venues       (lib.metadata/table mp (mt/id :venues))
           mock-mp      (lib.tu/mock-metadata-provider
                         mp
                         {:segments [{:id         1
                                      :name       "Segment 1"
                                      :table-id   (mt/id :venues)
-                                     :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                     :definition (-> (lib/query mp venues)
                                                      (lib/filter (lib/< (lib.metadata/field mp (mt/id :venues :price)) 4)))}]})
           venues-price (lib.metadata/field mock-mp (mt/id :venues :price))
-          query        (-> (lib/query mock-mp (lib.metadata/table mock-mp (mt/id :venues)))
+          query        (-> (lib/query mock-mp venues)
                            (lib/aggregate (lib/distinct-where venues-price (lib/segment 1))))]
       (qp.store/with-metadata-provider mock-mp
         (mt/with-native-query-testing-context query
@@ -146,7 +147,7 @@
                                   :dataset-query (-> (lib/query mp venues)
                                                      (lib/aggregate (lib/distinct-where venues-price (lib/< venues-price 4))))
                                   :type          :metric}]})
-          query        (-> (lib/query mock-mp (lib.metadata/table mock-mp (mt/id :venues)))
+          query        (-> (lib/query mock-mp venues)
                            (lib/aggregate (lib.metadata/metric mock-mp 1)))]
       (qp.store/with-metadata-provider mock-mp
         (mt/with-native-query-testing-context query

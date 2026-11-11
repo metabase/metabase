@@ -12,14 +12,15 @@
 (deftest ^:parallel order-by-test
   (mt/test-drivers (mt/normal-drivers)
     (let [mp                (mt/metadata-provider)
+          checkins          (lib.metadata/table mp (mt/id :checkins))
           checkins-venue-id (lib.metadata/field mp (mt/id :checkins :venue_id))
           checkins-user-id  (lib.metadata/field mp (mt/id :checkins :user_id))
           checkins-id       (lib.metadata/field mp (mt/id :checkins :id))
-          query             (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+          query             (-> (lib/query mp checkins)
                                 (lib/with-fields [checkins-venue-id checkins-user-id checkins-id])
-                                (lib/order-by checkins-venue-id :asc)
-                                (lib/order-by checkins-user-id :desc)
-                                (lib/order-by checkins-id :asc)
+                                (lib.tu.notebook/add-order-by "Checkins" "Venue ID")
+                                (lib.tu.notebook/add-order-by "Checkins" "User ID" {:direction :desc})
+                                (lib.tu.notebook/add-order-by "Checkins" "ID")
                                 (lib/limit 10))]
       (mt/with-native-query-testing-context query
         (is (= [[1 12 375]
@@ -67,11 +68,12 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing :count
       (let [mp           (mt/metadata-provider)
+            venues       (lib.metadata/table mp (mt/id :venues))
             venues-price (lib.metadata/field mp (mt/id :venues :price))
-            query        (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+            query        (-> (lib/query mp venues)
                              (lib/aggregate (lib/count))
                              (lib/breakout venues-price)
-                             (as-> $query (lib/order-by $query (lib/aggregation-ref $query 0))))]
+                             (lib.tu.notebook/add-order-by "Venues" "Count"))]
         (mt/with-native-query-testing-context query
           (is (= [[4  6]
                   [3 13]
@@ -85,12 +87,13 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing :sum
       (let [mp           (mt/metadata-provider)
+            venues       (lib.metadata/table mp (mt/id :venues))
             venues-id    (lib.metadata/field mp (mt/id :venues :id))
             venues-price (lib.metadata/field mp (mt/id :venues :price))
-            query        (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+            query        (-> (lib/query mp venues)
                              (lib/aggregate (lib/sum venues-id))
                              (lib/breakout venues-price)
-                             (as-> $query (lib/order-by $query (lib/aggregation-ref $query 0) :desc)))]
+                             (lib.tu.notebook/add-order-by "Venues" "Sum of ID" {:direction :desc}))]
         (mt/with-native-query-testing-context query
           (is (= [[2 2855]
                   [1 1211]
@@ -104,12 +107,13 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing :distinct
       (let [mp           (mt/metadata-provider)
+            venues       (lib.metadata/table mp (mt/id :venues))
             venues-id    (lib.metadata/field mp (mt/id :venues :id))
             venues-price (lib.metadata/field mp (mt/id :venues :price))
-            query        (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+            query        (-> (lib/query mp venues)
                              (lib/aggregate (lib/distinct venues-id))
                              (lib/breakout venues-price)
-                             (as-> $query (lib/order-by $query (lib/aggregation-ref $query 0))))]
+                             (lib.tu.notebook/add-order-by "Venues" "Distinct values of ID"))]
         (mt/with-native-query-testing-context query
           (is (= [[4  6]
                   [3 13]
@@ -123,12 +127,13 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing :avg
       (let [mp                 (mt/metadata-provider)
+            venues             (lib.metadata/table mp (mt/id :venues))
             venues-category-id (lib.metadata/field mp (mt/id :venues :category_id))
             venues-price       (lib.metadata/field mp (mt/id :venues :price))
-            query              (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+            query              (-> (lib/query mp venues)
                                    (lib/aggregate (lib/avg venues-category-id))
                                    (lib/breakout venues-price)
-                                   (as-> $query (lib/order-by $query (lib/aggregation-ref $query 0))))]
+                                   (lib.tu.notebook/add-order-by "Venues" "Average of Category ID"))]
         (mt/with-native-query-testing-context query
           (is (= [[3 22.0]
                   [2 28.3]
@@ -150,12 +155,13 @@
                   {:error/message (format "%.1f < value < %.1f" lower-bound upper-bound)}
                   #(< lower-bound % upper-bound)]])]
         (let [mp                 (mt/metadata-provider)
+              venues             (lib.metadata/table mp (mt/id :venues))
               venues-category-id (lib.metadata/field mp (mt/id :venues :category_id))
               venues-price       (lib.metadata/field mp (mt/id :venues :price))
-              query              (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+              query              (-> (lib/query mp venues)
                                      (lib/aggregate (lib/stddev venues-category-id))
                                      (lib/breakout venues-price)
-                                     (as-> $query (lib/order-by $query (lib/aggregation-ref $query 0) :desc)))]
+                                     (lib.tu.notebook/add-order-by "Venues" "Standard deviation of Category ID" {:direction :desc}))]
           (mt/with-native-query-testing-context query
             (is (malli= [:tuple
                          (row-schema 3 23.0 27.0)

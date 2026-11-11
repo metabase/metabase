@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -199,9 +200,8 @@
             total      (lib.metadata/field mp (mt/id :orders :total))
             query      (-> (lib/query mp orders)
                            (lib/breakout (lib/with-temporal-bucket created-at :month))
-                           (lib/aggregate (lib/update-options (lib/offset (lib/sum total) -1)
-                                                              assoc :name "X" :display-name "X"))
-                           (as-> $q (lib/order-by $q (lib/aggregation-ref $q 0)))
+                           (lib/aggregate (lib/with-expression-name (lib/offset (lib/sum total) -1) "X"))
+                           (lib.tu.notebook/add-order-by "Orders" "X")
                            (lib/limit 3)
                            (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query

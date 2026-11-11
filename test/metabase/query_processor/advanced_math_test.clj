@@ -5,18 +5,18 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.test :as mt]))
 
 (defn- test-math-expression
   [expr]
   (let [mp        (mt/metadata-provider)
         venues    (lib.metadata/table mp (mt/id :venues))
-        venues-id (lib.metadata/field mp (mt/id :venues :id))
         query     (-> (lib/query mp venues)
                       (lib/expression "test" expr)
                       (as-> q (lib/with-fields q [(lib/expression-ref q "test")]))
                       ;; To ensure stable ordering
-                      (lib/order-by venues-id)
+                      (lib.tu.notebook/add-order-by "Venues" "ID")
                       (lib/limit 1))]
     (mt/with-native-query-testing-context query
       (->> (mt/process-query query)

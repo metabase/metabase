@@ -41,9 +41,10 @@
 (deftest ^:parallel binning-on-nested-question-with-aggregation-test
   (testing "binning should work on nested question based on question that has aggregation (#16379)"
     (let [mp              (mt/metadata-provider)
+          orders          (lib.metadata/table mp (mt/id :orders))
           orders-subtotal (lib.metadata/field mp (mt/id :orders :subtotal))
           orders-user-id  (lib.metadata/field mp (mt/id :orders :user_id))
-          card-query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          card-query      (-> (lib/query mp orders)
                               (lib/aggregate (lib/avg orders-subtotal))
                               (lib/breakout orders-user-id))
           card-cols       (-> (qp/process-query card-query)

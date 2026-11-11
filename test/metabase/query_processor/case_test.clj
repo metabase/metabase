@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
@@ -18,8 +19,9 @@
             double))
 
   ([mp expr]
-   (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                   (lib/aggregate expr))]
+   (let [venues (lib.metadata/table mp (mt/id :venues))
+         query  (-> (lib/query mp venues)
+                    (lib/aggregate expr))]
      (mt/with-native-query-testing-context query
        (some->> (qp/process-query query)
                 mt/rows
@@ -96,7 +98,7 @@
                                     :dataset_query (-> (lib/query mp venues)
                                                        (lib/aggregate (lib/sum (lib/case [[(lib/< venues-price 4)
                                                                                            venues-price]]))))}]})
-            query        (-> (lib/query mock-mp (lib.metadata/table mock-mp (mt/id :venues)))
+            query        (-> (lib/query mock-mp venues)
                              (lib/aggregate (lib.metadata/metric mock-mp 1)))]
         (is (= 179.0
                (some->> (qp/process-query query)
@@ -174,13 +176,12 @@
             products          (lib.metadata/table mp (mt/id :products))
             products-category (lib.metadata/field mp (mt/id :products :category))
             products-rating   (lib.metadata/field mp (mt/id :products :rating))
-            products-id       (lib.metadata/field mp (mt/id :products :id))
             query             (-> (lib/query mp products)
                                   (lib/expression "two-cases" (lib/+ (lib/case [[(lib/= products-category "Widget") 1]] 0)
                                                                      (lib/case [[(lib/> products-rating 4) 1]] 0)))
                                   (as-> $q (lib/with-fields $q [(lib/expression-ref $q "two-cases")]))
                                   (lib/limit 2)
-                                  (lib/order-by products-id))]
+                                  (lib.tu.notebook/add-order-by "Products" "ID"))]
         (mt/with-native-query-testing-context query
           (is (= [[1] [0]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
@@ -213,7 +214,7 @@
                             (as-> $q (-> $q
                                          (lib/with-fields [products-id (lib/expression-ref $q "If")])
                                          (lib/filter (lib/= (lib/expression-ref $q "If") "Other"))))
-                            (lib/order-by products-id)
+                            (lib.tu.notebook/add-order-by "Products" "ID")
                             (lib/limit 2))]
         (is (= [[3 "Other"]
                 [4 "Other"]]
