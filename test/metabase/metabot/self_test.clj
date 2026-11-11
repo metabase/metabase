@@ -29,6 +29,7 @@
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.usage :as usage]
@@ -1066,6 +1067,23 @@
                                                          [:map {:closed true} [:card_id {:optional true} :int]]
                                                          [:map {:closed true} [:text {:optional true} :string]]]]]]
                                {:ops [{:nope 1}]}))))))
+
+(deftest ^:parallel schedule-tool-argument-validation-test
+  (let [schema [:map {:closed true} [:schedule tools.create-alert/schedule-schema]]]
+    (testing "a schedule is checked against its own frequency, so a missing field is named"
+      (is (= "Invalid tool arguments: `schedule.day_of_week` is required."
+             (validation-error schema {:schedule {:frequency "weekly" :hour 9}})))
+      (is (= "Invalid tool arguments: `schedule.hour` should be at most 23; received a number."
+             (validation-error schema {:schedule {:frequency "daily" :hour 25}}))))
+    (testing "a schedule without a known frequency says which frequencies there are"
+      (is (= (str "Invalid tool arguments: `schedule.frequency` should be either \"hourly\", \"daily\", \"weekly\""
+                  " or \"monthly\"; received a string.")
+             (validation-error schema {:schedule {:frequency "yearly"}})))
+      (is (= (str "Invalid tool arguments: `schedule.frequency` should be either \"hourly\", \"daily\", \"weekly\""
+                  " or \"monthly\"; received null.")
+             (validation-error schema {:schedule {}}))))
+    (testing "a well-formed schedule is accepted"
+      (is (nil? (validation-error schema {:schedule {:frequency "weekly" :day_of_week "monday" :hour 9}}))))))
 
 (deftest ^:parallel list-tool-argument-validation-test
   (let [schema [:map {:closed true}
