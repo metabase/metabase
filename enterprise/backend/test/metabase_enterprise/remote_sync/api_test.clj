@@ -13,12 +13,6 @@
 
 (use-fixtures :each (fn [thunk] (mt/with-premium-features #{:remote-sync} (thunk))))
 
-(defn- card-path!
-  "The path of the YAML file of `card` at the tip of `branch` of the repository of `url`, or nil."
-  [url branch card]
-  (some #(when (str/includes? (remote-sync.tu/read-file! url branch %) (str "entity_id: " (:entity_id card))) %)
-        (remote-sync.tu/files! url branch)))
-
 (defn- push!
   "Pushes the synced content to `main` through the API, returning the ended task."
   []
@@ -30,7 +24,7 @@
   "Renames `card` to `new-name` in its YAML file at the tip of `main` of the repository of `url`, as another instance
   would."
   [url card new-name]
-  (let [path (card-path! url "main" card)]
+  (let [path (remote-sync.tu/entity-path! url "main" card)]
     (remote-sync.tu/commit! url "main" {path (str/replace (remote-sync.tu/read-file! url "main" path)
                                                           (str "name: " (:name card))
                                                           (str "name: " new-name))})))
@@ -110,11 +104,11 @@
                                                           {:branch "main" :message "Push synced content"})]
               (is (=? {:id task_id :status "successful" :outcome {:kind "pushed"}}
                       (remote-sync.tu/wait-for-task! task_id))))
-            (is (some? (card-path! url "main" card)))
+            (is (some? (remote-sync.tu/entity-path! url "main" card)))
             (is (= {:is_dirty false} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")))
             (is (=? {:has_changes false} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes"))))
           (testing "a pull loads the changes of the remote"
-            (let [path (card-path! url "main" card)]
+            (let [path (remote-sync.tu/entity-path! url "main" card)]
               (remote-sync.tu/commit! url "main" {path (str/replace (remote-sync.tu/read-file! url "main" path)
                                                                     "name: Synced card" "name: Renamed remotely")}))
             (is (=? {:has_changes true} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")))
@@ -189,8 +183,8 @@
             (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/stash"
                                                           {:new_branch "stashed" :message "Stash"})]
               (is (=? {:status "successful"} (remote-sync.tu/wait-for-task! task_id))))
-            (is (some? (card-path! url "stashed" card)))
-            (is (nil? (card-path! url "main" card)))
+            (is (some? (remote-sync.tu/entity-path! url "stashed" card)))
+            (is (nil? (remote-sync.tu/entity-path! url "main" card)))
             (is (= "stashed" (mt/user-http-request :crowberto :get 200 "setting/remote-sync-branch")))))))))
 
 (deftest cancel-without-task-test

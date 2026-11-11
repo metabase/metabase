@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
-import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { Api, cardApi, tableApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
@@ -15,6 +14,7 @@ import {
   handleActions,
 } from "metabase/redux/utils";
 import type { CardId, CollectionId, TableId } from "metabase-types/api";
+import { isObject } from "metabase-types/guards/common";
 
 export const UPLOAD_DATA_FILE_TYPES = [".csv", ".tsv"];
 
@@ -58,13 +58,15 @@ async function fetchTableName(
   tableId: TableId,
 ): Promise<string | undefined> {
   try {
-    const table: { name?: string } = await runRtkEndpoint(
+    const table: unknown = await runRtkEndpoint(
       { id: tableId },
       dispatch,
       tableApi.endpoints.getTable,
       { forceRefetch: false },
     );
-    return table.name;
+    return isObject(table) && typeof table.name === "string"
+      ? table.name
+      : undefined;
   } catch (error) {
     console.error(error);
     return undefined;
@@ -121,7 +123,7 @@ export const uploadFile = createThunkAction(
         formData.append("file", file);
         formData.append("collection_id", String(collectionId));
 
-        const response = await (() => {
+        const response: unknown = await (() => {
           switch (uploadMode) {
             case UploadMode.append:
               return runRtkEndpoint(
@@ -165,11 +167,12 @@ export const uploadFile = createThunkAction(
         }
 
         clear();
-      } catch (err: any) {
+      } catch (err: unknown) {
         dispatch(
           uploadError({
             id,
-            error: findErrorMessage(err) ?? err?.data,
+            error:
+              findErrorMessage(err) ?? (isObject(err) ? err.data : undefined),
           }),
         );
       }
@@ -193,30 +196,36 @@ const upload = handleActions<
 >(
   {
     [UPLOAD_FILE_START]: {
-      next: (state, { payload }) =>
-        assocIn(state, [payload.id], {
+      next: (state, { payload }) => ({
+        ...state,
+        [payload.id]: {
           ...payload,
           status: "in-progress",
-        }),
+        },
+      }),
     },
     [UPLOAD_FILE_END]: {
-      next: (state, { payload }) =>
-        updateIn(state, [payload.id], (val) => ({
-          ...val,
+      next: (state, { payload }) => ({
+        ...state,
+        [payload.id]: {
+          ...state[payload.id],
           ...payload,
           status: "complete",
-        })),
+        },
+      }),
     },
     [UPLOAD_FILE_ERROR]: {
-      next: (state, { payload }) =>
-        updateIn(state, [payload.id], (val) => ({
-          ...val,
+      next: (state, { payload }) => ({
+        ...state,
+        [payload.id]: {
+          ...state[payload.id],
           ...payload,
           status: "error",
-        })),
+        },
+      }),
     },
     [UPLOAD_FILE_CLEAR]: {
-      next: (state, { payload: { id } }) => dissocIn(state, [id]),
+      next: (state, { payload: { id } }) => _.omit(state, String(id)),
     },
     [UPLOAD_FILE_CLEAR_ALL]: {
       next: () => ({}),

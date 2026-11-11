@@ -1,7 +1,6 @@
 /* eslint-disable jest/expect-expect */
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { assocIn } from "icepick";
 
 import {
   createMockMetabotConversationDetail,
@@ -50,6 +49,7 @@ import {
   setup,
   showMetabot,
   testConversationId,
+  updateTestConversation,
   whoIsYourFavoriteResponse,
 } from "./utils";
 
@@ -663,14 +663,10 @@ describe("metabot > ui", () => {
     });
 
     it("filters conversations by the current agent's profile", async () => {
-      const metabotInitialState = assocIn(
-        assocIn(
-          createTestMetabotState(),
-          ["agents", "omnibot", "visible"],
-          true,
-        ),
-        ["conversations", testConversationId("omnibot"), "profileOverride"],
-        "nlq",
+      const metabotInitialState = updateTestConversation(
+        createTestMetabotState({ visibleAgentIds: ["omnibot"] }),
+        testConversationId("omnibot"),
+        { profileOverride: "nlq" },
       );
 
       setup({ metabotInitialState });
