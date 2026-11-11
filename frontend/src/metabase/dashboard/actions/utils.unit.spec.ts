@@ -227,25 +227,36 @@ describe("dashboard > actions > utils", () => {
   describe("trackAddedIFrameDashcards", () => {
     it("should track each added iframe card with its domain name", () => {
       const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+      // `isAdded` is set by the store on cards added while editing
+      const addedYouTubeCard = {
+        ...createMockIFrameDashboardCard({
+          id: 1,
+          iframe: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        }),
+        isAdded: true,
+      };
+      const addedExampleCard = {
+        ...createMockIFrameDashboardCard({
+          id: 2,
+          iframe: '<iframe src="https://example.com"></iframe>',
+        }),
+        isAdded: true,
+      };
+      const existingIFrameCard = createMockIFrameDashboardCard({
+        id: 3,
+        iframe: "vimeo.com/1",
+      });
+      const addedTextCard = {
+        ...createMockTextDashboardCard({ id: 4 }),
+        isAdded: true,
+      };
       const dashboard = createMockDashboard({
         id: 5,
         dashcards: [
-          {
-            ...createMockIFrameDashboardCard({
-              id: 1,
-              iframe: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            }),
-            isAdded: true,
-          },
-          {
-            ...createMockIFrameDashboardCard({
-              id: 2,
-              iframe: '<iframe src="https://example.com"></iframe>',
-            }),
-            isAdded: true,
-          },
-          createMockIFrameDashboardCard({ id: 3, iframe: "vimeo.com/1" }),
-          { ...createMockTextDashboardCard({ id: 4 }), isAdded: true },
+          addedYouTubeCard,
+          addedExampleCard,
+          existingIFrameCard,
+          addedTextCard,
         ],
       });
 

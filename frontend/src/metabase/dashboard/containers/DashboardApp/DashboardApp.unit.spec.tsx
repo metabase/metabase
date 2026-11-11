@@ -11,8 +11,8 @@ import {
   setupCollectionsEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
-  setupSearchEndpoints,
   setupRevisionsEndpoints,
+  setupSearchEndpoints,
   setupTableEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
@@ -33,7 +33,7 @@ import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/Dashboa
 import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DashboardId } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -42,7 +42,6 @@ import {
   createMockDashboardQueryMetadata,
   createMockDatabase,
   createMockHeadingDashboardCard,
-  createMockLastEditInfo,
   createMockTable,
   createMockTextDashboardCard,
   createMockUser,
@@ -382,12 +381,12 @@ describe("DashboardApp", () => {
     const NEW_NAME = "Renamed";
     const NEW_DESCRIPTION = "Foo Bar";
 
-    const getUpdateCalls = (dashboardId: number) =>
+    const getUpdateCalls = (dashboardId: DashboardId) =>
       fetchMock.callHistory.calls(`path:/api/dashboard/${dashboardId}`, {
         method: "PUT",
       });
 
-    const getUpdateBody = async (dashboardId: number, index: number) =>
+    const getUpdateBody = async (dashboardId: DashboardId, index: number) =>
       JSON.parse(String(getUpdateCalls(dashboardId)[index].options.body));
 
     const getTitleInput = () => screen.getByTestId("dashboard-name-heading");
@@ -502,7 +501,15 @@ describe("DashboardApp", () => {
 
     it("should save the description right away in the edit mode", async () => {
       const { dashboardId } = await setup({
-        dashboard: { "last-edit-info": createMockLastEditInfo() },
+        dashboard: {
+          "last-edit-info": {
+            id: 1,
+            email: "user@metabase.test",
+            first_name: "Testy",
+            last_name: "Tableton",
+            timestamp: "2024-01-01T00:00:00Z",
+          },
+        },
       });
 
       await userEvent.click(screen.getByLabelText("Edit dashboard"));
