@@ -19,7 +19,7 @@
         (is (some? profile))
         (is (= :embedding_next (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 20 (:max-iterations profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "construct_notebook_query"))
         (is (contains? (tool-names profile) "search"))
@@ -30,7 +30,7 @@
         (is (some? profile))
         (is (= :internal (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 20 (:max-iterations profile)))
         (is (vector? (:tools profile)))
         ;; Should have more tools than embedding_next profile
         (is (> (count (:tools profile)) 5))
@@ -52,7 +52,7 @@
         ;; the :name stays :nlq even when redirected to the fallback, so telemetry/recents are unaffected
         (is (= :nlq (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 20 (:max-iterations profile)))
         ;; In tests the library index can't answer, so :nlq is transparently served the general-search
         ;; fallback; the curated/fallback swap by availability is covered by nlq-data-discovery-fallback-test.
         (is (contains? (tool-names profile) "search"))
@@ -63,7 +63,7 @@
         (is (some? profile))
         (is (= :slackbot (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 20 (:max-iterations profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "construct_notebook_query"))
