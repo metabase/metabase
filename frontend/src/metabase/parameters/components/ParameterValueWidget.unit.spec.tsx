@@ -248,6 +248,25 @@ describe("ParameterValueWidget", () => {
     },
   );
 
+  it("should close an open filter popover when its trigger is clicked again", async () => {
+    setup({
+      parameter: {
+        type: "number/between",
+        slug: "number",
+        name: "Number",
+      },
+    });
+
+    const trigger = screen.getByTestId("parameter-value-widget-target");
+    await userEvent.click(trigger);
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+
+    await userEvent.click(trigger);
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+  });
+
   describe("static list source with custom labels in a saved question", () => {
     const CARD_ID = 1;
     const LABELED_VALUE = "1018947080336";
