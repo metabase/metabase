@@ -58,6 +58,7 @@
   most-permissive-database-permission-for-user
   native-download-permission-for-user
   permissions-for-user
+  register-loaded-database!
   register-loaded-table!
   sandboxes-for-user
   schema-permission-for-user
