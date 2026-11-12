@@ -64,6 +64,7 @@ export const NameDescriptionInput = ({
         classNames={{
           input: S.nameInput,
           root: S.name,
+          section: S.nameSection,
           wrapper: S.nameWrapper,
         }}
         fw="bold"

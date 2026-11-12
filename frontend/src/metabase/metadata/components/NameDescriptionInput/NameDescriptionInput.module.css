@@ -10,6 +10,11 @@
   --input-height-lg: rem(50px);
 }
 
+/* The shared input forces section icons to 12px; this heading-size box shows its icon at 20px. */
+.name .nameSection[data-position="left"] {
+  --input-section-icon-size: rem(20px);
+}
+
 .name .nameInput,
 .description .descriptionInput {
   --input-border-color: var(--mb-color-border-neutral);

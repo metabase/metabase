@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
+  type ActionIconSize,
   Box,
   Button,
   FixedSizeIcon,
@@ -21,6 +22,8 @@ type FilterOptionsPickerProps = {
   filterOptions: DependencyFilterOptions;
   availableGroupTypes?: DependencyGroupType[];
   isCompact?: boolean;
+  /** Size of the compact icon button; the full button keeps its size. */
+  compactSize?: ActionIconSize;
   isDisabled?: boolean;
   hasDefaultFilterOptions?: boolean;
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
@@ -30,6 +33,7 @@ export function FilterOptionsPicker({
   filterOptions,
   availableGroupTypes = [],
   isCompact = false,
+  compactSize,
   isDisabled = false,
   hasDefaultFilterOptions = false,
   onFilterOptionsChange,
@@ -41,12 +45,13 @@ export function FilterOptionsPicker({
       <Popover.Target>
         <Indicator
           size={8}
-          offset={isCompact ? 6 : 9}
+          offset={getIndicatorOffset(isCompact, compactSize)}
           disabled={hasDefaultFilterOptions}
         >
           {isCompact ? (
             <ActionIcon
               variant="subtle"
+              size={compactSize}
               aria-label={t`Filter`}
               disabled={isDisabled}
               onClick={toggle}
@@ -104,4 +109,12 @@ function FilterOptionsPopover({
       </Stack>
     </Box>
   );
+}
+
+// Keeps the dot in the button's corner, clear of the icon, at each button size.
+function getIndicatorOffset(isCompact: boolean, compactSize?: ActionIconSize) {
+  if (!isCompact) {
+    return 9;
+  }
+  return compactSize === "sm" ? 2 : 6;
 }

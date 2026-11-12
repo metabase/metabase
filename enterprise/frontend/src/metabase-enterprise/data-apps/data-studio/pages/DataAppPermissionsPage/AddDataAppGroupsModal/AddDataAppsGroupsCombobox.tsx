@@ -126,13 +126,12 @@ export function AddDataAppsGroupsCombobox({
       </Combobox.DropdownTarget>
 
       <Combobox.Dropdown>
-        <Combobox.Options p="sm">
+        <Combobox.Options>
           {visibleOptions.map((option) => (
             <Combobox.Option
               key={option.value}
               value={option.value}
               aria-label={option.label}
-              py="sm"
             >
               <GroupOptionLabel {...option} />
             </Combobox.Option>

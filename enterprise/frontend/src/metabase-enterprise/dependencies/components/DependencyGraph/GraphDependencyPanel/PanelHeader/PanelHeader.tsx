@@ -82,19 +82,21 @@ export function PanelHeader({
               <SortOptionsPicker
                 sortOptions={sortOptions}
                 availableSortColumns={getAvailableSortColumns(groupType)}
+                size="sm"
                 onSortOptionsChange={onSortOptionsChange}
               />
               {hasFilterPicker && (
                 <FilterOptionsPicker
                   filterOptions={filterOptions}
                   isCompact
+                  compactSize="sm"
                   hasDefaultFilterOptions={hasDefaultFilterOptions}
                   onFilterOptionsChange={onFilterOptionsChange}
                 />
               )}
             </Group>
           }
-          rightSectionWidth={hasFilterPicker ? "4.25rem" : undefined}
+          rightSectionWidth={hasFilterPicker ? "3.25rem" : undefined}
           onChange={(event) => onSearchTextChange(event.target.value)}
         />
       )}

@@ -29,7 +29,7 @@ export function ListSearchField({
       leftSection={<Icon name="search" />}
       rightSection={
         onResetClick && props.value ? (
-          <ActionIcon variant="subtle" onClick={onResetClick}>
+          <ActionIcon variant="subtle" size="sm" onClick={onResetClick}>
             <Icon name="close" />
           </ActionIcon>
         ) : null
