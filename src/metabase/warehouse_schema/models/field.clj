@@ -131,7 +131,7 @@
 
 (t2/define-after-select :model/Field
   [field]
-  (perms/register-loaded-table! (:table_id field))
+  (perms/register-loaded! :model/Table (:table_id field))
   (dissoc field :is_defective_duplicate :unique_field_helper))
 
 (defn- enforce-effective-type-invariant

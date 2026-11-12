@@ -139,7 +139,7 @@
           field-info     (batch-field-info all-field-ids)
           table-ids      (into #{} (keep :table_id) (vals field-info))
           table->db      (batch-table-db-ids table-ids)
-          _              (run! perms/register-loaded-table! table-ids)
+          _              (run! #(perms/register-loaded! :model/Table %) table-ids)
           sandbox-map    (sandbox-restricted-fields table-ids)
           can-access?    (memoize (fn [db-id table-id]
                                     (user-can-access-table? api/*current-user-id* db-id table-id)))

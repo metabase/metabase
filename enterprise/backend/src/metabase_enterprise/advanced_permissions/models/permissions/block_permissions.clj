@@ -28,7 +28,7 @@
   (or
    (not= :blocked (perms/full-database-permission-for-user api/*current-user-id* :perms/view-data database-id))
    (let [{:keys [table-ids]} (query-perms/query->source-ids query)]
-     (run! perms/register-loaded-table! table-ids)
+     (run! #(perms/register-loaded! :model/Table %) table-ids)
      (= #{:unrestricted}
         (into #{}
               (map (partial perms/table-permission-for-user api/*current-user-id* :perms/view-data database-id))
