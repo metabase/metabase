@@ -416,6 +416,17 @@
         ;; key instead — one extra query per result row.
         (cond-> (t2/instance-of? :model/Card instance) (assoc :document_id nil)))))
 
+(def ^:private permission-check-batch-size
+  "How many results are permission-checked together, so that one load answers the Tables among them."
+  500)
+
+(defn- register-result-tables!
+  "Remembers the Tables of the table results among `results`, so that checking one of them answers them all, and
+  returns the results."
+  [results]
+  (run! #(when (= "table" (:model %)) (perms/register-loaded-table! (:id %))) results)
+  results)
+
 (defn check-result-permissions
   "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's
   `results` produces). Returns a boolean. Public for the search debug API."
@@ -511,6 +522,8 @@
         xf                (comp
                            (take search.config/*db-max-results*)
                            (map normalize-result)
+                           (partition-all permission-check-batch-size)
+                           (mapcat register-result-tables!)
                            (filter (partial check-permissions-for-model search-ctx))
                            (map (partial normalize-result-more search-ctx))
                            (keep #(search.engine/score scoring-ctx %)))]

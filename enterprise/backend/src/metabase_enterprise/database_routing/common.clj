@@ -110,6 +110,7 @@
                                         (when (routes-user? attribute-name)
                                           db-id)))
                                 (database-routing.db/all-router-user-attributes))]
+       (run! perms/register-loaded-database! routing-db-ids)
        (some (fn [db-id]
                (not= :blocked
                      (perms/most-permissive-database-permission-for-user
