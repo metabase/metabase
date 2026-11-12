@@ -20,10 +20,15 @@ describe("PublicOrEmbeddedDashboardPage (public link)", () => {
     await setup({
       dashboardTitle: DASHBOARD_TITLE,
       accessType: "public",
+      hasEmbedBranding: true,
       extraDashcards: [
         createMockActionDashboardCard({
           id: 100,
           action: createMockImplicitQueryAction({ name: "Create" }),
+          visualization_settings: {
+            ...createMockActionDashboardCard().visualization_settings,
+            "button.label": "Create row",
+          },
         }),
       ],
     });
@@ -33,6 +38,9 @@ describe("PublicOrEmbeddedDashboardPage (public link)", () => {
     ).toBeInTheDocument();
     const grid = screen.getByTestId("dashboard-grid");
     expect(within(grid).getAllByTestId("dashcard")).toHaveLength(1);
-    expect(within(grid).queryByText("Click me")).not.toBeInTheDocument();
+    expect(within(grid).queryByText("Create row")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Powered by/ }),
+    ).toBeInTheDocument();
   });
 });

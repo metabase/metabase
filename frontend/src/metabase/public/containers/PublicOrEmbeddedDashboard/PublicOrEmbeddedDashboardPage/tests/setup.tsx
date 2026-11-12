@@ -10,6 +10,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
+import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { Route } from "metabase/router";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import { defer } from "metabase/utils/promise";
@@ -36,6 +37,7 @@ const MOCK_TOKEN =
   "eyJhbGciOiJIUzI1NiJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjExfSwicGFyYW1zIjp7fSwiaWF0IjoxNzEyNjg0NTA1LCJfZW1iZWRkaW5nX3BhcmFtcyI6e319.WbZTB-cQYh4gjh61ZzoLOcFbJ6j6RlOY3GS4fwzv3W4";
 
 registerStaticVisualizations();
+registerDashboardVisualizations();
 
 export type SetupOpts = {
   hash?: Record<string, string>;
@@ -50,6 +52,8 @@ export type SetupOpts = {
   extraDashcards?: DashboardCard[];
   /** Renders the static embed (`/embed/dashboard/:token`) or the public link (`/public/dashboard/:uuid`). */
   accessType?: "embed" | "public";
+  /** Shows the "Powered by Metabase" footer. The mock settings hide it by default. */
+  hasEmbedBranding?: boolean;
 };
 
 export async function setup(
@@ -63,10 +67,14 @@ export async function setup(
     holdDashboardRequest = false,
     extraDashcards = [],
     accessType = "embed",
+    hasEmbedBranding,
   }: SetupOpts = { dashboardTitle: "" },
 ) {
-  mockSettings({
+  const settings = mockSettings({
     "token-features": tokenFeatures,
+    ...(hasEmbedBranding !== undefined && {
+      "hide-embed-branding?": !hasEmbedBranding,
+    }),
   });
   setupDatabasesEndpoints([createMockDatabase()]);
 
@@ -151,7 +159,9 @@ export async function setup(
       />
     </>,
     {
-      storeInitialState: createMockState(),
+      storeInitialState: createMockState(
+        hasEmbedBranding !== undefined ? { settings } : {},
+      ),
       withRouter: true,
       initialRoute: href,
     },

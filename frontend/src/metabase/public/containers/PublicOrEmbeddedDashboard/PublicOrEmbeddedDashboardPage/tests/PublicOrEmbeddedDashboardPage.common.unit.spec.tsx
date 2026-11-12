@@ -114,10 +114,15 @@ describe("PublicOrEmbeddedDashboardPage", () => {
 
   it("should hide action buttons on a static embed dashboard (metabase#34395)", async () => {
     await setupCommon({
+      hasEmbedBranding: true,
       extraDashcards: [
         createMockActionDashboardCard({
           id: 100,
           action: createMockImplicitQueryAction({ name: "Create" }),
+          visualization_settings: {
+            ...createMockActionDashboardCard().visualization_settings,
+            "button.label": "Create row",
+          },
         }),
       ],
     });
@@ -127,6 +132,9 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     ).toBeInTheDocument();
     const grid = screen.getByTestId("dashboard-grid");
     expect(within(grid).getAllByTestId("dashcard")).toHaveLength(1);
-    expect(within(grid).queryByText("Click me")).not.toBeInTheDocument();
+    expect(within(grid).queryByText("Create row")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Powered by/ }),
+    ).toBeInTheDocument();
   });
 });
