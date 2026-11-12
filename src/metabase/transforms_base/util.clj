@@ -684,18 +684,19 @@
 (defn- isolated-drop-target
   "Resolve `target` to the physical warehouse table to drop.
 
-  On a workspace child the canonical target is backed by an isolation-namespace copy recorded
-  in `table_remapping`; the workspace user can only DROP inside its isolation namespace, so the
-  drop must hit that copy — not the canonical table. Looks the copy up via the general
-  canonical→isolated workspace hook (symmetric with [[canonicalize-target]], which uses the
-  inverse). The isolated namespace lives in `:schema` for schema-based drivers and in `:db` for
-  MySQL; collapse to the single `:schema` slot the driver drop path qualifies on. Off-workspace
-  the hook returns nil and `target` is dropped unchanged."
+  On a workspace child the canonical target is backed by an isolation-namespace copy; the
+  workspace user can only DROP inside its isolation namespace, so the drop must hit that copy, not
+  the canonical table. The copy is computed with the same hook a run uses to pick where it writes,
+  rather than looked up in `table_remapping`: a transform whose runs all failed has no remapping row,
+  but may still have left a copy behind. The isolated namespace lives in `:schema` for schema-based
+  drivers and in `:db` for MySQL; collapse to the single `:schema` slot the driver drop path
+  qualifies on. Off-workspace the hook returns `target` unchanged and it is dropped as is."
   [db-id target]
-  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
-    (if-let [{:keys [db schema name]} (ws.table-remapping/workspace-remap-schema+name db-id lookup-spec)]
-      (assoc target :schema (or schema db) :name name)
-      target)))
+  (let [rewritten (transforms-base.workspace-hooks/workspace-transform-target db-id target)]
+    (if (= rewritten target)
+      target
+      (let [{:keys [db schema name]} rewritten]
+        (assoc target :schema (or schema db) :name name)))))
 
 (mu/defn delete-target-table! :- [:maybe :int]
   "Drop a transform's output table and deactivate its app-db Table row.
@@ -703,19 +704,26 @@
   In workspace-isolation mode the transform writes to an isolation-namespace copy, so the drop
   resolves the canonical `:target` to that copy (see [[isolated-drop-target]]); dropping the
   canonical name would fail (the workspace user is read-only there) or hit the wrong table. The
-  app-db Table row that gets deactivated is always the canonical `:target`, since that is what
-  sync surfaces. Off-workspace the two are identical."
+  app-db Table row to deactivate is the canonical `:target`, since that is what sync surfaces.
+  It stands in for the copy only when a `table_remapping` row records the copy. With no such row
+  (every run failed), it is the live canonical warehouse table, which the drop did not touch, so
+  it stays active. Off-workspace the two are identical and the row is always deactivated."
   [{:keys [id target], :as transform} :- ::transforms-base.schema/transform]
   (when target
     (let [database-id (transforms-base.i/target-db-id transform)]
       (when database-id
         (if-let [{driver :engine :as database} (when (transforms-base.db/database-exists? database-id)
                                                  (driver.u/lib-database database-id))]
-          (let [drop-target (->> (update target :type keyword)
-                                 (isolated-drop-target database-id))]
+          (let [target      (update target :type keyword)
+                drop-target (isolated-drop-target database-id target)]
             (driver/drop-transform-target! driver database drop-target)
-            (log/info "Deactivating  target " (pr-str target) "for transform" id)
-            (deactivate-table! database target))
+            (if (or (= drop-target target)
+                    (ws.table-remapping/workspace-remap-schema+name
+                     database-id {:db (:db target) :schema (:schema target) :name (:name target)}))
+              (do (log/info "Deactivating  target " (pr-str target) "for transform" id)
+                  (deactivate-table! database target))
+              (log/infof "Not deactivating target %s for transform %d: no remapping records a workspace copy behind it"
+                         (pr-str target) id)))
           (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"
                      (pr-str target) id database-id))))))
 

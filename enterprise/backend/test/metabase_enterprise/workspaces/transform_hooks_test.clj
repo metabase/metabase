@@ -250,6 +250,39 @@
             (is (= :failed (t2/select-one-fn :status :model/TransformRun :transform_id (:id transform))))
             (is (empty? (t2/select :model/TableRemapping :database_id (mt/id))))))))))
 
+(deftest delete-after-failed-first-run-drops-the-workspace-copy-test
+  (testing "deleting the output table (the function behind DELETE /api/transform/:id/table) of a transform whose only run failed drops its workspace copy, not the canonical table"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
+        (let [spec    (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+              exists? (fn [schema table-name]
+                        (= 1 (:count (first (jdbc/query spec ["SELECT count(*) AS count FROM information_schema.tables
+                                                               WHERE table_schema = ? AND table_name = ?"
+                                                              schema table-name])))))]
+          (try
+            (jdbc/execute! spec ["CREATE TABLE public.ws_drop_failed (id INT)"])
+            (t2/insert! :model/Table {:db_id (mt/id) :schema "public" :name "ws_drop_failed" :active true})
+            (with-pg-workspace-transform! "ws_drop_failed_iso" "ws_drop_failed"
+              (fn [transform]
+                ;; The run writes its copy, then fails before recording the remapping.
+                (mt/with-dynamic-fn-redefs [transforms-base.u/record-workspace-target-remapping!
+                                            (fn [_] (throw (ex-info "record failed" {})))]
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"record failed"
+                                        (transforms.execute/execute! transform {:run-method :manual}))))
+                (is (empty? (t2/select :model/TableRemapping :database_id (mt/id))))
+                (is (exists? "ws_drop_failed_iso" "public__ws_drop_failed")
+                    "the failed run left its workspace copy behind")
+                (transforms-base.u/delete-target-table! transform)
+                (is (not (exists? "ws_drop_failed_iso" "public__ws_drop_failed"))
+                    "the workspace copy is dropped")
+                (is (exists? "public" "ws_drop_failed")
+                    "the canonical table is untouched")
+                (is (true? (t2/select-one-fn :active :model/Table :db_id (mt/id) :schema "public" :name "ws_drop_failed"))
+                    "the canonical Table row stays active: no remapping makes it stand in for the dropped copy")))
+            (finally
+              (t2/delete! :model/Table :db_id (mt/id) :schema "public" :name "ws_drop_failed")
+              (jdbc/execute! spec ["DROP TABLE IF EXISTS public.ws_drop_failed"]))))))))
+
 (deftest append-retry-after-record-failure-writes-each-row-once-test
   (testing "an incremental append run whose remapping can't be recorded fails, and its retry leaves each source row in the workspace copy once"
     (mt/test-driver :postgres
