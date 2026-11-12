@@ -83,14 +83,16 @@
 
 (defn- message [sym]
   (str "This captures " sym ", which with-dynamic-fn-redefs redefines below. "
-       "The var holds a proxy, so calling this inside the redef calls the replacement. "
+       "Once the var holds a proxy, which the test runner installs before any test, calling this inside the redef "
+       "calls the replacement. "
        "Use (mt/original-fn #'" sym ") instead. [:metabase/dynamic-redefs-captured-proxy]"))
 
 (defn lint-let
   "Warn on a captured var that a later `with-dynamic-fn-redefs` redefines while using the capture."
   [{:keys [node]}]
-  ;; The macro leaves its proxy on the var, so the binding holds the original only on a test's first run in a JVM.
-  ;; Later runs capture the proxy, and calling it while the redef is in scope reaches the replacement.
+  ;; The macro leaves its proxy on the var, and the test runner installs it before any test, so the binding holds the
+  ;; proxy. Only a run that skips the runner, on the var's first redefinition, captures the original.
+  ;; Calling the proxy while the redef is in scope reaches the replacement.
   ;; Outside the redef, the proxy calls the original, so a capture used only there is fine.
   (let [[_let bindings & body] (:children node)]
     (when (hooks/vector-node? bindings)
