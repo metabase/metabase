@@ -1,4 +1,4 @@
-import type { GlossaryItem } from "metabase/api";
+import type { GlossaryItem } from "metabase-types/api";
 
 import { getNextSort, getVisibleItems, isDuplicateTerm } from "./utils";
 

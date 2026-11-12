@@ -259,20 +259,29 @@
                              {:chart?   @chart-created?
                               :shown?   (boolean (seq (:data-parts result)))
                               :query-id (get-in result [:structured-output :query-id])
+                              :chart-id (get-in result [:structured-output :chart-id])
+                              :add-it?  (boolean (re-find #"pass `chart_id` `c-1` to `write_dashboard`"
+                                                          (:output result)))
                               :run-it?  (boolean (re-find #"call `run_query` with `query_id` `q-1`"
                                                           (:output result)))
                               :unsaved? (str/includes? (:output result) instructions/not-saved-instruction)
                               :link?    (boolean (re-find #"\(metabase://query/q-1\)" (:output result)))}))))
           readable   #{"construct_notebook_query" "run_query"}]
       (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
-        (testing "with run_query offered, the query is built and the user is shown nothing"
-          (is (= {:chart? false, :shown? false, :query-id "q-1", :run-it? true, :unsaved? true, :link? true}
+        (testing "with run_query offered, the user is shown nothing, but the query still gets a chart for a dashboard"
+          (is (= {:chart? true, :shown? false, :query-id "q-1", :chart-id "c-1", :add-it? false, :run-it? true
+                  :unsaved? true, :link? true}
                  (construct! own readable {:show_chart false}))))
+        (testing "with write_dashboard offered too, a hidden query's chart_id is named for it"
+          (is (=? {:shown? false, :chart-id "c-1", :add-it? true}
+                  (construct! own (conj readable "write_dashboard") {:show_chart false}))))
         (testing "with run_query offered and the argument left out, the chart is shown and points at run_query"
-          (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? true, :unsaved? true, :link? false}
+          (is (= {:chart? true, :shown? true, :query-id "q-1", :chart-id "c-1", :add-it? false, :run-it? true
+                  :unsaved? true, :link? false}
                  (construct! own readable {}))))
         (testing "without run_query the chart is shown whatever the argument says"
-          (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false, :unsaved? true, :link? false}
+          (is (= {:chart? true, :shown? true, :query-id "q-1", :chart-id "c-1", :add-it? false, :run-it? false
+                  :unsaved? true, :link? false}
                  (construct! own #{"construct_notebook_query"} {:show_chart false}))))
         (testing "in a conversation others can read, which run_query refuses, the chart is shown"
           (is (=? {:chart? true, :shown? true}

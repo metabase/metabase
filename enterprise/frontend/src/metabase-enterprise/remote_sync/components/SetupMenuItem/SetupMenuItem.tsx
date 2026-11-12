@@ -10,10 +10,10 @@ import S from "./SetupMenuItem.module.css";
 
 const TOOLTIP_OPEN_DELAY_MS = 1000;
 
-export const SetupMenuItem = ({
+export function SetupMenuItem({
   isNavbarOpened,
   onClick,
-}: RemoteSyncSetupMenuItemProps) => {
+}: RemoteSyncSetupMenuItemProps) {
   const isAdmin = useSelector(getUserIsAdmin);
   const isEnabled = useSetting("remote-sync-enabled");
 
@@ -40,4 +40,4 @@ export const SetupMenuItem = ({
       </UnstyledButton>
     </Tooltip>
   );
-};
+}
