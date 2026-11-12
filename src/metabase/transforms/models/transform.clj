@@ -98,14 +98,14 @@
   ([instance]
    (transform-readable? instance))
   ([_model pk]
-   (when-let [transform (transforms.db/transform pk)]
+   (when-let [transform (mi/parent-row :model/Transform pk)]
      (mi/can-read? transform))))
 
 (defmethod mi/can-write? :model/Transform
   ([instance]
    (transform-deletable? instance))
   ([_model pk]
-   (when-let [transform (transforms.db/transform pk)]
+   (when-let [transform (mi/parent-row :model/Transform pk)]
      (mi/can-write? transform))))
 
 ;; Users who can read the transform can also query it. This is a duplicate, but keeps things explicit.
@@ -235,6 +235,10 @@
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
   (remote-sync/register-loaded! :model/Transform (:id transform))
+  (mi/register-parent! :model/Database (get-in source [:query :database]))
+  (doseq [{table-id :table_id} (:source-tables source)]
+    (mi/register-parent! :model/Table table-id))
+  (transforms.u/register-source-tables! transform)
   (if source
     (assoc transform :source_type (transforms-base.u/transform-source-type source))
     transform))

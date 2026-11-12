@@ -6,8 +6,8 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
-   [metabase.transforms.models.transform :as transform]
    [metabase.transforms.schema :as transforms.schema]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -31,12 +31,23 @@
   ([_model _pk]
    (api/entitled-data-analyst?)))
 
+(defn- tagged-transforms
+  "The Transforms tagged with each of the tags with `tag-ids`, by tag id."
+  [tag-ids]
+  (let [pairs      (transforms.db/transform-tag-pairs tag-ids)
+        transforms (when (seq pairs)
+                     (u/index-by :id (transforms.db/transforms (into #{} (map :transform_id) pairs))))]
+    (update-vals (group-by :tag_id pairs)
+                 (fn [tag-pairs] (into [] (keep (comp transforms :transform_id)) tag-pairs)))))
+
 (defmethod mi/can-write? :model/TransformTag
   ([instance]
    (and (remote-sync/can-write? :model/TransformTag (:id instance))
         (or api/*is-superuser?*
             (and (api/entitled-data-analyst?)
-                 (let [transforms (transform/transforms-with-tags [(:id instance)])]
+                 (let [transforms (if (:id instance)
+                                    (mi/batched-lookup ::tagged-transforms (:id instance) tagged-transforms)
+                                    [])]
                    (every? mi/can-write? transforms))))))
   ([_model pk]
    (when-let [tag (transforms.db/tag pk)]
@@ -69,6 +80,7 @@
 
 (t2/define-after-select :model/TransformTag [tag]
   (remote-sync/register-loaded! :model/TransformTag (:id tag))
+  (mi/register-pending! ::tagged-transforms (:id tag))
   (if (nil? (:built_in_type tag))
     tag
     (merge tag (translate-name tag))))

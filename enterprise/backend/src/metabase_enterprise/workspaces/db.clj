@@ -208,10 +208,10 @@
   []
   (t2/select :model/TableRemapping {:order-by [[:id :asc]]}))
 
-(mu/defn table-remappings-exist?
-  "Whether the Database with `database-id` has a TableRemapping."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/TableRemapping :database_id database-id))
+(mu/defn remapped-database-ids :- [:set ::lib.schema.id/database]
+  "The ids, among `database-ids`, of the Databases that have a TableRemapping."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (set (t2/select-fn-set :database_id [:model/TableRemapping :database_id] :database_id [:in database-ids])))
 
 (mu/defn table-remappings-of-database
   "The TableRemappings of the Database with `database-id`."

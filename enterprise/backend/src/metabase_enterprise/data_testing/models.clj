@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -68,9 +69,15 @@
 
 (defn can-run-native-query?
   "Whether the current user may run native SQL against the Database with `db-id`, as the input and expectation SQL of a
-  test does."
+  test does, looked up once per request."
   [db-id]
-  (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))
+  (mi/batched-lookup [::native-query-runnable (mi/current-user-id) (mi/superuser?) (api/entitled-data-analyst?)
+                      (some-> api/*current-user-permissions-set* deref)]
+                     db-id
+                     #(zipmap % (map (fn [id]
+                                       (query-perms/can-run-query?
+                                        (lib/native-query (lib-be/application-database-metadata-provider id) "SELECT 1")))
+                                     %))))
 
 (defn- can-save-for-transform?
   "Whether the current user may save or delete a test of `transform`: they may edit it, as `transform-writable?` says,
@@ -85,14 +92,14 @@
 (mu/defn- can-save? :- :boolean
   "Whether the current user may save or delete a test of the Transform `transform-id` (see [[can-save-for-transform?]])."
   [transform-id :- ::lib.schema.id/transform]
-  (let [transform (data-testing.db/transform transform-id)]
+  (let [transform (mi/parent-row :model/Transform transform-id)]
     (can-save-for-transform? transform (some-> transform mi/can-write?) can-run-native-query?)))
 
 (mu/defn can-run-test? :- :boolean
   "Whether the current user may run a test of the Transform `transform-id`: they may read it, and run the native SQL of
   a test against its source Database."
   [transform-id :- ::lib.schema.id/transform]
-  (let [transform (data-testing.db/transform transform-id)]
+  (let [transform (mi/parent-row :model/Transform transform-id)]
     (boolean
      (and transform
           (mi/can-read? transform)
@@ -246,4 +253,5 @@
 (t2/define-after-select :model/TransformTest
   [instance]
   (remote-sync/register-loaded! :model/TransformTest (:id instance))
+  (mi/register-parent! :model/Transform (:transform_id instance))
   instance)

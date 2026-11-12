@@ -6,7 +6,8 @@
    [[*remapping-store*]] with a simple map-backed implementation to avoid DB access."
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
-   [metabase-enterprise.workspaces.models.table-remapping]))
+   [metabase-enterprise.workspaces.models.table-remapping]
+   [metabase.models.interface :as mi]))
 
 (comment metabase-enterprise.workspaces.models.table-remapping/keep-me)
 
@@ -63,7 +64,8 @@
 (defrecord AppDBRemappingStore []
   RemappingStore
   (enabled-for-db?* [_ db-id]
-    (ws.db/table-remappings-exist? db-id))
+    (boolean (mi/batched-lookup ::remapped-database db-id
+                                #(zipmap (ws.db/remapped-database-ids %) (repeat true)))))
   (remappings-for-db* [_ db-id]
     (into {} (map row->spec-pair) (ws.db/table-remappings-of-database db-id)))
   (get-mapping* [_ db-id {:keys [db schema table]}]

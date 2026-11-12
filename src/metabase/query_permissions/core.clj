@@ -23,11 +23,13 @@
   query->resolved-source-ids
   query->source-ids
   query->source-table-ids
+  register-query-tables!
   required-perms-for-query
   resolved-source-ids-transform
   ResolvedSourceIds
   stamped-resolved-source-ids
-  verified-resolved-source-ids])
+  verified-resolved-source-ids
+  warm-query-tables!])
 
 (defmacro with-card-instances
   "Provide a map of Card ID -> instance to use instead of hitting a metadata provider for more efficient perms

@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
+   [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -36,12 +37,31 @@
     ;; about block permissions here because it would have been enforced earlier in the QP middleware stack.
     (not (contains? perm-values :unrestricted))))
 
+(defn- impersonation-exists?
+  "Whether the Database with `db-id` has a ConnectionImpersonation, looked up once per request."
+  [db-id]
+  (mi/batched-lookup ::impersonated-database db-id
+                     #(zipmap (impersonation.db/impersonated-database-ids %) (repeat true))))
+
+(defn- current-user-group-ids
+  "The ids of the groups of the current user, looked up once per request."
+  []
+  (when-let [user-id api/*current-user-id*]
+    (mi/batched-lookup ::group-ids user-id #(zipmap % (map impersonation.db/group-ids-for-user %)))))
+
+(defn- group-impersonations-for-db
+  "The ConnectionImpersonations of the groups with `group-ids` on the Database with `db-id`, looked up once per
+  request."
+  [group-ids db-id]
+  (mi/batched-lookup [::group-impersonations group-ids] db-id
+                     #(zipmap % (map (partial impersonation.db/impersonations-for-groups-and-database group-ids) %))))
+
 (defn impersonation-enabled-for-db?
   "Is impersonation enabled for the given database, for any groups?"
   [db-or-id]
   (boolean
    (when (and db-or-id (premium-features/enable-advanced-permissions?))
-     (impersonation.db/impersonation-exists-for-database? (u/id db-or-id)))))
+     (impersonation-exists? (u/id db-or-id)))))
 
 (defn enforced-impersonations-for-db
   "Returns the connection impersonation policies which should be enforced for the provided DB for the current user, if
@@ -52,9 +72,9 @@
   Note: this returns a list of policies. Typically a user should only be in one group with an impersonation policy at a time,
   but there may be policies in multiple groups if they use the same user attribute."
   [db-or-id]
-  (let [group-ids           (impersonation.db/group-ids-for-user api/*current-user-id*)
+  (let [group-ids           (current-user-group-ids)
         conn-impersonations (when (seq group-ids)
-                              (impersonation.db/impersonations-for-groups-and-database group-ids (u/the-id db-or-id)))]
+                              (group-impersonations-for-db group-ids (u/the-id db-or-id)))]
     (when (and (seq conn-impersonations) (sandboxed? db-or-id))
       (throw (ex-info (tru "Conflicting sandboxing and impersonation policies found.")
                       {:user-id api/*current-user-id*
@@ -114,7 +134,7 @@
   ;; Include the role in the hash key, so that we can cache the results of the query for each role.
   (let [db-id (field/field-id->database-id (u/the-id field))]
     (when-let [role (and api/*current-user-id*
-                         (impersonation.db/impersonation-exists-for-database? db-id)
+                         (impersonation-exists? db-id)
                          (connection-impersonation-role db-id))]
       {:impersonation-role (when (premium-features/has-feature? :advanced-permissions) role)})))
 

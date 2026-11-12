@@ -786,7 +786,8 @@
   nil)
 
 (defn do-with-batched-lookups
-  "Calls `thunk` with [[*batched-lookups*]] bound, keeping a cache already in place."
+  "Calls `thunk` with [[*batched-lookups*]] bound, keeping a cache already in place, also across nested current-user
+  bindings: a lookup whose answer depends on who the current user is, or on their session flags, puts them in its key."
   [thunk]
   (binding [*batched-lookups* (or *batched-lookups* (atom {}))]
     (thunk)))

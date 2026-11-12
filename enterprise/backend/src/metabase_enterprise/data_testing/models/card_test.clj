@@ -26,6 +26,20 @@
   (derive :hook/timestamped?)
   (derive ::data-testing.models/saved-test))
 
+(t2/define-after-select :model/CardTest
+  [card-test]
+  (mi/register-parent! :model/Card (:card_id card-test))
+  (mi/register-pending! ::card-query-tables (:card_id card-test))
+  card-test)
+
+(defn- register-card-query-tables
+  "The lookup behind [[card-allows?]] that registers the source Tables of the queries of the Cards with `card-ids` with
+  the query permission checks, returning `{card-id true}`."
+  [card-ids]
+  (doseq [card-id card-ids]
+    (some-> (mi/parent-row :model/Card card-id) :dataset_query not-empty query-perms/register-query-tables!))
+  (zipmap card-ids (repeat true)))
+
 (methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]
   [_original-model _k]
   :model/Card)
@@ -87,7 +101,8 @@
   SQL of a test against the Database of that query."
   [card-check card-id]
   (boolean
-   (when-let [card (data-testing.db/card card-id)]
+   (when-let [card (mi/parent-row :model/Card card-id)]
+     (mi/batched-lookup ::card-query-tables card-id register-card-query-tables)
      (and (card-check card)
           ;; A run compiles the query with the cards and snippets it includes, and its errors can quote their SQL, so
           ;; the user must be allowed to run the query itself, not only to read the card.

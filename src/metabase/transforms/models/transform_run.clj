@@ -44,6 +44,11 @@
   {:status     mi/transform-keyword
    :run_method mi/transform-keyword})
 
+(t2/define-after-select :model/TransformRun
+  [run]
+  (mi/register-parent! :model/Transform (:transform_id run))
+  run)
+
 ;; a run is only readable if its transform is; orphaned runs (transform deleted) are superuser-only
 (defmethod mi/can-read? :model/TransformRun
   ([instance]

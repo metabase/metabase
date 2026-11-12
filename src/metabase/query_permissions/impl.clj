@@ -514,9 +514,37 @@
         (throw e)
         false))))
 
+(defn- stored-query-source-table-ids
+  "The ids of the Tables that the stages and joins of the stored `query` read from."
+  [query]
+  (into #{} (comp (filter map?) (keep :source-table) (filter pos-int?)) (tree-seq coll? seq query)))
+
+(defn register-query-tables!
+  "Remembers the source Tables of the stored `query` of a row this request loaded, so that the first permission check
+  of a query on its Database looks up the data permissions and the metadata of all of them at once."
+  [query]
+  (when-let [db-id (:database query)]
+    (doseq [table-id (stored-query-source-table-ids query)]
+      (perms/register-loaded! :model/Table table-id)
+      (mi/register-pending! [::source-tables db-id] table-id))))
+
+(defn warm-query-tables!
+  "Loads the metadata of the source Tables of `query`, with those of the other queries the request registered on the
+  same Database, into the metadata provider of `query`."
+  [query]
+  (let [db-id (:database query)]
+    (doseq [table-id (stored-query-source-table-ids query)]
+      (mi/batched-lookup [::source-tables db-id] table-id
+                         (fn [table-ids]
+                           (lib.metadata/bulk-metadata query :metadata/table table-ids)
+                           (lib.metadata/metadatas query {:lib/type :metadata/column :table-ids (set table-ids)})
+                           (zipmap table-ids (repeat true)))))))
+
 (defn- can-run-query*
   [{database-id :database :as query} {:keys [throw-exceptions?] :as perms-opts}]
   (try
+    (when (:lib/metadata query)
+      (warm-query-tables! query))
     (let [required-perms (required-perms-for-query query perms-opts)]
       (check-data-perms query required-perms)
       ;; Check card read permissions for any cards referenced in subqueries!

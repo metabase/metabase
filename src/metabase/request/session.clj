@@ -13,8 +13,11 @@
 
 (defn- find-user [user-id]
   (when user-id
-    (some-> (request.db/current-user user-id)
-            user/add-attributes)))
+    (mi/batched-lookup ::current-user user-id
+                       #(zipmap % (map (fn [id]
+                                         (some-> (request.db/current-user id)
+                                                 user/add-attributes))
+                                       %)))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *user-local-values-user-id*
@@ -64,7 +67,8 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (request.db/current-user-for-id current-user-id)))
+    (mi/batched-lookup ::current-user-info current-user-id
+                       #(zipmap % (map request.db/current-user-for-id %)))))
 
 (defn do-as-admin
   "Execute `thunk` with admin perms."

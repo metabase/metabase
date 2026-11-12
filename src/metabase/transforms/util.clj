@@ -15,7 +15,9 @@
    [metabase.indexes.models.table-index :as table-index]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -60,6 +62,16 @@
     (transforms-base.u/python-transform? transform) (premium-features/python-transforms-enabled?)
     :else false))
 
+(defn register-source-tables!
+  "Remembers the source Tables of the loaded `transform`, so that the first check of a Transform in the request looks
+  up the data permissions and the metadata of the source Tables of every loaded Transform at once."
+  [transform]
+  (let [source (:source transform)]
+    (if (:query source)
+      (query-perms/register-query-tables! (:query source))
+      (doseq [{table-id :table_id} (:source-tables source)]
+        (perms/register-loaded! :model/Table table-id)))))
+
 (mu/defn- source-query-permissions-ok? :- :boolean
   "Whether the current user may run a query transform's source `query`, per the query processor's own permission
   check. The query is preprocessed first so references that only appear after expansion (cards, snippets) are
@@ -70,6 +82,7 @@
                     {})))
   (try
     (qp.setup/with-qp-setup [query query]
+      (query-perms/warm-query-tables! query)
       (qp.perms/check-query-permissions* (qp.preprocess/preprocess query))
       true)
     (catch Exception e
@@ -92,9 +105,7 @@
    (let [resolve* (fn [model id]
                     (if models-cache
                       (get-in models-cache [model id])
-                      (case model
-                        :model/Database (transforms.db/database id)
-                        :model/Table    (transforms.db/table id))))
+                      (mi/parent-row model id)))
          source   (:source transform)]
      (case (keyword (:type source))
        :query

@@ -152,6 +152,11 @@
   [tag-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
   (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]))
 
+(mu/defn transform-tag-pairs
+  "The Transform id and tag id of each tagging of a Transform with one of `tag-ids`."
+  [tag-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/TransformTransformTag :transform_id :tag_id] :tag_id [:in tag-ids]))
+
 (defn- job-schedule-rows
   "Rows of Transform ID and the schedule of the TransformJobs that run it through a shared tag, narrowed
   by `where`."

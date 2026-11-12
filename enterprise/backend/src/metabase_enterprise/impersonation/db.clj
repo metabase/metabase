@@ -52,10 +52,10 @@
                       (when group-ids [:in :group_id group-ids])
                       (when excluded-database-id [:not [:= :db_id excluded-database-id]])]}))
 
-(mu/defn impersonation-exists-for-database?
-  "Whether the Database with `database-id` has a ConnectionImpersonation."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/ConnectionImpersonation :db_id database-id))
+(mu/defn impersonated-database-ids :- [:set ::lib.schema.id/database]
+  "The ids, among `database-ids`, of the Databases that have a ConnectionImpersonation."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (set (t2/select-fn-set :db_id [:model/ConnectionImpersonation :db_id] :db_id [:in database-ids])))
 
 (mu/defn insert-impersonation!
   "Insert `impersonation` and return the new instance."
