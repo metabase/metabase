@@ -2889,6 +2889,90 @@
           (migrate!)
           (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check"))))))))
 
+(deftest collapse-blocked-view-data-permissions-test
+  (testing "table-level view-data rows that are all blocked, or repeat their db-level row, collapse into it"
+    (impl/test-migrations ["v58.2026-11-12T00:00:00"] [migrate!]
+      (let [group-id          (t2/insert-returning-pk! :permissions_group {:name      "collapse-test-group"
+                                                                           :entity_id (u/generate-nano-id)})
+            db!               (fn [db-name]
+                                (t2/insert-returning-pk! :metabase_database
+                                                         {:details    "{}"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :engine     "h2"
+                                                          :is_sample  false
+                                                          :name       db-name}))
+            table!            (fn [db-id active?]
+                                (t2/insert-returning-pk! :metabase_table
+                                                         {:db_id      db-id
+                                                          :name       (mt/random-name)
+                                                          :schema     "PUBLIC"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :active     active?}))
+            perm!             (fn [db-id table-id perm-type perm-value]
+                                (t2/insert! :data_permissions
+                                            {:group_id    group-id
+                                             :db_id       db-id
+                                             :table_id    table-id
+                                             :schema_name (when table-id "PUBLIC")
+                                             :perm_type   perm-type
+                                             :perm_value  perm-value}))
+            rows              (fn [db-id perm-type]
+                                (t2/select-fn-set (juxt :table_id :perm_value) :data_permissions
+                                                  :group_id group-id :db_id db-id :perm_type perm-type))
+            blocked-db        (db! "collapse-blocked")
+            blocked-a         (table! blocked-db true)
+            blocked-b         (table! blocked-db true)
+            blocked-inactive  (table! blocked-db false)
+            partial-db        (db! "collapse-partial")
+            partial-a         (table! partial-db true)
+            _                 (table! partial-db true)
+            mixed-db          (db! "collapse-mixed")
+            mixed-a           (table! mixed-db true)
+            mixed-b           (table! mixed-db true)
+            unrestricted-db   (db! "collapse-unrestricted")
+            unrestricted-a    (table! unrestricted-db true)
+            other-type-db     (db! "collapse-other-type")
+            other-type-a      (table! other-type-db true)
+            inactive-db       (db! "collapse-inactive-differs")
+            inactive-a        (table! inactive-db true)
+            inactive-inactive (table! inactive-db false)
+            duplicate-db      (db! "collapse-duplicate")
+            duplicate-a       (table! duplicate-db true)
+            duplicate-b       (table! duplicate-db true)]
+        (perm! blocked-db blocked-a "perms/view-data" "blocked")
+        (perm! blocked-db blocked-b "perms/view-data" "blocked")
+        (perm! blocked-db blocked-inactive "perms/view-data" "blocked")
+        (perm! blocked-db blocked-a "perms/create-queries" "no")
+        (perm! partial-db partial-a "perms/view-data" "blocked")
+        (perm! mixed-db mixed-a "perms/view-data" "blocked")
+        (perm! mixed-db mixed-b "perms/view-data" "unrestricted")
+        (perm! unrestricted-db unrestricted-a "perms/view-data" "unrestricted")
+        (perm! other-type-db other-type-a "perms/create-queries" "no")
+        (perm! inactive-db inactive-a "perms/view-data" "blocked")
+        (perm! inactive-db inactive-inactive "perms/view-data" "unrestricted")
+        (perm! duplicate-db nil "perms/view-data" "unrestricted")
+        (perm! duplicate-db duplicate-a "perms/view-data" "unrestricted")
+        (perm! duplicate-db duplicate-b "perms/view-data" "blocked")
+        (migrate!)
+        (testing "blocked rows covering every active table become one db-level row"
+          (is (= #{[nil "blocked"]} (rows blocked-db "perms/view-data"))))
+        (testing "other permission types of collapsed database are kept"
+          (is (= #{[blocked-a "no"]} (rows blocked-db "perms/create-queries"))))
+        (testing "partial coverage is kept"
+          (is (= #{[partial-a "blocked"]} (rows partial-db "perms/view-data"))))
+        (testing "mixed values are kept"
+          (is (= #{[mixed-a "blocked"] [mixed-b "unrestricted"]} (rows mixed-db "perms/view-data"))))
+        (testing "unrestricted rows are kept"
+          (is (= #{[unrestricted-a "unrestricted"]} (rows unrestricted-db "perms/view-data"))))
+        (testing "rows of other permission types are kept"
+          (is (= #{[other-type-a "no"]} (rows other-type-db "perms/create-queries"))))
+        (testing "differing value on inactive table prevents collapse"
+          (is (= #{[inactive-a "blocked"] [inactive-inactive "unrestricted"]} (rows inactive-db "perms/view-data"))))
+        (testing "only table rows equal to existing db-level row are deleted"
+          (is (= #{[nil "unrestricted"] [duplicate-b "blocked"]} (rows duplicate-db "perms/view-data"))))))))
+
 (deftest retire-confirmed-at-v59-ids-test
   (testing "v59.2026-07-10T22:29:18 deletes the changelog rows of the confirmed_at changesets that moved to v63 ids"
     (impl/test-migrations "v59.2026-07-10T22:29:18" [migrate!]
@@ -4915,87 +4999,3 @@
         (migrate! :down 64)
         (is (=? {:name "birds" :display_name "Birds"} (app)))
         (is (not (contains? (app) :slug)))))))
-
-(deftest collapse-blocked-view-data-permissions-test
-  (testing "table-level view-data rows that are all blocked, or repeat their db-level row, collapse into it"
-    (impl/test-migrations ["v58.2026-11-12T00:00:00"] [migrate!]
-      (let [group-id          (t2/insert-returning-pk! :permissions_group {:name      "collapse-test-group"
-                                                                           :entity_id (u/generate-nano-id)})
-            db!               (fn [db-name]
-                                (t2/insert-returning-pk! :metabase_database
-                                                         {:details    "{}"
-                                                          :created_at :%now
-                                                          :updated_at :%now
-                                                          :engine     "h2"
-                                                          :is_sample  false
-                                                          :name       db-name}))
-            table!            (fn [db-id active?]
-                                (t2/insert-returning-pk! :metabase_table
-                                                         {:db_id      db-id
-                                                          :name       (mt/random-name)
-                                                          :schema     "PUBLIC"
-                                                          :created_at :%now
-                                                          :updated_at :%now
-                                                          :active     active?}))
-            perm!             (fn [db-id table-id perm-type perm-value]
-                                (t2/insert! :data_permissions
-                                            {:group_id    group-id
-                                             :db_id       db-id
-                                             :table_id    table-id
-                                             :schema_name (when table-id "PUBLIC")
-                                             :perm_type   perm-type
-                                             :perm_value  perm-value}))
-            rows              (fn [db-id perm-type]
-                                (t2/select-fn-set (juxt :table_id :perm_value) :data_permissions
-                                                  :group_id group-id :db_id db-id :perm_type perm-type))
-            blocked-db        (db! "collapse-blocked")
-            blocked-a         (table! blocked-db true)
-            blocked-b         (table! blocked-db true)
-            blocked-inactive  (table! blocked-db false)
-            partial-db        (db! "collapse-partial")
-            partial-a         (table! partial-db true)
-            _                 (table! partial-db true)
-            mixed-db          (db! "collapse-mixed")
-            mixed-a           (table! mixed-db true)
-            mixed-b           (table! mixed-db true)
-            unrestricted-db   (db! "collapse-unrestricted")
-            unrestricted-a    (table! unrestricted-db true)
-            other-type-db     (db! "collapse-other-type")
-            other-type-a      (table! other-type-db true)
-            inactive-db       (db! "collapse-inactive-differs")
-            inactive-a        (table! inactive-db true)
-            inactive-inactive (table! inactive-db false)
-            duplicate-db      (db! "collapse-duplicate")
-            duplicate-a       (table! duplicate-db true)
-            duplicate-b       (table! duplicate-db true)]
-        (perm! blocked-db blocked-a "perms/view-data" "blocked")
-        (perm! blocked-db blocked-b "perms/view-data" "blocked")
-        (perm! blocked-db blocked-inactive "perms/view-data" "blocked")
-        (perm! blocked-db blocked-a "perms/create-queries" "no")
-        (perm! partial-db partial-a "perms/view-data" "blocked")
-        (perm! mixed-db mixed-a "perms/view-data" "blocked")
-        (perm! mixed-db mixed-b "perms/view-data" "unrestricted")
-        (perm! unrestricted-db unrestricted-a "perms/view-data" "unrestricted")
-        (perm! other-type-db other-type-a "perms/create-queries" "no")
-        (perm! inactive-db inactive-a "perms/view-data" "blocked")
-        (perm! inactive-db inactive-inactive "perms/view-data" "unrestricted")
-        (perm! duplicate-db nil "perms/view-data" "unrestricted")
-        (perm! duplicate-db duplicate-a "perms/view-data" "unrestricted")
-        (perm! duplicate-db duplicate-b "perms/view-data" "blocked")
-        (migrate!)
-        (testing "blocked rows covering every active table become one db-level row"
-          (is (= #{[nil "blocked"]} (rows blocked-db "perms/view-data"))))
-        (testing "other permission types of collapsed database are kept"
-          (is (= #{[blocked-a "no"]} (rows blocked-db "perms/create-queries"))))
-        (testing "partial coverage is kept"
-          (is (= #{[partial-a "blocked"]} (rows partial-db "perms/view-data"))))
-        (testing "mixed values are kept"
-          (is (= #{[mixed-a "blocked"] [mixed-b "unrestricted"]} (rows mixed-db "perms/view-data"))))
-        (testing "unrestricted rows are kept"
-          (is (= #{[unrestricted-a "unrestricted"]} (rows unrestricted-db "perms/view-data"))))
-        (testing "rows of other permission types are kept"
-          (is (= #{[other-type-a "no"]} (rows other-type-db "perms/create-queries"))))
-        (testing "differing value on inactive table prevents collapse"
-          (is (= #{[inactive-a "blocked"] [inactive-inactive "unrestricted"]} (rows inactive-db "perms/view-data"))))
-        (testing "only table rows equal to existing db-level row are deleted"
-          (is (= #{[nil "unrestricted"] [duplicate-b "blocked"]} (rows duplicate-db "perms/view-data"))))))))
