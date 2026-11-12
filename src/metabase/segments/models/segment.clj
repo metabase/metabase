@@ -199,6 +199,7 @@
 
 (t2/define-after-select :model/Segment
   [{:keys [definition] :as segment}]
+  (perms/register-loaded-table! (:table_id segment))
   (cond-> segment
     (some? definition) (assoc :definition (maybe-migrated-segment-definition segment))))
 

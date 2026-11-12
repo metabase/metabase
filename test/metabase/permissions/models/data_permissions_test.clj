@@ -10,9 +10,12 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
+
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel coalesce-test
   (testing "`coalesce` correctly returns the most permissive value by default"
@@ -1491,6 +1494,58 @@
         (testing "cache disabled, different user"
           (binding [data-perms/*use-perms-cache?* false]
             (is (not (#'data-perms/use-cache? other-user-id)))))))))
+
+(def ^:private random-values
+  "The values a random permission setup draws from, per permission type, at database and at table level."
+  {:perms/view-data             [[:unrestricted :legacy-no-self-service :blocked] [:unrestricted :blocked]]
+   :perms/create-queries        [[:query-builder-and-native :query-builder :no] [:query-builder-and-native :query-builder :no]]
+   :perms/download-results      [[:one-million-rows :ten-thousand-rows :no] [:one-million-rows :ten-thousand-rows :no]]
+   :perms/manage-table-metadata [[:yes :no] [:yes :no]]})
+
+(defn- set-random-permissions!
+  "Give `group-id` random permissions on the Database with `db-id`, overriding some on the Table with `table-id`."
+  [^java.util.Random rng group-id db-id table-id]
+  (doseq [[perm-type [db-values table-values]] random-values
+          :let [pick #(nth % (.nextInt rng (count %)))]]
+    (data-perms/set-database-permission! group-id db-id perm-type (pick db-values))
+    (when (.nextBoolean rng)
+      (data-perms/set-table-permission! group-id table-id perm-type (pick table-values)))))
+
+(deftest loaded-table-permissions-match-per-table-checks-test
+  (testing "permissions loaded for the Tables of a request equal the ones each check computes on its own"
+    (mt/with-temp [:model/PermissionsGroup           {group-1 :id}  {}
+                   :model/PermissionsGroup           {group-2 :id}  {}
+                   :model/User                       {user-id :id}  {}
+                   :model/PermissionsGroupMembership {}             {:user_id user-id :group_id group-1}
+                   :model/PermissionsGroupMembership {}             {:user_id user-id :group_id group-2}
+                   :model/Database                   {db-id :id}    {}
+                   :model/Table                      {table-1 :id}  {:db_id db-id}
+                   :model/Table                      {table-2 :id}  {:db_id db-id}
+                   :model/Table                      {inactive :id} {:db_id db-id :active false}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-restored-data-perms-for-group! group-1
+          (mt/with-restored-data-perms-for-group! group-2
+            (let [rng       (java.util.Random. 42)
+                  table-ids [table-1 table-2 inactive]
+                  answers   (fn []
+                              (into {} (for [table-id  table-ids
+                                             perm-type (keys random-values)]
+                                         [[table-id perm-type]
+                                          (data-perms/table-permission-for-user user-id perm-type db-id table-id)])))]
+              (dotimes [i 40]
+                (doseq [group-id [group-1 group-2]]
+                  (set-random-permissions! rng group-id db-id (if (even? i) table-1 inactive)))
+                (testing (str "setup " i)
+                  (binding [api/*current-user-id* user-id
+                            api/*is-superuser?*   false]
+                    (is (= (binding [data-perms/*use-perms-cache?* false]
+                             (answers))
+                           (binding [data-perms/*permission-cache* (atom {})
+                                     data-perms/*loaded-table-ids* (atom {:pending #{} :loaded #{}})]
+                             (run! data-perms/register-loaded-table! table-ids)
+                             (t2/with-call-count [call-count]
+                               (u/prog1 (answers)
+                                 (is (<= (call-count) 3) "one load answers every check"))))))))))))))))
 
 (deftest race-conditions-test
   ;; This test is probabilistic: success doesn't *necessarily* prove we're doing things correctly, but

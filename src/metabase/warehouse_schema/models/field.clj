@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -130,6 +131,7 @@
 
 (t2/define-after-select :model/Field
   [field]
+  (perms/register-loaded-table! (:table_id field))
   (dissoc field :is_defective_duplicate :unique_field_helper))
 
 (defn- enforce-effective-type-invariant
