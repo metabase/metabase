@@ -2,14 +2,18 @@ import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
 import fetchMock from "fetch-mock";
+import { createRef } from "react";
 
 import {
+  setupListMentionsEndpoint,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
+import type { BareSuggestionRendererRef } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { checkNotNull } from "metabase/utils/types";
+import type { MentionableUser } from "metabase-types/api";
 import {
   createMockRecentCollectionItem,
   createMockSearchResult,
@@ -24,6 +28,18 @@ const expectOptionToBePresent = async (name: string | RegExp) => {
 
 const expectOptionNotToBePresent = (name: string | RegExp) => {
   expect(screen.queryByRole("option", { name })).not.toBeInTheDocument();
+};
+
+const expectOnlyOptionActive = (name: string | RegExp) => {
+  expect(screen.getByRole("option", { name })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  expect(
+    screen
+      .getAllByRole("option")
+      .filter((option) => option.getAttribute("aria-selected") === "true"),
+  ).toHaveLength(1);
 };
 
 const SEARCH_ITEMS = [
@@ -42,14 +58,34 @@ const RECENT_ITEMS = [
   }),
 ];
 
+const NAMED_USER: MentionableUser = {
+  id: 1,
+  first_name: "Bobby",
+  last_name: "Tables",
+  common_name: "Bobby Tables",
+};
+
+// The backend falls back to the email for the common name of a user without
+// a first and last name
+const NO_NAME_USER: MentionableUser = {
+  id: 2,
+  first_name: null,
+  last_name: null,
+  common_name: "no-name@metabase.test",
+};
+
+const MENTIONABLE_USERS: MentionableUser[] = [NAMED_USER, NO_NAME_USER];
+
 interface SetupProps extends Partial<MentionSuggestionProps> {
   query?: string;
   searchItems?: typeof SEARCH_ITEMS;
   recentItems?: typeof RECENT_ITEMS;
+  mentionableUsers?: MentionableUser[];
 }
 
 const setup = (props: SetupProps = {}) => {
   const command = jest.fn();
+  const ref = createRef<BareSuggestionRendererRef>();
 
   const mockChain = {
     focus: jest.fn().mockReturnThis(),
@@ -71,6 +107,7 @@ const setup = (props: SetupProps = {}) => {
 
   setupSearchEndpoints(props.searchItems ?? SEARCH_ITEMS);
   setupRecentViewsEndpoints(props.recentItems ?? RECENT_ITEMS);
+  setupListMentionsEndpoint(props.mentionableUsers ?? []);
 
   const defaultProps: MentionSuggestionProps = {
     items: [],
@@ -81,11 +118,16 @@ const setup = (props: SetupProps = {}) => {
     ...props,
   };
 
-  renderWithProviders(<MentionSuggestion {...defaultProps} />, {
+  renderWithProviders(<MentionSuggestion {...defaultProps} ref={ref} />, {
     storeInitialState: createMockState({}),
   });
 
-  return { command, editor };
+  const pressKey = (key: string) =>
+    act(() => {
+      ref.current?.onKeyDown({ event: new KeyboardEvent("keydown", { key }) });
+    });
+
+  return { command, editor, pressKey };
 };
 
 describe("MentionSuggestion", () => {
@@ -228,6 +270,66 @@ describe("MentionSuggestion", () => {
     const urlObject = new URL(checkNotNull(call?.request?.url));
     const models = urlObject.searchParams.getAll("models").sort();
     expect(models).toEqual(["card", "dashboard", "table"]);
+  });
+
+  describe("users", () => {
+    const USER_SEARCH_MODELS: SetupProps["searchModels"] = ["card", "user"];
+
+    it("matches users case-insensitively", async () => {
+      setup({
+        query: "tAbLe",
+        searchModels: USER_SEARCH_MODELS,
+        searchItems: [],
+        mentionableUsers: MENTIONABLE_USERS,
+      });
+
+      await expectOptionToBePresent(/Bobby Tables/);
+      expectOptionNotToBePresent(/no-name@metabase.test/);
+    });
+
+    it("lists a user without a first and last name by email and mentions them by it", async () => {
+      const { command } = setup({
+        query: "No",
+        searchModels: USER_SEARCH_MODELS,
+        searchItems: [],
+        mentionableUsers: MENTIONABLE_USERS,
+      });
+
+      await userEvent.click(
+        await screen.findByRole("option", { name: /no-name@metabase.test/ }),
+      );
+      expectOptionNotToBePresent(/Bobby Tables/);
+
+      expect(command).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: NO_NAME_USER.id,
+          model: "user",
+          label: "no-name@metabase.test",
+        }),
+      );
+    });
+  });
+
+  it("keeps exactly one option active while navigating with keyboard and mouse", async () => {
+    const { pressKey } = setup({
+      query: "ord",
+      searchItems: [
+        createMockSearchResult({ name: "Orders", model: "card", id: 1 }),
+        createMockSearchResult({ name: "Orders, Count", model: "card", id: 2 }),
+      ],
+    });
+
+    await expectOptionToBePresent(/Orders, Count/);
+    expectOnlyOptionActive(/Orders$/);
+
+    pressKey("ArrowDown");
+    expectOnlyOptionActive(/Orders, Count/);
+
+    await userEvent.hover(screen.getByRole("option", { name: /Browse all/ }));
+    expectOnlyOptionActive(/Browse all/);
+
+    pressKey("ArrowDown");
+    expectOnlyOptionActive(/Orders$/);
   });
 
   describe("cmd/ctrl+click behavior", () => {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 

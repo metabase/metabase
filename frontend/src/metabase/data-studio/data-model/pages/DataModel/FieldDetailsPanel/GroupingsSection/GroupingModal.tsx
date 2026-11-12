@@ -23,7 +23,6 @@ import {
   useResolvedGroupings,
 } from "metabase/metadata/groupings";
 import { isPartitionOnField } from "metabase/metadata/segment-groups";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
   Button,
@@ -129,9 +128,7 @@ export function GroupingModal({
     getPartitionDraft(field, grouping),
   );
   const { data: fieldValues, isLoading: isLoadingValues } =
-    useGetFieldValuesQuery(
-      kind === "partition" ? getRawTableFieldId(field) : skipToken,
-    );
+    useGetFieldValuesQuery(kind === "partition" ? field.id : skipToken);
   const values = (fieldValues?.values ?? [])
     .map(([value]) => value)
     .filter((value) => value != null && value !== "")
@@ -381,7 +378,7 @@ function getNamePlaceholder({
           return t`Age in ${getElapsedUnitLabel(timeDraft.elapsedUnit)}`;
         }
         const other = fields.find(
-          (known) => String(getRawTableFieldId(known)) === timeDraft.elapsedTo,
+          (known) => String(known.id) === timeDraft.elapsedTo,
         );
         return other
           ? t`Time to ${other.display_name.toLowerCase()}`
@@ -563,9 +560,9 @@ function TimeEditor({
   onChange: (draft: TimeDraft) => void;
 }) {
   const isDateOnly = isDateWithoutTime(field);
-  const fieldId = getRawTableFieldId(field);
+  const fieldId = field.id;
   const otherDates = fields.filter(
-    (other) => isDate(other) && getRawTableFieldId(other) !== fieldId,
+    (other) => isDate(other) && other.id !== fieldId,
   );
 
   return (
@@ -617,7 +614,7 @@ function TimeEditor({
             data={[
               { value: "now", label: t`Now` },
               ...otherDates.map((other) => ({
-                value: String(getRawTableFieldId(other)),
+                value: String(other.id),
                 label: other.display_name,
               })),
             ]}
@@ -785,10 +782,9 @@ function PartitionEditor({
   onChange: (draft: PartitionDraft) => void;
   onSuggestName: (name: string) => void;
 }) {
-  const fieldId = getRawTableFieldId(field);
+  const fieldId = field.id;
   const isStatus =
-    context.statusField != null &&
-    getRawTableFieldId(context.statusField) === fieldId;
+    context.statusField != null && context.statusField.id === fieldId;
   // Only groups that split this column's values, not other columns'
   const partitions = context.segmentGroups.filter((group) =>
     isPartitionOnField(group, fieldId, segments),
@@ -955,7 +951,7 @@ function RelatedEditor({
   // Its key is what the foreign key already holds
   const columns = (targetTable.fields ?? []).filter((column) => !isPK(column));
   const targetField = columns.find(
-    (column) => getRawTableFieldId(column) === draft.targetFieldId,
+    (column) => column.id === draft.targetFieldId,
   );
 
   return (
@@ -964,7 +960,7 @@ function RelatedEditor({
         label={t`Column of ${targetTable.display_name}`}
         description={t`Rows group by this column of the row they point to.`}
         data={columns.map((column) => ({
-          value: String(getRawTableFieldId(column)),
+          value: String(column.id),
           label: column.display_name,
         }))}
         value={draft.targetFieldId != null ? String(draft.targetFieldId) : null}
@@ -972,15 +968,13 @@ function RelatedEditor({
         searchable
         allowDeselect={false}
         onChange={(value) => {
-          const column = columns.find(
-            (known) => String(getRawTableFieldId(known)) === value,
-          );
+          const column = columns.find((known) => String(known.id) === value);
           if (!column) {
             return;
           }
           onChange({
             ...draft,
-            targetFieldId: getRawTableFieldId(column),
+            targetFieldId: column.id,
             targetGroupingName: null,
           });
           // "Account plan"

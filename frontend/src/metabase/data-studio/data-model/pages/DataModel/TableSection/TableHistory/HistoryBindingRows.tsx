@@ -7,7 +7,6 @@ import {
   inferHistoryBinding,
   useHistoryReviewStatus,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Loader, Stack, Text } from "metabase/ui";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
@@ -35,7 +34,7 @@ const POINTER_KEYS: PointerKey[] = [
 ];
 
 const findField = (fields: Field[], fieldId: FieldId | null) =>
-  fields.find((field) => getRawTableFieldId(field) === fieldId);
+  fields.find((field) => field.id === fieldId);
 
 const displayNameOf = (fields: Field[], fieldId: FieldId | null) =>
   findField(fields, fieldId)?.display_name ?? t`a column`;
@@ -49,10 +48,9 @@ export function getValidToForDates(
     return inferredFieldId;
   }
   const otherDateField = fields.find(
-    (field) =>
-      isDate(field) && getRawTableFieldId(field) !== binding.validFromFieldId,
+    (field) => isDate(field) && field.id !== binding.validFromFieldId,
   );
-  return otherDateField ? getRawTableFieldId(otherDateField) : null;
+  return otherDateField ? otherDateField.id : null;
 }
 
 export function getSharedPointers(structure: TableStructure) {

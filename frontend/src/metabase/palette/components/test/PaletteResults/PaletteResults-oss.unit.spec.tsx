@@ -136,8 +136,8 @@ describe("PaletteResults", () => {
   it("should allow you to search entities, and provide a docs link", async () => {
     setup({ query: "Bar" });
 
-    await waitFor(async () => {
-      expect(await screen.findByText("Results")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Results")).toBeInTheDocument();
     });
 
     expect(

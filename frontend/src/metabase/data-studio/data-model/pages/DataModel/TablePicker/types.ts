@@ -47,6 +47,7 @@ export type DatabaseNode = {
   key: NodeKey;
   value: { databaseId: DatabaseId };
   children: SchemaNode[];
+  loaded?: boolean;
 };
 
 export type SchemaNode = {
@@ -55,6 +56,7 @@ export type SchemaNode = {
   key: string;
   value: { databaseId: DatabaseId; schemaName: SchemaName };
   children: TableNode[];
+  loaded?: boolean;
 };
 
 export type TableNode = {

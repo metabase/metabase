@@ -9,7 +9,7 @@ import { useSelector } from "metabase/redux";
 import { useNavigate, useSearchParams } from "metabase/router";
 import { Button, Icon, Stack, Tabs, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { ConcreteTableId, MeasureId, Table } from "metabase-types/api";
+import type { MeasureId, Table, TableId } from "metabase-types/api";
 
 import { useDefinitionClauses } from "../ClausePills";
 import {
@@ -125,7 +125,7 @@ export function MeasureList({
   const urls = getUrls?.(table) ?? getDataModelMeasureUrls(table);
   const onNewMeasureClick = () => {
     // Unjustified type cast. FIXME
-    trackMeasureCreateStarted(table.id as ConcreteTableId);
+    trackMeasureCreateStarted(table.id as TableId);
   };
 
   const newMeasureButton = canWriteMeasures && (

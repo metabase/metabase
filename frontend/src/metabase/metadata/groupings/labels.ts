@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import type { OrderedValue } from "metabase/metadata/lifecycle";
 import type { SegmentGroup } from "metabase/metadata/segment-groups";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field, Table } from "metabase-types/api";
 
 import type {
@@ -172,7 +171,7 @@ function getTimeStrategy(definition: TimeDefinition, fields: Field[]): string {
       if (to === "now") {
         return t`Time since the date, in ${unit}`;
       }
-      const target = fields.find((field) => getRawTableFieldId(field) === to);
+      const target = fields.find((field) => field.id === to);
       const targetName = target?.display_name ?? t`another date`;
       return t`Time until ${targetName}, in ${unit}`;
     }
@@ -218,7 +217,7 @@ function getRelatedStrategy(
   relatedTable: GroupingDescriptionContext["relatedTable"],
 ): string | null {
   const target = relatedTable?.fields?.find(
-    (field) => getRawTableFieldId(field) === targetFieldId,
+    (field) => field.id === targetFieldId,
   );
   if (!relatedTable || !target) {
     return null;

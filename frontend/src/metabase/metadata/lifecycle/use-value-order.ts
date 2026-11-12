@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 
 import { skipToken, useGetFieldValuesQuery } from "metabase/api";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field } from "metabase-types/api";
 
 import { useLifecycle } from "./lifecycle-store";
@@ -28,7 +27,7 @@ export type ResolvedValueOrder = {
  * field drawer edits it; a table's process reads it as its states.
  */
 export function useValueOrder(field: Field | undefined): ResolvedValueOrder {
-  const fieldId = field ? getRawTableFieldId(field) : undefined;
+  const fieldId = field ? field.id : undefined;
   const { getFieldLifecycle } = useLifecycle();
   const { data, isLoading } = useGetFieldValuesQuery(fieldId ?? skipToken);
   const saved = fieldId != null ? getFieldLifecycle(fieldId).values : undefined;

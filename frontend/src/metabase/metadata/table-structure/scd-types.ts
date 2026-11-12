@@ -1,12 +1,6 @@
 import { t } from "ttag";
 
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import type {
-  ConcreteTableId,
-  Field,
-  FieldId,
-  Table,
-} from "metabase-types/api";
+import type { TableId, Field, FieldId, Table } from "metabase-types/api";
 
 import type { ScdType, ScdTypeInference } from "./history-source";
 
@@ -115,7 +109,7 @@ export function getChangeShapeOptions(): ShapeOption<ChangeShape>[] {
 }
 
 export type ScdDetailsOverrides = {
-  currentTableId?: ConcreteTableId | null;
+  currentTableId?: TableId | null;
   currentValueFieldIds?: FieldId[];
 };
 
@@ -194,7 +188,7 @@ export function inferFactKeyFields(
   if (durableKeyField == null) {
     return [];
   }
-  const durableKeyFieldId = getRawTableFieldId(durableKeyField);
+  const durableKeyFieldId = durableKeyField.id;
   return tables
     .filter((other) => other.id !== table.id)
     .flatMap((other) =>

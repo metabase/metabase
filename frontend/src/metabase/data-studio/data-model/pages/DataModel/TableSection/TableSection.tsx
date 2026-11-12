@@ -95,6 +95,7 @@ const TableSectionBase = ({
     },
     [table.db_id, table.schema, table.id, navigate],
   );
+
   return (
     <Stack data-testid="table-section" gap="lg">
       {isCustomPropertyTable && <KeepPropertyRegistryLoaded table={table} />}

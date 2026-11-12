@@ -17,7 +17,7 @@ BackButton: (props: InteractiveQuestionBackButtonProps) =>
 **`Function`**
 
 A navigation button that returns to the previous view.
-Only visible when rendered within the [InteractiveDashboardProps.renderDrillThroughQuestion](/docs/latest/embedding/sdk/api/InteractiveDashboardProps.md#renderdrillthroughquestion) prop.
+Only visible when rendered within the [InteractiveDashboardProps.renderDrillThroughQuestion](/docs/latest/embedding/sdk/api/EditableDashboardProps.md#renderdrillthroughquestion) prop.
 
 <!-- [<endsnippet ~~backbutton()~~>] -->
 

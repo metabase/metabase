@@ -38,14 +38,7 @@ export const NotificationRunSummaryLog = ({
       );
     }
     if (runs && runs.length === 0) {
-      return (
-        <DetailsRow
-          label={t`No runs in the past 90 days.`}
-          value=""
-          bold={false}
-          spanLabel
-        />
-      );
+      return <DetailsRow label={t`No runs in the past 90 days.`} spanLabel />;
     }
     return runs?.map((run, index) => {
       const isFailing = run.status === "failing";

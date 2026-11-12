@@ -11,7 +11,6 @@ import {
   getMilestoneCohortProposals,
   inferSystemSegment,
 } from "metabase/metadata/table-segments";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { singularize } from "metabase/utils/formatting";
 import {
   isBoolean,
@@ -46,7 +45,7 @@ export type SegmentGroupProposal = {
   signal: string;
 };
 
-const idOf = (field: Field) => getRawTableFieldId(field);
+const idOf = (field: Field) => field.id;
 
 /**
  * The outcome partition of a table's process: one member per bucket of the

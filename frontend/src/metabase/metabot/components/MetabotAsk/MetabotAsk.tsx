@@ -84,9 +84,7 @@ export const MetabotAsk = () => {
             conversationId={conversationId}
             agentId="ask"
             size="lg"
-            onNewConversation={() =>
-              navigate(Urls.newQuestion({ mode: "ask" }))
-            }
+            onNewConversation={() => navigate(Urls.askQuestion())}
             config={{ suggestionModels: SUGGESTION_MODELS }}
             className={S.chat}
             headerActions={historyAction}

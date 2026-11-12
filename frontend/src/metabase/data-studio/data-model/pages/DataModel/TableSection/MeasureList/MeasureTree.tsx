@@ -11,7 +11,7 @@ import {
 } from "metabase/metadata/measure-groups";
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Stack, Text, Title, rem } from "metabase/ui";
-import type { ConcreteTableId, Measure, Table } from "metabase-types/api";
+import type { Measure, Table } from "metabase-types/api";
 
 import {
   ClausePills,
@@ -219,8 +219,7 @@ export function MeasureTree({
   };
 
   const onNewMeasureClick = () => {
-    // Unjustified type cast. FIXME
-    trackMeasureCreateStarted(table.id as ConcreteTableId);
+    trackMeasureCreateStarted(table.id);
   };
 
   return (

@@ -5,7 +5,6 @@ import {
   useHistoryReviewStatus,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Stack, Text } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
 
@@ -70,7 +69,7 @@ export function useHistoryExampleSource(
   const { history } = useTableStructures().getTableStructure(table);
   const fields = table.fields ?? [];
   const nameOf = (fieldId: FieldId | null) =>
-    fields.find((field) => getRawTableFieldId(field) === fieldId)?.display_name;
+    fields.find((field) => field.id === fieldId)?.display_name;
   const profile =
     status?.profileState.status === "loaded"
       ? status.profileState.profile

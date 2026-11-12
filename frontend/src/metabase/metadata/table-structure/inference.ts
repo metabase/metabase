@@ -4,14 +4,8 @@ import {
   getMilestoneFields,
   getStatusFields,
 } from "metabase/metadata/lifecycle";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isDate, isFK, isInteger, isPK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  ConcreteTableId,
-  Field,
-  FieldId,
-  Table,
-} from "metabase-types/api";
+import type { TableId, Field, FieldId, Table } from "metabase-types/api";
 
 import { inferDurableKeyFieldId, inferVersionFieldId } from "./history-source";
 import { type TableRole, getTableRoleLabel } from "./roles";
@@ -66,13 +60,13 @@ export type EavBinding = {
   entityKeyFieldId: FieldId | null;
   propertyFieldId: FieldId | null;
   valueFieldId: FieldId | null;
-  definitionTableId: ConcreteTableId | null;
+  definitionTableId: TableId | null;
   labelFieldId: FieldId | null;
   typeFieldId: FieldId | null;
 };
 
 export type EavDefinitionInference = {
-  definitionTableId: ConcreteTableId | null;
+  definitionTableId: TableId | null;
   labelFieldId: FieldId | null;
   typeFieldId: FieldId | null;
   signal: string;
@@ -398,8 +392,7 @@ export function inferPeriodGranularity({
   );
 }
 
-const idOf = (field: Field | undefined) =>
-  field ? getRawTableFieldId(field) : null;
+const idOf = (field: Field | undefined) => (field ? field.id : null);
 
 export function inferHistoryBinding(fields: Field[]): HistoryBinding {
   const pks = fields.filter(isPK);
@@ -465,7 +458,7 @@ export function inferDefinitionColumns(fields: Field[]): DefinitionColumns {
 
 const isConcreteTable = <T extends SchemaTable>(
   table: T,
-): table is T & { id: ConcreteTableId } => typeof table.id === "number";
+): table is T & { id: TableId } => typeof table.id === "number";
 
 export function findTargetTable<T extends SchemaTable>(
   field: Field | undefined,

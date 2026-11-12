@@ -2,14 +2,8 @@ import { useCallback } from "react";
 import _ from "underscore";
 
 import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  ConcreteTableId,
-  Field,
-  FieldId,
-  Table,
-} from "metabase-types/api";
+import type { TableId, Field, FieldId, Table } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import {
@@ -86,7 +80,7 @@ const STORAGE_KEY = "metabase-prototype-table-structure";
 const parseFieldId = (value: unknown): FieldId | null | undefined =>
   value === null || typeof value === "number" ? value : undefined;
 
-const parseTableId = (value: unknown): ConcreteTableId | null | undefined =>
+const parseTableId = (value: unknown): TableId | null | undefined =>
   value === null || typeof value === "number" ? value : undefined;
 
 const parseBoolean = (value: unknown): boolean | undefined =>
@@ -178,7 +172,7 @@ function getTableKey(table: Pick<Table, "db_id" | "id">) {
 }
 
 function getFieldKey(field: Field) {
-  return String(getRawTableFieldId(field));
+  return String(field.id);
 }
 
 /** Override value wins when it's set, including an explicit `null` */
@@ -386,7 +380,7 @@ function resolveMainDate(
     : mainDateInference.fieldId;
   return {
     mainDateField: fields.find(
-      (field) => fieldId != null && getRawTableFieldId(field) === fieldId,
+      (field) => fieldId != null && field.id === fieldId,
     ),
     mainDateInference,
     isMainDateOverridden,

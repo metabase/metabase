@@ -59,6 +59,17 @@
                                   :models        #{"card"}}
                            id->label)))))))
 
+(def ^:private in-place-divergences
+  "In-place results that differ from those on a PostgreSQL app DB, keyed by app DB type and scenario id.
+  PostgreSQL is the reference, so each entry is a shortcoming of that app DB, to remove when in-place is fixed there.
+  The adapted-query comparisons need no entries: their in-place results are the same on every app DB.
+  MySQL and MariaDB collations ignore accents, so `cafe` also finds \"Café sales\" there."
+  {:mysql {"accent-literal" #{:A :B :C}}})
+
+(defn- expected-in-place-hits
+  [{:keys [id] :as case}]
+  (get-in in-place-divergences [(mdb/db-type) id] (fixtures/expected-hits case :in-place)))
+
 (defn- available-appdb-dialect
   []
   (when (search.engine/supported-engine? :search.engine/appdb)
@@ -71,7 +82,7 @@
   (let [dialect (available-appdb-dialect)]
     (doseq [{:keys [id focus config docs query] :as case} fixtures/cases]
       (testing (str id " / " focus)
-        (check-in-place-query! docs query (fixtures/expected-hits case :in-place))
+        (check-in-place-query! docs query (expected-in-place-hits case))
         (when dialect
           (check-appdb-query! config docs query (fixtures/expected-hits case dialect)))))))
 

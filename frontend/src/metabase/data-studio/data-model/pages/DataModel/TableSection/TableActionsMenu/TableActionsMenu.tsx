@@ -24,7 +24,7 @@ import { useSelector } from "metabase/redux";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { dependencyGraph } from "metabase/urls/dependencies";
-import { type Table, isConcreteTableId } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 interface Props {
   table: Table;
@@ -86,7 +86,7 @@ export function TableActionsMenu({
   };
 
   const trackDependencyGraphOpened = () => {
-    if (isConcreteTableId(table.id)) {
+    if (typeof table.id === "number") {
       trackDependencyEntitySelected({
         entityId: table.id,
         triggeredFrom: "data-structure",

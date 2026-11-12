@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isDate, isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table, TableId } from "metabase-types/api";
 
@@ -83,7 +82,7 @@ export function getProcessEncoding(
 export const getTransitionKey = ({ from, to }: Transition) =>
   `${from}\u0000${to}`;
 
-const idOf = (field: Field) => getRawTableFieldId(field);
+const idOf = (field: Field) => field.id;
 const nameOf = (field: Field) => field.name.toLowerCase();
 const HISTORY_RE = /^(.+?)_(status|stage|state)_history$/;
 const CHANGED_AT_RE =

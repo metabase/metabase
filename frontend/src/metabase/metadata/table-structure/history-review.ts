@@ -3,7 +3,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field, FieldId, Table } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -61,7 +60,7 @@ export function useHistoryReview(table: Pick<Table, "db_id" | "id">) {
   );
 
   const isCorrectionField = (field: Field) =>
-    review.correctionFieldIds.includes(String(getRawTableFieldId(field)));
+    review.correctionFieldIds.includes(String(field.id));
 
   const setCorrectionField = useCallback(
     (fieldId: FieldId, isCorrection: boolean) =>

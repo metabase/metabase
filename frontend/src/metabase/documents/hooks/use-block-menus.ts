@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { autoUpdate, useFloating } from "@floating-ui/react";
 import { useMergedRef } from "@mantine/hooks";
 import type { Editor, NodeViewProps } from "@tiptap/core";

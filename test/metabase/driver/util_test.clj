@@ -1,5 +1,6 @@
 (ns metabase.driver.util-test
   (:require
+   [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -19,8 +20,10 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.snake-hating-map :as snake-hating-map])
   (:import
+   (java.sql SQLException)
    (javax.net.ssl SSLSocketFactory)))
 
 (comment h2/keep-me)
@@ -1058,3 +1061,182 @@
   (is (nil? (validation-error :h2 {:db "file:/tmp/x;USER=GUEST;PASSWORD=guest"})))
   (is (not-any? #{:db} (driver/url-building-detail-keys :sqlite)))
   (is (nil? (validation-error :sqlite {:db "/tmp/my data#1.db"}))))
+
+(defn- fake-jwt
+  "A parseable (not verifiable) JWT with `claims` as the payload."
+  [claims]
+  (let [encoder (java.util.Base64/getUrlEncoder)
+        encode  (fn [m] (.encodeToString encoder (.getBytes ^String (json/encode m) "UTF-8")))]
+    (str (encode {:alg "none"}) "." (encode claims) ".sig")))
+
+(deftest ^:parallel jwt-claims-test
+  (testing "decodes the payload as a Clojure map with keyword keys"
+    (is (= {:exp 1700000000 :sub "s"}
+           (driver.u/jwt-claims (fake-jwt {:exp 1700000000 :sub "s"})))))
+  (testing "throws on malformed input"
+    (are [input] (thrown? Exception (driver.u/jwt-claims input))
+      "not-a-jwt"
+      "onlyone.segment"
+      "a.b.c"
+      (str "hdr." (.encodeToString (java.util.Base64/getUrlEncoder) (.getBytes "{not-json" "UTF-8")) ".sig"))))
+
+(deftest ^:parallel jwt-expiry-ms-test
+  (testing "converts `exp` to integer milliseconds; RFC 7519 NumericDate allows non-integer exp"
+    (let [actual (driver.u/jwt-expiry-ms (fake-jwt {:exp 1700000000.5 :sub "s"}))]
+      (is (= 1700000000500 actual))
+      (is (int? actual))))
+  (testing "returns nil when `exp` is missing or non-numeric"
+    (are [claims] (nil? (driver.u/jwt-expiry-ms (fake-jwt claims)))
+      {:sub "s"}
+      {:exp "nope"})))
+
+(deftest ^:parallel wif-ambient-token-http-gcp-happy-path-test
+  (testing "GCP returns the trimmed body of the metadata-server identity endpoint"
+    (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts] {:status 200 :body "  gcp-jwt-contents\n"})]
+      (is (= "gcp-jwt-contents" (driver.u/wif-ambient-token-http "GCP" "databricks"))))))
+
+(deftest ^:parallel wif-ambient-token-http-gcp-request-shape-test
+  (testing "GCP hits the metadata server with the audience query param and the Metadata-Flavor header"
+    (let [captured (atom nil)]
+      (mt/with-dynamic-fn-redefs [http/get (fn [url opts]
+                                             (reset! captured {:url url :opts opts})
+                                             {:status 200 :body "jwt"})]
+        (driver.u/wif-ambient-token-http "GCP" "my/audience:x")
+        (let [{:keys [url opts]} @captured]
+          (is (str/starts-with? url (str "http://metadata.google.internal"
+                                         "/computeMetadata/v1/instance/service-accounts/default/identity?")))
+          (is (str/includes? url "audience=my%2Faudience%3Ax"))
+          (is (= "Google" (get-in opts [:headers "Metadata-Flavor"]))))))))
+
+(deftest ^:parallel wif-ambient-token-http-unsupported-provider-test
+  (testing "providers without an HTTP mode in Step 3 throw"
+    (are [provider] (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"Unsupported WIF provider"
+                     (driver.u/wif-ambient-token-http provider "aud"))
+      "AWS"
+      "AZURE"
+      nil
+      ""
+      "gcp"
+      "bogus")))
+
+(deftest ^:parallel wif-ambient-token-http-blank-audience-test
+  (testing "GCP requires a non-blank audience"
+    (are [audience] (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"requires an audience"
+                     (driver.u/wif-ambient-token-http "GCP" audience))
+      nil
+      "")))
+
+(deftest ^:parallel wif-ambient-token-http-non-200-test
+  (testing "a non-200 metadata response surfaces as an informative exception, without retrying"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! calls inc)
+                                             {:status 403 :body "forbidden"})]
+        (let [thrown (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                           #"metadata server"
+                                           (driver.u/wif-ambient-token-http "GCP" "aud")))]
+          (is (= {:provider "GCP" :status 403}
+                 (-> thrown ex-data (select-keys [:provider :status]))))
+          (is (= 1 @calls)))))))
+
+(deftest ^:parallel wif-ambient-token-http-empty-body-test
+  (testing "a 200 with an empty body throws a diagnostic error instead of an NPE in str/trim"
+    (are [body] (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"200 with no body"
+                 (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts] {:status 200 :body body})]
+                   (driver.u/wif-ambient-token-http "GCP" "aud")))
+      nil
+      "")))
+
+(deftest ^:parallel wif-ambient-token-http-retries-once-on-exception-test
+  (testing "transient exceptions are retried once before giving up"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! calls inc)
+                                             (if (= 1 @calls)
+                                               (throw (java.net.SocketTimeoutException. "boom"))
+                                               {:status 200 :body "jwt-after-retry"}))]
+        (is (= "jwt-after-retry" (driver.u/wif-ambient-token-http "GCP" "aud")))
+        (is (= 2 @calls))))))
+
+;;; ---------------------------------------- scrub-exceptions -------------------------------------------------
+
+(deftest ^:parallel scrub-exceptions-test
+  (testing "plain Exception: secret is redacted from message"
+    (let [e (driver.u/scrub-exceptions (Exception. "PASSWORD='s3cret'") ["s3cret"])]
+      (is (= "PASSWORD='****'" (ex-message e)))))
+  (testing "secret not present: message unchanged"
+    (let [e (driver.u/scrub-exceptions (Exception. "no secret here") ["s3cret"])]
+      (is (= "no secret here" (ex-message e)))))
+  (testing "cause chain is scrubbed"
+    (let [e (driver.u/scrub-exceptions
+             (Exception. "outer pw=s3cret" (Exception. "inner pw=s3cret"))
+             ["s3cret"])]
+      (is (= "outer pw=****" (ex-message e)))
+      (is (= "inner pw=****" (ex-message (.getCause ^Exception e))))))
+  (testing "ExceptionInfo: ex-data is preserved, message is scrubbed"
+    (let [e (driver.u/scrub-exceptions (ex-info "pw=s3cret" {:code 42}) ["s3cret"])]
+      (is (= "pw=****" (ex-message e)))
+      (is (= {:code 42} (ex-data e)))))
+  (testing "SQLException: SQLState and errorCode are preserved"
+    (let [e (driver.u/scrub-exceptions (SQLException. "pw=s3cret" "42501" 7) ["s3cret"])]
+      (is (= "pw=****" (ex-message e)))
+      (is (= "42501" (.getSQLState ^SQLException e)))
+      (is (= 7 (.getErrorCode ^SQLException e)))))
+  (testing "SQLException next-exception chain is scrubbed"
+    (let [next-ex (SQLException. "next pw=s3cret" "42501" 7)
+          main    (doto (SQLException. "main pw=s3cret" "42000" 1)
+                    (.setNextException next-ex))
+          e       (driver.u/scrub-exceptions main ["s3cret"])]
+      (is (= "main pw=****" (ex-message e)))
+      (is (= "next pw=****" (ex-message (.getNextException ^SQLException e))))
+      (is (= "42501" (.getSQLState (.getNextException ^SQLException e))))))
+  (testing "multiple secrets are all redacted"
+    (let [e (driver.u/scrub-exceptions
+             (Exception. "user=admin password=s3cret escaped=s3cr\\et")
+             ["s3cret" "s3cr\\et"])]
+      (is (= "user=admin password=**** escaped=****" (ex-message e)))))
+  (testing "password with backslash sequences is treated literally, not as regex"
+    (let [pw "p\\nass\\r\\twor$d"
+          e  (driver.u/scrub-exceptions (Exception. (str "CREATE USER x PASSWORD='" pw "'")) [pw])]
+      (is (= "CREATE USER x PASSWORD='****'" (ex-message e)))))
+  (testing "stack trace is preserved"
+    (let [original (Exception. "pw=s3cret")
+          trace    (.getStackTrace original)
+          e        (driver.u/scrub-exceptions original ["s3cret"])]
+      (is (= (seq trace) (seq (.getStackTrace ^Exception e)))))))
+
+(deftest batch-exception-scrub-test
+  (testing "unwrapping the batch envelope composes with password scrubbing (the init-workspace-isolation! shape)"
+    (let [inner    (java.sql.SQLException. "ERROR: syntax error in CREATE USER \"u\" PASSWORD 's3cret'")
+          batch    (doto (java.sql.BatchUpdateException. "Batch entry 0 CREATE USER ... PASSWORD 's3cret' was aborted" (int-array 0))
+                     (.setNextException inner))
+          scrubbed (driver.u/scrub-exceptions (driver.u/batch-exception batch) ["s3cret"])]
+      (is (not (instance? java.sql.BatchUpdateException scrubbed))
+          "the batch envelope is gone")
+      (is (not (str/includes? (ex-message scrubbed) "s3cret"))
+          "the password is gone from the message")
+      (is (str/includes? (ex-message scrubbed) "****")
+          "the password is redacted, not silently dropped"))))
+
+(deftest batch-exception-test
+  (testing "unwraps the underlying per-statement exception of a BatchUpdateException"
+    (let [inner (java.sql.SQLException. "user cannot be dropped")
+          batch (doto (java.sql.BatchUpdateException. "Batch entry 18 ..." (int-array 0))
+                  (.setNextException inner))]
+      (is (identical? inner (driver.u/batch-exception batch)))))
+  (testing "the MariaDB-connector shape chains the real exception via the cause"
+    (let [inner (java.sql.SQLException. "You are not allowed to create a user with GRANT")
+          batch (java.sql.BatchUpdateException. "envelope" nil 0 (int-array 0) inner)]
+      (is (identical? inner (driver.u/batch-exception batch)))))
+  (testing "the mssql-jdbc shape (no next exception, no cause) passes through — its message is already the plain server error"
+    (let [batch (java.sql.BatchUpdateException. "Cannot find the schema 'x'" "S0001" 208 (int-array 0))]
+      (is (identical? batch (driver.u/batch-exception batch)))))
+  (testing "non-batch throwables pass through"
+    (let [e (ex-info "boom" {})]
+      (is (identical? e (driver.u/batch-exception e))))))

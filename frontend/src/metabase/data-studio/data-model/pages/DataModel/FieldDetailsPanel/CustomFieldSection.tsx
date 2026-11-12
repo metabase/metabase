@@ -17,7 +17,6 @@ import {
   useDefinitionRows,
   useSchemaTables,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Code, Group, Loader, Stack, Text } from "metabase/ui";
 import { isDate, isSummable } from "metabase-lib/v1/types/utils/isa";
 import type { Field, Table } from "metabase-types/api";
@@ -42,7 +41,7 @@ function getDefinitionSource(
   const fields = definitionTable.fields ?? [];
   const columns = inferDefinitionColumns(fields);
   const nameOf = (fieldId: number | null) =>
-    fields.find((field) => getRawTableFieldId(field) === fieldId)?.name ?? null;
+    fields.find((field) => field.id === fieldId)?.name ?? null;
   return {
     tableName: definitionTable.name,
     labelColumn: nameOf(columns.labelFieldId),

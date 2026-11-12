@@ -116,6 +116,14 @@
   [thread-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationThread :id thread-id))
 
+(mu/defn rows
+  "The rows of `model` with the ids `ids`."
+  [model :- :keyword
+   ids   :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select model :id [:in ids])
+    []))
+
 (mu/defn thread-exploration-id-row
   "The `:exploration_id` row of the ExplorationThread with `thread-id`, or nil."
   [thread-id :- ms/PositiveInt]

@@ -16,6 +16,8 @@ import {
 } from "embedding-sdk-bundle/test/mocks/state";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -26,9 +28,11 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
+const MOCK_QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+
 const MOCK_DB = createSampleDatabase();
 
-const MOCK_CARD = createMockCard({ id: 1 });
+const MOCK_CARD = createMockCard({ id: 1, dataset_query: MOCK_QUERY });
 
 const MOCK_COLUMN = createMockColumn({
   display_name: "Test Column",

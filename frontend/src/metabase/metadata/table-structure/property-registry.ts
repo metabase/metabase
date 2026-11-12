@@ -7,15 +7,16 @@ import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
 import type {
   ConcreteFieldReference,
-  ConcreteTableId,
+  TableId,
   Dataset,
   FieldId,
   RowValue,
-  StructuredDatasetQuery,
+  JsonQuery,
   Table,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
+import { legacyQuery } from "./adhoc-query";
 import { type ResolvedEavBinding, useEavBinding } from "./eav-binding";
 
 export const PROPERTY_TYPES = [
@@ -194,7 +195,7 @@ type BoundEav = {
 };
 
 export type BoundDefinitions = {
-  tableId: ConcreteTableId;
+  tableId: TableId;
   keyFieldId: FieldId;
   nameFieldId: FieldId | null;
   labelFieldId: FieldId | null;
@@ -233,8 +234,8 @@ function getBoundDefinitions({
 export function getPropertySummaryQuery(
   table: Pick<Table, "db_id" | "id">,
   eav: BoundEav,
-): StructuredDatasetQuery {
-  return {
+): JsonQuery {
+  return legacyQuery({
     database: table.db_id,
     type: "query",
     query: {
@@ -246,14 +247,14 @@ export function getPropertySummaryQuery(
       ],
       breakout: [fieldRef(eav.propertyFieldId)],
     },
-  };
+  });
 }
 
 export function getPropertyValuesQuery(
   table: Pick<Table, "db_id" | "id">,
   eav: BoundEav,
-): StructuredDatasetQuery {
-  return {
+): JsonQuery {
+  return legacyQuery({
     database: table.db_id,
     type: "query",
     query: {
@@ -263,15 +264,15 @@ export function getPropertyValuesQuery(
       "order-by": [["desc", ["aggregation", 0]]],
       limit: TOP_VALUES_LIMIT,
     },
-  };
+  });
 }
 
 export function getEntityCountQuery(
   table: Pick<Table, "db_id" | "id">,
   eav: BoundEav,
   entityTable: Pick<Table, "id"> | undefined,
-): StructuredDatasetQuery {
-  return {
+): JsonQuery {
+  return legacyQuery({
     database: table.db_id,
     type: "query",
     query: entityTable
@@ -280,15 +281,15 @@ export function getEntityCountQuery(
           "source-table": table.id,
           aggregation: [["distinct", fieldRef(eav.entityKeyFieldId)]],
         },
-  };
+  });
 }
 
 export function getSampleRowsQuery(
   table: Pick<Table, "db_id" | "id">,
   eav: BoundEav,
   entityKeyValue: EntityKeyValue | undefined,
-): StructuredDatasetQuery {
-  return {
+): JsonQuery {
+  return legacyQuery({
     database: table.db_id,
     type: "query",
     query: {
@@ -306,7 +307,7 @@ export function getSampleRowsQuery(
       "order-by": [["asc", fieldRef(eav.entityKeyFieldId)]],
       limit: SAMPLE_ROWS_LIMIT,
     },
-  };
+  });
 }
 
 const getDefinitionFieldIds = (definitions: BoundDefinitions) => [
@@ -319,8 +320,8 @@ const getDefinitionFieldIds = (definitions: BoundDefinitions) => [
 export function getDefinitionsQuery(
   databaseId: Table["db_id"],
   definitions: BoundDefinitions,
-): StructuredDatasetQuery {
-  return {
+): JsonQuery {
+  return legacyQuery({
     database: databaseId,
     type: "query",
     query: {
@@ -330,7 +331,7 @@ export function getDefinitionsQuery(
         .map(fieldRef),
       limit: DEFINITIONS_LIMIT,
     },
-  };
+  });
 }
 
 const toNumber = (value: RowValue) => (typeof value === "number" ? value : 0);

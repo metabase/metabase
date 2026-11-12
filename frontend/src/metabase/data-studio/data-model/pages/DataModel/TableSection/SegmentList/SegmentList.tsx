@@ -6,7 +6,6 @@ import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics
 import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import { useSegmentGroups } from "metabase/metadata/segment-groups";
 import type { SystemSegmentRole } from "metabase/metadata/table-segments";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { useSelector } from "metabase/redux";
 import { useNavigate, useSearchParams } from "metabase/router";
 import { Button, Icon, Stack, Tabs, rem } from "metabase/ui";
@@ -255,7 +254,7 @@ export function SegmentList({
     )),
     ...kindCandidates.map((field) => (
       <KindPartitionProposalItem
-        key={getRawTableFieldId(field)}
+        key={field.id}
         field={field}
         query={query}
         canAccept={canCreateSegment}

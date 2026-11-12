@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { useUpdateFieldMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field } from "metabase-types/api";
 
 type UseFieldCastingOpts = {
@@ -21,7 +20,7 @@ export function useFieldCasting({
   field,
   onTrackMetadataChange,
 }: UseFieldCastingOpts) {
-  const id = getRawTableFieldId(field);
+  const id = field.id;
   const [isCasting, setIsCasting] = useState(field.coercion_strategy != null);
   const [autoFocusCoercionPicker, setAutoFocusCoercionPicker] = useState(false);
   const [isCoercionPickerOpen, setIsCoercionPickerOpen] = useState(false);

@@ -6,7 +6,6 @@ import {
   useSchemaTables,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field, FieldId, Table } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -125,7 +124,7 @@ function parseState(value: unknown): SemanticTypesState {
 const getTableKey = (table: Pick<Table, "db_id" | "id">) =>
   `${table.db_id}:${table.id}`;
 
-const getFieldKey = (field: Field) => String(getRawTableFieldId(field));
+const getFieldKey = (field: Field) => String(field.id);
 
 function resolveSubject(
   table: SemanticTable,
@@ -224,10 +223,7 @@ export function useSemanticTypes() {
       const { role } = getTableStructure({ ...table, fields });
       const tableByFieldId = new Map(
         schemaTables.flatMap((schemaTable) =>
-          (schemaTable.fields ?? []).map((field) => [
-            getRawTableFieldId(field),
-            schemaTable,
-          ]),
+          (schemaTable.fields ?? []).map((field) => [field.id, schemaTable]),
         ),
       );
       const getTargetSubject = (field: Field) => {
@@ -244,7 +240,7 @@ export function useSemanticTypes() {
       });
       return new Map(
         fields.map((field) => {
-          const fieldId = getRawTableFieldId(field);
+          const fieldId = field.id;
           return [
             fieldId,
             resolveFieldType(

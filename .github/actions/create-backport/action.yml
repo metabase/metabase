@@ -21,6 +21,8 @@ runs:
         TARGET_BRANCH: release-x.${{ inputs.target-version }}.x
         ORIGINAL_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
         ORIGINAL_TITLE: ${{ github.event.pull_request.title }}
+        ORIGINAL_AUTHOR: ${{ github.event.pull_request.user.login }}
+        ORIGINAL_AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
         COMMIT: ${{ inputs.backport-commit }}
       shell: bash
@@ -72,7 +74,11 @@ runs:
 
         git push -u origin ${BACKPORT_BRANCH}
 
-        PR_ARGS=(--base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${{ github.event.pull_request.user.login }}" --title "🤖 v${TARGET_VERSION} backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
+        PR_ARGS=(--base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --title "🤖 v${TARGET_VERSION} backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
+        # GitHub does not let a bot account be the assignee of a PR.
+        if [ "$ORIGINAL_AUTHOR_TYPE" != "Bot" ]; then
+          PR_ARGS+=(--assignee "${ORIGINAL_AUTHOR}")
+        fi
         if [ "$CONFLICTS" -gt 0 ]; then
           PR_ARGS+=(--draft)
         fi

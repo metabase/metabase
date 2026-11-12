@@ -1,24 +1,22 @@
-import type { ReactNode } from "react";
-import { Children, Fragment } from "react";
+import type { AriaAttributes, AriaRole, ReactNode } from "react";
 
-import { Box, Divider } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 import S from "./DetailsTable.module.css";
 
-export const DetailsTable = ({ children }: { children: ReactNode }) => {
-  const items = Children.toArray(children).filter(Boolean);
-  return (
-    <Box
-      bd="1px solid var(--mb-color-border-neutral)"
-      bdrs="lg"
-      className={S.detailsTable}
-    >
-      {items.map((item, i) => (
-        <Fragment key={i}>
-          {i > 0 && <Divider />}
-          {item}
-        </Fragment>
-      ))}
-    </Box>
-  );
+type DetailsTableProps = {
+  children: ReactNode;
+  role?: AriaRole;
+  "aria-label"?: AriaAttributes["aria-label"];
 };
+
+export const DetailsTable = ({ children, ...ariaProps }: DetailsTableProps) => (
+  <Box
+    bd="1px solid var(--mb-color-border-neutral)"
+    bdrs="lg"
+    className={S.detailsTable}
+    {...ariaProps}
+  >
+    {children}
+  </Box>
+);

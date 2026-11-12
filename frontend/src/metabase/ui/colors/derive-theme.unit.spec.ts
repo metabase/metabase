@@ -183,6 +183,17 @@ describe("deriveFullMetabaseTheme", () => {
       );
     });
 
+    it("fills brand buttons with the exact custom brand color (metabase#84368)", () => {
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        whitelabelColors: { brand: "#ff0000" },
+      });
+
+      expect(derived.colors["button-filled-brand-default"]).toBe(
+        "var(--mb-color-core-brand)",
+      );
+    });
+
     it("keeps the dynamic brand ramp when the caller asks for it", () => {
       const derived = deriveFullMetabaseTheme({
         colorScheme: "light",

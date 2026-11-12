@@ -72,10 +72,6 @@ function CreateCollectionModal({
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CreateCollectionModal;
 
-// The Library root is a top-level collection and its sections are its direct
-// children, so a section's own folders start this deep in a collection's path
-const LIBRARY_SECTION_FOLDER_DEPTH = 2;
-
 export function getCreatedCollectionUrl(collection: Collection): string {
   const expandedIds = getCollectionPathAsArray(collection);
   if (collection.namespace === "snippets") {
@@ -84,16 +80,13 @@ export function getCreatedCollectionUrl(collection: Collection): string {
   if (collection.namespace === "data-actions") {
     return Urls.dataStudioActions({ expandedIds });
   }
-  // The Dashboards page lists the section's contents, so only its folders are rows there
-  if (collection.type === "library-dashboards") {
-    return Urls.dataStudioDashboards({
-      expandedIds: expandedIds.slice(LIBRARY_SECTION_FOLDER_DEPTH),
-    });
-  }
   if (collection.type === "library-metrics") {
     return Urls.dataStudioMetrics({ expandedIds });
   }
-  if (PLUGIN_LIBRARY.isLibraryCollectionType(collection.type)) {
+  if (
+    collection.type !== "library-dashboards" &&
+    PLUGIN_LIBRARY.isLibraryCollectionType(collection.type)
+  ) {
     return Urls.dataStudioPublishedData({ expandedIds });
   }
   return Urls.collection(collection);

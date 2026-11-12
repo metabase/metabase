@@ -257,7 +257,7 @@ function getColumnChoices(query: Lib.Query): ColumnChoice[] {
       STAGE_INDEX,
       column,
     );
-    const fieldId = Lib.fieldValuesSearchInfo(query, column).fieldId;
+    const fieldId = Lib.fieldSearchInfo(query, column).fieldId;
     return !isImplicitlyJoinable && fieldId != null
       ? [{ fieldId: String(fieldId), column }]
       : [];
@@ -287,7 +287,7 @@ function RequiredFilterFields({
       : undefined;
   const savedFieldId =
     savedQuery && savedColumn
-      ? String(Lib.fieldValuesSearchInfo(savedQuery, savedColumn).fieldId)
+      ? String(Lib.fieldSearchInfo(savedQuery, savedColumn).fieldId)
       : null;
   // A column picked before its value, until the value is picked
   const [pendingFieldId, setPendingFieldId] = useState<string | null>(null);

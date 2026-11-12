@@ -391,7 +391,8 @@ export function TablePickerTreeTable({
     columns,
     getSubRows: (node) => node.children,
     getNodeId: (node) => node.id,
-    getRowCanExpand: (row) => row.original.type !== "table",
+    getRowCanExpand: (row) =>
+      row.original.type !== "table" && row.original.children !== undefined,
     expanded: expandedState,
     onExpandedChange: handleExpandedStateChange,
     enableRowSelection: false,

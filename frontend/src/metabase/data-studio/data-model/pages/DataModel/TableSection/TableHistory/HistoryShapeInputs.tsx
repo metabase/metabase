@@ -20,7 +20,6 @@ import {
   getScdTypeForChangeShape,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   DefaultSelectItem,
   Icon,
@@ -32,12 +31,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  ConcreteTableId,
-  Field,
-  FieldId,
-  Table,
-} from "metabase-types/api";
+import type { TableId, Field, FieldId, Table } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
 import { InferredValue } from "../InferenceReview";
@@ -263,7 +257,7 @@ export function CurrentTableSelect({
   tables: Table[];
   value: Table | undefined;
   disabled: boolean;
-  onChange: (tableId: ConcreteTableId | null) => void;
+  onChange: (tableId: TableId | null) => void;
 }) {
   return (
     <Select
@@ -299,10 +293,10 @@ export function CurrentValueFieldsInput({
       aria-label={t`Current values`}
       classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
       data={fields.map((field) => ({
-        value: String(getRawTableFieldId(field)),
+        value: String(field.id),
         label: field.display_name,
       }))}
-      value={value.map((field) => String(getRawTableFieldId(field)))}
+      value={value.map((field) => String(field.id))}
       placeholder={value.length === 0 ? t`Choose columns` : undefined}
       searchable
       disabled={disabled}
@@ -322,7 +316,7 @@ export function FactKeyList({
   return (
     <Stack gap={4}>
       {factKeyFields.map(({ table, field }) => (
-        <Text key={`${table.id}:${getRawTableFieldId(field)}`}>
+        <Text key={`${table.id}:${field.id}`}>
           {t`${table.display_name} · ${field.display_name}`}
         </Text>
       ))}
@@ -334,7 +328,7 @@ function PreviousValueList({ pairs }: { pairs: PreviousValuePair[] }) {
   return (
     <Stack gap={4}>
       {pairs.map(({ field, previousField }) => (
-        <Text key={getRawTableFieldId(previousField)}>
+        <Text key={previousField.id}>
           {t`${previousField.display_name} → ${field.display_name}`}
         </Text>
       ))}

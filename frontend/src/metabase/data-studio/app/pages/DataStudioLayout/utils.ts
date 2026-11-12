@@ -6,7 +6,6 @@ type TabName =
   | "data"
   | "published-data"
   | "metrics"
-  | "dashboards"
   | "snippets"
   | "python-library"
   | "actions"
@@ -40,8 +39,6 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "metrics";
     case pathname.startsWith(Urls.dataStudioLibrary()):
       return "published-data";
-    case pathname.startsWith(Urls.dataStudioDashboards()):
-      return "dashboards";
     case pathname.startsWith(getPythonLibraryUrl()):
       return "python-library";
     case pathname.startsWith(Urls.transformList()):

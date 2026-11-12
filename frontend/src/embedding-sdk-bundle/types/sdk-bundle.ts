@@ -1,4 +1,4 @@
-import type { JSXElementConstructor } from "react";
+import type { ComponentProps, JSXElementConstructor } from "react";
 
 import type { MetabotSubscriber } from "embedding-sdk-bundle/components/private/MetabotSubscriber/MetabotSubscriber";
 import type { SdkThemeProviderWithStore } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
@@ -6,6 +6,7 @@ import type { CollectionBrowser } from "embedding-sdk-bundle/components/public/C
 import type { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
 import type { CreateQuestion } from "embedding-sdk-bundle/components/public/CreateQuestion";
+import type { DataApp } from "embedding-sdk-bundle/components/public/DataApp";
 import type { DateRangeCalendar } from "embedding-sdk-bundle/components/public/DateRangeCalendar/DateRangeCalendar";
 import type { DateRangePopover } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
 import type { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion/InteractiveQuestion";
@@ -37,12 +38,17 @@ import type {
   CreateDashboardValues,
   MetabaseDashboard,
 } from "embedding-sdk-bundle/types";
-import type { LoginStatus } from "embedding-sdk-bundle/types/user";
+import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
+import type {
+  LoginStatus,
+  MetabaseUser,
+} from "embedding-sdk-bundle/types/user";
 import type { FunctionSchemaValidationResult } from "embedding-sdk-shared/types/validation";
-import type { User } from "metabase-types/api";
+import type { PartialBy } from "metabase/common/types";
 
 export type InternalComponent<TComponent extends JSXElementConstructor<any>> =
-  TComponent & { schema?: any };
+  JSXElementConstructor<ComponentProps<TComponent>> &
+    PartialBy<TComponent & { schema?: FunctionSchema }, "schema">;
 type InternalHook = () => void;
 type ReduxStoreFactory = () => SdkStore;
 type ReduxStoreSelector<T> = (state: SdkStoreState) => T;
@@ -68,6 +74,7 @@ type PublicExports = {
   CollectionBrowser: InternalComponent<typeof CollectionBrowser>;
   CreateDashboardModal: InternalComponent<typeof CreateDashboardModal>;
   CreateQuestion: InternalComponent<typeof CreateQuestion>;
+  DataApp?: InternalComponent<typeof DataApp>;
   DateRangeCalendar: typeof DateRangeCalendar;
   DateRangePopover: typeof DateRangePopover;
   EditableDashboard: InternalComponent<typeof EditableDashboard>;
@@ -106,7 +113,7 @@ type ReduxStoreSelectorsExports = {
   getApplicationName: ReduxStoreSelector<string>;
   getAvailableFonts: ReduxStoreSelector<string[]>;
   getLoginStatus: ReduxStoreSelector<LoginStatus>;
-  getUser: ReduxStoreSelector<User | null>;
+  getUser: ReduxStoreSelector<MetabaseUser | null>;
 };
 
 type InternalHooksExports = {

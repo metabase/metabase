@@ -1,17 +1,17 @@
 import _ from "underscore";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
   Field,
   FieldId,
   RowValue,
-  StructuredDatasetQuery,
+  JsonQuery,
   Table,
 } from "metabase-types/api";
 
+import { legacyQuery } from "./adhoc-query";
 import type { HistoryBinding } from "./inference";
 
 export const HISTORY_CHECK_IDS = [
@@ -105,9 +105,7 @@ const BOOKKEEPING_RE =
 const TRUTHY_FLAGS = new Set(["true", "t", "y", "yes", "1"]);
 
 const findField = (fields: Field[], fieldId: FieldId | null) =>
-  fieldId == null
-    ? undefined
-    : fields.find((field) => getRawTableFieldId(field) === fieldId);
+  fieldId == null ? undefined : fields.find((field) => field.id === fieldId);
 
 function getBoundHistory(
   fields: Field[],
@@ -137,14 +135,12 @@ const isBoundHistory = (
   value: BoundHistory | HistoryProfileState,
 ): value is BoundHistory => "durableKeyField" in value;
 
-export function getHistoryProfileQuery(
-  table: HistoryTable,
-): StructuredDatasetQuery {
-  return {
+export function getHistoryProfileQuery(table: HistoryTable): JsonQuery {
+  return legacyQuery({
     database: table.db_id,
     type: "query",
     query: { "source-table": table.id, limit: PROFILE_ROW_LIMIT },
-  };
+  });
 }
 
 const toText = (value: RowValue | undefined) =>

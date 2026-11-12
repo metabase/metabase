@@ -17,12 +17,7 @@ import type {
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
-import {
-  type Card,
-  type SearchResult,
-  type Table,
-  isConcreteTableId,
-} from "metabase-types/api";
+import type { Card, SearchResult, Table } from "metabase-types/api";
 
 import {
   NodeListContainer,
@@ -113,7 +108,7 @@ const TablesList = ({ schemas, tables, onItemClick }: TablesListProps) => {
               {...props}
               onItemClick={() => {
                 const { id } = props.item.data ?? {};
-                if (isConcreteTableId(id)) {
+                if (id != null) {
                   onItemClick({ type: "table", id });
                 }
               }}
@@ -142,7 +137,7 @@ const TablesList = ({ schemas, tables, onItemClick }: TablesListProps) => {
             <NodeListItemLink
               disabled={table.initial_sync_status !== "complete"}
               onClick={() => {
-                if (isConcreteTableId(table.id)) {
+                if (typeof table.id === "number") {
                   onItemClick({ type: "table", id: table.id });
                 }
               }}

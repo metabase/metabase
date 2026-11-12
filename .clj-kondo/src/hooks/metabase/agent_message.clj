@@ -309,13 +309,6 @@
     (lint-exit-arg! node 3))
   input)
 
-(defn lint-op-error
-  "Flag an `op-error!` whose detail message, the third argument, is text rather than a `msg`."
-  [{:keys [node] :as input}]
-  (when (exit-enabled? input)
-    (lint-exit-arg! node 3))
-  input)
-
 (defn lint-ellipsize
   "Flag an `ellipsize` whose message, the first argument, is text rather than a `msg`."
   [{:keys [node] :as input}]

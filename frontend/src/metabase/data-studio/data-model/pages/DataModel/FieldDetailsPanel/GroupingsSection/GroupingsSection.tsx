@@ -14,7 +14,6 @@ import {
   useResolvedGroupings,
 } from "metabase/metadata/groupings";
 import { useValueOrder } from "metabase/metadata/lifecycle";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
   Badge,
@@ -76,7 +75,7 @@ const canHaveGroupings = (
  */
 export function GroupingsSection({ field, table }: GroupingsSectionProps) {
   const readOnly = !table.can_write;
-  const fieldId = getRawTableFieldId(field);
+  const fieldId = field.id;
   const resolved = useResolvedGroupings(field, table);
   const { saveGrouping, removeGrouping, confirmGrouping, setDefaultGrouping } =
     useGroupings();

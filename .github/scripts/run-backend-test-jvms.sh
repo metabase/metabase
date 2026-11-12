@@ -155,10 +155,9 @@ for idx in "${INDEXES[@]}"; do
   prepare_jvm_dir "$JVM_DIRS_ROOT/partition-$idx"
 done
 
-# run_partition below can have a race where two `clojure` launchers both check if a file exists
-# and try to copy it at the same time, and one fails and exits before the tests start. We avoid
-# that by running this to ensure that the file exists.
-clojure -Sdescribe >/dev/null || die "clojure -Sdescribe failed"
+# Prepare dependencies before concurrent JVMs can race to clone or check out the same Git library.
+# This also initializes the Clojure launcher before the partitions start.
+clojure -P -X:"$CLOJURE_ALIASES" >/dev/null || die "preparing Clojure dependencies failed"
 
 for idx in "${INDEXES[@]}"; do
   run_partition "$idx" "$JVM_DIRS_ROOT/partition-$idx" &

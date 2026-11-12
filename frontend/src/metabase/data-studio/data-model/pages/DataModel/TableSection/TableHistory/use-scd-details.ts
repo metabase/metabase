@@ -12,7 +12,6 @@ import {
   useSchemaTables,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field, Table } from "metabase-types/api";
 
 export type ScdDetails = {
@@ -43,13 +42,10 @@ export function useScdDetails(
   const currentValueFieldIds = overrides.currentValueFieldIds;
   const currentValueFields =
     currentValueFieldIds !== undefined
-      ? fields.filter((field) =>
-          currentValueFieldIds.includes(getRawTableFieldId(field)),
-        )
+      ? fields.filter((field) => currentValueFieldIds.includes(field.id))
       : inferCurrentValueFields(fields);
   const durableKeyField = fields.find(
-    (field) =>
-      getRawTableFieldId(field) === structure.history.durableKeyFieldId,
+    (field) => field.id === structure.history.durableKeyFieldId,
   );
   const previousValuePairs = inferPreviousValuePairs(fields);
 

@@ -8,7 +8,6 @@ import {
   useHistoryReviewStatus,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Checkbox, Select, Stack, Text } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, Table } from "metabase-types/api";
@@ -58,7 +57,7 @@ export function FieldHistoryRoleInput({
 }) {
   const { getTableStructure, setHistoryBinding } = useTableStructures();
   const binding = getTableStructure(table).history;
-  const fieldId = getRawTableFieldId(field);
+  const fieldId = field.id;
   const roles = HISTORY_FIELD_ROLES.filter((role) => binding[role] === fieldId);
   const labels = getHistoryFieldRoleOptions();
   const labelOf = (role: HistoryFieldRole) =>
@@ -140,9 +139,7 @@ export function FieldCorrectionInput({
         fieldName={field.display_name}
         checked={isCorrectionField(field)}
         disabled={disabled}
-        onChange={(isCorrection) =>
-          setCorrectionField(getRawTableFieldId(field), isCorrection)
-        }
+        onChange={(isCorrection) => setCorrectionField(field.id, isCorrection)}
       />
       {column && (
         <Text size="sm" c="text-secondary">
@@ -157,7 +154,7 @@ export function FieldCorrectionInput({
 
 export function useIsHistoryAttribute(field: Field, table: Table) {
   const binding = useTableStructures().getTableStructure(table).history;
-  const fieldId = getRawTableFieldId(field);
+  const fieldId = field.id;
   const isBound = HISTORY_FIELD_ROLES.some((role) => binding[role] === fieldId);
   return !isBound && !isPK(field);
 }

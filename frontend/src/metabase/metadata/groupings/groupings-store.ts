@@ -5,7 +5,6 @@ import { resolveStatusField, useLifecycle } from "metabase/metadata/lifecycle";
 import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
 import { useSegmentGroups } from "metabase/metadata/segment-groups";
 import { isRoleA, useTableStructures } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isDate, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
@@ -339,7 +338,7 @@ export function useResolvedGroupings(
   field: Field,
   table: Table,
 ): ResolvedGroupings {
-  const fieldId = getRawTableFieldId(field);
+  const fieldId = field.id;
   const { getFieldGroupings } = useGroupings();
   const { getTableProcess } = useLifecycle();
   const { getSegmentGroups } = useSegmentGroups();
@@ -355,9 +354,7 @@ export function useResolvedGroupings(
     isRoleA(structure.role, "role/PeriodicSnapshotFact") &&
     isDate(field) &&
     (isPK(field) ||
-      structure.grainFields.some(
-        (grainField) => getRawTableFieldId(grainField) === fieldId,
-      ));
+      structure.grainFields.some((grainField) => grainField.id === fieldId));
   const periodGranularity = isPeriodKey
     ? structure.periodGranularity
     : undefined;

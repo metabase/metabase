@@ -6,7 +6,6 @@ import {
   getValueBucketLabel,
   isMilestoneField,
 } from "metabase/metadata/lifecycle";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isBoolean, isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, SegmentId, Table } from "metabase-types/api";
 
@@ -132,7 +131,7 @@ export function getSystemSegmentDescription(role: SystemSegmentRole): string {
 }
 
 const nameOf = (field: Field) => field.name.toLowerCase();
-const idOf = (field: Field) => getRawTableFieldId(field);
+const idOf = (field: Field) => field.id;
 
 type LifecycleRule = {
   role: SystemSegmentRole;

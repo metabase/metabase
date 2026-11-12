@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isDate, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId } from "metabase-types/api";
 
@@ -40,8 +39,7 @@ const ENTITY_ID_RE = /^(?!dbt_|_fivetran_).+_id$/;
 const nameOf = (field: Field) => field.name.toLowerCase();
 const findMatching = (fields: Field[], pattern: RegExp) =>
   fields.find((field) => pattern.test(nameOf(field)));
-const idOf = (field: Field | undefined) =>
-  field ? getRawTableFieldId(field) : null;
+const idOf = (field: Field | undefined) => (field ? field.id : null);
 
 function inferred(
   rule: HistoryInferenceRule,

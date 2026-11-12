@@ -18,7 +18,6 @@ import {
   isTerminalBucket,
   useLifecycle,
 } from "metabase/metadata/lifecycle";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
   Badge,
@@ -257,7 +256,7 @@ export function TableProcess({ table, readOnly }: TableProcessProps) {
   );
 }
 
-const idOf = (field: Field) => getRawTableFieldId(field);
+const idOf = (field: Field) => field.id;
 
 function StatusColumnValue({
   fields,

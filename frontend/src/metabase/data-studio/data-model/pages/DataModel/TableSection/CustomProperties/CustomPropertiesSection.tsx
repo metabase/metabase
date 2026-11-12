@@ -16,7 +16,6 @@ import {
   usePropertyRegistry,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Button,
   Group,
@@ -222,7 +221,7 @@ function EntityTableValue({
 }
 
 const fieldName = (fields: Field[], fieldId: FieldId | null) =>
-  fields.find((field) => getRawTableFieldId(field) === fieldId)?.name;
+  fields.find((field) => field.id === fieldId)?.name;
 
 /**
  * The entity key, property, and value columns: sync's guess to confirm or
@@ -436,7 +435,7 @@ function ColumnSelectRow({
           aria-label={label}
           classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
           data={fields.map((field) => ({
-            value: String(getRawTableFieldId(field)),
+            value: String(field.id),
             label: field.display_name,
           }))}
           value={value != null ? String(value) : null}

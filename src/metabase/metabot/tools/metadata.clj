@@ -41,41 +41,53 @@
    [:model_ids [:sequential :int]]
    [:metric_ids [:sequential :int]]])
 
-(defn- source-metadata
-  [{:keys [entity-type entity-id]}]
-  (if (= entity-type :table)
-    (do
-      (resources-tools/check-table-resource-database entity-id)
-      ;; an inactive table is missing, as the details treat it, not uncurated
-      (tools.u/get-table entity-id :db_id))
-    (do
-      (resources-tools/check-card-resource-database entity-id)
-      (tools.u/get-card entity-id entity-type)))
+(defn- source-entity-type
+  "Check that the current user can read `entity-id` as a Metabot resource, and return the entity type to read
+  it as: `:table` for a table, or the card's own type for a card, whichever card type was requested."
+  [requested-type entity-id]
+  (if (= requested-type :table)
+    (do (resources-tools/check-table-resource-database entity-id)
+        ;; an inactive table is missing, as the details treat it, not uncurated
+        (tools.u/get-table entity-id :db_id)
+        :table)
+    ;; Users call saved questions metrics, and `list_available_fields` has no argument for questions. A card in the
+    ;; wrong list is read at its own type, and the output groups it under that type.
+    (:type (resources-tools/check-card-resource-database entity-id))))
+
+(defn- check-curated!
+  "Under curated-only, throw unless the source is within curated content. `entity-type` is the type
+  that `source-entity-type` returned."
+  [entity-type entity-id]
   (when (shared/curated-only?)
     (curation/check-curated-subject! (str (name entity-type) " " entity-id)
                                      (case entity-type
-                                       :table  ["table" entity-id]
-                                       :model  ["card" entity-id]
-                                       :metric ["metric" entity-id])))
-  (cond-> (if (= entity-type :metric)
-            (entity-details-tools/get-metric-details
-             {:metric-id entity-id
-              :with-default-temporal-breakout? false
-              :with-field-values? false
-              :with-queryable-dimensions? false
-              :with-segments? true})
-            (entity-details-tools/get-table-details
-             {:entity-type entity-type
-              :entity-id entity-id
-              :with-fields? true
-              :with-field-values? false
-              :with-related-tables? false
-              :with-metrics? false
-              :with-default-temporal-breakout? false
-              :with-measures? true
-              :with-segments? true}))
-    ;; under curated-only a card's details omit its definition, as read_resource's do
-    (shared/curated-only?) (update :structured-output dissoc :query_json)))
+                                       :table    ["table" entity-id]
+                                       :metric   ["metric" entity-id]
+                                       (:model :question) ["card" entity-id]))))
+
+(defn- source-metadata
+  [{:keys [entity-type entity-id]}]
+  (let [entity-type (source-entity-type entity-type entity-id)]
+    (check-curated! entity-type entity-id)
+    (cond-> (if (= entity-type :metric)
+              (entity-details-tools/get-metric-details
+               {:metric-id entity-id
+                :with-default-temporal-breakout? false
+                :with-field-values? false
+                :with-queryable-dimensions? false
+                :with-segments? true})
+              (entity-details-tools/get-table-details
+               {:entity-type entity-type
+                :entity-id entity-id
+                :with-fields? true
+                :with-field-values? false
+                :with-related-tables? false
+                :with-metrics? false
+                :with-default-temporal-breakout? false
+                :with-measures? true
+                :with-segments? true}))
+      ;; under curated-only a card's details omit its definition, as read_resource's do
+      (shared/curated-only?) (update :structured-output dissoc :query_json))))
 
 (defn- metadata-fault-entry
   [{:keys [entity-type entity-id] :as item} e]
@@ -104,7 +116,8 @@
   tools/BatchedTool
   (batched-declaration [_ declaration]
     (assoc declaration
-           :description "Retrieve metadata for up to 5 tables, 5 models, and 5 metrics per call."
+           :description (str "Retrieve metadata for up to 5 tables, 5 models, and 5 metrics per call. "
+                             "A saved question ID can go in `model_ids` or `metric_ids`.")
            :args list-available-fields-schema))
   (batched-args [_ {table-ids :table_ids model-ids :model_ids metric-ids :metric_ids}]
     (into []
@@ -113,15 +126,16 @@
                     (map (fn [id] {:entity-type kind :entity-id id}) ids)))
           [[:table table-ids] [:model model-ids] [:metric metric-ids]]))
   (compose [_ entries _ctx]
-    (let [metadata (reduce (fn [metadata {:keys [item failed? output structured-output]}]
+    (let [metadata (reduce (fn [metadata {:keys [failed? output structured-output]}]
                              (if failed?
                                (update metadata :errors conj output)
-                               (update metadata (case (:entity-type item)
+                               (update metadata (case (:type structured-output)
                                                   :table :tables
                                                   :model :models
-                                                  :metric :metrics)
+                                                  :metric :metrics
+                                                  :question :questions)
                                        conj structured-output)))
-                           {:result-type :metadata :tables [] :models [] :metrics [] :errors []}
+                           {:result-type :metadata :tables [] :models [] :metrics [] :questions [] :errors []}
                            entries)]
       {:output (llm-shape/get-metadata-result->xml metadata)
        :structured-output metadata})))
@@ -147,10 +161,11 @@
 
 (defn- format-field-metadata-output
   ;; NOTE: keep in sync with read_resource.clj/format-content :field-metadata branch
-  [{:keys [field_id value_metadata portable_fk table_reference]}]
+  [{:keys [field_id value_metadata portable_fk reference reference_name source_table table_reference]}]
   (format-with-instructions
    (llm-shape/field-metadata->xml {:field_id field_id :value_metadata value_metadata
-                                   :portable_fk portable_fk :table_reference table_reference})
+                                   :portable_fk portable_fk :reference reference :reference_name reference_name
+                                   :source_table source_table :table_reference table_reference})
    instructions/field-metadata-instructions))
 
 (defn- add-output
@@ -223,25 +238,16 @@
      :scope scope/agent-metadata-read
      :args get-field-values-schema})
   (handle [_ {data-source :data_source source-id :source_id field-id :field_id} _ctx]
-    (tools/with-entity {:kind (if (= data-source "report") :question (keyword data-source)) :id source-id}
-      (if (= data-source "table")
-        (do
-          (resources-tools/check-table-resource-database source-id)
-          ;; an inactive table is missing, as `field-values` treats it, not uncurated
-          (tools.u/get-table source-id :db_id))
-        (resources-tools/check-card-resource-database source-id)))
-    (when (shared/curated-only?)
-      (curation/check-curated-subject! (str data-source " " source-id)
-                                       (case data-source
-                                         "table"                       ["table" source-id]
-                                         "metric"                      ["metric" source-id]
-                                         ("model" "question" "report") ["card" source-id])))
-    (tools/with-entity {:kind :field :id field-id}
-      (add-output (field-stats-tools/field-values {:entity-type data-source
-                                                   :entity-id source-id
-                                                   :field-id field-id
-                                                   :limit nil})
-                  format-field-metadata-output))))
+    (let [kind        (if (= data-source "report") :question (keyword data-source))
+          entity-type (tools/with-entity {:kind kind :id source-id}
+                        (source-entity-type kind source-id))]
+      (check-curated! entity-type source-id)
+      (tools/with-entity {:kind :field :id field-id}
+        (add-output (field-stats-tools/field-values {:entity-type (name entity-type)
+                                                     :entity-id source-id
+                                                     :field-id field-id
+                                                     :limit nil})
+                    format-field-metadata-output)))))
 
 (def get-field-values-tool
   "The `get_field_values` tool."

@@ -8,6 +8,8 @@ import { screen } from "__support__/ui";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockDatabase,
   createMockUser,
@@ -73,7 +75,6 @@ describe("metabot > context", () => {
     fetchMock.removeRoutes({ names: ["database-list"] });
     setupDatabaseListEndpoint([
       createMockDatabase({
-        is_saved_questions: false,
         native_permissions: "none",
       }),
     ]);
@@ -130,7 +131,11 @@ describe("metabot > context", () => {
   });
 
   it("should send SQL profile and SQL error context for SQL fixes", async () => {
-    const rawSql = "SELECT * FROM bad_table";
+    const rawQuery = Lib.toLegacyQuery(
+      Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+        query: "SELECT * FROM bad_table",
+      }),
+    );
     const queryError = "bad_table";
     // Unjustified type cast. FIXME
     const editorOpen = { resolve: undefined as (() => void) | undefined };
@@ -154,13 +159,7 @@ describe("metabot > context", () => {
           user_is_viewing: [
             {
               type: "adhoc",
-              query: {
-                type: "native",
-                database: 1,
-                native: {
-                  query: rawSql,
-                },
-              },
+              query: rawQuery,
               error: queryError,
             },
           ],
@@ -197,12 +196,7 @@ describe("metabot > context", () => {
           expect.objectContaining({
             type: "adhoc",
             error: queryError,
-            query: expect.objectContaining({
-              type: "native",
-              native: expect.objectContaining({
-                query: rawSql,
-              }),
-            }),
+            query: rawQuery,
           }),
         ]),
       }),

@@ -1,5 +1,6 @@
 ---
 title: Migrating from legacy permissions
+summary: How Metabase 50 split the old Data access setting into View data and Create queries, how your permissions migrated, and what to do about No self-service.
 ---
 
 # Migrating from legacy permissions

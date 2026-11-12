@@ -29,7 +29,6 @@ import {
   useTableSegments,
 } from "metabase/metadata/table-segments";
 import { isRoleA, useTableStructures } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, FieldId, Segment, Table } from "metabase-types/api";
 
@@ -92,7 +91,7 @@ function findColumn(
     );
     return (
       !isImplicitlyJoinable &&
-      Lib.fieldValuesSearchInfo(query, column).fieldId === fieldId
+      Lib.fieldSearchInfo(query, column).fieldId === fieldId
     );
   });
 }
@@ -335,8 +334,7 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
     isOverridden: defaultOverride != null,
   };
 
-  const mainDateType =
-    mainDateField && fieldTypes.get(getRawTableFieldId(mainDateField));
+  const mainDateType = mainDateField && fieldTypes.get(mainDateField.id);
   const requiredInference = inferRequiredFilter(
     table,
     mainDateField && {

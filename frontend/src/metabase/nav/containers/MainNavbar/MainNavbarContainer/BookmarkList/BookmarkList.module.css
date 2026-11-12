@@ -5,7 +5,10 @@
 }
 
 .bookmark:hover .removeButton,
-.bookmark:focus-within .removeButton,
-:focus .bookmark .removeButton {
+.bookmark:focus-within .removeButton {
   opacity: 0.5;
+}
+
+.bookmark .removeButton:focus-visible {
+  opacity: 1;
 }

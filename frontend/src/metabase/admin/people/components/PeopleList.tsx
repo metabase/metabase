@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 import cx from "classnames";
 import { Fragment } from "react";
 import { msgid, ngettext, t } from "ttag";

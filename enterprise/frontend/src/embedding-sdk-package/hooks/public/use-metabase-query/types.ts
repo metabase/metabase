@@ -135,25 +135,12 @@ export type FieldReference<TTable = unknown> =
 
 // `name` names the result column, which is how a later stage refers to it. A
 // query with two aggregations of the same kind needs it to tell them apart.
-export type CountAggregation = {
+export type CountAggregation<TName extends string = string> = {
   type: "operator";
   operator: "count";
   args: [];
-  name?: string;
+  name?: TName;
 };
-
-export type CountAggregationSchema<TName extends string = "count"> =
-  CountAggregation & {
-    columns: readonly [
-      {
-        name: TName;
-        displayName: "Count";
-        jsType: "number";
-      },
-    ];
-  };
-
-type CountAggregationColumn = CountAggregationSchema["columns"][number];
 
 export type FieldAggregationOperator =
   | "sum"
@@ -166,31 +153,57 @@ export type FieldAggregationOperator =
 export type FieldAggregation<
   TOperator extends FieldAggregationOperator = FieldAggregationOperator,
   TDimension = unknown,
+  TName extends string = string,
 > = {
   type: "operator";
   operator: TOperator;
   args: readonly [TDimension];
-  name?: string;
+  name?: TName;
 };
+
+export type AggregationResultColumnDefaultName<TOperator> =
+  TOperator extends "distinct" ? "count" : TOperator;
+
+export type AggregationResultColumnJavaScriptType<TOperator, TDimension> =
+  TOperator extends "min" | "max"
+    ? TDimension extends {
+        jsType?: infer TJavaScriptType extends SchemaJavaScriptType;
+      }
+      ? [Exclude<NonNullable<TJavaScriptType>, "unknown">] extends [never]
+        ? "number"
+        : Exclude<NonNullable<TJavaScriptType>, "unknown">
+      : "number"
+    : "number";
+
+export type AggregationColumn<
+  TName extends string = string,
+  TJavaScriptType extends SchemaJavaScriptType = SchemaJavaScriptType,
+> = {
+  name: TName;
+  displayName: string;
+  jsType: TJavaScriptType;
+};
+
+export type CountAggregationSchema<TName extends string = "count"> =
+  CountAggregation<TName> & {
+    columns: readonly [AggregationColumn<TName, "number">];
+  };
 
 export type FieldAggregationSchema<
   TOperator extends FieldAggregationOperator = FieldAggregationOperator,
   TDimension = unknown,
-  TJavaScriptType extends SchemaJavaScriptType = "number",
-  TName extends string = TOperator extends "distinct" ? "count" : TOperator,
-> = FieldAggregation<TOperator, TDimension> & {
+  TName extends string = AggregationResultColumnDefaultName<TOperator>,
+> = FieldAggregation<TOperator, TDimension, TName> & {
   columns: readonly [
-    {
-      name: TName;
-      displayName: string;
-      jsType: TJavaScriptType;
-    },
+    AggregationColumn<
+      TName,
+      AggregationResultColumnJavaScriptType<TOperator, TDimension>
+    >,
   ];
 };
 
 type AggregationForDimension<TDimension> =
   | CountAggregation
-  | CountAggregationSchema
   | FieldAggregation<
       "sum" | "avg" | "median",
       NumericAggregationDimension<TDimension>
@@ -469,17 +482,36 @@ export type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
 type TableQuery<TTable, TQuery = unknown> = TableQueryBase<TTable> &
   RequireAggregationsForBreakouts<TQuery>;
 
-export type AggregationResultColumnName<TAggregation> = TAggregation extends {
-  columns: readonly [{ name: infer TName }, ...unknown[]];
+type AggregationClauseDimension<TAggregation> = TAggregation extends {
+  args: readonly [infer TDimension, ...unknown[]];
 }
-  ? TName
+  ? TDimension
+  : unknown;
+
+type AggregationClauseColumnName<TAggregation, TOperator> =
+  TAggregation extends { name: infer TName extends string }
+    ? TName
+    : Extract<AggregationResultColumnDefaultName<TOperator>, string>;
+
+type AggregationResultColumn<TAggregation> = TAggregation extends {
+  columns: infer TColumns;
+}
+  ? TupleElement<NonNullable<TColumns>>
   : TAggregation extends { type: "operator"; operator: infer TOperator }
-    ? TAggregation extends { name: infer TName extends string }
-      ? TName
-      : TOperator extends "distinct"
-        ? "count"
-        : TOperator
-    : string;
+    ? AggregationColumn<
+        AggregationClauseColumnName<TAggregation, TOperator>,
+        AggregationResultColumnJavaScriptType<
+          TOperator,
+          AggregationClauseDimension<TAggregation>
+        >
+      >
+    : never;
+
+export type AggregationResultColumnName<TAggregation> = [
+  AggregationResultColumn<TAggregation>,
+] extends [never]
+  ? string
+  : ColumnName<AggregationResultColumn<TAggregation>>;
 
 type ColumnName<TColumn> = TColumn extends { name: infer TName }
   ? TName
@@ -599,13 +631,7 @@ type QueryBreakoutColumns<TQuery> = TQuery extends {
 type QueryAggregationColumns<TQuery> = TQuery extends {
   aggregations?: infer TAggregations;
 }
-  ? TupleElement<NonNullable<TAggregations>> extends infer TAggregation
-    ? TAggregation extends { columns: infer TColumns }
-      ? TupleElement<NonNullable<TColumns>>
-      : TAggregation extends CountAggregation
-        ? CountAggregationColumn
-        : never
-    : never
+  ? AggregationResultColumn<TupleElement<NonNullable<TAggregations>>>
   : never;
 
 /**
@@ -734,6 +760,14 @@ export type UseMetabaseQueryResult<
   refetch: () => Promise<void>;
 };
 
+export type MetabaseQueryRow<TQuery, TDynamic = undefined> = NonNullable<
+  UseMetabaseQueryResult<
+    QueryEntity<undefined, TQuery>,
+    TQuery,
+    TDynamic
+  >["data"]
+>["rows"][number];
+
 /**
  * Marks a query as declared through `defineQuery`. The query hooks accept only
  * marked queries, so an inline query object is a compile-time error.
@@ -743,6 +777,16 @@ export type UseMetabaseQueryResult<
 export declare class DefinedQuery {
   private readonly definedWithDefineQuery: true;
 }
+
+export type DynamicQueryArgument<TEntity, TQuery, TDynamic> = TDynamic &
+  (TDynamic extends MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>
+    ? RequireAggregationsForBreakouts<TDynamic> &
+        RequireDynamicOrderByNames<
+          QueryEntity<TEntity, TQuery>,
+          TQuery,
+          TDynamic
+        >
+    : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>);
 
 export type UseMetabaseQuery = <
   TEntity extends TableSchema | undefined = undefined,
@@ -758,15 +802,7 @@ export type UseMetabaseQuery = <
             RequireGroupedOrderByNames<TQuery>
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
-  dynamicQuery?: TDynamic &
-    (TDynamic extends MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>
-      ? RequireAggregationsForBreakouts<TDynamic> &
-          RequireDynamicOrderByNames<
-            QueryEntity<TEntity, TQuery>,
-            TQuery,
-            TDynamic
-          >
-      : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>),
+  dynamicQuery?: DynamicQueryArgument<TEntity, TQuery, TDynamic>,
 ) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery, TDynamic>;
 
 export type UseMetabaseQueryObject = <
@@ -783,15 +819,7 @@ export type UseMetabaseQueryObject = <
             RequireGroupedOrderByNames<TQuery>
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
-  dynamicQuery?: TDynamic &
-    (TDynamic extends MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>
-      ? RequireAggregationsForBreakouts<TDynamic> &
-          RequireDynamicOrderByNames<
-            QueryEntity<TEntity, TQuery>,
-            TQuery,
-            TDynamic
-          >
-      : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>),
+  dynamicQuery?: DynamicQueryArgument<TEntity, TQuery, TDynamic>,
 ) => UseMetabaseQueryObjectResult;
 
 export type UseMetabaseQueryObjectResult = {

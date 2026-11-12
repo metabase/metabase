@@ -6,7 +6,6 @@ import {
   getHistoryShapeOptions,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Stack, Text } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
 
@@ -29,8 +28,7 @@ export function HistorySummary({ table }: { table: Table }) {
     binding.validToFieldId != null,
   );
   const getFieldName = (fieldId: FieldId | null) =>
-    fields.find((field) => getRawTableFieldId(field) === fieldId)
-      ?.display_name ?? t`Not set`;
+    fields.find((field) => field.id === fieldId)?.display_name ?? t`Not set`;
 
   const rows: SummaryRow[] = [
     {

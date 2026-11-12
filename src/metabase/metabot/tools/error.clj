@@ -378,6 +378,11 @@
 
 ;;; ------------------------------------------ Classification ------------------------------------------------------
 
+(defn declared?
+  "Whether `e` already carries a ToolError under [[error-key]], so a converter should rethrow it as it is."
+  [e]
+  (contains? (ex-data e) error-key))
+
 (defn classify
   "The ToolError for `e`.
 

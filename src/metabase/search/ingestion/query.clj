@@ -54,9 +54,7 @@
                                                                      (remove (comp search-terms key)))))
                                                        [:attrs :render-terms])
                                                fn-selects))
-      :from      [(if-let [source (:source spec)]
-                    (source)
-                    [(t2/table-name (:model spec)) :this])]
+      :from      [[(t2/table-name (:model spec)) :this]]
       :where     (:where spec [:= [:inline 1] [:inline 1]])
       :left-join (when (:joins spec)
                    (into []

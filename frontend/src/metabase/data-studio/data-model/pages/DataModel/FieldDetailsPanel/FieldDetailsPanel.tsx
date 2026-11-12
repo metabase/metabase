@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import * as Lib from "metabase-lib";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
@@ -56,7 +55,7 @@ export function FieldDetailsPanel({
         actions={
           field && (
             <FieldActionsMenu
-              fieldId={getRawTableFieldId(field)}
+              fieldId={field.id}
               onPreviewClick={onPreviewClick}
             />
           )
@@ -74,7 +73,7 @@ export function FieldDetailsPanel({
            * Make sure internal component state is reset when changing fields.
            * This is to avoid state mix-up with optimistic updates.
            */
-          key={getRawTableFieldId(field)}
+          key={field.id}
           field={field}
           table={table}
           getFieldHref={getFieldHref}

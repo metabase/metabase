@@ -104,6 +104,11 @@ describe("PanelBody", () => {
     expect(screen.getByText("Dan Lee")).toBeInTheDocument();
   });
 
+  it("should not display fields section for transforms", () => {
+    setup({ node: createMockTransformDependencyNode() });
+    expect(screen.queryByText(/fields?$/)).not.toBeInTheDocument();
+  });
+
   it("should not display owner section for cards", () => {
     setup({
       node: createMockCardDependencyNode({

@@ -1,6 +1,9 @@
 import fetchMock from "fetch-mock";
 
-import { createMockMetadataFromState } from "__support__/metadata";
+import {
+  createMockMetadata,
+  createMockMetadataFromState,
+} from "__support__/metadata";
 import { createMockLocation, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
@@ -12,37 +15,29 @@ import * as sharedQB from "metabase/redux/query-builder";
 import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   DatabaseId,
-  NativeDatasetQuery,
   TableId,
-  TemplateTag,
+  TestTemplateTag,
   UnsavedCard,
   User,
 } from "metabase-types/api";
 import {
   createMockCard,
   createMockSegment,
-  createMockTemplateTag,
+  createMockUnsavedCard,
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_ID,
-  createAdHocCard,
-  createAdHocNativeCard,
-  createNativeModelCard,
   createSampleDatabase,
-  createSavedNativeCard,
-  createSavedStructuredCard,
-  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
 import * as qbActions from "../../store/actions";
@@ -155,7 +150,7 @@ async function setup({
   return baseSetup({ location, params, ...opts });
 }
 
-const SNIPPET: TemplateTag = {
+const SNIPPET: TestTemplateTag = {
   id: "id",
   "snippet-id": 1,
   "display-name": "foo",
@@ -164,16 +159,54 @@ const SNIPPET: TemplateTag = {
   type: "snippet",
 };
 
-const NATIVE_QUESTION_WITH_SNIPPET: NativeDatasetQuery = {
-  type: "native",
-  database: 1,
-  native: {
-    query: "select * from orders {{ foo }}",
-    "template-tags": {
-      foo: SNIPPET,
-    },
+const NATIVE_QUESTION_WITH_SNIPPET = Lib.createTestJsNativeQuery(
+  SAMPLE_PROVIDER,
+  {
+    query: "select * from orders {{snippet: foo}}",
+    templateTags: { "snippet: foo": SNIPPET },
   },
-};
+);
+
+function createAdHocCard(opts?: Partial<UnsavedCard>): UnsavedCard {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    ...opts,
+  });
+}
+
+function createAdHocNativeCard(opts?: Partial<UnsavedCard>): UnsavedCard {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
+  });
+}
+
+function createSavedStructuredCard(opts?: Partial<Card>): Card {
+  return createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    ...opts,
+  });
+}
+
+function createSavedNativeCard(opts?: Partial<Card>): Card {
+  return createMockCard({
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
+  });
+}
+
+function createStructuredModelCard(opts?: Partial<Card>): Card {
+  return createSavedStructuredCard({ type: "model", ...opts });
+}
+
+function createNativeModelCard(opts?: Partial<Card>): Card {
+  return createSavedNativeCard({ type: "model", ...opts });
+}
 
 // Silence `console.warn` / `console.error` at module load so that describe-body
 // invocations of `setErrorPage(...)` (which logs via `console.error`) don't
@@ -674,12 +707,10 @@ describe("QB Actions > initializeQB", () => {
             },
           });
           const formattedQuestion = new Question(result.card, metadata);
-          // Unjustified type cast. FIXME
-          const query = formattedQuestion.legacyNativeQuery() as NativeQuery;
 
-          expect(query.queryText().toLowerCase()).toBe(
-            "select * from orders {{snippet: bar}}",
-          );
+          expect(
+            Lib.rawNativeQuery(formattedQuestion.query()).toLowerCase(),
+          ).toBe("select * from orders {{snippet: bar}}");
         });
       });
     });
@@ -700,34 +731,28 @@ describe("QB Actions > initializeQB", () => {
 
       return setup({
         card: createSavedNativeCard({
-          dataset_query: {
-            type: "native",
-            database: SAMPLE_DB_ID,
-            native: {
-              query: `SELECT * FROM {{${tagName}}}`,
-              "template-tags": {
-                [tagName]: createMockTemplateTag({
-                  name: tagName,
-                  "display-name": tagName,
-                  type: "card",
-                  "card-id": REFERENCED_CARD.id,
-                }),
+          dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+            query: `SELECT * FROM {{${tagName}}}`,
+            templateTags: {
+              [tagName]: {
+                name: tagName,
+                "display-name": tagName,
+                type: "card",
+                "card-id": REFERENCED_CARD.id,
               },
             },
-          },
+          }),
         }),
       });
     }
 
-    function getQueryText(card: Card, metadata: Metadata) {
-      return checkNotNull(
-        new Question(card, metadata).legacyNativeQuery(),
-      ).queryText();
+    function getQueryText(card: Card, metadata: JsMetadata) {
+      return Lib.rawNativeQuery(new Question(card, metadata).query());
     }
 
     function isDirty(
       { card, originalCard }: { card: Card; originalCard: Card },
-      metadata: Metadata,
+      metadata: JsMetadata,
     ) {
       return new Question(card, metadata).isDirtyComparedTo(
         new Question(originalCard, metadata),
@@ -972,6 +997,7 @@ describe("QB Actions > initializeQB", () => {
 
     it("constructs a card based on provided 'db' param", async () => {
       const expectedCard = Question.create({
+        metadata: createMockMetadata(),
         DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
       }).card();
 
@@ -985,15 +1011,19 @@ describe("QB Actions > initializeQB", () => {
           expectedCard.dataset_query,
         ),
       ).toBe(true);
-      expect(Lib.sourceTableOrCardId(query)).toBe(null);
+      expect(Lib.primarySourceTableId(query)).toBe(null);
       expect(result.originalCard).toBeUndefined();
     });
 
     it("constructs a card based on provided 'db' and 'table' params", async () => {
       const { result, metadata } = await setupOrdersTable();
-      const expectedCard = checkNotNull(
-        metadata.table(ORDERS_ID)?.question().card(),
-      );
+      const expectedCard = Question.create({
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+        metadata,
+      })
+        .setDefaultDisplay()
+        .card();
 
       expect(
         Lib.areLegacyQueriesEqual(
@@ -1058,9 +1088,13 @@ describe("QB Actions > initializeQB", () => {
 
     it("builds the table's default ad-hoc question from the slug", async () => {
       const { result, metadata } = await setupTableRoute(ORDERS_ID);
-      const expectedCard = checkNotNull(
-        metadata.table(ORDERS_ID)?.question().card(),
-      );
+      const expectedCard = Question.create({
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+        metadata,
+      })
+        .setDefaultDisplay()
+        .card();
 
       expect(
         Lib.areLegacyQueriesEqual(

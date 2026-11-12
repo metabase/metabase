@@ -36,7 +36,7 @@ export function RunButtonWithTooltip({
 }: RunButtonWithTooltipProps) {
   const tooltip = getTooltip(props);
   return (
-    <Tooltip label={tooltip} disabled={!tooltip} position="top">
+    <Tooltip label={tooltip} disabled={!tooltip || props.hidden} position="top">
       <RunButton {...props} />
     </Tooltip>
   );

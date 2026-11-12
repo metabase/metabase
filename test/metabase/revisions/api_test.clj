@@ -156,16 +156,14 @@
                      :model/Database {y-db-id :id} {}
                      :model/Transform {transform-id :id}
                      {:name   "Repointed Transform"
-                      :source {:type  "query"
-                               :query {:database x-db-id
-                                       :type     "native"
-                                       :native   {:query "SELECT 2 --comment"}}}}]
+                      :source {:type  :query
+                               :query (lib/native-query (lib-be/application-database-metadata-provider x-db-id)
+                                                        "SELECT 2 --comment")}}]
         (create-transform-revision! transform-id true :crowberto)
         (t2/update! :model/Transform :id transform-id
-                    {:source {:type  "query"
-                              :query {:database y-db-id
-                                      :type     "native"
-                                      :native   {:query "SELECT 1"}}}})
+                    {:source {:type  :query
+                              :query (lib/native-query (lib-be/application-database-metadata-provider y-db-id)
+                                                       "SELECT 1")}})
         (create-transform-revision! transform-id false :crowberto)
         (letfn [(contains-x? [revisions]
                   (letfn [(x-source? [m]
@@ -1117,7 +1115,7 @@
                                             :id           "x"
                                             :type         :dimension
                                             :widget-type  :number/=
-                                            :dimension    (lib/ref reviews-rating)}})})
+                                            :field-id     (:id reviews-rating)}})})
         (let [first-rev-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
           (mt/user-http-request :crowberto :post 200 "revision/revert"
                                 {:entity :card :id card-id :revision_id first-rev-id})

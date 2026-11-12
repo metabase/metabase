@@ -2,7 +2,6 @@ import { msgid, ngettext, t } from "ttag";
 
 import type { SegmentGroup } from "metabase/metadata/segment-groups";
 import type { PeriodGranularity } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   isBoolean,
   isCategory,
@@ -39,7 +38,7 @@ export type GroupingInferenceContext = {
 };
 
 const isSameField = (a: Field, b: Field | undefined) =>
-  b != null && getRawTableFieldId(a) === getRawTableFieldId(b);
+  b != null && a.id === b.id;
 
 /** Numbers that group into ranges: not keys, not codes */
 export function isBinnableField(field: Field): boolean {
@@ -194,7 +193,7 @@ export function inferGroupings(
         kind: "time",
         definition: {
           type: "elapsed",
-          to: getRawTableFieldId(end.field),
+          to: end.field.id,
           unit: "day",
         },
       });
@@ -226,7 +225,7 @@ export function inferGroupings(
   }
 
   if (isSameField(field, statusField)) {
-    const fieldId = getRawTableFieldId(field);
+    const fieldId = field.id;
     const signal = t`${field.display_name} is this table's status column`;
     groupings.push({
       // The full order is named after the column, like "Stage"

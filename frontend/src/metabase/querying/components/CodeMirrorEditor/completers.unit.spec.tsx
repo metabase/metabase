@@ -17,7 +17,7 @@ import type {
   CardAutocompleteSuggestion,
   NativeQuerySnippet,
 } from "metabase-types/api";
-import { createMockCard, createMockField } from "metabase-types/api/mocks";
+import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 
 import {
   useCardTagCompletion,
@@ -564,11 +564,13 @@ describe("useReferencedCardCompletion", () => {
       id: 42,
       name: "Referenced Question",
       result_metadata: [
-        createMockField({
+        createMockColumn({
           name: "Foobar",
+          database_type: "varchar",
         }),
-        createMockField({
+        createMockColumn({
           name: "Bar",
+          database_type: "varchar",
         }),
       ],
     }),
@@ -716,6 +718,29 @@ describe("useLocalsCompletion", () => {
           detail: "local",
         },
       ],
+    });
+  });
+
+  it.each([
+    {
+      name: "aliases",
+      query:
+        "SELECT date_trunc('month', CREATED_AT) as order_month FROM ORDERS GROUP BY order_mo|",
+      from: 75,
+      label: "order_month",
+    },
+    {
+      name: "quoted aliases",
+      query: `SELECT foo as "QUOTED_local" FROM ORDERS GROUP BY QU|`,
+      from: 50,
+      label: "QUOTED_local",
+    },
+  ])("should complete $name in an h2 query", async ({ query, from, label }) => {
+    const { complete } = setup({ engine: "h2" });
+    const results = await complete(query);
+    expect(results).toEqual({
+      from,
+      options: [{ label, detail: "local" }],
     });
   });
 

@@ -14,6 +14,7 @@ import { modelIconMap } from "metabase/common/utils/icon";
 import { DataModelBreadcrumbs } from "metabase/data-studio/common/components/DataModelBreadcrumbs";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useTableSegmentsModel } from "metabase/data-studio/data-model/pages/DataModel/TableSection/table-segments";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import {
   SYSTEM_SEGMENT_ROLES,
   type SystemSegmentRole,
@@ -99,6 +100,7 @@ export function SystemSegmentDetailPage({
   // `undefined` until someone edits the filters
   const [draft, setDraft] = useState<Lib.Query>();
   const readOnly = !table.can_write;
+  const buildQuestion = useQuestionFromOptsBuilder();
 
   if (!segment) {
     return null;
@@ -114,7 +116,7 @@ export function SystemSegmentDetailPage({
     );
   const previewUrl =
     query && Lib.filters(query, -1).length > 0
-      ? getDatasetQueryPreviewUrl(Lib.toJsQuery(query))
+      ? getDatasetQueryPreviewUrl(Lib.toJsQuery(query), buildQuestion)
       : undefined;
 
   const handleSave = () => {

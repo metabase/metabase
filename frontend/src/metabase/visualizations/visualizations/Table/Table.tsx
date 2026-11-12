@@ -24,14 +24,24 @@ interface TableProps extends VisualizationProps {
 }
 
 function TableComponent(props: TableProps) {
-  const { series, settings, isShowingDetailsOnlyColumns } = props;
+  const { series, settings, isShowingDetailsOnlyColumns, onRender } = props;
 
   const question = useSyncedQuestion(series);
 
+  const showWarning = useCallback(
+    (warning: string) => onRender({ warnings: [warning] }),
+    [onRender],
+  );
+
   const data = useMemo<VisibleTableData>(
     () =>
-      getVisibleTableData({ series, settings, isShowingDetailsOnlyColumns }),
-    [series, settings, isShowingDetailsOnlyColumns],
+      getVisibleTableData({
+        series,
+        settings,
+        isShowingDetailsOnlyColumns,
+        showWarning,
+      }),
+    [series, settings, isShowingDetailsOnlyColumns, showWarning],
   );
 
   const getColumnTitle = useCallback(

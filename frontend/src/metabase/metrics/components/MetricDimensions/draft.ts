@@ -80,7 +80,7 @@ export function getDimensionCandidates(query: Lib.Query): DimensionCandidate[] {
 
     return Lib.getColumnsFromColumnGroup(columnGroup).flatMap(
       (column): DimensionCandidate[] => {
-        const { fieldId } = Lib.fieldValuesSearchInfo(query, column);
+        const { fieldId } = Lib.fieldSearchInfo(query, column);
         if (fieldId == null) {
           return [];
         }

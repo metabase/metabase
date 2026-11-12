@@ -1,12 +1,6 @@
 import { useMemo } from "react";
 
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import type {
-  ConcreteTableId,
-  Field,
-  FieldId,
-  Table,
-} from "metabase-types/api";
+import type { TableId, Field, FieldId, Table } from "metabase-types/api";
 
 import {
   type EavBinding,
@@ -19,7 +13,7 @@ import { isRoleA } from "./roles";
 import { useTableStructures } from "./table-structure";
 import { useSchemaTables, useTablesWithFields } from "./use-tables-with-fields";
 
-export type EavDefinitionTable = Table & { id: ConcreteTableId };
+export type EavDefinitionTable = Table & { id: TableId };
 
 export type ResolvedEavBinding = {
   binding: EavBinding;
@@ -38,9 +32,7 @@ export type ResolvedEavBinding = {
 };
 
 const fieldById = (fields: Field[], fieldId: FieldId | null) =>
-  fieldId == null
-    ? undefined
-    : fields.find((field) => getRawTableFieldId(field) === fieldId);
+  fieldId == null ? undefined : fields.find((field) => field.id === fieldId);
 
 const resolvePointer = (
   isOverridden: boolean,
@@ -112,9 +104,7 @@ export function useEavBinding(table: Table): ResolvedEavBinding {
       entityKeyField,
       propertyField,
       definitionTable,
-      definitionJoinFieldId: joinField
-        ? getRawTableFieldId(joinField)
-        : columns.keyFieldId,
+      definitionJoinFieldId: joinField ? joinField.id : columns.keyFieldId,
       definitionNameFieldId: columns.keyFieldId,
       schemaTables,
       isLoading,

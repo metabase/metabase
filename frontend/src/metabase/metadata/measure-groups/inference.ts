@@ -1,6 +1,5 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isa } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Measure, MeasureId } from "metabase-types/api";
@@ -92,9 +91,7 @@ export function inferMeasureKind(
   }
   const fieldId = findFieldId(aggregation);
   const name =
-    fields
-      .find((field) => getRawTableFieldId(field) === fieldId)
-      ?.name.toLowerCase() ?? "";
+    fields.find((field) => field.id === fieldId)?.name.toLowerCase() ?? "";
   if (DURATION_NAME_RE.test(name)) {
     return "duration";
   }
@@ -225,13 +222,11 @@ export function getMeasureProposals(
       ];
   const sumProposals = fields
     .filter(
-      (field) =>
-        isAmountField(field) &&
-        !summedFieldIds.includes(getRawTableFieldId(field)),
+      (field) => isAmountField(field) && !summedFieldIds.includes(field.id),
     )
     .map(
       (field): MeasureProposal => ({
-        key: `measure:sum:${getRawTableFieldId(field)}`,
+        key: `measure:sum:${field.id}`,
         name: t`Total ${field.display_name}`,
         operator: "sum",
         field,

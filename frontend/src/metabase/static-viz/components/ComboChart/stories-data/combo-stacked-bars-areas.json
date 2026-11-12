@@ -160,7 +160,6 @@
       "parameter_mappings": [],
       "display": "combo",
       "entity_id": "JA1FIbEF0yH66hFg3sZA_",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": ["CREATED_AT", "TOTAL"],
         "graph.series_order_dimension": null,

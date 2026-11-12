@@ -34,11 +34,7 @@
                 [:email-smtp-username {:optional true} [:or string? nil?]]]]
   (email/check-and-update-settings settings mb-to-smtp-settings (channel.settings/email-smtp-password)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/"
+(api.macros/defendpoint :delete "/" :- ::api/generic-204-no-content
   "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
   []
   (perms/check-has-application-permission :setting)

@@ -5,7 +5,7 @@ summary: Add a second step to logins by having people confirm their identity wit
 
 # Two-factor authentication
 
-{% include plans-blockquote.html feature="Two-factor authentication" %}
+> Two-factor authentication is available on the Starter plan on Metabase Cloud, and on all Pro and Enterprise plans (both self-hosted and on Metabase Cloud). 
 
 Two-factor authentication (2FA) adds a second step to signing in. On top of people's email and password logins, they'll have to confirm their identity with a time-based code from an authenticator app.
 

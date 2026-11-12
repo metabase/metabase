@@ -17,7 +17,6 @@ import {
   usePropertyOverrides,
   usePropertyRegistry,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Alert,
   Button,
@@ -321,7 +320,7 @@ function getDefinitionColumnNames({
   }
   const fields = definitionTable.fields ?? [];
   const nameOf = (fieldId: number | null) =>
-    fields.find((field) => getRawTableFieldId(field) === fieldId)?.name ?? null;
+    fields.find((field) => field.id === fieldId)?.name ?? null;
   return {
     table: definitionTable.name,
     label: nameOf(binding.labelFieldId),

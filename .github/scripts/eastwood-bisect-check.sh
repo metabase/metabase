@@ -30,7 +30,7 @@ esac
 # The warnings from this linter, without line and column, sorted for `comm`.
 # The report script builds the same keys to match findings across runs.
 keys() {
-  sed -E 's/^([^:]+):[0-9]+:[0-9]+: /\1: /' "$1" | grep -E "^[^ ]+: $linter[: ]" | sort
+  sed -E 's/^([^:]+):[0-9]+:[0-9]+: /\1: /' "$1" | grep -E "^[^ ]+: ${linter}[: ]" | sort
 }
 
 out=$(mktemp)

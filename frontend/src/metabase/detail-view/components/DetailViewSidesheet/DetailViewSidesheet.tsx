@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -34,7 +35,6 @@ import {
   Group,
   Icon,
   Menu,
-  Modal,
   Stack,
   Tooltip,
   rem,
@@ -42,6 +42,7 @@ import {
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  CardId,
   ColumnSettings,
   DatasetColumn,
   ForeignKey,
@@ -52,7 +53,7 @@ import type {
 } from "metabase-types/api";
 
 import { Sidesheet } from "./Sidesheet";
-import { extractData, getModelId } from "./utils";
+import { extractData } from "./utils";
 
 interface Props {
   columnSettings: TableColumnOrderSetting[] | undefined;
@@ -61,6 +62,7 @@ interface Props {
   query: Lib.Query | undefined;
   row: RowValues | undefined;
   rowId: string | number;
+  modelId: CardId | null;
   showImplicitActions: boolean;
   showNav: boolean;
   table: Table | undefined;
@@ -79,6 +81,7 @@ export function DetailViewSidesheet({
   query,
   row: rowFromProps,
   rowId,
+  modelId,
   showImplicitActions,
   showNav,
   table,
@@ -108,7 +111,6 @@ export function DetailViewSidesheet({
     return getRowName(columns, row) || rowId;
   }, [columns, row, rowId]);
   const icon = getEntityIcon(table?.entity_type);
-  const modelId = getModelId(table);
   const isNavEnabled = rowFromProps != null && showNav;
   const hasPk = columns.some(isPK);
 
@@ -358,7 +360,6 @@ export function DetailViewSidesheet({
                   columns={columns}
                   columnsSettings={columnsSettings}
                   row={row}
-                  table={table}
                 />
               )}
             </Stack>
@@ -395,20 +396,13 @@ export function DetailViewSidesheet({
         onSuccess={handleActionSuccess}
       />
 
-      <Modal
+      <DeleteObjectModal
         opened={isDeleteModalOpen}
+        actionId={deleteActionId}
+        objectId={rowId}
         onClose={handleDeleteModalClose}
-        size="lg"
-        withCloseButton={false}
-        padding={0}
-      >
-        <DeleteObjectModal
-          actionId={deleteActionId}
-          objectId={rowId}
-          onClose={handleDeleteModalClose}
-          onSuccess={handleDeleteSuccess}
-        />
-      </Modal>
+        onSuccess={handleDeleteSuccess}
+      />
     </>
   );
 }

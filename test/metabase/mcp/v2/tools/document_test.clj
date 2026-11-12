@@ -564,6 +564,23 @@
               (is (nil? (write-error {:method "update" :id doc-id :edits [] :collection_position 2})))
               (is (nil? (write-error {:method "update" :id doc-id :edits [] :collection_id "root"}))))))))))
 
+(deftest move-to-or-from-root-requires-root-write-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (perms/grant-collection-read-permissions! (perms-group/all-users) collection/root-collection)
+    (mt/with-temp [:model/Collection {write-col :id} {}
+                   :model/Document   {doc-id :id}      {:name "In a writable collection" :collection_id write-col}
+                   :model/Document   {root-doc-id :id} {:name "In root"}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) write-col)
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "moving a document into root without root write perms is forbidden"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (call {:method "update" :id doc-id :edits [] :collection_id "root"})))
+          (is (= write-col (t2/select-one-fn :collection_id :model/Document :id doc-id))))
+        (testing "moving a document out of root without root write perms is forbidden"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (call {:method "update" :id root-doc-id :edits [] :collection_id write-col})))
+          (is (nil? (t2/select-one-fn :collection_id :model/Document :id root-doc-id))))))))
+
 (def ^:private cost-model-line
   "A line with several occurrences of a common letter — many matches per KB, which is what makes
    replace_all expensive: it re-serializes the whole document once per occurrence."

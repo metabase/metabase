@@ -19,7 +19,6 @@ import {
   type PreviewType,
   SyncOptionsModal,
 } from "metabase/metadata/components";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { useNavigate, useParams } from "metabase/router";
 import { Box, Button, Center, Flex, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -129,7 +128,7 @@ export function TableFieldsPage() {
                     isLoading={false}
                     actions={
                       <FieldActionsMenu
-                        fieldId={getRawTableFieldId(field)}
+                        fieldId={field.id}
                         onPreviewClick={togglePreview}
                       />
                     }

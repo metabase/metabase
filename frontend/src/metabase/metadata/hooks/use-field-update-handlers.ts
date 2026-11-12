@@ -2,12 +2,11 @@ import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field } from "metabase-types/api";
 
 /** Saves a field's display name or description, with success/undo/error toasts. */
 export function useFieldUpdateHandlers({ field }: { field: Field }) {
-  const id = getRawTableFieldId(field);
+  const id = field.id;
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();

@@ -5,7 +5,6 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -107,16 +106,6 @@ describe("scenarios > search", () => {
       });
     });
 
-    it("should work for user without data permissions (metabase#16855)", () => {
-      cy.signIn("nodata");
-      visitEmbeddingWithSearch("/");
-      H.getSearchBar().type("product{enter}");
-      cy.wait("@search");
-      cy.findByTestId("search-app").within(() => {
-        cy.findByText("Didn't find anything");
-      });
-    });
-
     it("allows to select a search result using keyboard", () => {
       cy.signInAsNormalUser();
       visitEmbeddingWithSearch("/");
@@ -210,69 +199,6 @@ describe("scenarios > search", () => {
       cy.findByTestId("dashboard-parameters-and-cards").should("exist");
 
       cy.findByTestId("search-results-floating-container").should("exist");
-    });
-  });
-
-  describe("accessing full page search with `Enter`", () => {
-    it("should only search and open full page search when a text query is entered", () => {
-      cy.intercept("GET", "/api/activity/recents?*").as("getRecentViews");
-      cy.intercept({
-        method: "GET",
-        pathname: "/api/search",
-        query: { context: "search-bar" },
-      }).as("searchBarSearch");
-      cy.intercept({
-        method: "GET",
-        pathname: "/api/search",
-        query: { context: "search-app" },
-      }).as("searchAppSearch");
-
-      visitEmbeddingWithSearch("/");
-
-      H.getSearchBar().click().type("{enter}");
-
-      cy.wait("@getRecentViews");
-
-      cy.findByTestId("search-results-floating-container").within(() => {
-        cy.findByText("Recently viewed").should("exist");
-      });
-      cy.location("pathname").should("eq", "/");
-
-      cy.clock(Date.now(), ["setTimeout", "clearTimeout"]);
-      H.getSearchBar().type(" ").should("have.value", " ");
-      cy.tick(SEARCH_DEBOUNCE_DURATION);
-      cy.findByTestId("search-results-floating-container").within(() => {
-        cy.findByText("Recently viewed").should("exist");
-      });
-      H.getSearchBar().type("{enter}");
-      cy.location("pathname").should("eq", "/");
-      cy.get("@searchBarSearch.all").should("have.length", 0);
-
-      H.getSearchBar().clear().type("ord").should("have.value", "ord");
-      cy.tick(SEARCH_DEBOUNCE_DURATION);
-      cy.wait("@searchBarSearch");
-      cy.findByTestId("search-bar-results-container").should("be.visible");
-
-      H.getSearchBar().clear().type(" ").should("have.value", " ");
-      cy.tick(SEARCH_DEBOUNCE_DURATION);
-      cy.findByTestId("search-results-floating-container")
-        .findByText("Recently viewed")
-        .should("be.visible");
-      cy.findByTestId("search-bar-results-container").should("not.exist");
-      cy.get("@searchBarSearch.all").should("have.length", 1);
-      cy.clock().invoke("restore");
-
-      H.getSearchBar().clear().type("orders{enter}");
-      cy.wait("@searchAppSearch");
-
-      cy.findByTestId("search-app").within(() => {
-        cy.findByText('Results for "orders"').should("exist");
-      });
-
-      cy.location().should((loc) => {
-        expect(loc.pathname).to.eq("/search");
-        expect(loc.search).to.eq("?q=orders");
-      });
     });
   });
 });

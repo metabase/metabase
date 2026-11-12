@@ -22,8 +22,12 @@ import {
   useLifecycle,
   useValueOrder,
 } from "metabase/metadata/lifecycle";
-import { useSchemaTables } from "metabase/metadata/table-structure";
-import type { Field, StructuredDatasetQuery, Table } from "metabase-types/api";
+import {
+  type AdhocMbqlQuery,
+  legacyQuery,
+  useSchemaTables,
+} from "metabase/metadata/table-structure";
+import type { Field, Table } from "metabase-types/api";
 
 // Enough history rows to see the common transitions without a heavy query
 const HISTORY_ROW_LIMIT = 5000;
@@ -158,7 +162,7 @@ function useObservedTransitions(
   historyTable: Table | undefined,
 ): ObservedTransitions {
   const { entityKeyFieldId, stateFieldId, changedAtFieldId } = history ?? {};
-  const query: StructuredDatasetQuery | null =
+  const query: AdhocMbqlQuery | null =
     historyTable &&
     entityKeyFieldId != null &&
     stateFieldId != null &&
@@ -180,7 +184,9 @@ function useObservedTransitions(
           },
         }
       : null;
-  const { data } = useGetAdhocQueryQuery(query ?? skipToken);
+  const { data } = useGetAdhocQueryQuery(
+    query != null ? legacyQuery(query) : skipToken,
+  );
   return useMemo(
     () =>
       countObservedTransitions(

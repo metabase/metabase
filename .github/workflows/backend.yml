@@ -18,7 +18,7 @@ jobs:
   gate:
     uses: ./.github/workflows/test.gate.yml
     with:
-      filters: backend_all project_backend_checks project_codeowners_checks project_migration_checks project_ratchet_checks
+      filters: backend_all mage_tests project_backend_checks project_codeowners_checks project_migration_checks project_ratchet_checks
 
   # Generated static-viz output can shift without any backend source changing, so the suite follows
   # it too. Only worth probing when nothing else has already decided the suite.
@@ -34,14 +34,11 @@ jobs:
       static_viz: ${{ steps.static_viz.outputs.static_viz }}
     steps:
       - uses: actions/checkout@v7
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Build static-viz frontend
-        run: bun run build-static-viz
-        env:
-          MB_EDITION: ee
+      # Needed here for the list of sources
+      - name: Download static-viz bundle
+        uses: ./.github/actions/download-static-viz
+        with:
+          edition: ee
       - name: Check for static viz changes
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: static_viz
@@ -82,6 +79,21 @@ jobs:
             || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
           run: ./bin/mage kondo-ratchets
 
+  mage-tests:
+    name: Mage
+    needs: gate
+    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'mage_tests') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Check mage runs
+        run: ./bin/mage -h
+      - name: Run mage tests
+        run: ./bin/mage -test
+
   # Only a checkout is needed: bin/mage fetches babashka, and the runner's Java resolves bb.edn's deps.
   codeowners-check:
     name: 'Project tests: CODEOWNERS'
@@ -96,7 +108,7 @@ jobs:
 
   project-tests:
     name: Project tests
-    needs: [project-checks, codeowners-check]
+    needs: [project-checks, codeowners-check, mage-tests]
     if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
@@ -223,16 +235,14 @@ jobs:
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
     steps:
       - uses: actions/checkout@v7
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
           java-version: "${{ matrix.java-version }}"
-      - name: Build static-viz frontend
-        run: bun run build-static-viz
-        env:
-          MB_EDITION: ${{ matrix.job.edition }}
+      - name: Download static-viz bundle
+        uses: ./.github/actions/download-static-viz
+        with:
+          edition: ${{ matrix.job.edition }}
 
       - name: Resolve current job id
         # Resolve JOB_ID before the long test step so the ci-conductor reporter

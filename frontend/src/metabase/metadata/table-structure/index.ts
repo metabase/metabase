@@ -1,3 +1,4 @@
+export { type AdhocMbqlQuery, legacyQuery } from "./adhoc-query";
 export {
   type CustomPropertyFacet,
   type EavBinding,

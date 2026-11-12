@@ -13,9 +13,9 @@ import {
   usePropertyRegistry,
   usePropertySampleRows,
   useSchemaTables,
+  legacyQuery,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Button } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -34,7 +34,7 @@ export function EntityCustomPropertiesSection({ table }: { table: Table }) {
       return false;
     }
     const entityKeyField = candidate.fields?.find(
-      (field) => getRawTableFieldId(field) === eav.entityKeyFieldId,
+      (field) => field.id === eav.entityKeyFieldId,
     );
     return findTargetTable(entityKeyField, schemaTables)?.id === table.id;
   });
@@ -89,11 +89,11 @@ function EntityCustomProperties({
 function useSampleEntityProperties(table: Table, valueTable: Table) {
   const { data } = useGetAdhocQueryQuery(
     typeof table.id === "number"
-      ? {
+      ? legacyQuery({
           database: table.db_id,
           type: "query",
           query: { "source-table": table.id, limit: 1 },
-        }
+        })
       : skipToken,
   );
   const row = data?.data.rows[0];

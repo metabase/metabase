@@ -15,7 +15,6 @@ import {
   useLifecycle,
   useValueOrder,
 } from "metabase/metadata/lifecycle";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Card,
   Group,
@@ -40,7 +39,7 @@ export function useHasValueKind(field: Field): boolean {
   const { getFieldLifecycle } = useLifecycle();
   // Free-text columns don't need this; lifecycle-like and listed ones do
   return (
-    getFieldLifecycle(getRawTableFieldId(field)).enumKind != null ||
+    getFieldLifecycle(field.id).enumKind != null ||
     inferEnumKind(field).kind !== "nominal" ||
     field.has_field_values === "list"
   );
@@ -53,7 +52,7 @@ export function useHasValueKind(field: Field): boolean {
  */
 export function ValueOrderSection({ field, table }: ValueOrderSectionProps) {
   const readOnly = !table.can_write;
-  const fieldId = getRawTableFieldId(field);
+  const fieldId = field.id;
   const { getFieldLifecycle, setEnumKind, setValueOrder } = useLifecycle();
   const overrides = getFieldLifecycle(fieldId);
   const kindInference = inferEnumKind(field);

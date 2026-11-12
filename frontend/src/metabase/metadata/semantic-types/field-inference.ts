@@ -2,7 +2,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { type TableRole, isRoleA } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isDate, isFK, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId } from "metabase-types/api";
 
@@ -580,7 +579,7 @@ const KEY_SURROGATE_RE = /_(sk|key)$/;
 const TENANT_NAME_RE = /^(account|organization|org|workspace|tenant)_id$/;
 
 const nameOf = (field: Field) => field.name.toLowerCase();
-const idOf = (field: Field): FieldId => getRawTableFieldId(field);
+const idOf = (field: Field): FieldId => field.id;
 
 function inference(
   semanticType: string | null,

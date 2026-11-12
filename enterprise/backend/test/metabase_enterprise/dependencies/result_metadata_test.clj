@@ -17,6 +17,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -83,6 +84,21 @@
   (mt/with-premium-features #{:dependencies}
     (deps.result-metadata/update-result-metadata! 1000)))
 
+(defn- do-with-field-display-name!
+  "Run `thunk` with `display-name` set by a user as the display name of the Field with `field-id`."
+  [field-id display-name thunk]
+  (mt/with-temp-vals-in-db :model/Field field-id {:display_name (t2/select-one-fn :display_name :model/Field :id field-id)}
+    (try
+      (field-user-settings/upsert-field-user-settings! {:id field-id} {:display_name display-name})
+      (thunk)
+      (finally
+        (field-user-settings/delete-field-user-settings! [field-id])))))
+
+(defmacro ^:private with-field-display-name!
+  "Run `body` with `display-name` set by a user as the display name of the Field with `field-id`."
+  [field-id display-name & body]
+  `(do-with-field-display-name! ~field-id ~display-name (fn [] ~@body)))
+
 (defn- add-grand-total [query]
   (lib/expression query "Grand total" (lib/* (lib.metadata/field (mt/metadata-provider) (mt/id :orders :total)) 2)))
 
@@ -123,7 +139,7 @@
           (let [run-count (column card-id "count")]
             (is (some? (:fingerprint run-count)))
             (run-jobs!)
-            (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :product_id) :display_name "Item"}]
+            (with-field-display-name! (mt/id :orders :product_id) "Item"
               (run-jobs!)
               (is (= "Item" (:display_name (column card-id "PRODUCT_ID"))))
               (is (= (select-keys run-count [:base_type :fingerprint])
@@ -197,7 +213,7 @@
         (t2/update! :model/Card :id model-id {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card
                                                                                                 :id model-id)
                                                                               "TOTAL" "Grand total")})
-        (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
+        (with-field-display-name! (mt/id :orders :total) "Order total"
           (is (pending? model-id))
           (run-jobs!)
           (is (not (pending? model-id)))
@@ -208,7 +224,7 @@
     (with-dependencies-feature
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
-        (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Grand total"}]
+        (with-field-display-name! (mt/id :orders :total) "Grand total"
           (is (pending? card-id))
           (run-jobs!)
           (is (= "Grand total" (:display_name (column card-id "TOTAL"))))
@@ -280,7 +296,7 @@
     (with-dependencies-feature
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
-        (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
+        (with-field-display-name! (mt/id :orders :total) "Order total"
           (is (pos? (rederive-during-inference!
                      card-id
                      (once! #(t2/update! :model/Card :id card-id {:dataset_query (add-grand-total (table-query :orders))})))))
@@ -299,7 +315,7 @@
         (let [run-metadata (-> (t2/select-one-fn :result_metadata :model/Card :id card-id)
                                (rename-column "TOTAL" "Run total")
                                (->> (mapv #(cond-> % (= "ID" (:name %)) (assoc :fingerprint {:global {:distinct-count 7}})))))]
-          (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
+          (with-field-display-name! (mt/id :orders :total) "Order total"
             (is (pos? (rederive-during-inference! card-id (once! #(store-run-metadata! card-id run-metadata)))))
             (run-jobs!)
             (is (= "Order total" (:display_name (column card-id "TOTAL"))))
@@ -376,7 +392,7 @@
         (is (not (pending? card-id)))
         (run-jobs!)
         (is (nil? (column card-id "Grand total")))
-        (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
+        (with-field-display-name! (mt/id :orders :total) "Order total"
           (run-jobs!)
           (is (some? (column card-id "Grand total"))))))))
 

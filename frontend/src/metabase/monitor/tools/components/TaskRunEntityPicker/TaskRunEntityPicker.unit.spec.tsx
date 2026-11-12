@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -8,6 +9,7 @@ import type {
 } from "metabase-types/api";
 
 import { TaskRunEntityPicker } from "./TaskRunEntityPicker";
+import type { EntityValue } from "./types";
 
 const ENTITIES: RunEntity[] = [
   { entity_type: "database", entity_id: 1, entity_name: "Sample DB" },
@@ -19,11 +21,13 @@ function setup({
   startedAt = "past7days",
   includeToday = false,
   entities = ENTITIES,
+  value = null,
 }: {
   runType?: TaskRunType | null;
   startedAt?: TaskRunDateFilterOption | null;
   includeToday?: boolean;
   entities?: RunEntity[];
+  value?: EntityValue | null;
 } = {}) {
   fetchMock.get("path:/api/task/runs/entities", entities);
 
@@ -33,7 +37,7 @@ function setup({
       runType={runType}
       startedAt={startedAt}
       includeToday={includeToday}
-      value={null}
+      value={value}
       onChange={onChange}
     />,
   );
@@ -80,5 +84,22 @@ describe("TaskRunEntityPicker", () => {
 
     await waitFor(() => expect(getEntityCalls()).toHaveLength(1));
     expect(getEntityCalls()[0].url).toContain("started-at=past7days%7E");
+  });
+
+  it("should only highlight the picked entity when the entities load after the value (GDGT-2860)", async () => {
+    setup({ value: { entityType: "card", entityId: 2 } });
+
+    const picker = screen.getByPlaceholderText("Filter by entity");
+    await waitFor(() => {
+      expect(picker).toHaveValue("My question");
+    });
+    await userEvent.click(picker);
+
+    expect(
+      await screen.findByRole("option", { name: "Sample DB" }),
+    ).not.toHaveAttribute("data-combobox-selected");
+    expect(screen.getByRole("option", { name: "My question" })).toHaveAttribute(
+      "data-combobox-active",
+    );
   });
 });

@@ -24,10 +24,7 @@ import {
   isFieldTypeA,
   useTableSemantics,
 } from "metabase/metadata/semantic-types";
-import {
-  getFieldCurrency,
-  getRawTableFieldId,
-} from "metabase/metadata/utils/field";
+import { getFieldCurrency } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { MultiSelect, Text } from "metabase/ui";
 import type { Field, Table } from "metabase-types/api";
@@ -47,7 +44,7 @@ export function FieldSemanticsSection({
 }: FieldSemanticsSectionProps) {
   const readOnly = !table.can_write;
   const { fieldTypes, setFieldType } = useTableSemantics(table);
-  const resolved = fieldTypes.get(getRawTableFieldId(field));
+  const resolved = fieldTypes.get(field.id);
 
   if (resolved == null) {
     return null;
@@ -253,7 +250,7 @@ function FieldTargetInput({ field, table }: { field: Field; table: Table }) {
       disabled={!table.can_write}
       onChange={async (fieldId) => {
         const { error } = await updateField({
-          id: getRawTableFieldId(field),
+          id: field.id,
           fk_target_field_id: fieldId,
         });
         if (error) {
@@ -284,7 +281,7 @@ function FieldCurrencyInput({
       disabled={disabled}
       onChange={async (currency) => {
         const { error } = await updateField({
-          id: getRawTableFieldId(field),
+          id: field.id,
           settings: { ...field.settings, currency },
         });
         if (error) {

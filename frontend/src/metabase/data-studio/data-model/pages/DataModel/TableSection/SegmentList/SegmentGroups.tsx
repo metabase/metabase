@@ -23,7 +23,6 @@ import {
   useSegmentGroups,
 } from "metabase/metadata/segment-groups";
 import { useSegmentSettings } from "metabase/metadata/table-segments";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field, Segment, Table } from "metabase-types/api";
@@ -75,10 +74,8 @@ export function useSegmentGroupProposals(table: Table): SegmentGroupProposals {
 
   const kindCandidates = getKindPartitionCandidates(
     fields,
-    statusField ? getRawTableFieldId(statusField) : undefined,
-  ).filter((field) =>
-    isOpen(`kind:${getRawTableFieldId(field)}`, getRawTableFieldId(field)),
-  );
+    statusField ? statusField.id : undefined,
+  ).filter((field) => isOpen(`kind:${field.id}`, field.id));
 
   return { proposals, kindCandidates };
 }
@@ -254,9 +251,7 @@ export function KindPartitionProposalItem({
   onAccept: (proposal: SegmentGroupProposal) => void;
   onDismiss: (proposal: SegmentGroupProposal) => void;
 }) {
-  const { data } = useGetFieldValuesQuery(
-    getRawTableFieldId(field) ?? skipToken,
-  );
+  const { data } = useGetFieldValuesQuery(field.id ?? skipToken);
   const values = (data?.values ?? [])
     .map(([value]) => value)
     .filter((value) => value != null && value !== "")

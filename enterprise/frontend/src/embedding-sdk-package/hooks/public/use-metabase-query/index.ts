@@ -23,6 +23,7 @@ export type {
   MetabaseOrderBy,
   MetabaseQueryOptions,
   MetabaseOrderByDirection,
+  MetabaseQueryRow,
   UseMetabaseQueryResult,
 } from "./types";
 export type { UseMetabaseQueryObjectResult } from "./use-metabase-query-object";

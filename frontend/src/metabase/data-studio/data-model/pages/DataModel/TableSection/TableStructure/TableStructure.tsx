@@ -26,7 +26,6 @@ import {
   isTableRole,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   Box,
   Button,
@@ -432,7 +431,7 @@ function GrainFields({
   return (
     <Group gap="xs">
       {grainFields.map((field) => {
-        const fieldId = getRawTableFieldId(field);
+        const fieldId = field.id;
         return (
           <Link
             key={fieldId}
@@ -466,7 +465,7 @@ type MainDateInputProps = {
 };
 
 function getMainDateFieldId({ mainDateField }: TableStructureValue) {
-  return mainDateField ? getRawTableFieldId(mainDateField) : null;
+  return mainDateField ? mainDateField.id : null;
 }
 
 /** Sync's main date, until an admin confirms or changes it; none isn't a guess */
@@ -550,7 +549,7 @@ function FieldSelect({
       aria-label={label}
       classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
       data={fields.map((field) => {
-        const fieldId = getRawTableFieldId(field);
+        const fieldId = field.id;
         return {
           value: String(fieldId),
           label:
