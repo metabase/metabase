@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
+   [metabase.collections.governing-collection :as governing-collection]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
@@ -138,6 +139,8 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies))
+
+(defmethod governing-collection/root-namespace :model/Card [_model] nil)
 
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column

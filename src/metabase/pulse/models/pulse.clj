@@ -21,6 +21,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.governing-collection :as governing-collection]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -51,6 +52,8 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set))
+
+(defmethod governing-collection/root-namespace :model/Pulse [_model] nil)
 
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."
