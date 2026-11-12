@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -131,6 +132,8 @@
 
 (t2/define-after-select :model/Field
   [field]
+  (models.cache/register-loaded! :model/Field (:id field))
+  (models.cache/register-loaded! :model/Table (:table_id field))
   (dissoc field :is_defective_duplicate :unique_field_helper))
 
 (defn- enforce-effective-type-invariant

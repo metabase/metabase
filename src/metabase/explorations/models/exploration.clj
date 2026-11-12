@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -103,3 +104,9 @@
                   :collection-position        true
                   :collection-type            :collection.type
                   :archived-directly          true}})
+
+(t2/define-after-select :model/Exploration
+  [instance]
+  (models.cache/register-loaded! :model/Exploration (:id instance))
+  (models.cache/register-loaded! :model/Collection (:collection_id instance))
+  instance)

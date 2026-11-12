@@ -13,6 +13,7 @@
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
@@ -137,6 +138,8 @@
 
 (t2/define-after-select :model/Dashboard
   [dashboard]
+  (models.cache/register-loaded! :model/Dashboard (:id dashboard))
+  (models.cache/register-loaded! :model/Collection (:collection_id dashboard))
   (-> dashboard
       migrate-parameters-list
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled))

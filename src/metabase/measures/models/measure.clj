@@ -13,6 +13,7 @@
    [metabase.measures.db :as measures.db]
    [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -173,6 +174,8 @@
 
 (t2/define-after-select :model/Measure
   [measure]
+  (models.cache/register-loaded! :model/Measure (:id measure))
+  (models.cache/register-loaded! :model/Table (:table_id measure))
   (normalize-definition-from-db measure))
 
 (mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]

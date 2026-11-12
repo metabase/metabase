@@ -4,6 +4,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
@@ -283,3 +284,9 @@
   [_model]
   {:synced-items         native-query-snippets.db/synced-snippet-items
    :synced-filter-clause native-query-snippets.db/synced-snippets-clause})
+
+(t2/define-after-select :model/NativeQuerySnippet
+  [instance]
+  (models.cache/register-loaded! :model/NativeQuerySnippet (:id instance))
+  (models.cache/register-loaded! :model/Collection (:collection_id instance))
+  instance)

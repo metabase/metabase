@@ -5,6 +5,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -157,6 +158,9 @@
 
 (t2/define-after-select :model/Table
   [table]
+  (models.cache/register-loaded! :model/Table (:id table))
+  (models.cache/register-loaded! :model/TableUserSettings (:id table))
+  (models.cache/register-loaded! :model/Database (:db_id table))
   (dissoc table :is_defective_duplicate :unique_table_helper))
 
 (defn validate-user-changes!

@@ -9,6 +9,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
    [metabase.permissions.core :as perms]
@@ -785,3 +786,9 @@
 (defmethod remote-sync/spec :model/ImplicitAction
   [_model]
   {:synced-filter-clause actions.db/synced-action-details-clause})
+
+(t2/define-after-select :model/Action
+  [instance]
+  (models.cache/register-loaded! :model/Action (:id instance))
+  (models.cache/register-loaded! :model/Collection (:collection_id instance))
+  instance)

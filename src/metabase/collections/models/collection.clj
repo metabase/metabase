@@ -16,6 +16,7 @@
    [metabase.config.core :as config :refer [*request-id*]]
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -325,6 +326,7 @@
     collection))
 
 (t2/define-after-select :model/Collection [collection]
+  (models.cache/register-loaded! :model/Collection (:id collection))
   (maybe-localize-system-collection-name collection))
 
 (doto :model/Collection
