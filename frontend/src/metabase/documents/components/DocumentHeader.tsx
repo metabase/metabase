@@ -11,6 +11,7 @@ import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import { usePrintContext } from "metabase/documents/contexts/PrintContext";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import {
@@ -165,6 +166,10 @@ export const DocumentHeader = ({
                 <DateTime value={document.updated_at} unit="day" />
               </Flex>
             </Tooltip>
+            <PLUGIN_REMOTE_SYNC.OfficialBadge
+              collection={document.collection}
+              showLabel
+            />
           </Flex>
         )}
       </Flex>

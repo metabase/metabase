@@ -1,12 +1,19 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupCommentEndpoints } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   PrintContext,
   type PrintContextValue,
 } from "metabase/documents/contexts/PrintContext";
-import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockDocument,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
@@ -26,6 +33,7 @@ const setup = ({
   isBookmarked = false,
   isAdmin = false,
   isPublicSharingEnabled = false,
+  isRemoteSyncEnabled = false,
   onTitleChange = jest.fn(),
   onSave = jest.fn(),
   onMove = jest.fn(),
@@ -51,6 +59,13 @@ const setup = ({
     onArchive,
     onShowHistory,
   };
+
+  if (isRemoteSyncEnabled) {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ remote_sync: true }),
+    });
+    setupEnterpriseOnlyPlugin("remote_sync");
+  }
 
   setupCommentEndpoints([], {
     target_type: "document",
@@ -119,6 +134,28 @@ describe("DocumentHeader", () => {
       setup();
       expect(screen.getByText("John Doe")).toBeInTheDocument();
       expect(screen.getByText("January 15, 2024")).toBeInTheDocument();
+    });
+
+    it("should show official badge when document collection is remote-synced", () => {
+      setup({
+        isRemoteSyncEnabled: true,
+        document: createMockDocument({
+          collection: createMockCollection({ is_remote_synced: true }),
+        }),
+      });
+      expect(screen.getByTestId("official-badge")).toHaveTextContent(
+        "Official",
+      );
+    });
+
+    it("should not show official badge when document collection is not remote-synced", () => {
+      setup({
+        isRemoteSyncEnabled: true,
+        document: createMockDocument({
+          collection: createMockCollection({ is_remote_synced: false }),
+        }),
+      });
+      expect(screen.queryByTestId("official-badge")).not.toBeInTheDocument();
     });
   });
 

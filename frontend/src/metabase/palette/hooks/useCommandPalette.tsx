@@ -426,4 +426,6 @@ const SubtitleText = ({ children }: PropsWithChildren) => (
 const isRecentCollectionItem = (
   item: OmniPickerItem,
 ): item is RecentCollectionItem =>
-  ["collection", "dashboard", "card", "dataset", "metric"].includes(item.model);
+  ["collection", "dashboard", "card", "dataset", "metric", "document"].includes(
+    item.model,
+  );
