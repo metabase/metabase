@@ -1232,7 +1232,7 @@
 ;; and the counted one.
 (deftest ^:synchronized databases-caching
   (testing "GET /api/database"
-    (testing "listing databases costs at most two permission queries per database"
+    (testing "Testing that listing all databases does not make excessive queries with multiple databases"
       (let [baseline (database-list-call-count)]
         (mt/with-temp [:model/Database _ {:engine ::test-driver}
                        :model/Database _ {:engine ::test-driver}
@@ -1248,7 +1248,9 @@
                        :model/Database _ {:engine ::test-driver}
                        :model/Database _ {:engine ::test-driver}
                        :model/Database _ {:engine ::test-driver}]
-          (is (<= (database-list-call-count) (+ baseline 2 (* 2 14)))))))))
+          ;; What a listing costs depends on the token's features and on the databases other tests leave behind.
+          ;; A query per database would add at least 14, and the two allowed are a settings cache refresh.
+          (is (<= (database-list-call-count) (+ baseline 2))))))))
 
 (deftest databases-list-test-2
   (testing "GET /api/database"

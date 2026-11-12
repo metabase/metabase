@@ -26,21 +26,19 @@
       :blocked         [:perms/view-data #{:blocked}]
       nil              [:perms/view-data #{}])))
 
-(deftest ^:parallel ranks->most-permissive-value-test
-  (testing "reconstructs coalesce from a bucket's [min max] value ranks"
-    ;; :perms/create-queries values: [:query-builder-and-native :query-builder :no]
-    (are [expected pair] (= expected (#'data-perms/ranks->most-permissive-value :perms/create-queries pair))
-      :query-builder-and-native [0 2]
-      :query-builder            [1 1]
-      :no                       [2 2]
-      nil                       nil))
-  (testing ":perms/view-data's special rule: a :blocked row overrides :legacy-no-self-service but not :unrestricted"
-    ;; :perms/view-data values: [:unrestricted :legacy-no-self-service :blocked]
-    (are [expected pair] (= expected (#'data-perms/ranks->most-permissive-value :perms/view-data pair))
-      :unrestricted           [0 2]
-      :blocked                [1 2]
-      :legacy-no-self-service [1 1]
-      :blocked                [2 2])))
+(deftest ^:parallel coalesce-ranks-test
+  (testing "coalesces the values ranked mn and mx"
+    (are [expected mn mx] (= expected (#'data-perms/coalesce-ranks :perms/create-queries mn mx))
+      :query-builder-and-native 0   2
+      :query-builder            1   1
+      :no                       2   2
+      nil                       nil nil))
+  (testing ":blocked overrides :legacy-no-self-service but not :unrestricted"
+    (are [expected mn mx] (= expected (#'data-perms/coalesce-ranks :perms/view-data mn mx))
+      :unrestricted           0 2
+      :blocked                1 2
+      :legacy-no-self-service 1 1
+      :blocked                2 2)))
 
 (deftest permission-cache-test
   (let [user-id 1
@@ -1544,12 +1542,39 @@
                             api/*is-superuser?*   false]
                     (is (= (binding [data-perms/*use-perms-cache?* false]
                              (answers))
-                           (binding [data-perms/*permission-cache* (atom {})
-                                     data-perms/*loaded-table-ids* (atom #{})]
+                           (data-perms/with-relevant-permissions-for-user user-id
                              (run! data-perms/register-loaded-table! table-ids)
                              (t2/with-call-count [call-count]
                                (u/prog1 (answers)
                                  (is (<= (call-count) (* 3 (count random-values))) "one load per permission type answers every check"))))))))))))))))
+
+(deftest table-permission-with-other-database-test
+  (testing "a table checked with a Database that isn't its own counts only that Database's rows, before or after its own"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/User                       {user-id :id}  {}
+                   :model/PermissionsGroupMembership {}             {:user_id user-id :group_id group-id}
+                   :model/Database                   {db-a :id}     {}
+                   :model/Database                   {db-b :id}     {}
+                   :model/Table                      {table-b :id}  {:db_id db-b}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-restored-data-perms-for-group! group-id
+          (doseq [db-id [db-a db-b]]
+            (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)
+            (data-perms/set-database-permission! group-id db-id :perms/create-queries :no))
+          (data-perms/set-table-permission! group-id table-b :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! group-id table-b :perms/create-queries :query-builder)
+          (binding [api/*current-user-id* user-id
+                    api/*is-superuser?*   false]
+            (doseq [order [[db-a db-b] [db-b db-a]]]
+              (testing (str "checking databases " order)
+                (data-perms/with-relevant-permissions-for-user user-id
+                  (data-perms/register-loaded-table! table-b)
+                  (is (= {db-a [:blocked :no]
+                          db-b [:unrestricted :query-builder]}
+                         (into {} (for [db-id order]
+                                    [db-id [(data-perms/table-permission-for-user user-id :perms/view-data db-id table-b)
+                                            (data-perms/table-permission-for-user user-id :perms/create-queries db-id
+                                                                                  table-b)]])))))))))))))
 
 (deftest race-conditions-test
   ;; This test is probabilistic: success doesn't *necessarily* prove we're doing things correctly, but

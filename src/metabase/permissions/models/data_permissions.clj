@@ -188,23 +188,6 @@
 
 ;;; -------------------------------------------- Request cache ------------------------------------------------------
 
-;;; A check keeps its answer for the rest of the request in [[*permission-cache*]], keyed by the check and its
-;;; arguments. Table and database checks also answer, in the same queries, the Tables and Databases the request has
-;;; loaded but not checked yet, which the models' after-select hooks remember in [[*loaded-table-ids*]] and
-;;; [[*loaded-database-ids*]]. Nothing invalidates the cache when data_permissions is written, so a check repeated after
-;;; a write in the same request reads the pre-write answer.
-
-(defn- ranks->most-permissive-value
-  "Reconstructs [[coalesce]] over a bucket of values from the bucket's `[min-rank max-rank]` pair, or nil for a nil pair."
-  [perm-type pair]
-  (when-let [[mn mx] pair]
-    (let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)]
-      (if (and (= perm-type :perms/view-data)
-               (= (nth values mx) :blocked)
-               (not= (nth values mn) :unrestricted))
-        :blocked
-        (nth values mn)))))
-
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *use-perms-cache?*
   "Bind to `false` to intentionally bypass the permissions caches and fetch data straight from the DB."
@@ -224,35 +207,42 @@
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *permission-cache*
-  "Request cache of the current user's permission answers, `{[user-id question-key & args] answer}`."
+  "The current user's permission answers, `{[user-id question-key & args] answer}`, bound per request by
+  [[with-relevant-permissions-for-user]] and otherwise one process-wide atom, never invalidated by permission writes."
   (atom {}))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *loaded-table-ids*
-  "The ids of the Tables loaded in this request, or nil outside a request."
+  "The ids of the Tables loaded in this request in load order, `{:ids [...] :seen #{...}}`, or nil outside a request."
   nil)
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *loaded-database-ids*
-  "The ids of the Databases loaded in this request, or nil outside a request."
+  "The ids of the Databases loaded in this request in load order, `{:ids [...] :seen #{...}}`, or nil outside a request."
   nil)
 
+(defn- register-loaded!
+  "Appends `id` to the `loaded` ids unless it is there already."
+  [loaded id]
+  (when (and loaded id (not (contains? (:seen @loaded) id)))
+    (swap! loaded (fn [{:keys [seen] :as m}]
+                    (cond-> m
+                      (not (contains? seen id)) (-> (update :ids conj id) (update :seen conj id)))))))
+
 (defn register-loaded-table!
-  "Remembers the Table with `table-id` as loaded in this request, so that the first check of a permission on any loaded
-  Table answers it for all of them."
+  "Remembers the Table with `table-id` as loaded in this request, so that a table check answers it with the Table asked."
   [table-id]
-  (when (and *loaded-table-ids* table-id)
-    (swap! *loaded-table-ids* conj table-id)))
+  (register-loaded! *loaded-table-ids* table-id))
 
 (defn register-loaded-database!
-  "Remembers the Database with `db-id` as loaded in this request, so that the first check of a database-level
-  permission on any loaded Database answers it for all of them."
+  "Remembers the Database with `db-id` as loaded in this request, so that a database check answers it with the Database
+  asked."
   [db-id]
-  (when (and *loaded-database-ids* db-id)
-    (swap! *loaded-database-ids* conj db-id)))
+  (register-loaded! *loaded-database-ids* db-id))
 
 (defn- cached
-  "The answer to `question` for `user-id`, computed by `f` once per request for the current user and every time otherwise."
+  "The answer to `question` for `user-id`, computed by `f` once per [[*permission-cache*]] for the current user and every
+  time otherwise."
   [user-id question f]
   (if (use-cache? user-id)
     (let [k (into [user-id] question)
@@ -268,23 +258,34 @@
   "How many ids one check answers at most."
   10000)
 
+(defn- next-loaded-ids
+  "Up to `n` of the `ids` from position `start` on that `answered?` rejects, and the position after the last id looked at."
+  [ids start n answered?]
+  (loop [i start, acc []]
+    (if (or (= n (count acc)) (>= i (count ids)))
+      [acc i]
+      (let [id (nth ids i)]
+        (recur (inc i) (cond-> acc (not (answered? id)) (conj id)))))))
+
 (defn- cached-batch
-  "The answer to `question` about `id` for `user-id`, computed once per request for the current user by `f` for `id`
-  together with the `loaded-ids` that have no cached answer to `question` yet. `f` takes ids and returns
-  `{id answer}`."
-  [user-id question id loaded-ids f]
+  "The answer to `question` about `id` for `user-id`, computed by `f`, which takes ids and returns `{id answer}`, for `id`
+  and the next unanswered of the `loaded` ids, each loaded id being looked at once per question."
+  [user-id question id loaded f]
   (if (use-cache? user-id)
-    (let [key-of #(into [user-id] (conj question %))
-          cache  @*permission-cache*]
+    (let [key-of     #(into [user-id] (conj question %))
+          cursor-key [user-id ::loaded-cursor question]
+          cache      @*permission-cache*]
       (if (contains? cache (key-of id))
         (get cache (key-of id))
-        (let [ids     (into [id]
-                            (comp (remove #{id})
-                                  (remove #(contains? cache (key-of %)))
-                                  (take (dec max-batch-size)))
-                            loaded-ids)
-              answers (f ids)]
-          (swap! *permission-cache* into (map (fn [i] [(key-of i) (get answers i)])) ids)
+        (let [[more cursor] (next-loaded-ids (some-> loaded deref :ids)
+                                             (get cache cursor-key 0)
+                                             (dec max-batch-size)
+                                             #(or (= % id) (contains? cache (key-of %))))
+              ids           (into [id] more)
+              answers       (f ids)]
+          (swap! *permission-cache* #(-> %
+                                         (into (map (fn [i] [(key-of i) (get answers i)])) ids)
+                                         (assoc cursor-key cursor)))
           (get answers id))))
     (get (f [id]) id)))
 
@@ -315,6 +316,13 @@
   (when (seq rows)
     (coalesce perm-type (map (comp keyword :perm_value) rows))))
 
+(defn- coalesce-ranks
+  "The [[coalesce]]d value of the `perm-type` values ranked `mn` and `mx`, or nil when `mn` is nil."
+  [perm-type mn mx]
+  (when mn
+    (let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)]
+      (coalesce perm-type [(nth values mn) (nth values mx)]))))
+
 (defn- database-level-values*
   "The coalesced `perm-type` value of `user-id`'s database-level rows on each of the Databases with `db-ids`, as
   `{db-id value}`, nil for a Database without rows."
@@ -323,16 +331,29 @@
     (into {} (map (fn [db-id] [db-id (coalesce-rows perm-type (rows db-id))])) db-ids)))
 
 (defn- table-values*
-  "The coalesced `perm-type` value of `user-id`'s rows on each Table of `table-id->db-id`, its Database's rows and its
-  own while it is active, as `{table-id value}`, nil for a Table without rows."
+  "The coalesced `perm-type` value of `user-id`'s rows of each Table of `table-id->db-id` within its given Database, the
+  Database's own and the Table's while it is active, as `{table-id {:db-id db-id :value value}}`."
   [user-id perm-type table-id->db-id]
   (let [db-rows    (group-by :db_id (chunked #(permissions.db/user-database-level-values user-id perm-type %)
                                              (distinct (vals table-id->db-id))))
-        table-rows (group-by :table_id (chunked #(permissions.db/user-table-level-values user-id perm-type %)
-                                                (filter pos-int? (keys table-id->db-id))))]
+        table-rows (group-by (juxt :table_id :db_id)
+                             (chunked #(permissions.db/user-table-level-values user-id perm-type %)
+                                      (filter pos-int? (keys table-id->db-id))))]
     (into {} (map (fn [[table-id db-id]]
-                    [table-id (coalesce-rows perm-type (concat (db-rows db-id) (table-rows table-id)))]))
+                    [table-id {:db-id db-id
+                               :value (coalesce-rows perm-type (concat (db-rows db-id) (table-rows [table-id db-id])))}]))
           table-id->db-id)))
+
+(defn- most-restrictive-values*
+  "The most permissive across `user-id`'s groups of each group's most restrictive `perm-type` value on each of the
+  Databases with `db-ids`, as `{db-id value}`, nil for a Database without rows."
+  [user-id perm-type db-ids]
+  (let [pairs (into {} (map (juxt :db_id identity))
+                    (chunked #(permissions.db/database-most-restrictive-rank-pairs user-id perm-type %) db-ids))]
+    (into {} (map (fn [db-id]
+                    (let [{:keys [mn mx]} (pairs db-id)]
+                      [db-id (coalesce-ranks perm-type mn mx)])))
+          db-ids)))
 
 (defn- table-database-ids
   "The Database id of each Table with `table-ids`, as `{table-id db-id}`."
@@ -342,20 +363,23 @@
 ;;; ------------------------------------------------ Cached checks -----------------------------------------------
 
 (defn- table-value
-  "[[table-values*]] of the Table with `table-id` in the Database with `db-id`, answered with the other Tables loaded in
-  this request. A Table that doesn't exist, such as the 0 asked about for an unknown table, is answered on its own."
+  "[[table-values*]] of the Table with `table-id` in the Database with `db-id`, batched with the loaded Tables when the
+  batch answered it for that Database and asked on its own otherwise, as for table 0 or a Database not the Table's."
   [user-id perm-type db-id table-id]
-  (if (pos-int? table-id)
-    (cached-batch user-id [::table-value perm-type] table-id (some-> *loaded-table-ids* deref)
-                  (fn [ids]
-                    (table-values* user-id perm-type (assoc (table-database-ids (rest ids)) table-id db-id))))
-    (cached user-id [::table-value perm-type db-id table-id]
-            #(get (table-values* user-id perm-type {table-id db-id}) table-id))))
+  (let [batched (when (pos-int? table-id)
+                  (cached-batch user-id [::table-value perm-type] table-id *loaded-table-ids*
+                                (fn [ids]
+                                  (table-values* user-id perm-type
+                                                 (assoc (table-database-ids (rest ids)) table-id db-id)))))]
+    (if (= db-id (:db-id batched))
+      (:value batched)
+      (cached user-id [::table-value perm-type db-id table-id]
+              #(:value (get (table-values* user-id perm-type {table-id db-id}) table-id))))))
 
 (defn- database-level-value
-  "[[database-level-values*]] of the Database with `db-id`, answered with the other Databases loaded in this request."
+  "[[database-level-values*]] of the Database with `db-id`, batched with the loaded Databases."
   [user-id perm-type db-id]
-  (cached-batch user-id [::database-level-value perm-type] db-id (some-> *loaded-database-ids* deref)
+  (cached-batch user-id [::database-level-value perm-type] db-id *loaded-database-ids*
                 #(database-level-values* user-id perm-type %)))
 
 (defn- databases-with-perm-value*
@@ -366,22 +390,24 @@
     (into {} (map (fn [db-id] [db-id (contains? holding db-id)])) db-ids)))
 
 (defn- has-perm-value?
-  "Whether `user-id` holds `perm-type` with exactly `perm-value` on a row in `scope`, see `permissions.db/scope`. A
-  scope of one Database is answered with the other Databases loaded in this request."
+  "Whether `user-id` holds `perm-type` with exactly `perm-value` on a row in `scope` (`:metabase.permissions.db/scope`),
+  batched with the loaded Databases for a scope of one Database."
   [user-id perm-type perm-value {:keys [db-id] :as scope}]
   (if (and db-id (= scope {:db-id db-id}))
-    (cached-batch user-id [::database-has-perm-value perm-type perm-value] db-id (some-> *loaded-database-ids* deref)
+    (cached-batch user-id [::database-has-perm-value perm-type perm-value] db-id *loaded-database-ids*
                   #(databases-with-perm-value* user-id perm-type perm-value %))
     (cached user-id [::has-perm-value perm-type perm-value scope]
             #(permissions.db/user-has-perm-value? user-id perm-type perm-value scope))))
 
 (defn- most-restrictive-value
-  "The most permissive across `user-id`'s groups of each group's most restrictive `perm-type` value in `scope`, or nil
-  when there are no rows."
-  [user-id perm-type scope]
-  (cached user-id [::most-restrictive perm-type scope]
-          #(let [{:keys [mn mx]} (permissions.db/most-restrictive-rank-pair user-id perm-type scope)]
-             (ranks->most-permissive-value perm-type (when mn [mn mx])))))
+  "[[most-restrictive-values*]] in `scope`, batched with the loaded Databases for a scope of one Database."
+  [user-id perm-type {:keys [db-id] :as scope}]
+  (if (and db-id (= scope {:db-id db-id}))
+    (cached-batch user-id [::database-most-restrictive perm-type] db-id *loaded-database-ids*
+                  #(most-restrictive-values* user-id perm-type %))
+    (cached user-id [::most-restrictive perm-type scope]
+            #(let [{:keys [mn mx]} (permissions.db/most-restrictive-rank-pair user-id perm-type scope)]
+               (coalesce-ranks perm-type mn mx)))))
 
 (defn- most-permissive-probed-value
   "The [[coalesce]]d `perm-type` value of `user-id`'s rows in `scope`, found by probing values in the order
@@ -648,12 +674,11 @@
   @*sandboxes-for-user*)
 
 (defmacro with-relevant-permissions-for-user
-  "Populates the per-function permission caches above (and `*sandboxes-for-user*`) for use by the cache-aware
-  functions in this namespace."
+  "Binds a fresh request cache, empty loaded-id lists and `*sandboxes-for-user*` for the checks in this namespace."
   [user-id & body]
   `(binding [*permission-cache*   (atom {})
-             *loaded-table-ids*    (atom #{})
-             *loaded-database-ids* (atom #{})
+             *loaded-table-ids*    (atom {:ids [] :seen #{}})
+             *loaded-database-ids* (atom {:ids [] :seen #{}})
              *sandboxes-for-user* (delay (enforced-sandboxes-for-user ~user-id))]
      ~@body))
 
