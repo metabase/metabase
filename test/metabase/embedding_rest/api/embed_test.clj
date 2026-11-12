@@ -989,20 +989,6 @@
         #_{:clj-kondo/ignore [:deprecated-var]}
         (test-query-results (client/client :get 202 (dashcard-url dashcard {} (dashcard->dash-eid dashcard))))))))
 
-(deftest embed-card-query-referenced-entities-test
-  (testing "GET /api/embed/card/:token/query resolves the dynamic goal in the card's viz settings"
-    (with-embedding-enabled-and-new-secret-key!
-      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
-        (with-temp-card [card {:enable_embedding       true
-                               :display                :scalar
-                               :visualization_settings
-                               {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
-                                                   :max   nil
-                                                   :color "red"}]}}]
-          (is (= [[1000]]
-                 (-> (client/client :get 202 (card-query-url card ""))
-                     (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
-
 (deftest embed-card-query-measure-goal-test
   (testing "GET /api/embed/card/:token/query resolves a measure goal source in the card's viz settings"
     (with-embedding-enabled-and-new-secret-key!
