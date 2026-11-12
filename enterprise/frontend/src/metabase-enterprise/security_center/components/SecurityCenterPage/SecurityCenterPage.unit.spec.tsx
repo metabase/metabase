@@ -592,7 +592,7 @@ describe("SecurityCenterPage", () => {
       await userEvent.click(screen.getByTestId("sync-advisories"));
 
       expect(
-        screen.getByText(
+        await screen.findByText(
           "Couldn't check for security advisories. Advisories may be out of date.",
         ),
       ).toBeInTheDocument();
@@ -619,7 +619,7 @@ describe("SecurityCenterPage", () => {
       await userEvent.click(screen.getByTestId("sync-advisories"));
 
       expect(
-        screen.getByText("Security advisories are up to date"),
+        await screen.findByText("Security advisories are up to date"),
       ).toBeInTheDocument();
       expect(
         screen.queryByText("Checking for security advisories…"),
