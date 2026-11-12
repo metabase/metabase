@@ -51,8 +51,9 @@ import {
   expectSearchResults,
   getCollectionItems,
   getLastSearchParams,
+  getRootItem,
   getScopeRadio,
-  getSearchResult,
+  findSearchResult,
   getSearchScopeSelector,
   typeSearchText,
 } from "../tests/search";
@@ -262,7 +263,7 @@ describe("DataPickerModal", () => {
       expect(getLastSearchParams().get("q")).toBe("prod");
       await expectSearchResults(["Product reviews", "Products"]);
 
-      await userEvent.click(getSearchResult("Products"));
+      await userEvent.click(await findSearchResult("Products"));
       expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({ id: 3, model: "table", name: "Products" }),
@@ -292,7 +293,7 @@ describe("DataPickerModal", () => {
       ]);
       expect(getLastSearchParams().get("collection")).toBeNull();
 
-      await userEvent.click(getSearchResult("Products"));
+      await userEvent.click(await findSearchResult("Products"));
       expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({ id: 3, model: "table", name: "Products" }),
@@ -405,11 +406,7 @@ describe("DataPickerModal", () => {
         "Normal personal collection metric 2",
       ]);
 
-      await userEvent.click(
-        within(screen.getByTestId("item-picker-level-0")).getByText(
-          "Our analytics",
-        ),
-      );
+      await userEvent.click(getRootItem(/Our analytics/));
       await userEvent.click(await screen.findByText("First collection"));
       await typeSearchText("1");
       expect(getScopeRadio("First collection")).toBeChecked();
@@ -423,11 +420,7 @@ describe("DataPickerModal", () => {
         "Regular metric 1",
       ]);
 
-      await userEvent.click(
-        within(screen.getByTestId("item-picker-level-0")).getByText(
-          /Personal Collection/,
-        ),
-      );
+      await userEvent.click(getRootItem(/Personal Collection/));
       await typeSearchText("2");
       expect(getScopeRadio(/Robert Tableton/)).toBeChecked();
       expect(getLastSearchParams().get("collection")).toBe(
