@@ -1822,17 +1822,18 @@
             (is (= initial-perms-count final-perms-count)
                 "No new permissions should be created for collections inside personal collections")))))))
 
-(deftest has-remote-synced-collection?-test
-  (testing "Returns false when no remote-synced collections exist"
-    (collection/clear-remote-synced-collection!)
-    (is (false? (collection/has-remote-synced-collection?))))
-  (testing "Returns true when at least one remote-synced collection exists"
-    (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
-      (is (true? (collection/has-remote-synced-collection?)))))
-  (testing "Returns false after clearing remote-synced collections"
-    (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
+(deftest clear-remote-synced-collection!-test
+  (mt/with-empty-h2-app-db!
+    (let [synced-id (t2/insert-returning-pk! :model/Collection {:name "Synced" :is_remote_synced true})
+          library   (collection/create-library-collection!)
+          child-id  (t2/select-one-pk :model/Collection :type collection/library-data-collection-type)]
+      (collection/set-remote-synced! library false)
       (collection/clear-remote-synced-collection!)
-      (is (false? (collection/has-remote-synced-collection?))))))
+      (testing "Stops syncing collections outside the Library"
+        (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id synced-id))))
+      (testing "Syncs the Library and its descendants"
+        (is (= #{true}
+               (t2/select-fn-set :is_remote_synced :model/Collection :id [:in [(:id library) child-id]])))))))
 
 (deftest remote-synced-parent-validation-creating-regular-in-remote-test
   (mt/with-model-cleanup [:model/Collection]
@@ -1844,8 +1845,16 @@
              clojure.lang.ExceptionInfo
              #"A Collection placed in a remote-synced Collection must also be remote-synced"
              (t2/insert! :model/Collection
-                         {:name "Remote Synced Collection"
-                          :location (format "/%d/" parent-id)})))))))
+                         {:name             "Remote Synced Collection"
+                          :location         (format "/%d/" parent-id)
+                          :is_remote_synced false}))))
+      (testing "A collection placed in a remote-synced collection without the flag is remote-synced"
+        (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent Collection"
+                                                          :location "/"
+                                                          :is_remote_synced true}
+                       :model/Collection {child-id :id} {:name "Child Collection"
+                                                         :location (format "/%d/" parent-id)}]
+          (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id child-id))))))))
 
 (deftest remote-synced-parent-validation-creating-in-root-test
   (mt/with-model-cleanup [:model/Collection]
@@ -1956,6 +1965,8 @@
       (let [library (collection/create-library-collection!)]
         (is (= "Library" (:name library)))
         (is (= ["Data" "Metrics"] (sort (map :name (collection/descendants library)))))
+        (is (= #{true} (t2/select-fn-set :is_remote_synced :model/Collection
+                                         :id [:in (cons (:id library) (map :id (collection/descendants library)))])))
         (testing "Only admins can write to the library, all users can read"
           (binding [api/*current-user*                 (mt/user->id :rasta)
                     api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]

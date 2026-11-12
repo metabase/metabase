@@ -197,11 +197,6 @@
    types         :- [:sequential :string]]
   (t2/count :model/Collection :id collection-id :type [:in types]))
 
-(mu/defn remote-synced-collection-count
-  "The number of remote-synced Collections."
-  []
-  (t2/count :model/Collection :is_remote_synced true))
-
 (mu/defn collection-ids-with-location-like
   "The IDs of the Collections whose location matches the SQL `pattern`."
   [pattern :- :string]
@@ -292,9 +287,17 @@
       0)))
 
 (mu/defn clear-remote-synced-flags!
-  "Mark every remote-synced ::collections.schema/collection as not remote-synced, returning the number updated."
-  []
-  (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false}))
+  "Mark every remote-synced ::collections.schema/collection as not remote-synced, except the one with `kept-id` and
+  those whose location starts with `kept-children-location`, returning the number updated."
+  ([]
+   (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false}))
+  ([kept-id                :- ::lib.schema.id/collection
+    kept-children-location :- :string]
+   (t2/update! :model/Collection
+               :is_remote_synced true
+               :id               [:not= kept-id]
+               :location         [:not-like (str kept-children-location "%")]
+               {:is_remote_synced false})))
 
 (mu/defn archive-descendant-collections!
   "Archive, as part of the archive operation with `archive-operation-id`, the unarchived Collections whose location
