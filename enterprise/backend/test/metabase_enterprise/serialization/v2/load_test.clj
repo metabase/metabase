@@ -3305,6 +3305,83 @@
                   (testing "permissions are unchanged after import"
                     (is (= perms-before perms-after))))))))))))
 
+(deftest dynamic-goals-round-trip-test
+  (testing "a card goal referencing another card round-trips onto the destination card's id"
+    (let [serialized (atom nil)
+          source1s   (atom nil)
+          card1s     (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [coll (ts/create! :model/Collection :name "Goals")]
+            (reset! source1s (ts/create! :model/Card :name "Target Revenue" :collection_id (:id coll)))
+            (reset! card1s   (ts/create! :model/Card
+                                         :name "Revenue"
+                                         :collection_id (:id coll)
+                                         :visualization_settings
+                                         {:graph.goal_value {:id (:id @source1s) :type "card" :column "total"}})))
+          (reset! serialized (into [] (serdes.extract/extract {:include-h2? true :no-settings true}))))
+        (let [exported-card (first (filter #(= "Revenue" (:name %)) (by-model @serialized "Card")))]
+          (testing "the exported goal carries the referenced card's entity id"
+            (is (= {:id (:entity_id @source1s) :type "card" :column "total"}
+                   (-> exported-card :visualization_settings :graph.goal_value))))
+          (testing "the referenced card is declared as a dependency"
+            (is (contains? (first (serialization/import-dependencies :model/Card [exported-card]))
+                           [:model/Card (:entity_id @source1s)]))))
+        (testing "loading remaps the goal onto the destination card's id"
+          (ts/with-db dest-db
+            ;; one filler per source card pushes every loaded card's id past the source's, so a goal id left raw
+            ;; can't land on the right card by coincidence
+            (dotimes [_ 2] (ts/create! :model/Card :name "Filler"))
+            (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+            (let [source1d (t2/select-one :model/Card :name "Target Revenue")
+                  card1d   (t2/select-one :model/Card :name "Revenue")]
+              (is (not= (:id @source1s) (:id source1d)))
+              (is (= {:id (:id source1d) :type "card" :column "total"}
+                     (:graph.goal_value (:visualization_settings card1d)))))))))))
+
+(deftest visualizer-dashcard-dynamic-goals-round-trip-test
+  (testing "a goal nested in a visualizer dashcard round-trips onto the destination card's id"
+    (let [serialized (atom nil)
+          source1s   (atom nil)
+          goal       (fn [card] {:id (:id card) :type "card" :column "total"})
+          nested     (fn [dashcard] (get-in dashcard [:visualization_settings :visualization :settings]))]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [coll  (ts/create! :model/Collection :name "Goals")
+                card1 (ts/create! :model/Card :name "Revenue" :collection_id (:id coll))
+                dash1 (ts/create! :model/Dashboard :name "Viz goal" :collection_id (:id coll))]
+            (reset! source1s (ts/create! :model/Card :name "Target Revenue" :collection_id (:id coll)))
+            (ts/create! :model/DashboardCard
+                        :dashboard_id (:id dash1)
+                        :card_id      (:id card1)
+                        :visualization_settings
+                        {:visualization {:display             "line"
+                                         :columnValuesMapping {:COLUMN_1 [{:sourceId     (str "card:" (:id card1))
+                                                                           :originalName "TOTAL"
+                                                                           :name         "COLUMN_1"}]}
+                                         :settings            {:graph.show_goal  true
+                                                               :graph.goal_value (goal @source1s)}}}))
+          (reset! serialized (into [] (serdes.extract/extract {:include-h2? true :no-settings true}))))
+        (let [exported-dash (first (filter #(= "Viz goal" (:name %)) (by-model @serialized "Dashboard")))]
+          (testing "the exported goal carries the referenced card's entity id"
+            (is (= {:id (:entity_id @source1s) :type "card" :column "total"}
+                   (-> exported-dash :dashcards first nested :graph.goal_value))))
+          (testing "the referenced card is declared as a dependency"
+            (is (contains? (first (serialization/import-dependencies :model/Dashboard [exported-dash]))
+                           [:model/Card (:entity_id @source1s)]))))
+        (testing "loading remaps the goal onto the destination card's id"
+          (ts/with-db dest-db
+            ;; one filler per source card pushes every loaded card's id past the source's, so a goal id left raw
+            ;; can't land on the right card by coincidence
+            (dotimes [_ 2] (ts/create! :model/Card :name "Filler"))
+            (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+            (let [source1d (t2/select-one :model/Card :name "Target Revenue")
+                  dash1d   (t2/select-one :model/Dashboard :name "Viz goal")]
+              (is (not= (:id @source1s) (:id source1d)))
+              (is (= (goal source1d)
+                     (:graph.goal_value (nested (t2/select-one :model/DashboardCard
+                                                               :dashboard_id (:id dash1d)))))))))))))
+
 (deftest glossary-round-trip-test
   (let [serialized (atom nil)
         eid        (atom nil)]

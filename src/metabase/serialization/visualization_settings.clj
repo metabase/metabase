@@ -1,7 +1,7 @@
 (ns metabase.serialization.visualization-settings
   "Export and import of `:visualization_settings`, and of the visualizer settings of DashboardCards, in bulk. Settings
   hold ids in many places: field refs, column settings keyed by JSON field refs, link cards, click behaviors, pivot
-  tables, timelines, and visualizer column mappings."
+  tables, timelines, dynamic goals, and visualizer column mappings."
   (:require
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -10,7 +10,8 @@
    [metabase.serialization.resolve :as resolve]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (set! *warn-on-reflection* true)
 
@@ -207,6 +208,34 @@
       (m/update-existing :timeline.excluded_timeline_event_ids
                          #(walk-export-timeline-fks visit % :model/TimelineEvent))))
 
+(def goal-entity-models
+  "The model of each entity `:type` a dynamic goal can reference. Mirrors
+  [[metabase.query-processor.referenced-entities]]'s type table."
+  {"card"    :model/Card
+   "measure" :model/Measure})
+
+(defn- update-dynamic-goal-ids
+  "`settings` with the `:id` of every goal value referencing an entity, nested visualizer settings included, replaced by
+  `(f model id)`. Drops a goal whose `:type` names no model, or for which `f` returns nil, so an id never outlives the
+  entity it named."
+  [settings f]
+  (dynamic-goals/update-dashcard-goal-values
+   settings
+   (fn [goal-value]
+     (if-let [{:keys [type id]} (dynamic-goals/goal-source goal-value)]
+       (when-let [model (goal-entity-models type)]
+         (some->> (f model id) (assoc goal-value :id)))
+       goal-value))))
+
+(defn- walk-export-dynamic-goals
+  "Dynamic goals' database ids replaced by what `visit` returns, dropping a goal whose entity is gone. An id that is not
+  a database id, like an already exported one, stays as it is."
+  [visit settings]
+  (update-dynamic-goal-ids settings (fn [model id]
+                                      (if (pos-int? id)
+                                        (resolve/found-or-nil #(visit model id))
+                                        id))))
+
 (defn walk-export-visualization-settings
   "The `:visualization_settings` map with its ids replaced by what `visit` returns for their references."
   [visit settings]
@@ -218,6 +247,7 @@
       (walk-export-visualizer-settings visit $)
       (walk-export-pivot-table visit $)
       (walk-export-timeline-events visit $)
+      (walk-export-dynamic-goals visit $)
       (m/update-existing $ :column_settings #(walk-export-column-settings visit %)))))
 
 (defn- walk-import-viz-link-card
@@ -299,6 +329,14 @@
       (m/update-existing :timeline.excluded_timeline_event_ids
                          #(walk-import-timeline-fks visit % :model/TimelineEvent))))
 
+(defn- walk-import-dynamic-goals
+  "Dynamic goals' entity ids replaced by what `visit` returns. A value that is not an entity id stays as it is."
+  [visit settings]
+  (update-dynamic-goal-ids settings (fn [model id]
+                                      (if (mbql/entity-id? id)
+                                        (visit model id)
+                                        id))))
+
 (defn- walk-import-viz-column-settings
   "Import `:column_settings`, dropping the `nil` that older exports wrote for settings without any."
   [visit settings]
@@ -318,6 +356,7 @@
       (walk-import-visualizer-settings visit $)
       (walk-import-pivot-table visit $)
       (walk-import-timeline-events visit $)
+      (walk-import-dynamic-goals visit $)
       (walk-import-viz-column-settings visit $)
       (cond->> $
         (not (resolve/collecting? visit))

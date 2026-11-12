@@ -751,6 +751,92 @@
             (is (not (contains? entity :metabase_version))
                 (str m " should not carry a :metabase_version"))))))))
 
+(deftest dashboard-dynamic-goal-dependencies-test
+  (testing "exporting a dashboard takes the card a dashcard's dynamic goal references"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection    {coll-id :id}                     {:name "Goals"}
+                         :model/Collection    {other-id :id}                    {:name "Elsewhere"}
+                         :model/Card          {goal-id :id goal-eid :entity_id} {:name          "Goal Source"
+                                                                                 :collection_id other-id}
+                         :model/Card          {shown-id :id}                    {:name "Shown" :collection_id coll-id}
+                         :model/Dashboard     {dash-id :id}                     {:name "D" :collection_id coll-id}
+                         :model/DashboardCard _                                 {:dashboard_id dash-id
+                                                                                 :card_id      shown-id
+                                                                                 :visualization_settings
+                                                                                 {:graph.goal_value {:id     goal-id
+                                                                                                     :type   "card"
+                                                                                                     :column "total"}}}]
+        (is (contains? (ids-by-model "Card" (extract/extract {:targets       [[:model/Dashboard dash-id]]
+                                                              :no-settings   true
+                                                              :no-data-model true
+                                                              :no-transforms true}))
+                       goal-eid))))))
+
+(deftest visualizer-dashcard-dynamic-goal-dependencies-test
+  (testing "exporting a dashboard takes the card a visualizer dashcard's nested dynamic goal references"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection    {coll-id :id}                     {:name "Goals"}
+                         :model/Collection    {other-id :id}                    {:name "Elsewhere"}
+                         :model/Card          {goal-id :id goal-eid :entity_id} {:name          "Goal Source"
+                                                                                 :collection_id other-id}
+                         :model/Card          {shown-id :id}                    {:name "Shown" :collection_id coll-id}
+                         :model/Dashboard     {dash-id :id}                     {:name "D" :collection_id coll-id}
+                         :model/DashboardCard _                                 {:dashboard_id dash-id
+                                                                                 :card_id      shown-id
+                                                                                 :visualization_settings
+                                                                                 {:visualization
+                                                                                  {:display  "line"
+                                                                                   :settings {:graph.goal_value
+                                                                                              {:id     goal-id
+                                                                                               :type   "card"
+                                                                                               :column "total"}}}}}]
+        (is (contains? (ids-by-model "Card" (extract/extract {:targets       [[:model/Dashboard dash-id]]
+                                                              :no-settings   true
+                                                              :no-data-model true
+                                                              :no-transforms true}))
+                       goal-eid))))))
+
+(deftest card-dynamic-goal-dependencies-test
+  (testing "exporting a card takes the card its own dynamic goal references"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection {coll-id :id}                     {:name "Revenue"}
+                         :model/Collection {other-id :id}                    {:name "Goals"}
+                         :model/Card       {goal-id :id goal-eid :entity_id} {:name          "Goal Source"
+                                                                              :collection_id other-id}
+                         :model/Card       {shown-id :id}                    {:name          "Shown"
+                                                                              :collection_id coll-id
+                                                                              :visualization_settings
+                                                                              {:graph.goal_value {:id     goal-id
+                                                                                                  :type   "card"
+                                                                                                  :column "total"}}}]
+        (is (contains? (ids-by-model "Card" (extract/extract {:targets       [[:model/Card shown-id]]
+                                                              :no-settings   true
+                                                              :no-data-model true
+                                                              :no-transforms true}))
+                       goal-eid))))))
+
+(deftest dashboard-card-level-dynamic-goal-dependencies-test
+  (testing "exporting a dashboard takes the card its card's own dynamic goal references"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection    {coll-id :id}                     {:name "Goals"}
+                         :model/Collection    {other-id :id}                    {:name "Elsewhere"}
+                         :model/Card          {goal-id :id goal-eid :entity_id} {:name          "Goal Source"
+                                                                                 :collection_id other-id}
+                         :model/Card          {shown-id :id}                    {:name          "Shown"
+                                                                                 :collection_id coll-id
+                                                                                 :visualization_settings
+                                                                                 {:graph.goal_value {:id     goal-id
+                                                                                                     :type   "card"
+                                                                                                     :column "total"}}}
+                         :model/Dashboard     {dash-id :id}                     {:name "D" :collection_id coll-id}
+                         :model/DashboardCard _                                 {:dashboard_id dash-id
+                                                                                 :card_id      shown-id}]
+        (is (contains? (ids-by-model "Card" (extract/extract {:targets       [[:model/Dashboard dash-id]]
+                                                              :no-settings   true
+                                                              :no-data-model true
+                                                              :no-transforms true}))
+                       goal-eid))))))
+
 (deftest untargeted-export-collections-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Collection {coll-id :id coll-eid :entity_id} {:name "Some Collection"}

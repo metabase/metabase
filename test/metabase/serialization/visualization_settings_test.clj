@@ -153,3 +153,73 @@
              (get-in (import-one {:fk (fn [eid _model] (when (= eid "abc") 7))}
                                  (assoc-in viz [:link :entity :id] "abc"))
                      [:link :entity :id]))))))
+
+;;; ------------------------------------------------- Dynamic goals --------------------------------------------------
+
+(def ^:private card-eid "card00000000000000001")
+(def ^:private measure-eid "meas00000000000000007")
+
+(def ^:private goal-viz-settings
+  {:graph.goal_value {:id 1 :type "card" :column "total"}
+   :progress.goal    {:id 7 :type "measure" :column "avg"}
+   :gauge.segments   [{:min 0 :max {:id 1 :type "card" :column "total"} :color "#fff"}]
+   :scalar.segments  [{:min {:id 7 :type "measure" :column "avg"} :max "self-col"}]})
+
+(def ^:private exported-goal-viz-settings
+  {:graph.goal_value {:id card-eid :type "card" :column "total"}
+   :progress.goal    {:id measure-eid :type "measure" :column "avg"}
+   :gauge.segments   [{:min 0 :max {:id card-eid :type "card" :column "total"} :color "#fff"}]
+   :scalar.segments  [{:min {:id measure-eid :type "measure" :column "avg"} :max "self-col"}]})
+
+(def ^:private goal-stubs
+  "Stubs that know card 1 and measure 7, by id and by entity id."
+  {:fk (fn [x model]
+         (get {[:model/Card 1]             card-eid
+               [:model/Measure 7]          measure-eid
+               [:model/Card card-eid]      1
+               [:model/Measure measure-eid] 7}
+              [model x]))})
+
+(defn- goals-of
+  "`settings` without the keys export and import add, leaving the goal settings and visualizer nesting."
+  [settings]
+  (select-keys settings [:graph.goal_value :progress.goal :gauge.segments :scalar.segments :visualization]))
+
+(defn- in-visualizer
+  "`settings` nested the way a visualizer dashcard stores its chart's settings. The graph goal is hidden: serdes ports
+  goals whether or not they're shown, so turning one on after an import still points at the right entity."
+  [settings]
+  {:visualization {:display  "line"
+                   :settings (assoc settings :graph.show_goal false)}})
+
+(deftest ^:parallel export-dynamic-goals-test
+  (testing "card and measure goal refs export as entity ids, in scalar settings and segment bounds"
+    (is (= exported-goal-viz-settings (goals-of (export-one goal-stubs goal-viz-settings)))))
+  (testing "literal goals and self-column names are untouched"
+    (is (= {:graph.goal_value 100 :progress.goal "self-col"}
+           (goals-of (export-one goal-stubs {:graph.goal_value 100 :progress.goal "self-col"})))))
+  (testing "an id that is already an entity id is left as it is"
+    (is (= exported-goal-viz-settings (goals-of (export-one goal-stubs exported-goal-viz-settings))))))
+
+(deftest ^:parallel import-dynamic-goals-test
+  (testing "entity ids resolve back to numeric ids"
+    (is (= goal-viz-settings (goals-of (import-one goal-stubs exported-goal-viz-settings)))))
+  (testing "a numeric id from the source instance is not taken for an entity id"
+    (is (= {:graph.goal_value {:id 1 :type "card" :column "total"}}
+           (goals-of (import-one goal-stubs {:graph.goal_value {:id 1 :type "card" :column "total"}}))))))
+
+(deftest ^:parallel export-dynamic-goals-deleted-target-test
+  (testing "a goal pointing at a deleted entity exports as no goal rather than a dangling ref"
+    (is (= {:graph.goal_value nil
+            :progress.goal    nil
+            :gauge.segments   [{:min 0 :max nil :color "#fff"}]
+            :scalar.segments  [{:min nil :max "self-col"}]}
+           (goals-of (export-one {:fk (constantly nil)} goal-viz-settings))))))
+
+(deftest ^:parallel visualizer-dynamic-goals-test
+  (testing "goals nested in a visualizer dashcard export as entity ids"
+    (is (= (in-visualizer exported-goal-viz-settings)
+           (goals-of (export-one goal-stubs (in-visualizer goal-viz-settings))))))
+  (testing "and import back to numeric ids"
+    (is (= (in-visualizer goal-viz-settings)
+           (goals-of (import-one goal-stubs (in-visualizer exported-goal-viz-settings)))))))
