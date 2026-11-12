@@ -3245,13 +3245,13 @@ describe("scenarios > admin > transforms", () => {
     );
     H.DataStudio.Transforms.sectionHeader().should("be.visible");
     H.DataStudio.Transforms.sectionHeader()
-      .findByRole("link", { name: "Transforms" })
+      .findByRole("tab", { name: "Transforms" })
       .should("not.exist");
     H.DataStudio.Transforms.sectionHeader()
-      .findByRole("link", { name: "Jobs" })
+      .findByRole("tab", { name: "Jobs" })
       .should("not.exist");
     H.DataStudio.Transforms.sectionHeader()
-      .findByRole("link", { name: "Runs" })
+      .findByRole("tab", { name: "Runs" })
       .should("not.exist");
   });
 });

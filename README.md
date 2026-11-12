@@ -16,7 +16,7 @@ You get expert support, backups, upgrades, an SMTP server, SSL certificate, SoC2
 
 ## Key Features
 
-- [Set up in five minutes](https://www.metabase.com/docs/latest/configuring-metabase/setting-up-metabase) (we're not kidding), or have us [host Metabase for you](https://www.metabase.com/cloud) so you don't even need to think about it.
+- [Set up in five minutes](https://www.metabase.com/docs/latest/getting-started/setting-up-metabase) (we're not kidding), or have us [host Metabase for you](https://www.metabase.com/cloud) so you don't even need to think about it.
 - Let anyone on your team [ask questions](https://www.metabase.com/docs/latest/questions/introduction) without knowing SQL.
 - Use the [SQL editor](https://www.metabase.com/docs/latest/questions/native-editor/writing-sql) for more complex queries.
 - Ask AI: [Metabot](https://www.metabase.com/docs/latest/ai/metabot) gives you answers you can trust, helps you write queries, and more. Or build your own [AI agent](https://www.metabase.com/docs/latest/ai/agent-api) to query your data.

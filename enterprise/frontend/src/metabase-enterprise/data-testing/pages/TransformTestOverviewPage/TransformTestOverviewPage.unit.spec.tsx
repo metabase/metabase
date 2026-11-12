@@ -22,14 +22,14 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { QueryTransformSource, TransformTest } from "metabase-types/api";
 import {
   createMockCollection,
+  createMockDataTestEmptyExpectation,
+  createMockDataTestEqualsExpectation,
+  createMockDataTestRowsData,
   createMockDataTestRun,
+  createMockDataTestSqlData,
   createMockDatabase,
   createMockTransform,
   createMockTransformTest,
-  createMockTransformTestEmptyExpectation,
-  createMockTransformTestEqualsExpectation,
-  createMockTransformTestRowsData,
-  createMockTransformTestSqlData,
 } from "metabase-types/api/mocks";
 
 import { TransformTestOverviewPage } from "./TransformTestOverviewPage";
@@ -139,7 +139,7 @@ describe("TransformTestOverviewPage", () => {
     expect(
       await screen.findByRole("link", { name: "See all runs" }),
     ).toHaveAttribute("href", Urls.transformTestRuns(1, 2));
-    expect(screen.getByRole("link", { name: "Runs" })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: "Runs" })).toHaveAttribute(
       "href",
       Urls.transformTestRuns(1, 2),
     );
@@ -194,7 +194,7 @@ describe("TransformTestOverviewPage", () => {
         inputs: [
           {
             table: { schema: "raw", name: "customers" },
-            ...createMockTransformTestRowsData({
+            ...createMockDataTestRowsData({
               columns: [
                 { name: "id", cast_type: "int" },
                 { name: "country", cast_type: "text" },
@@ -207,7 +207,7 @@ describe("TransformTestOverviewPage", () => {
           },
           {
             table: { schema: "raw", name: "orders" },
-            ...createMockTransformTestSqlData({
+            ...createMockDataTestSqlData({
               sql: "SELECT 10 AS id, 'paid' AS status",
             }),
           },
@@ -237,12 +237,12 @@ describe("TransformTestOverviewPage", () => {
         id: 2,
         transform_id: 1,
         expectations: [
-          createMockTransformTestEqualsExpectation({
+          createMockDataTestEqualsExpectation({
             name: "revenue per customer",
             columns: [{ name: "revenue", cast_type: "numeric" }],
             rows: [{ revenue: 120 }],
           }),
-          createMockTransformTestEmptyExpectation({
+          createMockDataTestEmptyExpectation({
             name: "no negative revenue",
             sql: "SELECT * FROM analytics.customer_revenue WHERE revenue < 0",
           }),

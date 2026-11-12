@@ -60,7 +60,7 @@ describe(
         });
 
         cy.log("run it");
-        cy.findByRole("link", { name: "Run" }).click();
+        cy.findByRole("tab", { name: "Run" }).click();
         cy.findByRole("button", { name: /Run/ }).click();
         H.modal().within(() => {
           cy.findByLabelText("New Name").type("Goose");
@@ -148,7 +148,7 @@ describe(
           .should("be.checked");
 
         cy.log("hide a field");
-        cy.findByRole("link", { name: "Fields" }).click();
+        cy.findByRole("tab", { name: "Fields" }).click();
         cy.findByTestId("action-fields")
           .findByRole("listitem", { name: "Status" })
           .click();
@@ -165,7 +165,7 @@ describe(
           .should("not.be.checked");
 
         cy.log("run it");
-        cy.findByRole("link", { name: "Run" }).click();
+        cy.findByRole("tab", { name: "Run" }).click();
         cy.findByRole("button", { name: /Run/ }).click();
         H.modal().within(() => {
           cy.findByLabelText(/Team Name/).type("Ornery Otters");
