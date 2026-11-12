@@ -7,8 +7,6 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
-(set! *warn-on-reflection* true)
-
 (defn- difference
   [sql & {:as overrides}]
   (merge {:method          :referenced-tables

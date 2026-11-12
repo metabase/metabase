@@ -70,7 +70,7 @@
   (some (fn [^Throwable t]
           (some-> (when (instance? SQLException t) (.getSQLState ^SQLException t))
                   (str/starts-with? "23")))
-        (take-while some? (iterate #(.getCause ^Throwable %) e))))
+        (take-while some? (iterate ex-cause e))))
 
 (defn record!
   "Keep `difference`, a map that [[metabase.sql-parsing.core/set-shadow-difference-recorder!]] describes."
