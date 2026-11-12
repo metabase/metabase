@@ -104,7 +104,7 @@ export function ChangesOverTimeSection({
       <Stack gap="sm">
         <DetailsTable>
           <DetailsRow
-            label={t`Old values`}
+            label={t`Old values table`}
             labelAside={
               <InfoIcon
                 info={t`Where earlier values of ${fieldName} are kept when a ${entityName}'s ${fieldName.toLowerCase()} changes: a history table, with one row per version and the dates each version was true.`}
@@ -113,7 +113,7 @@ export function ChangesOverTimeSection({
             fillValue
             value={
               <Select
-                aria-label={t`Old values`}
+                aria-label={t`Old values table`}
                 classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
                 searchable
                 data={[
