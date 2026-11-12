@@ -14,6 +14,7 @@ clojure -M:doc:ee config-template
 The template lists example `database`, `user`, and `settings` sections for the [config file](./config-file.md).
 
 
+{% raw %}
 ```yaml
 # A config file template for Metabase.
 # You'll need to update (or remove) the `users` and `databases` sections.
