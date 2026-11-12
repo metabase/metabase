@@ -299,34 +299,83 @@ describe("document comments", () => {
     });
   });
 
-  it("edits, reacts to and deletes a comment", () => {
+  it("edits, reacts to and deletes a comment, and keeps the changes after a reload", () => {
+    cy.intercept("POST", "/api/comment").as("createComment");
+    cy.intercept("PUT", "/api/comment/*").as("updateComment");
+    cy.intercept("POST", "/api/comment/*/reaction").as("react");
+    cy.intercept("DELETE", "/api/comment/*").as("deleteComment");
+
     startNewCommentIn1ParagraphDocument();
     cy.realType("Smoke");
     cy.realPress([META_KEY, "Enter"]);
+    cy.wait("@createComment").its("response.statusCode").should("eq", 200);
 
     Comments.getCommentByText("Smoke").realHover();
     Comments.getCommentByText("Smoke").findByLabelText("More actions").click();
     H.popover().findByText("Edit").click();
     cy.realType("Edited ");
     cy.realPress([META_KEY, "Enter"]);
+    cy.wait("@updateComment").its("response.statusCode").should("eq", 200);
+
+    Comments.reactToComment("Edited Smoke", REACTION_EMOJI);
+    cy.wait("@react").its("response.body.reacted").should("eq", true);
+
+    cy.reload();
     Comments.getCommentByText("Edited Smoke")
       .findByRole("textbox")
       .should("have.attr", "contenteditable", "false");
-
-    Comments.reactToComment("Edited Smoke", REACTION_EMOJI);
     Comments.getCommentByText("Edited Smoke")
       .findByTestId("discussion-reactions")
       .should("contain", `${REACTION_EMOJI}1`);
+
+    cy.log("a deleted first comment keeps the replies of its thread");
+    // the reply editor is the only editable one among the thread editors
+    Comments.getCommentInputs().find("[contenteditable='true']").click();
+    cy.realType("Reply");
+    cy.realPress([META_KEY, "Enter"]);
+    cy.wait("@createComment").its("response.statusCode").should("eq", 200);
 
     Comments.getCommentByText("Edited Smoke").realHover();
     Comments.getCommentByText("Edited Smoke")
       .findByLabelText("More actions")
       .click();
     H.popover().findByText("Delete").click();
+    cy.wait("@deleteComment").its("response.statusCode").should("eq", 204);
+
+    cy.reload();
     Comments.getSidebar().within(() => {
+      Comments.getCommentByText("Reply").should("be.visible");
       cy.findByText("Edited Smoke").should("not.exist");
-      Comments.getAllComments().should("not.exist");
     });
+
+    cy.log("shows the resolve controls of a deleted first comment on hover");
+    getDeletedComment()
+      .findByTestId("comment-action-panel")
+      .should("not.be.visible");
+    getDeletedComment().realHover();
+    getDeletedComment()
+      .findByTestId("comment-action-panel-resolve")
+      .should("be.visible")
+      .click();
+    cy.wait("@updateComment").its("response.statusCode").should("eq", 200);
+
+    Comments.getSidebar()
+      .findByRole("tab", { name: /Resolved/ })
+      .click();
+    getDeletedComment()
+      .findByTestId("comment-action-panel")
+      .should("not.be.visible");
+    getDeletedComment().realHover();
+    getDeletedComment()
+      .findByTestId("comment-action-panel-reopen")
+      .should("be.visible")
+      .click();
+    cy.wait("@updateComment").its("response.statusCode").should("eq", 200);
+    Comments.getSidebar().findByRole("tab").should("not.exist");
+
+    function getDeletedComment() {
+      return Comments.getSidebar().findByTestId("discussion-comment-deleted");
+    }
   });
 
   describe("email notifications", () => {
