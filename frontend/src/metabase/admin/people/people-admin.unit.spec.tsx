@@ -653,6 +653,10 @@ describe("admin > people", () => {
       );
 
       await waitFor(() => expect(getFooter()).toHaveTextContent("26 - 27"));
+      // The range updates before the next page arrives; wait for its rows.
+      await waitFor(() =>
+        expect(getBodyRows(getPeopleTable())).toHaveLength(2),
+      );
       expectRows(getPeopleTable(), [
         "FirstName 25 LastName",
         "FirstName 26 LastName",
@@ -669,7 +673,9 @@ describe("admin > people", () => {
       );
 
       await waitFor(() => expect(getFooter()).toHaveTextContent("1 - 25"));
-      expect(getBodyRows(getPeopleTable())).toHaveLength(25);
+      await waitFor(() =>
+        expect(getBodyRows(getPeopleTable())).toHaveLength(25),
+      );
       expect(
         within(getPeopleTable()).getByText("FirstName 00 LastName"),
       ).toBeInTheDocument();
@@ -1180,7 +1186,7 @@ describe("admin > people", () => {
         await screen.findByRole("button", { name: "Create a group" }),
       );
       await userEvent.type(
-        screen.getByPlaceholderText(/something like/i),
+        await screen.findByPlaceholderText(/something like/i),
         "My New Group",
       );
       await userEvent.click(screen.getByRole("button", { name: "Add" }));
