@@ -9,6 +9,7 @@ import {
 import {
   findColumnByName,
   getHistoryTableCandidates,
+  getVersionChoiceOptions,
   useChangingAttributes,
   useTableStructures,
 } from "metabase/metadata/table-structure";
@@ -20,6 +21,7 @@ import type { Field, FieldId, Table } from "metabase-types/api";
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
 
 import { ColumnSelect } from "./PastValuesRows";
+import { singularName } from "./names";
 import {
   type DimensionHistory,
   useDimensionHistory,
@@ -73,10 +75,12 @@ export function useFieldGroups(table: Table): {
 export function GroupMembershipSection({
   field,
   table,
+  hasVersionRow,
   disabled,
 }: {
   field: Field;
   table: Table;
+  hasVersionRow: boolean;
   disabled: boolean;
 }) {
   const history = useDimensionHistory(table);
@@ -98,6 +102,12 @@ export function GroupMembershipSection({
     attribute.source === "history-table"
       ? history.tables.find((other) => other.id === attribute.historyTableId)
       : undefined;
+  const { reference, eventDateField } = history;
+  const versionOptions = getVersionChoiceOptions(
+    field.display_name.toLowerCase(),
+    singularName(reference?.table.display_name ?? t`Event`).toLowerCase(),
+    (eventDateField?.display_name ?? t`date`).toLowerCase(),
+  );
   const toOption = (other: Table) => ({
     value: String(other.id),
     label: other.display_name,
@@ -106,7 +116,11 @@ export function GroupMembershipSection({
   return (
     <SidebarSection
       title={t`Changes over time`}
-      description={t`Tracked fields are listed together, under the table that keeps their old values.`}
+      description={
+        hasVersionRow
+          ? t`Whether old values of ${field.display_name} are kept, and which one questions use.`
+          : t`Tracked fields are listed together, under the table that keeps their old values.`
+      }
     >
       <DetailsTable>
         <DetailsRow
@@ -165,6 +179,32 @@ export function GroupMembershipSection({
                 onChange={(valueFieldId) =>
                   setAttribute(field, { valueFieldId })
                 }
+              />
+            }
+          />
+        )}
+        {hasVersionRow && currentTable != null && reference != null && (
+          <DetailsRow
+            label={t`${reference.table.display_name} show`}
+            fillValue
+            value={
+              <Select
+                aria-label={t`${reference.table.display_name} show`}
+                classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+                data={versionOptions.map(({ value, label }) => ({
+                  value,
+                  label,
+                }))}
+                value={attribute.defaultVersion}
+                disabled={disabled}
+                onChange={(value) => {
+                  const option = versionOptions.find(
+                    (option) => option.value === value,
+                  );
+                  if (option) {
+                    setAttribute(field, { defaultVersion: option.value });
+                  }
+                }}
               />
             }
           />

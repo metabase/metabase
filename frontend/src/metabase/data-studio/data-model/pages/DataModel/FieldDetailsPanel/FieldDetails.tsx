@@ -250,13 +250,15 @@ export function FieldDetails({ field, table, header }: FieldDetailsProps) {
               disabled={readOnly}
             />
           )}
-          {variant === "group" && isDimensionAttribute && (
-            <GroupMembershipSection
-              field={field}
-              table={table}
-              disabled={readOnly}
-            />
-          )}
+          {(variant === "group" || variant === "group-flat") &&
+            isDimensionAttribute && (
+              <GroupMembershipSection
+                field={field}
+                table={table}
+                hasVersionRow={variant === "group-flat"}
+                disabled={readOnly}
+              />
+            )}
           {variant === "columns" && isDimensionAttribute && (
             <ColumnPairSection
               field={field}

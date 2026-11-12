@@ -21,6 +21,7 @@ export const SCD_PROTOTYPE_VARIANTS = [
   "relationship",
   "form",
   "group",
+  "group-flat",
   "sentence",
   "columns",
   "measure",
