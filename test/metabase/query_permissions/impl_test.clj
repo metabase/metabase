@@ -13,7 +13,8 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.log.capture :as log.capture]))
+   [metabase.util.log.capture :as log.capture]
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
@@ -23,50 +24,45 @@
 (defn- card-in-collection [collection-or-id]
   (assoc (card) :collection_id (u/the-id collection-or-id)))
 
-(deftest ^:parallel card-in-collection-test
-  (mt/with-temp [:model/Collection collection]
-    (testing "Shouldn't be able to read a Card not in Collection without permissions"
-      (mt/with-temp [:model/Card card (card)]
-        (binding [*current-user-permissions-set* (delay #{})]
-          (is (not (mi/can-read? card)))))
-      (testing "...or one in a Collection either!"
-        (mt/with-temp [:model/Card card (card-in-collection collection)]
-          (binding [*current-user-permissions-set* (delay #{})]
-            (is (not (mi/can-read? card)))))))
-    (testing "*should* be allowed to read a Card not in a Collection if you have Root collection perms"
-      (mt/with-temp [:model/Card card (card)]
-        (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
-          (is (mi/can-read? card)))
-        (testing "...but not if you have perms for some other Collection"
-          (binding [*current-user-permissions-set* (delay #{"/collection/1337/read/"})]
-            (is (not (mi/can-read? card)))))))
-    (testing "should be allowed to *read* a Card in a Collection if you have read perms for that Collection"
-      (mt/with-temp [:model/Card card (card-in-collection collection)]
-        (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
-          (is (mi/can-read? card)))
-        (testing "...but not if you only have Root Collection perms"
-          (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
-            (is (not (mi/can-read? card)))))))
-    (testing "to *write* a Card not in a Collection you need Root Collection Write Perms"
-      (mt/with-temp [:model/Card card (card)]
-        (binding [*current-user-permissions-set* (delay #{"/collection/root/"})]
-          (is (mi/can-write? card)))
-        (testing "...root Collection Read Perms shouldn't work"
-          (binding [*current-user-permissions-set* (delay #{"/collection/root/read/"})]
-            (is (not (mi/can-write? card))))
-          (testing "...nor should write perms for another collection"
-            (binding [*current-user-permissions-set* (delay #{"/collection/1337/"})]
-              (is (not (mi/can-write? card))))))))
-    (testing "to *write* a Card *in* a Collection you need Collection Write Perms"
-      (mt/with-temp [:model/Card card (card-in-collection collection)]
-        (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-readwrite-path collection)})]
-          (is (mi/can-write? card)))
-        (testing "...Collection read perms shouldn't work"
-          (binding [*current-user-permissions-set* (delay #{(permissions.path/collection-read-path collection)})]
-            (is (not (mi/can-write? card))))
-          (testing "...nor should write perms for the Root Collection"
-            (binding [*current-user-permissions-set* (delay #{"/collection/root/"})]
-              (is (not (mi/can-write? card))))))))))
+(deftest card-in-collection-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection               collection         {}
+                   :model/Collection               other-collection   {}
+                   :model/PermissionsGroup         {group-id :id}     {}
+                   :model/User                     {user-id :id}      {}
+                   :model/PermissionsGroupMembership _                {:user_id user-id :group_id group-id}
+                   :model/Card                     root-card          (card)
+                   :model/Card                     collection-card    (card-in-collection collection)]
+      (let [with-perms (fn [objects f]
+                         (t2/delete! :model/Permissions :group_id group-id)
+                         (when (seq objects)
+                           (t2/insert! :model/Permissions (for [object objects] {:group_id group-id :object object})))
+                         (mt/with-current-user user-id (f)))]
+        (testing "Shouldn't be able to read a Card not in Collection without permissions"
+          (is (not (with-perms #{} #(mi/can-read? root-card))))
+          (testing "...or one in a Collection either!"
+            (is (not (with-perms #{} #(mi/can-read? collection-card))))))
+        (testing "*should* be allowed to read a Card not in a Collection if you have Root collection perms"
+          (is (with-perms #{"/collection/root/read/"} #(mi/can-read? root-card)))
+          (testing "...but not if you have perms for some other Collection"
+            (is (not (with-perms #{(permissions.path/collection-read-path other-collection)} #(mi/can-read? root-card))))))
+        (testing "should be allowed to *read* a Card in a Collection if you have read perms for that Collection"
+          (is (with-perms #{(permissions.path/collection-read-path collection)} #(mi/can-read? collection-card)))
+          (testing "...but not if you only have Root Collection perms"
+            (is (not (with-perms #{"/collection/root/read/"} #(mi/can-read? collection-card))))))
+        (testing "to *write* a Card not in a Collection you need Root Collection Write Perms"
+          (is (with-perms #{"/collection/root/"} #(mi/can-write? root-card)))
+          (testing "...root Collection Read Perms shouldn't work"
+            (is (not (with-perms #{"/collection/root/read/"} #(mi/can-write? root-card))))
+            (testing "...nor should write perms for another collection"
+              (is (not (with-perms #{(permissions.path/collection-readwrite-path other-collection)}
+                         #(mi/can-write? root-card)))))))
+        (testing "to *write* a Card *in* a Collection you need Collection Write Perms"
+          (is (with-perms #{(permissions.path/collection-readwrite-path collection)} #(mi/can-write? collection-card)))
+          (testing "...Collection read perms shouldn't work"
+            (is (not (with-perms #{(permissions.path/collection-read-path collection)} #(mi/can-write? collection-card))))
+            (testing "...nor should write perms for the Root Collection"
+              (is (not (with-perms #{"/collection/root/"} #(mi/can-write? collection-card)))))))))))
 
 (defn- native [query]
   {:database 1

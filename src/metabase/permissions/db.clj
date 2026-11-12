@@ -905,18 +905,19 @@
    [:tenant-collection-ids [:sequential ms/PositiveInt]]])
 
 (defn- collection-rows-clause
-  "Whether a group of the user with `user-id` holds a collection-access row with one of `values` on the Collection
-  aliased `c`."
-  [user-id values]
-  [:exists ^:allow-subquery {:select [1]
-                             :from   [[(t2/table-name :model/Permissions) :p]]
-                             :join   [[(t2/table-name :model/PermissionsGroupMembership) :pgm]
-                                      [:= :pgm.group_id :p.group_id]]
-                             :where  [:and
-                                      [:= :pgm.user_id user-id]
-                                      [:= :p.collection_id :c.id]
-                                      [:= :p.perm_type "perms/collection-access"]
-                                      [:in :p.perm_value values]]}])
+  "Whether a group of the user with `user-id` holds the permission row of the Collection aliased `c` for `level`, by its
+  object path as the permission set reads it: `/collection/<id>/` for write, and also `/collection/<id>/read/` for
+  read."
+  [user-id level]
+  (let [path (fn [suffix] [:concat (h2x/literal "/collection/") :c.id (h2x/literal suffix)])]
+    [:exists ^:allow-subquery {:select [1]
+                               :from   [[(t2/table-name :model/Permissions) :p]]
+                               :join   [[(t2/table-name :model/PermissionsGroupMembership) :pgm]
+                                        [:= :pgm.group_id :p.group_id]]
+                               :where  [:and
+                                        [:= :pgm.user_id user-id]
+                                        [:in :p.object (cond-> [(path "/")]
+                                                         (= level :read) (conj (path "/read/")))]]}]))
 
 (defn- own-collection-clause
   "Whether the user of `grants` writes the Collection aliased `c` whatever their groups hold: their personal Collection
@@ -941,7 +942,7 @@
     [:= [:inline 1] [:inline 1]]
     [:or
      (own-collection-clause grants)
-     (collection-rows-clause user-id (if (= level :read) ["read" "read-and-write"] ["read-and-write"]))]))
+     (collection-rows-clause user-id level)]))
 
 (defn- visible-collection-clause
   "The Collections aliased `c` listed to users: not archived, not the trash, and not a shared tenant Collection on an
