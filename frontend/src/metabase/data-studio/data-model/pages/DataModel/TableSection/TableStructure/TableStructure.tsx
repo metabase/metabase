@@ -100,6 +100,7 @@ export function TableStructure({
   const structure = getTableStructure(table);
   const fields = table.fields ?? [];
   const { role } = structure;
+  const { variant } = useChangingAttributes();
   const { getTableDataLayer } = useDataLayers();
   const hiddenReason = getTableHiddenReason({
     table,
@@ -222,6 +223,12 @@ export function TableStructure({
         )}
       </Box>
 
+      {variant === "sentence" &&
+        role != null &&
+        isRoleA(role, "role/HistoryDimension") && (
+          <HistorySentence table={table} readOnly={readOnly} />
+        )}
+
       <PreviousValuesSection table={table} disabled={readOnly} />
 
       <RevealTransition
@@ -246,14 +253,18 @@ export function useIsHistoryTable(table: Table) {
   return role != null && isRoleA(role, "role/HistoryDimension");
 }
 
+const VARIANTS_WITH_HISTORY_TAB = ["attribute", "relationship"];
+
+/** PROTOTYPE: the History tab only shows for the A and B prototypes */
+export function useShowsHistoryTab(table: Table) {
+  const isHistoryTable = useIsHistoryTable(table);
+  const { variant } = useChangingAttributes();
+  return isHistoryTable && VARIANTS_WITH_HISTORY_TAB.includes(variant);
+}
+
 export function TableHistorySection({ table, readOnly }: TableStructureProps) {
   const { getTableStructure, setHistoryBinding, setScdType, setScdDetails } =
     useTableStructures();
-  const { variant } = useChangingAttributes();
-
-  if (variant === "sentence") {
-    return <HistorySentence table={table} readOnly={readOnly} />;
-  }
 
   return (
     <HistoryBindingSection

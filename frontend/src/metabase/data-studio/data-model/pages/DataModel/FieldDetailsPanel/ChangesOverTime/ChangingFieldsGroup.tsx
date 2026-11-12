@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { Link } from "metabase/common/components/Link";
 import {
   type VersionChoice,
   getVersionChoiceOptions,
@@ -10,7 +9,7 @@ import {
 import { Button, Group, Icon, Menu, Stack, Text } from "metabase/ui";
 import type { Field, Table } from "metabase-types/api";
 
-import { getHistorySettingsUrl } from "./PastValuesRows";
+import { HistoryKeyAndDates } from "./HistoryKeyAndDates";
 import { singularName } from "./names";
 import type { DimensionHistory } from "./use-dimension-history";
 
@@ -109,16 +108,8 @@ export function ChangingFieldsGroup({
                     {option.label}
                   </Menu.Item>
                 ))}
-                <Menu.Divider />
               </>
             )}
-            <Menu.Item
-              component={Link}
-              to={getHistorySettingsUrl(historyTable)}
-              leftSection={<Icon name="gear" />}
-            >
-              {t`Key and dates`}
-            </Menu.Item>
           </Menu.Dropdown>
         </Menu>
       </Group>
@@ -127,6 +118,11 @@ export function ChangingFieldsGroup({
           {summary}
         </Text>
       )}
+      <HistoryKeyAndDates
+        dimensionTable={table}
+        historyTable={historyTable}
+        readOnly={readOnly}
+      />
       {children}
     </Stack>
   );

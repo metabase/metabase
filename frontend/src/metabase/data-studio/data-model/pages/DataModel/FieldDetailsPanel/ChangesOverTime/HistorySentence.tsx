@@ -4,7 +4,6 @@ import { jt, t } from "ttag";
 import {
   type HistoryBinding,
   type VersionChoice,
-  findFieldById,
   getDimensionTableForHistory,
   getVersionChoiceOptions,
   inferBindingForHistoryTable,
@@ -12,12 +11,12 @@ import {
   useSchemaTables,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Select, Stack, Text } from "metabase/ui";
-import type { Field, FieldId, Table } from "metabase-types/api";
+import { Stack, Text } from "metabase/ui";
+import type { FieldId, Table } from "metabase-types/api";
 
 import { joinFieldNames } from "./ChangingFieldsGroup";
 import { DimensionChangePreview } from "./EndUserPreview";
+import { InlineFieldSelect, InlineSelect } from "./InlineSelect";
 import { singularName } from "./names";
 import { useDimensionHistory } from "./use-dimension-history";
 
@@ -158,62 +157,4 @@ function VersionSentence({
       }}
     />
   )}.`;
-}
-
-function InlineFieldSelect({
-  label,
-  fields,
-  value,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  fields: Field[];
-  value: FieldId | null;
-  disabled: boolean;
-  onChange: (fieldId: FieldId | null) => void;
-}) {
-  return (
-    <InlineSelect
-      label={label}
-      data={fields.map((field) => ({
-        value: String(getRawTableFieldId(field)),
-        label: field.display_name,
-      }))}
-      value={findFieldById({ fields }, value) != null ? String(value) : null}
-      disabled={disabled}
-      onChange={(next) => onChange(next != null ? Number(next) : null)}
-    />
-  );
-}
-
-function InlineSelect({
-  label,
-  data,
-  value,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  data: { value: string; label: string }[];
-  value: string | null;
-  disabled: boolean;
-  onChange: (value: string | null) => void;
-}) {
-  const selected = data.find((option) => option.value === value);
-  return (
-    <Box component="span" display="inline-block" mx={4}>
-      <Select
-        aria-label={label}
-        size="xs"
-        w={`calc(${Math.max(selected?.label.length ?? 8, 8)}ch + 3rem)`}
-        data={data}
-        value={value}
-        placeholder={label}
-        disabled={disabled}
-        comboboxProps={{ width: "max-content" }}
-        onChange={onChange}
-      />
-    </Box>
-  );
 }

@@ -29,7 +29,7 @@ import type { Field, Table } from "metabase-types/api";
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
 
 import { getPreviewNames } from "./EndUserPreview";
-import { HistorySettingsLink } from "./PastValuesRows";
+import { HistoryKeyAndDates } from "./HistoryKeyAndDates";
 import {
   type DimensionHistory,
   useDimensionHistory,
@@ -123,11 +123,12 @@ export function ColumnPairSection({
               </Group>
             }
           />
-          <DetailsRow
-            label={t`Past values`}
-            value={<HistorySettingsLink table={history.historyTable} />}
-          />
         </DetailsTable>
+        <HistoryKeyAndDates
+          dimensionTable={table}
+          historyTable={history.historyTable}
+          readOnly={disabled}
+        />
         {history.reference != null && (
           <Text size="sm" c="text-secondary">
             {t`"${getThenName(field, pair)}" uses the ${names.fact.toLowerCase()}'s ${names.eventDate.toLowerCase()}.`}

@@ -12,7 +12,7 @@ import type { Field, Measure, Table } from "metabase-types/api";
 
 import { joinFieldNames } from "./ChangingFieldsGroup";
 import { DimensionChangePreview } from "./EndUserPreview";
-import { HistorySettingsLink } from "./PastValuesRows";
+import { HistoryKeyAndDates } from "./HistoryKeyAndDates";
 import { singularName } from "./names";
 import { useDimensionHistory } from "./use-dimension-history";
 
@@ -119,7 +119,11 @@ function MeasureDimensionCard({
           attribute={trackedFields[0]}
           version={version}
         />
-        <HistorySettingsLink table={historyTable} />
+        <HistoryKeyAndDates
+          dimensionTable={dimensionTable}
+          historyTable={historyTable}
+          readOnly={readOnly}
+        />
       </Stack>
     </Card>
   );

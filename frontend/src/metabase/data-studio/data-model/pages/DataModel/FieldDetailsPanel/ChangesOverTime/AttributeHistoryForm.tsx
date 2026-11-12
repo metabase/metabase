@@ -12,7 +12,7 @@ import { Radio, Select, Stack } from "metabase/ui";
 import type { Field, Table } from "metabase-types/api";
 
 import { DimensionChangePreview, getPreviewNames } from "./EndUserPreview";
-import { HistorySettingsLink } from "./PastValuesRows";
+import { HistoryKeyAndDates } from "./HistoryKeyAndDates";
 import {
   useDimensionHistory,
   useHistoryTableBinding,
@@ -65,7 +65,11 @@ export function AttributeHistoryForm({
           label={t`Old values`}
           description={
             historyTable ? (
-              <HistorySettingsLink table={historyTable} />
+              <HistoryKeyAndDates
+                dimensionTable={table}
+                historyTable={historyTable}
+                readOnly={disabled}
+              />
             ) : (
               t`When a ${attributeName} changes, the old one is overwritten.`
             )

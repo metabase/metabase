@@ -24,7 +24,7 @@ import { TablePropertyList } from "./TablePropertyList";
 import {
   TableHistorySection,
   TableStructure,
-  useIsHistoryTable,
+  useShowsHistoryTab,
 } from "./TableStructure";
 
 interface Props {
@@ -52,7 +52,7 @@ const TableSectionBase = ({
   const isCustomPropertyTable =
     structure.role != null &&
     isRoleA(structure.role, "role/CustomPropertyTable");
-  const isHistoryTable = useIsHistoryTable(table);
+  const isHistoryTable = useShowsHistoryTab(table);
   const hasProcess = useHasProcess(table) && IS_PROCESS_TAB_SHOWN;
   // Segments and measures belong to the semantic layer now: Connected data
   // only lists the ones a table already has, for viewing and editing

@@ -4,7 +4,7 @@ import {
   type PillTab,
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
-import { useIsHistoryTable } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableStructure";
+import { useShowsHistoryTab } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableStructure";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { type Location, useLocation } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -16,7 +16,7 @@ type TableTabsProps = {
 
 export function TableTabs({ table }: TableTabsProps) {
   const location = useLocation();
-  const isHistoryTable = useIsHistoryTable(table);
+  const isHistoryTable = useShowsHistoryTab(table);
   const tabs = getTabs(table, location, isHistoryTable);
   return <PillTabNavigation tabs={tabs} />;
 }
