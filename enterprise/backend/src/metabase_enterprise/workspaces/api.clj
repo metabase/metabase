@@ -10,7 +10,9 @@
 
 (def ^:private contract-version
   "Version of the workspaces HTTP contract this server implements, sent in the `X-Metabase-Workspaces-Version`
-  response header. A response without the header comes from a server that predates it: read that as version 1."
+  response header. Read the version from a 2xx response or the 401: one of those without the header comes from a
+  server that predates it, so read that as version 1. An error response without the header says nothing about the
+  version."
   "2")
 
 (defn- add-contract-version-header

@@ -191,3 +191,47 @@
     (testing "not on errors an endpoint throws: the server's exception middleware builds those responses"
       (is (nil? (get-in (mt/user-http-request-full-response :crowberto :get 404 "ee/workspace-manager/13371337")
                         [:headers "X-Metabase-Workspaces-Version"]))))))
+
+(deftest contract-version-header-every-route-test
+  (testing "every workspace-manager route sends X-Metabase-Workspaces-Version: 2 on its success status"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (let [version (fn [resp] (get-in resp [:headers "X-Metabase-Workspaces-Version"]))
+                created (mt/user-http-request-full-response :crowberto :post 200 "ee/workspace-manager/"
+                                                            {:name "Header" :database_ids [db-id]})
+                ws-id   (get-in created [:body :id])]
+            (testing "POST / 200"
+              (is (= "2" (version created))))
+            (testing "GET /:id 200"
+              (is (= "2" (version (mt/user-http-request-full-response :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))))
+            (testing "PUT /:id 200"
+              (is (= "2" (version (mt/user-http-request-full-response :crowberto :put 200 (str "ee/workspace-manager/" ws-id)
+                                                                      {:name "Renamed"})))))
+            (testing "GET /:id/config 200 keeps the endpoint's own headers and adds the version"
+              (is (=? {"X-Metabase-Workspaces-Version" "2"
+                       "Content-Type"                  "application/x-yaml"
+                       "Content-Disposition"           "attachment; filename=\"config.yml\""}
+                      (:headers (mt/user-http-request-full-response :crowberto :get 200
+                                                                    (str "ee/workspace-manager/" ws-id "/config"))))))
+            (testing "DELETE /:id 204, an endpoint that returns nil"
+              (is (= "2" (version (mt/user-http-request-full-response :crowberto :delete 204
+                                                                      (str "ee/workspace-manager/" ws-id))))))))))))
+
+(deftest contract-version-header-absent-on-402-test
+  (testing "characterization: the premium-feature 402 is built outside the workspaces handler and has no header"
+    (mt/with-premium-features #{}
+      (is (nil? (get-in (mt/user-http-request-full-response :crowberto :get 402 "ee/workspace-manager/")
+                        [:headers "X-Metabase-Workspaces-Version"]))))))
+
+(deftest contract-version-header-absent-on-thrown-errors-test
+  (testing "characterization: errors an endpoint throws are built by the server's exception middleware and have no header"
+    (let [version (fn [resp] (get-in resp [:headers "X-Metabase-Workspaces-Version"]))]
+      (testing "403"
+        (is (nil? (version (mt/user-http-request-full-response :rasta :get 403 "ee/workspace-manager/")))))
+      (testing "400 from request validation"
+        (is (nil? (version (mt/user-http-request-full-response :crowberto :post 400 "ee/workspace-manager/"
+                                                               {:name 1}))))))))
