@@ -364,9 +364,7 @@
     (filter #(mage.modules/driver-deps-affected? deps [%]) (keys deps))))
 
 (deftest module-graph-may-not-become-more-connected
-  (testing "The number of modules that trigger driver tests should not increase without explicit approval.
-            If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
-            Add it, or a parent module, to driver-test-exemptions if it shouldn't trigger driver tests."
+  (testing "the number of modules that trigger driver tests does not grow without approval"
     (let [modules-triggering-drivers (modules-affecting-drivers)
           ;; This is a ratchet: it prevents accidental expansion of which modules
           ;; trigger driver tests. When a module transitively depends on driver code,

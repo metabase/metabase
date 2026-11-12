@@ -216,14 +216,14 @@
 (defn driver-test-rule-problems
   "Mistakes in `rules`, shaped like [[driver-test-rules]], against the module graph `deps`.
   Returns one map per mistake, with the `:module` and a `:type`.
-  The type is `:undeclared` for a listed module missing from `deps`.
+  The type is `:undeclared` for an exemption or opt-in missing from `deps`.
   It is `:redundant-exemption` or `:redundant-opt-in` for an entry that its module's decision doesn't need."
   [deps {:keys [exemptions opt-ins] :as rules}]
   ;; Comparing [[driver-exempt?]] with and without the entry covers a module listed more than once, such as a trigger
   ;; that is also an exemption.
-  (let [redundant? (fn [k module]
+  (let [redundant? (fn [rule-set module]
                      (= (driver-exempt? deps rules module)
-                        (driver-exempt? deps (update rules k disj module) module)))]
+                        (driver-exempt? deps (update rules rule-set disj module) module)))]
     (concat
      (for [module (sort-by str (concat exemptions opt-ins))
            :when  (not (contains? deps module))]
@@ -286,7 +286,7 @@
 
 (declare driver-tests-needed?)
 
-(defn- print-updated-and-unaffected-modules [deps updated drivers-affected?]
+(defn- print-updated-and-unaffected-modules [deps updated needed?]
   (let [unaffected (unaffected-modules deps updated)]
     (println "These modules have changed:" (pr-str updated))
     (println)
@@ -297,7 +297,7 @@
     (println "(By unaffected, this means these modules do not have a direct or indirect dependency on the modules that have been changed.)")
     (println)
     (println)
-    (println (if drivers-affected?
+    (println (if needed?
                (c/red "Driver tests " (c/bold "MUST be run") ".")
                (c/green "Driver tests " (c/bold "CAN be skipped") "")))))
 
@@ -823,7 +823,7 @@
    The driver module is considered affected when:
    - Files in modules/drivers/* are changed (triggers all drivers)
    - deps.edn is changed (triggers all drivers)
-   - Clojure modules that the 'driver' module depends on are changed"
+   - A module that a driver-test trigger depends on is changed, unless [[driver-exempt?]] exempts it"
   [driver
    {:keys [force-run pr-labels skip particular-driver-changed? only-driver]}
    driver-deps-affected?
@@ -974,7 +974,7 @@
           (println "=== Module Analysis ===")
           (println "Changed modules:" (pr-str updated))
           (println "Driver module affected:" driver-affected?)
-          (println "Important file changed:" (boolean important-file-changed?))
+          (println "Important file changed:" important-file-changed?)
           (println "Drivers with file changes:" (pr-str particular-driver-changed?)))
         (println "")
         ;; Print human-readable decision summary
