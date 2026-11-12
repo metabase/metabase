@@ -137,7 +137,7 @@
 (mu/defn user-database-level-values :- [:sequential [:map [:db_id :int] [:perm_value :string]]]
   "The distinct Database and value of the database-level `perm-type` rows of the User with `user-id`'s groups on the
   Databases with `db-ids`."
-  [user-id   :- ::lib.schema.id/user
+  [user-id   :- [:maybe ::lib.schema.id/user]
    perm-type :- ::permissions.schema/data-permission-type
    db-ids    :- [:sequential ::lib.schema.id/database]]
   (t2/query {:select-distinct [:p.db_id :p.perm_value]
@@ -151,7 +151,7 @@
 (mu/defn user-table-level-values :- [:sequential [:map [:table_id :int] [:db_id :int] [:perm_value :string]]]
   "The distinct Table, Database and value of the `perm-type` rows of the User with `user-id`'s groups on the active
   Tables among `table-ids`."
-  [user-id   :- ::lib.schema.id/user
+  [user-id   :- [:maybe ::lib.schema.id/user]
    perm-type :- ::permissions.schema/data-permission-type
    table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/query {:select-distinct [:p.table_id :mt.db_id :p.perm_value]
