@@ -256,7 +256,7 @@ const getHasParametersMessage = (
       () =>
         t`This metric is built on a question that uses variables. A goal runs on its own and can't fill them in, so pick a source without variables.`,
     )
-    // measures can't have variables
+    // measures can't have variables; sourceKind can be undefined e.g. for deleted entities
     .with(
       P.union("measure", undefined),
       () =>
