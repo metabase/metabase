@@ -373,7 +373,8 @@ describe("DataStep", () => {
         const { getNextQuery } = await setupCardPicking();
 
         await userEvent.click(await screen.findByText("Our analytics"));
-        await searchInModal(card.name);
+        await searchInModal("Root");
+        expect(await screen.findAllByTestId("result-item")).toHaveLength(3);
         await pickSearchResult(card.name);
 
         await expectPickedSource(card, getNextQuery);
@@ -385,12 +386,15 @@ describe("DataStep", () => {
       async (card) => {
         const { getNextQuery } = await setupCardPicking();
 
-        await searchInModal(card.name);
+        await searchInModal("o");
         await userEvent.click(
           within(screen.getByTestId("search-scope-selector")).getByRole(
             "radio",
             { name: "Everywhere" },
           ),
+        );
+        await waitFor(async () =>
+          expect(await screen.findAllByTestId("result-item")).toHaveLength(4),
         );
         await pickSearchResult(card.name);
 

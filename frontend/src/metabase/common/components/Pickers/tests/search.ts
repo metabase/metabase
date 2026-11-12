@@ -101,6 +101,12 @@ export const getCollectionItems = (
       }),
     );
 
+/** An item in the first column of the picker, next to the search results. */
+export const getRootItem = (name: string | RegExp) =>
+  within(screen.getByTestId("item-picker-level-0")).getByRole("link", {
+    name,
+  });
+
 export const getSearchScopeSelector = () =>
   within(screen.getByTestId("search-scope-selector"));
 
@@ -123,8 +129,8 @@ export const typeSearchText = async (text: string) => {
 const getSearchResultsList = () =>
   within(screen.getByTestId("item-picker-level-1"));
 
-export const getSearchResult = (name: string) =>
-  getSearchResultsList().getByText(name);
+export const findSearchResult = (name: string) =>
+  getSearchResultsList().findByText(name);
 
 /** Waits until the search results are exactly `names`, in this order. */
 export const expectSearchResults = async (names: string[]) => {
