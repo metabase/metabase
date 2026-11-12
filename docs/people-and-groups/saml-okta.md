@@ -1,5 +1,6 @@
 ---
 title: SAML with Okta
+summary: Step-by-step setup for SAML single sign-on between Okta and Metabase, including group mapping.
 ---
 
 # SAML with Okta

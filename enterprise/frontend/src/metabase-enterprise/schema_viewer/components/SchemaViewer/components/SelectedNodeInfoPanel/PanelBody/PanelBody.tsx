@@ -4,7 +4,7 @@ import { msgid, ngettext, t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { Box, Stack, Text, Title } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
-import type { ConcreteTableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../../types";
@@ -62,7 +62,7 @@ function FieldsSection({ node, nodes }: PanelBodyProps) {
     useSchemaViewerContext();
 
   const nodesByTableId = useMemo(() => {
-    const map = new Map<ConcreteTableId, SchemaViewerFlowNode>();
+    const map = new Map<TableId, SchemaViewerFlowNode>();
     for (const n of nodes) {
       map.set(n.data.table_id, n);
     }

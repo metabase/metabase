@@ -1,5 +1,6 @@
 ---
 title: "Connecting to AWS's Relational Database Service (RDS)"
+summary: Find the connection details for a database on Amazon RDS, and set up IAM authentication with SSL.
 redirect_from:
   - /docs/latest/administration-guide/databases/aws-rds
 ---

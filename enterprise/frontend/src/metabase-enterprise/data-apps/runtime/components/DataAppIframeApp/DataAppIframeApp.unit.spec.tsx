@@ -2,14 +2,14 @@ import type { ReactNode } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { readNameFromUrl } from "../../lib/read-name-from-url";
+import { readSlugFromUrl } from "../../lib/read-slug-from-url";
 import { reportErrorToParent } from "../../lib/report-error-to-parent";
 import { useDataAppBundle } from "../../lib/use-data-app-bundle";
 
 import { DataAppIframeApp } from "./DataAppIframeApp";
 
-jest.mock("../../lib/read-name-from-url", () => ({
-  readNameFromUrl: jest.fn(),
+jest.mock("../../lib/read-slug-from-url", () => ({
+  readSlugFromUrl: jest.fn(),
 }));
 jest.mock("../../lib/use-data-app-bundle", () => ({
   useDataAppBundle: jest.fn(),
@@ -23,7 +23,7 @@ jest.mock("../DataAppProvider/DataAppProvider", () => ({
   ),
 }));
 
-const mockedReadName = jest.mocked(readNameFromUrl);
+const mockedReadSlug = jest.mocked(readSlugFromUrl);
 const mockedUseBundle = jest.mocked(useDataAppBundle);
 const mockedReport = jest.mocked(reportErrorToParent);
 
@@ -39,15 +39,15 @@ function setFramed(framed: boolean) {
 }
 
 type SetupOpts = {
-  name?: string | null;
+  slug?: string | null;
   bundle?: ReturnType<typeof useDataAppBundle>;
 };
 
 const setup = ({
-  name = "sales",
+  slug = "sales",
   bundle = { data: null, failed: false },
 }: SetupOpts = {}) => {
-  mockedReadName.mockReturnValue(name);
+  mockedReadSlug.mockReturnValue(slug);
   mockedUseBundle.mockReturnValue(bundle);
   renderWithProviders(<DataAppIframeApp />);
 
@@ -70,11 +70,11 @@ describe("DataAppIframeApp", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows an error when the URL has no data-app name", () => {
-    setup({ name: null });
+  it("shows an error when the URL has no data-app slug", () => {
+    setup({ slug: null });
 
     expect(
-      screen.getByText("Missing data-app name in URL"),
+      screen.getByText("Missing data-app slug in URL"),
     ).toBeInTheDocument();
   });
 

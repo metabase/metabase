@@ -6,7 +6,6 @@ import {
 import { compose, pick } from "underscore";
 
 import {
-  DEFAULT_EMBEDDING_ENTITY_TYPES,
   setDataPicker,
   setEntityTypes,
 } from "metabase/redux/embedding-data-picker";
@@ -14,7 +13,10 @@ import type {
   InteractiveEmbeddingOptions,
   InteractiveEmbeddingOptionsState,
 } from "metabase/redux/store";
-import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
+import type {
+  EmbeddingDataPicker,
+  FullAppEmbeddingEntityType,
+} from "metabase/redux/store/embedding-data-picker";
 import { parseSearchOptions } from "metabase/utils/browser";
 
 export const createSlice = buildCreateSlice({
@@ -135,22 +137,32 @@ function excludeNonInteractiveEmbeddingOptions(
 function normalizeEntityTypes(
   searchOptions: Partial<InteractiveEmbeddingOptions>,
 ): Partial<InteractiveEmbeddingOptions> {
+  const ALLOWED_ENTITY_TYPES: string[] = [
+    "model",
+    "table",
+    "question",
+  ] satisfies FullAppEmbeddingEntityType[];
+
   /**
    * `parseSearchOptions` would return either a string or an array of strings.
    */
   const { entity_types: entityTypesValueOrArray } = searchOptions;
   if (entityTypesValueOrArray) {
-    const entityTypes = Array.isArray(entityTypesValueOrArray)
-      ? entityTypesValueOrArray
-      : [entityTypesValueOrArray];
+    const entityTypes = (
+      Array.isArray(entityTypesValueOrArray)
+        ? entityTypesValueOrArray
+        : [entityTypesValueOrArray]
+    ).filter((entityType: string) => ALLOWED_ENTITY_TYPES.includes(entityType));
 
-    return {
-      ...searchOptions,
-      entity_types: entityTypes,
-    };
+    if (entityTypes.length > 0) {
+      return {
+        ...searchOptions,
+        entity_types: entityTypes,
+      };
+    }
   }
 
-  return { ...searchOptions, entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES };
+  return { ...searchOptions, entity_types: undefined };
 }
 
 /**

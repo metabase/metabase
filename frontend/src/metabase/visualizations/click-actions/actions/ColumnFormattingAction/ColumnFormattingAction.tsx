@@ -76,7 +76,7 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
     }
 
     return (
-      <Box ref={setDropdownTarget}>
+      <Box ref={setDropdownTarget} w={344}>
         <WidgetPopoverPortalContext.Provider value={portalValue}>
           <Box
             ref={setScrollContainer}

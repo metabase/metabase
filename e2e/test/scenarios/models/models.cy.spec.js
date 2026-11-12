@@ -518,7 +518,7 @@ describe("scenarios > models", () => {
               name: "ID",
               display_name: "ID",
               type: "dimension",
-              dimension: ["field", PRODUCTS.ID, null],
+              "field-id": PRODUCTS.ID,
               "widget-type": "category",
               default: null,
             },

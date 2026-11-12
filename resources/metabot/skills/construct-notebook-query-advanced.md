@@ -182,7 +182,9 @@ To use a metric:
 2. Reference the metric as `["metric", {}, "<portable_entity_id>"]` in `aggregation`.
 3. Use dimensions from the metric's **Dimensions** table for filters and breakouts on the same stage. Read the `Source table` column first. Names such as `id` and `created_at` can appear on several tables, and the table determines how to reference a dimension:
    - Copy `Reference` verbatim for a dimension on the metric's own source. Its portable FK works on card and table stages.
-   - A dimension on an FK-related table can be used in `breakout:` when one foreign key reaches that table. This works on a `source-table` and a `source-card` stage alike. Otherwise, follow the tool's error: add an explicit `joins` entry (see "Joins (explicit)") on the same stage, keep the metric's source, and break out on the field using the join alias.
+   - A renamed copy of a joined column, with an output name such as `NAME_2`, has no portable FK. Its `Reference` is that output name as a string. Copy it as given.
+   - A `Reference` that starts with `["field"` is a full field clause. Copy it as is. A table that a card reaches through two FK columns gets such a clause in each of its rows, for example `PUBLIC.CATEGORIES (via Peer → Category)`.
+   - A dimension on an FK-related table can be used in `breakout:` when one foreign key reaches that table. This works on a `source-table` and a `source-card` stage alike. Otherwise, if its `Reference` is not a full field clause, follow the tool's error. Add an explicit `joins` entry (see "Joins (explicit)") on the same stage. Keep the metric's source, and break out on the field with the join alias.
    - Use the output machine name for an expression or aggregation column computed by the card. These columns have no portable FK.
 
 A table metric with `base_table_fully_qualified_name="PUBLIC.ORDERS"`:

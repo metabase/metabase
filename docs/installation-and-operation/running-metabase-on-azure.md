@@ -1,5 +1,6 @@
 ---
 title: Running Metabase on Microsoft Azure
+summary: Run Metabase on Microsoft Azure with Docker and a managed PostgreSQL application database.
 redirect_from:
   - /docs/latest/operations-guide/running-metabase-on-azure
 ---
@@ -197,4 +198,4 @@ In the example above the connection string would be
 postgresql://10.0.2.4:5432/metabase?user=metabase@metabase-app-database&password=Password1!&ssl=true&sslmode=require
 ```
 
-If you have trouble connecting, refer to the [postgres configuration instructions](../installation-and-operation/configuring-application-database.md#postgresql) as you may run into a problem with an `@` symbol in the username portion of the connection string. Using a combination of `MB_DB_CONNECTION_URI` with separate `MB_DB_USER` and `MB_DB_PASSWORD` fields also works.
+If you have trouble connecting, refer to the [postgres configuration instructions](../installation-and-operation/configuring-application-database.md#postgresql) as you may run into a problem with an `@` symbol in the username portion of the connection string. Using a combination of `MB_DB_CONNECTION_URI` with separate `MB_DB_USER` and `MB_DB_PASS` fields also works.

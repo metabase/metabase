@@ -208,7 +208,7 @@
 
 (deftest modules-can-trigger-cloud-drivers
   (doseq [module '#{query-processor transforms
-                    enterprise/transforms enterprise/transforms.python}
+                    enterprise/transforms enterprise/transforms.python enterprise/workspaces}
           driver [:athena :bigquery :databricks :redshift :snowflake]]
     (testing (format "Cloud driver runs when %s module is updated" module)
       (let [result (mage.modules/driver-decision driver
@@ -264,7 +264,7 @@
 
 (deftest cloud-drivers-are-correct
   (testing "Cloud drivers set matches expected"
-    (is (= #{:athena :bigquery :databricks :redshift :snowflake}
+    (is (= #{:athena :bigquery :databricks :motherduck :redshift :snowflake}
            mage.modules/cloud-drivers))))
 
 ;;; =============================================================================

@@ -201,6 +201,15 @@
   (-> (lib.convert/->legacy-MBQL query-map)
       fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
+(defn ^:export xray-cell-query
+  "Returns the filter of the last stage of `a-query` as a legacy clause in vanilla JSON form, the cell query of an automatic
+  dashboard URL, or nil when the stage has no filter."
+  [a-query]
+  (some-> (lib.convert/->legacy-MBQL a-query)
+          (get-in [:query :filter])
+          fix-namespaced-values
+          (clj->js :keyword-fn u/qualified-name)))
+
 (defn ^:export append-stage
   "Adds a new, blank *stage* to the provided `query`.
 
@@ -1388,6 +1397,20 @@
   [arg]
   (and (map? arg) (= :metadata/segment (:lib/type arg))))
 
+(defn ^:export table-metadata?
+  "Returns true if arg is a Lib table, ie. has `:lib/type :metadata/table`.
+
+  > **Code health:** Healthy"
+  [arg]
+  (and (map? arg) (= :metadata/table (:lib/type arg))))
+
+(defn ^:export card-metadata?
+  "Returns true if arg is a Lib card, ie. has `:lib/type :metadata/card`.
+
+  > **Code health:** Healthy"
+  [arg]
+  (and (map? arg) (= :metadata/card (:lib/type arg))))
+
 (defn ^:export measure-metadata?
   "Returns true if arg is an Lib measure, ie. has `:lib/type :metadata/measure`.
 
@@ -1663,18 +1686,6 @@
         ;; the exported JS contract is a parallel list of indexes; only this fn yields positions
         #_{:clj-kondo/ignore [:discouraged-var]}
         (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack))))))
-
-(defn ^:export source-table-or-card-id
-  "Returns the ID of the source table (as a number) or the ID of the source card (as a string prefixed
-  with \"card__\") of `a-query`. If `a-query` has none of these, nil is returned.
-
-  > **Code health:** Legacy. This is exposing too much about cards and sources. Its callers will likely have to be
-  updated to handle Metrics v2."
-  ;; TODO: Figure out what the callers of this function really need it for, and consider an alternative design.
-  ;; [[with-different-table]] should be included in that refactor.
-  [a-query]
-  (or (lib.util/source-table-id a-query)
-      (some->> (lib.util/source-card-id a-query) (str "card__"))))
 
 ;; # Joins
 ;; Joins are a relatively complex component of a query. They specify a table (or model, in theory), 1 or more conditions
@@ -1985,18 +1996,16 @@
   (lib.join/joined-thing a-query a-join))
 
 (defn ^:export picker-info
-  "Temporary solution providing access to internal IDs for the FE to pass on to MLv1 functions.
+  "IDs of a table, card or column `metadata` for the FE to fetch or link the entity. A column's `:id` and `:tableId`
+  are `nil` when it is not backed by a Field.
 
-  > **Code health:** Single-use, Legacy, Deprecated! This exists only to support some legacy UI in the join picker. No
-  new calls should be added, and the UI should be refactored to remove the need for this function."
-  [a-query metadata]
+  > **Code health:** Healthy"
+  [_a-query metadata]
   (case (:lib/type metadata)
-    :metadata/table #js {:databaseId (:database a-query)
-                         :tableId (:id metadata)}
-    :metadata/card  #js {:databaseId (:database a-query)
-                         :tableId (str "card__" (:id metadata))
-                         :cardId (:id metadata)
-                         :isModel (= (keyword (:type metadata)) :model)}
+    (:metadata/table :metadata/card) #js {:id (:id metadata)}
+    :metadata/column (let [{field-id :id, table-id :table-id} metadata]
+                       #js {:id      (when (int? field-id) field-id)
+                            :tableId (when (int? table-id) table-id)})
     (do
       (log/warn "Cannot provide picker-info for" (:lib/type metadata))
       nil)))
@@ -2034,46 +2043,40 @@
   (cond-> obj
     (object? obj) (gobject/filter (fn [v _k _object] (not (undefined? v))))))
 
+(defn- template-tag-js->cljs
+  "Convert a JavaScript Object containing a template `tag` to a ClojureScript map."
+  [tag-object]
+  (-> tag-object
+      remove-undefined-properties
+      js->clj
+      ;; TODO (Cam 2026-07-09) why not just normalize template tags the same way we do everything else?
+      ;; Not changing this now in case there's some sort of good reason for doing it manually
+      (perf/update-keys keyword)
+      (update :type keyword)
+      (m/update-existing :widget-type #(some-> % keyword))))
+
 (defn- template-tags-js->cljs
-  "Convert a JavaScript Object containing template `tags` to a ClojureScript sequence."
-  [tags-object]
-  (perf/mapv (fn [tag-name]
-               (let [tag-object (gobject/get tags-object tag-name)]
-                 (-> tag-object
-                     remove-undefined-properties
-                     js->clj
-                     ;; TODO (Cam 2026-07-09) why not just normalize template tags the same way we do everything else?
-                     ;; Not changing this now in case there's some sort of good reason for doing it manually
-                     (perf/update-keys keyword)
-                     (assoc :name tag-name) ; prefer the tag name used as a map key in case it's unset in the tag itself or differs
-                     (update :type keyword)
-                     (m/update-existing :widget-type #(some-> % keyword))
-                     (m/update-existing :dimension #(some-> % legacy-ref->mbql5)))))
-             (gobject/getKeys tags-object)))
+  "Convert a JavaScript Array of template `tags` to a ClojureScript vector."
+  [tags-array]
+  (mapv template-tag-js->cljs tags-array))
 
 (defn- template-tag-cljs->js [tag]
   (-> tag
       (update :type name)
       (m/update-existing :widget-type #(some-> % u/qualified-name))
-      (m/update-existing :dimension #(some-> % ref->legacy-ref))
       (clj->js :keyword-fn u/qualified-name)))
 
 (defn- template-tags-cljs->js
-  "Convert a sequence of template `tags` to a JavaScript Object."
+  "Convert a sequence of template `tags` to a JavaScript Array."
   [tags]
-  (reduce
-   (fn [obj {tag-name :name, :as tag}]
-     (doto obj
-       (gobject/set (u/qualified-name tag-name) (template-tag-cljs->js tag))))
-   #js {}
-   tags))
+  (into-array (map template-tag-cljs->js tags)))
 
 (defn ^:export with-template-tags
-  "Updates the native first stage of `a-query`'s template tags to the provided `tags`.
+  "Updates the native first stage of `a-query`'s template tags to the provided array of `tags`.
 
   > **Code health:** Healthy"
-  [a-query tags-object]
-  (lib.core/with-template-tags a-query (template-tags-js->cljs tags-object)))
+  [a-query tags-array]
+  (lib.core/with-template-tags a-query (template-tags-js->cljs tags-array)))
 
 (defn ^:export raw-native-query
   "Returns the native query string for the native first stage of `a-query`.
@@ -2083,7 +2086,7 @@
   (lib.core/raw-native-query a-query))
 
 (defn ^:export template-tags
-  "Returns the template tags for the native first stage of `a-query`, as a JS object mapping tag names to tag info.
+  "Returns the template tags for the native first stage of `a-query`, as a JS array of tags.
 
   > **Code health:** Healthy"
   [a-query]
@@ -2211,6 +2214,33 @@
   [query-or-metadata-provider table-id]
   (lib.metadata/table-or-card query-or-metadata-provider table-id))
 
+(defn ^:export database-metadata
+  "Returns the metadata of the database `query-or-metadata-provider` is bound to.
+
+  Returns `nil` (JS `null`) if no matching metadata is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider]
+  (lib.metadata/database query-or-metadata-provider))
+
+(defn ^:export table-metadata
+  "Given an integer `table-id`, returns the table's metadata.
+
+  Returns `nil` (JS `null`) if no matching metadata is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider table-id]
+  (lib.metadata/table query-or-metadata-provider table-id))
+
+(defn ^:export card-metadata
+  "Given an integer `card-id`, returns the card's metadata.
+
+  Returns `nil` (JS `null`) if no matching metadata is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider card-id]
+  (lib.metadata/card query-or-metadata-provider card-id))
+
 (defn ^:export field-metadata
   "Given an integer `field-id`, returns the field's metadata.
 
@@ -2288,13 +2318,18 @@
       (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
 
 (defn ^:export legacy-column->type-info
-  "Parses a `legacy-column` into an object compatible with type checking functions. Unlike [[legacy-column->metadata]],
-  does not require a `query`. Lib columns remain unchanged.
+  "Reads only the base, effective, and semantic types of a `legacy-column` into an object compatible with type checking
+  functions. Unlike [[legacy-column->metadata]], does not require a `query`. Lib columns remain unchanged.
 
   > **Code health:** Legacy."
   [column]
-  (cond-> column
-    (object? column) js.metadata/parse-column))
+  (if (object? column)
+    (let [type-keyword (fn [k] (some-> (gobject/get column k) keyword))]
+      (m/assoc-some {}
+                    :base-type      (type-keyword "base_type")
+                    :effective-type (type-keyword "effective_type")
+                    :semantic-type  (type-keyword "semantic_type")))
+    column))
 
 (defn- js-cells-by
   "Given a `col-fn`, returns a function that will extract a JS object like
@@ -2561,20 +2596,39 @@
                                             expression-position)
         clj->js)))
 
-;; TODO: [[field-values-search-info]] seems over-specific - I feel like we can do a better job of extracting search info
+;; TODO: [[field-search-info]] seems over-specific - I feel like we can do a better job of extracting search info
 ;; from arbitrary entities, akin to [[display-info]].
 
-(defn ^:export field-values-search-info
+(defn ^:export field-search-info
   "Info about whether the column in question has FieldValues associated with it for purposes of powering a search
   widget in the QB filter modals.
 
   > **Code health:** Single use. Only supports the search info."
   [metadata-providerable column]
-  (let [{:keys [field-id search-field search-field-id has-field-values]} (lib.field/field-values-search-info metadata-providerable column)]
+  (let [{:keys [field-id search-field search-field-id has-field-values]} (lib.field/field-search-info metadata-providerable column)]
     #js {:fieldId        field-id
          :searchField    search-field
          :searchFieldId  search-field-id
          :hasFieldValues (name has-field-values)}))
+
+(defn ^:export parameter-field-info
+  "What a parameter widget needs to know about the Field of `column`: its name, the name of the Field its values are
+  searched by, its type, its FieldValues, and whether its values have human-readable labels. `nil` for a column without
+  a Field.
+
+  > **Code health:** Single use. Only used to describe the field of a parameter target."
+  [metadata-providerable column]
+  (when-let [info (lib.field/parameter-field-info metadata-providerable column)]
+    #js {:id                     (:id info)
+         :displayName            (:display-name info)
+         :searchFieldDisplayName (:search-field-display-name info)
+         :isString               (:string? info)
+         :isBoolean              (:boolean? info)
+         :isDate                 (:date? info)
+         :isNumeric              (:numeric? info)
+         :settings               (some-> (:settings info) clj->js)
+         :hasFieldValues         (name (:has-field-values info))
+         :hasRemappedValues      (:has-remapped-values? info)}))
 
 ;; # Specialized Filtering
 ;; These specialized filter updates support the drag-and-drop "brush" filtering in the UI. Eg. dragging a box on a map
@@ -2652,6 +2706,20 @@
   "Return a JS array of all source card IDs referenced anywhere in `a-query`."
   [a-query]
   (clj->js (vec (or (lib.core/all-source-card-ids a-query) #{}))))
+
+(defn ^:export primary-source-table-id
+  "Return the ID of the table the first stage of `a-query` is based on, or `nil` (JS `null`) for any other source.
+
+  > **Code health:** Healthy."
+  [a-query]
+  (lib.core/primary-source-table-id a-query))
+
+(defn ^:export primary-source-card-id
+  "Return the ID of the card the first stage of `a-query` is based on, or `nil` (JS `null`) for any other source.
+
+  > **Code health:** Healthy."
+  [a-query]
+  (lib.core/primary-source-card-id a-query))
 
 (defn ^:export all-field-ids
   "Return a JS array of all field IDs referenced anywhere in `a-query`."

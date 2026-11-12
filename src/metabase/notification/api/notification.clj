@@ -337,11 +337,7 @@
       (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
                                                               :user-id api/*current-user-id*}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/unsubscribe"
+(api.macros/defendpoint :post "/:id/unsubscribe" :- ::api/generic-204-no-content
   "Unsubscribe current user from a notification."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (unsubscribe-user! id api/*current-user-id*)

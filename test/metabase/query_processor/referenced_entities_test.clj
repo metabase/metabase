@@ -121,7 +121,19 @@
         (is (= [[100]] (get-in response [:data :rows]))))
       (testing "referenced card is marked failed with an error"
         (is (= "failed" (:status goal)))
-        (is (string? (:error goal)))))))
+        (is (string? (:error goal))))
+      (testing "the error type lets the FE explain that the source is gone"
+        (is (= "not-found" (:error_type goal)))))))
+
+(deftest dataset-endpoint-missing-measure-test
+  (testing "a referenced measure that doesn't exist reports the same error type as a card"
+    (let [response (mt/user-http-request
+                    :crowberto :post 202 "dataset"
+                    (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                           :referenced_entities [{:type "measure" :id Integer/MAX_VALUE}]))
+          goal     (ref-entity response :measure Integer/MAX_VALUE)]
+      (is (= "failed" (:status goal)))
+      (is (= "not-found" (:error_type goal))))))
 
 (deftest dataset-endpoint-unreadable-card-test
   (testing "a referenced card the caller can't read fails softly without failing the main query"
@@ -977,3 +989,20 @@
             (testing "refreshing the chart refreshes its goal too"
               (view! true)
               (is (= 2 (count (filter (comp false? :cache_hit) (goal-executions! :card_id goal-id))))))))))))
+
+(deftest public-card-endpoint-keeps-referenced-entity-error-type-test
+  (testing "GET /api/public/card/:uuid/query keeps the error type of a referenced card that doesn't exist"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {deleted-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                     :model/Card {uuid :public_uuid} {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+                                                      :display                :scalar
+                                                      :public_uuid            (str (random-uuid))
+                                                      :visualization_settings {:scalar.segments
+                                                                               [{:min   (goal-ref deleted-id)
+                                                                                 :max   nil
+                                                                                 :color "red"}]}}]
+        (t2/delete! :model/Card :id deleted-id)
+        (let [response (client/client :get 202 (str "public/card/" uuid "/query"))
+              goal     (ref-entity response :card deleted-id)]
+          (is (= "failed" (:status goal)))
+          (is (= "not-found" (:error_type goal))))))))

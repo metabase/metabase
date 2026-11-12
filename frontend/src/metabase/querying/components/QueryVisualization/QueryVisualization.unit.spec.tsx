@@ -7,6 +7,8 @@ import { act, renderWithProviders, screen, within } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { OnOpenChartSettings } from "metabase/visualizations/types";
 import { loadVisualizationComponents } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   Dataset,
@@ -20,11 +22,7 @@ import {
   createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
-import {
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { QueryVisualization } from "./QueryVisualization";
 
@@ -74,11 +72,7 @@ async function setup({
   const onOpenChartSettings = jest.fn<void, Parameters<OnOpenChartSettings>>();
   const question = new Question(
     {
-      dataset_query: {
-        type: "query",
-        query: { "source-table": ORDERS_ID },
-        database: SAMPLE_DB_ID,
-      },
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
       display: "line",
       visualization_settings: GOAL_SETTINGS,
     },
@@ -247,11 +241,7 @@ function setupWithoutResult({
 }) {
   const question = new Question(
     {
-      dataset_query: {
-        type: "query",
-        query: { "source-table": ORDERS_ID },
-        database: SAMPLE_DB_ID,
-      },
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
       display: "table",
       visualization_settings: {},
     },

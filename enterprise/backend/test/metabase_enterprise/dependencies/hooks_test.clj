@@ -11,7 +11,6 @@
    [metabase.batch-processing.core :as grouper]
    [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib.core :as lib]
-   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -307,8 +306,8 @@
            without looking the app up first"
     (mt/with-premium-features #{:dependencies}
       (data-apps.tu/with-published-tables! [(mt/id :products)]
-        (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id} {:name         "birds"
-                                                                                          :display_name "Birds"
+        (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id} {:slug         "birds"
+                                                                                          :name         "Birds"
                                                                                           :bundle_path  "birds.js"}
                        :model/Collection {other-collection-id :id} {}
                        :model/Card card {:dataset_query (table-query :products) :collection_id collection-id}]
@@ -388,7 +387,6 @@
                                             :row 4 :col 0 :size_x 4 :size_y 4})
           (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
             (deps.test/do-with-immediate-hook-writes
-             #(serdes/with-cache
-                (serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false))))
+             #(serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false)))
           (is (= 1 (t2/count :model/DashboardCard :dashboard_id dashboard-id)))
           (is (seq @submitted)))))))

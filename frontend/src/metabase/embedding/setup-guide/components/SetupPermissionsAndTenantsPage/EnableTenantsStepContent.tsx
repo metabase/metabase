@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 /* eslint-disable metabase/no-literal-metabase-strings -- This string only shows for admins */
 
 import { useCallback } from "react";

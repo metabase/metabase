@@ -1,6 +1,5 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { thaw } from "icepick";
 import type { ComponentProps } from "react";
 import { useState } from "react";
 
@@ -10,6 +9,8 @@ import * as domUtils from "metabase/utils/dom";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 import {
@@ -22,7 +23,6 @@ import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
-  SAMPLE_DB_ID,
   createOrdersCreatedAtDatasetColumn,
   createProductsCategoryDatasetColumn,
   createSampleDatabase,
@@ -64,22 +64,30 @@ function setupPivotSettings() {
     const [question, setQuestion] = useState(
       new Question(
         createMockCard({
-          dataset_query: {
-            type: "query",
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["count"]],
-              breakout: [
-                ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-                [
-                  "field",
-                  PRODUCTS.CREATED_AT,
-                  { "source-field": ORDERS.PRODUCT_ID },
-                ],
+          dataset_query: Lib.toJsQuery(
+            Lib.createTestQuery(SAMPLE_PROVIDER, {
+              stages: [
+                {
+                  source: { type: "table", id: ORDERS_ID },
+                  aggregations: [
+                    { type: "operator", operator: "count", args: [] },
+                  ],
+                  breakouts: [
+                    {
+                      type: "column",
+                      fieldId: ORDERS.CREATED_AT,
+                      unit: "year",
+                    },
+                    {
+                      type: "column",
+                      fieldId: PRODUCTS.CREATED_AT,
+                      sourceFieldId: ORDERS.PRODUCT_ID,
+                    },
+                  ],
+                },
               ],
-            },
-            database: SAMPLE_DB_ID,
-          },
+            }),
+          ),
           display: "pivot",
           visualization_settings: {},
         }),
@@ -90,7 +98,7 @@ function setupPivotSettings() {
     const onChange = (update: VisualizationSettings) => {
       setQuestion((q) => {
         const newQuestion = q.updateSettings(update);
-        return new Question(thaw(newQuestion.card()), metadata);
+        return new Question(newQuestion.card(), metadata);
       });
     };
 

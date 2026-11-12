@@ -20,7 +20,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.premium-features.core :as premium-features]
    [metabase.secrets.core :as secret]
@@ -47,7 +46,6 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
-   [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.api :as api.database]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.util :as warehouses.util]
@@ -135,39 +133,12 @@
                     :native   {:query "SELECT * FROM VENUES"}}}
    kvs))
 
-(defn- card-with-mbql-query [card-name & {:as inner-query-clauses}]
-  {:name          card-name
-   :database_id   (mt/id)
-   :dataset_query {:database (mt/id)
-                   :type     :query
-                   :query    inner-query-clauses}})
-
-(defn- virtual-table-for-card [card & {:as kvs}]
-  (merge
-   {:id               (format "card__%d" (u/the-id card))
-    :db_id            (:database_id card)
-    :entity_id        (:entity_id card)
-    :display_name     (:name card)
-    :schema           "Everything else"
-    :moderated_status nil
-    :metrics          nil
-    :description      nil
-    :type             "question"}
-   kvs))
-
-(defn- ok-mbql-card []
-  (assoc (card-with-mbql-query "OK Card"
-                               :source-table (mt/id :checkins))
-         :result_metadata [{:name         "num_toucans"
-                            :display_name "Num Toucans"
-                            :base_type    :type/Integer}]))
-
 (deftest ^:parallel get-database-test
   (testing "GET /api/database/:id"
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :write_data_details :initial_sync_error :schedules))
+                   (dissoc :details :write_data_details :admin_details :initial_sync_error :schedules))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules :can_upload)))))
       (testing "Superusers should see DB details"
@@ -904,7 +875,7 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details :write_data_details :initial_sync_error :router_user_attribute)
+    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error :router_user_attribute)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -1241,7 +1212,7 @@
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
-                                (disj :details :write_data_details :initial_sync_error))]
+                                (disj :details :write_data_details :admin_details :initial_sync_error))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
@@ -1340,263 +1311,17 @@
                 (is (= uploads-enabled?
                        (-> result :data first :can_upload)))))))))))
 
-(deftest databases-list-include-saved-questions-test
-  (testing "GET /api/database?saved=true"
-    (mt/with-temp [:model/Card _ (assoc (card-with-native-query "Some Card")
-                                        :result_metadata [{:name         "col_name"
-                                                           :display_name "Col Name"
-                                                           :base_type    :type/Text}])]
-      (testing "We should be able to include the saved questions virtual DB (without Tables) with the param ?saved=true"
-        (is (= {:name               "Saved Questions"
-                :id                 lib.schema.id/saved-questions-virtual-database-id
-                :features           ["basic-aggregations"]
-                :is_saved_questions true}
-               (last (:data (mt/user-http-request :lucky :get 200 "database?saved=true")))))))))
-
-(deftest ^:parallel databases-list-include-saved-questions-test-2
-  (testing "GET /api/database?saved=true"
-    (testing "We should not include the saved questions virtual DB if there aren't any cards"
-      (is (not-any?
-           :is_saved_questions
-           (mt/user-http-request :lucky :get 200 "database?saved=true"))))))
-
-(deftest databases-list-include-saved-questions-test-3
-  (testing "GET /api/database?saved=true -- Omit virtual DB if nested queries are disabled (#19341)"
-    (mt/with-temp [:model/Card _ (assoc (card-with-native-query "Some Card")
-                                        :result_metadata [{:name         "col_name"
-                                                           :display_name "Col Name"
-                                                           :base_type    :type/Text}])]
-      (testing "sanity check: the virtual DB is present when nested queries are enabled"
-        (is (some :is_saved_questions
-                  (:data (mt/user-http-request :lucky :get 200 "database?saved=true")))))
-      (testing "the virtual DB is omitted entirely when nested queries are disabled"
-        (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "false"]
-          (is (not-any? :is_saved_questions
-                        (:data (mt/user-http-request :lucky :get 200 "database?saved=true")))))))))
-
-(deftest databases-list-saved-questions-call-count-test
-  (testing "GET /api/database?saved=true&include=tables app-DB call count should not scale with the number of Cards"
-    (mt/with-model-cleanup [:model/Card]
-      (letfn [(insert-cards! [n]
-                (dotimes [_ n]
-                  (t2/insert! :model/Card
-                              (assoc (card-with-native-query (mt/random-name))
-                                     :creator_id             (mt/user->id :crowberto)
-                                     :display                :table
-                                     :visualization_settings {}
-                                     ;; a column with a real Field :id exercises the per-card Field
-                                     ;; fetch + hydration path
-                                     :result_metadata        [{:id           (mt/id :venues :name)
-                                                               :name         "NAME"
-                                                               :display_name "Name"
-                                                               :base_type    :type/Text}]))))
-              (warm-call-count! []
-                ;; first request pays one-time priming; measure the second
-                (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables")
-                (t2/with-call-count [call-count]
-                  (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables")
-                  (call-count)))]
-        (insert-cards! 2)
-        (let [calls-with-2  (warm-call-count!)
-              _             (insert-cards! 16)
-              calls-with-18 (warm-call-count!)]
-          ;; [[mi/do-after-select]] re-runs each Card row through toucan2's identity-query, which
-          ;; `with-call-count` counts even though it never hits the DB — so growth of 1 per Card is
-          ;; expected and allowed. The slack of 6 stays well under the pre-batching behavior of one
-          ;; real `metabase_database` select per additional Card on top of that (#78919).
-          (is (<= calls-with-18 (+ calls-with-2 16 6))))))))
-
 (deftest fetch-databases-with-invalid-driver-test
   (testing "GET /api/database"
     (testing "\nEndpoint should still work even if there is a Database saved with a invalid driver"
       (mt/with-temp [:model/Database {db-id :id} {:engine "my-invalid-driver"}]
         (testing (format "\nID of Database with invalid driver = %d" db-id)
           (doseq [params [nil
-                          "?saved=true"
                           "?include=tables"]]
             (testing (format "\nparams = %s" (pr-str params))
               (let [db-ids (set (map :id (:data (mt/user-http-request :lucky :get 200 (str "database" params)))))]
                 (testing "DB should still come back, even though driver is invalid :shrug:"
                   (is (contains? db-ids db-id)))))))))))
-
-(def ^:private SavedQuestionsDB
-  "Schema for the expected shape of info about the 'saved questions' virtual DB from API responses."
-  [:map
-   [:name               [:= "Saved Questions"]]
-   [:id                 [:= -1337]]
-   [:is_saved_questions [:= true]]
-   [:features           [:= ["basic-aggregations"]]]
-   [:tables             [:sequential [:map
-                                      [:id               #"^card__\d+$"]
-                                      [:db_id            :int]
-                                      [:display_name     :string]
-                                      [:moderated_status [:or nil? [:= "verified"]]]
-                                      [:schema           :string] ; collection name
-                                      [:description      [:maybe :string]]]]]])
-
-(defn- check-tables-included [response & tables]
-  (let [response-tables (:tables response)]
-    (doseq [table tables]
-      (testing (format "Should include Table %s" (pr-str table))
-        (let [response-table (m/find-first #(= (:id %) (:id table))
-                                           response-tables)]
-          (is (=? table
-                  response-table)))))))
-
-(defn- check-tables-not-included [response & tables]
-  (let [response-tables (set (:tables response))]
-    (doseq [table tables]
-      (testing (format "Should *not* include Table %s" (pr-str table))
-        (is (not (contains? response-tables table)))))))
-
-(defn- fetch-virtual-database []
-  (some #(when (= (:name %) "Saved Questions")
-           %)
-        (:data (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables"))))
-
-(deftest databases-list-include-saved-questions-tables-test
-  (testing "GET /api/database?saved=true&include=tables"
-    (testing "Check that we get back 'virtual' tables for Saved Questions"
-      (testing "The saved questions virtual DB should be the last DB in the list"
-        (mt/with-temp [:model/Card card (card-with-native-query "Maz Quote Views Per Month")]
-          ;; run the Card which will populate its result_metadata column
-          (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
-          ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
-          (let [response (last (:data (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables")))]
-            (is (malli= SavedQuestionsDB
-                        response))
-            (check-tables-included response (virtual-table-for-card card))))))))
-
-(deftest databases-list-include-saved-questions-tables-test-2
-  (testing "GET /api/database?saved=true&include=tables"
-    (testing "Check that we get back 'virtual' tables for Saved Questions"
-      (testing "Make sure saved questions are NOT included if the setting is disabled"
-        (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "false"]
-          (mt/with-temp [:model/Card card (card-with-native-query "Maz Quote Views Per Month")]
-            ;; run the Card which will populate its result_metadata column
-            (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
-            ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
-            (is (= nil
-                   (fetch-virtual-database)))))))))
-
-(deftest databases-list-include-saved-questions-tables-test-3
-  (testing "GET /api/database?saved=true&include=tables"
-    (testing "should pretend Collections are schemas"
-      (mt/with-temp [:model/Collection stamp-collection {:name "Stamps"}
-                     :model/Collection coin-collection  {:name "Coins"}
-                     :model/Card       stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/the-id stamp-collection))
-                     :model/Card       coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/the-id coin-collection))]
-        ;; run the Cards which will populate their result_metadata columns
-        (doseq [card [stamp-card coin-card]]
-          (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
-        ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
-        ;; Collection name as their Schema
-        (let [response (last (:data (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables")))]
-          (is (malli= SavedQuestionsDB
-                      response))
-          (check-tables-included
-           response
-           (virtual-table-for-card coin-card :schema "Coins")
-           (virtual-table-for-card stamp-card :schema "Stamps")))))))
-
-(deftest databases-list-include-saved-questions-tables-test-4
-  (testing "GET /api/database?saved=true&include=tables"
-    (testing "should remove Cards that have ambiguous columns"
-      (mt/with-temp [:model/Card ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name         "cam"
-                                                                                                                      :display_name "Cam"
-                                                                                                                      :base_type    :type/Text}])
-                     :model/Card cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name         "cam"
-                                                                                                                      :display_name "Cam"
-                                                                                                                      :base_type    :type/Text}
-                                                                                                                     {:name         "cam_2"
-                                                                                                                      :display_name "Cam 2"
-                                                                                                                      :base_type    :type/Text}])]
-        (let [response (fetch-virtual-database)]
-          (is (malli= SavedQuestionsDB
-                      response))
-          (check-tables-included response (virtual-table-for-card ok-card))
-          (check-tables-not-included response (virtual-table-for-card cambiguous-card)))))))
-
-(deftest databases-list-include-saved-questions-tables-test-5
-  (testing "GET /api/database?saved=true&include=tables"
-    (testing "should remove Cards that belong to a driver that doesn't support nested queries"
-      (mt/with-temp [:model/Database bad-db {:engine ::no-nested-query-support, :details {}}
-                     :model/Card bad-card {:name            "Bad Card"
-                                           :dataset_query   {:database (u/the-id bad-db)
-                                                             :type     :native
-                                                             :native   {:query "[QUERY GOES HERE]"}}
-                                           :result_metadata [{:name         "sparrows"
-                                                              :display_name "Sparrows"
-                                                              :base_type    :type/Integer}]
-                                           :database_id     (u/the-id bad-db)}
-                     :model/Card ok-card (assoc (card-with-native-query "OK Card")
-                                                :result_metadata [{:name         "finches"
-                                                                   :display_name "Finches"
-                                                                   :base_type    :type/Integer}])]
-        (let [response (fetch-virtual-database)]
-          (is (malli= SavedQuestionsDB
-                      response))
-          (check-tables-included response (virtual-table-for-card ok-card))
-          (check-tables-not-included response (virtual-table-for-card bad-card)))))))
-
-(deftest databases-list-include-saved-questions-tables-test-6
-  (testing "GET /api/database?saved=true&include=tables"
-    (testing "should work when there are no DBs that support nested queries"
-      (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
-        (is (nil? (fetch-virtual-database)))))))
-
-(deftest databases-list-include-saved-questions-tables-test-7
-  (testing "GET /api/database?saved=true&include=tables"
-    (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
-      (mt/with-temp [:model/Card ok-card  (ok-mbql-card)
-                     :model/Card bad-card (merge
-                                           (mt/$ids checkins
-                                             (card-with-mbql-query "Cum Count Card"
-                                                                   :source-table $$checkins
-                                                                   :aggregation  [[:cum-count]]
-                                                                   :breakout     [!month.date]))
-                                           {:result_metadata [{:name         "num_toucans"
-                                                               :display_name "Num Toucans"
-                                                               :base_type    :type/Integer}]})]
-        (let [response (fetch-virtual-database)]
-          (is (malli= SavedQuestionsDB
-                      response))
-          (check-tables-included response (virtual-table-for-card ok-card))
-          (check-tables-not-included response (virtual-table-for-card bad-card)))))))
-
-(deftest db-metadata-saved-questions-db-test
-  (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
-    (mt/with-temp [:model/Card card (card-with-native-query
-                                     "Birthday Card"
-                                     :entity_id       "M6W4CLdyJxiW-DyzDbGl4"
-                                     :result_metadata [{:name         "age_in_bird_years"
-                                                        :display_name "Age in Bird Years"
-                                                        :base_type    :type/Integer}])]
-      (let [response (mt/user-http-request :crowberto :get 200
-                                           (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
-        (is (malli= SavedQuestionsDB
-                    response))
-        (check-tables-included
-         response
-         (assoc (virtual-table-for-card card)
-                :fields [{:name                     "age_in_bird_years"
-                          :display_name             "Age in Bird Years"
-                          :table_id                 (str "card__" (u/the-id card))
-                          :id                       ["field" "age_in_bird_years" {:base-type "type/Integer"}]
-                          :semantic_type            nil
-                          :base_type                "type/Integer"}]))))))
-
-(deftest db-metadata-saved-questions-db-test-2
-  (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
-    (testing "\nif no eligible Saved Questions exist the endpoint should return empty tables"
-      (mt/with-dynamic-fn-redefs [api.database/cards-virtual-tables (constantly [])]
-        (is (= {:name               "Saved Questions"
-                :id                 lib.schema.id/saved-questions-virtual-database-id
-                :features           ["basic-aggregations"]
-                :is_saved_questions true
-                :tables             []}
-               (mt/user-http-request :crowberto :get 200
-                                     (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))))))))
 
 (deftest db-metadata-tables-have-non-nil-schemas
   (mt/test-drivers (mt/normal-drivers)
@@ -1746,6 +1471,7 @@
                       (:metadata_sync_schedule db)))
             (is (not= (-> schedule-map-for-last-friday-at-11pm u.cron/schedule-map->cron-string)
                       (:cache_field_values_schedule db)))))))))
+
 (deftest update-db-to-never-scan-values-on-demand-test
   (with-db-scheduler-setup!
     (with-test-driver-available!
@@ -2276,18 +2002,6 @@
     (testing "Looking for a database that doesn't exist should return a 404"
       (is (= "Not found."
              (mt/user-http-request :crowberto :get 404 (format "database/%s/schemas" Integer/MAX_VALUE)))))
-    (testing "should work for the saved questions 'virtual' database"
-      (mt/with-temp [:model/Collection coll   {:name "My Collection"}
-                     :model/Card       card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))
-                     :model/Card       card-2 (card-with-native-query "Card 2")]
-        ;; run the cards to populate their result_metadata columns
-        (doseq [card [card-1 card-2]]
-          (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
-        (let [schemas (set (mt/user-http-request
-                            :lucky :get 200
-                            (format "database/%d/schemas" lib.schema.id/saved-questions-virtual-database-id)))]
-          (is (contains? schemas "Everything else"))
-          (is (contains? schemas "My Collection")))))
     (testing "null and empty schemas should both come back as blank strings"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table    _ {:db_id db-id :schema ""}
@@ -2433,124 +2147,6 @@
                (set (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")
                                                      :include_hidden true)))))))))
 
-(deftest get-schema-tables-test-7
-  (testing "GET /api/database/:id/schema/:schema"
-    (testing "should work for the saved questions 'virtual' database"
-      (mt/with-temp [:model/Collection coll   {:name "My Collection"}
-                     :model/Card       card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))
-                     :model/Card       card-2 (card-with-native-query "Card 2")]
-        ;; run the cards to populate their result_metadata columns
-        (doseq [card [card-1 card-2]]
-          (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
-        (testing "Should be able to get saved questions in a specific collection"
-          (is (= [{:id               (format "card__%d" (:id card-1))
-                   :db_id            (mt/id)
-                   :entity_id        (:entity_id card-1)
-                   :metrics          nil
-                   :moderated_status nil
-                   :display_name     "Card 1"
-                   :schema           "My Collection"
-                   :description      nil
-                   :type             "question"}]
-                 (mt/user-http-request :lucky :get 200
-                                       (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
-        (testing "Should be able to get saved questions in the root collection"
-          (let [response (mt/user-http-request :lucky :get 200
-                                               (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id
-                                                       (schema.table/root-collection-schema-name)))]
-            (is (malli= [:sequential
-                         [:map
-                          [:id               #"^card__\d+$"]
-                          [:db_id            ::lib.schema.id/database]
-                          [:display_name     :string]
-                          [:moderated_status [:maybe [:= "verified"]]]
-                          [:schema           [:= (schema.table/root-collection-schema-name)]]
-                          [:description      [:maybe :string]]]]
-                        response))
-            (is (not (contains? (set (map :display_name response)) "Card 3")))
-            (is (contains? (set response)
-                           {:id               (format "card__%d" (:id card-2))
-                            :db_id            (mt/id)
-                            :entity_id        (:entity_id card-2)
-                            :display_name     "Card 2"
-                            :metrics          nil
-                            :moderated_status nil
-                            :schema           (schema.table/root-collection-schema-name)
-                            :description      nil
-                            :type             "question"}))))
-        (testing "Should throw 404 if the schema/Collection doesn't exist"
-          (is (= "Not found."
-                 (mt/user-http-request :lucky :get 404
-                                       (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "Coin Collection")))))))))
-
-(deftest get-schema-tables-test-8
-  (testing "GET /api/database/:id/schema/:schema"
-    (testing "should work for the datasets in the 'virtual' database"
-      (mt/with-temp [:model/Collection coll   {:name "My Collection"}
-                     :model/Card       card-1 (assoc (card-with-native-query "Card 1")
-                                                     :collection_id (:id coll)
-                                                     :type :model)
-                     :model/Card       metric {:type :metric
-                                               :name "Metric"
-                                               :database_id (mt/id)
-                                               :collection_id (:id coll)
-                                               :dataset_query (mt/mbql-query nil
-                                                                {:source-table (str "card__" (:id card-1))
-                                                                 :aggregation [[:count]]})}
-                     :model/Card       card-2 (assoc (card-with-native-query "Card 2")
-                                                     :type :model)
-                     :model/Card       _card-3 (assoc (card-with-native-query "error")
-                                                      ;; regular saved question should not be in the results
-                                                      :type :question)]
-        ;; run the cards to populate their result_metadata columns
-        (doseq [card [card-1 card-2]]
-          (is (=? {:status "completed"}
-                  (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))))
-        (testing "Should be able to get datasets in a specific collection"
-          (is (=? [{:id               (format "card__%d" (:id card-1))
-                    :db_id            (mt/id)
-                    :metrics          [{:id             (:id metric)
-                                        :name           "Metric"
-                                        :type           "metric"
-                                        :source_card_id (:id card-1)
-                                        :database_id    (mt/id)}]
-                    :display_name     "Card 1"
-                    :schema           "My Collection"
-                    :type             "model"}
-                   {:id           (format "card__%d" (:id metric))
-                    :db_id        (mt/id)
-                    :display_name "Metric"
-                    :schema       "My Collection"}]
-                  (mt/user-http-request :lucky :get 200
-                                        (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
-        (testing "Should be able to get datasets in the root collection"
-          (let [response (mt/user-http-request :lucky :get 200
-                                               (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id
-                                                       (schema.table/root-collection-schema-name)))]
-            (is (malli= [:sequential
-                         [:map
-                          [:id               [:re #"^card__\d+$"]]
-                          [:db_id            ::lib.schema.id/database]
-                          [:display_name     :string]
-                          [:moderated_status [:maybe [:= :verified]]]
-                          [:schema           [:= (schema.table/root-collection-schema-name)]]
-                          [:description      [:maybe :string]]]]
-                        response))
-            (is (contains? (set response)
-                           {:id               (format "card__%d" (:id card-2))
-                            :db_id            (mt/id)
-                            :entity_id        (:entity_id card-2)
-                            :display_name     "Card 2"
-                            :metrics          nil
-                            :moderated_status nil
-                            :schema           (schema.table/root-collection-schema-name)
-                            :description      nil
-                            :type             "model"}))))
-        (testing "Should throw 404 if the schema/Collection doesn't exist"
-          (is (= "Not found."
-                 (mt/user-http-request :lucky :get 404
-                                       (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "Coin Collection")))))))))
-
 (deftest get-schema-tables-test-9
   (testing "GET /api/database/:id/schema/:schema"
     (mt/with-temp [:model/Database {db-id :id} {}
@@ -2597,50 +2193,6 @@
         (let [tables (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))]
           (is (true? (:is_published (m/find-first #(= "published-table" (:name %)) tables))))
           (is (false? (:is_published (m/find-first #(= "unpublished-table" (:name %)) tables)))))))))
-
-(deftest get-schema-tables-unreadable-metrics-are-not-returned-test
-  (mt/with-temp [:model/Collection model-coll   {:name "Model Collection"}
-                 :model/Card       card         (card-with-native-query
-                                                 "Card 1"
-                                                 :collection_id (:id model-coll)
-                                                 :type :model)
-                 :model/Collection metric-coll {:name "Metric Collection"}
-                 :model/Card       metric      {:type          :metric
-                                                :name          "Metric"
-                                                :database_id   (mt/id)
-                                                :collection_id (:id metric-coll)
-                                                :dataset_query {:type     :query
-                                                                :database (mt/id)
-                                                                :query    {:source-table (str "card__" (:id card))
-                                                                           :aggregation  [[:count]]}}}]
-    (is (=? nil (:result_metadata card)))
-    (is (=? nil (:result_metadata (t2/select-one :model/Card :id (:id card)))))
-    (is (=? {:status "completed"}
-            (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))))
-    (let [virtual-table {:id           (format "card__%d" (:id card))
-                         :db_id        (mt/id)
-                         :metrics      nil
-                         :display_name "Card 1"
-                         :schema       (:name model-coll)
-                         :type         "model"}]
-      (testing "Metrics should be returned"
-        (is (=? [(assoc virtual-table
-                        :metrics [{:id             (:id metric)
-                                   :name           "Metric"
-                                   :type           "metric"
-                                   :source_card_id (:id card)
-                                   :database_id    (mt/id)}])]
-                (mt/user-http-request :lucky :get 200
-                                      (format "database/%d/datasets/%s"
-                                              lib.schema.id/saved-questions-virtual-database-id
-                                              (:name model-coll))))))
-      (perms/revoke-collection-permissions! (perms-group/all-users) (:id metric-coll))
-      (testing "Metrics should not be returned if its collection is not accessible"
-        (is (=? [virtual-table]
-                (mt/user-http-request :lucky :get 200
-                                      (format "database/%d/datasets/%s"
-                                              lib.schema.id/saved-questions-virtual-database-id
-                                              (:name model-coll)))))))))
 
 (deftest get-schema-tables-permissions-test
   (testing "GET /api/database/:id/schema/:schema against permissions"
@@ -3395,21 +2947,192 @@
                                        {:write_data_details {:host "write-host"
                                                              :write-data-connection true}}))))))))
 
+;;; ----------------------------------------- admin_details tests -----------------------------------------
+
+(deftest ^:parallel upsert-sensitive-fields-admin-details-test
+  (testing "upsert-sensitive-fields works with :admin_details key"
+    (is (= {:host "localhost"
+            :port 5432
+            :password "new-password"}
+           (#'api.database/upsert-sensitive-fields
+            {:engine :h2
+             :id (mt/id)
+             :details {:host "localhost" :port 5432 :password "main-pass"}
+             :admin_details {:host "localhost" :port 5432 :password "admin-pass"}}
+            {:host "localhost"
+             :port 5432
+             :password "new-password"}
+            :admin_details)))
+    (testing "protected passwords are replaced from original"
+      (is (= {:host "localhost"
+              :port 5432
+              :password "admin-pass"}
+             (#'api.database/upsert-sensitive-fields
+              {:engine :h2
+               :id (mt/id)
+               :details {:host "localhost" :port 5432 :password "main-pass"}
+               :admin_details {:host "localhost" :port 5432 :password "admin-pass"}}
+              {:host "localhost"
+               :port 5432
+               :password secret/protected-password}
+              :admin_details))))))
+
+(deftest get-database-admin-details-test
+  (testing "GET /api/database/:id"
+    (testing "Superusers see admin_details with sensitive fields redacted"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                  :details {:host "localhost"}
+                                                  :admin_details {:host "admin-host"
+                                                                  :password "secret-admin-pass"}}]
+        (let [response (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+          (is (= "admin-host" (get-in response [:admin_details :host])))
+          (is (= secret/protected-password (get-in response [:admin_details :password]))))))
+    (testing "Regular users do not see admin_details"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                  :details {:host "localhost"}
+                                                  :admin_details {:host "admin-host"}}]
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
+          (is (not (contains? response :admin_details)))
+          (is (not (contains? response :details))))))))
+
+(deftest update-database-admin-details-test
+  (testing "PUT /api/database/:id with admin_details"
+    (testing "Superusers can set admin_details"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (let [response (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                                 {:admin_details {:host "admin-host"
+                                                                  :password "admin-pass"
+                                                                  :admin-connection true}})]
+              (is (= "admin-host" (get-in response [:admin_details :host])))
+              (is (= secret/protected-password (get-in response [:admin_details :password])))
+              (let [db (t2/select-one :model/Database :id db-id)]
+                (is (= {:host "admin-host" :password "admin-pass" :admin-connection true}
+                       (:admin_details db)))))))))
+    (testing "Superusers can clear admin_details by setting it to nil"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}
+                                                    :admin_details {:host "admin-host"}}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                  {:admin_details nil})
+            (let [db (t2/select-one :model/Database :id db-id)]
+              (is (nil? (:admin_details db))))))))
+    (testing "Sensitive fields are preserved when protected-password is sent"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}
+                                                    :admin_details {:host "admin-host"
+                                                                    :password "original-pass"}}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                  {:admin_details {:host "new-admin-host"
+                                                   :password secret/protected-password
+                                                   :admin-connection true}})
+            (let [db (t2/select-one :model/Database :id db-id)]
+              (is (= "new-admin-host" (get-in db [:admin_details :host])))
+              (is (= "original-pass" (get-in db [:admin_details :password]))))))))
+    (testing "Returns 402 without :workspaces feature"
+      (mt/with-dynamic-fn-redefs [premium-features/has-feature? (constantly false)]
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}}]
+          (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)
+                                {:admin_details {:host "admin-host"}}))))))
+
 (deftest update-database-preserves-overlay-details-test
-  (testing "PUT /api/database/:id without write_data_details/provider_name keys"
+  (testing "PUT /api/database/:id without write_data_details/admin_details/provider_name keys"
     (testing "preserves nullable fields instead of nil-ing them out"
-      (mt/with-premium-features #{:writable-connection}
+      (mt/with-premium-features #{:writable-connection :workspaces}
         (mt/with-temp [:model/Database {db-id :id} {:engine             :h2
                                                     :details            {:host "localhost"}
                                                     :write_data_details {:host "write-host"}
+                                                    :admin_details      {:host "admin-host"}
                                                     :provider_name      "AWS RDS"}]
           (with-redefs [driver/can-connect? (constantly true)]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                   {:name "Renamed DB"})
             (is (=? {:name               "Renamed DB"
                      :write_data_details {:host "write-host"}
+                     :admin_details      {:host "admin-host"}
                      :provider_name      "AWS RDS"}
                     (t2/select-one :model/Database :id db-id)))))))))
+
+(deftest put-validates-admin-details-connection-test
+  (when config/ee-available?
+    (testing "PUT /api/database/:id returns 400 when admin connection test fails"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (with-redefs [driver/can-connect? (fn [_engine details]
+                                              (if (:admin-connection details)
+                                                (throw (Exception. "Admin connection failed"))
+                                                true))]
+            (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                                 {:admin_details {:host "totally-bogus-host"
+                                                                  :admin-connection true}})]
+              (is (= "Admin connection failed" (:message response))))))))))
+
+(deftest admin-details-guardrails-test
+  (testing "PUT /api/database/:id admin_details guardrails"
+    (testing "admin-connection must not be truthy in details"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (= "admin-connection must not be set in details"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                       {:details {:host             "localhost"
+                                                  :admin-connection true}}))))))
+    (testing "admin-connection must be truthy in admin_details"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (= "admin-connection must be set in admin_details"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                       {:admin_details {:host "admin-host"}}))))))
+    (testing "Destination-database must be false in admin_details"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (= "destination-database must be false in admin_details"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                       {:admin_details {:host                 "admin-host"
+                                                        :admin-connection     true
+                                                        :destination-database true}}))))))
+    (testing "Fields hidden for admin connections must not be in admin_details"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (str/includes?
+               (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                     {:admin_details {:host             "admin-host"
+                                                      :admin-connection true
+                                                      :auto_run_queries true}})
+               "admin_details must not contain fields hidden for admin connections")))))
+    (testing "Cannot set admin_details on a destination database"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
+                                                        :details {:host "localhost"}}
+                       :model/Database {dest-id :id}   {:engine             :h2
+                                                        :details            {:host "localhost"}
+                                                        :router_database_id router-id}]
+          (is (= "Cannot configure an admin connection on a destination database"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
+                                       {:admin_details {:host             "admin-host"
+                                                        :admin-connection true}}))))))
+    (testing "Cannot set admin_details on a router database"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
+                                                        :details {:host "localhost"}}
+                       :model/Database {_dest-id :id}  {:engine             :h2
+                                                        :details            {:host "localhost"}
+                                                        :router_database_id router-id}]
+          (is (= "Cannot configure an admin connection on a router database"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" router-id)
+                                       {:admin_details {:host             "admin-host"
+                                                        :admin-connection true}}))))))))
 
 (deftest databases-list-can-upload-respects-view-data-test
   (testing "GET /api/database/:id can_upload reflects the user's view-data permission, not just uploads_enabled"

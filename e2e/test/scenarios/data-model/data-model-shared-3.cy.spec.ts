@@ -669,8 +669,7 @@ areas.forEach((area) => {
             fieldId: ORDERS.QUANTITY,
           });
 
-          FieldSection.getStyleInput().click();
-          H.popover().findByText("Percent").click();
+          FieldSection.getFormatControl().findByText("123%").click();
           cy.wait("@updateField");
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
@@ -722,11 +721,12 @@ areas.forEach((area) => {
               cy.findByText("Unit of currency").should("not.be.visible");
               cy.findByText("Currency label style").should("not.be.visible");
 
-              cy.get("#number_style").click();
+              // if you change the format to currency, currency settings should appear
+              cy.findByTestId("chart-settings-widget-number_style")
+                .findByText("$1.23")
+                .click();
             });
 
-          // if you change the style to currency, currency settings should appear
-          H.popover().findByText("Currency").click();
           cy.wait("@updateField");
           verifyAndCloseToast("Formatting of Quantity updated");
 

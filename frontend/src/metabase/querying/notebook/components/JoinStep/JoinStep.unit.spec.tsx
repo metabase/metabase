@@ -24,6 +24,8 @@ import { METAKEY } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
   columnFinder,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
@@ -34,6 +36,7 @@ import type {
   TestExpressionSpec,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
@@ -47,8 +50,6 @@ import {
   PRODUCTS_ID,
   REVIEWS_ID,
   createSampleDatabase,
-  createSavedStructuredCard,
-  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
 import { createMockNotebookStep, getColumnNames } from "../../test-utils";
@@ -85,8 +86,14 @@ const ANOTHER_DATABASE = createMockDatabase({
   ],
 });
 const DATABASES = [SAMPLE_DATABASE, ANOTHER_DATABASE];
-const MODEL = createStructuredModelCard({ name: "my cool model" });
-const QUESTION = createSavedStructuredCard({
+const ORDERS_QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+const MODEL = createMockCard({
+  type: "model",
+  name: "my cool model",
+  dataset_query: ORDERS_QUERY,
+});
+const QUESTION = createMockCard({
+  dataset_query: ORDERS_QUERY,
   id: 300,
   name: "other database question",
   database_id: ANOTHER_DATABASE.id,

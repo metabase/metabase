@@ -51,3 +51,16 @@ describe("parseAttributeValue should be permissive with json attributes", () => 
     });
   });
 });
+
+describe("parseAttributeValue should preserve the path string", () => {
+  it.each(["", "true", "false", "123", "/sales/orders"])(
+    "preserves the path string: %p",
+    (path) => {
+      expect(parseAttributeValue(path, "path")).toBe(path);
+    },
+  );
+
+  it("returns an empty path when the attribute is removed", () => {
+    expect(parseAttributeValue(null, "path")).toBe("");
+  });
+});

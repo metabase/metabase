@@ -1,5 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   Dataset,
@@ -12,11 +13,9 @@ import {
   createMockDatasetData,
   createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
-import {
-  createAdHocCard,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { getFirstQueryResult, getQuestion } from "../store/selectors";
 
@@ -235,8 +234,9 @@ function createQuestion(
   display: VisualizationDisplay = "gauge",
   settings: VisualizationSettings,
 ) {
-  const card = createAdHocCard({
+  const card = createMockUnsavedCard({
     display,
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     visualization_settings: settings,
   });
 

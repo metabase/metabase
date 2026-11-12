@@ -20,7 +20,11 @@ import type {
   CardAutocompleteSuggestion,
   NativeQuerySnippet,
 } from "metabase-types/api";
-import { createMockCard, createMockField } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDatabase,
+  createMockColumn,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import {
@@ -32,6 +36,7 @@ import { getDiffControls } from "./test-utils";
 const ORIGINAL =
   "SELECT *\nFROM orders\nWHERE id = 1\nGROUP BY id\nORDER BY id\nLIMIT 10";
 const PROPOSED = ORIGINAL.replace("WHERE id = 1", "WHERE id = 2");
+const MONGO_DB_ID = 2;
 
 type SetupOpts = {
   text?: string;
@@ -55,6 +60,7 @@ function setup({
   const onAcceptProposed = jest.fn();
   const onRejectProposed = jest.fn();
   const onRunQuery = jest.fn();
+  const onFormatQuery = jest.fn();
 
   fetchMock.get("path:/api/native-query-snippet", {
     body: snippets,
@@ -80,6 +86,7 @@ function setup({
     onAcceptProposed,
     onRejectProposed,
     onRunQuery,
+    onFormatQuery,
     onChange,
     readOnly,
     onCursorMoveOverCardTag,
@@ -99,6 +106,7 @@ function setup({
     onAcceptProposed,
     onRejectProposed,
     onRunQuery,
+    onFormatQuery,
     createQuery: (text: string) =>
       Lib.createTestNativeQuery(provider, { query: text }),
     rerender: (overrides: Partial<CodeMirrorEditorProps>) =>
@@ -313,7 +321,7 @@ describe("CodemirrorEditor", () => {
       createMockCard({
         id: 42,
         name: "Referenced Question",
-        result_metadata: [createMockField({ name: "A_UNIQUE_COLUMN_NAME" })],
+        result_metadata: [createMockColumn({ name: "A_UNIQUE_COLUMN_NAME" })],
       }),
     );
     setup({ text: "SELECT * FROM {{#42-referenced-question}}" });
@@ -456,5 +464,101 @@ describe("CodemirrorEditor", () => {
     expect(
       screen.queryByRole("button", { name: /Reject/ }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("keyboard shortcuts", () => {
+    beforeEach(() => {
+      fetchMock.get("path:/api/database/1/autocomplete_suggestions", []);
+      fetchMock.get("path:/api/database/1/card_autocomplete_suggestions", []);
+    });
+
+    async function typeAtEnd(keys: string) {
+      await waitForRequestsToSettle();
+      await userEvent.click(screen.getByRole("textbox"));
+      await userEvent.keyboard(`{Control>}{End}{/Control}${keys}`);
+    }
+
+    it("runs the query with Ctrl+Enter without inserting a newline", async () => {
+      const { onRunQuery, onChange } = setup({ text: "SELECT 1" });
+
+      await typeAtEnd("{Control>}{Enter}{/Control}");
+
+      expect(onRunQuery).toHaveBeenCalledTimes(1);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("formats the query with Shift+Ctrl+F", async () => {
+      const { onFormatQuery } = setup({ text: "SELECT 1" });
+
+      await typeAtEnd("{Shift>}{Control>}f{/Control}{/Shift}");
+
+      expect(onFormatQuery).toHaveBeenCalledTimes(1);
+    });
+
+    it("inserts a tab at the cursor and indents the selected lines", async () => {
+      const { onChange } = setup({ text: "SELECT" });
+
+      await typeAtEnd("{Tab}");
+      expect(onChange).toHaveBeenLastCalledWith("SELECT\t", expect.anything());
+
+      await userEvent.keyboard("{Control>}a{/Control}{Tab}");
+      expect(onChange).toHaveBeenLastCalledWith(
+        "\tSELECT\t",
+        expect.anything(),
+      );
+    });
+
+    it("keeps the indentation of the previous line on a new line", async () => {
+      const { onChange } = setup();
+
+      await typeAtEnd("{Tab}SELECT{Enter}FOO");
+
+      expect(onChange).toHaveBeenLastCalledWith(
+        "\tSELECT\n\tFOO",
+        expect.anything(),
+      );
+    });
+
+    it("indents json-like queries with two spaces", async () => {
+      const { onChange } = setup({ engine: "mongo" });
+
+      await typeAtEnd("{Tab}");
+      expect(onChange).toHaveBeenLastCalledWith("  ", expect.anything());
+
+      await userEvent.keyboard(
+        '{Control>}a{/Control}{Backspace}[[{Enter}{{{Enter}"foo": "bar",{Enter}"baz"',
+      );
+      expect(onChange).toHaveBeenLastCalledWith(
+        ["[", "  {", '    "foo": "bar",', '    "baz"', "  }", "]"].join("\n"),
+        expect.anything(),
+      );
+    });
+
+    it("indents with two spaces after the query engine changes to a json-like one", async () => {
+      const mongoDatabase = createMockDatabase({
+        id: MONGO_DB_ID,
+        engine: "mongo",
+      });
+      fetchMock.get(
+        `path:/api/database/${MONGO_DB_ID}/autocomplete_suggestions`,
+        [],
+      );
+      fetchMock.get(
+        `path:/api/database/${MONGO_DB_ID}/card_autocomplete_suggestions`,
+        [],
+      );
+      const mongoProvider = createMetadataProvider({
+        databaseId: MONGO_DB_ID,
+        metadata: createMockMetadata({ databases: [mongoDatabase] }),
+      });
+      const { onChange, rerender } = setup();
+
+      rerender({
+        query: Lib.createTestNativeQuery(mongoProvider, { query: "" }),
+      });
+      await typeAtEnd("{Tab}");
+
+      expect(onChange).toHaveBeenLastCalledWith("  ", expect.anything());
+    });
   });
 });

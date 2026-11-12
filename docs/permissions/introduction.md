@@ -1,5 +1,6 @@
 ---
 title: Permissions introduction
+summary: How Metabase permissions work, and which tools to use to make sure people only see the data they're supposed to.
 redirect_from:
   - /docs/latest/administration-guide/05-setting-permissions
 ---
@@ -23,7 +24,9 @@ If instead you're wondering about what data Metabase the company can see, check 
   - [View data](./data.md#view-data-permissions)
   - [Create queries](./data.md#create-queries-permissions)
   - [Download results](./data.md#download-results-permissions)
+  - [Manage table metadata](./data.md#manage-table-metadata-permissions)
   - [Manage database](./data.md#manage-database-permissions)
+  - [Transforms](./data.md#transform-permissions)
 - [Collection permissions][collections] - Control access to questions, dashboards, models, metrics, events, and timelines
 - [Application permissions](application.md) - Control access to admin features (Pro and Enterprise plans only):
   - [Settings tab in Admin panel](application.md#settings-access)
@@ -33,24 +36,12 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 ## Tools for managing multi-tenant setups
 
-At a high-level, Metabase provides several approaches to managing permissions for different multi-tenant setups, depending on how you've segregated your data.
+To compare [row and column security](./row-and-column-security.md), [impersonation](./impersonation.md), [database routing](./database-routing.md), and locked parameters, see [Data isolation methods](./data-isolation-methods.md).
 
-### Your customers share a single database
-
-The [row and column security](./row-and-column-security.md) permission setting lets you restrict rows and columns based on who's logged in.
-
-### Each customer has their own database
-
-With [Database routing](./database-routing.md), you can build a question once, and have Metabase send a query to a different database depending on the customer.
-
-### You'd prefer to manage permissions via the database itself
-
-With [Connection impersonation](./impersonation.md), you can manage permissions with roles you define in your database.
-
-[collections]: ../exploration-and-organization/collections.md
+[collections]: ./collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: ./data.md
 [permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
 [slack-integration]: ../configuring-metabase/slack.md
-[snippet-folders]: ../questions/native-editor/snippets.md
+[snippet-folders]: ./snippets.md
 [troubleshooting-permissions]: ../troubleshooting-guide/permissions.md

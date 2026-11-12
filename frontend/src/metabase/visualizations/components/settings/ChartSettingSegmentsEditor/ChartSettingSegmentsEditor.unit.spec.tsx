@@ -15,6 +15,8 @@ import {
 } from "__support__/ui";
 import type * as Analytics from "metabase/analytics";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Card,
   ColumnSettings,
@@ -30,7 +32,6 @@ import {
   createMockFailedReferencedEntityResult,
   createMockMeasure,
   createMockReferencedEntityResult,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
 import {
@@ -52,7 +53,10 @@ const DEFAULT_VALUE = [
 
 const CARD_ID = 9;
 const MEASURE_ID = 4;
-const DATASET_QUERY = createMockStructuredDatasetQuery();
+const DATASET_QUERY = Lib.createTestJsQuery(
+  SAMPLE_PROVIDER,
+  DEFAULT_TEST_QUERY,
+);
 
 type SetupOpts = {
   canRemoveAll?: boolean;

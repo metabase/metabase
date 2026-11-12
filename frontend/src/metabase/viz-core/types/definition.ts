@@ -210,6 +210,7 @@ export type VisualizationSettingsDefinitions = {
   column_title?: DatasetColumnSettingDefinition<Value, Props>;
   currency?: DatasetColumnSettingDefinition<Value, Props>;
   currency_in_header?: DatasetColumnSettingDefinition<Value, Props>;
+  currency_position?: DatasetColumnSettingDefinition<Value, Props>;
   currency_style?: DatasetColumnSettingDefinition<Value, Props>;
   date_abbreviate?: DatasetColumnSettingDefinition<Value, Props>;
   date_separator?: DatasetColumnSettingDefinition<Value, Props>;

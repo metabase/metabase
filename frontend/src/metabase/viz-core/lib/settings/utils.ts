@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import _ from "underscore";
 
 import { mergeLazily, omitLazily } from "metabase/utils/merge-lazily";

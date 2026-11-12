@@ -12,10 +12,12 @@ import {
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/common/collections/utils";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
 import { getUser } from "metabase/current-user";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { useSelector } from "metabase/redux";
 import { Box, Icon } from "metabase/ui";
 import { mergeLazily } from "metabase/utils/merge-lazily";
@@ -23,7 +25,6 @@ import type {
   Collection,
   CollectionId,
   DatabaseId,
-  TableId,
   User,
 } from "metabase-types/api";
 
@@ -31,16 +32,19 @@ import type { SavedEntityType } from "../types";
 
 import { SavedEntityList } from "./SavedEntityList";
 import SavedEntityPickerS from "./SavedEntityPicker.module.css";
-import { CARD_INFO } from "./constants";
+import { CARD_INFO, COLLECTION_TREE_REQUEST } from "./constants";
 import { findCollectionById } from "./utils";
 
 interface SavedEntityPickerProps {
   type: SavedEntityType;
+  /** Lists only these Library collections and their subcollections. */
+  libraryCollections?: Collection[];
   collectionId?: CollectionId | null;
-  tableId?: TableId;
+  selectedSource?: DataSource;
   databaseId?: DatabaseId | null;
-  onSelect: (cardId: string) => void;
-  onBack: () => void;
+  onSelect: (source: DataSource) => void;
+  /** Without it, the title shows without a back link. */
+  onBack?: () => void;
 }
 
 const getOurAnalyticsCollection = (
@@ -62,15 +66,16 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = mergeLazily(
 ) as Collection;
 
 export function SavedEntityPicker(props: SavedEntityPickerProps) {
-  const { data: collections } = useListCollectionsTreeQuery({
-    "exclude-archived": true,
-    namespaces: ["", "shared-tenant-collection", "tenant-specific"],
-  });
-  const { data: rootCollection } = useGetCollectionQuery({ id: "root" });
+  const { data: collections, error: collectionsError } =
+    useListCollectionsTreeQuery(COLLECTION_TREE_REQUEST);
+  const { data: rootCollection, isLoading: isRootCollectionLoading } =
+    useGetCollectionQuery({ id: "root" });
   const currentUser = useSelector(getUser);
 
-  if (!collections || !currentUser) {
-    return null;
+  // The starting collection is picked once, so wait for "Our analytics" to load
+  // or fail: users without access to it still get the picker.
+  if (!collections || isRootCollectionLoading || !currentUser) {
+    return <DelayedLoadingAndErrorWrapper loading error={collectionsError} />;
   }
 
   return (
@@ -92,16 +97,21 @@ interface InnerSavedEntityPickerProps extends SavedEntityPickerProps {
 function InnerSavedEntityPicker({
   collectionId,
   type,
-  tableId,
+  selectedSource,
   databaseId,
   onSelect,
   onBack,
+  libraryCollections,
   collections,
   rootCollection,
   currentUser,
 }: InnerSavedEntityPickerProps) {
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const modelFilter = (model: string) => CARD_INFO[type].model === model;
+
+    if (libraryCollections) {
+      return buildCollectionTree(libraryCollections, { modelFilter });
+    }
 
     const preparedCollections: Collection[] = [];
     const userPersonalCollections = currentUserPersonalCollections(
@@ -132,9 +142,11 @@ function InnerSavedEntityPicker({
 
     return [
       ...(rootCollection ? [getOurAnalyticsCollection(rootCollection)] : []),
-      ...buildCollectionTree(preparedCollections, { modelFilter }),
+      ...resolveLibraryNodes(
+        buildCollectionTree(preparedCollections, { modelFilter }),
+      ),
     ];
-  }, [collections, rootCollection, currentUser, type]);
+  }, [collections, rootCollection, currentUser, type, libraryCollections]);
 
   const [selectedCollectionId, setSelectedCollectionId] = useState<
     CollectionId | undefined
@@ -160,14 +172,23 @@ function InnerSavedEntityPicker({
   return (
     <Box className={SavedEntityPickerS.SavedEntityPickerRoot}>
       <Box className={SavedEntityPickerS.CollectionsContainer}>
-        <a
-          className={SavedEntityPickerS.BackButton}
-          onClick={onBack}
-          data-testid="saved-entity-back-navigation"
-        >
-          <Icon name="chevronleft" className={CS.mr1} />
-          {CARD_INFO[type].title}
-        </a>
+        {onBack ? (
+          <a
+            className={SavedEntityPickerS.BackButton}
+            onClick={onBack}
+            data-testid="saved-entity-back-navigation"
+          >
+            <Icon name="chevronleft" className={CS.mr1} />
+            {CARD_INFO[type].title}
+          </a>
+        ) : (
+          <Box
+            className={SavedEntityPickerS.Title}
+            data-testid="saved-entity-title"
+          >
+            {CARD_INFO[type].title}
+          </Box>
+        )}
         <Box m="0.5rem 0" data-testid="saved-entity-collection-tree">
           <Tree
             data={collectionTree}
@@ -179,10 +200,29 @@ function InnerSavedEntityPicker({
       <SavedEntityList
         type={type}
         collectionId={selectedCollectionId}
-        selectedId={tableId}
+        selectedSource={selectedSource}
         databaseId={databaseId}
         onSelect={onSelect}
       />
     </Box>
+  );
+}
+
+// The Library only holds its Data and Metrics collections, so when a
+// single collection is left after filtering, the Library node stands for it:
+// selecting the Library lists that collection's items instead of nothing. Same rule
+// as `useGetResolvedLibraryCollection` in the core pickers.
+function resolveLibraryNodes(
+  collectionTree: CollectionTreeItem[],
+): CollectionTreeItem[] {
+  return collectionTree.map((collection) =>
+    collection.type === "library" && collection.children.length === 1
+      ? {
+          ...collection.children[0],
+          name: collection.name,
+          schemaName: collection.schemaName,
+          icon: collection.icon,
+        }
+      : collection,
   );
 }

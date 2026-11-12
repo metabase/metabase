@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import { navigate } from "metabase/router";
 import MetabaseSettings from "metabase/utils/settings";
 import type {
@@ -194,7 +195,7 @@ describe("performAction", () => {
   });
 
   it("performs question change actions according to question change behavior", () => {
-    const mockQuestion = Question.create();
+    const mockQuestion = Question.create({ metadata: createMockMetadata() });
 
     const defaultQuestionAction: QuestionChangeClickAction = {
       name: "bar",

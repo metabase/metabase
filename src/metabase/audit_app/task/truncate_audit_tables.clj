@@ -76,7 +76,12 @@
 
 (def ^:private truncate-audit-tables-job-key "metabase.task.truncate-audit-tables.job")
 (def ^:private truncate-audit-tables-trigger-key "metabase.task.truncate-audit-tables.trigger")
-(def ^:private truncate-audit-tables-cron "0 0 */12 * * ? *") ;; Run every 12 hours
+(defn- truncate-audit-tables-cron
+  "Run every 12 hours, at a random hour/minute offset to spread load across instances."
+  []
+  (let [hour   (rand-int 12)
+        minute (rand-int 60)]
+    (format "0 %d %d,%d * * ? *" minute hour (+ hour 12))))
 
 (defmethod task/init! ::TruncateAuditTables [_]
   (let [job     (jobs/build
@@ -87,6 +92,6 @@
                  (triggers/start-now)
                  (triggers/with-schedule
                   (cron/schedule
-                   (cron/cron-schedule truncate-audit-tables-cron)
+                   (cron/cron-schedule (truncate-audit-tables-cron))
                    (cron/with-misfire-handling-instruction-do-nothing))))]
     (task/schedule-task! job trigger)))

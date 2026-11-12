@@ -10,16 +10,15 @@ import {
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { useGetTransformQuery } from "metabase/api";
 import { type Deferred, defer } from "metabase/utils/promise";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Transform, TransformId } from "metabase-types/api";
 import {
   createMockCardQueryMetadata,
-  createMockStructuredDatasetQuery,
   createMockTransform,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
-  ORDERS_ID,
-  SAMPLE_DB_ID,
   createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -63,10 +62,7 @@ async function setup() {
   const transform = createMockTransform({
     source: {
       type: "query",
-      query: createMockStructuredDatasetQuery({
-        database: SAMPLE_DB_ID,
-        query: { "source-table": ORDERS_ID },
-      }),
+      query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     },
   });
   let serverTransform = transform;

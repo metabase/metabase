@@ -1,6 +1,4 @@
 export {
-  getFieldRemappings,
-  getRemappedFieldValue,
   getShallowDatabases,
   getShallowDatabaseSchemas,
   getShallowDatabaseTables,
@@ -45,12 +43,11 @@ export { entitiesReducer } from "./reducer";
 
 export { metadataHydrationMiddleware } from "./hydration";
 
-export { addRemappings, fetchRemapping } from "./remappings";
+export { fetchRemapping } from "./remappings";
 
 export {
   databaseFetched,
   fieldFetched,
-  fieldRemappingsUpdated,
   paramFieldsFetched,
   tableFetched,
   tableForeignKeysFetched,

@@ -2,6 +2,7 @@
   (:require
    [metabase.collections.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
@@ -35,7 +36,7 @@
    [:name                {:optional true} [:maybe :string]]
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:document            {:optional true} [:maybe ::document.document]]
-   [:content_type        {:optional true} [:maybe [:or :keyword :string]]]
+   [:content_type        {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
    [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:collection_id       {:optional true} [:maybe ::lib.schema.id/collection]]
@@ -51,11 +52,18 @@
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
    [:is_placeholder      {:optional true} [:maybe :boolean]]])
 
+(mr/def ::external-path
+  "An entity as a serialized document names it: its containers, outermost first, then the entity itself."
+  [:sequential [:map {:closed true}
+                [:model :string]
+                [:id    {:optional true} [:maybe :string]]
+                [:label {:optional true} [:maybe :string]]]])
+
 (def ^:private external-registry
   "[[lib.schema.id/external-registry]], plus the serdes paths serialization writes in place of the ids a document's
   nodes refer to, or the id it keeps when the entity is gone."
   (assoc lib.schema.id/external-registry
-         ::prose-mirror/node.entity-id [:maybe [:or :int :string ::models.schema/external-meta]]))
+         ::prose-mirror/node.entity-id [:maybe [:or :int :string ::external-path]]))
 
 (mr/def ::external-document
   "A Document as serialization writes it, with portable references in place of ids."

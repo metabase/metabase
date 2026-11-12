@@ -1,4 +1,3 @@
-import { createMockMetadata } from "__support__/metadata";
 import type { Database, WritebackAction } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -16,13 +15,7 @@ const setup = ({
   database = createMockDatabase(),
   action = createMockQueryAction({ database_id: database.id }),
 }: SetupOpts = {}) => {
-  const metadata = createMockMetadata({ databases: [database] });
-  const db = metadata.database(database.id);
-  if (!db) {
-    throw new Error();
-  }
-
-  return { action, database: db };
+  return { action, database };
 };
 
 describe("canRunAction", () => {

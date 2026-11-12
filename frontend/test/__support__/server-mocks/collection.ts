@@ -1,14 +1,7 @@
 import fetchMock from "fetch-mock";
-import _ from "underscore";
 
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import {
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  convertSavedQuestionToVirtualTable,
-  getCollectionVirtualSchemaName,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
-  Card,
   Collection,
   CollectionId,
   CollectionItem,
@@ -119,40 +112,6 @@ export function setupCollectionsEndpoints({
 
       return true;
     });
-  });
-}
-
-function getCollectionVirtualSchemaURLs(collection: Collection) {
-  const db = SAVED_QUESTIONS_VIRTUAL_DB_ID;
-  const schemaName = getCollectionVirtualSchemaName(collection);
-  const schema = encodeURIComponent(schemaName);
-
-  const questions = ["path:/api/database/", db, "/schema/", schema].join("");
-  const models = ["path:/api/database/", db, "/datasets/", schema].join("");
-
-  return { questions, models };
-}
-
-export function setupCollectionVirtualSchemaEndpoints(
-  collection: Collection,
-  cards: Card[],
-) {
-  const urls = getCollectionVirtualSchemaURLs(collection);
-
-  const [models, questions] = _.partition(
-    cards,
-    (card) => card.type === "model",
-  );
-  const modelVirtualTables = models.map(convertSavedQuestionToVirtualTable);
-  const questionVirtualTables = questions.map(
-    convertSavedQuestionToVirtualTable,
-  );
-
-  fetchMock.get(urls.questions, questionVirtualTables, {
-    name: "collection-questions-virtual-tables",
-  });
-  fetchMock.get(urls.models, modelVirtualTables, {
-    name: "collection-models-virtual-tables",
   });
 }
 
