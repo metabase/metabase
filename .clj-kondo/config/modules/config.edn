@@ -4553,6 +4553,7 @@
            models
            permissions
            premium-features
+           queries
            request
            search
            search.embeddings

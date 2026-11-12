@@ -7,6 +7,7 @@
    [metabase-enterprise.search.semantic.schema :as semantic-search.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.core :as queries]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
    [metabase.util.honey-sql-2 :as h2x]
@@ -67,7 +68,7 @@
 ;; check itself, and the permission filter loads every candidate a semantic search returns.
 (def ^:private read-check-selects
   "Per model, a select of only the columns its `mi/can-read?` reads, for models too costly to load in full."
-  {:model/Card [:model/Card :id :collection_id :document_id]})
+  {:model/Card (into [:model/Card] queries/card-read-check-columns)})
 
 (mu/defn read-check-instances
   "The instances of `model` with `ids`, with enough columns for `mi/can-read?`."
