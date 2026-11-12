@@ -162,7 +162,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.collections.models.collection.root :as collection.root]
+   [metabase.collections.governing-collection :as governing-collection]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
@@ -313,7 +313,9 @@
   (if (or (= read-or-write :read)
           (nil? (:collection_id instance))
           (remote-sync/can-write? :model/Collection (:collection_id instance)))
-    (perms-objects-set-for-parent-collection (:collection_id instance) read-or-write)
+    (perms-objects-set-for-parent-collection (governing-collection/root-namespace instance)
+                                             (:collection_id instance)
+                                             read-or-write)
     #{"___no-remote-sync-access"}))
 
 (methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
@@ -327,10 +329,9 @@
    {:default false}))
 
 (defmethod mi/can-create? :perms/use-parent-collection-perms
-  [_model m]
-  (if-let [collection-id (:collection_id m)]
-    (mi/can-write? (permissions.db/collection collection-id))
-    (mi/can-write? collection.root/root-collection)))
+  [model m]
+  (governing-collection/can-write-governing-collection? (governing-collection/root-namespace model)
+                                                        (:collection_id m)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |

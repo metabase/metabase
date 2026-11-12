@@ -320,7 +320,9 @@
   (let [action (assoc action :collection_id (effective-collection-id action))]
     (if model-id
       ((get-method mi/can-create? :perms/use-parent-collection-perms) :model/Action action)
-      (mi/current-user-has-full-permissions? ((get-method mi/perms-objects-set :model/Action) action :write)))))
+      ;; `action` may be a plain map; the parent-collection path sets need to know its model
+      (mi/current-user-has-full-permissions?
+       ((get-method mi/perms-objects-set :model/Action) (t2/instance :model/Action action) :write)))))
 
 (defmethod mi/can-write? :model/Action
   ([action]
