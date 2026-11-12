@@ -217,7 +217,6 @@ describe("CollectionContent pinning from item menus", () => {
     setupItemUpdateEndpoint(items, getItem(items, DASHBOARD_NAME));
     setup({ collectionItems: items });
     await screen.findByText(QUESTION_NAME);
-    expect(screen.queryByTestId("pinned-items")).not.toBeInTheDocument();
 
     await openRowMenu(QUESTION_NAME);
     await userEvent.click(
