@@ -1,0 +1,69 @@
+diff --git a/src/create-chrome-target.js b/src/create-chrome-target.js
+index 69878eff92fdb2efaabf61eef2fb42049f4a4e6e..2109fa150010dae569db793fba33f38310e0bd34 100644
+--- a/src/create-chrome-target.js
++++ b/src/create-chrome-target.js
+@@ -35,6 +35,19 @@ const RESIZE_DELAY = 500;
+ const delay = (duration) =>
+   new Promise((resolve) => setTimeout(resolve, duration));
+ 
++// The page's own scrollbars aren't part of the story, and they would show in
++// the screenshot when a story is bigger than the window. Scrollbars inside the
++// story, like a scrolling table's, stay visible.
++const hidePageScrollbars = (window) => {
++  window.document.addEventListener('DOMContentLoaded', () => {
++    const styleElement = window.document.createElement('style');
++    window.document.documentElement.appendChild(styleElement);
++    styleElement.sheet.insertRule(
++      'html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }'
++    );
++  });
++};
++
+ function createChromeTarget(
+   start,
+   stop,
+@@ -200,6 +213,7 @@ function createChromeTarget(
+       }
+       await evaluateOnNewDocument(`(${disablePointerEvents})(window);`);
+       await evaluateOnNewDocument(`(${disableInputCaret})(window);`);
++      await evaluateOnNewDocument(`(${hidePageScrollbars})(window);`);
+       await evaluateOnNewDocument(`(${setLokiIsRunning})(window);`);
+ 
+       debug(`Navigating to ${url}`);
+@@ -288,7 +302,10 @@ function createChromeTarget(
+         }
+ 
+         // Clap width/height to fit in viewport
+-        if (clip.x + clip.width > deviceMetrics.width) {
++        if (
++          options.disableAutomaticViewportHeight &&
++          clip.x + clip.width > deviceMetrics.width
++        ) {
+           clip.width = deviceMetrics.width - clip.x;
+         }
+ 
+@@ -299,16 +316,21 @@ function createChromeTarget(
+           clip.height = deviceMetrics.height - clip.y;
+         }
+ 
++        // Grow the window to fit wide content the same way as tall content,
++        // instead of cropping it at the right edge.
++        const contentEndX = clip.x + clip.width;
+         const contentEndY = clip.y + clip.height;
+         const shouldResizeWindowToFit =
+           !options.disableAutomaticViewportHeight &&
+-          contentEndY > deviceMetrics.height;
++          (contentEndX > deviceMetrics.width ||
++            contentEndY > deviceMetrics.height);
+ 
+         if (shouldResizeWindowToFit) {
+           const override = Object.assign({}, deviceMetrics, {
+-            height: contentEndY,
++            width: Math.max(deviceMetrics.width, contentEndX),
++            height: Math.max(deviceMetrics.height, contentEndY),
+           });
+-          debug('Resizing window to fit tall content');
++          debug('Resizing window to fit large content');
+           await Emulation.setDeviceMetricsOverride(override);
+           // This number is arbitrary and probably excessive,
+           // but there are no other events or values to observe
