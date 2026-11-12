@@ -2,12 +2,12 @@
   "`permissions` module API namespace."
   (:require
    [metabase.permissions.data-access-token]
+   [metabase.permissions.data-permissions]
+   [metabase.permissions.data-permissions.sql]
    [metabase.permissions.db]
    [metabase.permissions.models.application-permissions-revision]
    [metabase.permissions.models.collection-permission-graph-revision]
    [metabase.permissions.models.collection.graph]
-   [metabase.permissions.models.data-permissions]
-   [metabase.permissions.models.data-permissions.sql]
    [metabase.permissions.models.permissions]
    [metabase.permissions.models.permissions-group]
    [metabase.permissions.models.permissions-group-membership]
@@ -24,8 +24,8 @@
   metabase.permissions.models.application-permissions-revision/keep-me
   metabase.permissions.models.collection-permission-graph-revision/keep-me
   metabase.permissions.models.collection.graph/keep-me
-  metabase.permissions.models.data-permissions/keep-me
-  metabase.permissions.models.data-permissions.sql/keep-me
+  metabase.permissions.data-permissions/keep-me
+  metabase.permissions.data-permissions.sql/keep-me
   metabase.permissions.models.permissions/keep-me
   metabase.permissions.models.permissions-group/keep-me
   metabase.permissions.models.permissions-group-membership/keep-me
@@ -41,7 +41,7 @@
  [metabase.permissions.db
   group-tenant-flags
   groups-by-ids]
- [metabase.permissions.models.data-permissions
+ [metabase.permissions.data-permissions
   at-least-as-permissive?
   batch-delete-permissions!
   batch-insert-permissions!
@@ -80,7 +80,7 @@
   set-default-table-permissions-bulk!
   with-global-permissions-lock
   with-db-scoped-permissions-lock]
- [metabase.permissions.models.data-permissions.sql
+ [metabase.permissions.data-permissions.sql
   UserInfo
   PermissionMapping
   visible-database-filter-select
@@ -179,7 +179,7 @@
 (p/import-def metabase.permissions.models.application-permissions-revision/latest-id     latest-application-permissions-revision-id)
 (p/import-def metabase.permissions.models.collection-permission-graph-revision/latest-id latest-collection-permissions-revision-id)
 (p/import-def metabase.permissions.models.permissions-revision/latest-id                 latest-permissions-revision-id)
-(p/import-def metabase.permissions.models.data-permissions/least-permissive-value        least-permissive-data-perms-value)
+(p/import-def metabase.permissions.data-permissions/least-permissive-value        least-permissive-data-perms-value)
 (p/import-def metabase.permissions.models.permissions-group/all-external-users           all-external-users-group)
 
 (p/import-vars [metabase.permissions.models.permissions-group

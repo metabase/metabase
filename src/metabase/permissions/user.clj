@@ -1,7 +1,7 @@
 (ns metabase.permissions.user
   (:require
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
-   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.path :as permissions.path]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.premium-features.core :refer [defenterprise]]

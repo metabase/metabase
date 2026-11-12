@@ -1,4 +1,4 @@
-(ns ^:mb/app-db-migrations-test metabase.permissions.models.data-permissions-test
+(ns ^:mb/app-db-migrations-test metabase.permissions.data-permissions-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
@@ -8,8 +8,8 @@
    [metabase.models.cache :as models.cache]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.cache :as perms.cache]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
-   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]

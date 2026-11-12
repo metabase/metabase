@@ -790,7 +790,7 @@
   "The ID, Database ID, schema, and data source of the Table with `table-id`.
 
   `:data_source` is included because new-table permission defaults branch on whether the table came from an upload;
-  see [[metabase.permissions.models.data-permissions/set-default-table-permissions!]]."
+  see [[metabase.permissions.data-permissions/set-default-table-permissions!]]."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :id :db_id :schema :data_source] :id table-id))
 

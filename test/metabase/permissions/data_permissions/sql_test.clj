@@ -1,8 +1,8 @@
-(ns metabase.permissions.models.data-permissions.sql-test
+(ns metabase.permissions.data-permissions.sql-test
   (:require
    [clojure.test :refer :all]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions.sql :as sql]
+   [metabase.permissions.data-permissions.sql :as sql]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
