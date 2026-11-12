@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -14,20 +15,34 @@ export function Errors({
   error,
   source,
   content,
+  inline = false,
 }: {
   error?: ExpressionError | Error | null;
   source?: string;
   /** Shown instead of the error. */
   content?: ReactNode;
+  /** The style of the editor on the page: a plain row under the code. */
+  inline?: boolean;
 }) {
   if (!error) {
     return null;
   }
   if (content != null) {
     return (
-      <Flex p="sm" className={S.errors}>
+      <Flex
+        p={inline ? undefined : "sm"}
+        className={cx(S.errors, { [S.inline]: inline })}
+      >
         {content}
       </Flex>
+    );
+  }
+  if (inline) {
+    return (
+      <div className={cx(S.errors, S.inline)} role="alert">
+        <span className={S.title}>{t`Syntax error`}</span>
+        <span className={S.message}>{error.message}</span>
+      </div>
     );
   }
 

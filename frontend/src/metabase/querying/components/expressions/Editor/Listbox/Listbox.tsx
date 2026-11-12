@@ -19,7 +19,7 @@ import {
   getClauseDefinition,
 } from "metabase/querying/expressions";
 import { DelayGroup, Icon } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
 import { FUNCTION_ICONS } from "../../ExpressionSidePanel/content";
@@ -41,12 +41,15 @@ export function Listbox({
   stageIndex,
   database,
   reportTimezone,
+  heading,
   className,
 }: {
   state: EditorState;
   view: EditorView;
   query: Lib.Query;
   stageIndex: number;
+  /** Shown above the options, like the description of the current argument. */
+  heading?: string;
   className?: string;
 } & DescriptionOptions) {
   const { options, selectedOption } = useCompletions(state);
@@ -70,29 +73,32 @@ export function Listbox({
   }
 
   return (
-    <ul role="listbox" className={cx(S.listbox, className)}>
-      <DelayGroup>
-        {options.map((completion, index) => (
-          <Fragment key={completion.displayLabel ?? completion.label}>
-            {completion.heading != null && (
-              <li role="presentation" className={S.section}>
-                {completion.heading}
-              </li>
-            )}
-            <CompletionItem
-              completion={completion}
-              index={index}
-              selected={selectedOption === index}
-              onCompletionClick={onCompletionClick}
-              query={query}
-              stageIndex={stageIndex}
-              database={database}
-              reportTimezone={reportTimezone}
-            />
-          </Fragment>
-        ))}
-      </DelayGroup>
-    </ul>
+    <>
+      {heading && <div className={S.heading}>{heading}</div>}
+      <ul role="listbox" className={cx(S.listbox, className)}>
+        <DelayGroup>
+          {options.map((completion, index) => (
+            <Fragment key={completion.displayLabel ?? completion.label}>
+              {completion.heading != null && (
+                <li role="presentation" className={S.section}>
+                  {completion.heading}
+                </li>
+              )}
+              <CompletionItem
+                completion={completion}
+                index={index}
+                selected={selectedOption === index}
+                onCompletionClick={onCompletionClick}
+                query={query}
+                stageIndex={stageIndex}
+                database={database}
+                reportTimezone={reportTimezone}
+              />
+            </Fragment>
+          ))}
+        </DelayGroup>
+      </ul>
+    </>
   );
 }
 
@@ -133,7 +139,12 @@ function CompletionItem({
     });
   }, [selected]);
 
-  const description = getDescription(completion, { database, reportTimezone });
+  const column =
+    completion.column != null
+      ? getColumnParts(query, stageIndex, completion, completion.column)
+      : null;
+  const description =
+    column?.source ?? getDescription(completion, { database, reportTimezone });
 
   return (
     <li
@@ -143,22 +154,27 @@ function CompletionItem({
       onMouseDown={handleMouseDown}
       className={S.item}
     >
-      <span className={cx(S.name, { [S.withDescription]: description })}>
+      <span
+        className={cx(S.name, {
+          [S.withDescription]: description,
+          [S.columnName]: column != null,
+        })}
+      >
         {completion.column ? (
           <QueryColumnInfoIcon
             query={query}
             stageIndex={stageIndex}
             column={completion.column}
             position="top"
-            className={S.icon}
+            className={cx(S.icon, S.columnIcon)}
           />
         ) : (
           <CompletionIcon completion={completion} />
         )}
         <span className={S.label}>
           <MatchText
-            text={completion.displayLabel ?? completion.label}
-            ranges={completion.matches}
+            text={column?.name ?? completion.displayLabel ?? completion.label}
+            ranges={column?.matches ?? completion.matches}
           />
           {completion.clauseName != null && (
             <span className={S.parens}>()</span>
@@ -178,9 +194,37 @@ function CompletionIcon({ completion }: { completion: ExpressionSuggestion }) {
     const name = completion.displayLabel ?? completion.label;
     const FunctionIcon =
       SIDE_PANEL_ICONS[FUNCTION_ICONS[name] ?? "function-general"];
-    return <FunctionIcon className={S.icon} aria-hidden />;
+    return <FunctionIcon className={cx(S.icon, S.functionIcon)} aria-hidden />;
   }
   return <Icon name={completion.icon} className={S.icon} />;
+}
+
+const SEPARATOR = " → ";
+
+/**
+ * The name of a column without the name of its join or table, which shows
+ * on the right, like in "Full Name   Customer".
+ */
+function getColumnParts(
+  query: Lib.Query,
+  stageIndex: number,
+  completion: ExpressionSuggestion,
+  column: Lib.ColumnMetadata,
+) {
+  const label = completion.displayLabel ?? completion.label;
+  const index = label.lastIndexOf(SEPARATOR);
+  const name = index >= 0 ? label.slice(index + SEPARATOR.length) : label;
+  const source =
+    index >= 0
+      ? label.slice(0, index)
+      : Lib.displayInfo(query, stageIndex, column).table?.displayName;
+  // The matches are in the full label.
+  const offset = label.length - name.length;
+  const matches = completion.matches?.flatMap(
+    ([from, to]): [number, number][] =>
+      to < offset ? [] : [[Math.max(0, from - offset), to - offset]],
+  );
+  return { name, source, matches };
 }
 
 /** The first sentence of a function's description, as plain text. */

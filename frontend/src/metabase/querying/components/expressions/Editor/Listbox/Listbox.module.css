@@ -12,6 +12,19 @@
   }
 }
 
+.heading {
+  flex-shrink: 0;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-xl);
+  box-shadow: inset 0 -0.5px 0 0 var(--mb-color-border-neutral-strong);
+  color: var(--mb-color-text-secondary);
+  font-size: 12px;
+  line-height: 1.15;
+
+  & + .listbox {
+    border-top: none;
+  }
+}
+
 .section {
   flex-shrink: 0;
   display: flex;
@@ -73,10 +86,26 @@
     flex: 0 0 200px;
   }
 
+  &.columnName {
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 20px;
+  }
+
   .icon {
     flex-shrink: 0;
     width: 16px;
     height: 16px;
+  }
+
+  /* All functions have the color of the function icon. The shape tells the
+     category. */
+  .functionIcon path:not([fill="none"], [fill="white"]) {
+    fill: #dd377f;
+  }
+
+  .columnIcon {
+    color: #0188ff;
   }
 }
 

@@ -678,6 +678,7 @@ export function Editor(props: EditorProps) {
           }
           source={source}
           content={sqlHint}
+          inline={inline}
         />
 
         {!inline && source.trim() === "" && !isFormatting && error == null && (

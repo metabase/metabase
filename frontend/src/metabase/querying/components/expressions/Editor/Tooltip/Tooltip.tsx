@@ -9,7 +9,10 @@ import {
   useState,
 } from "react";
 
-import { enclosingFunction } from "metabase/querying/expressions";
+import {
+  enclosingFunction,
+  getClauseDefinition,
+} from "metabase/querying/expressions";
 import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
@@ -102,14 +105,17 @@ export function Tooltip({
         data-ignore-editor-clicks="true"
       >
         <div className={S.tooltip} ref={tooltipRef}>
-          <HelpText
-            enclosingFunction={enclosingFn}
-            database={database}
-            reportTimezone={reportTimezone}
-            open={shouldShowHelpText}
-            onToggle={handleToggleHelpText}
-            expressionMode={expressionMode}
-          />
+          {/* The options have the description of the argument instead. */}
+          {!shouldShowCompletions && (
+            <HelpText
+              enclosingFunction={enclosingFn}
+              database={database}
+              reportTimezone={reportTimezone}
+              open={shouldShowHelpText}
+              onToggle={handleToggleHelpText}
+              expressionMode={expressionMode}
+            />
+          )}
           {shouldShowCompletions && (
             <Listbox
               state={state}
@@ -118,10 +124,21 @@ export function Tooltip({
               stageIndex={stageIndex}
               database={database}
               reportTimezone={reportTimezone}
+              heading={getArgDescription(enclosingFn)}
             />
           )}
         </div>
       </Popover.Dropdown>
     </Popover>
   );
+}
+
+/** The description of the argument at the cursor, as plain text. */
+function getArgDescription(fn: ReturnType<typeof enclosingFunction>) {
+  if (fn?.arg == null) {
+    return undefined;
+  }
+  const args = getClauseDefinition(fn.name)?.args ?? [];
+  const arg = args[fn.arg.index];
+  return arg?.name !== "…" ? arg?.description?.replace(/`/g, "") : undefined;
 }
