@@ -20,6 +20,7 @@
    [metabase.geojson.settings :as geojson.settings]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.pivot.core :as pivot.core]
    [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.compile :as qp.compile]
@@ -83,7 +84,7 @@
   [timezone-id            :- [:maybe :string]
    value                  :- [:or ms/FieldValue [:sequential ms/FieldValue]]
    col                    :- [:maybe :metabase.legacy-mbql.schema/legacy-column-metadata]
-   visualization-settings :- [:maybe ms/VisualizationSettings]]
+   visualization-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]]
   (cond
     ;; legacy usage -- do not use going forward
     #_{:clj-kondo/ignore [:deprecated-var]}
@@ -152,7 +153,7 @@
   [timezone-id  :- [:maybe :string]
    visible-cols :- [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]
    rows         :- [:sequential [:sequential ms/FieldValue]]
-   viz-settings :- [:maybe ms/VisualizationSettings]]
+   viz-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]]
   (let [formatters (mapv #(formatter/create-formatter timezone-id % viz-settings) visible-cols)]
     (for [row rows]
       {:row (mapv (fn [value fmt-fn]
@@ -186,7 +187,7 @@
   [:map {:closed true}
    [:status     [:enum "completed" "failed"]]
    [:error      {:optional true} [:maybe :string]]
-   [:error_type {:optional true} [:maybe [:enum "too-many-rows" "not-found"]]]
+   [:error_type {:optional true} [:maybe [:enum "too-many-rows"]]]
    [:data       {:optional true} [:maybe [:map {:closed true}
                                           [:cols {:optional true}
                                            [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
@@ -200,7 +201,7 @@
    [:map {:closed true}
     [:cols             {:optional true} [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
     [:rows             {:optional true} [:maybe [:sequential [:sequential [:or ms/FieldValue [:sequential ms/FieldValue]]]]]]
-    [:viz-settings     {:optional true} [:maybe ms/VisualizationSettings]]
+    [:viz-settings     {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
     [:results_metadata {:optional true} [:maybe [:map {:closed true}
                                                  [:columns [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]]]
     [:results_timezone {:optional true} [:maybe :string]]
@@ -293,7 +294,7 @@
   "Schema for an ad-hoc (unsaved) card."
   [:map {:closed true}
    [:display :keyword]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    [:name {:optional true} [:maybe :string]]])
 
 (mr/def ::card
