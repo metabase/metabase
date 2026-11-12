@@ -1,3 +1,4 @@
+import { closeCompletion } from "@codemirror/autocomplete";
 import { unifiedMergeView } from "@codemirror/merge";
 import { EditorSelection, type EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
@@ -129,7 +130,11 @@ export type EditorProps = {
   showErrors?: boolean;
   /** Set to a function that checks the current text at once, without the delay. */
   validateRef?: MutableRefObject<ValidateNow | null>;
+  /** Set to a function that sends the whole text to the AI as a request. */
+  generateRef?: MutableRefObject<GenerateNow | null>;
 };
+
+export type GenerateNow = () => Promise<void>;
 
 export type ValidateNow = () => {
   source: string;
@@ -182,6 +187,7 @@ export function Editor(props: EditorProps) {
     onProposalChange,
     showErrors = true,
     validateRef,
+    generateRef,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -451,6 +457,21 @@ export function Editor(props: EditorProps) {
     [promptPos, generate, handleClosePrompt, proposeSource],
   );
 
+  const textRequest = useTextRequest({
+    source,
+    onStart: () => {
+      const view = ref.current?.view;
+      if (view) {
+        closeCompletion(view);
+      }
+    },
+    generate,
+    applySource,
+    onAcceptName,
+    generateRef,
+  });
+  const { clearError: clearTextRequestError } = textRequest;
+
   const canAssist = inline && !readOnly;
 
   // A hint on SQL in the expression replaces the error.
@@ -504,10 +525,11 @@ export function Editor(props: EditorProps) {
           (proposal) => proposal && { ...proposal, source: nextSource },
         );
       } else {
+        clearTextRequestError();
         onSourceChange(nextSource);
       }
     },
-    [isProposing, onSourceChange],
+    [isProposing, onSourceChange, clearTextRequestError],
   );
 
   // Inserts the function with its argument placeholders, the same way
@@ -617,7 +639,7 @@ export function Editor(props: EditorProps) {
       }
       className={S.editor}
       extensions={extensions}
-      readOnly={readOnly || isFormatting}
+      readOnly={readOnly || isFormatting || textRequest.isLoading}
       value={proposedSource ?? source}
       onChange={handleSourceChange}
       onBlur={isProposing ? undefined : onBlur}
@@ -643,6 +665,7 @@ export function Editor(props: EditorProps) {
       <LayoutMain
         className={cx(S.wrapper, {
           [S.formatting]: isFormatting,
+          [S.textRequest]: textRequest.isLoading,
           [S.inline]: inline,
         })}
       >
@@ -678,12 +701,23 @@ export function Editor(props: EditorProps) {
             onRejectProposed={handleRejectProposed}
           />
         )}
-        {promptPos != null && (
+        {promptPos != null ? (
           <InlinePromptStatus isLoading={isGenerating} error={promptError} />
+        ) : (
+          textRequest.isShown && (
+            <InlinePromptStatus
+              isLoading={textRequest.isLoading}
+              error={textRequest.error}
+            />
+          )
         )}
         <Errors
           error={
-            !showErrors || isSnippetActive || isProposing || promptPos != null
+            !showErrors ||
+            isSnippetActive ||
+            isProposing ||
+            promptPos != null ||
+            textRequest.isShown
               ? null
               : error
           }
@@ -976,6 +1010,64 @@ function useExpression({
  * Reports the proposed text, its clause and the proposed name. It compiles
  * the text only when the proposal changes.
  */
+/** Sends the whole text to the AI as a request, when it is not an expression. */
+function useTextRequest({
+  source,
+  onStart,
+  generate,
+  applySource,
+  onAcceptName,
+  generateRef,
+}: {
+  source: string;
+  onStart: () => void;
+  generate: ReturnType<typeof useGenerateExpression>["generate"];
+  applySource: (source: string) => Promise<unknown>;
+  onAcceptName?: (name: string) => void;
+  generateRef?: MutableRefObject<GenerateNow | null>;
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>();
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
+
+  const run = useCallback(async () => {
+    const prompt = sourceRef.current.trim();
+    if (prompt === "") {
+      return;
+    }
+    setError(undefined);
+    setIsLoading(true);
+    onStart();
+    const result = await generate({ prompt, source: "" });
+    setIsLoading(false);
+    if (result == null) {
+      return;
+    }
+    if ("message" in result) {
+      setError(result.message);
+      return;
+    }
+    if (result.name?.trim()) {
+      onAcceptName?.(result.name.trim());
+    }
+    await applySource(result.expression);
+  }, [generate, applySource, onAcceptName, onStart]);
+
+  const clearError = useCallback(() => setError(undefined), []);
+
+  if (generateRef) {
+    generateRef.current = run;
+  }
+
+  return {
+    isLoading,
+    error,
+    clearError,
+    isShown: isLoading || error != null,
+  };
+}
+
 // A diff helps only when the AI rewrites a part of a long expression.
 const COMPLEX_SOURCE_LENGTH = 120;
 const COMPLEX_CHANGE_LENGTH = 20;

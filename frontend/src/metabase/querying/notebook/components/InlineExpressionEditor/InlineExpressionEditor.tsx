@@ -9,8 +9,10 @@ import type * as Lib from "metabase-lib";
 import { Editor } from "../../../components/expressions/Editor";
 import type {
   EditorChangeMeta,
+  GenerateNow,
   ValidateNow,
 } from "../../../components/expressions/Editor/Editor";
+import { isRequestText } from "../../../components/expressions/Editor/request-text";
 import { Layout } from "../../../components/expressions/Layout";
 
 import { ExpressionPreview } from "./ExpressionPreview";
@@ -94,6 +96,8 @@ export function InlineExpressionEditor({
   // save. The next edit hides them.
   const [isErrorShown, setIsErrorShown] = useState(false);
   const validateRef = useRef<ValidateNow | null>(null);
+  const generateRef = useRef<GenerateNow | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   /** Checks the text now. Returns it when it is valid, or shows its errors. */
   const checkNow = (): PreviewRun | null => {
@@ -152,23 +156,56 @@ export function InlineExpressionEditor({
 
   // A check also reports the text, so only a new text hides the errors.
   const editedSourceRef = useRef<string | undefined>(undefined);
-  const handleEdit = useCallback((source: string) => {
-    if (source !== editedSourceRef.current) {
-      editedSourceRef.current = source;
-      setEditedSource(source);
-      setIsErrorShown(false);
-    }
-  }, []);
+  // Whether the text compiles, without the delay of `onChange`.
+  const [isEditedValid, setIsEditedValid] = useState(true);
+  const handleEdit = useCallback(
+    (source: string, clause: Lib.ExpressionClause | null) => {
+      setIsEditedValid(source.trim() === "" || clause != null);
+      if (source !== editedSourceRef.current) {
+        editedSourceRef.current = source;
+        setEditedSource(source);
+        setIsErrorShown(false);
+      }
+    },
+    [],
+  );
 
-  // Cmd/Ctrl+Enter opens the preview, or runs it again. The capture phase
-  // comes before the keymap of the code editor.
+  // In a new column, text that is not an expression but reads like a
+  // request goes to the AI as it is.
+  // The parent keeps the text of a draft in `initialSource`, so only the value
+  // at the start tells that the column was empty.
+  const [isNewExpression] = useState(
+    () => clause == null && (initialSource ?? "").trim() === "",
+  );
+  const canGenerate =
+    isNewExpression &&
+    !readOnly &&
+    proposal == null &&
+    !isEditedValid &&
+    isRequestText(editedSource ?? "");
+
+  const runGenerate = async () => {
+    if (isGenerating) {
+      return;
+    }
+    setIsGenerating(true);
+    await generateRef.current?.();
+    setIsGenerating(false);
+  };
+
+  // Cmd/Ctrl+Enter opens the preview, runs it again, or sends a request to
+  // the AI. The capture phase comes before the keymap of the code editor.
   const handleKeyDownCapture = (event: KeyboardEvent) => {
     if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
-    runPreview();
+    if (canGenerate) {
+      runGenerate();
+    } else {
+      runPreview();
+    }
   };
 
   // The name of an accepted AI suggestion, which the next valid edit commits.
@@ -230,20 +267,33 @@ export function InlineExpressionEditor({
         error={error}
         showErrors={isErrorShown}
         validateRef={validateRef}
+        generateRef={generateRef}
         readOnly={readOnly}
         toolbarStart={
-          !readOnly &&
-          previewRun == null && (
-            <Tooltip label={t`Preview (${PREVIEW_SHORTCUT})`}>
+          canGenerate ? (
+            <Tooltip label={t`Generate with AI (${PREVIEW_SHORTCUT})`}>
               <Button
                 size="sm"
                 variant="subtle"
-                color="neutral"
                 className={S.toolbarButton}
-                disabled={isEmpty}
-                onClick={runPreview}
-              >{t`Preview`}</Button>
+                disabled={isGenerating}
+                onClick={runGenerate}
+              >{t`Generate with AI`}</Button>
             </Tooltip>
+          ) : (
+            !readOnly &&
+            previewRun == null && (
+              <Tooltip label={t`Preview (${PREVIEW_SHORTCUT})`}>
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  color="neutral"
+                  className={S.toolbarButton}
+                  disabled={isEmpty}
+                  onClick={runPreview}
+                >{t`Preview`}</Button>
+              </Tooltip>
+            )
           )
         }
         toolbarEnd={

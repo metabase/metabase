@@ -11,6 +11,15 @@
   &.inline {
     border-bottom: none;
   }
+
+  /* The text goes to the AI as a request. */
+  &.textRequest :global(.cm-content) {
+    color: var(--mb-color-text-disabled);
+
+    * {
+      color: inherit !important;
+    }
+  }
 }
 
 .error {
@@ -29,7 +38,7 @@
    next to the first line. */
 .inlineRow {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--mantine-spacing-md);
   padding-right: var(--mantine-spacing-xl);
 }
@@ -40,9 +49,6 @@
   align-items: center;
   gap: var(--mantine-spacing-md);
   height: 24px;
-
-  /* Lines up with the first line of code. */
-  margin-top: 20px;
 }
 
 .toolbarButton {
