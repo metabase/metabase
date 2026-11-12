@@ -114,11 +114,21 @@
   []
   (t2/select :model/Workspace {:order-by [[:id :asc]]}))
 
+(mu/defn workspace-id-by-idempotency-key :- [:maybe ms/PositiveInt]
+  "The id of the Workspace that `creator-id` created with `idempotency-key`, or nil."
+  [creator-id      :- ::lib.schema.id/user
+   idempotency-key :- :string]
+  (t2/select-one-pk :model/Workspace :creator_id creator-id :idempotency_key idempotency-key))
+
 (mu/defn insert-workspace!
-  "Insert a Workspace and return its id."
-  [workspace-name :- :string
-   creator-id     :- [:maybe ::lib.schema.id/user]]
-  (t2/insert-returning-pk! :model/Workspace {:name workspace-name :creator_id creator-id}))
+  "Insert a Workspace and return its id. Throws a duplicate-key error when `creator-id` already has a Workspace with
+  `idempotency-key`."
+  [workspace-name  :- :string
+   creator-id      :- [:maybe ::lib.schema.id/user]
+   idempotency-key :- [:maybe :string]]
+  (t2/insert-returning-pk! :model/Workspace {:name            workspace-name
+                                             :creator_id      creator-id
+                                             :idempotency_key idempotency-key}))
 
 (mu/defn update-workspace-name!
   "Rename the Workspace with `workspace-id`."
