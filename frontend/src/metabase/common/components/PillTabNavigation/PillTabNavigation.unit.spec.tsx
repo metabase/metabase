@@ -20,7 +20,15 @@ function setup({
   initialRoute = "/monitor/example/usage",
 }: SetupOpts = {}) {
   renderWithProviders(
-    <Route path="*" element={<PillTabNavigation tabs={tabs} />} />,
+    <Route
+      path="*"
+      element={
+        <>
+          <PillTabNavigation tabs={tabs} />
+          <button>unrelated tab stop</button>
+        </>
+      }
+    />,
     { withRouter: true, initialRoute },
   );
 }
@@ -98,14 +106,35 @@ describe("PillTabNavigation", () => {
 
   it("uses roving tabIndex", async () => {
     setup({ initialRoute: "/monitor/example/events" });
+    const events = screen.getByRole("tab", { name: "Events" });
+    const nextTabStop = screen.getByRole("button", {
+      name: "unrelated tab stop",
+    });
 
     await userEvent.tab();
-    expect(screen.getByRole("tab", { name: "Events" })).toHaveFocus();
+    expect(events).toHaveFocus();
     await userEvent.tab();
-    expect(screen.getByRole("tab", { name: "Usage" })).not.toHaveFocus();
-    expect(screen.getByRole("tab", { name: "Events" })).not.toHaveFocus();
+    expect(nextTabStop).toHaveFocus();
     await userEvent.keyboard("{Shift>}{Tab}");
-    expect(screen.getByRole("tab", { name: "Events" })).toHaveFocus();
+    expect(events).toHaveFocus();
+  });
+
+  it("roving tabIndex ignores focus change", async () => {
+    setup();
+    const usage = screen.getByRole("tab", { name: "Usage" });
+    const events = screen.getByRole("tab", { name: "Events" });
+    const nextTabStop = screen.getByRole("button", {
+      name: "unrelated tab stop",
+    });
+
+    await userEvent.tab();
+    expect(usage).toHaveFocus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(events).toHaveFocus();
+    await userEvent.tab();
+    expect(nextTabStop).toHaveFocus();
+    await userEvent.keyboard("{Shift>}{Tab}");
+    expect(usage).toHaveFocus();
   });
 
   it("shows a resolved zero count without hiding the tab", () => {
