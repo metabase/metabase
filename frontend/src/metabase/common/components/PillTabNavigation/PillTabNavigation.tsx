@@ -90,55 +90,57 @@ export function PillTabNavigation({
   const hasAnySelected = tabsWithSelected.some(({ isSelected }) => isSelected);
 
   return (
-    <Flex
-      component="nav"
-      gap="xxs"
-      wrap="wrap"
-      data-testid={testId}
-      role="tablist"
-    >
-      {tabsWithSelected.map((tab, index) => {
-        const { isSelected: selected } = tab;
-        const countId = `${countIdPrefix}-count-${index}`;
-        const hasLoadedCount = tab.count?.status === "loaded";
-        const tabProps = {
-          align: "center",
-          gap: "xxs",
-          className: cx(S.tab, { [S.selected]: selected }),
-          role: "tab",
-          "aria-label": tab.label,
-          "aria-describedby": hasLoadedCount ? countId : undefined,
-          "aria-selected": selected,
-          tabIndex: selected || !hasAnySelected ? 0 : -1,
-          "data-testid": tab["data-testid"],
-          onClick: tab.onClick,
-          onKeyDown: handleTabKeyDown,
-        } as const;
-        const content = (
-          <>
-            {tab.icon !== undefined && <FixedSizeIcon name={tab.icon} />}
-            <Ellipsified className={S.label}>{tab.label}</Ellipsified>
-            {tab.count !== undefined && (
-              <TabCountBadge id={countId} count={tab.count} />
-            )}
-            {tab.isGated && <UpsellGem.New size={14} />}
-          </>
-        );
-        return tab.to === undefined ? (
-          <Flex key={tab.label} component="button" type="button" {...tabProps}>
-            {content}
-          </Flex>
-        ) : (
-          <Flex
-            key={tab.label}
-            component={ForwardRefLink}
-            to={tab.to}
-            {...tabProps}
-          >
-            {content}
-          </Flex>
-        );
-      })}
-    </Flex>
+    // aria: announce as tablist, but keep landmark
+    <nav>
+      <Flex gap="xxs" wrap="wrap" data-testid={testId} role="tablist">
+        {tabsWithSelected.map((tab, index) => {
+          const { isSelected: selected } = tab;
+          const countId = `${countIdPrefix}-count-${index}`;
+          const hasLoadedCount = tab.count?.status === "loaded";
+          const tabProps = {
+            align: "center",
+            gap: "xxs",
+            className: cx(S.tab, { [S.selected]: selected }),
+            role: "tab",
+            "aria-label": tab.label,
+            "aria-describedby": hasLoadedCount ? countId : undefined,
+            "aria-selected": selected,
+            tabIndex: selected || !hasAnySelected ? 0 : -1,
+            "data-testid": tab["data-testid"],
+            onClick: tab.onClick,
+            onKeyDown: handleTabKeyDown,
+          } as const;
+          const content = (
+            <>
+              {tab.icon !== undefined && <FixedSizeIcon name={tab.icon} />}
+              <Ellipsified className={S.label}>{tab.label}</Ellipsified>
+              {tab.count !== undefined && (
+                <TabCountBadge id={countId} count={tab.count} />
+              )}
+              {tab.isGated && <UpsellGem.New size={14} />}
+            </>
+          );
+          return tab.to === undefined ? (
+            <Flex
+              key={tab.label}
+              component="button"
+              type="button"
+              {...tabProps}
+            >
+              {content}
+            </Flex>
+          ) : (
+            <Flex
+              key={tab.label}
+              component={ForwardRefLink}
+              to={tab.to}
+              {...tabProps}
+            >
+              {content}
+            </Flex>
+          );
+        })}
+      </Flex>
+    </nav>
   );
 }
