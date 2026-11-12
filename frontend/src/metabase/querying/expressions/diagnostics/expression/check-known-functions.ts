@@ -26,6 +26,7 @@ export function checkKnownFunctions({
       error(
         node,
         t`There's no function called ${operator}(). Check the spelling, or start typing to see matching functions.`,
+        "function",
       );
     }
   });

@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import {
   type ExpressionError,
+  type ExpressionErrorKind,
   getLineAndColumn,
   isExpressionError,
 } from "metabase/querying/expressions";
@@ -40,7 +41,9 @@ export function Errors({
   if (inline) {
     return (
       <div className={cx(S.errors, S.inline)} role="alert">
-        <span className={S.title}>{t`Syntax error`}</span>
+        <span className={S.title}>
+          {getTitle(isExpressionError(error) ? error.kind : "syntax")}
+        </span>
         <span className={S.message}>{error.message}</span>
       </div>
     );
@@ -62,4 +65,23 @@ export function Errors({
       )}
     </Flex>
   );
+}
+
+function getTitle(kind: ExpressionErrorKind) {
+  switch (kind) {
+    case "syntax":
+      return t`Syntax error`;
+    case "type":
+      return t`Type error`;
+    case "column":
+      return t`Unknown column`;
+    case "function":
+      return t`Unknown function`;
+    case "unsupported":
+      return t`Not supported`;
+    case "arguments":
+      return t`Wrong arguments`;
+    case "reference":
+      return t`Circular reference`;
+  }
 }

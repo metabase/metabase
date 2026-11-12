@@ -23,6 +23,7 @@ import { suggestFunctions } from "./functions";
 import { suggestLiterals } from "./literals";
 import { suggestMeasures } from "./measures";
 import { suggestMetrics } from "./metrics";
+import { placeholders } from "./placeholders";
 import { openWhenEmpty, suggestPopular } from "./popular";
 import { suggestSegments } from "./segments";
 import { suggestRelatedColumns, suggestRelatedFunctions } from "./semantic";
@@ -47,5 +48,5 @@ export function suggestions(options: SuggestOptions) {
       suggestRelatedColumns(options),
     ].filter(isNotNull),
   });
-  return popular != null ? [completion, openWhenEmpty()] : completion;
+  return [completion, placeholders, popular != null ? openWhenEmpty() : []];
 }

@@ -28,6 +28,7 @@ export function checkComparisonOperatorArgs({
       error(
         node,
         t`The left side of this comparison needs to be a column or calculation, not the number ${firstOperand}. Try something like [Total] > ${firstOperand}.`,
+        "type",
       );
     }
   });

@@ -5,6 +5,7 @@ import type * as Lib from "metabase-lib";
 import { CALL, FIELD, IDENTIFIER, type Token } from "../pratt";
 
 import { FUNCTION_ALIASES } from "./aliases";
+import { withPlaceholders } from "./placeholders";
 import { matchOptions } from "./text-match";
 import type { ExpressionSuggestion } from "./types";
 
@@ -18,11 +19,15 @@ export function expressionClauseCompletion(
     matches?: [number, number][];
   },
 ): ExpressionSuggestion {
-  const completion = snippetCompletion(expressionClauseSnippet(clause), {
-    type,
-    label: clause.displayName,
-    displayLabel: clause.displayName,
-  });
+  const template = expressionClauseSnippet(clause);
+  const completion = withPlaceholders(
+    snippetCompletion(template, {
+      type,
+      label: clause.displayName,
+      displayLabel: clause.displayName,
+    }),
+    template,
+  );
   return {
     ...completion,
     icon: "function",

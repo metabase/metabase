@@ -37,6 +37,7 @@ export function checkArgCount({
             `${displayName}() needs at least ${minArgCount} values, separated by commas.`,
             minArgCount,
           ),
+          "arguments",
         );
       }
     } else {
@@ -55,6 +56,7 @@ export function checkArgCount({
             `${displayName}() needs ${expectedArgsLength} values, separated by commas.`,
             expectedArgsLength,
           ),
+          "arguments",
         );
       }
     }

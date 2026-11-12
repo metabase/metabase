@@ -23,6 +23,7 @@ export function checkCaseOrIfArgCount({
       error(
         node,
         t`${operator}() needs at least a condition and a result, like ${operator}([Total] > 100, "Large").`,
+        "arguments",
       );
     }
   });

@@ -767,7 +767,8 @@
                   type-message (type-error-message explanation expr expression-mode)
                   message (or friendly-message type-message)]
               {:message message
-               :friendly true}))
+               :friendly true
+               :kind :type}))
           (when-let [dependency-path
                      (when expression-position
                        (clojure.core/case expression-mode
@@ -789,7 +790,8 @@
                                                             uuid->agg))))
                          nil))]
             {:message (i18n/tru "These depend on each other, so they can''t be calculated: {0}. Remove one of the references to break the loop." (str/join " → " dependency-path))
-             :friendly true})
+             :friendly true
+             :kind :reference})
           (when-let [nested (invalid-nesting expr)]
             {:message (i18n/tru "{0}() can''t be used inside another summary function. Use it on its own."
                                 ;; special names duplicated from
@@ -804,19 +806,23 @@
                                   :sum-where      "SumIf"
                                   :var            "Variance"
                                   (-> nested name u/->camelCaseEn u/capitalize-first-char)))
-             :friendly true})
+             :friendly true
+             :kind :unsupported})
           (when (and (= expression-mode :expression)
                      (match/match-one expr :offset true))
             {:message  (i18n/tru "Offset() only works in Summarize, so it can''t be used in a custom column.")
-             :friendly true})
+             :friendly true
+             :kind :unsupported})
           (when (and (= expression-mode :filter)
                      (match/match-one expr :offset true))
             {:message  (i18n/tru "Offset() only works in Summarize, so it can''t be used in a custom filter.")
-             :friendly true})
+             :friendly true
+             :kind :unsupported})
           (when (and (lib.schema.common/is-clause? :value expr)
                      (not (lib.metadata/database-supports? query :expression-literals)))
             {:message  (i18n/tru "A value on its own can''t be used with this database. Use a column or a calculation instead.")
-             :friendly true})))))
+             :friendly true
+             :kind :unsupported})))))
 
 (defn- unique-name [names original-name index]
   (let [indexed-name (str original-name " (" index ")")]

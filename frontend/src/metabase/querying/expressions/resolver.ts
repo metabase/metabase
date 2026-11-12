@@ -53,6 +53,7 @@ export function resolver(options: Options): Resolver {
         throw new CompileError(
           t`There's no metric or measure called "${name}". Check the spelling, or use a function like Sum([Total]).`,
           node,
+          "column",
         );
       } else if (
         !Lib.isMetricMetadata(dimension) &&
@@ -66,6 +67,7 @@ export function resolver(options: Options): Resolver {
           )
             .t`"${name}" is a column, so it can't be used as a summary on its own. Wrap it in a function like Sum([${name}]) or Average([${name}]).`,
           node,
+          "type",
         );
       }
       return dimension;
@@ -81,6 +83,7 @@ export function resolver(options: Options): Resolver {
         throw new CompileError(
           t`There's no true-or-false column or segment called "${name}". Replace it with a check that's true or false, like [Total] > 100.`,
           node,
+          "column",
         );
       }
       return dimension;
@@ -98,11 +101,13 @@ export function resolver(options: Options): Resolver {
         throw new CompileError(
           t`There's no column, metric or measure called "${name}". Check the spelling, or press [ to see the list.`,
           node,
+          "column",
         );
       }
       throw new CompileError(
         t`There's no column called "${name}". Check the spelling, or press [ to see the list of columns.`,
         node,
+        "column",
       );
     }
     return dimension;

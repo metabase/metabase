@@ -2,12 +2,23 @@ import { t } from "ttag";
 
 import type { Node } from "./pratt";
 
+/** What is wrong with an expression, which gives the title of the error. */
+export type ExpressionErrorKind =
+  | "syntax"
+  | "type"
+  | "column"
+  | "function"
+  | "unsupported"
+  | "arguments"
+  | "reference";
+
 /*
  * This class helps anything that handles parser errors to use instanceof to
  * easily distinguish between compilation error exceptions and exceptions due to
  * bugs
  */
 export abstract class ExpressionError extends Error {
+  kind: ExpressionErrorKind = "syntax";
   abstract get pos(): number | null;
   abstract get len(): number | null;
   abstract get friendly(): boolean;
@@ -17,8 +28,10 @@ export class CompileError extends ExpressionError {
   constructor(
     message: string,
     private node?: Node,
+    kind: ExpressionErrorKind = "syntax",
   ) {
     super(message);
+    this.kind = kind;
   }
 
   get friendly(): boolean {
@@ -45,13 +58,16 @@ export class DiagnosticError extends ExpressionError {
       pos = null,
       len = null,
       friendly = true,
+      kind = "syntax",
     }: {
       pos?: number | null;
       len?: number | null;
       friendly?: boolean;
+      kind?: ExpressionErrorKind;
     } = {},
   ) {
     super(message);
+    this.kind = kind;
     this.pos = pos;
     this.len = len;
     this.friendly = friendly;

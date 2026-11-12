@@ -246,6 +246,7 @@ function compileFunctionCall(node: Node, ctx: Context): Lib.ExpressionParts {
     isDefinedClause(operator),
     t`There's no function called ${operator}(). Check the spelling, or start typing to see matching functions.`,
     node,
+    "function",
   );
 
   const args = compileArgList(node.children[0], operator, ctx);
@@ -300,6 +301,7 @@ function compileDatetimeMode(
     isStringLiteral(mode),
     t`The format for datetime() has to be text in quotes, like "iso".`,
     node,
+    "arguments",
   );
 
   return DATETIME_MODE_MAP[mode.toLowerCase().replaceAll("-", "")];
