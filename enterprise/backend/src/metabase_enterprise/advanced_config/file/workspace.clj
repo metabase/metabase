@@ -1,12 +1,12 @@
 (ns metabase-enterprise.advanced-config.file.workspace
-  "Loader for the `:workspace` section of `config.yml`.
+  "Loader for the `:workspace` section of `config.yml`, the form that the parent's
+  `GET /api/ee/workspace-manager/:id/config` emits.
 
-  The form the parent's `GET /api/ee/workspace-manager/:id/config` emits. On boot,
-  translates it into the `workspaces-enabled` setting and each database's
-  `database-workspace-schema` setting (see [[metabase-enterprise.workspaces.settings]]).
-  The same settings can be set directly, in the `settings` section and per-database
-  `settings`; this section is kept so existing configs keep working. `:name` and
-  `:input_schemas` are accepted and ignored.
+  On boot, translates the section into the `workspaces-enabled` setting and each
+  database's `database-workspace-schema` setting (see
+  [[metabase-enterprise.workspaces.settings]]). The same settings can be set directly,
+  in the `settings` section and per-database `settings`. `:input_schemas` is accepted
+  and ignored. `:name` is logged and stored nowhere.
 
   Every boot re-reads `config.yml` and overwrites the prior values."
   (:require
@@ -82,8 +82,8 @@
                       {:database-name db-name}))))
 
 (defn- workspace-schema
-  "The schema the `workspace` section names for a database: `:output`'s `:schema`, or its `:db` on engines without
-  schemas (MySQL), where the parent puts the namespace there."
+  "The schema the `workspace` section names for a database: `:output`'s `:schema`, else its `:db` (the parent puts
+  the namespace there on engines without schemas, such as MySQL)."
   [{:keys [output]}]
   (or (:schema output) (:db output)))
 
@@ -120,9 +120,10 @@
    Resolves each database name to a `:model/Database` (rows are populated by the
    `:databases` section, which runs earlier — see
    [[metabase-enterprise.advanced-config.file/initialize!]]) and makes the instance a
-   workspace whose databases write to the `:output` namespace. The schema is
-   `:output`'s `:schema`, or its `:db` on engines without schemas (MySQL), where the
-   parent puts the namespace there."
+   workspace. Each database's schema is `:output`'s `:schema`, else its `:db` (the
+   parent puts the namespace there on engines without schemas, such as MySQL). On
+   engines with a catalog slot, an `:output` `:db` given with a `:schema` is ignored;
+   the catalog comes from `Database.details`."
   [section-config]
   (let [{:keys [name databases]} (ordered->plain section-config)
         schemas (into {}

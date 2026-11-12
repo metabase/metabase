@@ -69,8 +69,9 @@
   node does not see another node's write.
 
   Outside workspace mode the cache can miss rows that another node inserted, for at most one minute after this node
-  last filled it. Rows can exist outside workspace mode: a restart that drops `MB_WORKSPACES_ENABLED`, which is
-  never stored in the app DB, and a run that records its row while `workspaces-enabled` is turned off. The same window
+  last filled it. Rows can exist outside workspace mode: after a restart that drops `MB_WORKSPACES_ENABLED`, or
+  sets it to `false` over a stored `true` (the env var is never stored in the app DB), and after a run that records its
+  row while `workspaces-enabled` is turned off. The same window
   applies while another node is in workspace mode and this one is not yet: until this node's settings cache picks up
   a runtime change, or during a rolling restart that adds or removes `MB_WORKSPACES_ENABLED`. A change of the
   `workspaces-enabled` setting that this node sees drops the cache."

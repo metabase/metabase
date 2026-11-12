@@ -67,7 +67,7 @@
       (is (nil? (ws/db-workspace-namespace other-id))))))
 
 (deftest workspaces-enabled-env-var-test
-  (testing "MB_WORKSPACES_ENABLED turns workspace mode on, and clear-instance-workspace! refuses to fight it"
+  (testing "MB_WORKSPACES_ENABLED turns workspace mode on, and clear-instance-workspace! throws while it is set"
     (mt/with-temp-env-var-value! [mb-workspaces-enabled "true"]
       (is (true? (ws/workspace-mode?)))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"MB_WORKSPACES_ENABLED"
@@ -126,7 +126,7 @@
               (is (zero? (t2/count :model/TableRemapping :database_id db-id))))))))))
 
 (deftest put-database-refuses-non-string-workspace-schema-test
-  (testing "PUT /api/database/:id refuses a non-string database-workspace-schema, which every read would choke on"
+  (testing "PUT /api/database/:id refuses a non-string database-workspace-schema"
     (mt/with-premium-features #{:workspaces}
       (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details (:details (mt/db))}]
         (doseq [bad [5 true ["ws"] {:schema "ws"}]]

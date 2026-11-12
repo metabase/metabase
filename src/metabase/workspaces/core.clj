@@ -12,10 +12,10 @@
 
    3. **Table remapping engaged** — a *query-time data state*. True iff
       `:model/TableRemapping` rows exist for the database. The
-      `(ws.remapping/enabled-for-db? db-id)` predicate. Today this implies
-      workspace-managed (transforms create the rows when the database has a
-      workspace schema), but the rewriting machinery responds purely to row
-      existence — it doesn't check workspace mode.
+      `(ws.remapping/enabled-for-db? db-id)` predicate. Transforms create the
+      rows only while the database is workspace-managed, but rows can outlive
+      that state. The rewriting responds to row existence alone; it does not
+      check workspace mode.
 
    ## What this namespace gates
 

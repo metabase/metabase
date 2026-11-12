@@ -20,7 +20,7 @@
 (defn with-workspace-db!
   "Make this instance a workspace in which the Database `db-id` writes to `schema`
    (its `database-workspace-schema`), run `thunk`, then turn workspace mode off and
-   restore the database's settings."
+   restore the database's settings. Teardown deletes every `TableRemapping` row."
   [db-id schema thunk]
   (mt/with-temp-vals-in-db :model/Database db-id {:settings {:database-workspace-schema schema}}
     (ws.settings/workspaces-enabled! true)

@@ -9,7 +9,7 @@
 (events/derive! :event/database-update ::database-update)
 
 (methodical/defmethod events/publish-event! ::database-update
-  "`PUT /api/database/:id` can change `database-workspace-schema`; delete the remap rows
-  that point at the old schema."
+  "Delete the remap rows that point at the old `database-workspace-schema` when an update
+  changes it."
   [_topic {database :object previous-database :previous-object}]
   (ws/delete-stale-table-remappings! previous-database database))
