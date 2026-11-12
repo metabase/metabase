@@ -52,6 +52,10 @@
                                     (swap! calls conj [:probe perm-type perm-value opts])
                                     (and (= [perm-type perm-value] [:perms/create-queries :query-builder])
                                          (nil? (:exclude-db-ids opts))))
+                                  permissions.db/databases-with-perm-value
+                                  (fn [_user-id perm-type perm-value db-ids]
+                                    (swap! calls conj [:probe perm-type perm-value {:db-id (first db-ids)}])
+                                    (if (= [perm-type perm-value] [:perms/create-queries :query-builder]) (set db-ids) #{}))
                                   permissions.db/user-database-level-values
                                   (fn [_user-id perm-type db-ids]
                                     (swap! calls conj [:database-level perm-type db-ids])

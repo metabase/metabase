@@ -358,11 +358,22 @@
   (cached-batch user-id [::database-level-value perm-type] db-id (some-> *loaded-database-ids* deref)
                 #(database-level-values* user-id perm-type %)))
 
+(defn- databases-with-perm-value*
+  "Whether `user-id` holds `perm-type` with exactly `perm-value` on a row of each of the Databases with `db-ids`, as
+  `{db-id boolean}`."
+  [user-id perm-type perm-value db-ids]
+  (let [holding (into #{} (chunked #(permissions.db/databases-with-perm-value user-id perm-type perm-value %) db-ids))]
+    (into {} (map (fn [db-id] [db-id (contains? holding db-id)])) db-ids)))
+
 (defn- has-perm-value?
-  "Whether `user-id` holds `perm-type` with exactly `perm-value` on a row in `scope`, see `permissions.db/scope`."
-  [user-id perm-type perm-value scope]
-  (cached user-id [::has-perm-value perm-type perm-value scope]
-          #(permissions.db/user-has-perm-value? user-id perm-type perm-value scope)))
+  "Whether `user-id` holds `perm-type` with exactly `perm-value` on a row in `scope`, see `permissions.db/scope`. A
+  scope of one Database is answered with the other Databases loaded in this request."
+  [user-id perm-type perm-value {:keys [db-id] :as scope}]
+  (if (and db-id (= scope {:db-id db-id}))
+    (cached-batch user-id [::database-has-perm-value perm-type perm-value] db-id (some-> *loaded-database-ids* deref)
+                  #(databases-with-perm-value* user-id perm-type perm-value %))
+    (cached user-id [::has-perm-value perm-type perm-value scope]
+            #(permissions.db/user-has-perm-value? user-id perm-type perm-value scope))))
 
 (defn- most-restrictive-value
   "The most permissive across `user-id`'s groups of each group's most restrictive `perm-type` value in `scope`, or nil
