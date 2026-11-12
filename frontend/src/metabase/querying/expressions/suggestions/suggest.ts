@@ -18,6 +18,8 @@ export type SuggestOptions = {
   columnsOutsideBrackets?: boolean;
   /** Display names of the functions to suggest while the expression is empty. */
   popularFunctions?: string[];
+  /** Gives the values of a column, for a value that is compared to it. */
+  getColumnValues?: GetColumnValues;
 };
 
 import { getTemplateFieldKind } from "../templates";
@@ -36,6 +38,11 @@ import {
 import { openWhenEmpty, suggestPopular } from "./popular";
 import { suggestSegments } from "./segments";
 import { suggestRelatedColumns, suggestRelatedFunctions } from "./semantic";
+import {
+  type GetColumnValues,
+  isOnColumnValue,
+  suggestColumnValues,
+} from "./values";
 
 export function suggestions(options: SuggestOptions) {
   const popular = suggestPopular(options);
@@ -44,18 +51,21 @@ export function suggestions(options: SuggestOptions) {
     activateOnTyping: true,
     activateOnTypingDelay: 0,
     override: [
-      quietOnTemplateBlanks(popular),
-      quietOnTemplateBlanks(suggestLiterals()),
-      quietOnTemplateBlanks(suggestFunctions(options)),
-      quietOnTemplateBlanks(suggestAggregations(options)),
-      // Offers every column on a template's column blank.
-      suggestFields(options),
-      quietOnTemplateBlanks(suggestMetrics(options)),
-      quietOnTemplateBlanks(suggestMeasures(options)),
-      quietOnTemplateBlanks(suggestSegments(options)),
-      // Last, so that their options come after the text matches.
-      quietOnTemplateBlanks(suggestRelatedFunctions(options)),
-      quietOnTemplateBlanks(suggestRelatedColumns(options)),
+      quietOnTemplateBlanks(suggestColumnValues(options)),
+      ...[
+        quietOnTemplateBlanks(popular),
+        quietOnTemplateBlanks(suggestLiterals()),
+        quietOnTemplateBlanks(suggestFunctions(options)),
+        quietOnTemplateBlanks(suggestAggregations(options)),
+        // Offers every column on a template's column blank.
+        suggestFields(options),
+        quietOnTemplateBlanks(suggestMetrics(options)),
+        quietOnTemplateBlanks(suggestMeasures(options)),
+        quietOnTemplateBlanks(suggestSegments(options)),
+        // Last, so that their options come after the text matches.
+        quietOnTemplateBlanks(suggestRelatedFunctions(options)),
+        quietOnTemplateBlanks(suggestRelatedColumns(options)),
+      ].map(quietOnColumnValues),
     ].filter(isNotNull),
   });
   return [
@@ -78,4 +88,14 @@ function quietOnTemplateBlanks(
     !isOnPlaceholder(context.state)
       ? source(context)
       : null;
+}
+
+/** In a text value that is compared to a column, only its values show. */
+function quietOnColumnValues(
+  source: CompletionSource | null,
+): CompletionSource | null {
+  if (source === null) {
+    return null;
+  }
+  return (context) => (isOnColumnValue(context.state) ? null : source(context));
 }

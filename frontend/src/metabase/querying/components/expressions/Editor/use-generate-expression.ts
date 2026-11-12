@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getErrorMessage } from "metabase/api/utils/errors";
-import { formatIdentifier } from "metabase/querying/expressions";
+import {
+  MAX_COLUMN_VALUES,
+  formatIdentifier,
+  hasTextValues,
+} from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 
 import { useGenerateExpressionMutation } from "./api";
+import { useGetColumnValues } from "./column-values";
 
 // The first try, then retries that get the editor's errors for the earlier tries.
 const MAX_ATTEMPTS = 3;
@@ -40,6 +45,7 @@ export function useGenerateExpression({
   validate,
 }: Options) {
   const [generateExpression] = useGenerateExpressionMutation();
+  const getColumnValues = useGetColumnValues(query);
   const requestRef = useRef<ReturnType<typeof generateExpression> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -69,6 +75,21 @@ export function useGenerateExpression({
           Lib.displayInfo(query, stageIndex, column).longDisplayName,
         ),
       );
+      // All the values of the text columns that have only a few, like a
+      // status, so that the AI uses real values.
+      const columnValues = Object.fromEntries(
+        await Promise.all(
+          availableColumns.map(async (column, index) => {
+            const values = hasTextValues(column)
+              ? await getColumnValues(column, "", MAX_COLUMN_VALUES + 1)
+              : [];
+            return [
+              columns[index],
+              values.length <= MAX_COLUMN_VALUES ? values : [],
+            ];
+          }),
+        ),
+      );
       const previousAttempts: { expression: string; error: string }[] = [];
 
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -78,6 +99,7 @@ export function useGenerateExpression({
           cursor,
           expression_mode: expressionMode,
           columns,
+          column_values: columnValues,
           name,
           has_default_name: hasDefaultName,
           previous_attempts: previousAttempts,
@@ -122,6 +144,7 @@ export function useGenerateExpression({
       hasDefaultName,
       query,
       stageIndex,
+      getColumnValues,
     ],
   );
 

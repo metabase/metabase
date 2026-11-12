@@ -18,6 +18,7 @@ import type { Database } from "metabase-types/api";
 import { POPULAR_FUNCTIONS } from "../ExpressionSidePanel/content";
 
 import S from "./Editor.module.css";
+import { useGetColumnValues } from "./column-values";
 import { customExpression } from "./language";
 
 type Options = {
@@ -53,6 +54,7 @@ export function useExtensions(options: Options): Extension[] {
     database,
     extensions: extra = [],
   } = options;
+  const getColumnValues = useGetColumnValues(query);
   const [hasColumnsOutsideBrackets] = usePrototypeSetting(
     EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
   );
@@ -79,6 +81,7 @@ export function useExtensions(options: Options): Extension[] {
         database,
         columnsOutsideBrackets: hasColumnsOutsideBrackets,
         popularFunctions: POPULAR_FUNCTIONS[expressionMode],
+        getColumnValues,
       }),
       tooltips({
         position: "fixed",
@@ -96,6 +99,7 @@ export function useExtensions(options: Options): Extension[] {
     availableColumns,
     database,
     hasColumnsOutsideBrackets,
+    getColumnValues,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);

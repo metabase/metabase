@@ -7,6 +7,8 @@ type GenerateExpressionRequest = {
   cursor?: number;
   expression_mode: Lib.ExpressionMode;
   columns: string[];
+  /** Sample values of a column, by the column name in `columns`. */
+  column_values?: Record<string, string[]>;
   name?: string;
   has_default_name?: boolean;
   previous_attempts?: { expression: string; error: string }[];
