@@ -6,6 +6,7 @@ import type { Dispatch } from "metabase/redux/store";
 import { getSensibleDisplays, visualizations } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  Dataset,
   DatasetData,
   ParameterValuesMap,
   QueryVisualizationDisplayType,
@@ -22,6 +23,8 @@ interface RunQuestionQueryParams {
   dispatch: Dispatch;
   initialVisualization?: QueryVisualizationDisplayType;
   ignoreCache?: boolean;
+  /** Called with the result when the query request resolves, unless it was cancelled. It does not wait for the custom visualizations. */
+  onQueryEnd?: (result: Dataset) => void;
 }
 
 export async function runQuestionQuerySdk(
@@ -37,6 +40,7 @@ export async function runQuestionQuerySdk(
     dispatch,
     initialVisualization,
     ignoreCache = false,
+    onQueryEnd,
   } = params;
 
   if (question.isSaved()) {
@@ -102,6 +106,11 @@ export async function runQuestionQuerySdk(
             parameters: JSON.stringify(filteredParameters),
           },
         }),
+      }).then((results) => {
+        if (!signal?.aborted) {
+          onQueryEnd?.(results[0]);
+        }
+        return results;
       }),
       loadCustomDisplays(),
     ]);
