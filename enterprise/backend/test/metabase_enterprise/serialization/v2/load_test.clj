@@ -11,6 +11,8 @@
    [metabase-enterprise.serialization.v2.extract :as serdes.extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase-enterprise.serialization.v2.storage :as serdes.storage]
+   [metabase-enterprise.serialization.v2.storage.files :as serdes.storage.files]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.actions.models :as action]
@@ -31,6 +33,7 @@
    [metabase.util.json :as json]
    [metabase.util.yaml :as yaml]
    [metabase.warehouses.models.database :as models.database]
+   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
@@ -3397,3 +3400,38 @@
                         (t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id))))
           (finally
             (t2/delete! :model/TableRemapping :database_id db-id)))))))
+
+(deftest database-with-undecryptable-settings-round-trips-test
+  (testing "settings the model cannot decrypt are their ciphertext string, which an export and an import pass through"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
+      ;; what the column holds when it was encrypted with a key this instance does not have
+      (t2/update! :metabase_database :id db-id {:settings "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="})
+      (let [ciphertext (t2/select-one-fn :settings :model/Database :id db-id)
+            extracted  (ts/extract-one "Database" db-id)]
+        (is (string? ciphertext))
+        (is (= ciphertext (:settings extracted)))
+        (serdes.load/load-metabase! (ts/ingestion-in-memory [extracted]))
+        (is (= ciphertext (t2/select-one-fn :settings :model/Database :id db-id)))
+        (testing "an import of map settings over a Database whose settings cannot be decrypted"
+          (t2/update! :metabase_database :id db-id {:settings ciphertext})
+          (serdes.load/load-metabase!
+           (ts/ingestion-in-memory [(assoc extracted :settings {:database-enable-actions false})]))
+          (is (= {:database-enable-actions false} (t2/select-one-fn :settings :model/Database :id db-id))))))))
+
+(deftest database-settings-import-matches-schema-normalization-test
+  (testing "exported settings read back from YAML import as the `:settings` schema of an external Database normalizes them"
+    (let [settings {:auto-cruft-columns      ["^tmp_" "_bak$"]
+                    :auto-cruft-tables       ["^scratch"]
+                    :database-enable-actions true
+                    :json-unfolding          false}]
+      (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :settings settings}]
+        (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+          (serdes.storage/store! [(ts/extract-one "Database" db-id)] (serdes.storage.files/file-writer dump-dir))
+          (t2/update! :model/Database :id db-id {:settings {:database-enable-actions false}})
+          (let [ingestion (serdes.ingest/ingest-yaml dump-dir)
+                ingested  (first (serdes.ingest/ingest-many ingestion (vec (serdes.ingest/ingest-list ingestion))))
+                expected  (:settings (lib/normalize ::warehouses.schema/external-database
+                                                    (dissoc ingested :serdes/meta)))]
+            (is (= settings expected))
+            (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir))
+            (is (= expected (t2/select-one-fn :settings :model/Database :id db-id)))))))))

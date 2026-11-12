@@ -11,6 +11,7 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -690,13 +691,19 @@
   [:database-workspace-schema])
 
 (def ^:private settings-transform
-  "The serialization transform of `:settings`, which leaves out [[instance-local-settings]]."
+  "The serialization transform of `:settings`, which leaves out [[instance-local-settings]]. An import normalizes the
+  value by the `:settings` schema of [[warehouses.schema/external-database]], as it would if `:settings` were copied.
+  Settings the model could not decrypt are the raw ciphertext string, which passes through unchanged."
   {:export (fn [_store _rows values _opts]
-             (mapv #(not-empty (apply dissoc % instance-local-settings)) values))
+             (mapv #(if (map? %) (not-empty (apply dissoc % instance-local-settings)) %) values))
    :import (fn [_store entities values _opts]
              (mapv (fn [{db-name :name} settings]
-                     (let [kept (select-keys (warehouses.db/database-settings-by-name db-name) instance-local-settings)]
-                       (not-empty (merge (apply dissoc (update-keys settings keyword) instance-local-settings) kept))))
+                     (let [settings (lib/normalize [:maybe ::warehouses.schema/database.settings] settings)
+                           target   (warehouses.db/database-settings-by-name db-name)
+                           kept     (when (map? target) (select-keys target instance-local-settings))]
+                       (if (map? settings)
+                         (not-empty (merge (apply dissoc settings instance-local-settings) kept))
+                         settings)))
                    entities values))})
 
 (defmethod serialization/spec :model/Database [_]

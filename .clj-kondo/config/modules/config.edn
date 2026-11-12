@@ -3425,6 +3425,7 @@
            app-db
            audit-app
            driver
+           lib
            lib.schema
            models
            permissions
