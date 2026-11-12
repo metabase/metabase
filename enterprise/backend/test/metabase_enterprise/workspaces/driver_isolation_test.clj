@@ -635,7 +635,10 @@
   ;; decision tracked separately; this test does not assert one way or the other.
   ;; SQL Server refuses an existing schema with a 409 instead
   ;; (`metabase.driver.sqlserver-test/init-workspace-isolation-refuses-existing-objects-test`).
-  (mt/test-drivers (remove #{:sqlserver} (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace)))
+  ;; MySQL refuses the existing database instead: see `metabase.driver.mysql.workspace-test`.
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :workspace)
+                        (filter #(isa? driver/hierarchy % :sql-jdbc))
+                        (remove #{:sqlserver :mysql}))
     (testing "init-workspace-isolation! is robust when its target output namespace already exists"
       (let [driver       driver/*driver*
             database     (mt/db)
