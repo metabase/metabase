@@ -162,7 +162,10 @@ function compileDimension(
     if (clause && clause.args.length === 0) {
       // Add custom error message for zero-arg functions to help users
       // that might be used to the no-parenthesis syntax which is no longer valid.
-      throw new CompileError(t`${err.message}. Use ${name}() instead.`, node);
+      throw new CompileError(
+        t`"${name}" needs parentheses to work. Write ${name}() instead.`,
+        node,
+      );
     }
     throw err;
   }
@@ -239,7 +242,11 @@ function compileFunctionCall(node: Node, ctx: Context): Lib.ExpressionParts {
   const text = node.token?.text.trim().toLowerCase();
   const operator = getMBQLName(text) ?? text;
 
-  check(isDefinedClause(operator), t`Unknown function ${operator}`, node);
+  check(
+    isDefinedClause(operator),
+    t`There's no function called ${operator}(). Check the spelling, or start typing to see matching functions.`,
+    node,
+  );
 
   const args = compileArgList(node.children[0], operator, ctx);
   const options: Lib.ExpressionOptions = {};
@@ -289,7 +296,11 @@ function compileDatetimeMode(
     return "iso";
   }
 
-  check(isStringLiteral(mode), t`Expected string literal for mode`, node);
+  check(
+    isStringLiteral(mode),
+    t`The format for datetime() has to be text in quotes, like "iso".`,
+    node,
+  );
 
   return DATETIME_MODE_MAP[mode.toLowerCase().replaceAll("-", "")];
 }
@@ -320,7 +331,11 @@ function compileNumber(node: Node): NumberValue | Lib.ExpressionParts {
   assert(node.token?.text, t`No token text`);
 
   const number = parseNumber(node.token.text);
-  check(number != null, t`Invalid number format`, node);
+  check(
+    number != null,
+    t`This number isn't written correctly. Use digits with an optional decimal point, like 1234.5.`,
+    node,
+  );
 
   if (typeof number === "bigint") {
     return withNode(node, compileValue(String(number), "type/BigInteger"));
@@ -408,8 +423,16 @@ function compileUnaryOp(
   node: Node,
   ctx: Context,
 ): Lib.ExpressionParts {
-  check(node.children.length > 0, t`Expected expression`, node);
-  check(node.children.length < 2, t`Unexpected expression`, node.children[1]);
+  check(
+    node.children.length > 0,
+    t`Something's missing here. Add a column, value or function to finish the expression.`,
+    node,
+  );
+  check(
+    node.children.length < 2,
+    t`There's an extra value here. Remove it, or add a symbol like + or = to connect it.`,
+    node.children[1],
+  );
 
   assert(isDefinedClause(operator), t`Unknown operator ${operator}`);
 
@@ -429,8 +452,16 @@ function compileInfixOp(
   node: Node,
   ctx: Context,
 ): Lib.ExpressionParts {
-  check(node.children.length > 0, t`Expected expression`, node);
-  check(node.children.length < 3, t`Unexpected expression`, node.children[2]);
+  check(
+    node.children.length > 0,
+    t`Something's missing here. Add a column, value or function to finish the expression.`,
+    node,
+  );
+  check(
+    node.children.length < 3,
+    t`There's an extra value here. Remove it, or add a symbol like + or = to connect it.`,
+    node.children[2],
+  );
 
   assert(isDefinedClause(operator), t`Unknown operator ${operator}`);
 

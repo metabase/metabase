@@ -25,7 +25,10 @@ export function checkComparisonOperatorArgs({
 
     const [firstOperand] = args;
     if (typeof firstOperand === "number") {
-      error(node, t`Expecting field but found ${firstOperand}`);
+      error(
+        node,
+        t`The left side of this comparison needs to be a column or calculation, not the number ${firstOperand}. Try something like [Total] > ${firstOperand}.`,
+      );
     }
   });
 }

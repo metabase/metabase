@@ -712,14 +712,25 @@
     :else (str n)))
 
 (defn- type-error-message
-  [explanation expr]
+  [explanation expr expression-mode]
   (let [[type-desc in-path] (find-type-error explanation)
         op-name (parent-operator-name expr in-path)
         param-pos (when (last in-path)
-                    (ordinal-str (dec (last in-path))))]
-    (if (and op-name type-desc param-pos)
-      (i18n/tru "Types are incompatible: {0} expects {1} as the {2} parameter." op-name type-desc param-pos)
-      (i18n/tru "Types are incompatible."))))
+                    (ordinal-str (dec (last in-path))))
+        whole-expression-wrong? (and type-desc (empty? in-path))]
+    (cond
+      (and op-name type-desc param-pos)
+      (i18n/tru "{0} needs {1} as its {2} value. Check that you''re using the right column, or convert it with a function like text() or integer()."
+                op-name type-desc param-pos)
+
+      (and whole-expression-wrong? (= expression-mode :filter))
+      (i18n/tru "A filter has to be true or false for each row. Add a comparison, like [Total] > 100.")
+
+      (and whole-expression-wrong? (= expression-mode :aggregation))
+      (i18n/tru "A summary has to combine rows into one value. Use a function like Sum([Total]) or Count().")
+
+      :else
+      (i18n/tru "One of the values here is the wrong type. Check that numbers, text and dates are used where they''re expected."))))
 
 (mr/def ::diagnosable-expression
   "An expression, aggregation, or filter that may be invalid; [[diagnose-expression]] reports what is wrong with it."
@@ -753,7 +764,7 @@
                       :filter filter-explainer)]
       (or (when-let [explanation (explainer expr)]
             (let [friendly-message (friendly-error-message explanation)
-                  type-message (type-error-message explanation expr)
+                  type-message (type-error-message explanation expr expression-mode)
                   message (or friendly-message type-message)]
               {:message message
                :friendly true}))
@@ -777,10 +788,10 @@
                                                  (map (comp #(aggregation->name query stage-number %)
                                                             uuid->agg))))
                          nil))]
-            {:message (i18n/tru "Cycle detected: {0}" (str/join " → " dependency-path))
+            {:message (i18n/tru "These depend on each other, so they can''t be calculated: {0}. Remove one of the references to break the loop." (str/join " → " dependency-path))
              :friendly true})
           (when-let [nested (invalid-nesting expr)]
-            {:message (i18n/tru "Embedding {0} in aggregation functions is not supported"
+            {:message (i18n/tru "{0}() can''t be used inside another summary function. Use it on its own."
                                 ;; special names duplicated from
                                 ;; frontend/src/metabase/querying/expressions/config.ts
                                 (clojure.core/case nested
@@ -796,15 +807,15 @@
              :friendly true})
           (when (and (= expression-mode :expression)
                      (match/match-one expr :offset true))
-            {:message  (i18n/tru "OFFSET is not supported in custom columns")
+            {:message  (i18n/tru "Offset() only works in Summarize, so it can''t be used in a custom column.")
              :friendly true})
           (when (and (= expression-mode :filter)
                      (match/match-one expr :offset true))
-            {:message  (i18n/tru "OFFSET is not supported in custom filters")
+            {:message  (i18n/tru "Offset() only works in Summarize, so it can''t be used in a custom filter.")
              :friendly true})
           (when (and (lib.schema.common/is-clause? :value expr)
                      (not (lib.metadata/database-supports? query :expression-literals)))
-            {:message  (i18n/tru "Standalone constants are not supported.")
+            {:message  (i18n/tru "A value on its own can''t be used with this database. Use a column or a calculation instead.")
              :friendly true})))))
 
 (defn- unique-name [names original-name index]

@@ -45,28 +45,28 @@ describe("resolver", () => {
 
         it("should not resolve unknown segments", () => {
           expect(() => boolean("Unknown")).toThrow(
-            "Unknown Segment or boolean column: Unknown",
+            `There's no true-or-false column or segment called "Unknown". Replace it with a check that's true or false, like [Total] > 100.`,
           );
         });
 
         it("should not resolve fields with non-boolean types", () => {
           expect(() => boolean("stringly")).toThrow(
-            "Unknown Segment or boolean column: stringly",
+            `There's no true-or-false column or segment called "stringly". Replace it with a check that's true or false, like [Total] > 100.`,
           );
           expect(() => boolean("Total")).toThrow(
-            "Unknown Segment or boolean column: Total",
+            `There's no true-or-false column or segment called "Total". Replace it with a check that's true or false, like [Total] > 100.`,
           );
         });
 
         it("should not resolve metrics", () => {
           expect(() => boolean("Foo Metric")).toThrow(
-            "Unknown Segment or boolean column: Foo Metric",
+            `There's no true-or-false column or segment called "Foo Metric". Replace it with a check that's true or false, like [Total] > 100.`,
           );
         });
 
         it("should not resolve measures", () => {
           expect(() => boolean("Bar Measure")).toThrow(
-            "Unknown Segment or boolean column: Bar Measure",
+            `There's no true-or-false column or segment called "Bar Measure". Replace it with a check that's true or false, like [Total] > 100.`,
           );
         });
       });
@@ -96,24 +96,26 @@ describe("resolver", () => {
         });
 
         it("should not resolve unknown fields", () => {
-          expect(() => string("Unknown")).toThrow("Unknown column: Unknown");
+          expect(() => string("Unknown")).toThrow(
+            `There's no column called "Unknown". Check the spelling, or press [ to see the list of columns.`,
+          );
         });
 
         it("should not resolve segments", () => {
           expect(() => string("Expensive Things")).toThrow(
-            "Unknown column: Expensive Things",
+            `There's no column called "Expensive Things". Check the spelling, or press [ to see the list of columns.`,
           );
         });
 
         it("should not resolve metrics", () => {
           expect(() => string("Foo Metric")).toThrow(
-            "Unknown column: Foo Metric",
+            `There's no column called "Foo Metric". Check the spelling, or press [ to see the list of columns.`,
           );
         });
 
         it("should not resolve measures", () => {
           expect(() => string("Bar Measure")).toThrow(
-            "Unknown column: Bar Measure",
+            `There's no column called "Bar Measure". Check the spelling, or press [ to see the list of columns.`,
           );
         });
       });
@@ -133,24 +135,26 @@ describe("resolver", () => {
         });
 
         it("should not resolve unknown fields", () => {
-          expect(() => number("Unknown")).toThrow("Unknown column: Unknown");
+          expect(() => number("Unknown")).toThrow(
+            `There's no column called "Unknown". Check the spelling, or press [ to see the list of columns.`,
+          );
         });
 
         it("should not resolve segments", () => {
           expect(() => number("Expensive Things")).toThrow(
-            "Unknown column: Expensive Things",
+            `There's no column called "Expensive Things". Check the spelling, or press [ to see the list of columns.`,
           );
         });
 
         it("should not resolve metrics", () => {
           expect(() => number("Foo Metric")).toThrow(
-            "Unknown column: Foo Metric",
+            `There's no column called "Foo Metric". Check the spelling, or press [ to see the list of columns.`,
           );
         });
 
         it("should not resolve measures", () => {
           expect(() => number("Bar Measure")).toThrow(
-            "Unknown column: Bar Measure",
+            `There's no column called "Bar Measure". Check the spelling, or press [ to see the list of columns.`,
           );
         });
       });
@@ -163,24 +167,26 @@ describe("resolver", () => {
         });
 
         it("should not resolve unknown fields", () => {
-          expect(() => datetime("Unknown")).toThrow("Unknown column: Unknown");
+          expect(() => datetime("Unknown")).toThrow(
+            `There's no column called "Unknown". Check the spelling, or press [ to see the list of columns.`,
+          );
         });
 
         it("should not resolve segments", () => {
           expect(() => datetime("Expensive Things")).toThrow(
-            "Unknown column: Expensive Things",
+            `There's no column called "Expensive Things". Check the spelling, or press [ to see the list of columns.`,
           );
         });
 
         it("should not resolve metrics", () => {
           expect(() => datetime("Foo Metric")).toThrow(
-            "Unknown column: Foo Metric",
+            `There's no column called "Foo Metric". Check the spelling, or press [ to see the list of columns.`,
           );
         });
 
         it("should resolve measures", () => {
           expect(() => datetime("Bar Measure")).toThrow(
-            "Unknown column: Bar Measure",
+            `There's no column called "Bar Measure". Check the spelling, or press [ to see the list of columns.`,
           );
         });
       });
@@ -196,22 +202,26 @@ describe("resolver", () => {
         });
 
         it("should not resolve unknown fields", () => {
-          expect(() => any("Unknown")).toThrow("Unknown column: Unknown");
+          expect(() => any("Unknown")).toThrow(
+            `There's no column called "Unknown". Check the spelling, or press [ to see the list of columns.`,
+          );
         });
 
         it("should not resolve segments", () => {
           expect(() => any("Expensive Things")).toThrow(
-            "Unknown column: Expensive Things",
+            `There's no column called "Expensive Things". Check the spelling, or press [ to see the list of columns.`,
           );
         });
 
         it("should not resolve metrics", () => {
-          expect(() => any("Foo Metric")).toThrow("Unknown column: Foo Metric");
+          expect(() => any("Foo Metric")).toThrow(
+            `There's no column called "Foo Metric". Check the spelling, or press [ to see the list of columns.`,
+          );
         });
 
         it("should not resolve measures", () => {
           expect(() => any("Bar Measure")).toThrow(
-            "Unknown column: Bar Measure",
+            `There's no column called "Bar Measure". Check the spelling, or press [ to see the list of columns.`,
           );
         });
       });
@@ -228,25 +238,25 @@ describe("resolver", () => {
 
         it("should not resolve unknown fields", () => {
           expect(() => expression("Unknown")).toThrow(
-            "Unknown column: Unknown",
+            `There's no column called "Unknown". Check the spelling, or press [ to see the list of columns.`,
           );
         });
 
         it("should not resolve segments", () => {
           expect(() => expression("Expensive Things")).toThrow(
-            "Unknown column: Expensive Things",
+            `There's no column called "Expensive Things". Check the spelling, or press [ to see the list of columns.`,
           );
         });
 
         it("should not resolve metrics", () => {
           expect(() => expression("Foo Metric")).toThrow(
-            "Unknown column: Foo Metric",
+            `There's no column called "Foo Metric". Check the spelling, or press [ to see the list of columns.`,
           );
         });
 
         it("should not resolve measures", () => {
           expect(() => expression("Bar Measure")).toThrow(
-            "Unknown column: Bar Measure",
+            `There's no column called "Bar Measure". Check the spelling, or press [ to see the list of columns.`,
           );
         });
       });
@@ -256,28 +266,28 @@ describe("resolver", () => {
 
         it("should not resolve fields", () => {
           expect(() => aggregation("Unknown")).toThrow(
-            "Unknown Aggregation, Measure or Metric: Unknown",
+            `There's no metric or measure called "Unknown". Check the spelling, or use a function like Sum([Total]).`,
           );
           expect(() => aggregation("Created At")).toThrow(
-            "No aggregation found in: Created At. Use functions like Sum() or custom Metrics",
+            `"Created At" is a column, so it can't be used as a summary on its own. Wrap it in a function like Sum([Created At]) or Average([Created At]).`,
           );
           expect(() => aggregation("Product → Price")).toThrow(
-            "No aggregation found in: Product → Price. Use functions like Sum() or custom Metrics",
+            `"Product → Price" is a column, so it can't be used as a summary on its own. Wrap it in a function like Sum([Product → Price]) or Average([Product → Price]).`,
           );
           expect(() => aggregation("bool")).toThrow(
-            "No aggregation found in: bool. Use functions like Sum() or custom Metrics",
+            `"bool" is a column, so it can't be used as a summary on its own. Wrap it in a function like Sum([bool]) or Average([bool]).`,
           );
         });
 
         it("should not resolve unknown fields", () => {
           expect(() => aggregation("Unknown")).toThrow(
-            "Unknown Aggregation, Measure or Metric: Unknown",
+            `There's no metric or measure called "Unknown". Check the spelling, or use a function like Sum([Total]).`,
           );
         });
 
         it("should not resolve segments", () => {
           expect(() => aggregation("Expensive Things")).toThrow(
-            "Unknown Aggregation, Measure or Metric: Expensive Things",
+            `There's no metric or measure called "Expensive Things". Check the spelling, or use a function like Sum([Total]).`,
           );
         });
 
@@ -316,8 +326,8 @@ describe("resolver", () => {
           (type) => {
             expect(() => resolve(type, "Bar Aggregation")).toThrow(
               type === "boolean"
-                ? "Unknown Segment or boolean column: Bar Aggregation"
-                : "Unknown column: Bar Aggregation",
+                ? `There's no true-or-false column or segment called "Bar Aggregation". Replace it with a check that's true or false, like [Total] > 100.`
+                : `There's no column called "Bar Aggregation". Check the spelling, or press [ to see the list of columns.`,
             );
           },
         );
@@ -354,34 +364,34 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => boolean("Unknown")).toThrow(
-          "Unknown Segment or boolean column: Unknown",
+          `There's no true-or-false column or segment called "Unknown". Replace it with a check that's true or false, like [Total] > 100.`,
         );
       });
 
       it("should not resolve fields with non-boolean types", () => {
         expect(() => boolean("stringly")).toThrow(
-          "Unknown Segment or boolean column: stringly",
+          `There's no true-or-false column or segment called "stringly". Replace it with a check that's true or false, like [Total] > 100.`,
         );
         expect(() => boolean("Total")).toThrow(
-          "Unknown Segment or boolean column: Total",
+          `There's no true-or-false column or segment called "Total". Replace it with a check that's true or false, like [Total] > 100.`,
         );
       });
 
       it("should not resolve metrics", () => {
         expect(() => boolean("Foo Metric")).toThrow(
-          "Unknown Segment or boolean column: Foo Metric",
+          `There's no true-or-false column or segment called "Foo Metric". Replace it with a check that's true or false, like [Total] > 100.`,
         );
       });
 
       it("should not resolve measures", () => {
         expect(() => boolean("Bar Measure")).toThrow(
-          "Unknown Segment or boolean column: Bar Measure",
+          `There's no true-or-false column or segment called "Bar Measure". Replace it with a check that's true or false, like [Total] > 100.`,
         );
       });
 
       it("should not resolve aggregations", () => {
         expect(() => boolean("Bar Aggregation")).toThrow(
-          "Unknown Segment or boolean column: Bar Aggregation",
+          `There's no true-or-false column or segment called "Bar Aggregation". Replace it with a check that's true or false, like [Total] > 100.`,
         );
       });
     });
@@ -403,13 +413,13 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => string("Unknown")).toThrow(
-          "Unknown column, Aggregation, Measure or Metric: Unknown",
+          `There's no column, metric or measure called "Unknown". Check the spelling, or press [ to see the list.`,
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => string("Expensive Things")).toThrow(
-          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
+          `There's no column, metric or measure called "Expensive Things". Check the spelling, or press [ to see the list.`,
         );
       });
 
@@ -439,13 +449,13 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => number("Unknown")).toThrow(
-          "Unknown column, Aggregation, Measure or Metric: Unknown",
+          `There's no column, metric or measure called "Unknown". Check the spelling, or press [ to see the list.`,
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => number("Expensive Things")).toThrow(
-          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
+          `There's no column, metric or measure called "Expensive Things". Check the spelling, or press [ to see the list.`,
         );
       });
 
@@ -471,13 +481,13 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => datetime("Unknown")).toThrow(
-          "Unknown column, Aggregation, Measure or Metric: Unknown",
+          `There's no column, metric or measure called "Unknown". Check the spelling, or press [ to see the list.`,
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => datetime("Expensive Things")).toThrow(
-          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
+          `There's no column, metric or measure called "Expensive Things". Check the spelling, or press [ to see the list.`,
         );
       });
 
@@ -508,7 +518,7 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => any("Unknown")).toThrow(
-          "Unknown column, Aggregation, Measure or Metric: Unknown",
+          `There's no column, metric or measure called "Unknown". Check the spelling, or press [ to see the list.`,
         );
       });
 
@@ -516,7 +526,7 @@ describe("resolver", () => {
         // We do not resolve segments here since any is only used in offset
         // and offset only works in aggregations.
         expect(() => any("Expensive Things")).toThrow(
-          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
+          `There's no column, metric or measure called "Expensive Things". Check the spelling, or press [ to see the list.`,
         );
       });
 
@@ -545,13 +555,13 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => expression("Unknown")).toThrow(
-          "Unknown column, Aggregation, Measure or Metric: Unknown",
+          `There's no column, metric or measure called "Unknown". Check the spelling, or press [ to see the list.`,
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => expression("Expensive Things")).toThrow(
-          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
+          `There's no column, metric or measure called "Expensive Things". Check the spelling, or press [ to see the list.`,
         );
       });
 
@@ -575,28 +585,28 @@ describe("resolver", () => {
 
       it("should not resolve fields", () => {
         expect(() => aggregation("Unknown")).toThrow(
-          "Unknown Aggregation, Measure or Metric: Unknown",
+          `There's no metric or measure called "Unknown". Check the spelling, or use a function like Sum([Total]).`,
         );
         expect(() => aggregation("Created At")).toThrow(
-          "No aggregation found in: Created At. Use functions like Sum() or custom Metrics",
+          `"Created At" is a column, so it can't be used as a summary on its own. Wrap it in a function like Sum([Created At]) or Average([Created At]).`,
         );
         expect(() => aggregation("Product → Price")).toThrow(
-          "No aggregation found in: Product → Price. Use functions like Sum() or custom Metrics",
+          `"Product → Price" is a column, so it can't be used as a summary on its own. Wrap it in a function like Sum([Product → Price]) or Average([Product → Price]).`,
         );
         expect(() => aggregation("bool")).toThrow(
-          "No aggregation found in: bool. Use functions like Sum() or custom Metrics",
+          `"bool" is a column, so it can't be used as a summary on its own. Wrap it in a function like Sum([bool]) or Average([bool]).`,
         );
       });
 
       it("should not resolve unknown fields", () => {
         expect(() => aggregation("Unknown")).toThrow(
-          "Unknown Aggregation, Measure or Metric: Unknown",
+          `There's no metric or measure called "Unknown". Check the spelling, or use a function like Sum([Total]).`,
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => aggregation("Expensive Things")).toThrow(
-          "Unknown Aggregation, Measure or Metric: Expensive Things",
+          `There's no metric or measure called "Expensive Things". Check the spelling, or use a function like Sum([Total]).`,
         );
       });
 
@@ -643,7 +653,7 @@ describe("resolver", () => {
 
       it("should not resolve non-boolean aggregations", () => {
         expect(() => boolean("Bar Aggregation")).toThrow(
-          "Unknown Segment or boolean column: Bar Aggregation",
+          `There's no true-or-false column or segment called "Bar Aggregation". Replace it with a check that's true or false, like [Total] > 100.`,
         );
       });
     });
@@ -697,7 +707,7 @@ describe("resolver", () => {
 
       it("should not resolve aggregation as it is now just a field", () => {
         expect(() => aggregation("Bar Aggregation")).toThrow(
-          "No aggregation found in: Bar Aggregation. Use functions like Sum() or custom Metrics",
+          `"Bar Aggregation" is a column, so it can't be used as a summary on its own. Wrap it in a function like Sum([Bar Aggregation]) or Average([Bar Aggregation]).`,
         );
       });
     });

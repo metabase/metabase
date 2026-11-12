@@ -32,7 +32,7 @@ describe("getHelpText", () => {
         options: {},
         args: [],
       });
-      expect(helpText?.description).toMatch(/returns the count of rows/i);
+      expect(helpText?.description).toMatch(/counts the rows/i);
       expect(helpText?.args).toEqual([]);
     });
 
@@ -54,7 +54,7 @@ describe("getHelpText", () => {
         ],
       });
       expect(helpText?.description).toBe(
-        "Returns the value of the column at the percentile value.",
+        "Finds the value that a given share of the column falls below. For example, `0.9` gives the value that 90% of rows fall below.",
       );
       expect(helpText?.args).toHaveLength(2);
     });

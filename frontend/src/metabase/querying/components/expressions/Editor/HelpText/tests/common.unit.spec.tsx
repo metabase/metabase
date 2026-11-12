@@ -21,7 +21,7 @@ describe("HelpText (OSS)", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("Combine two or more strings of text together."),
+      screen.getByText("Joins two or more pieces of text together."),
     ).toBeInTheDocument();
 
     const link = screen.getByRole("link");
@@ -75,7 +75,9 @@ describe("HelpText (OSS)", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("The additive total of rows across a breakout."),
+      screen.getByText(
+        "Counts rows as a running total across groups, such as months.",
+      ),
     ).toBeInTheDocument();
   });
 

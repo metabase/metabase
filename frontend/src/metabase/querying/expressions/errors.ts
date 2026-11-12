@@ -66,5 +66,7 @@ export function renderError(error: unknown): ExpressionError {
   if (isExpressionError(error) && error.friendly) {
     return error;
   }
-  return new DiagnosticError(t`Invalid expression`);
+  return new DiagnosticError(
+    t`This expression can't be read. Check it for typos, or for missing brackets or commas.`,
+  );
 }

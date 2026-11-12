@@ -37,7 +37,7 @@ export function Errors({
       : null;
 
   return (
-    <Flex p="sm" className={S.errors} gap="sm" align="center" wrap="wrap">
+    <Flex p="sm" className={S.errors} gap="sm" align="flex-start" wrap="wrap">
       <Icon name="warning" className={S.icon} />
       {error.message}
       {position && (
