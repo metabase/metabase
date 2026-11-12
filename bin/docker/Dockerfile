@@ -1,5 +1,5 @@
 # musl build of the static-viz JS isolate, see bin/docker/js-isolate/README.md
-ARG JS_ISOLATE_IMAGE=metabase/graaljs-musl:25.1.3
+ARG JS_ISOLATE_IMAGE=metabase/graaljs-isolate-musl:25.1.3
 FROM ${JS_ISOLATE_IMAGE} AS js-isolate
 
 # static-viz files for /app, prepared here so the runner only copies them in. Same as in the root Dockerfile.

@@ -1,5 +1,5 @@
 # musl build of the static-viz JS isolate, see bin/docker/js-isolate/README.md
-ARG JS_ISOLATE_IMAGE=metabase/graaljs-musl:25.1.3
+ARG JS_ISOLATE_IMAGE=metabase/graaljs-isolate-musl:25.1.3
 
 ###################
 # STAGE 1: builder
