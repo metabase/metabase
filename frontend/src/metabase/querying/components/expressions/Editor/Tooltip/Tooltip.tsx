@@ -1,7 +1,7 @@
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import cx from "classnames";
-import { type RefObject, useEffect, useMemo, useState } from "react";
+import { type RefObject, useMemo } from "react";
 
 import {
   enclosingFunction,
@@ -42,20 +42,14 @@ export function Tooltip({
     [doc, state.selection.main.head],
   );
 
-  const [hasMovedCursor, setHasMovedCursor] = useState(false);
-
-  useEffect(() => {
-    setHasMovedCursor(
-      (hasMovedCursor) => hasMovedCursor || state.selection.main.head !== 0,
-    );
-  }, [state.selection.main.head]);
-
   const { options: completions } = useCompletions(state);
   const hasCompletions = completions.length > 0;
 
   return (
     <Popover
-      opened={hasMovedCursor}
+      // Only the suggestions show here, as soon as there are any, also in an
+      // editor that just opened.
+      opened={hasCompletions}
       position="bottom-start"
       returnFocus
       closeOnEscape

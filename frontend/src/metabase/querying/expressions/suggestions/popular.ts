@@ -44,13 +44,20 @@ export function suggestPopular({
 
 /**
  * Opens the autocomplete when the editor has focus and the expression is
- * empty, so that the popular functions show without typing.
+ * empty, so that the popular functions show without typing, also when the
+ * editor just opened. The editor may get focus before this is set up: while
+ * it's read-only, as it formats the expression it opened with, or before the
+ * database loads, which these suggestions need. So it also opens when either
+ * of those ends.
  */
 export function openWhenEmpty() {
   return EditorView.updateListener.of((update) => {
     const { view, state } = update;
     if (
-      (update.docChanged || update.focusChanged) &&
+      (update.docChanged ||
+        update.focusChanged ||
+        update.startState.readOnly !== update.state.readOnly ||
+        update.transactions.some((transaction) => transaction.reconfigured)) &&
       view.hasFocus &&
       state.doc.toString().trim() === "" &&
       completionStatus(state) == null
