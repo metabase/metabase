@@ -72,10 +72,57 @@ on:
         default: linux/amd64,linux/arm64
 
 jobs:
+  # REVERTME (GDGT-3476): metabase/graaljs-isolate-musl isn't published yet, so build the musl isolate from
+  # bin/docker/js-isolate here and feed it to the image build through a local registry. Remove this job, the
+  # `registry` service and the "REVERTME" steps in `containerize` once the Dockerfiles pin the published image.
+  build-js-isolate:
+    name: build-js-isolate (${{ inputs.edition }}, ${{ matrix.arch }})
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    # native-image can't cross-compile and needs ~8 GB of memory
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+    - uses: actions/checkout@v7
+      if: contains(inputs.platforms, format('linux/{0}', matrix.arch))
+      with:
+        ref: ${{ inputs.commit }}
+        fetch-depth: 1
+        sparse-checkout: bin/docker/js-isolate
+    - name: Set up Docker Buildx
+      if: contains(inputs.platforms, format('linux/{0}', matrix.arch))
+      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+    - name: Build and test the isolate
+      if: contains(inputs.platforms, format('linux/{0}', matrix.arch))
+      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+      with:
+        context: bin/docker/js-isolate
+        platforms: linux/${{ matrix.arch }}
+        outputs: type=local,dest=js-isolate-out
+    - uses: actions/upload-artifact@v7
+      if: contains(inputs.platforms, format('linux/{0}', matrix.arch))
+      with:
+        name: js-isolate-${{ inputs.edition }}-${{ matrix.arch }}
+        path: js-isolate-out
+        retention-days: 1
+        if-no-files-found: error
+
   containerize:
+    needs: build-js-isolate
     name: containerize (${{ inputs.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
+    # REVERTME (GDGT-3476): holds the locally built isolate image, see build-js-isolate
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
     outputs:
       full_image: ${{ steps.image.outputs.full_image }}
       digest: ${{ steps.build.outputs.digest }}
@@ -141,6 +188,33 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+      with:
+        # REVERTME (GDGT-3476): lets the builder reach the local registry; drop with build-js-isolate
+        driver-opts: network=host
+
+    - name: Download the locally built isolate (REVERTME, GDGT-3476)
+      uses: actions/download-artifact@v8
+      with:
+        pattern: js-isolate-${{ inputs.edition }}-*
+        path: js-isolate-ci
+
+    - name: Lay out the isolate per architecture (REVERTME, GDGT-3476)
+      run: |
+        cd js-isolate-ci
+        for dir in js-isolate-${{ inputs.edition }}-*; do mv "$dir" "${dir##*-}"; done
+        cat > Dockerfile <<'DOCKERFILE'
+        FROM scratch
+        ARG TARGETARCH
+        COPY ${TARGETARCH}/ /
+        DOCKERFILE
+
+    - name: Build the isolate image (REVERTME, GDGT-3476)
+      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+      with:
+        context: js-isolate-ci
+        platforms: ${{ inputs.platforms }}
+        tags: localhost:5000/graaljs-isolate-musl:ci
+        push: true
 
     - name: Build and Push Images
       id: build
@@ -152,7 +226,10 @@ jobs:
         tags: ${{ steps.image.outputs.full_image }}
         no-cache: true
         push: true
-        build-args: ${{ inputs.build-args }}
+        # REVERTME (GDGT-3476): JS_ISOLATE_IMAGE points at the locally built isolate; drop it with build-js-isolate
+        build-args: |
+          ${{ inputs.build-args }}
+          JS_ISOLATE_IMAGE=localhost:5000/graaljs-isolate-musl:ci
 
     - name: Post link to image on DockerHub
       if: ${{ inputs.registry != 'ecr' && github.event_name == 'pull_request' }}
