@@ -3339,6 +3339,33 @@
               (is (= {:id (:id source1d) :type "card" :column "total"}
                      (:graph.goal_value (:visualization_settings card1d)))))))))))
 
+(deftest card-dynamic-goal-round-trip-test
+  ;; root-collection cards: a card-targeted export doesn't carry the card's collection
+  (testing "exporting a card brings along the card its goal reads from"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [source (ts/create! :model/Card :name "Target Revenue")
+                card   (ts/create! :model/Card
+                                   :name "Revenue"
+                                   :visualization_settings
+                                   {:graph.goal_value {:id (:id source) :type "card" :column "total"}})]
+            (reset! serialized (into [] (serdes.extract/extract {:targets       [[:model/Card (:id card)]]
+                                                                 :include-h2?   true
+                                                                 :no-settings   true
+                                                                 :no-data-model true
+                                                                 :no-transforms true})))))
+        (testing "loading remaps the goal onto the imported source card's id"
+          (ts/with-db dest-db
+            ;; push loaded ids past the source's so a goal id left raw can't land on the right card by coincidence
+            (dotimes [_ 2] (ts/create! :model/Card :name "Filler"))
+            (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+            (let [source-d (t2/select-one :model/Card :name "Target Revenue")]
+              (is (pos-int? (:id source-d)))
+              (is (= {:id (:id source-d) :type "card" :column "total"}
+                     (:graph.goal_value (:visualization_settings
+                                         (t2/select-one :model/Card :name "Revenue"))))))))))))
+
 (deftest visualizer-dashcard-dynamic-goals-round-trip-test
   (testing "a goal nested in a visualizer dashcard round-trips onto the destination card's id"
     (let [serialized (atom nil)
