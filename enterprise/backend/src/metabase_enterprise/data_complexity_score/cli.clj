@@ -30,9 +30,9 @@
   (:require
    [clojure.java.io :as io]
    [clojure.tools.cli :as cli]
+   [metabase-enterprise.data-complexity-score.appdb-source :as appdb-source]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
-   [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase-enterprise.data-complexity-score.representation :as representation]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
@@ -41,6 +41,7 @@
    ;; metabase.core.core/entrypoint normally does this, but the standalone CLI bypasses it.
    [metabase.driver.init]
    [metabase.search.embeddings.startup :as embeddings.startup]
+   [metabase.settings.core :as setting]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -71,9 +72,9 @@
   (let [f (io/file path)]
     (cond
       (not (.exists f))       (throw (ex-info (str "--representation-dir does not exist: " path)
-                                              {:cli-validation true :path path}))
+                                              {:cli-validation true, :path path}))
       (not (.isDirectory f))  (throw (ex-info (str "--representation-dir must be a directory: " path)
-                                              {:cli-validation true :path path})))))
+                                              {:cli-validation true, :path path})))))
 
 (def ^:private unset
   "Sentinel for `--write-to-appdb` so we can tell 'user didn't pass it' apart from an explicit false."
@@ -129,34 +130,49 @@
                         {:cli-validation true})))
       (validate-dir! representation-dir))))
 
-(defn- run-appdb-mode!
-  "Score against the live appdb; optionally persist the row.
-  Snowplow is off here, so we don't advance `data-complexity-scoring-last-fingerprint` — leave that to the cron."
-  [write?]
+(defn- setup-appdb!
+  "Connect to the appdb without migrating it, and read its settings as a migrated server would."
+  []
   (mdb/setup-db-without-migrations!)
+  ;; Without migrations nothing fills in `value_with_aad` for the rows an older version wrote, so the Setting model reads
+  ;; them as unset: the synonym provider and model, the embedding service's URL and key, and so the fingerprint too.
+  (setting/restore-cache-accepting-legacy-values!))
+
+(defn- run-appdb-mode!
+  "Score the live appdb, and insert one score row stamped `\"appdb\"` when `write?`. Return the score."
+  [write?]
+  ;; The appdb can be older than this jar, so Cards and Tables are read raw (see `appdb-source`). The only write is
+  ;; one raw INSERT: no model hooks, no fingerprint setting, no Snowplow event.
+  (setup-appdb!)
+  (appdb-source/verify-supported-appdb!)
+  (when write?
+    (appdb-source/verify-write-target-shape!))
   ;; `metabase.core.core/init!` does this on the server, but standalone modes skip it. Without it a synonym axis
   ;; configured for the `in-process` provider finds nothing registered and fails with `:provider-not-registered`.
   (embeddings.startup/ensure-in-process-provider!)
   (let [result (complexity/complexity-scores
                 (assoc (synonym-source/complexity-scores-opts)
-                       :metabot-scope (metabot-scope/internal-metabot-scope)
+                       :metabot-scope  (metabot-scope/internal-metabot-scope)
+                       :reads          (appdb-source/reads)
                        :emit-snowplow? false))]
     (when write?
-      (data-complexity-score/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
+      (appdb-source/insert-score-row! (task.complexity-score/current-fingerprint) "appdb" result))
     result))
 
 (defn- run-representation-mode!
-  "Score against an on-disk serdes export; optionally persist with `source` = `representation:<digest>`."
+  "Score an on-disk serdes export, and insert one score row stamped `\"representation:<digest>\"` when `write?`.
+  Return the score."
   [{:keys [representation-dir embeddings]} write?]
   (when write?
-    (mdb/setup-db-without-migrations!))
+    (setup-appdb!)
+    (appdb-source/verify-write-target-shape!))
   (let [{:keys [library universe embedder digest]} (representation/load-dir representation-dir
                                                                             :embeddings-path embeddings)
         result                                     (complexity/score-from-entities library universe embedder {})]
     (when write?
-      (data-complexity-score/record-score! (task.complexity-score/current-fingerprint)
-                                           (str "representation:" digest)
-                                           result))
+      (appdb-source/insert-score-row! (task.complexity-score/current-fingerprint)
+                                      (str "representation:" digest)
+                                      result))
     result))
 
 (defn- with-defaults
@@ -193,12 +209,13 @@
       :else           (try
                         (write-result! (run-cli options) (:output options))
                         (catch clojure.lang.ExceptionInfo e
-                          ;; Handle CLI validation failures (`:cli-validation`) and missing-embeddings
-                          ;; failures from representation (`:embeddings-path`) — both are user-facing
-                          ;; misconfigurations rather than bugs. Everything else gets the stack trace
-                          ;; so an `ex-cause` SQL exception remains diagnosable from the terminal.
+                          ;; Handle CLI validation failures (`:cli-validation`), missing-embeddings
+                          ;; failures from representation (`:embeddings-path`) and an encryption key that cannot
+                          ;; read the appdb (`:encryption-state`) — all user-facing misconfigurations rather than
+                          ;; bugs. Everything else gets the stack trace so an `ex-cause` SQL exception remains
+                          ;; diagnosable from the terminal.
                           (let [data (ex-data e)]
-                            (if (or (:cli-validation data) (:embeddings-path data))
+                            (if (or (:cli-validation data) (:embeddings-path data) (:encryption-state data))
                               (fail! (ex-message e))
                               (fail-with-trace! e))))
                         (catch Throwable t

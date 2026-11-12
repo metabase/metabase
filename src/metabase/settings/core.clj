@@ -112,6 +112,7 @@
   registered-settings
   registered?
   resolve-setting
+  restore-cache-accepting-legacy-values!
   set!
   set-many!
   set-value-of-type!

@@ -19,6 +19,11 @@
   []
   (t2/select-fn->fn :key :value :model/Setting))
 
+(mu/defn raw-setting-rows
+  "Every row of the `setting` table, read without the Setting model, with whatever columns this schema has."
+  []
+  (t2/select :setting))
+
 (mu/defn insert-setting!
   "Insert a Setting row for `setting-key` holding `value` and return it."
   [setting-key :- [:or :keyword :string]

@@ -17,6 +17,14 @@
   "The additional authenticated data a setting's value is encrypted under: `setting.<key>`."
   (memoize (fn ^bytes [setting-key] (codecs/to-bytes (str "setting." setting-key)))))
 
+(defn legacy-plaintext
+  "The plaintext of a legacy `setting.value`, which holds ciphertext or plaintext depending on the version and
+  encryption state that wrote it.
+  Whether it is ciphertext is decided by decrypting it, never by its shape: a plaintext value that merely looks like
+  ciphertext is a value too."
+  [value]
+  (if (encryption/decryptable-string? value) (encryption/decrypt value) value))
+
 (defn migrate-settings!
   "Give every setting row that has no `value_with_aad` one, from the legacy `value` column beside it, stored the way
   the Setting model stores one. Runs from `metabase.app-db.setup/setup-db!` after migrations and before anything reads
@@ -28,15 +36,14 @@
   `value` says beside it -- nothing in this version reads `value`, and a version that does reconciles it at its own
   startup.
 
-  Whether a `value` is encrypted is decided by decrypting it, never by its shape: a plaintext value that merely looks
-  like ciphertext is a value too. Reads and writes the table directly, never through the model: the model's read is
-  the strict one this fills in for, and the cloud-migration guard on Toucan DML reads `read-only-mode` through it
-  before every update -- a row that may itself be among those being filled in."
+  Each `value` is read with [[legacy-plaintext]]. Reads and writes the table directly, never through the model: the
+  model's read is the strict one this fills in for, and the cloud-migration guard on Toucan DML reads `read-only-mode`
+  through it before every update -- a row that may itself be among those being filled in."
   []
   (let [filled (atom 0)]
     (t2/with-transaction [_conn]
       (doseq [{:keys [key value]} (mdb.db/unmigrated-settings)
-              :let  [plain (if (encryption/decryptable-string? value) (encryption/decrypt value) value)]]
+              :let  [plain (legacy-plaintext value)]]
         (swap! filled inc)
         (mdb.db/update-setting-values! key {:value_with_aad (encryption/maybe-encrypt plain {:aad (setting-aad key)})})))
     (when (pos? @filled)

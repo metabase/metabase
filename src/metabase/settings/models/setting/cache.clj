@@ -141,10 +141,12 @@
      cache-update-check-interval-ms))
 
 (defn restore-cache!
-  "Populate cache with the latest hotness from the db"
-  []
-  (log/debug "Refreshing Settings cache...")
-  (reset! (cache*) (settings.db/setting-values-by-key)))
+  "Populate the cache from the DB, or with `values`, a map of key to raw string value."
+  ([]
+   (log/debug "Refreshing Settings cache...")
+   (restore-cache! (settings.db/setting-values-by-key)))
+  ([values]
+   (reset! (cache*) values)))
 
 (defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
 

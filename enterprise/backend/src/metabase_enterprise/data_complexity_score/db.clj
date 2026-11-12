@@ -103,3 +103,68 @@
   "Delete the DataComplexityScores created more than `months` months ago, returning the number deleted."
   [months :- ms/PositiveInt]
   (t2/delete! :model/DataComplexityScore {:where [:< :created_at (t/minus (t/offset-date-time) (t/months months))]}))
+
+;;; ------------------------------------- CLI reads and write -------------------------------------
+;;; The CLI scores an appdb that may be older than this jar, so these name tables directly and run no model hooks
+;;; or transforms. Text columns come back as strings.
+
+(mu/defn raw-universe-cards
+  "The rows of [[universe-cards]], read with a raw query."
+  [audit-database-id :- ::lib.schema.id/database]
+  (t2/query {:select [:id :name :type :collection_id]
+             :from   [:report_card]
+             :where  [:and
+                      [:in :type ["metric" "model"]]
+                      [:= :archived false]
+                      [:not= :database_id [:auto/param audit-database-id]]]}))
+
+(defn- raw-universe-tables-query
+  "A query selecting `select` from the active Tables outside the Database with `audit-database-id`.
+  The Tables are `metabase_table` aliased as `t`."
+  [select audit-database-id]
+  {:select select
+   :from   [[:metabase_table :t]]
+   :where  [:and
+            [:= :t.active true]
+            [:not= :t.db_id [:auto/param audit-database-id]]]})
+
+(mu/defn raw-universe-tables
+  "The rows of [[universe-tables]], read with a raw query.
+  On MySQL and MariaDB the `:is_published` values come back as `0` or `1`."
+  [audit-database-id :- ::lib.schema.id/database]
+  (t2/query (raw-universe-tables-query [:t.id :t.name :t.collection_id :t.is_published :t.visibility_type :t.db_id
+                                        :t.data_layer :t.data_authority]
+                                       audit-database-id)))
+
+(mu/defn raw-universe-tables-with-user-settings
+  "The rows of [[raw-universe-tables]], with the values users set in `metabase_table_user_settings` applied.
+  The rules are the ones the `ceygl0` changeset uses to copy those values back into `metabase_table`.
+  Use it for an appdb whose user values are only in the settings table: 64.0 to 64.5.1 and 65.0 to 65.3.1."
+  [audit-database-id :- ::lib.schema.id/database]
+  (t2/query
+   (assoc (raw-universe-tables-query
+           [:t.id :t.name :t.db_id
+            [[:case [:is-not :s.is_published nil] :s.is_published :else :t.is_published] :is_published]
+            [[:case [:is-not :s.is_published nil] :s.collection_id :else :t.collection_id] :collection_id]
+            [[:case [:= :s.visibility_type_set true] :s.visibility_type :else :t.visibility_type] :visibility_type]
+            [[:case [:= :s.data_layer_set true] :s.data_layer :else :t.data_layer] :data_layer]
+            [[:case [:is-not :s.data_authority nil] :s.data_authority :else :t.data_authority] :data_authority]]
+           audit-database-id)
+          :left-join [[:metabase_table_user_settings :s] [:= :s.table_id :t.id]])))
+
+(mu/defn probe-score-columns
+  "Select the columns the CLI writes from `data_complexity_score`, matching no rows.
+  Throws when the table or one of the columns is missing."
+  []
+  (t2/query {:select [:fingerprint :source :score_data :created_at]
+             :from   [:data_complexity_score]
+             :where  [:= 1 0]}))
+
+(mu/defn insert-score-row!
+  "Insert `row` into `data_complexity_score` with a raw query, so no model hooks or transforms run."
+  [row :- [:map {:closed true}
+           [:fingerprint :string]
+           [:source      :string]
+           [:score_data  :string]]]
+  (t2/query {:insert-into [:data_complexity_score]
+             :values      [row]}))
