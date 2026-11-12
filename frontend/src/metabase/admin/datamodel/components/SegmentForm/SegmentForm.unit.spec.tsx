@@ -85,11 +85,12 @@ describe("SegmentForm", () => {
       await act(() => {
         setup({ remoteSyncType: "read-only", isTablePublished: false });
       });
-      expect(getNameInput()).not.toHaveAttribute("readonly");
-      expect(getDescriptionInput()).not.toHaveAttribute("readonly");
+      // The form stays read-only until the table has loaded.
       expect(
         await screen.findByRole("button", { name: /Save changes/ }),
       ).toBeInTheDocument();
+      expect(getNameInput()).not.toHaveAttribute("readonly");
+      expect(getDescriptionInput()).not.toHaveAttribute("readonly");
       expect(
         screen.queryByRole("alert", { name: READ_ONLY_ALERT }),
       ).not.toBeInTheDocument();

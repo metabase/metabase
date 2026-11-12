@@ -20,6 +20,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { waitForRequestsToSettle } from "__support__/utils";
 import * as Analytics from "metabase/analytics";
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { Route } from "metabase/router";
@@ -195,10 +196,18 @@ describe("SegmentApp", () => {
 
     await waitForLoaderToBeRemoved();
 
-    await userEvent.click(
-      screen.getByText("Add filters to narrow your answer"),
+    // The button stays disabled until the table metadata has loaded.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", {
+          name: /Add filters to narrow your answer/,
+        }),
+      ).toBeEnabled(),
     );
-    await userEvent.click(screen.getByText("ID"));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Add filters to narrow your answer/ }),
+    );
+    await userEvent.click(await screen.findByText("ID"));
     await userEvent.type(screen.getByPlaceholderText("Enter an ID"), "1");
     await userEvent.click(screen.getByText("Add filter"));
     await userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
@@ -242,6 +251,13 @@ describe("SegmentApp", () => {
     const editor = screen.getByTestId("segment-editor");
     expect(await within(editor).findByText("Orders")).toBeInTheDocument();
 
+    await waitFor(() =>
+      expect(
+        within(editor).getByRole("button", {
+          name: /Add filters to narrow your answer/,
+        }),
+      ).toBeEnabled(),
+    );
     await userEvent.click(
       within(editor).getByRole("button", {
         name: /Add filters to narrow your answer/,
@@ -310,6 +326,8 @@ describe("SegmentApp", () => {
       result: "success",
       target_id: CREATED_SEGMENT_ID,
     });
+
+    await waitForRequestsToSettle();
   });
 
   it("shows an existing segment in the edit form", async () => {

@@ -107,7 +107,7 @@ describe("SegmentRevisionsContainer", () => {
 
     const page = await screen.findByTestId("segment-revisions");
     expect(
-      within(page).getByText("Revision history for Orders < 100"),
+      await within(page).findByText("Revision history for Orders < 100"),
     ).toBeInTheDocument();
 
     const items = await within(page).findAllByRole("listitem");

@@ -129,6 +129,18 @@ function setup({
       : [];
   });
 
+  // The plugin reads the token features when it initializes, so the settings
+  // have to be in place first.
+  const state = createMockState({
+    currentUser: ADMIN,
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures({
+        remote_sync: !!remoteSyncType,
+      }),
+      "remote-sync-type": remoteSyncType,
+      "remote-sync-enabled": !!remoteSyncType,
+    }),
+  });
   if (remoteSyncType) {
     setupEnterpriseOnlyPlugin("remote_sync");
   }
@@ -146,16 +158,7 @@ function setup({
     {
       withRouter: true,
       initialRoute,
-      storeInitialState: createMockState({
-        currentUser: ADMIN,
-        settings: mockSettings({
-          "token-features": createMockTokenFeatures({
-            remote_sync: !!remoteSyncType,
-          }),
-          "remote-sync-type": remoteSyncType,
-          "remote-sync-enabled": !!remoteSyncType,
-        }),
-      }),
+      storeInitialState: state,
     },
   );
 
