@@ -113,20 +113,6 @@ describe("CollectionMenu", () => {
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
-  it("should not be able to make the collection official", async () => {
-    setup({
-      collection: createMockCollection({
-        can_write: true,
-      }),
-      isAdmin: true,
-    });
-
-    await userEvent.click(getIcon("ellipsis"));
-    expect(
-      screen.queryByText("Make collection official"),
-    ).not.toBeInTheDocument();
-  });
-
   it("should not show 'Move questions into their dashboards' option if there's no dashboard question candidates", async () => {
     setup({
       collection: createMockCollection({ can_write: true }),

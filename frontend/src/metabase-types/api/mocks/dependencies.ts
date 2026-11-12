@@ -214,7 +214,6 @@ export function createMockDashboardDependencyNodeData(
     description: null,
     created_at: "2020-01-01T00:00:00Z",
     collection_id: null,
-    moderation_reviews: [],
     ...opts,
   } as DashboardDependencyNodeData;
 }

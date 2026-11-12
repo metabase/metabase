@@ -67,7 +67,6 @@
     :model/FieldUserSettings
     :model/TableUserSettings
     :model/Segment
-    :model/ModerationReview
     :model/Revision
     :model/ViewLog
     :model/Collection

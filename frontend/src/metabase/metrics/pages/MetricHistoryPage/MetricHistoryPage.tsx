@@ -32,7 +32,6 @@ export function MetricHistoryPage({
           <ActivityTimelineCard
             entity="card"
             id={card.id}
-            moderationReviews={card.moderation_reviews}
             canWrite={card.can_write}
             data-testid="saved-question-history-list"
           />

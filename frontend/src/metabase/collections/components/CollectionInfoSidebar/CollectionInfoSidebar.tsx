@@ -9,7 +9,7 @@ import {
 import { EntityIdFooter } from "metabase/common/components/EntityIdFooter";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -65,8 +65,9 @@ export const CollectionInfoSidebar = ({
               canWrite={canWrite}
               maxLength={DESCRIPTION_MAX_LENGTH}
             />
-            <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelDisplay
+            <PLUGIN_REMOTE_SYNC.OfficialBadge
               collection={collection}
+              showLabel
             />
           </Stack>
         </SidebarSection>

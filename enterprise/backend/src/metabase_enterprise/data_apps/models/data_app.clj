@@ -75,16 +75,16 @@
 
 (defn- check-resource-collection
   "Throws unless the Collection with `collection-id` can be the resource collection of the data app `app-id`, nil for a
-  new app: a top-level collection of data apps, not archived, official, typed or the sample, that no other app has;
+  new app: a top-level collection of data apps, not archived, typed or the sample, that no other app has;
   remote sync may sync it."
   [collection-id app-id]
   (let [collection (data-apps.db/resource-collection collection-id)]
     (when-not (and collection
                    (= "data-apps" (some-> (:namespace collection) name))
                    (= "/" (:location collection))
-                   (not-any? collection [:personal_owner_id :authority_level :type :archive_operation_id])
+                   (not-any? collection [:personal_owner_id :type :archive_operation_id])
                    (not-any? collection [:archived :is_sample]))
-      (throw (ex-info (tru "A data app''s collection must be a top-level collection of data apps that isn''t archived or official. Give the app a collection of its own.")
+      (throw (ex-info (tru "A data app''s collection must be a top-level collection of data apps that isn''t archived. Give the app a collection of its own.")
                       {:status-code 400, :collection-id collection-id})))
     (when (data-apps.db/other-app-has-collection? collection-id app-id)
       (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")

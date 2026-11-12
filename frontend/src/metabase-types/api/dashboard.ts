@@ -3,7 +3,6 @@ import type {
   CardDisplayType,
   ClickBehavior,
   Collection,
-  CollectionAuthorityLevel,
   CollectionId,
   Database,
   EmbeddingParameters,
@@ -36,7 +35,6 @@ import type {
   VisualizationSettings,
 } from "./card";
 import type { Dataset } from "./dataset";
-import type { ModerationReview } from "./moderation";
 import type { SearchModel } from "./search";
 
 // x-ray dashboard have string ids
@@ -66,7 +64,6 @@ export interface Dashboard {
   show_in_getting_started?: boolean | null;
   parameters?: Parameter[] | null;
   point_of_interest?: string | null;
-  collection_authority_level?: CollectionAuthorityLevel;
   can_write: boolean;
   can_restore: boolean;
   can_delete: boolean;
@@ -92,7 +89,6 @@ export interface Dashboard {
   width: DashboardWidth;
   param_fields?: Record<ParameterId, Field[]>;
 
-  moderation_reviews: ModerationReview[];
   view_count?: number;
 
   /* Indicates whether static embedding for this dashboard has been published */
@@ -160,7 +156,6 @@ export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   dashboard_tab_id: DashboardTabId | null;
   card_id: CardId | null;
   card: Card | VirtualCard;
-  collection_authority_level?: CollectionAuthorityLevel;
   entity_id: BaseEntityId;
   visualization_settings?: DashCardVisualizationSettings;
   timeline_events?: TimelineEvent[];
@@ -299,12 +294,7 @@ export type ListDashboardsRequest = {
 // GET /api/dashboard endpoint does not hydrate all Dashboard attributes
 export type ListDashboardsResponse = Omit<
   Dashboard,
-  | "dashcards"
-  | "tabs"
-  | "collection"
-  | "collection_authority_level"
-  | "can_write"
-  | "param_fields"
+  "dashcards" | "tabs" | "collection" | "can_write" | "param_fields"
 >[];
 
 export type GetDashboardRequest = {

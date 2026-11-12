@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { screen } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockDashboard,
   createMockDashboardTab,
   createMockSettings,
@@ -18,17 +19,37 @@ const setupEnterprise = (opts: SetupOpts) => {
     ...opts,
     settings: createMockSettings({
       "token-features": createMockTokenFeatures({
-        content_verification: true,
+        remote_sync: true,
         cache_granular_controls: true,
         serialization: true,
         audit_app: true,
       }),
     }),
-    enterprisePlugins: ["collections"],
+    enterprisePlugins: ["collections", "remote_sync"],
   });
 };
 
 describe("DashboardInfoSidebar > enterprise", () => {
+  describe("official badge", () => {
+    it("should show official badge for dashboard in official collection", async () => {
+      await setupEnterprise({
+        dashboard: createMockDashboard({
+          collection: createMockCollection({ is_remote_synced: true }),
+        }),
+      });
+
+      expect(screen.getByTestId("official-badge")).toHaveTextContent(
+        "Official",
+      );
+    });
+
+    it("should not show official badge for regular dashboard", async () => {
+      await setupEnterprise({ dashboard: createMockDashboard() });
+
+      expect(screen.queryByTestId("official-badge")).not.toBeInTheDocument();
+    });
+  });
+
   describe("entity id display", () => {
     it("should show entity ids in the footer with the serialization feature", async () => {
       const dashboard = createMockDashboard({

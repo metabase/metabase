@@ -214,10 +214,12 @@
                   :archived      false
                   :database-id   :model.database_id
                   :created-at    false
-                  :updated-at    false}
+                  :updated-at    false
+                  :official      [:coalesce :collection.is_remote_synced false]}
    :search-terms [:name]
    :render-terms {:collection-name :collection.name
                   :collection-type :collection.type
+                  :collection-is-remote-synced :collection.is_remote_synced
                   :model-id        :model.id
                   :model-name      :model.name
                   :pk-ref          :model_index.pk_ref

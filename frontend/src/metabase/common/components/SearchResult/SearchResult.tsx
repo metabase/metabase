@@ -4,7 +4,7 @@ import { forwardRef, useCallback } from "react";
 
 import { Markdown } from "metabase/common/components/Markdown";
 import { trackSearchClick } from "metabase/common/search/analytics";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { To } from "metabase/router";
 import { useNavigate } from "metabase/router";
 import type { AnchorProps, BoxProps, StackProps } from "metabase/ui";
@@ -102,7 +102,7 @@ export function SearchResult({
   searchRequestId?: string;
   searchTerm?: string;
 }) {
-  const { name, model, description, moderated_status }: SearchResult = result;
+  const { name, model, description }: SearchResult = result;
 
   const showXRayButton =
     result.model === "indexed-entity" &&
@@ -207,11 +207,12 @@ export function SearchResult({
           >
             {name}
           </ResultTitle>
-          <PLUGIN_MODERATION.ModerationStatusIcon
-            status={moderated_status}
-            filled
-            size={14}
-          />
+          {model !== "collection" && (
+            <PLUGIN_REMOTE_SYNC.OfficialBadge
+              collection={result.collection}
+              size={14}
+            />
+          )}
         </Group>
         <Box pos="relative" w="fit-content" maw="100%">
           <InfoText showLinks={!onClick} result={result} isCompact={compact} />

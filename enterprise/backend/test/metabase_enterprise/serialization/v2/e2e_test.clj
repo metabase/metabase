@@ -1292,6 +1292,24 @@
           (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
           (is (t2/exists? :model/Card :name "Preview Card")))))))
 
+(deftest collection-authority-level-yaml-round-trip-test
+  (testing "Collections export without authority_level, and older exports that still carry it load"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (ts/create! :model/Collection :name "Legacy Official")
+          (storage/store! (into [] (extract/extract {:include-h2? true :no-settings true}))
+                          (storage.files/file-writer dump-dir)))
+        (let [^File file (m/find-first #(str/ends-with? (.getName ^File %) "legacy_official.yaml") (file-seq (io/file dump-dir)))
+              exported   (yaml/from-file file)]
+          (is (=? {:name "Legacy Official"} exported))
+          (is (not (contains? exported :authority_level)))
+          (dump/spit-yaml! file (assoc exported :authority_level "official")))
+        (ts/with-db dest-db
+          (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+          (is (=? {:is_remote_synced false}
+                  (t2/select-one :model/Collection :name "Legacy Official"))))))))
+
 (deftest library-collection-name-round-trip-test
   (testing "Library collections export and load with their stored names, not their localized ones"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]

@@ -53,7 +53,6 @@ describe("SavedQuestionHeaderButton", () => {
   const question = new Question(
     {
       name: "foo",
-      moderation_reviews: [],
       can_write: true,
       collection: createMockCollection(),
     },
@@ -90,35 +89,31 @@ describe("SavedQuestionHeaderButton", () => {
     expect(onSave).toHaveBeenCalledWith("A".repeat(254));
   });
 
-  describe("when the question does not have a latest moderation review", () => {
+  describe("when question is not official", () => {
     it("should contain no additional icons", () => {
       setup({ question });
       expect(screen.queryAllByLabelText(/icon/)).toEqual([]);
     });
   });
 
-  describe("when the question has a latest moderation review", () => {
+  describe("when question is in official collection", () => {
     const question = new Question(
       {
         name: "foo",
-        moderation_reviews: [
-          { status: null },
-          { most_recent: true, status: "verified" },
-        ],
-        collection: createMockCollection(),
+        collection: createMockCollection({ is_remote_synced: true }),
       },
       createMockMetadata(),
     );
 
-    it("should have an additional icon to signify the question's moderation status", () => {
+    it("should have official icon", () => {
       setup({
         question,
         tokenFeatures: {
-          content_verification: true,
+          remote_sync: true,
         },
-        enterprisePlugins: ["content_verification", "moderation"],
+        enterprisePlugins: ["remote_sync"],
       });
-      expect(getIcon("verified")).toBeInTheDocument();
+      expect(getIcon("official_collection")).toBeInTheDocument();
     });
   });
 

@@ -44,8 +44,7 @@
                :owner :owner_user_id :owner_email]
    :dashboard [:name :description :view_count
                :created_at :creator :creator_id :last-edit-info
-               :collection :collection_id
-               :moderation_reviews]
+               :collection :collection_id]
    :document  [:name :description :view_count
                :created_at :creator
                :collection :collection_id]
@@ -63,7 +62,7 @@
   "`entity` slimmed to the keys the response shows when it is a hydrated Collection, Dashboard, or Document."
   [entity :- ::data-value]
   (case (t2/model entity)
-    :model/Collection (select-keys entity [:id :name :authority_level :is_personal :namespace :location])
+    :model/Collection (select-keys entity [:id :name :is_remote_synced :is_personal :namespace :location])
     :model/Dashboard  (select-keys entity [:id :name])
     :model/Document   (select-keys entity [:id :name])
     entity))

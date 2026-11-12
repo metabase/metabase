@@ -20,7 +20,6 @@ export type BookmarkType = (typeof BOOKMARK_TYPES)[number];
 export type BookmarkId = string;
 
 export interface Bookmark {
-  authority_level?: string;
   card_id?: string;
   display?: CardDisplayType;
   id: BookmarkId;

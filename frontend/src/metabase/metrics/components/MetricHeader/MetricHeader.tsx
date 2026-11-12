@@ -5,7 +5,7 @@ import {
   PanelHeaderTitle,
 } from "metabase/common/data-studio/components/PaneHeader";
 import type { MetricUrls } from "metabase/common/metrics/types";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
@@ -41,9 +41,7 @@ export function MetricHeader({
           ) : (
             <PanelHeaderTitle>{card.name}</PanelHeaderTitle>
           )}
-          <PLUGIN_MODERATION.EntityModerationIcon
-            moderationReviews={card.moderation_reviews}
-          />
+          <PLUGIN_REMOTE_SYNC.OfficialBadge collection={card.collection} />
         </Flex>
       }
       icon="metric"

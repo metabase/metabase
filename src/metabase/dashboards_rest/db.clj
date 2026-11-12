@@ -82,7 +82,7 @@
 
 (mu/defn dashboard-item-cards
   "The card items of the Dashboard with `dashboard-id`, for the `/:id/items` endpoint: id, name, description, entity
-  id, collection position, display, last-used-at, collection id, archived flags, database id, and moderated status.
+  id, collection position, display, last-used-at, collection id, archived flags, and database id.
   Paged by `limit`/`offset` when `paged?`."
   [dashboard-id :- ::lib.schema.id/dashboard
    paged?       :- :boolean
@@ -93,18 +93,7 @@
                      :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
                      :c.dashboard_id
                      [nil :location]
-                     [(h2x/literal "card") :model]
-                     [^:allow-subquery {:select   [:status]
-                                        :from     [:moderation_review]
-                                        :where    [:and
-                                                   [:= :moderated_item_type "card"]
-                                                   [:= :moderated_item_id :c.id]
-                                                   [:= :most_recent true]]
-                                        ;; limit 1 to ensure that there is only one result but this invariant should
-                                        ;; hold true, just protecting against potential bugs
-                                        :order-by [[:id :desc]]
-                                        :limit    1}
-                      :moderated_status]]
+                     [(h2x/literal "card") :model]]
             :from  [[:report_card :c]]
             :where [:and
                     [:= :c.dashboard_id dashboard-id]

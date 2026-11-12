@@ -75,20 +75,14 @@
                                                       :updated_at},
                                       :where        [:= :updated.id :this.id]}},
                  :Collection       #{{:search-model "card",
-                                      :fields       #{:authority_level :name :namespace :type :location},
+                                      :fields       #{:is_remote_synced :name :namespace :type :location},
                                       :where        [:= :updated.id :this.collection_id]}},
                  :Revision         #{{:search-model "card",
                                       :fields       #{:user_id :timestamp},
                                       :where        [:and
                                                      [:= :updated.model_id :this.id]
                                                      [:= :updated.most_recent true]
-                                                     [:= :updated.model "Card"]]}},
-                 :ModerationReview #{{:search-model "card",
-                                      :fields       #{:status},
-                                      :where        [:and
-                                                     [:= :updated.moderated_item_type "card"]
-                                                     [:= :updated.moderated_item_id :this.id]
-                                                     [:= :updated.most_recent true]]}}
+                                                     [:= :updated.model "Card"]]}}
                  ;; Disabled for performance reasons, see spec for :model/Card
                  #_#_:DashboardCard    #{{:search-model "card"
                                           :fields       nil
@@ -113,14 +107,14 @@
                                 :fields       #{:description :archived :table_id :name :id :updated_at}
                                 :where        [:= :updated.id :this.id]}}
                  :Collection #{{:search-model "collection"
-                                :fields       #{:authority_level :archived :description :name :type :id
+                                :fields       #{:is_remote_synced :archived :description :name :type :id
                                                 :archived_directly :location :namespace :created_at}
                                 :where        [:= :updated.id :this.id]}
                                {:search-model "table"
-                                :fields       #{:authority_level :name :type :location}
+                                :fields       #{:is_remote_synced :name :type :location}
                                 :where        [:and [:= :this.is_published true] [:= :updated.id :this.collection_id]]}
                                {:search-model "segment"
-                                :fields       #{:location :type}
+                                :fields       #{:is_remote_synced :location :type}
                                 :where        [:and [:= :table.is_published true] [:= :updated.id :table.collection_id]]}}}
          (#'search.spec/merge-hooks
           [(#'search.spec/search-model-hooks (search.spec/spec "table"))
@@ -139,7 +133,7 @@
                                                   :schema}
                                   :where        [:= :updated.id :this.table_id]}}
                    :Collection #{{:search-model "measure"
-                                  :fields       #{:location :type}
+                                  :fields       #{:is_remote_synced :location :type}
                                   :where        [:and [:= :table.is_published true] [:= :updated.id :table.collection_id]]}}}
            (select-keys (#'search.spec/merge-hooks [(#'search.spec/search-model-hooks (search.spec/spec "measure"))])
                         [:model/Table :model/Collection :model/TableUserSettings])))))

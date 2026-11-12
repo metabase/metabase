@@ -75,7 +75,7 @@ type SetupOpts = {
   deprecatedAgentApiEnabled?: boolean;
   deprecatedAgentApiEnvName?: string;
   enableEmbedding?: boolean;
-  contentVerification?: boolean;
+  remoteSync?: boolean;
   initialRoute?: string;
   isConfigured?: boolean;
   metabots?: Parameters<typeof setupMetabotsEndpoints>[0];
@@ -90,7 +90,7 @@ const setup = async ({
   deprecatedAgentApiEnabled = false,
   deprecatedAgentApiEnvName,
   enableEmbedding = false,
-  contentVerification = false,
+  remoteSync = false,
   initialRoute,
   isConfigured = true,
   metabots = buildDefaultMetabots(),
@@ -99,7 +99,7 @@ const setup = async ({
 }: SetupOpts = {}) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: enableEmbedding,
-    content_verification: contentVerification,
+    remote_sync: remoteSync,
   });
 
   mockSettings({ "token-features": tokenFeatures });
@@ -346,7 +346,7 @@ describe("AISettingsPage", () => {
 
   it("reflects the persisted use_verified_content state from the API", async () => {
     await setup({
-      contentVerification: true,
+      remoteSync: true,
       metabots: buildDefaultMetabots({
         default: { id: 41, use_verified_content: true },
       }),
@@ -354,7 +354,7 @@ describe("AISettingsPage", () => {
 
     expect(
       await screen.findByRole("switch", {
-        name: "Only use verified or curated content",
+        name: "Only use official content",
       }),
     ).toBeChecked();
   });

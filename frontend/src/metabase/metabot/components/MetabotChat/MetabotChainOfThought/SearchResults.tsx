@@ -49,7 +49,6 @@ const ResultIcon = ({ result }: { result: SearchResultItem }) => {
     ? getIcon({
         model,
         display: result.display,
-        moderated_status: result.moderated_status,
       })
     : { name: "document" };
   return <EntityIcon {...iconData} size={13} className={S.resultIcon} />;

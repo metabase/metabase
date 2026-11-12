@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useListRevisionsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
-import { getActivityTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
+import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import { getUser } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
@@ -29,12 +29,9 @@ export function QuestionActivityTimeline({
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
 
-  const moderationReviews = question.getModerationReviews();
-
   const events = useMemo(
-    () =>
-      getActivityTimelineEvents({ revisions, moderationReviews, currentUser }),
-    [moderationReviews, revisions, currentUser],
+    () => getTimelineEvents({ revisions, currentUser }),
+    [revisions, currentUser],
   );
 
   if (isLoading || error) {

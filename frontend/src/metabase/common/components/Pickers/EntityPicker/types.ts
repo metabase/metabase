@@ -86,7 +86,6 @@ export type OmniPickerCollectionItem = Pick<
   | "model"
   | "here"
   | "below"
-  | "moderated_status"
   | "display"
   | "can_write"
   | "location"
@@ -99,7 +98,7 @@ export type OmniPickerCollectionItem = Pick<
   sourceCollectionId?: CollectionItem["id"] | CollectionId;
   childTypeFilter?: NonNullable<CollectionType>;
   collection?:
-    | (Pick<Collection, "id" | "name" | "authority_level"> & {
+    | (Pick<Collection, "id" | "name" | "is_remote_synced"> & {
         namespace?: CollectionNamespace;
       })
     | null;

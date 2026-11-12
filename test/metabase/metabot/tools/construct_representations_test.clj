@@ -1954,7 +1954,7 @@
                 mi/can-read?                             (constantly true)
                 mi/can-query?                            (constantly true)
                 entity-details/permission-filter-columns (fn [cols & _] cols)
-                entity-details/verified-review?          (constantly false)]
+                entity-details/official?                 (constantly false)]
     (f)))
 
 ;; The join clause the metric /dimensions resource hands the LLM (uuid-free), to paste into `joins:`.

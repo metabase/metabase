@@ -140,7 +140,6 @@ export type DashboardDependencyNodeData = Pick<
   | "last-edit-info"
   | "collection_id"
   | "collection"
-  | "moderation_reviews"
   | "view_count"
 >;
 

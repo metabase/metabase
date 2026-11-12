@@ -37,7 +37,6 @@ export function initializePlugin() {
               ),
               namespaces: ["snippets"],
               pickerOptions: SNIPPET_COLLECTION_PICKER_OPTIONS,
-              showAuthorityLevelPicker: false,
               shouldNavigateOnCreate: false,
             },
           }),

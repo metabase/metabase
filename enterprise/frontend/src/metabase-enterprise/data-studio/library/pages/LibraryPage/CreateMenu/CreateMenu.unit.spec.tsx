@@ -156,7 +156,6 @@ describe("CreateMenu", () => {
           hasConfirmButtons: true,
           canCreateCollections: false,
         },
-        showAuthorityLevelPicker: false,
       },
     });
   });

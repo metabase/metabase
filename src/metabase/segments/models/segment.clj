@@ -245,8 +245,9 @@
            ;; should probably change this, but will break legacy search tests
            :created-at false
            :updated-at true
-           ;; A segment on a Library table inherits the table's library ranking boost and curated status.
-           :root-collection-type {:fn collection/table-root-collection-type}}
+           ;; A segment on a Library table inherits the table's library ranking boost.
+           :root-collection-type {:fn collection/table-root-collection-type}
+           :official             [:coalesce :collection.is_remote_synced false]}
    :search-terms [:name :description]
    :render-terms {:table-id                  :table_id
                   :table_description         :table.description
@@ -258,7 +259,8 @@
                   :table-collection-id       :table.collection_id
                   :table-is-published        :table.is_published
                   :table-collection-location :collection.location
-                  :table-collection-type     :collection.type}
+                  :table-collection-type     :collection.type
+                  :table-collection-is-remote-synced :collection.is_remote_synced}
    ;; Only published tables count as library content, matching the table spec's own collection join.
    :joins {:table      [:model/Table [:= :table.id :this.table_id]]
            :collection [:model/Collection

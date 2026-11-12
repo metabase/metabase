@@ -1078,15 +1078,6 @@
       (is (= config/mb-version-string
              (t2/select-one-fn :metabase_version :model/Card :id (:id card)))))))
 
-(deftest ^:parallel changed?-test
-  (let [changed? (fn [a b] (#'card/changed? a b))]
-    (is (changed? {:a "a"} {:a "b"}))
-    (is (not (changed? {:a "a" :b "b"} {:b "b"})))
-    (is (not (changed? {:a "a"} {})))
-    (is (not (changed? {} {})))
-    (is (thrown? clojure.lang.ExceptionInfo (changed? {:a "a"} {:b "b"})))
-    (is (thrown? clojure.lang.ExceptionInfo (changed? {:a "a"} {:a "a" :b "b"})))))
-
 (deftest hydrate-dashboard-count-test
   (testing "cards associated with more than 1 dashboard"
     (mt/with-temp [:model/Card {card-id :id} {}

@@ -94,7 +94,6 @@
     :model/MetabotPrompt                     metabase.metabot.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
-    :model/ModerationReview                  metabase.content-verification.models.moderation-review
     :model/NativeQuerySnippet                metabase.native-query-snippets.models.native-query-snippet
     :model/Notification                      metabase.notification.models
     :model/OAuthAccessToken                  metabase.oauth-server.models.oauth-access-token

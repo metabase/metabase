@@ -9,10 +9,10 @@ import {
 } from "metabase/common/collections/utils";
 import { EditableDescription } from "metabase/common/components/EditableDescription";
 import { EditableText } from "metabase/common/components/EditableText";
-import { getIsTenantUser, getUser } from "metabase/current-user";
+import { getUser } from "metabase/current-user";
 import {
-  PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
+  PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Box, Flex, Icon, rem } from "metabase/ui";
@@ -90,8 +90,6 @@ export const CollectionCaption = ({
 };
 
 const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
-  const isTenantUser = useSelector(getIsTenantUser);
-
   if (isInstanceAnalyticsCollection(collection)) {
     return (
       <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
@@ -103,27 +101,13 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
     );
   }
 
-  if (PLUGIN_COLLECTIONS.isSyncedCollection(collection) && !isTenantUser) {
-    // external users should see the normal icon, they should not know about what synced collections are
-    return <Icon name="synced_collection" size={24} c="core-brand" />;
-  }
-
   if (isRootTrashCollection(collection)) {
     return <Icon name="trash" size={24} c="text-secondary" />;
   }
 
-  if (
-    collection.archived &&
-    PLUGIN_COLLECTIONS.isRegularCollection(collection)
-  ) {
+  if (collection.archived) {
     return <Icon name="folder" size={24} c="text-secondary" />;
   }
 
-  return (
-    <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
-      collection={collection}
-      size={24}
-      archived={collection.archived}
-    />
-  );
+  return <PLUGIN_REMOTE_SYNC.OfficialBadge collection={collection} size={24} />;
 };

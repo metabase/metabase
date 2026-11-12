@@ -18,6 +18,7 @@ import type { ResponsiveProps } from "metabase/common/components/ItemsTable/util
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { useGetIcon } from "metabase/hooks/use-icon";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useNavigate } from "metabase/router";
 import {
   Ellipsified,
@@ -225,6 +226,7 @@ function NameCell({ model }: { model?: ModelResult }) {
         ) : (
           name
         )}
+        <PLUGIN_REMOTE_SYNC.OfficialBadge collection={model?.collection} />
       </Flex>
     </ItemNameCell>
   );

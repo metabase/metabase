@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useListRecentsQuery } from "metabase/api";
+import { useListRecentsQuery } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -12,10 +12,7 @@ import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/current-user";
-import {
-  PLUGIN_COLLECTIONS,
-  PLUGIN_CONTENT_VERIFICATION,
-} from "metabase/plugins";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
@@ -38,20 +35,12 @@ import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelsTable } from "./ModelsTable";
 import { RecentModels } from "./RecentModels";
 import { trackNewModelInitiated } from "./analytics";
-import type { ModelFilterSettings, ModelResult } from "./types";
+import type { ModelResult } from "./types";
 import { useFetchModels } from "./use-fetch-models";
 import { getMaxRecentModelCount, isRecentModel } from "./utils";
 
-const {
-  contentVerificationEnabled,
-  ModelFilterControls,
-  getDefaultModelFilters,
-} = PLUGIN_CONTENT_VERIFICATION;
-
 export const BrowseModels = () => {
-  const [modelFilters, setModelFilters] = useModelFilterSettings();
-  const { isLoading, error, models, recentModels, hasVerifiedModels } =
-    useFilteredModels(modelFilters);
+  const { isLoading, error, models, recentModels } = useModels();
 
   const { showMetabaseLinks, url } = useDocsUrl("data-modeling/models/models");
 
@@ -107,12 +96,6 @@ export const BrowseModels = () => {
                     <Icon name="add" />
                   </ActionIcon>
                 </Tooltip>
-              )}
-              {hasVerifiedModels && (
-                <ModelFilterControls
-                  modelFilters={modelFilters}
-                  setModelFilters={setModelFilters}
-                />
               )}
             </Group>
           </Flex>
@@ -174,54 +157,11 @@ export const BrowseModels = () => {
   );
 };
 
-function useModelFilterSettings() {
-  const defaultModelFilters = useSelector(getDefaultModelFilters);
-  return useState(defaultModelFilters);
-}
-
-function useHasVerifiedModels() {
-  const result = useFetchModels(
-    contentVerificationEnabled
-      ? {
-          filter_items_in_personal_collection: "exclude",
-          model_ancestors: false,
-          limit: 0,
-          verified: true,
-        }
-      : skipToken,
-  );
-
-  if (!contentVerificationEnabled) {
-    return {
-      isLoading: false,
-      error: null,
-      result: false,
-    };
-  }
-
-  const total = result.data?.total ?? 0;
-
-  return {
-    isLoading: result.isLoading,
-    error: result.error,
-    result: total > 0,
-  };
-}
-
-function useFilteredModels(modelFilters: ModelFilterSettings) {
-  const hasVerifiedModels = useHasVerifiedModels();
-
-  const filters = cleanModelFilters(modelFilters, hasVerifiedModels.result);
-
-  const modelsResult = useFetchModels(
-    hasVerifiedModels.isLoading || hasVerifiedModels.error
-      ? skipToken
-      : {
-          filter_items_in_personal_collection: "exclude",
-          model_ancestors: false,
-          ...filters,
-        },
-  );
+function useModels() {
+  const modelsResult = useFetchModels({
+    filter_items_in_personal_collection: "exclude",
+    model_ancestors: false,
+  });
 
   // Unjustified type cast. FIXME
   const models = modelsResult.data?.data as ModelResult[] | undefined;
@@ -233,40 +173,14 @@ function useFilteredModels(modelFilters: ModelFilterSettings) {
     skip: recentsCap === 0,
   });
 
-  const isLoading =
-    hasVerifiedModels.isLoading ||
-    modelsResult.isLoading ||
-    recentModelsResult.isLoading;
-
-  const error =
-    hasVerifiedModels.error || modelsResult.error || recentModelsResult.error;
-
   return {
-    isLoading,
-    error,
-    hasVerifiedModels: hasVerifiedModels.result,
+    isLoading: modelsResult.isLoading || recentModelsResult.isLoading,
+    error: modelsResult.error || recentModelsResult.error,
     models: PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics(
       models ?? [],
     ),
-
     recentModels: (recentModelsResult.data ?? [])
       .filter(isRecentModel)
-      .filter(
-        (model) => !filters.verified || model.moderated_status === "verified",
-      )
       .slice(0, recentsCap),
   };
-}
-
-function cleanModelFilters(
-  modelFilters: ModelFilterSettings,
-  hasVerifiedModels: boolean,
-) {
-  const filters = { ...modelFilters };
-  if (!hasVerifiedModels || !filters.verified) {
-    // we cannot pass false or undefined to the backend
-    // delete the key instead
-    delete filters.verified;
-  }
-  return filters;
 }

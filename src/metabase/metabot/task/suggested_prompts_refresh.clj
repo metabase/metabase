@@ -1,6 +1,6 @@
 (ns metabase.metabot.task.suggested-prompts-refresh
   "Background regeneration of a Metabot's suggested prompts when its content scope changes — e.g. the
-  \"verified or curated content\" setting or the configured collection is toggled.
+  \"official content\" setting or the configured collection is toggled.
   Scheduling through Quartz keeps the toggle request instant and makes rapid or multi-instance toggles
   converge: a single durable job with `DisallowConcurrentExecution` runs at most one refresh per
   Metabot at a time, a per-Metabot one-shot trigger debounces a burst into one run, and the job

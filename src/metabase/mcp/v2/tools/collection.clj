@@ -2,9 +2,8 @@
   "The v2 MCP `collection_write` tool: create, rename, move, archive, and restore collections.
    Both methods delegate to the shared domain fns the REST endpoints use
    ([[metabase.collections.core/create-collection!]] and
-   [[metabase.collections.core/update-collection!]]), so parent write-checks, authority-level
-   gating, parent inheritance, descendant path rewriting, and the event pair are inherited
-   rather than reimplemented. The tool's own work is id resolution behind read checks,
+   [[metabase.collections.core/update-collection!]]), so parent write-checks, parent inheritance,
+   descendant path rewriting, and the event pair are inherited rather than reimplemented. The tool's own work is id resolution behind read checks,
    method-appropriateness checks, and the write echo."
   (:require
    [metabase.channel.urls :as channel.urls]
@@ -22,16 +21,15 @@
 (defn- write-result
   "The created/updated collection echoed to the caller: the concise read projection — so the echo
    and a concise get_content read carry the same fields by construction — plus `:entity_id` (a
-   portable id to update by), `:url` (where the collection lives in the app), and the two write
-   args the concise projection omits, `:authority_level` and `:namespace`, so every field this
-   tool accepts is confirmed back rather than silently dropped."
+   portable id to update by), `:url` (where the collection lives in the app), and the write arg
+   the concise projection omits, `:namespace`, so every field this tool accepts is confirmed back
+   rather than silently dropped."
   [collection]
   ;; The :collection projection is registered by metabase.mcp.v2.projections itself, which this ns
   ;; requires — so the registry is populated before any tool dispatch reaches here.
   (assoc (projections/project :collection :concise collection)
          :entity_id (:entity_id collection)
          :url (common/frontend-url (channel.urls/collection-path (:id collection)))
-         :authority_level (:authority_level collection)
          :namespace (:namespace collection)))
 
 (defn- check-method-args!
@@ -78,7 +76,7 @@
   (v2.resolve/resolve-and-read :model/Collection id-or-eid))
 
 (defn- create!
-  [{:keys [description parent_id authority_level], coll-name :name, coll-namespace :namespace, :as args}]
+  [{:keys [description parent_id], coll-name :name, coll-namespace :namespace, :as args}]
   (check-method-args! :create args)
   ;; A namespaced collection ("snippets") is its own hierarchy, and personal collections only exist in the default
   ;; one — so only a normal collection can default into the caller's.
@@ -90,11 +88,10 @@
       (cond-> {:name coll-name}
         description     (assoc :description description)
         parent-id       (assoc :parent_id parent-id)
-        coll-namespace  (assoc :namespace coll-namespace)
-        authority_level (assoc :authority_level (keyword authority_level)))))))
+        coll-namespace  (assoc :namespace coll-namespace))))))
 
 (defn- update!
-  [id {:keys [description parent_id archived authority_level], coll-name :name, :as args}]
+  [id {:keys [description parent_id archived], coll-name :name, :as args}]
   (check-method-args! :update args)
   (let [collection (resolve-existing id)]
     (check-move-out-of-trash! collection args)
@@ -105,8 +102,7 @@
         (contains? args :name)            (assoc :name coll-name)
         (contains? args :description)     (assoc :description description)
         (contains? args :parent_id)       (assoc :parent_id (v2.resolve/resolve-collection-id parent_id))
-        (contains? args :archived)        (assoc :archived (boolean archived))
-        (contains? args :authority_level) (assoc :authority_level (some-> authority_level keyword)))))))
+        (contains? args :archived)        (assoc :archived (boolean archived)))))))
 
 (def ^:private collection-write-args-schema
   [:map {:closed true}
@@ -129,8 +125,8 @@
                                     "your personal collection. You need write access to the parent.")}
              :int :string]]]
    [:clear {:optional true}
-    [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, authority_level). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
-                          "description" "authority_level"]]]]
+    [:maybe [:sequential [:enum {:description "Update only: property names to unset (description). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
+                          "description"]]]]
    [:archived {:optional true}
     [:maybe [:boolean {:description (str "Update only: true moves the collection and its contents to the trash, false "
                                          "restores them. Archiving is the only removal path — there is no hard "
@@ -139,21 +135,16 @@
     [:maybe [:enum {:description (str "Create only: puts the collection in a separate hierarchy instead of the "
                                       "normal one. \"snippets\" holds SQL snippet folders. Omit for a normal "
                                       "collection.")}
-             "snippets"]]]
-   [:authority_level {:optional true}
-    [:maybe [:enum {:description (str "Marks the collection Official. Requires an admin on an instance with the "
-                                      "Official Collections feature. To make a collection unofficial again, name "
-                                      "it in `clear` — `clear: [\"authority_level\"]`.")}
-             "official"]]]])
+             "snippets"]]]])
 
 (def ^:private collection-write-entry
   {:create-required [:name]
-   :clearable       #{:description :authority_level}})
+   :clearable       #{:description}})
 
 (registry/deftool collection-write
   "Create, rename, move, archive, or restore a collection — the folders that hold questions, dashboards, models, and
-  documents. method: \"create\" requires name and accepts description, parent_id, namespace, and authority_level;
-  method: \"update\" requires id and accepts name, description, parent_id, archived, and authority_level. parent_id
+  documents. method: \"create\" requires name and accepts description, parent_id, and namespace;
+  method: \"update\" requires id and accepts name, description, parent_id, and archived. parent_id
   nests a new collection or moves an existing one: pass a numeric id, a 21-character entity_id, or \"root\" for the top
   level; omitting it on create means your personal collection (the root collection for a namespaced one), and omitting
   it on update leaves the collection where it is.
@@ -161,12 +152,11 @@
   restores it — there is no hard delete, and omitting archived leaves the trashed state alone. To move something out of
   the trash, pass archived: false together with parent_id; parent_id on its own would leave it trashed. namespace is
   create-only
-  (\"snippets\" for SQL snippet folders); collections cannot move between namespaces. authority_level \"official\"
-  marks the collection Official and needs an admin on an instance with that feature. description and authority_level
-  can be set, rewritten, and cleared — to erase one, name it in clear (clear: [\"description\"]); sending null does
+  (\"snippets\" for SQL snippet folders); collections cannot move between namespaces. description
+  can be set, rewritten, and cleared — to erase it, name it in clear (clear: [\"description\"]); sending null does
   not work, because unset properties are stripped before the tool sees them. Personal collections
   themselves cannot be created or moved, but you can nest collections inside one by passing its id as parent_id.
-  Returns the resulting collection, including authority_level and namespace, so no follow-up read is needed."
+  Returns the resulting collection, including namespace, so no follow-up read is needed."
   {:name           "collection_write"
    :default-access :allowed
    :scope          metabot.scope/agent-content-write

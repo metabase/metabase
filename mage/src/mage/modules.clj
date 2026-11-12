@@ -130,7 +130,6 @@
      batch-processing
      channel
      collections
-     content-verification
      core.initialization-status
      core.version
      dashboards

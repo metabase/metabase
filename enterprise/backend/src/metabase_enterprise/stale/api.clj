@@ -47,17 +47,17 @@
         annotate (fn [x]
                    (assoc x :collection {:id (get-in x [:collection :id])
                                          :name (get-in x [:collection :name])
-                                         :authority_level (get-in x [:collection :authority_level])
+                                         :is_remote_synced (boolean (get-in x [:collection :is_remote_synced]))
                                          :type (get-in x [:collection :type])
                                          :effective_ancestors (if-let [loc (:effective_location (:collection x))]
                                                                 (->> (collection/location-path->ids loc)
                                                                      (map coll-id->coll)
-                                                                     (map #(select-keys % [:id :name :authority_level :type])))
+                                                                     (map #(select-keys % [:id :name :is_remote_synced :type])))
                                                                 [])}))]
     (map annotate rows)))
 
 (defmethod present-model-items :model/Card [_ cards]
-  (->> (t2/hydrate (stale.db/stale-cards (set (map :id cards))) :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count [:dashboard :moderation_status])
+  (->> (t2/hydrate (stale.db/stale-cards (set (map :id cards))) :can_write :can_delete :can_restore [:collection :effective_location] :dashboard_count :dashboard)
        (map #(assoc % :fully_parameterized (queries/fully-parameterized? %)))
        present-collections
        (map (fn [card]

@@ -1,7 +1,6 @@
 import type {
   BaseUser,
   CardId,
-  CollectionAuthorityLevel,
   CollectionId,
   DatabaseId,
   UserId,
@@ -28,7 +27,6 @@ export interface ModelCacheRefreshStatus {
 
   collection_id: CollectionId;
   collection_name: string;
-  collection_authority_level: CollectionAuthorityLevel;
 
   columns: string[];
   database_id: DatabaseId;

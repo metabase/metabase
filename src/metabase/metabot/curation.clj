@@ -4,14 +4,13 @@
   Reads each item's curation signals straight from the source tables and applies the canonical
   [[metabase.collections.curation/curated?]] predicate, so it has no dependency on the search index being
   present, fresh, or complete, and can't drift from the rule.
-  Lives in metabot rather than collections.curation because it reads cards/dashboards/tables/reviews, which
+  Lives in metabot rather than collections.curation because it reads cards/dashboards/tables, which
   are higher-level models a foundational module shouldn't reference; a consistency test pins it to the
   index's precomputed `curated` column."
   (:require
    [clojure.set :as set]
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.curation :as curation]
-   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -19,7 +18,6 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -44,87 +42,55 @@
 ;;; ----- Curation signals -----
 
 (def ^:private report-card-models
-  "Search-model strings backed by `report_card`, moderated as \"card\"."
+  "Search-model strings backed by `report_card`."
   #{"card" "dataset" "metric"})
 
-(defn- feature-gates
-  "Which curation signals the licence currently grants. The signals are read live from the source tables, where a
-  review, an official collection, or a Library stays after a downgrade, so each one counts only while its feature
-  is active, as in [[metabot.db/metabot-metrics-and-models]] and the in-place search filter."
-  []
-  {:verified? (premium-features/has-feature? :content-verification)
-   :official? (premium-features/has-feature? :official-collections)
-   :library?  (premium-features/has-feature? :library)})
-
-(defn- verified-item-ids
-  "Subset of `ids` whose most-recent moderation review for `item-type` is \"verified\"."
-  [ids item-type]
-  (if (empty? ids)
-    #{}
-    (metabot.db/verified-item-ids ids item-type)))
-
-(defn- collection-info
-  "`collection-id → {:authority_level :location :type}` for the given ids."
+(defn- official-collection-ids
+  "The ids among `coll-ids` of remote-synced collections."
   [coll-ids]
-  (when (seq coll-ids)
-    (update-vals (metabot.db/collection-curation-info-by-id coll-ids)
-                 #(select-keys % [:authority_level :location :type]))))
+  (if (seq coll-ids)
+    (into #{} (keep (fn [[id {:keys [is_remote_synced]}]] (when is_remote_synced id)))
+          (metabot.db/collection-curation-info-by-id coll-ids))
+    #{}))
 
-(defn- root-collection-type-of
-  [coll-id->info coll-id]
-  (let [{:keys [location type]} (get coll-id->info coll-id)]
-    (collection/root-collection-type {:collection_id       coll-id
-                                      :collection_location location
-                                      :collection_type     type})))
-
-(defn- moderatable-curation-signals
-  "`[id signal-map]` pairs for collection-housed, moderatable models (report_card-backed and dashboards). An archived
-  item, or a Card owned by a document, gets no pair: search never returns either, so neither is curated."
-  [search-model t2-model item-type ids]
-  (let [{:keys [verified? official? library?]} (feature-gates)
-        rows     (->> (case t2-model
-                        :model/Card      (metabot.db/card-curation-rows ids)
-                        :model/Dashboard (metabot.db/dashboard-curation-rows ids))
-                      (remove #(or (:archived %) (:document_id %))))
-        coll     (collection-info (into #{} (keep :collection_id) rows))
-        verified (if verified? (verified-item-ids (mapv :id rows) item-type) #{})]
+(defn- official-signals
+  "`[id signal-map]` pairs for `rows`, each official when its collection is remote-synced."
+  [search-model rows]
+  (let [official (official-collection-ids (into #{} (keep :collection_id) rows))]
     (for [{:keys [id collection_id]} rows]
-      [id {:model                search-model
-           :verified             (contains? verified id)
-           ;; authority_level is keyword-transformed on read (collection :type is not — it stays a string,
-           ;; which is what curated? and library-root-collection-types expect)
-           :official_collection  (and official? (= :official (:authority_level (get coll collection_id))))
-           :root_collection_type (when library? (root-collection-type-of coll collection_id))}])))
+      [id {:model search-model, :official (contains? official collection_id)}])))
+
+(defn- collection-housed-curation-signals
+  "`[id signal-map]` pairs for report_card-backed models and dashboards; an archived item, or a Card owned by a
+  document, gets no pair because search never returns either."
+  [search-model t2-model ids]
+  (official-signals search-model
+                    (->> (case t2-model
+                           :model/Card      (metabot.db/card-curation-rows ids)
+                           :model/Dashboard (metabot.db/dashboard-curation-rows ids))
+                         (remove #(or (:archived %) (:document_id %))))))
 
 (defn- table-curation-signals
-  "`[id signal-map]` pairs for tables, whose curation comes from is_published, data_layer, and data_authority. An
-  inactive or hidden table, or one on a routing destination or the audit database, gets no pair: search never
-  returns it, so it isn't curated.
-  root_collection_type is intentionally omitted: the table search spec joins the collection only for
-  published tables, and for a published table is_published already decides curation, so the root type never
-  changes a table's verdict. Omitting it avoids re-deriving from a possibly-stale collection_id, and lets
-  curated? coerce is_published consistently (only true/1 count)."
+  "`[id signal-map]` pairs for tables, official when their collection is remote-synced; an inactive or hidden table,
+  or one on a routing destination or the audit database, gets no pair because search never returns it."
   [ids]
-  (let [{:keys [library?]} (feature-gates)
-        rows          (metabot.db/table-curation-rows ids)
-        destinations  (let [db-ids (into #{} (keep :db_id) rows)]
-                        (if (seq db-ids) (metabot.db/destination-database-ids db-ids) #{}))]
-    (for [{:keys [id db_id active visibility_type is_published data_layer data_authority]} rows
-          :when (and active
-                     (nil? visibility_type)
-                     (not (contains? destinations db_id))
-                     (not= db_id audit-app/audit-db-id))]
-      [id {:model          "table"
-           :is_published   (and library? is_published)
-           :data_layer     data_layer
-           :data_authority data_authority}])))
+  (let [rows         (metabot.db/table-curation-rows ids)
+        destinations (let [db-ids (into #{} (keep :db_id) rows)]
+                       (if (seq db-ids) (metabot.db/destination-database-ids db-ids) #{}))]
+    (official-signals "table"
+                      (filter (fn [{:keys [db_id active visibility_type]}]
+                                (and active
+                                     (nil? visibility_type)
+                                     (not (contains? destinations db_id))
+                                     (not= db_id audit-app/audit-db-id)))
+                              rows))))
 
 (defn- curation-signals
   "`[id signal-map]` pairs for the given search-model string and ids, read from source-of-truth tables."
   [model ids]
   (cond
-    (report-card-models model) (moderatable-curation-signals model :model/Card "card" ids)
-    (= "dashboard" model)      (moderatable-curation-signals model :model/Dashboard "dashboard" ids)
+    (report-card-models model) (collection-housed-curation-signals model :model/Card ids)
+    (= "dashboard" model)      (collection-housed-curation-signals model :model/Dashboard ids)
     (= "table" model)          (table-curation-signals ids)))
 
 (def ^:private curation-batch-size

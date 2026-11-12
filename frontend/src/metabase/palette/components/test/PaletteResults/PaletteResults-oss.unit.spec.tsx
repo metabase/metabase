@@ -104,11 +104,10 @@ describe("PaletteResults", () => {
       await screen.findByRole("option", { name: "Foo Question" }),
     ).toHaveTextContent("Our analytics");
 
-    //Foo Question should be not be displayed with a verified badge in OSS
     expect(
       within(
-        await screen.findByRole("option", { name: "Foo Question" }),
-      ).queryByRole("img", { name: /verified_filled/ }),
+        await screen.findByRole("option", { name: "Bar Dashboard" }),
+      ).queryByTestId("official-badge"),
     ).not.toBeInTheDocument();
   });
 
@@ -205,11 +204,10 @@ describe("PaletteResults", () => {
       await screen.findByRole("option", { name: "Foo Question" }),
     ).toHaveTextContent("Our analytics");
 
-    //Foo Question should not be displayed with a verified badge in OSS
     expect(
       within(
-        await screen.findByRole("option", { name: "Foo Question" }),
-      ).queryByRole("img", { name: /verified_filled/ }),
+        await screen.findByRole("option", { name: "Bar Question" }),
+      ).queryByTestId("official-badge"),
     ).not.toBeInTheDocument();
 
     expect(

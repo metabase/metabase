@@ -199,8 +199,7 @@
     [:id                     ms/PositiveInt]
     ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
     [:series {:optional true} [:maybe [:sequential ms/PositiveInt]]]
-    [:card   {:optional true} [:maybe ::queries.schema/card]]
-    [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]]])
+    [:card   {:optional true} [:maybe ::queries.schema/card]]]])
 
 (defn- shallow-updates
   "Returns the keys in `new` that have different values than the corresponding keys in `old`"
@@ -235,7 +234,6 @@
     [:dashboard_id                ms/PositiveInt]
     [:id                          {:optional true} [:maybe ms/Int]]
     [:card                        {:optional true} [:maybe [:ref ::queries.schema/card]]]
-    [:collection_authority_level  {:optional true} [:maybe [:or :keyword :string]]]
     [:series                      {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
 
 (mu/defn create-dashboard-cards!
@@ -256,7 +254,7 @@
                                   (merge {:parameter_mappings []
                                           :visualization_settings {}
                                           :inline_parameters []}
-                                         (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))]
+                                         (dissoc dashcard :id :created_at :updated_at :entity_id :series :card))))]
         ;; add series to the DashboardCard
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
         ;; return the full DashboardCard

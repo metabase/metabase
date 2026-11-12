@@ -244,7 +244,7 @@
     ;; Positive path: curated-only filtering restricts Cards and Tables to curated ones. We inject
     ;; a fresh uncurated Card + Table so the assertion doesn't depend on ambient test-env content —
     ;; the `:universe` count includes them, `:metabot` excludes them. Premium features are pinned
-    ;; OFF to guard against reintroducing the old :content-verification gate (curated-only
+    ;; OFF to guard against reintroducing a premium-feature gate (curated-only
     ;; filtering mirrors the search index's precomputed `curated` column, which has no runtime gate).
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Database {db-id :id} {}
@@ -408,7 +408,7 @@
   (testing ":curated-only? mirrors use_verified_content regardless of premium features"
     ;; No feature gate, matching the search index's precomputed `curated` column: a curation signal
     ;; can only be set while its feature is present, so the signals are already feature-correct.
-    (doseq [features      [#{} #{:content-verification}]
+    (doseq [features      [#{} #{:library}]
             use-verified? [false true]]
       (testing (format "features=%s use_verified_content=%s" (pr-str features) use-verified?)
         (mt/with-premium-features features

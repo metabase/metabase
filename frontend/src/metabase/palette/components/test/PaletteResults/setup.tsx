@@ -88,13 +88,12 @@ const DATABASE = createMockDatabase();
 const collection_1 = createMockCollection({
   name: "lame collection",
   id: 3,
+  is_remote_synced: true,
 });
 
-//Verified, but no collection details present
 const model_1 = createMockCollectionItem({
   model: "dataset",
   name: "Foo Question",
-  moderated_status: "verified",
   id: 1,
 });
 
@@ -115,7 +114,6 @@ const dashboard = createMockCollectionItem({
 const recents_1 = createMockRecentCollectionItem({
   ..._.pick(model_1, "id", "name"),
   model: "dataset",
-  moderated_status: "verified",
   parent_collection: {
     id: "root",
     name: "Our analytics",
@@ -129,11 +127,12 @@ const recents_2 = createMockRecentCollectionItem({
     id: dashboard.collection?.id as number,
     // Unjustified type cast. FIXME
     name: dashboard.collection?.name as string,
+    is_remote_synced: true,
   },
 });
 
 const TOKEN_FEATURES = createMockTokenFeatures({
-  content_verification: true,
+  remote_sync: true,
 });
 
 export interface CommonSetupProps {

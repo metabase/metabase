@@ -1,7 +1,6 @@
 import type { CollectionId, CollectionType } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
-import type { ModerationReviewStatus } from "./moderation";
 import type { CardDisplayType } from "./visualization";
 
 export const ACTIVITY_MODELS = [
@@ -61,15 +60,13 @@ export type RecentCollectionItem = BaseRecentItem & {
   parent_collection: {
     id: CollectionId | null;
     name: string;
-    authority_level?: "official" | null;
+    is_remote_synced?: boolean;
   };
-  authority_level?: "official" | null; // for collections
-  moderated_status?: "verified" | null; // for cards / models / dashboards
+  is_remote_synced?: boolean;
   display?: CardDisplayType; // for questions
   dashboard?: {
     name: string;
     id: DashboardId;
-    moderation_status: ModerationReviewStatus;
   };
   collection_type?: CollectionType;
 };

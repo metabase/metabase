@@ -227,7 +227,6 @@
    [:vector_search_max_scan_tuples       {:optional true} [:maybe [:int {:min 1 :max 2147483647}]]]
    [:vector_search_explain               {:optional true} [:maybe :boolean]]
    [:search_native_query                 {:optional true} [:maybe :boolean]]
-   [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
    [:calculate_available_models          {:optional true} [:maybe true?]]
    [:include_dashboard_questions         {:default false} [:maybe :boolean]]
@@ -241,7 +240,7 @@
 
 (defn- params->search-context
   "Build a search context from the raw `GET /api/search` query params. Shared by the search and debug endpoints."
-  [{:keys                               [q context archived models verified ids]
+  [{:keys                               [q context archived models ids]
     calculate-available-models          :calculate_available_models
     collection                          :collection
     created-at                          :created_at
@@ -287,7 +286,6 @@
     :search-native-query                 search-native-query
     :search-string                       (some-> q str/trim not-empty)
     :table-db-id                         table-db-id
-    :verified                            verified
     :ids                                 (set ids)
     :calculate-available-models?         calculate-available-models
     :include-dashboard-questions?        include-dashboard-questions
@@ -319,7 +317,6 @@
   - `vector_search_ef_search`: override pgvector's `hnsw.ef_search` (1-1000) for the iterative strategies; (admin only)
   - `vector_search_max_scan_tuples`: override pgvector's `hnsw.max_scan_tuples` for the iterative strategies; (admin only)
   - `vector_search_explain`: set to true to record vector-scan instrumentation for this search (expensive); (admin only)
-  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
 
@@ -327,7 +324,7 @@
   filters. For example:
 
   - The `created-by` filter supports dashboards, models, actions, and cards.
-  - The `verified` filter supports models and cards.
+  - The `display_type` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
   {:scope api-scope/data-app}

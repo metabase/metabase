@@ -135,7 +135,7 @@
                :permission-level          :read
                :archive-operation-id      nil})]
      ;; Order NULL collection types first so that audit collections are last
-     :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+     :order-by [[[[:case [:= :is_remote_synced true] 0 :else 1]] :asc]
                 [[[:case
                    [:= :type nil] 0
                    [:= :type collection/trash-collection-type] 1
@@ -464,7 +464,7 @@
   [_ _ _ rows]
   (for [row rows]
     (dissoc row
-            :description :display :authority_level :moderated_status :icon :personal_owner_id :namespace
+            :description :display :icon :personal_owner_id :namespace
             :dataset_query :table_id :query_type :is_upload :collection_namespace)))
 
 (defenterprise snippets-collection-children-query
@@ -518,7 +518,7 @@
   [_ _options collection rows]
   (for [row rows]
     (-> (dissoc row
-                :collection_position :display :authority_level :moderated_status :icon :personal_owner_id
+                :collection_position :display :icon :personal_owner_id
                 :dataset_query :table_id :query_type :is_upload :namespace)
         (update :archived api/bit->boolean)
         (update :archived_directly api/bit->boolean)
@@ -528,15 +528,14 @@
   [_ _options _collection rows]
   (for [row rows]
     (dissoc row
-            :description :display :collection_position :authority_level :moderated_status
+            :description :display :collection_position
             :dataset_query :table_id :query_type :is_upload :namespace)))
 
 (defmethod post-process-collection-children :snippet
   [_ _options _collection rows]
   (for [row rows]
     (-> (dissoc row
-                :description :collection_position :display :authority_level
-                :moderated_status :icon :personal_owner_id
+                :description :collection_position :display :icon :personal_owner_id
                 :dataset_query :table_id :query_type :is_upload :namespace)
         (assoc :collection_namespace "snippets"))))
 
@@ -558,8 +557,7 @@
                     [:u.email :last_edit_email]
                     [:u.first_name :last_edit_first_name]
                     [:u.last_name :last_edit_last_name]
-                    [:r.timestamp :last_edit_timestamp]
-                    [:mr.status :moderated_status]]
+                    [:r.timestamp :last_edit_timestamp]]
                     (#{:question :model} card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
@@ -567,10 +565,6 @@
                                    [:= :r.model_id :c.id]
                                    [:= :r.most_recent true]
                                    [:= :r.model (h2x/literal "Card")]]
-                   [:moderation_review :mr] [:and
-                                             [:= :mr.moderated_item_id :c.id]
-                                             [:= :mr.most_recent true]
-                                             [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    (collection/visible-collection-filter-clause :c.collection_id {:cte-name :visible_collection_ids})
@@ -625,10 +619,10 @@
       (update :archived_directly api/bit->boolean)))
 
 (defn- post-process-card-row-after-hydrate [row]
-  (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload :namespace
+  (-> (dissoc row :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload :namespace
               ;; internal-only: stamped in `post-process-card-row` for the permission check
               :document_id)
-      (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
+      (update :dashboard #(when % (select-keys % [:id :name])))
       (assoc :fully_parameterized (queries/fully-parameterized? (select-keys row [:dataset_query])))))
 
 (defn- assoc-based-on-upload
@@ -645,7 +639,7 @@
                    :dashboard_count
                    :is_remote_synced
                    :collection_namespace
-                   [:dashboard :moderation_status]]]
+                   :dashboard]]
     (as-> (map post-process-card-row rows) $
       (apply t2/hydrate $ hydration)
       (cond-> $
@@ -675,14 +669,9 @@
                    [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name]
                    [:u.last_name :last_edit_last_name]
-                   [:r.timestamp :last_edit_timestamp]
-                   [:mr.status :moderated_status]]
+                   [:r.timestamp :last_edit_timestamp]]
        :from      [[:report_dashboard :d]]
-       :left-join [[:moderation_review :mr] [:and
-                                             [:= :mr.moderated_item_id :d.id]
-                                             [:= :mr.most_recent true]
-                                             [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
-                   [:revision :r] [:and
+       :left-join [[:revision :r] [:and
                                    [:= :r.model_id :d.id]
                                    [:= :r.most_recent true]
                                    [:= :r.model (h2x/literal "Dashboard")]]
@@ -712,7 +701,7 @@
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)
-      (dissoc :display :authority_level :icon :personal_owner_id
+      (dissoc :display :icon :personal_owner_id
               :dataset_query :table_id :query_type :is_upload)))
 
 (defmethod post-process-collection-children :dashboard
@@ -769,8 +758,7 @@
                 [[:case [:= :is_remote_synced nil] [:inline false] :else :is_remote_synced] :is_remote_synced]
                 ;; selected as `collection_type` for fast sorting on "when it's a collection, type"
                 [:type :collection_type]
-                [(h2x/literal "collection") :model]
-                :authority_level])
+                [(h2x/literal "collection") :model]])
       ;; the nil indicates that collections are never pinned.
       (sql.helpers/where (pinned-state->clause pinned-state nil))))
 
@@ -901,7 +889,7 @@
             (update :archived api/bit->boolean)
             (update :is_remote_synced api/bit->boolean)
             (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
-            (dissoc :collection_position :display :moderated_status :icon
+            (dissoc :collection_position :display :icon
                     :dataset_query :table_id :query_type :is_upload)
             (assoc :type type-value)
             update-personal-collection)))))
@@ -1000,8 +988,8 @@
    :collection_id
    [:dashboard_id :integer]
    [:archived_directly :boolean]
-   :model :collection_position :authority_level [:personal_owner_id :integer] :location
-   :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
+   :model :collection_position [:personal_owner_id :integer] :location
+   :last_edit_email :last_edit_first_name :last_edit_last_name :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
    :collection_type :type [:archived :boolean] [:last_used_at :timestamp] [:is_remote_synced :boolean] :namespace
    ;; for determining whether a model is based on a csv-uploaded table
@@ -1040,7 +1028,7 @@
 
 (defn- official-collections-first-sort-clause [{:keys [official-collections-first?]}]
   (when official-collections-first?
-    [:authority_level :asc-nulls-last]))
+    [[:case [:= :is_remote_synced true] [:inline 0] :else [:inline 1]] :asc]))
 
 (def ^:private normal-collections-first-sort-clause
   [:type :asc-nulls-first])

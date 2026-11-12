@@ -26,7 +26,6 @@ const enterpriseState = createMockState({
   settings: mockSettings({
     "token-features": createMockTokenFeatures({
       remote_sync: true,
-      official_collections: true,
       audit_app: true,
     }),
   }),
@@ -207,14 +206,9 @@ describe("BookmarkList", () => {
   describe("collection bookmark icons (enterprise)", () => {
     it.each([
       {
-        name: "Synced",
-        icon: "synced_collection",
-        overrides: { is_remote_synced: true },
-      },
-      {
         name: "Official",
         icon: "official_collection",
-        overrides: { authority_level: "official" },
+        overrides: { is_remote_synced: true },
       },
       { name: "Regular", icon: "folder", overrides: {} },
     ])(

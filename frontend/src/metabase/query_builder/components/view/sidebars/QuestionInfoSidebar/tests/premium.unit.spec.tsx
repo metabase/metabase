@@ -5,7 +5,6 @@ import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
-  createMockModerationReview,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
@@ -18,37 +17,32 @@ const setupEnterprise = (opts: SetupOpts) => {
     ...opts,
     settings: createMockSettings({
       "token-features": createMockTokenFeatures({
-        content_verification: true,
+        remote_sync: true,
         cache_granular_controls: true,
         serialization: true,
         audit_app: true,
       }),
     }),
-    enterprisePlugins: [
-      "content_verification",
-      "audit_app",
-      "collections",
-      "moderation",
-    ],
+    enterprisePlugins: ["remote_sync", "audit_app", "collections"],
   });
 };
 
 describe("QuestionInfoSidebar > premium", () => {
-  describe("content verification", () => {
-    it("should show the verification badge for verified content", async () => {
+  describe("official badge", () => {
+    it("should show official badge for card in synced collection", async () => {
       const card = createMockCard({
-        moderation_reviews: [
-          createMockModerationReview({ status: "verified" }),
-        ],
+        collection: createMockCollection({ is_remote_synced: true }),
       });
       await setupEnterprise({ card });
-      expect(screen.getByText("You verified this")).toBeInTheDocument();
+      expect(screen.getByTestId("official-badge")).toHaveTextContent(
+        "Official",
+      );
     });
 
-    it("should not show the verification badge for unverified content", async () => {
-      const card = createMockCard();
+    it("should not show official badge for card in regular collection", async () => {
+      const card = createMockCard({ collection: createMockCollection() });
       await setupEnterprise({ card });
-      expect(screen.queryByText(/verified this/)).not.toBeInTheDocument();
+      expect(screen.queryByTestId("official-badge")).not.toBeInTheDocument();
     });
   });
 

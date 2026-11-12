@@ -4999,3 +4999,63 @@
         (migrate! :down 64)
         (is (=? {:name "birds" :display_name "Birds"} (app)))
         (is (not (contains? (app) :slug)))))))
+
+(deftest unify-official-content-test
+  (impl/test-migrations ["kc7z53" "au5n0q"] [migrate!]
+    (let [user-id     (t2/insert-returning-pk! :core_user {:first_name  "Test"
+                                                           :last_name   "User"
+                                                           :email       "user@example.com"
+                                                           :password    "superstrong"
+                                                           :entity_id   (u/generate-nano-id)
+                                                           :date_joined :%now})
+          db-id       (t2/insert-returning-pk! :metabase_database {:name       "Official DB"
+                                                                   :engine     "h2"
+                                                                   :details    "{}"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now})
+          coll!       (fn [synced? authority-level]
+                        (t2/insert-returning-pk! :collection {:name             (mt/random-name)
+                                                              :slug             "c"
+                                                              :location         "/"
+                                                              :entity_id        (u/generate-nano-id)
+                                                              :authority_level  authority-level
+                                                              :is_remote_synced synced?
+                                                              :created_at       :%now}))
+          synced-id   (coll! true nil)
+          official-id (coll! false "official")
+          card!       (fn [coll-id]
+                        (t2/insert-returning-pk! :report_card {:name                   "Card"
+                                                               :entity_id              (u/generate-nano-id)
+                                                               :display                "table"
+                                                               :dataset_query          "{}"
+                                                               :visualization_settings "{}"
+                                                               :creator_id             user-id
+                                                               :database_id            db-id
+                                                               :collection_id          coll-id
+                                                               :created_at             :%now
+                                                               :updated_at             :%now}))
+          synced-card (card! synced-id)
+          review-card (card! official-id)
+          content     (fn [qualified-id]
+                        (t2/query-one {:select [:collection_is_official :is_verified]
+                                       :from   [:v_content]
+                                       :where  [:= :entity_qualified_id qualified-id]}))
+          truthy?     #(contains? #{true 1} %)]
+      (t2/insert! :moderation_review {:moderated_item_id   review-card
+                                      :moderated_item_type "card"
+                                      :moderator_id        user-id
+                                      :status              "verified"
+                                      :most_recent         true})
+      (migrate!)
+      (testing "moderation reviews and authority levels are dropped"
+        (is (thrown? Exception (t2/count :moderation_review)))
+        (is (not (contains? (t2/select-one :collection :id official-id) :authority_level))))
+      (testing "v_content derives official and verified content from remote-synced collections"
+        (is (truthy? (:collection_is_official (content (str "collection_" synced-id)))))
+        (is (not (truthy? (:collection_is_official (content (str "collection_" official-id))))))
+        (is (truthy? (:is_verified (content (str "card_" synced-card)))))
+        (is (not (truthy? (:is_verified (content (str "card_" review-card)))))))
+      (testing "rollback restores empty table and column"
+        (migrate! :down 64)
+        (is (zero? (t2/count :moderation_review)))
+        (is (=? {:authority_level nil} (t2/select-one :collection :id official-id)))))))

@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.util :as qp.util]
@@ -439,18 +438,15 @@
           (is (empty? (filter (comp #{card-id} :id)
                               (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))))))))))
 
-(deftest recent-views-verified-status-test
-  (testing "moderated_status reflects a verified moderation review (metabase#18021)"
-    (mt/with-premium-features #{:content-verification}
-      (clear-recent-views-for-user :crowberto)
-      (mt/with-model-cleanup [:model/RecentViews :model/ModerationReview]
-        (mt/with-temp [:model/Card card {:name "verified card"}]
-          (moderation-review/create-review! {:moderated_item_id   (:id card)
-                                             :moderated_item_type "card"
-                                             :moderator_id        (mt/user->id :crowberto)
-                                             :status              "verified"})
+(deftest recent-views-parent-collection-is-remote-synced-test
+  (testing "parent_collection reports whether the item's collection is remote-synced"
+    (clear-recent-views-for-user :crowberto)
+    (mt/with-model-cleanup [:model/RecentViews]
+      (doseq [synced? [true false]]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "synced coll" :is_remote_synced synced?}
+                       :model/Card       card          {:name "synced card" :collection_id coll-id}]
           (events/publish-event! :event/card-query {:user-id (mt/user->id :crowberto) :card-id (:id card)})
-          (is (=? {:model "card" :moderated_status "verified"}
+          (is (=? {:model "card" :parent_collection {:id coll-id :is_remote_synced synced?}}
                   (->> (mt/user-http-request :crowberto :get 200 "activity/recents?context=views")
                        :recents
                        (filter (comp #{(:id card)} :id))

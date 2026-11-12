@@ -11,9 +11,8 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -25,15 +24,6 @@
   (if collection-id
     (collections.db/collection collection-id)
     (collection/root-collection-with-ui-details collection-namespace)))
-
-(defn- write-check-authority-level
-  "Check that a superuser is creating this collection if they are setting the authority level."
-  [{authority-level :authority_level :as coll}]
-  (when (some? authority-level)
-    ;; make sure only admin and an EE token is present to be able to create an Official token
-    (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-    (api/check-superuser))
-  coll)
 
 (defenterprise validate-new-tenant-collection!
   "OSS version. Throws API exceptions if the passed collection is an invalid tenant collection,
@@ -50,8 +40,7 @@
    [:name            ms/NonBlankString]
    [:description     {:optional true} [:maybe ms/NonBlankString]]
    [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]])
+   [:namespace       {:optional true} [:maybe ms/NonBlankString]]])
 
 (def ^:private NewCollectionArguments
   "What we use internally to actually create a collection — what `t2/insert!` needs."
@@ -88,14 +77,12 @@
         (select-keys (malli.util/keys NewCollectionArguments)))))
 
 (mu/defn create-collection!
-  "Create a new collection. Applies parent-inheritance defaults, runs the authority-level
-  superuser/feature check, runs the EE tenant-collection validation, and publishes both the
-  create and touch events. The single source of truth for collection creation; REST and agent
+  "Create a new collection. Applies parent-inheritance defaults, runs the EE tenant-collection
+  validation, and publishes both the create and touch events. The single source of truth for collection creation; REST and agent
   callers both go through here."
   [coll-data :- CreateCollectionArguments]
   (u/prog1 (collections.db/insert-collection!
             (->> (-> (apply-defaults-to-collection coll-data)
-                     write-check-authority-level
                      validate-new-tenant-collection!)
                  (lib/normalize ::collections.schema/collection.update)))
     (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*})

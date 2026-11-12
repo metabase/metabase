@@ -4,7 +4,7 @@ import { screen } from "__support__/ui";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
-  createMockModerationReview,
+  createMockCollection,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
@@ -19,15 +19,13 @@ const setupEnterprise = (opts: SetupOpts) => {
 };
 
 describe("QuestionInfoSidebar > enterprise", () => {
-  describe("moderation reviews", () => {
-    it("should not show the verification badge without content verification feature", async () => {
+  describe("official badge", () => {
+    it("should not show official badge without remote sync feature", async () => {
       const card = createMockCard({
-        moderation_reviews: [
-          createMockModerationReview({ status: "verified" }),
-        ],
+        collection: createMockCollection({ is_remote_synced: true }),
       });
       await setupEnterprise({ card });
-      expect(screen.queryByText(/verified this/)).not.toBeInTheDocument();
+      expect(screen.queryByTestId("official-badge")).not.toBeInTheDocument();
     });
   });
 

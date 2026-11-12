@@ -13,7 +13,7 @@ const setup = ({ collection }: { collection: Collection }) =>
   baseSetup({
     collection,
     enableEnterprisePlugins: true,
-    enableOfficialCollections: true,
+    enableRemoteSync: true,
     enableSerialization: true,
   });
 
@@ -24,7 +24,7 @@ describe("CollectionInfoSidebar (EE with token)", () => {
     expect(
       await screen.findByText("Description of a normal collection"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Official collection")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("official-badge")).not.toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("button", { name: "Entity ID info" }),
@@ -43,7 +43,9 @@ describe("CollectionInfoSidebar (EE with token)", () => {
     expect(
       await screen.findByText("Description of a trusted collection"),
     ).toBeInTheDocument();
-    expect(await screen.findByText("Official collection")).toBeInTheDocument();
+    expect(await screen.findByTestId("official-badge")).toHaveTextContent(
+      "Official",
+    );
 
     await userEvent.click(
       screen.getByRole("button", { name: "Entity ID info" }),

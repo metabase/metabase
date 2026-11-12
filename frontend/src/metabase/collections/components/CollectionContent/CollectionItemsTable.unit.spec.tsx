@@ -1130,49 +1130,6 @@ describe("CollectionItemsTable", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps official collections in the generic Collection filter", async () => {
-    const regularCollection = createMockCollectionItem({
-      id: 4,
-      collection_id: collection.id,
-      model: "collection",
-      name: "Regular collection",
-      authority_level: null,
-    });
-    const officialCollection = createMockCollectionItem({
-      id: 5,
-      collection_id: collection.id,
-      model: "collection",
-      name: "Official collection",
-      authority_level: "official",
-    });
-    setup({
-      collectionItems: [
-        collectionItems[0],
-        regularCollection,
-        officialCollection,
-        ...createFillerItems(9, { model: "collection" }),
-      ],
-    });
-
-    expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
-    expect(screen.getByText("Regular collection")).toBeInTheDocument();
-    expect(screen.getByText("Official collection")).toBeInTheDocument();
-
-    await userEvent.click(screen.getByTestId("collection-type-filter-button"));
-    await userEvent.click(screen.getByLabelText("Collection"));
-
-    await waitFor(() => {
-      const searchParams = findItemsSearchParamsByModels(["collection"]);
-      expect(searchParams).toBeDefined();
-      expect(searchParams?.has("authority_level")).toBe(false);
-    });
-    expect(screen.getByText("Regular collection")).toBeInTheDocument();
-    expect(screen.getByText("Official collection")).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
-    });
-  });
-
   it("shows placeholder rows while the first items load", async () => {
     const { releaseItems } = setup({ holdItems: true });
 

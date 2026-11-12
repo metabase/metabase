@@ -16,7 +16,6 @@ import { initializePlugin as initializeCaching } from "./caching";
 import { initializePlugin as initializeCleanUp } from "./clean_up";
 import { initializePlugin as initializeCollections } from "./collections";
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
-import { initializePlugin as initializeContentVerification } from "./content_verification";
 import { initializePlugin as initializeCustomViz } from "./custom_viz";
 import { initializePlugin as initializeDataApps } from "./data-apps";
 import { initializePlugin as initializeLibrary } from "./data-studio/library";
@@ -32,7 +31,6 @@ import { initializePlugin as initializeFeatureLevelPermissions } from "./feature
 import { initializePlugin as initializeGroupManagers } from "./group_managers";
 import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
-import { initializePlugin as initializeModeration } from "./moderation";
 import { initializePlugin as initializeMonitorApiKeyUsage } from "./monitor/api-key-usage";
 import { initializePlugin as initializeMonitorContentDiagnostics } from "./monitor/content-diagnostics";
 import { initializePlugin as initializeMonitorDependencyDiagnostics } from "./monitor/dependency-diagnostics";
@@ -75,7 +73,6 @@ export function initializePlugins() {
   initializeCleanUp();
   initializeCollections();
   initializeContentTranslation();
-  initializeContentVerification();
   initializeCustomViz();
   initializeDataApps();
   initializeDatabaseReplication();
@@ -90,7 +87,6 @@ export function initializePlugins() {
   initializeLibrary();
   initializeMetabot();
   initializeModelPersistence();
-  initializeModeration();
   initializeMonitorApiKeyUsage();
   initializeMonitorContentDiagnostics();
   initializeMonitorDependencyDiagnostics();

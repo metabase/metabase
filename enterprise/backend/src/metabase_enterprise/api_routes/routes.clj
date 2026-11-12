@@ -16,7 +16,6 @@
    [metabase-enterprise.cloud-proxy.api]
    [metabase-enterprise.content-diagnostics.api]
    [metabase-enterprise.content-translation.routes]
-   [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.custom-viz-plugin.api]
    [metabase-enterprise.data-apps.api]
    [metabase-enterprise.data-complexity-score.api]
@@ -102,8 +101,7 @@
   `/ee/<feature>/`).
 
   TODO -- Please fix them! See #22687"
-  {"/moderation-review" metabase-enterprise.content-verification.api.routes/routes
-   "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
+  {"/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
 
 ;;; ↓↓↓ KEEP THIS SORTED OR ELSE! ↓↓↓

@@ -420,11 +420,7 @@
   (check-dashboard-collection-exclusive! dashboard_id args)
   (let [card-before  (v2.resolve/resolve-and-read-with
                       :model/Card id
-                      ;; Hydrated like PUT /api/card/:id hydrates it: `update-card!` un-verifies a
-                      ;; verified card whose query changes by reading `:moderation_reviews` off the
-                      ;; card-before, and a bare row would leave the Verified badge on a swapped query.
-                      (fn [cid] (t2/hydrate (api/write-check :model/Card cid)
-                                            [:moderation_reviews :moderator_details])))
+                      #(api/write-check :model/Card %))
         ;; The resolved numeric id, never the raw `id` arg: a 21-char entity_id would build the
         ;; save-cycle graph on a node no dependency matches, and select the readback by a string.
         card-id      (:id card-before)

@@ -291,10 +291,7 @@ describe("Collections > utils", () => {
         ["trash", { id: 7, type: "trash" as const }],
         ["library", { id: 8, type: "library" as const }],
         ["instance-analytics", { id: 9, type: "instance-analytics" as const }],
-        [
-          "official authority level",
-          { id: 10, authority_level: "official" as const },
-        ],
+        ["remote synced", { id: 10, is_remote_synced: true }],
         ["archived", { id: 11, archived: true }],
         ["nested (location set)", { id: 12, location: "/3/" }],
       ])(
@@ -310,7 +307,7 @@ describe("Collections > utils", () => {
           id: 42,
           name: "Special",
           description: "A description",
-          authority_level: "official",
+          is_remote_synced: true,
           location: "/1/2/",
           archived: false,
         });
@@ -419,8 +416,8 @@ describe("Collections > utils", () => {
       });
     });
 
-    it("returns regular icon for official collections in OSS", () => {
-      const collection = createMockCollection({ authority_level: "official" });
+    it("returns regular icon for remote synced collections in OSS", () => {
+      const collection = createMockCollection({ is_remote_synced: true });
       const [transformed] = buildCollectionTree([collection]);
       expect(transformed.icon).toEqual({ name: "folder" });
     });
@@ -653,16 +650,17 @@ describe("Collections > utils", () => {
       beforeEach(() => {
         mockSettings({
           "token-features": createMockTokenFeatures({
-            official_collections: true,
+            remote_sync: true,
             audit_app: true,
           }),
         });
         setupEnterpriseOnlyPlugin("collections");
+        setupEnterpriseOnlyPlugin("remote_sync");
       });
 
-      it("returns correct icon for official collections", () => {
+      it("returns official icon for remote synced collections", () => {
         const collection = createMockCollection({
-          authority_level: "official",
+          is_remote_synced: true,
         });
         const [transformed] = buildCollectionTree([collection]);
         expect(transformed.icon).toEqual({
@@ -703,21 +701,13 @@ describe("Collections > utils", () => {
       },
     ];
 
-    const testCasesOSS = [
-      ...commonTestCases,
-      // this is a good test, but due to (#29269) it fails currently
-      // {
-      //   name: "Official collection",
-      //   collection: createMockCollection({ authority_level: "official"}),
-      //   expectedIcon: "folder",
-      // },
-    ];
+    const testCasesOSS = commonTestCases;
 
     const testCasesEE = [
       ...commonTestCases,
       {
-        name: "Official collection",
-        collection: createMockCollection({ authority_level: "official" }),
+        name: "Remote synced collection",
+        collection: createMockCollection({ is_remote_synced: true }),
         expectedIcon: "official_collection",
       },
     ];
@@ -738,11 +728,12 @@ describe("Collections > utils", () => {
       beforeEach(() => {
         mockSettings({
           "token-features": createMockTokenFeatures({
-            official_collections: true,
+            remote_sync: true,
             audit_app: true,
           }),
         });
         setupEnterpriseOnlyPlugin("collections");
+        setupEnterpriseOnlyPlugin("remote_sync");
       });
 
       testCasesEE.forEach((testCase) => {

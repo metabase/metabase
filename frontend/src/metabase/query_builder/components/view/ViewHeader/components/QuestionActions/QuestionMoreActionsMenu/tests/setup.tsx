@@ -12,12 +12,7 @@ import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
 import Question from "metabase-lib/v1/Question";
-import type {
-  Card,
-  ModerationReview,
-  Notification,
-  User,
-} from "metabase-types/api";
+import type { Card, Notification, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockSettings,
@@ -33,7 +28,6 @@ type SetupOpts = {
   isAdmin: boolean;
   isEmailSetup: boolean;
   isEnterprise: boolean;
-  moderationReviews?: ModerationReview[];
 };
 
 export function setup({
@@ -42,17 +36,13 @@ export function setup({
   isAdmin = false,
   isEmailSetup = false,
   isEnterprise = false,
-  moderationReviews,
 }: SetupOpts) {
-  const card = createMockCard(
-    isEnterprise ? { moderation_reviews: moderationReviews ?? [] } : {},
-  );
+  const card = createMockCard();
 
   const tokenFeatures = createMockTokenFeatures({
     advanced_permissions: isEnterprise,
     dashboard_subscription_filters: isEnterprise,
     audit_app: isEnterprise,
-    content_verification: isEnterprise,
   });
 
   const settingValues = createMockSettings({

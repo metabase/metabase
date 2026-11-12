@@ -12,7 +12,6 @@ import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { ExplorationId } from "./exploration";
 import type { Field } from "./field";
 import type { MeasureId } from "./measure";
-import type { ModerationReviewStatus } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
@@ -64,7 +63,7 @@ export type SearchResponse<
 
 export type CollectionEssentials = Pick<
   Collection,
-  "id" | "name" | "authority_level" | "type" | "archived"
+  "id" | "name" | "type" | "archived" | "is_remote_synced"
 > &
   Partial<Pick<Collection, "effective_ancestors">>;
 
@@ -91,19 +90,13 @@ export interface SearchResult<
   collection_type?: Collection["type"];
   table_id: TableId;
   bookmark: boolean | null;
-  dashboard:
-    | (Pick<Dashboard, "id" | "name"> & {
-        moderation_status: ModerationReviewStatus;
-      })
-    | null;
+  dashboard: Pick<Dashboard, "id" | "name"> | null;
   database_id: DatabaseId;
   database_name: string | null;
   display: CardDisplayType | null;
   pk_ref: FieldReference | null;
   table_schema: string | null;
-  collection_authority_level: "official" | null;
   updated_at: string;
-  moderated_status: ModerationReviewStatus | null;
   model_id: CardId | null;
   model_name: string | null;
   model_index_id: number | null;
@@ -167,7 +160,6 @@ export type SearchRequest = {
   last_edited_at?: string | null;
   last_edited_by?: UserId[];
   search_native_query?: boolean | null;
-  verified?: boolean | null;
   model_ancestors?: boolean | null;
   include_dashboard_questions?: boolean | null;
   include_metadata?: boolean | null;

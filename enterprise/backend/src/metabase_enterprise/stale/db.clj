@@ -18,7 +18,7 @@
   (t2/select-pk->fn identity :model/Collection :id [:in collection-ids]))
 
 (mu/defn stale-cards
-  "The listing columns of the Cards with `card-ids`, with their latest moderation status."
+  "The listing columns of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select [:model/Card
               :id
@@ -41,19 +41,7 @@
               :result_metadata
               :dimensions
               :dimension_mappings
-              :last_used_at
-              [^:allow-subquery
-               {:select   [:status]
-                :from     [:moderation_review]
-                :where    [:and
-                           [:= :moderated_item_type "card"]
-                           [:= :moderated_item_id :report_card.id]
-                           [:= :most_recent true]]
-                ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                ;; protecting against potential bugs
-                :order-by [[:id :desc]]
-                :limit    1}
-               :moderated_status]]
+              :last_used_at]
              :id [:in card-ids]))
 
 (mu/defn stale-dashboards

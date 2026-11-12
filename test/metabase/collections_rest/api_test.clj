@@ -76,7 +76,6 @@
                  :effective_ancestors []
                  :can_write           true
                  :name                "Our analytics"
-                 :authority_level     nil
                  :is_personal         false
                  :is_remote_synced    false
                  :id                  "root"
@@ -261,8 +260,7 @@
                            :id                (u/the-id personal-collection)
                            :location          "/"
                            :namespace         nil
-                           :children          []
-                           :authority_level   nil}
+                           :children          []}
                           (some #(when (= (:id %) (u/the-id personal-collection)) %)
                                 response)))))))))
 
@@ -337,8 +335,7 @@
                              :id                (u/the-id personal-collection)
                              :location          "/"
                              :namespace         nil
-                             :children          false
-                             :authority_level   nil}
+                             :children          false}
                             (some #(when (= (:id %) (u/the-id personal-collection)) %)
                                   response))))))
         (let [response (mt/user-http-request :rasta :get 200 (str "collection/tree?shallow=true&collection-id=" (:id a)))]
@@ -453,8 +450,7 @@
                        :id                (:id collection)
                        :location          "/"
                        :namespace         nil
-                       :children          []
-                       :authority_level   nil}
+                       :children          []}
                       (some #(when (= (:id %) (:id collection)) %)
                             (mt/user-http-request user :get 200 "collection/tree"))))))))
 
@@ -731,9 +727,7 @@
 (defn- default-item [{:keys [model] :as item-map}]
   (merge {:id true, :collection_position nil, :entity_id true}
          (when (= model "collection")
-           {:authority_level nil})
-         (when (= model "card")
-           {:moderated_status nil})
+           {:is_remote_synced false})
          item-map))
 
 (defn- collection-item [collection-name & {:as extra-keypairs}]
@@ -742,9 +736,9 @@
             {:id              true
              :description     nil
              :can_write       personal-collection
-             :model           "collection"
-             :authority_level nil
-             :entity_id       true
+             :model            "collection"
+             :is_remote_synced false
+             :entity_id        true
              :name            collection-name}
              personal-collection (assoc :personal_owner_id personal-collection))
            extra-keypairs)))
@@ -753,13 +747,7 @@
   (testing "GET /api/collection/:id/items"
     (testing "check that cards are returned with the collection/items endpoint"
       (mt/with-temp [:model/Collection       collection             {}
-                     :model/User             {user-id :id}          {:first_name "x" :last_name "x" :email "zzzz@example.com"}
-                     :model/Card             {card-id :id :as card} {:collection_id (u/the-id collection)}
-                     :model/ModerationReview _                      {:moderated_item_type "card"
-                                                                     :moderated_item_id   card-id
-                                                                     :status              "verified"
-                                                                     :moderator_id        user-id
-                                                                     :most_recent         true}]
+                     :model/Card             {card-id :id :as card} {:collection_id (u/the-id collection)}]
         (is (= (mt/obj->json->obj
                 [{:collection_id       (:id collection)
                   :dashboard_count     0
@@ -778,7 +766,6 @@
                   :display             "table"
                   :description         nil
                   :entity_id           (:entity_id card)
-                  :moderated_status    "verified"
                   :is_remote_synced    false
                   :model               "card"
                   :last_used_at        (:last_used_at card)
@@ -1672,31 +1659,31 @@
                     :data
                     (map (comp :last_name :last-edit-info)))))))))
 
-(deftest collection-items-include-authority-level-test
+(deftest collection-items-include-is-remote-synced-test
   (testing "GET /api/collection/:id/items"
-    (testing "Results include authority_level"
-      (mt/with-temp [:model/Collection {collection-id :id} {:name "Collection with Items"}
-                     :model/Collection _                   {:name "subcollection"
-                                                            :location (format "/%d/" collection-id)
-                                                            :authority_level "official"}
-                     :model/Card       _                   {:name "card" :collection_id collection-id}
-                     :model/Dashboard  _                   {:name "dash" :collection_id collection-id}]
-        (let [items (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")
-                                               :models ["dashboard" "card" "collection"])
-                         :data)]
-          (is (= #{{:name "card"}
-                   {:name "dash"}
-                   {:name "subcollection" :authority_level "official"}}
-                 (into #{} (map #(select-keys % [:name :authority_level]))
-                       items))))))))
+    (testing "Results include is_remote_synced"
+      (doseq [synced? [true false]]
+        (mt/with-temp [:model/Collection {collection-id :id} {:name "Collection with Items" :is_remote_synced synced?}
+                       :model/Collection _                   {:name             "subcollection"
+                                                              :location         (format "/%d/" collection-id)
+                                                              :is_remote_synced synced?}
+                       :model/Card       _                   {:name "card" :collection_id collection-id}
+                       :model/Dashboard  _                   {:name "dash" :collection_id collection-id}]
+          (let [items (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")
+                                                 :models ["dashboard" "card" "collection"])
+                           :data)]
+            (is (= #{{:name "card" :is_remote_synced synced?}
+                     {:name "dash" :is_remote_synced synced?}
+                     {:name "subcollection" :is_remote_synced synced?}}
+                   (into #{} (map #(select-keys % [:name :is_remote_synced]))
+                         items)))))))))
 
 (deftest collection-items-include-datasets-test
   (testing "GET /api/collection/:id/items"
     (testing "Includes datasets"
       (mt/with-temp [:model/Collection {collection-id :id} {:name "Collection with Items"}
                      :model/Collection _                   {:name "subcollection"
-                                                            :location (format "/%d/" collection-id)
-                                                            :authority_level "official"}
+                                                            :location (format "/%d/" collection-id)}
                      :model/Card       _                   {:name "card" :collection_id collection-id}
                      :model/Card       _                   {:name "dataset" :type :model :collection_id collection-id}
                      :model/Dashboard  _                   {:name "dash" :collection_id collection-id}]
@@ -1762,7 +1749,7 @@
   ;; we always place "special" collection types (i.e. "Metabase Analytics") last
   (testing "Default sort"
     (doseq [app-db [:mysql :h2 :postgres]]
-      (is (= [[:authority_level :asc-nulls-last]
+      (is (= [[[:case [:= :is_remote_synced true] [:inline 0] :else [:inline 1]] :asc]
               [:type :asc-nulls-first]
               [:%lower.name :asc]
               [:id :asc]]
@@ -1770,7 +1757,7 @@
 
 (deftest ^:parallel children-sort-clause-test-2
   (testing "Sorting by last-edited-at"
-    (is (= [[:authority_level :asc-nulls-last]
+    (is (= [[[:case [:= :is_remote_synced true] [:inline 0] :else [:inline 1]] :asc]
             [:type :asc-nulls-first]
             [:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
@@ -1782,7 +1769,7 @@
 
 (deftest ^:parallel children-sort-clause-test-2b
   (testing "Sorting by last-edited-at"
-    (is (= [[:authority_level :asc-nulls-last]
+    (is (= [[[:case [:= :is_remote_synced true] [:inline 0] :else [:inline 1]] :asc]
             [:type :asc-nulls-first]
             [:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
@@ -1794,7 +1781,7 @@
 
 (deftest ^:parallel children-sort-clause-test-2c
   (testing "Sorting by last-edited-by"
-    (is (= [[:authority_level :asc-nulls-last]
+    (is (= [[[:case [:= :is_remote_synced true] [:inline 0] :else [:inline 1]] :asc]
             [:type :asc-nulls-first]
             [:last_edit_last_name :nulls-last]
             [:last_edit_last_name :asc]
@@ -1808,7 +1795,7 @@
 
 (deftest ^:parallel children-sort-clause-test-2d
   (testing "Sorting by last-edited-by"
-    (is (= [[:authority_level :asc-nulls-last]
+    (is (= [[[:case [:= :is_remote_synced true] [:inline 0] :else [:inline 1]] :asc]
             [:type :asc-nulls-first]
             [:%isnull.last_edit_last_name]
             [:last_edit_last_name :asc]
@@ -1822,7 +1809,7 @@
 
 (deftest ^:parallel children-sort-clause-test-3
   (testing "Sorting by model"
-    (is (= [[:authority_level :asc-nulls-last]
+    (is (= [[[:case [:= :is_remote_synced true] [:inline 0] :else [:inline 1]] :asc]
             [:type :asc-nulls-first]
             [:model_ranking :asc]
             [:%lower.name :asc]
@@ -1833,7 +1820,7 @@
 
 (deftest ^:parallel children-sort-clause-test-3b
   (testing "Sorting by model"
-    (is (= [[:authority_level :asc-nulls-last]
+    (is (= [[[:case [:= :is_remote_synced true] [:inline 0] :else [:inline 1]] :asc]
             [:type :asc-nulls-first]
             [:model_ranking :desc]
             [:%lower.name :asc]
@@ -1845,7 +1832,7 @@
 (deftest ^:parallel children-sort-clause-description-test
   (testing "Sorting by description"
     (testing "ascending"
-      (is (= [[:authority_level :asc-nulls-last]
+      (is (= [[[:case [:= :is_remote_synced true] [:inline 0] :else [:inline 1]] :asc]
               [:type :asc-nulls-first]
               [:%lower.description :asc-nulls-last]
               [:%lower.name :asc]
@@ -1854,7 +1841,7 @@
                                                          :sort-direction :asc
                                                          :official-collections-first? true} :postgres))))
     (testing "descending"
-      (is (= [[:authority_level :asc-nulls-last]
+      (is (= [[[:case [:= :is_remote_synced true] [:inline 0] :else [:inline 1]] :asc]
               [:type :asc-nulls-first]
               [:%lower.description :desc-nulls-last]
               [:%lower.name :asc]
@@ -1977,7 +1964,6 @@
     :effective_ancestors [{:metabase.collections.models.collection.root/is-root? true
                            :name                                     "Our analytics"
                            :id                                       "root"
-                           :authority_level                          nil
                            :can_write                                true
                            :is_remote_synced false
                            :is_personal                              false}]
@@ -2165,7 +2151,6 @@
       (mt/with-temp [:model/Collection collection {:name     "Som Test Child Collection"
                                                    :location (collection/location-path root-collection)}]
         (is (= [{:metabase.collections.models.collection.root/is-root? true,
-                 :authority_level                          nil,
                  :name                                     "Our analytics",
                  :id                                       false,
                  :can_write                                true
@@ -2191,7 +2176,6 @@
               :can_restore         false
               :effective_location  nil
               :effective_ancestors []
-              :authority_level     nil
               :parent_id           nil
               :is_personal         false
               :is_remote_synced false
@@ -2789,7 +2773,6 @@
                :description         nil
                :collection_position nil
                :display             "table"
-               :moderated_status    nil
                :entity_id           (:entity_id card)
                :model               "card"
                :fully_parameterized  true}]
@@ -3316,7 +3299,6 @@
                         :effective_ancestors [{:metabase.collections.models.collection.root/is-root? true
                                                :name                                     "Our analytics"
                                                :id                                       "root"
-                                               :authority_level                          nil
                                                :can_write                                true}]
                         :effective_location  "/"
 
@@ -3329,16 +3311,6 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
                                        {:name "My Beautiful Collection"}))))))))
-
-(deftest set-authority-level-after-move-out-of-personal-collection-test
-  (testing "PUT /api/collection/:id allows setting authority_level after moving out of a personal-collection subtree (metabase#30235)"
-    (mt/with-premium-features #{:official-collections}
-      (mt/with-temp [:model/Collection sub {:location (collection/children-location
-                                                       (collection/user->personal-collection (mt/user->id :crowberto)))}]
-        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id sub)) {:parent_id nil})
-        (is (= "official"
-               (:authority_level (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id sub))
-                                                       {:authority_level "official"}))))))))
 
 (deftest archive-collection-test
   (testing "PUT /api/collection/:id"
@@ -3868,25 +3840,12 @@
                  :model/Card _ {:dashboard_id dash-id}]
     (testing "The card's dashboard details are hydrated"
       (is (= {:name dash-name
-              :id dash-id
-              :moderation_status nil}
+              :id dash-id}
              (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show-dashboard-questions=true"))
                   :data
                   (filter #(= (:model %) "card"))
                   first
-                  :dashboard))))
-    (testing "If there are moderation reviews they're included too"
-      (mt/with-temp [:model/ModerationReview _ {:moderated_item_type "dashboard"
-                                                :moderated_item_id   dash-id
-                                                :status              "verified"
-                                                :moderator_id        (mt/user->id :rasta)
-                                                :most_recent         true}]
-        (is (= {:name dash-name :id dash-id :moderation_status "verified"}
-               (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show-dashboard-questions=true"))
-                    :data
-                    (filter #(= (:model %) "card"))
-                    first
-                    :dashboard)))))))
+                  :dashboard))))))
 
 (deftest delete-collection-with-descendants-permissions-test
   (testing "DELETE /api/collection/:id"

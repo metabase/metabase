@@ -52,10 +52,10 @@
                     (let [archived (q {:search-string "feline" :archived? true})]
                       (is (pos? (count (semantic.tu/filter-for-mock-embeddings archived))))
                       (is (every? :archived archived))))
-                  (testing "verified filter"
-                    (let [results (q {:search-string "puppy" :verified true})]
+                  (testing "curated filter"
+                    (let [results (q {:search-string "puppy" :curated? true})]
                       (is (pos? (count (semantic.tu/filter-for-mock-embeddings results))))
-                      (is (every? :verified results))))
+                      (is (every? :curated results))))
                   (testing "creator filter"
                     (let [results (q {:search-string "aquatic" :created-by [(mt/user->id :crowberto)]})]
                       (is (pos? (count (semantic.tu/filter-for-mock-embeddings results))))
@@ -195,17 +195,17 @@
               (is (pos? (count multi-creator-results)))
               (is (every? #(contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %)) multi-creator-results)))))))))
 
-(deftest verified-filtering-test
-  (testing "Filter results by verified status"
+(deftest curated-filtering-test
+  (testing "Filter results by curated status, which follows remote-synced collections"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
         (semantic.tu/with-test-db! {:mode :mock-indexed}
-          (testing "Include only verified items"
-            (let [verified-results (semantic.tu/query-index {:search-string "puppy" :verified true})
-                  filtered-results (semantic.tu/filter-for-mock-embeddings verified-results)]
+          (testing "Include only curated items"
+            (let [curated-results  (semantic.tu/query-index {:search-string "puppy" :curated? true})
+                  filtered-results (semantic.tu/filter-for-mock-embeddings curated-results)]
               (is (pos? (count filtered-results)))
-              (is (every? :verified verified-results))))
-          (testing "Include all items regardless of verified status when filter not specified"
+              (is (every? :curated curated-results))))
+          (testing "Include all items regardless of curated status when filter not specified"
             (let [all-results (semantic.tu/query-index {:search-string "puppy"})
                   filtered-results (semantic.tu/filter-for-mock-embeddings all-results)]
               (is (pos? (count filtered-results))))))))))
@@ -238,16 +238,14 @@
                     (is (every? #(and (= "dashboard" (:model %))
                                       (:archived %)
                                       (contains? #{(mt/user->id :crowberto) (mt/user->id :rasta)} (:creator_id %))) results))))
-                (testing "Verified items with additional filters"
-                  ;; The fixture's only verified entity is a card ("Dog Training Guide"), so filter on
-                  ;; cards here -- a verified-dashboard query would return nothing and assert vacuously.
+                (testing "Curated items with additional filters"
                   (let [results (q {:search-string "puppy"
                                     :models ["card"]
-                                    :verified true
+                                    :curated? true
                                     :archived? false})]
                     (is (pos? (count (semantic.tu/filter-for-mock-embeddings results))))
                     (is (every? #(and (= "card" (:model %))
-                                      (:verified %)
+                                      (:curated %)
                                       (not (:archived %))) results))))))))))))
 
 (deftest permissions-test

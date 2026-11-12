@@ -17,7 +17,6 @@ type SearchRequestFilter = Pick<
   | "created_at"
   | "last_edited_at"
   | "last_edited_by"
-  | "verified"
   | "search_native_query"
   | "context"
   | "models"
@@ -45,7 +44,7 @@ const trackSearchRequest = (
       creation_date: !!searchRequest.created_at,
       last_edit_date: !!searchRequest.last_edited_at,
       last_editor: !!searchRequest.last_edited_by,
-      verified_items: !!searchRequest.verified,
+      verified_items: false,
       search_native_queries: !!searchRequest.search_native_query,
       search_archived: !!searchRequest.archived,
       context: toSnowplowContext(searchRequest.context),

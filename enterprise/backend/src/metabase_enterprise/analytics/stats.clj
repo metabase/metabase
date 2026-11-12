@@ -30,7 +30,7 @@
     :enabled   (and (premium-features/enable-multi-factor-auth?)
                     (mfa/mfa-enabled?))}
    {:name      :sandboxes
-    :available (and (premium-features/enable-official-collections?)
+    :available (and (premium-features/enable-sandboxes?)
                     (analytics.db/database-with-engine-exists? (descendants driver/hierarchy :sql)))
     :enabled   (analytics.db/sandbox-exists?)}
    {:name      :email-allow-list

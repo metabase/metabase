@@ -13,7 +13,11 @@ export const CollectionIcon = ({
   item: IconComponentProps["item"];
 }) => {
   const getIcon = useGetIcon();
-  const icon = getIcon(item);
+  const icon = getIcon(
+    "collection" in item
+      ? { ...item, is_remote_synced: item.collection.is_remote_synced }
+      : item,
+  );
 
   icon.color = icon.color ? icon.color : "text-secondary";
 

@@ -148,10 +148,10 @@
       (assoc :name (:item_name row))
       ;; Include collection if present (from JOINed query)
       (:collection_id row)
-      (assoc :collection {:id              (:collection_id row)
-                          :name            (:collection_name row)
-                          :authority_level (:collection_authority_level row)
-                          :type            (:collection_type row)}))))
+      (assoc :collection {:id               (:collection_id row)
+                          :name             (:collection_name row)
+                          :is_remote_synced (boolean (:collection_is_remote_synced row))
+                          :type             (:collection_type row)}))))
 
 (defn card-strategy
   "Shapes `row` into strategy for a given `card`."

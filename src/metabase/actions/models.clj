@@ -736,10 +736,12 @@
                   ;; workaround for actions not having revisions (yet)
                   :last-edited-at :updated_at
                   :created-at     true
-                  :updated-at     true}
+                  :updated-at     true
+                  :official       [:coalesce :collection.is_remote_synced false]}
    :search-terms [:name :description]
    :render-terms {:model-id   :model.id
-                  :model-name :model.name}
+                  :model-name :model.name
+                  :collection-is-remote-synced :collection.is_remote_synced}
    :where        [:and [:= :collection.namespace nil] [:not= :this.model_id nil]]
    :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
                   :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]

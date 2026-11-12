@@ -3,7 +3,6 @@ import type { ColorName } from "metabase/ui/colors/types";
 import type {
   CardId,
   Collection,
-  CollectionAuthorityLevel,
   CollectionId,
   CollectionItem,
   CollectionType,
@@ -13,14 +12,6 @@ import type {
   IconName,
   TableId,
 } from "metabase-types/api";
-
-export type CollectionAuthorityLevelConfig = {
-  type: CollectionAuthorityLevel;
-  name: string;
-  icon: IconName;
-  color?: ColorName;
-  tooltips?: Record<string, string>;
-};
 
 export type CollectionInstanceAnaltyicsConfig = {
   type: CollectionType;

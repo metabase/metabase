@@ -18,7 +18,7 @@
               :dataset_query :type :archived :card_schema
               ;; required alongside :card_schema for the Card schema upgrade
               :entity_id :result_metadata :dimensions :dimension_mappings
-              :collection.authority_level [:collection.name :collection_name]
+              [[:coalesce :collection.is_remote_synced false] :is_remote_synced] [:collection.name :collection_name]
               [:dashboard.name :dashboard_name] :dashboard_id]
              {:where     [:in :report_card.id ids]
               :left-join [:collection [:= :collection.id :report_card.collection_id]
@@ -30,7 +30,7 @@
   (t2/select [:model/Dashboard
               :id :name :collection_id :description
               :archived
-              :collection.authority_level [:collection.name :collection_name]]
+              [[:coalesce :collection.is_remote_synced false] :is_remote_synced] [:collection.name :collection_name]]
              {:where     [:in :report_dashboard.id ids]
               :left-join [:collection [:= :collection.id :report_dashboard.collection_id]]}))
 
@@ -201,7 +201,7 @@
                 [:= :recent_views.model_id :d.id]]}))
 
 (mu/defn cards-for-recent-views
-  "The Cards with `card-ids` with their Dashboard, Collection, and moderation status."
+  "The Cards with `card-ids` with their Dashboard and Collection."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select :model/Card
              {:select [:card.name
@@ -222,18 +222,12 @@
                        [:dashboard.id :dashboard_id]
                        [:dashboard.name :dashboard_name]
                        [:card.collection_id :entity-coll-id]
-                       [:mr.status :moderated-status]
                        [:collection.id :collection_id]
                        [:collection.name :collection_name]
-                       [:collection.authority_level :collection_authority_level]]
+                       [:collection.is_remote_synced :collection_is_remote_synced]]
               :from [[:report_card :card]]
               :where [:in :card.id card-ids]
-              :left-join [[:moderation_review :mr]
-                          [:and
-                           [:= :mr.moderated_item_id :card.id]
-                           [:= :mr.moderated_item_type "card"]
-                           [:= :mr.most_recent true]]
-                          [:collection]
+              :left-join [[:collection]
                           [:and
                            [:= :collection.id :card.collection_id]
                            [:= :collection.archived false]]
@@ -241,7 +235,7 @@
                           [:= :dashboard.id :card.dashboard_id]]}))
 
 (mu/defn dashboards-for-recent-views
-  "The Dashboards with `dashboard-ids` with their Collection and moderation status."
+  "The Dashboards with `dashboard-ids` with their Collection."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select :model/Dashboard
              {:select [:dash.id
@@ -251,25 +245,19 @@
                        [:dash.collection_id :entity-coll-id]
                        [:c.id :collection_id]
                        [:c.name :collection_name]
-                       [:c.authority_level :collection_authority_level]
-                       [:mr.status :moderated-status]]
+                       [:c.is_remote_synced :collection_is_remote_synced]]
               :from [[:report_dashboard :dash]]
               :where [:in :dash.id dashboard-ids]
-              :left-join [[:moderation_review :mr]
-                          [:and
-                           [:= :mr.moderated_item_id :dash.id]
-                           [:= :mr.moderated_item_type "dashboard"]
-                           [:= :mr.most_recent true]]
-                          [:collection :c]
+              :left-join [[:collection :c]
                           [:and
                            [:= :c.id :dash.collection_id]
                            [:= :c.archived false]]]}))
 
 (mu/defn unarchived-collections-with-details
-  "The unarchived Collections with `collection-ids`, with their location, type, and authority level."
+  "The unarchived Collections with `collection-ids`, with their location, type, and remote-synced flag."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select :model/Collection
-             {:select [:id :name :description :authority_level
+             {:select [:id :name :description :is_remote_synced
                        :archived :location :type]
               :where [:and
                       [:in :id collection-ids]
@@ -355,7 +343,7 @@
                        [:d.collection_id :entity-coll-id]
                        [:c.id :collection_id]
                        [:c.name :collection_name]
-                       [:c.authority_level :collection_authority_level]]
+                       [:c.is_remote_synced :collection_is_remote_synced]]
               :from [[:document :d]]
               :where [:in :d.id document-ids]
               :left-join [[:collection :c]

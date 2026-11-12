@@ -386,65 +386,6 @@ describe("scenarios > browse > metrics", () => {
       });
     });
   });
-
-  describe("verified metrics", () => {
-    beforeEach(() => {
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-    });
-
-    it("should show the verified metrics filter when there are verified metrics, and persist its user setting", () => {
-      cy.intercept(
-        "PUT",
-        "/api/setting/browse-filter-only-verified-metrics",
-      ).as("setSetting");
-
-      createMetrics([ORDERS_SCALAR_METRIC, ORDERS_SCALAR_MODEL_METRIC]);
-      cy.visit("/browse/metrics");
-
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
-      cy.findByLabelText(/show.*verified.*metrics/i).should("not.exist");
-
-      verifyMetric(ORDERS_SCALAR_METRIC);
-
-      verifiedMetricsSwitch().should("have.attr", "aria-selected", "true");
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
-
-      toggleVerifiedMetricsFilter();
-      cy.wait("@setSetting")
-        .its("request.body")
-        .should("deep.equal", { value: false });
-
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
-
-      cy.log("the setting survives a reload");
-      cy.reload();
-      verifiedMetricsSwitch().should("have.attr", "aria-selected", "false");
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
-
-      toggleVerifiedMetricsFilter();
-      cy.wait("@setSetting")
-        .its("request.body")
-        .should("deep.equal", { value: true });
-
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
-
-      cy.reload();
-      verifiedMetricsSwitch().should("have.attr", "aria-selected", "true");
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
-
-      unverifyMetric(ORDERS_SCALAR_METRIC);
-
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
-    });
-  });
 });
 
 function metricsTable() {
@@ -468,38 +409,6 @@ function shouldHaveBookmark(name: string) {
 function shouldNotHaveBookmark(name: string) {
   H.getSidebarSectionTitle(/Bookmarks/).should("not.exist");
   H.navigationSidebar().findByText(name).should("not.exist");
-}
-
-function verifyMetric(metric: StructuredQuestionDetailsWithName) {
-  metricsTable().findByText(metric.name).should("be.visible").click();
-  H.MetricPage.aboutPage().should("be.visible");
-
-  H.MetricPage.moreMenu().click();
-  H.popover().findByText("Verify this metric").click();
-  cy.icon("verified").should("be.visible");
-  H.navigationSidebar()
-    .findByRole("listitem", { name: "Browse metrics" })
-    .click();
-}
-
-function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
-  metricsTable().findByText(metric.name).should("be.visible").click();
-  H.MetricPage.aboutPage().should("be.visible");
-
-  H.MetricPage.moreMenu().click();
-  H.popover().findByText("Remove verification").click();
-  cy.icon("verified").should("not.exist");
-  H.navigationSidebar()
-    .findByRole("listitem", { name: "Browse metrics" })
-    .click();
-}
-
-function verifiedMetricsSwitch() {
-  return cy.findByRole("switch", { name: /show.*verified.*metrics/i });
-}
-
-function toggleVerifiedMetricsFilter() {
-  cy.findByLabelText(/show.*verified.*metrics/i).click();
 }
 
 function createMetrics(metrics: StructuredQuestionDetailsWithName[]) {

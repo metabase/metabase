@@ -153,101 +153,27 @@
     [_filter model query ids]
     (sql.helpers/where query [:in (search.config/column-with-model-alias model :id) ids])))
 
-;; Verified filters
+;; Curated filters for Metabot's "official content" setting, mirroring [[metabase.collections.curation/curated?]]:
+;; an item is curated when its collection (a table's own, or a measure's or segment's table's) is remote-synced.
 
-(defmethod build-optional-filter-query [:verified "card"]
-  [_filter model query verified]
-  (assert (true? verified) "filter for non-verified cards is not supported")
-  (if (premium-features/has-feature? :content-verification)
-    (-> query
-        (sql.helpers/join :moderation_review
-                          [:= :moderation_review.moderated_item_id
-                           (search.config/column-with-model-alias model :id)])
-        (sql.helpers/where [:= :moderation_review.status "verified"]
-                           [:= :moderation_review.moderated_item_type "card"]
-                           [:= :moderation_review.most_recent true]))
-    (sql.helpers/where query false-clause)))
+(defn- curated-collection-query
+  "Restrict `query` to rows whose collection, found through `collection-id-column`, is remote-synced."
+  [query collection-id-column]
+  (sql.helpers/where query [:in collection-id-column ^:allow-subquery {:select [:id]
+                                                                       :from   [:collection]
+                                                                       :where  [:= :is_remote_synced true]}]))
 
-(defmethod build-optional-filter-query [:verified "dataset"]
-  [filter _model query verified]
-  (build-optional-filter-query filter "card" query verified))
-
-(defmethod build-optional-filter-query [:verified "metric"]
-  [filter _model query verified]
-  (build-optional-filter-query filter "card" query verified))
-
-(defmethod build-optional-filter-query [:verified "dashboard"]
-  [_filter model query verified]
-  (assert (true? verified) "filter for non-verified dashboards is not supported")
-  (if (premium-features/has-feature? :content-verification)
-    (-> query
-        (sql.helpers/join :moderation_review
-                          [:= :moderation_review.moderated_item_id
-                           (search.config/column-with-model-alias model :id)])
-        (sql.helpers/where [:= :moderation_review.status "verified"]
-                           [:= :moderation_review.moderated_item_type "dashboard"]
-                           [:= :moderation_review.most_recent true]))
-    (sql.helpers/where query false-clause)))
-
-;; Curated filters — the "verified or curated content" setting for Metabot. The canonical rule is
-;; [[metabase.collections.curation/curated?]], which the appdb/semantic engines apply via a precomputed
-;; `curated` index column. The legacy in-place engine has no such column, so it approximates the rule
-;; in SQL over the signals that are tractable here: verified + official-collection for card-like models,
-;; and published-at-final-layer or authoritative for tables. Library-membership-by-root-collection-type is
-;; not enforced here; the legacy engine is being retired. Keep in sync with [[curated?]].
-
-(defn- curated-card-like-query
-  "Build the curated OR clause for a card-like `model` (`item-type` is the moderation_review type)."
-  [model item-type query]
-  (let [or-clauses (cond-> []
-                     (premium-features/has-feature? :content-verification)
-                     (conj [:= :cur_mr.status "verified"])
-                     (premium-features/has-feature? :official-collections)
-                     (conj [:= :cur_coll.authority_level "official"]))]
-    (-> query
-        (cond-> (premium-features/has-feature? :content-verification)
-          (sql.helpers/left-join [:moderation_review :cur_mr]
-                                 [:and
-                                  [:= :cur_mr.moderated_item_id (search.config/column-with-model-alias model :id)]
-                                  [:= :cur_mr.moderated_item_type item-type]
-                                  [:= :cur_mr.most_recent true]]))
-        (cond-> (premium-features/has-feature? :official-collections)
-          (sql.helpers/left-join [:collection :cur_coll]
-                                 [:= :cur_coll.id (search.config/column-with-model-alias model :collection_id)]))
-        (sql.helpers/where (if (seq or-clauses) (into [:or] or-clauses) false-clause)))))
-
-(doseq [[model item-type] [["card" "card"] ["dataset" "card"] ["metric" "card"] ["dashboard" "dashboard"]]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "table"]]
   (defmethod build-optional-filter-query [:curated model]
     [_filter model query curated?]
     (assert (true? curated?) "filter for non-curated content is not supported")
-    (curated-card-like-query model item-type query)))
-
-(defmethod build-optional-filter-query [:curated "table"]
-  [_filter model query curated?]
-  (assert (true? curated?) "filter for non-curated content is not supported")
-  ;; Approximate collections.curation/curated? for tables: authoritative tables count unconditionally;
-  ;; published tables count only at the `final` layer. Unlike curated? (feature-ungated, since the precomputed
-  ;; column is only written while a feature is active), this live in-place filter gates the published branch
-  ;; on the current :library feature, matching the card-like in-place filters above.
-  (let [authoritative   [:= (search.config/column-with-model-alias model :data_authority) "authoritative"]
-        published-final (when (premium-features/has-feature? :library)
-                          [:and
-                           [:= (search.config/column-with-model-alias model :is_published) true]
-                           [:= (search.config/column-with-model-alias model :data_layer) "final"]])]
-    (sql.helpers/where query (cond-> [:or authoritative]
-                               published-final (conj published-final)))))
+    (curated-collection-query query (search.config/column-with-model-alias model :collection_id))))
 
 (doseq [model ["measure" "segment"]]
   (defmethod build-optional-filter-query [:curated model]
     [_filter _model query curated?]
     (assert (true? curated?) "filter for non-curated content is not supported")
-    ;; A measure or segment is curated when its parent table is published into the Library.
-    ;; This engine has no index row to read the table's root collection type from, so it only checks that the
-    ;; parent table is published, and only with the :library feature, like the table filter above.
-    ;; The legacy query joins the parent table as `table`; see metabase.search.in-place.legacy/search-query-for-model.
-    (sql.helpers/where query (if (premium-features/has-feature? :library)
-                               [:= :table.is_published true]
-                               false-clause))))
+    (curated-collection-query query :table.collection_id)))
 
 ;; Created at filters
 
@@ -421,7 +347,6 @@
                 last-edited-by
                 models
                 search-native-query
-                verified
                 curated?
                 display-type
                 is-superuser?]} search-context
@@ -440,7 +365,6 @@
       (some? last-edited-at)       (set/intersection (:last-edited-at feature->supported-models))
       (some? last-edited-by)       (set/intersection (:last-edited-by feature->supported-models))
       (true? search-native-query)  (set/intersection (:search-native-query feature->supported-models))
-      (true? verified)             (set/intersection (:verified feature->supported-models))
       (true? curated?)             (set/intersection (:curated feature->supported-models))
       (seq   display-type)         (set/intersection (:display-type feature->supported-models)))))
 
@@ -458,7 +382,6 @@
                 last-edited-by
                 search-string
                 search-native-query
-                verified
                 curated?
                 ids
                 display-type]} search-context]
@@ -486,9 +409,6 @@
 
       (some? last-edited-by)
       (#(build-optional-filter-query :last-edited-by model % last-edited-by))
-
-      (some? verified)
-      (#(build-optional-filter-query :verified model % verified))
 
       (true? curated?)
       (#(build-optional-filter-query :curated model % curated?))

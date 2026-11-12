@@ -186,12 +186,10 @@
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
   (mc/schema
-   [:and {:registry {::official [:maybe [:enum :official "official"]]
-                     ::verified [:maybe [:enum :verified "verified"]]
-                     ::pc [:map
+   [:and {:registry {::pc [:map
                            [:id [:or [:int {:min 1}] [:= "root"]]]
                            [:name :string]
-                           [:authority_level ::official]]}}
+                           [:is_remote_synced :boolean]]}}
     [:map
      [:id [:int {:min 1}]]
      [:name :string]
@@ -207,20 +205,16 @@
      [:card [:map
              [:display :string]
              #_[:database_id :int]
-             [:parent_collection ::pc]
-             [:moderated_status ::verified]]]
+             [:parent_collection ::pc]]]
      [:dataset [:map
                 #_[:database_id :int]
-                [:parent_collection ::pc]
-                [:moderated_status ::verified]]]
+                [:parent_collection ::pc]]]
      [:metric [:map
                [:display :string]
-               [:parent_collection ::pc]
-               [:moderated_status ::verified]]]
+               [:parent_collection ::pc]]]
      [:dashboard
       [:map
-       [:parent_collection ::pc]
-       [:moderated_status ::verified]]]
+       [:parent_collection ::pc]]]
      [:table [:map
               [:display_name :string]
               [:table_schema [:maybe :string]]
@@ -230,7 +224,7 @@
      [:collection [:map
                    [:parent_collection ::pc]
                    [:effective_location :string]
-                   [:authority_level ::official]]]
+                   [:is_remote_synced :boolean]]]
      [:document [:map
                  [:parent_collection ::pc]]]]]))
 
@@ -258,7 +252,7 @@
 (defn- root-coll []
   (select-keys
    (root/root-collection-with-ui-details nil)
-   [:id :name :authority_level]))
+   [:id :name :is_remote_synced]))
 
 ;; ================== Recent Cards ==================
 
@@ -273,7 +267,7 @@
   (if (:collection_id model-object)
     {:id (:collection_id model-object)
      :name (:collection_name model-object)
-     :authority_level (some-> (:collection_authority_level model-object) name)}
+     :is_remote_synced (boolean (:collection_is_remote_synced model-object))}
     (root-coll)))
 
 (defn- parent-collection-valid?
@@ -305,7 +299,6 @@
      :model :card
      :can_write (mi/can-write? card)
      :timestamp (str timestamp)
-     :moderated_status (:moderated-status card)
      :parent_collection (fill-parent-coll card)}))
 
 (defmethod fill-recent-view-info :dataset [{:keys [_model model_id timestamp model_object]}]
@@ -322,8 +315,6 @@
      :result_metadata (:result_metadata dataset)
      :can_write (mi/can-write? dataset)
      :timestamp (str timestamp)
-     ;; another table that doesn't differentiate between card and dataset :cry:
-     :moderated_status (:moderated-status dataset)
      :parent_collection (fill-parent-coll dataset)}))
 
 (defmethod fill-recent-view-info :metric [{:keys [_model model_id timestamp model_object]}]
@@ -339,7 +330,6 @@
      :result_metadata (:result_metadata metric)
      :can_write (mi/can-write? metric)
      :timestamp (str timestamp)
-     :moderated_status (:moderated-status metric)
      :parent_collection (fill-parent-coll metric)}))
 
 ;; ================== Recent Dashboards ==================
@@ -361,7 +351,6 @@
      :model :dashboard
      :can_write (mi/can-write? dashboard)
      :timestamp (str timestamp)
-     :moderated_status (:moderated-status dashboard)
      :parent_collection (fill-parent-coll dashboard)}))
 
 ;; ================== Recent Collections ==================
@@ -371,7 +360,7 @@
   [collection-ids]
   (if-not (seq collection-ids)
     []
-    (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
+    (let [;; these have their parent collection id in effective_location, but we need the id, name, and is_remote_synced.
           collections (activity-feed.db/unarchived-collections-with-details collection-ids)]
       (->> (t2/hydrate collections :effective_parent)
            (map #(m/dissoc-in % [:effective_parent :type]))))))
@@ -386,7 +375,7 @@
      :model :collection
      :can_write (mi/can-write? collection)
      :timestamp (str timestamp)
-     :authority_level (some-> (:authority_level collection) name)
+     :is_remote_synced (boolean (:is_remote_synced collection))
      :collection_type (some-> (:type collection) name)
      :effective_location (:effective_location collection)
      :parent_collection (or (:effective_parent collection) (root-coll))}))

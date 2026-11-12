@@ -262,10 +262,13 @@
   (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,
             so Metabot can render them (BOT-1570) — not just stored in the filtering column"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Database {db-id :id} {}
+      (mt/with-temp [:model/Database   {db-id :id}   {}
+                     :model/Collection {coll-id :id} {:is_remote_synced true}
                      :model/Table _ {:db_id          db-id
                                      :name           "Curatedgoldtbl"
                                      :active         true
+                                     :collection_id  coll-id
+                                     :is_published   true
                                      :data_authority :authoritative
                                      :data_layer     :final}]
         (let [result (->> (search.tu/search-results "Curatedgoldtbl")

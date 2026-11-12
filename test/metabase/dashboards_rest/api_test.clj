@@ -543,7 +543,6 @@
                      :creator_id                 (mt/user->id :rasta)
                      :collection                 true
                      :collection_id              true
-                     :collection_authority_level nil
                      :can_write                  false
                      :param_fields               {}
                      :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
@@ -552,7 +551,6 @@
                                                    :size_y                     4
                                                    :col                        0
                                                    :row                        0
-                                                   :collection_authority_level nil
                                                    :updated_at                 true
                                                    :created_at                 true
                                                    :entity_id                  (:entity_id dashcard)
@@ -629,7 +627,6 @@
             (is (=? {:name                       "Test Dashboard"
                      :creator_id                 (mt/user->id :rasta)
                      :collection_id              true
-                     :collection_authority_level nil
                      :can_write                  false
                      :param_fields               {:foo [{:id               field-id
                                                          :table_id         table-id
@@ -647,7 +644,6 @@
                                                    :updated_at                 true
                                                    :created_at                 true
                                                    :entity_id                  (:entity_id dashcard)
-                                                   :collection_authority_level nil
                                                    :parameter_mappings         [{:card_id      1
                                                                                  :parameter_id "foo"
                                                                                  :target       ["dimension" ["field" field-id nil]]}]
@@ -668,20 +664,20 @@
 
 (deftest fetch-dashboard-test-4
   (testing "GET /api/dashboard/:id"
-    (testing "fetch a dashboard from an official collection includes the collection type"
+    (testing "fetch a dashboard from a remote-synced collection reports it as remote-synced"
       (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
                      :model/Card          {card-id :id}      {:name "Dashboard Test Card"}
                      :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
         (with-dashboards-in-readable-collection! [dashboard-id]
           (api.card-test/with-cards-in-readable-collection! [card-id]
-            (is (nil?
+            (is (false?
                  (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
-                     :collection_authority_level)))
+                     :is_remote_synced)))
             (let [collection-id (:collection_id (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))]
-              (t2/update! :model/Collection :id collection-id {:authority_level "official"}))
-            (is (= "official"
-                   (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
-                       :collection_authority_level)))))))))
+              (t2/update! :model/Collection :id collection-id {:is_remote_synced true}))
+            (is (true?
+                 (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
+                     :is_remote_synced)))))))))
 
 (deftest fetch-dashboard-permissions-test
   (testing "GET /api/dashboard/:id"
@@ -2527,8 +2523,7 @@
                    :parameter_mappings         [{:parameter_id "abc" :card_id 123, :target ["dimension" ["template-tag" "foo"]]}]
                    :visualization_settings     {}
                    :created_at                 true
-                   :updated_at                 true
-                   :collection_authority_level nil}
+                   :updated_at                 true}
                   (-> resp
                       first
                       (dissoc :id :dashboard_id :action_id :card_id :entity_id)
@@ -5439,20 +5434,6 @@
              (t2/select-one-fn #(get-in % [:parameter_mappings 0 :target 1])
                                :model/DashboardCard :id dashcard-id))))))
 
-(deftest querying-a-dashboard-returns-moderated_status
-  (mt/dataset test-data
-    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
-                   :model/ModerationReview _ {:moderated_item_id dashboard-id
-                                              :moderated_item_type "dashboard"
-                                              :moderator_id (mt/user->id :crowberto)
-                                              :most_recent true
-                                              :status "verified"}]
-      (is (malli= [:sequential
-                   [:map
-                    [:most_recent [:= true]]
-                    [:moderator_id [:= (mt/user->id :crowberto)]]]]
-                  (:moderation_reviews (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id))))))))
-
 (deftest dashboard-internal-cards-test
   ;; setup:
   ;; - a collection, with a dashboard in it, with two dashboard-internal cards in that dashboard:
@@ -6686,16 +6667,6 @@
           (perms/grant-collection-read-permissions! (perms-group/all-users) readable-coll)
           (is (=? {:dashcards [{:card {:id metric-id}}]}
                   (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dash-id)))))))))
-
-(deftest dashcard-includes-card-collection-authority-level-test
-  (testing "GET /api/dashboard/:id dashcards carry collection_authority_level from their own card's collection"
-    (mt/with-temp [:model/Collection {official-coll :id} {:authority_level "official"}
-                   :model/Dashboard  {dashboard-id :id}  {}
-                   :model/Card       {card-id :id}       {:collection_id official-coll}
-                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id}]
-      (is (= ["official"]
-             (map :collection_authority_level
-                  (:dashcards (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id)))))))))
 
 (deftest dashboard-card-query-export-format-no-self-service-test
   (testing "metabase#20868: CSV export works for a GUI card with a dimension param and no create-queries perms"

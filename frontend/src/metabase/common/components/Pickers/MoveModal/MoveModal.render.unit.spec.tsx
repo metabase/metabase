@@ -72,7 +72,7 @@ const movingCard = {
   id: 1,
   name: "Test Question",
   model: "card",
-  collection: { id: 11, name: "First Collection", authority_level: null },
+  collection: { id: 11, name: "First Collection" },
 } as OmniPickerCollectionItem;
 
 // Unjustified type cast. FIXME
@@ -80,7 +80,7 @@ const movingDashboard = {
   id: 2,
   name: "Test Dashboard",
   model: "dashboard",
-  collection: { id: 11, name: "First Collection", authority_level: null },
+  collection: { id: 11, name: "First Collection" },
 } as OmniPickerCollectionItem;
 
 describe("MoveModal", () => {

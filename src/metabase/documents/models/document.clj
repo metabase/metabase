@@ -537,7 +537,8 @@
            :created-at :created_at
            :updated-at :updated_at
            :last-viewed-at :last_viewed_at
-           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
+           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+           :official [:coalesce :collection.is_remote_synced false]}
    :search-terms {:name true
                   :document document->search-text}
    ;; Document bodies are full-text searchable (via `document->search-text` above) but are
@@ -546,7 +547,7 @@
    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
    :render-terms {:document-name :name
                   :document-id :id
-                  :collection-authority_level :collection.authority_level
+                  :collection-is_remote_synced :collection.is_remote_synced
                   :collection-location        :collection.location
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned

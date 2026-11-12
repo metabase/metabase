@@ -26,7 +26,6 @@
    [metabase.collections.init]
    [metabase.comments.init]
    [metabase.config.core :as config]
-   [metabase.content-verification.init]
    [metabase.dashboards.init]
    [metabase.documents.init]
    [metabase.driver.init]

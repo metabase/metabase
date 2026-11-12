@@ -29,7 +29,7 @@
   ;; up below), so no engine or index runs. active-engines is
   ;; pinned to include semantic so search/search takes the two-engine fusion branch (term queries via the
   ;; fallback engine, semantic queries via semantic), regardless of whether this instance has pgvector.
-  (mt/with-additional-premium-features #{:content-verification}
+  (mt/with-additional-premium-features #{}
     (mt/with-test-user :rasta
       (let [order-table {:id 1
                          :model "table"
@@ -41,8 +41,7 @@
             dashboard {:id 2
                        :model "dashboard"
                        :name "Sales Dashboard"
-                       :description "Dashboard for sales"
-                       :verified true}]
+                       :description "Dashboard for sales"}]
         (mt/with-dynamic-fn-redefs [perms/impersonated-user? (fn [] false)
                                     perms/sandboxed-user? (fn [] false)
                                     search.engine/active-engines (constantly [:search.engine/semantic :search.engine/appdb])
@@ -110,11 +109,10 @@
                           :entity-types ["table"]}
                     results (search/search args)]
                 (is (empty? results)))))
-          (testing "search with metabot verified-or-curated content flag"
+          (testing "search with metabot official-or-curated content flag"
             (let [metabot {:entity_id "test-bot"
                            :use_verified_content true}]
               (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
-                                                                       ;; use_verified_content now drives the curated filter, not :verified
                                                                        (is (true? (:curated? context)))
                                                                        [dashboard])]
                 (let [results (search/search {:term-queries ["test"]

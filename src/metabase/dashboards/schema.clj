@@ -2,7 +2,6 @@
   (:require
    [metabase.actions.schema]
    [metabase.collections.schema]
-   [metabase.content-verification.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -34,18 +33,15 @@
    ::dashboard.update
    [:map {:closed true}
     [:id                         ::lib.schema.id/dashboard]
-    [:moderation_status          {:optional true} [:maybe [:or :keyword :string]]]
     [:resolved-params            {:optional true} [:maybe [:map-of ms/NonBlankString ::parameters.schema/resolved-parameter]]]
     [:dashcards                  {:optional true} [:maybe [:sequential [:ref ::dashboard-card]]]]
     [:tabs                       {:optional true} [:maybe [:sequential ::dashboard-tab]]]
-    [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
     [:can_write                  {:optional true} :boolean]
     [:can_restore                {:optional true} :boolean]
     [:can_delete                 {:optional true} :boolean]
     [:can_set_cache_policy       {:optional true} :boolean]
     [:param_fields               {:optional true} [:maybe [:map-of :string [:sequential ::queries.schema/param-field]]]]
     [:is_remote_synced           {:optional true} :boolean]
-    [:moderation_reviews         {:optional true} [:sequential :metabase.content-verification.schema/moderation-review]]
     [:collection                 {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
     [:last_used_param_values     {:optional true} [:maybe [:map-of :string [:maybe :metabase.users.schema/user-parameter-value.value]]]]
     [:creator                    {:optional true} [:maybe :metabase.users.schema/user]]
@@ -103,7 +99,6 @@
    ::dashboard-card.update
    [:map {:closed true}
     [:id                     ::lib.schema.id/dashcard]
-    [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
     [:card                   {:optional true} [:maybe [:ref ::queries.schema/card]]]
     [:series                 {:optional true} [:maybe [:sequential [:ref ::queries.schema/card]]]]
     ;; hydrated onto public and embedded dashcards only

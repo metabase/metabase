@@ -20,7 +20,6 @@ import { NativeQueryFilter } from "metabase/search/components/filters/NativeQuer
 import { PersonalCollectionsFilter } from "metabase/search/components/filters/PersonalCollectionsFilter";
 import { SearchTrashedItemsFilter } from "metabase/search/components/filters/SearchTrashedItemsFilter";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
-import { PLUGIN_SEARCH_FILTERS } from "metabase/search/plugins";
 import { Stack } from "metabase/ui";
 
 type SearchSidebarProps = {
@@ -39,7 +38,6 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     [SearchFilterKeys.CreatedAt]: CreatedAtFilter,
     [SearchFilterKeys.LastEditedBy]: LastEditedByFilter,
     [SearchFilterKeys.LastEditedAt]: LastEditedAtFilter,
-    [SearchFilterKeys.Verified]: PLUGIN_SEARCH_FILTERS.VerifiedFilter,
     [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
     [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilter,
     [SearchFilterKeys.PersonalCollections]: PersonalCollectionsFilter,
@@ -110,7 +108,6 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
         {getFilter(SearchFilterKeys.CreatedAt)}
         {getFilter(SearchFilterKeys.LastEditedAt)}
       </Stack>
-      {getFilter(SearchFilterKeys.Verified)}
       {getFilter(SearchFilterKeys.NativeQuery)}
       {getFilter(SearchFilterKeys.SearchTrashedItems)}
       {showOtherUsersCollections &&

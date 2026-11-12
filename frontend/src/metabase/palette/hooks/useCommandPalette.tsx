@@ -214,7 +214,8 @@ export const useCommandPalette = ({
               });
             },
             extra: {
-              moderatedStatus: result.moderated_status,
+              collection:
+                result.model !== "collection" ? result.collection : null,
               href: modelToUrl(result),
               iconColor: icon.color,
               subtext: getSearchResultSubtext(result),
@@ -265,9 +266,10 @@ export const useCommandPalette = ({
           section: "recent",
           perform: () => {},
           extra: {
-            moderatedStatus: isRecentCollectionItem(item)
-              ? item.moderated_status
-              : null,
+            collection:
+              isRecentCollectionItem(item) && item.model !== "collection"
+                ? item.parent_collection
+                : null,
             href: Urls.modelToUrl(item),
             iconColor: icon.color,
             subtext: getRecentItemSubtext(item),

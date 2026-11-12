@@ -79,11 +79,11 @@
 
 (deftest ^:parallel collection->xml-test
   (testing "formats collection with name"
-    (let [collection {:name "Finance" :description "Finance reports" :authority_level "official"}
+    (let [collection {:name "Finance" :description "Finance reports" :is_remote_synced true}
           xml (llm-shape/collection->xml collection)]
       (is (str/includes? xml "<collection"))
       (is (str/includes? xml "name=\"Finance\""))
-      (is (str/includes? xml "authority_level=\"official\""))
+      (is (str/includes? xml "is_official=\"true\""))
       (is (str/includes? xml "<description>Finance reports</description>"))))
   (testing "uses default name for nil"
     (let [collection {:name nil}
@@ -95,7 +95,7 @@
     (let [metric {:id 42
                   :name "Total Revenue"
                   :description "Sum of all revenue"
-                  :verified true
+                  :official true
                   :collection {:name "Finance"}
                   :default_time_dimension_field_name "date"
                   :queryable-dimensions [{:name "date" :field_id "d1" :base-type :type/Date :database_type "DATE"}]}
@@ -103,7 +103,7 @@
       (is (str/starts-with? xml "<metric"))
       ;; Python format: id="42", name="Total Revenue"
       (is (str/includes? xml "id=\"42\", name=\"Total Revenue\""))
-      (is (str/includes? xml "is_verified=\"true\""))
+      (is (str/includes? xml "is_official=\"true\""))
       (is (str/includes? xml "### Metric Description"))
       (is (str/includes? xml "Sum of all revenue"))
       (is (str/includes? xml "### Dimensions"))
@@ -113,12 +113,12 @@
       (is (str/includes? xml "Default Time Dimension Field: date"))
       (is (str/ends-with? (str/trim xml) "</metric>"))))
   (testing "handles metric without dimensions"
-    (let [metric {:id 1 :name "Test" :verified false}
+    (let [metric {:id 1 :name "Test" :official false}
           xml (llm-shape/metric->xml metric)]
-      (is (str/includes? xml "is_verified=\"false\""))
+      (is (str/includes? xml "is_official=\"false\""))
       (is (not (str/includes? xml "### Dimensions")))))
   (testing "surfaces join-required (FK-less join) dimensions with the pasteable join clause (BOT-1612)"
-    (let [metric {:id 42 :name "Order Count by Campaign" :verified true
+    (let [metric {:id 42 :name "Order Count by Campaign" :official true
                   :join-required-dimensions
                   [{:join_alias   "Campaign"
                     :target_table "CAMPAIGNS"
@@ -351,7 +351,7 @@
     (let [model {:id 5
                  :name "Sales Model"
                  :description "Aggregated sales data"
-                 :verified true
+                 :official true
                  :database_id 1
                  :database_engine "postgres"
                  :fields [{:name "revenue" :field_id "r1" :base-type :type/Float :database_type "DOUBLE"}]}
@@ -360,7 +360,7 @@
       (is (str/starts-with? xml "<metabase-model"))
       (is (str/includes? xml "id=\"5\""))
       (is (str/includes? xml "name=\"Sales Model\""))
-      (is (str/includes? xml "is_verified=\"true\""))
+      (is (str/includes? xml "is_official=\"true\""))
       (is (str/includes? xml "database_id=\"1\""))
       (is (str/includes? xml "database_engine=\"postgres\""))
       (is (str/includes? xml "fully_qualified_name=\"{#5}-sales-model\""))
@@ -502,12 +502,12 @@
     (let [question {:id 100
                     :name "Revenue Report"
                     :description "Monthly revenue breakdown"
-                    :verified true
+                    :official true
                     :collection {:name "Finance"}}
           xml (llm-shape/question->xml question)]
       (is (str/starts-with? xml "<metabase_question"))
       (is (str/includes? xml "id=\"100\""))
-      (is (str/includes? xml "is_verified=\"true\""))
+      (is (str/includes? xml "is_official=\"true\""))
       (is (str/includes? xml "<name>Revenue Report</name>"))
       (is (str/includes? xml "<description>Monthly revenue breakdown</description>"))
       (is (str/includes? xml "The question is stored in the following collection"))
@@ -575,14 +575,14 @@
     (let [dashboard {:id 50
                      :name "Sales Dashboard"
                      :description "Overview of sales metrics"
-                     :verified true
+                     :official true
                      :collection {:name "Sales"}
                      :dashcards [{:id 1 :type :text :order 1 :width 6 :height 2
                                   :dashboard_tab_id 0 :row 0 :col 0 :text "Welcome"}]}
           xml (llm-shape/dashboard->xml dashboard)]
       (is (str/starts-with? xml "<dashboard"))
       (is (str/includes? xml "id=\"50\""))
-      (is (str/includes? xml "is_verified=\"true\""))
+      (is (str/includes? xml "is_official=\"true\""))
       (is (str/includes? xml "<name>Sales Dashboard</name>"))
       (is (str/includes? xml "<description>Overview of sales metrics</description>"))
       (is (str/includes? xml "The dashboard is stored in the following collection"))
@@ -647,13 +647,13 @@
                   :type :metric
                   :name "Revenue Metric"
                   :description "Total revenue calculation"
-                  :verified true
+                  :official true
                   :collection {:name "Finance"}}
           xml (llm-shape/search-result->xml result)]
       (is (str/starts-with? xml "<metric"))
       (is (str/includes? xml "id=\"100\""))
       (is (str/includes? xml "name=\"Revenue Metric\""))
-      (is (str/includes? xml "is_verified=\"true\""))
+      (is (str/includes? xml "is_official=\"true\""))
       (is (str/includes? xml "Total revenue calculation"))
       (is (str/includes? xml "Collection: Finance"))
       (is (str/ends-with? (str/trim xml) "</metric>")))))
@@ -736,7 +736,7 @@
                   :name "Sales Model"
                   :database_id 1
                   :database_engine :postgres
-                  :verified true}
+                  :official true}
           xml (llm-shape/search-result->xml result)]
       (is (str/starts-with? xml "<model"))
       (is (str/includes? xml "database_id=\"1\""))
@@ -748,7 +748,7 @@
     (let [result {:id 175
                   :type "question"
                   :name "Orders, Count"
-                  :verified false
+                  :official false
                   :database_id 1
                   :database_engine "h2"
                   :portable_entity_id "dh9P5mz7vhpqYUPosLPqL"}
@@ -762,7 +762,7 @@
     (let [result {:id 42
                   :type "model"
                   :name "Sales Model"
-                  :verified true
+                  :official true
                   :database_id 1
                   :database_engine "postgres"
                   :portable_entity_id "AbCdEfGhIjKlMnOpQrStU"}
@@ -772,14 +772,14 @@
 (deftest ^:parallel search-result->xml-test-7
   (testing "search result without portable_entity_id simply omits the attribute"
     (let [result {:id 99 :type "question" :name "Legacy"
-                  :verified false :database_id 1 :database_engine "h2"}
+                  :official false :database_id 1 :database_engine "h2"}
           xml (llm-shape/search-result->xml result)]
       (is (not (str/includes? xml "portable_entity_id"))))))
 
 (deftest ^:parallel search-result->xml-test-8
   (testing "table search result never carries portable_entity_id"
     (let [result {:id 10 :type "table" :name "ORDERS"
-                  :verified false :database_id 1 :database_engine "h2"
+                  :official false :database_id 1 :database_engine "h2"
                   :database_schema "PUBLIC"}
           xml (llm-shape/search-result->xml result)]
       (is (not (str/includes? xml "portable_entity_id"))))))

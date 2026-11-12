@@ -197,9 +197,9 @@
           (is (= :line (:display card))))))))
 
 (deftest curated-only-chart-test
-  (mt/with-additional-premium-features #{:content-verification :official-collections :library}
+  (mt/with-additional-premium-features #{:library}
     (mt/with-model-cleanup [:model/Card]
-      (mt/with-temp [:model/Collection {official :id}   {:name "Official", :authority_level "official"}
+      (mt/with-temp [:model/Collection {official :id}   {:name "Official", :is_remote_synced true}
                      :model/Collection {coll :id}       {:name "Saved charts"}
                      :model/Card       {curated-id :id} {:name          "Curated venues"
                                                          :collection_id official

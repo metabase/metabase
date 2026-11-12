@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/metrics_bot.svg";
-import { skipToken } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
@@ -12,7 +11,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import { useDocsUrl } from "metabase/common/hooks";
 import { canUserCreateQueries } from "metabase/current-user";
-import { PLUGIN_CONTENT_VERIFICATION, PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
@@ -33,19 +32,11 @@ import S from "../components/BrowseContainer.module.css";
 
 import { MetricsTable } from "./MetricsTable";
 import { trackNewMetricInitiated } from "./analytics";
-import type { MetricFilterSettings, MetricResult } from "./types";
+import type { MetricResult } from "./types";
 import { useFetchMetrics } from "./use-fetch-metrics";
 
-const {
-  contentVerificationEnabled,
-  MetricFilterControls,
-  getDefaultMetricFilters,
-} = PLUGIN_CONTENT_VERIFICATION;
-
 export function BrowseMetrics() {
-  const [metricFilters, setMetricFilters] = useMetricFilterSettings();
-  const { isLoading, error, metrics, hasVerifiedMetrics } =
-    useFilteredMetrics(metricFilters);
+  const { isLoading, error, metrics } = useMetrics();
 
   const isEmpty = !isLoading && !error && !metrics?.length;
   const titleId = useMemo(() => _.uniqueId("browse-metrics"), []);
@@ -109,12 +100,6 @@ export function BrowseMetrics() {
                     <Icon name="add" />
                   </ActionIcon>
                 </Tooltip>
-              )}
-              {hasVerifiedMetrics && (
-                <MetricFilterControls
-                  metricFilters={metricFilters}
-                  setMetricFilters={setMetricFilters}
-                />
               )}
             </Group>
           </Flex>
@@ -192,77 +177,16 @@ function MetricsEmptyState({
   );
 }
 
-function useMetricFilterSettings() {
-  const defaultMetricFilters = useSelector(getDefaultMetricFilters);
-  return useState(defaultMetricFilters);
-}
-
-function useHasVerifiedMetrics() {
-  const result = useFetchMetrics(
-    contentVerificationEnabled
-      ? {
-          filter_items_in_personal_collection: "exclude",
-          model_ancestors: false,
-          limit: 0,
-          verified: true,
-        }
-      : skipToken,
-  );
-
-  if (!contentVerificationEnabled) {
-    return {
-      isLoading: false,
-      error: null,
-      result: false,
-    };
-  }
-
-  const total = result.data?.total ?? 0;
+function useMetrics() {
+  const metricsResult = useFetchMetrics({
+    filter_items_in_personal_collection: "exclude",
+    model_ancestors: false,
+  });
 
   return {
-    isLoading: result.isLoading,
-    error: result.error,
-    result: total > 0,
+    isLoading: metricsResult.isLoading,
+    error: metricsResult.error,
+    // Unjustified type cast. FIXME
+    metrics: metricsResult.data?.data as MetricResult[] | undefined,
   };
-}
-
-function useFilteredMetrics(metricFilters: MetricFilterSettings) {
-  const hasVerifiedMetrics = useHasVerifiedMetrics();
-
-  const filters = cleanMetricFilters(metricFilters, hasVerifiedMetrics.result);
-
-  const metricsResult = useFetchMetrics(
-    hasVerifiedMetrics.isLoading || hasVerifiedMetrics.error
-      ? skipToken
-      : {
-          filter_items_in_personal_collection: "exclude",
-          model_ancestors: false,
-          ...filters,
-        },
-  );
-
-  const isLoading = hasVerifiedMetrics.isLoading || metricsResult.isLoading;
-  const error = hasVerifiedMetrics.error || metricsResult.error;
-  // Unjustified type cast. FIXME
-  const metrics = metricsResult.data?.data as MetricResult[] | undefined;
-
-  return {
-    isLoading,
-    error,
-    hasVerifiedMetrics: hasVerifiedMetrics.result,
-    metrics,
-  };
-}
-
-function cleanMetricFilters(
-  metricFilters: MetricFilterSettings,
-  hasVerifiedMetrics: boolean,
-) {
-  const filters = { ...metricFilters };
-  if (!hasVerifiedMetrics || !filters.verified) {
-    // we cannot pass false or undefined to the backend
-    // delete the key instead
-    delete filters.verified;
-  }
-  return filters;
 }

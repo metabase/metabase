@@ -1,14 +1,15 @@
 import { useCallback } from "react";
+import { t } from "ttag";
 
-import type {
-  CollectionAuthorityLevelConfig,
-  CollectionInstanceAnaltyicsConfig,
-} from "metabase/common/collections/types";
+import {
+  OFFICIAL_ICON_COLOR,
+  OFFICIAL_ICON_NAME,
+} from "metabase/common/collections/constants";
+import type { CollectionInstanceAnaltyicsConfig } from "metabase/common/collections/types";
 import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
 import { useGetIconBase } from "metabase/hooks/use-icon";
 import { type ItemWithCollection, PLUGIN_LIBRARY } from "metabase/plugins";
 import type {
-  Bookmark,
   Collection,
   CollectionId,
   CollectionType,
@@ -17,31 +18,13 @@ import type {
 import {
   COLLECTION_TYPES,
   INSTANCE_ANALYTICS_COLLECTION,
-  OFFICIAL_COLLECTION,
   REGULAR_COLLECTION,
-  REMOTE_SYNC_COLLECTION,
 } from "./constants";
 
-export function isRegularCollection({
-  authority_level,
-  type,
-}: Bookmark | Partial<Collection>) {
-  // Root, personal collections don't have `authority_level`
-  return (
-    (!authority_level || authority_level === REGULAR_COLLECTION.type) &&
-    type !== "instance-analytics"
-  );
-}
-
 export function getCollectionType({
-  authority_level,
   type,
-}: Partial<Collection>):
-  | CollectionAuthorityLevelConfig
-  | CollectionInstanceAnaltyicsConfig {
-  return (
-    COLLECTION_TYPES?.[String(type || authority_level)] ?? REGULAR_COLLECTION
-  );
+}: Partial<Collection>): CollectionInstanceAnaltyicsConfig {
+  return COLLECTION_TYPES?.[String(type)] ?? REGULAR_COLLECTION;
 }
 
 export function isInstanceAnalyticsCollection(
@@ -52,20 +35,11 @@ export function isInstanceAnalyticsCollection(
   );
 }
 
-export function isSyncedCollection(
-  collection: Pick<Collection, "is_remote_synced">,
-): boolean {
-  return collection.is_remote_synced === true;
-}
-
 export const useGetIcon = () => {
   const getIconBase = useGetIconBase();
 
   return useCallback(
-    (
-      item: ObjectWithModel,
-      { isTenantUser = false }: { isTenantUser?: boolean } = {},
-    ): IconData => {
+    (item: ObjectWithModel): IconData => {
       const collectionType = getCollectionType({
         // Unjustified type cast. FIXME
         type: (item.type as CollectionType) || item.collection_type,
@@ -82,27 +56,13 @@ export const useGetIcon = () => {
           return getIconBase(item);
         }
 
-        // tenant users see the normal icon, they don't know what a synced collection is
-        if (item.is_remote_synced && !isTenantUser) {
+        if (item.is_remote_synced) {
           return {
-            name: REMOTE_SYNC_COLLECTION.icon,
+            name: OFFICIAL_ICON_NAME,
+            color: OFFICIAL_ICON_COLOR,
+            tooltip: t`Official collection`,
           };
         }
-
-        if (
-          item.authority_level === "official" ||
-          item.collection_authority_level === "official"
-        ) {
-          return {
-            name: OFFICIAL_COLLECTION.icon,
-            color: OFFICIAL_COLLECTION.color,
-            tooltip: OFFICIAL_COLLECTION.tooltips?.default,
-          };
-        }
-      }
-
-      if (item.model === "dataset" && item.moderated_status === "verified") {
-        return { name: "model_with_badge" };
       }
 
       return getIconBase(item);

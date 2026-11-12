@@ -71,14 +71,13 @@
      [:content :text :not-null]
      [:display_type :text]
      [:archived :boolean [:default false]]
-     [:official_collection :boolean]
+     [:official :boolean]
      [:pinned :boolean]
-     [:verified :boolean]
      [:collection_type :text]
      [:root_collection_type :text]
      [:data_layer :text]
      [:data_authority :text]
-     ;; Precomputed "verified or curated content" flag — see metabase.collections.curation/curated?
+     ;; Precomputed "official or curated content" flag — see metabase.collections.curation/curated?
      [:curated :boolean]
      [:dashboardcard_count :int]
      [:view_count :int]
@@ -160,7 +159,7 @@
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
   [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
-                     last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
+                     last_editor_id archived official database_id collection_id display_type legacy_input
                      pinned dashboardcard_count view_count last_viewed_at collection_type root_collection_type
                      data_layer data_authority curated] :as doc}]
   {:model               model
@@ -174,9 +173,8 @@
    :content             embeddable_text
    :display_type        display_type
    :archived            (some-> archived to-boolean)
-   :official_collection (some-> official_collection to-boolean)
+   :official            (some-> official to-boolean)
    :pinned              (some-> pinned to-boolean)
-   :verified            (some-> verified to-boolean)
    :collection_type     collection_type
    :root_collection_type root_collection_type
    :data_layer          data_layer
@@ -330,7 +328,7 @@
      ;; Must equal db.migration.impl/dynamic-schema-version — a freshly created index already has the
      ;; latest schema, so recording an older version would mark it stale on creation. Kept as a literal
      ;; (not a require) to avoid an index → impl → index-metadata → index cycle; bump both together.
-     :version 6}))
+     :version 7}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
@@ -635,14 +633,13 @@
   "Ordered `[filter-key where-condition]` pairs for the structural filters implied by `search-context`. The
   search query ANDs these together (see [[search-filters]]); the search debug API uses the keys to attribute
   which specific filter excludes a given row."
-  [{:keys [archived? verified curated? models created-at created-by last-edited-at last-edited-by
+  [{:keys [archived? curated? models created-at created-by last-edited-at last-edited-by
            table-db-id ids display-type] :as search-context}]
   (keep
    (fn [[k clause]] (when clause [k clause]))
    [[:personal-collection (personal-collection-filter search-context)]
     [:archived?           (when (some? archived?) [:= :archived archived?])]
-    [:verified            (when (some? verified) [:= :verified verified])]
-    ;; "Verified or curated content" — precomputed flag (collections.curation/curated?)
+    ;; "Official or curated content" — precomputed flag (collections.curation/curated?)
     [:curated             (when (some? curated?) [:= :curated curated?])]
     ;; search.impl sets :models to the applicable models; an empty (but present) set means filters left no
     ;; applicable model (e.g. curated + non-curatable entity-types), so match nothing rather than omitting the
@@ -683,9 +680,8 @@
    [:content :content]
    [:display_type :display_type]
    [:archived :archived]
-   [:official_collection :official_collection]
+   [:official :official]
    [:pinned :pinned]
-   [:verified :verified]
    [:collection_type :collection_type]
    [:root_collection_type :root_collection_type]
    [:data_layer :data_layer]
@@ -936,7 +932,7 @@
         {:keys [ctes query]} (flatten-ctes hybrid-query)
         all-ctes (conj ctes [:hybrid_results query])
         full-query {:with all-ctes
-                    :select [:id :model_id :model :content :verified :legacy_input :semantic_rank :semantic_distance :keyword_rank]
+                    :select [:id :model_id :model :content :official :legacy_input :semantic_rank :semantic_distance :keyword_rank]
                     :from [[:hybrid_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))
@@ -1445,8 +1441,7 @@
   (def search-string "product orders")
   (def search-context {:search-string search-string
                        :models ["card" "dashboard"]
-                       :archived? false
-                       :verified nil})
+                       :archived? false})
   (def search-context {:search-string search-string})
 
   (def embedding (embedding/get-embedding (:embedding-model index) search-string {:record-tokens? true}))

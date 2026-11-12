@@ -23,7 +23,7 @@ import {
 } from "metabase/dashboard/selectors";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
-  PLUGIN_MODERATION,
+  PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
@@ -151,8 +151,8 @@ export function DashboardHeaderView({
                       // intentionally misaligned: https://github.com/metabase/metabase/pull/63871#pullrequestreview-3259596723
                       top={2}
                     >
-                      <PLUGIN_MODERATION.EntityModerationIcon
-                        moderationReviews={dashboard.moderation_reviews}
+                      <PLUGIN_REMOTE_SYNC.OfficialBadge
+                        collection={dashboard.collection}
                       />
                       {!!collection && (
                         <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon

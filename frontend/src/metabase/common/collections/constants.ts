@@ -41,3 +41,7 @@ export const DATABASES_COLLECTION = {
   location: "/",
   can_write: false,
 };
+
+export const OFFICIAL_ICON_NAME = "official_collection" as const;
+
+export const OFFICIAL_ICON_COLOR = "core-yellow-saturated" as const;

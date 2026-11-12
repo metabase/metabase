@@ -11,7 +11,7 @@ import { Markdown } from "metabase/common/components/Markdown";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import {
   Checkbox,
   Ellipsified,
@@ -195,10 +195,9 @@ export const Columns = {
         <ItemNameCell data-testid={`${testIdPrefix}-name`}>
           <ItemLinkComponent onClick={onClick} item={item}>
             <EntityItemName name={tc(item.name)} />
-            <PLUGIN_MODERATION.ModerationStatusIcon
-              size={16}
-              status={item.moderated_status}
-            />
+            {item.model !== "collection" && (
+              <PLUGIN_REMOTE_SYNC.OfficialBadge collection={item.collection} />
+            )}
             {item.description && includeDescription && (
               <FixedSizeIcon
                 name="info"

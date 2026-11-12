@@ -22,7 +22,6 @@ export const getMockModelCacheInfo = (
 
     collection_id: "root",
     collection_name: "Our analytics",
-    collection_authority_level: null,
 
     columns: [],
     database_id: 1,

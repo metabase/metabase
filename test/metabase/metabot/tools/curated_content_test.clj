@@ -9,7 +9,6 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
-   [metabase.content-verification.core :as moderation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.llm.test-util :as llm.tu]
@@ -38,18 +37,26 @@
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
-(def ^:private curation-features
-  "The features the verified, official, and Library curation signals are gated on. The test instance holds no
-  token, so every test here grants them; [[premium-gates-test]] takes them away again."
-  #{:content-verification :official-collections :library})
+(def ^:private ^:dynamic *official-collection-id*
+  "The remote-synced Collection [[make-official!]] moves Cards into."
+  nil)
 
-(use-fixtures :each (fn [thunk] (mt/with-additional-premium-features curation-features (thunk))))
+(def ^:private ^:dynamic *official-data-collection-id*
+  "The remote-synced Library data Collection that official Tables live in."
+  nil)
 
-(defn- verify-card! [card-id]
-  (moderation/create-review! {:moderated_item_id   card-id
-                              :moderated_item_type "card"
-                              :moderator_id        (mt/user->id :crowberto)
-                              :status              "verified"}))
+(use-fixtures :each (fn [thunk]
+                      (mt/with-additional-premium-features #{:library}
+                        (mt/with-temp [:model/Collection {official :id} {:name "official" :is_remote_synced true}
+                                       :model/Collection {official-data :id} {:name             "official data"
+                                                                              :type             "library-data"
+                                                                              :is_remote_synced true}]
+                          (binding [*official-collection-id*      official
+                                    *official-data-collection-id* official-data]
+                            (thunk))))))
+
+(defn- make-official! [card-id]
+  (t2/update! :model/Card :id card-id {:collection_id *official-collection-id*}))
 
 (defn- orders-query []
   (let [mp (mt/metadata-provider)]
@@ -139,9 +146,9 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {published :id} {:db_id db-id :name "published_orders" :schema "curated_schema"
-                                                 :active true :is_published true :data_layer :final}
+                                                 :active true :is_published true :collection_id *official-data-collection-id*}
                    :model/Table {authoritative :id} {:db_id db-id :name "authoritative_people" :schema "curated_schema"
-                                                     :active true :data_authority :authoritative}
+                                                     :active true :collection_id *official-data-collection-id*}
                    :model/Table {raw :id} {:db_id db-id :name "raw_products" :schema "raw_schema" :active true}
                    :model/Metabot curated-metabot {:name "curated metabot" :use_verified_content true}
                    :model/Metabot open-metabot {:name "open metabot" :use_verified_content false}]
@@ -185,10 +192,10 @@
                    :model/Card {plain-metric :id} {:type :metric :name "plain metric" :collection_id coll-id
                                                    :dataset_query (count-metric-query (orders-query))}
                    :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-      (verify-card! verified-model)
+      (make-official! verified-model)
       (testing "reads an uncurated metric only when what it's defined on is curated, as construct_notebook_query does"
         (is (denied? (first (read-uris metabot :internal (str "metabase://metric/" plain-metric)))))
-        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
           (is (not (denied? (first (read-uris metabot :internal (str "metabase://metric/" plain-metric))))))))
       (testing "denies uncurated cards"
         (is (denied? (first (read-uris metabot :internal (str "metabase://model/" plain-model "/fields"))))))
@@ -206,11 +213,13 @@
           (is (contains? models verified-model))
           (is (not (contains? models plain-model))))
         (is (= #{verified-model}
-               (item-ids (first (read-uris metabot :internal (str "metabase://collection/" coll-id "/items"))))))))))
+               (item-ids (first (read-uris metabot :internal (str "metabase://collection/" *official-collection-id*
+                                                                  "/items"))))))
+        (is (empty? (item-ids (first (read-uris metabot :internal (str "metabase://collection/" coll-id "/items"))))))))))
 
 (deftest read-resource-curated-only-dashboards-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Collection {official :id} {:authority_level "official"}
+    (mt/with-temp [:model/Collection {official :id} {:is_remote_synced true}
                    :model/Dashboard {curated-dash :id} {:name "official dashboard" :collection_id official}
                    :model/Dashboard {plain-dash :id} {:name "plain dashboard"}
                    :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
@@ -223,7 +232,7 @@
 (deftest read-resource-curated-only-dashboard-filters-test
   (mt/with-current-user (mt/user->id :crowberto)
     (let [mapping (fn [card-id] {:parameter_id "date", :card_id card-id, :target [:dimension [:field 1 nil]]})]
-      (mt/with-temp [:model/Collection    {official :id}    {:authority_level "official"}
+      (mt/with-temp [:model/Collection    {official :id}    {:is_remote_synced true}
                      :model/Card          {curated-id :id}  {:collection_id official}
                      :model/Card          {plain-id :id}    {}
                      :model/Dashboard     {dash-id :id}     {:collection_id official
@@ -257,7 +266,7 @@
 (deftest viewing-context-dashboard-filters-curated-only-test
   (mt/with-current-user (mt/user->id :crowberto)
     (let [mapping (fn [card-id] {:parameter_id "date", :card_id card-id, :target [:dimension [:field 1 nil]]})]
-      (mt/with-temp [:model/Collection    {official :id}   {:authority_level "official"}
+      (mt/with-temp [:model/Collection    {official :id}   {:is_remote_synced true}
                      :model/Card          {curated-id :id} {:collection_id official}
                      :model/Card          {plain-id :id}   {}
                      :model/Dashboard     {dash-id :id}    {:collection_id official
@@ -287,35 +296,36 @@
 (deftest excluded-signals-test
   (testing "search never returns these, so they aren't curated whatever their signals"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Collection {official :id} {:authority_level "official"}
+      (mt/with-temp [:model/Collection {official :id} {:is_remote_synced true}
                      :model/Card {archived :id} {:collection_id official :archived true :dataset_query (orders-query)}
                      :model/Dashboard {archived-dash :id} {:collection_id official :archived true}
                      :model/Document {doc-id :id} {:collection_id official}
                      :model/Card {doc-card :id} {:collection_id official :document_id doc-id
                                                  :dataset_query (orders-query)}
-                     :model/Table {hidden :id} {:db_id (mt/id) :name "hidden_authoritative" :active true
-                                                :visibility_type :hidden :data_authority :authoritative}
-                     :model/Table {live :id} {:db_id (mt/id) :name "live_authoritative" :active true
-                                              :data_authority :authoritative}]
+                     :model/Table {hidden :id} {:db_id (mt/id) :name "hidden_official" :active true
+                                                :visibility_type :hidden :collection_id *official-data-collection-id*}
+                     :model/Table {live :id} {:db_id (mt/id) :name "live_official" :active true
+                                              :collection_id *official-data-collection-id*}]
         (is (= #{["table" live]}
                (curation/curated-ids [["card" archived] ["dashboard" archived-dash] ["card" doc-card]
                                       ["table" hidden] ["table" live]])))))))
 
-(deftest premium-gates-test
-  (testing "verified, official, and Library signals count only while their feature is active; authoritative always"
+(deftest only-official-content-is-curated-test
+  (testing "only content in a remote-synced collection is curated, whatever the premium features; published and
+            authoritative tables outside one are not"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Collection {official :id} {:authority_level "official"}
-                     :model/Card {verified :id} {:dataset_query (orders-query)}
+      (mt/with-temp [:model/Collection {official :id} {:is_remote_synced true}
                      :model/Card {in-official :id} {:collection_id official :dataset_query (orders-query)}
-                     :model/Table {published :id} {:db_id (mt/id) :name "gated_published" :active true
+                     :model/Table {official-table :id} {:db_id (mt/id) :name "official_table" :active true
+                                                        :collection_id *official-data-collection-id*}
+                     :model/Table {published :id} {:db_id (mt/id) :name "plain_published" :active true
                                                    :is_published true :data_layer :final}
-                     :model/Table {authoritative :id} {:db_id (mt/id) :name "gated_authoritative" :active true
+                     :model/Table {authoritative :id} {:db_id (mt/id) :name "plain_authoritative" :active true
                                                        :data_authority :authoritative}]
-        (verify-card! verified)
-        (let [items [["card" verified] ["card" in-official] ["table" published] ["table" authoritative]]]
-          (is (= (set items) (curation/curated-ids items)))
+        (let [items [["card" in-official] ["table" official-table] ["table" published] ["table" authoritative]]]
+          (is (= #{["card" in-official] ["table" official-table]} (curation/curated-ids items)))
           (mt/with-premium-features #{}
-            (is (= #{["table" authoritative]} (curation/curated-ids items)))))))))
+            (is (= #{["card" in-official] ["table" official-table]} (curation/curated-ids items)))))))))
 
 (deftest metric-read-judges-metric-cards-only-test
   (testing "the metric rule judges metric Cards with structured definitions, and nothing else passes through it"
@@ -334,8 +344,8 @@
                      :model/Card {archived-metric :id}
                      {:type :metric :name "archived metric" :archived true
                       :dataset_query (count-metric-query (orders-query))}]
-        (verify-card! verified-native-metric)
-        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+        (make-official! verified-native-metric)
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
           (let [read     (fn [id] (first (read-uris metabot :internal (str "metabase://metric/" id))))
                 metadata (fn [id] {:errors (as-metabot metabot :internal
                                                        #(metadata-errors (fields-args :metric_ids [id])))})
@@ -376,7 +386,7 @@
                      :model/Card {question-id :id} {:type :question :name "plain question"
                                                     :dataset_query (orders-query)}
                      :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-        (verify-card! model-id)
+        (make-official! model-id)
         (testing "read_resource metric URI"
           (let [read (fn [mb] (:error (first (read-uris mb :internal (str "metabase://metric/" model-id)))))]
             (is (str/includes? (read metabot) "not a metric"))
@@ -386,7 +396,7 @@
             (is (= [] (errors metabot)))
             (is (= (errors nil) (errors metabot)))))
         (testing "a question referenced as a metric in a query is judged as missing, not by its definition"
-          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
             (is (= [["card" question-id]]
                    (curation/uncurated-query-sources
                     (lib/query (mt/metadata-provider)
@@ -408,7 +418,7 @@
                                                                                      mp (mt/id :reviews)))
                                                                       (lib/count))}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-          (verify-card! question-id)
+          (make-official! question-id)
           (let [rating (mt/id :reviews :rating)]
             (testing "construct_notebook_query's rule rejects the raw table joined to the question"
               (let [on-question (lib/query mp (lib.metadata/card mp question-id))
@@ -444,7 +454,7 @@
                                                      :id total :table_id (mt/id :orders)}
                                                     {:name "RATING" :display_name "Rating" :base_type :type/Integer
                                                      :id rating :table_id (mt/id :reviews)}]})
-              _      (verify-card! model-id)
+              _      (make-official! model-id)
               read   (fn [field-id]
                        (as-metabot metabot :internal
                                    #(call metadata-tools/get-field-values-tool {:data_source "model"
@@ -486,7 +496,7 @@
             (is (some? (:structured-output (construct nil nil)))))
           (testing "over a raw table the metric is rejected as a source"
             (is (rejected?)))
-          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
             (testing "over a curated table it is readable"
               (is (not (denied? (first (read-uris metabot :internal (str "metabase://metric/" metric-id)))))))
             (testing "and queryable as a source card"
@@ -524,7 +534,7 @@
                      :model/Card {model-id :id} {:type :model :name "verified orders model"
                                                  :dataset_query (orders-query)}
                      :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-        (verify-card! model-id)
+        (make-official! model-id)
         (let [mp         (mt/metadata-provider)
               on-model   (lib/query mp (lib.metadata/card mp model-id))
               product-id (some #(when (= "PRODUCT_ID" (:name %)) %) (lib/returned-columns on-model))]
@@ -537,7 +547,7 @@
                                                      (lib.metadata/table mp (mt/id :reviews))
                                                      [(lib/= product-id
                                                              (lib.metadata/field mp (mt/id :reviews :product_id)))])))}]
-            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
               (let [listed (fn [uri]
                              (let [so (get-in (first (read-uris metabot :internal uri))
                                               [:content :structured-output])]
@@ -563,7 +573,7 @@
                                                          :dataset_query (orders-query)}
                        :model/Table {raw-table :id} {:db_id (mt/id) :name "raw_recent_table" :active true}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-          (verify-card! verified-model)
+          (make-official! verified-model)
           (doseq [[model id] [[:model/Card verified-model] [:model/Card plain-question] [:model/Table raw-table]]]
             (activity-feed/update-users-recent-views! (mt/user->id :crowberto) model id :view))
           (let [items (fn [metabot]
@@ -639,9 +649,9 @@
                     :dataset_query (let [mp (mt/metadata-provider)]
                                      (count-metric-query (lib/query mp (lib.metadata/card mp verified-model))))}
                    :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-      (verify-card! verified-model)
-      (verify-card! verified-metric)
-      (verify-card! verified-join-metric)
+      (make-official! verified-model)
+      (make-official! verified-metric)
+      (make-official! verified-join-metric)
       (let [db-name        (db-name)
             stage          (fn [source] (merge {:lib/type "mbql.stage/mbql" :aggregation [["count" {}]]} source))
             query          (fn [source] {:lib/type "mbql/query" :stages [(stage source)]})
@@ -672,7 +682,7 @@
           (is (some? (:structured-output (construct nil nil orders-query))))
           (is (some? (:structured-output (construct metabot :nlq orders-query)))))
         (testing "a curated table is queryable"
-          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
             (is (accepted? orders-query))
             (testing "along with the related tables it exposes, joined implicitly"
               (is (accepted? joined-query)))
@@ -749,7 +759,7 @@
                         :table_id   (mt/id :reviews)
                         :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
                                                 (lib/> (lib.metadata/field mp (mt/id :reviews :rating)) 3))}]
-          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
             (let [on-orders (fn [aggregation]
                               (lib/query mp {:database (mt/id)
                                              :type     :query
@@ -774,7 +784,7 @@
                      :model/Card {plain :id} {:dataset_query (count-metric-query (orders-query))}
                      :model/Metabot metabot {:name "curated metabot" :use_verified_content true}
                      :model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
-        (verify-card! verified)
+        (make-official! verified)
         (let [run (fn [card-id]
                     (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
                       (as-metabot metabot :internal
@@ -846,7 +856,7 @@
     (testing "an unreadable table doesn't reveal whether it's curated"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {published :id} {:db_id db-id :name "hidden_published" :active true
-                                                   :is_published true :data_layer :final}
+                                                   :is_published true :collection_id *official-data-collection-id*}
                      :model/Table {raw :id} {:db_id db-id :name "hidden_raw" :active true}
                      :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
         (mt/with-no-data-perms-for-all-users!
@@ -860,7 +870,7 @@
 (deftest read-resource-curated-action-uri-test
   (testing "an action dashcard keeps its backing model's uri only when that model is curated"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Collection {official :id} {:authority_level "official"}]
+      (mt/with-temp [:model/Collection {official :id} {:is_remote_synced true}]
         (mt/with-actions [{model-id :id} {:type :model :dataset_query (orders-query)}
                           {:keys [action-id]} {:type :query :visualization_settings {}}]
           (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id official}
@@ -875,7 +885,7 @@
                                                                 (str "metabase://dashboard/" dash-id "/items")))
                                               [:content :structured-output :items])))]
               (is (= [] (action-uris)))
-              (verify-card! model-id)
+              (make-official! model-id)
               (is (= [(str "metabase://model/" model-id)] (action-uris))))))))))
 
 (deftest metadata-tools-curated-only-test
@@ -895,7 +905,7 @@
                                                    :source_id   (mt/id :orders)
                                                    :field_id    (mt/id :orders :total)}))))
                     (testing "curated tables are readable"
-                      (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+                      (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
                         (is (=? {:structured-output {:tables [{:id (mt/id :orders)}]}}
                                 (call metadata-tools/list-available-fields-tool (fields-args :table_ids [(mt/id :orders)]))))
                         (testing "and so are the metrics defined on them"
@@ -948,7 +958,7 @@
                                                                  :name          "plain products model"
                                                                  :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-          (verify-card! verified-metric)
+          (make-official! verified-metric)
           (let [db-name   (db-name)
                 error-of  (fn [q]
                             (try
@@ -971,7 +981,7 @@
               (is (= :unknown-field
                      (:error (error-of (query {:aggregation [["metric" {} verified-metric-eid]] :breakout [bad-field]}))))))
             (testing "a joined uncurated card is rejected before repair, even under a curated source"
-              (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+              (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
                 (is (= :uncurated-source
                        (:error (error-of
                                 (query {:aggregation [["count" {}]]
@@ -994,7 +1004,7 @@
                                        :default_schema "raw"}
                    :model/Table    _  {:name "orders" :schema "raw" :db_id (:id db)}
                    :model/Table    _  {:name "orders" :schema "clean" :db_id (:id db)
-                                       :data_authority :authoritative}
+                                       :collection_id *official-data-collection-id*}
                    :model/Table    _  {:name "events" :schema "raw" :db_id (:id db)}
                    :model/Table    _  {:name "events" :schema "staging" :db_id (:id db)}]
       (let [db-name   (:name db)
@@ -1043,8 +1053,8 @@
             (mt/with-temp [:model/Card {metric-id :id metric-eid :entity_id} {:type          :metric
                                                                               :name          "reviews count"
                                                                               :dataset_query definition}]
-              (verify-card! metric-id)
-              (mt/with-temp-vals-in-db :model/Table (mt/id :reviews) {:is_published true :data_layer :final}
+              (make-official! metric-id)
+              (mt/with-temp-vals-in-db :model/Table (mt/id :reviews) {:collection_id *official-data-collection-id*}
                 (let [db     (db-name)
                       people (fn [column] ["field" {:join-alias "J"} [db "PUBLIC" "PEOPLE" column]])
                       query  {:lib/type "mbql/query"
@@ -1088,7 +1098,7 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content" (run)))
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
                                 (with-query #(call autogen/create-autogenerated-dashboard-tool {:source {:query_id "adhoc"}}))))
-          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
             (is (str/includes? (:output (run)) "Count"))))))))
 
 (deftest conversation-query-rule-runs-before-permissions-test
@@ -1096,7 +1106,7 @@
             uncurated table the user may not query gets the curation refusal, a curated one the permission error"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {published :id} {:db_id db-id :name "hidden_published" :active true
-                                                 :is_published true :data_layer :final}
+                                                 :is_published true :collection_id *official-data-collection-id*}
                    :model/Table {raw :id} {:db_id db-id :name "hidden_raw" :active true}
                    :model/Field _ {:table_id published :name "A" :base_type :type/Integer}
                    :model/Field _ {:table_id raw :name "A" :base_type :type/Integer}
@@ -1128,7 +1138,7 @@
   (when config/ee-available?
     (testing "a table published through the Data Studio keeps its published flag in its user settings, and the read
             check sees it: a user with no query permission reads it through its Library collection"
-      (mt/with-temp [:model/Collection {lib :id} {:type "library-data" :name "data library"}
+      (mt/with-temp [:model/Collection {lib :id} {:type "library-data" :name "data library" :is_remote_synced true}
                      :model/Table {table-id :id :as table} {:db_id      (mt/id)
                                                             :name       "published_by_settings"
                                                             :schema     "LIBRARY_SCHEMA"
@@ -1176,7 +1186,7 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
                                 (curation/check-curated-query! "q" joined))
               "raw ORDERS is judged although the query holds a native join")
-          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
             (is (nil? (curation/check-curated-query! "q" joined)) "curated ORDERS passes"))
           (is (nil? (curation/check-curated-query! "q" sql)) "SQL names nothing to judge")
           (is (nil? (curation/check-curated-query! "q" tagged))
@@ -1217,7 +1227,7 @@
                        :model/Measure {trashed :id} {:name "trashed orders count" :table_id (mt/id :orders)
                                                      :archived true :definition orders-count}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
             (is (true? (curation/measure-or-segment-curated? :measure live)))
             (is (not (curation/measure-or-segment-curated? :measure trashed)))
             (is (denied? (first (read-uris metabot :internal (str "metabase://measure/" trashed)))))))))))
@@ -1232,7 +1242,7 @@
                                                      :archived true :definition orders-count}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}
                        :model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
-          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
             (let [using (fn [measure-id]
                           (assoc-in (orders-query) [:stages 0 :aggregation]
                                     [[:measure {:lib/uuid (str (random-uuid))} measure-id]]))
@@ -1257,7 +1267,7 @@
             curated and an uncurated entity, so no answer reveals curation"
     (with-slack
       (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp [:model/Collection {official :id} {:name "official" :authority_level "official"}
+        (mt/with-temp [:model/Collection {official :id} {:name "official" :is_remote_synced true}
                        :model/Collection {plain :id} {:name "plain"}
                        :model/Card {curated-card :id curated-eid :entity_id}
                        {:collection_id official :type :model :name "official model" :dataset_query (orders-query)}
@@ -1324,11 +1334,11 @@
       (testing "the schema listing and a model's sources, with tables the user cannot read"
         (mt/with-temp [:model/Database {db-id :id} {}
                        :model/Table {published :id} {:db_id db-id :schema "A" :name "a_published" :active true
-                                                     :is_published true :data_layer :final}
+                                                     :is_published true :collection_id *official-data-collection-id*}
                        :model/Table {raw :id} {:db_id db-id :schema "B" :name "b_raw" :active true}
                        :model/Field _ {:table_id published :name "X" :base_type :type/Integer}
                        :model/Field _ {:table_id raw :name "X" :base_type :type/Integer}
-                       :model/Collection {official :id} {:name "official" :authority_level "official"}
+                       :model/Collection {official :id} {:name "official" :is_remote_synced true}
                        :model/Card {over-published :id} {:collection_id official :type :model :name "over published"
                                                          :database_id db-id :table_id published
                                                          :dataset_query {:database db-id :type :query
@@ -1351,14 +1361,14 @@
                     "the sources listings of the two models have the same shape"))))))
       (testing "the metrics embedded in a table's details, with metrics the user cannot read"
         (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-temp [:model/Collection {official :id} {:name "official" :authority_level "official"}
+          (mt/with-temp [:model/Collection {official :id} {:name "official" :is_remote_synced true}
                          :model/Collection {plain :id} {:name "plain"}
                          :model/Card {curated-metric :id} {:collection_id official :type :metric :name "official count"
                                                            :dataset_query (count-metric-query (orders-query))}
                          :model/Card {plain-metric :id} {:collection_id plain :type :metric :name "plain count"
                                                          :dataset_query (count-metric-query (orders-query))}
                          :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
               (mt/with-current-user (mt/user->id :rasta)
                 (let [[resource] (read-uris metabot :internal (str "metabase://table/" (mt/id :orders)))
                       metric-ids (into #{} (map :id) (get-in resource [:content :structured-output :metrics]))]
@@ -1372,7 +1382,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (let [mp      (mt/metadata-provider)
             reviews (lib/query mp (lib.metadata/table mp (mt/id :reviews)))]
-        (mt/with-temp [:model/Collection {official :id} {:name "official" :authority_level "official"}
+        (mt/with-temp [:model/Collection {official :id} {:name "official" :is_remote_synced true}
                        :model/Card {question :id} {:collection_id official :name "reviews count"
                                                    :dataset_query (lib/aggregate reviews (lib/count))}
                        :model/Card {metric :id} {:collection_id official :type :metric :name "reviews count metric"
@@ -1396,7 +1406,7 @@
                                                    :name          "metric on a doomed question"
                                                    :dataset_query (count-metric-query
                                                                    (lib/query mp (lib.metadata/card mp question)))}]
-            (verify-card! metric)
+            (make-official! metric)
             (t2/delete! :model/Card :id question)
             (let [resource (first (read-uris metabot :internal (str "metabase://metric/" metric)))]
               (is (nil? (:error resource)) (:error resource))
@@ -1409,7 +1419,7 @@
             a table they cannot, it is refused whether that table is curated or not, so the answer reveals nothing"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {published :id} {:db_id db-id :name "hidden_published" :active true
-                                                   :is_published true :data_layer :final}
+                                                   :is_published true :collection_id *official-data-collection-id*}
                      :model/Table {raw :id} {:db_id db-id :name "hidden_raw" :active true}
                      :model/Field _ {:table_id published :name "A" :base_type :type/Integer}
                      :model/Field _ {:table_id raw :name "A" :base_type :type/Integer}
@@ -1466,7 +1476,7 @@
                                                         :name          "zz verified orders count"
                                                         :dataset_query (count-metric-query (orders-query))}
                      :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-        (verify-card! verified-metric)
+        (make-official! verified-metric)
         (let [ours       #{raw-metric verified-metric}
               metric-ids (fn [metabot profile-id tool args]
                            (set/intersection ours
@@ -1491,7 +1501,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card {model-id :id} {:type :model :name "verified orders model" :dataset_query (orders-query)}
                      :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-        (verify-card! model-id)
+        (make-official! model-id)
         (let [model-entry (fn [metabot profile-id]
                             (first (get-in (as-metabot metabot profile-id
                                                        #(call metadata-tools/list-available-fields-tool {:table_ids  []
@@ -1505,7 +1515,7 @@
   (testing "the field-owner rule follows a card's definition through its source cards, trusts no native definition,
             and judges a metric's columns the same way"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+      (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
         (let [mp    (mt/metadata-provider)
               total (mt/id :orders :total)]
           (mt/with-temp [:model/Card {base-model :id} {:type :model :name "orders model" :dataset_query (orders-query)}
@@ -1529,7 +1539,7 @@
                           {:result_metadata [{:name "RATING" :display_name "Rating" :base_type :type/Integer
                                               :id (mt/id :reviews :rating) :table_id (mt/id :reviews)}]}))
             (doseq [id [base-model stacked-model native-model edited-native edited-model]]
-              (verify-card! id))
+              (make-official! id))
             (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
                                                         :name          "metric on edited model"
                                                         :dataset_query (count-metric-query
@@ -1565,7 +1575,7 @@
                                                          :table_id   (mt/id :orders)
                                                          :definition (lib/aggregate orders (lib/sum price))}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:collection_id *official-data-collection-id*}
             (is (denied? (first (read-uris metabot :internal (str "metabase://measure/" raw-measure)))))
             (is (not (denied? (first (read-uris metabot :internal (str "metabase://measure/" hop-measure)))))
                 "PRODUCTS is one FK hop from curated ORDERS")

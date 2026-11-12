@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { RevisionOrModerationEvent } from "metabase/plugins";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
 
 import { RevisionHistoryTimeline } from "./RevisionHistoryTimeline";
+import type { RevisionTimelineEvent } from "./utils";
 
-const events: RevisionOrModerationEvent[] = [
+const events: RevisionTimelineEvent[] = [
   {
     title: "edited this",
     timestamp: "2026-05-15T10:00:00Z",

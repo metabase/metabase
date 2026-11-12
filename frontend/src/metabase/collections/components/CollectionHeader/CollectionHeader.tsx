@@ -117,11 +117,7 @@ export const CollectionHeader = ({
             onFilterByType={onFilterByType}
           />
           {showCollectionMenu && (
-            <CollectionMenu
-              collection={collection}
-              isAdmin={isAdmin}
-              onUpdateCollection={handleUpdateCollection}
-            />
+            <CollectionMenu collection={collection} isAdmin={isAdmin} />
           )}
         </Flex>
       )}

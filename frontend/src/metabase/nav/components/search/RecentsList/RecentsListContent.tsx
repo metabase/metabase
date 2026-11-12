@@ -15,7 +15,7 @@ import {
   EmptyStateContainer,
   SearchLoadingSpinner,
 } from "metabase/nav/components/search/SearchResults";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Group, Loader, Stack, Title } from "metabase/ui";
 import { getName } from "metabase/utils/name";
 import { isSyncCompleted } from "metabase/utils/syncing";
@@ -89,11 +89,12 @@ export const RecentsListContent = ({
                   >
                     {getName(item)}
                   </ResultTitle>
-                  <PLUGIN_MODERATION.ModerationStatusIcon
-                    status={getModeratedStatus(item)}
-                    filled
-                    size={14}
-                  />
+                  {item.model !== "table" && item.model !== "collection" && (
+                    <PLUGIN_REMOTE_SYNC.OfficialBadge
+                      collection={item.parent_collection}
+                      size={14}
+                    />
+                  )}
                 </Group>
                 <SearchResultLink>
                   {getTranslatedEntityName(item.model)}
@@ -114,10 +115,6 @@ export const RecentsListContent = ({
 
 const getItemKey = ({ model, id }: RecentItem) => {
   return `${model}:${id}`;
-};
-
-const getModeratedStatus = (item: RecentItem) => {
-  return item.model !== "table" && item.moderated_status;
 };
 
 const isItemLoading = (item: RecentItem) => {

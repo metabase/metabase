@@ -43,7 +43,6 @@ const setup = (modelCount: number, recentModelCount = 5) => {
       }),
       settings: mockSettings({
         "token-features": createMockTokenFeatures({
-          official_collections: true,
           audit_app: true,
         }),
       }),

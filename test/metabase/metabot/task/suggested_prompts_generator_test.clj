@@ -13,7 +13,7 @@
    [toucan2.core :as t2]))
 
 (deftest suggested-prompts-generator-test
-  (mt/with-premium-features #{:content-verification}
+  (mt/with-premium-features #{}
     (mt/with-empty-h2-app-db!
       ;; Keep this test focused on the internal bot's verified-content gating; the embedded bot is
       ;; seeded separately (see `enabled-builtin-metabots-test`) and would otherwise add prompts.
@@ -22,8 +22,7 @@
                                               :entity_id metabot.config/internal-metabot-id)
               mp (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                        lib.convert/->legacy-MBQL)
-              admin-id (:id (mt/fetch-user :crowberto))]
+                        lib.convert/->legacy-MBQL)]
           (mt/with-model-cleanup [:model/MetabotPrompt]
             (mt/with-temp
               [:model/Card
@@ -51,15 +50,9 @@
                   (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                   (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                     (is (empty? prompts))))
-                (testing "Verified card generates prompts regardless of use_verified_content"
-                  (mt/with-temp
-                    [:model/ModerationReview
-                     _
-                     {:moderator_id admin-id
-                      :moderated_item_id card-id
-                      :moderated_item_type "card"
-                      :status "verified"
-                      :most_recent true}]
+                (testing "Official card generates prompts regardless of use_verified_content"
+                  (mt/with-temp [:model/Collection {official :id} {:is_remote_synced true}]
+                    (t2/update! :model/Card :id card-id {:collection_id official})
                     (testing "with use_verified_content=true"
                       (t2/delete! :model/MetabotPrompt)
                       (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content true})
@@ -71,7 +64,8 @@
                       (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content false})
                       (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                       (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
-                        (is (seq prompts))))))
+                        (is (seq prompts))))
+                    (t2/update! :model/Card :id card-id {:collection_id nil})))
                 ;; Reset metabot state
                 (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content false})))))))))
 
@@ -92,7 +86,7 @@
 
 (deftest seeds-each-enabled-builtin-metabot-test
   (testing "each enabled built-in bot gets its own suggested prompts seeded"
-    (mt/with-premium-features #{:content-verification}
+    (mt/with-premium-features #{}
       (mt/with-empty-h2-app-db!
         (mt/with-temporary-setting-values [metabot.settings/metabot-enabled?          true
                                            metabot.settings/embedded-metabot-enabled? true]
@@ -115,7 +109,7 @@
                       "embedded bot is seeded"))))))))))
 
 (deftest suggested-prompts-generator-skips-generation-when-managed-provider-is-locked-test
-  (mt/with-premium-features #{:content-verification}
+  (mt/with-premium-features #{}
     (mt/with-empty-h2-app-db!
       (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
                                          "metabase/anthropic/claude-sonnet-4-6"]

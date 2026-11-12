@@ -46,7 +46,7 @@
 (deftest select-documents-for-recents-with-collection-test
   (testing "returns documents with collection information"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
-                                                    :authority_level "official"
+                                                    :is_remote_synced true
                                                     :archived false}
                    :model/Document {doc1-id :id} {:name "Document 1"
                                                   :collection_id coll-id
@@ -63,7 +63,7 @@
           (is (= coll-id (:entity-coll-id doc1)))
           (is (= coll-id (:collection_id doc1)))
           (is (= "Test Collection" (:collection_name doc1)))
-          (is (= "official" (:collection_authority_level doc1))))
+          (is (true? (:collection_is_remote_synced doc1))))
         ;; Check second document
         (let [doc2 (first (filter #(= (:id %) doc2-id) results))]
           (is (= "Document 2" (:name doc2)))
@@ -82,7 +82,7 @@
           (is (nil? (:entity-coll-id doc)))
           (is (nil? (:collection_id doc)))
           (is (nil? (:collection_name doc)))
-          (is (nil? (:collection_authority_level doc))))))))
+          (is (nil? (:collection_is_remote_synced doc))))))))
 
 (deftest select-documents-for-recents-personal-collection-test
   (testing "returns the owner-qualified name for a document in a personal collection"
@@ -99,10 +99,10 @@
 (deftest select-documents-for-recents-archived-collections-test
   (testing "excludes documents from archived collections via left join"
     (mt/with-temp [:model/Collection {archived-coll-id :id} {:name "Archived Collection"
-                                                             :authority_level "official"
+                                                             :is_remote_synced true
                                                              :archived true}
                    :model/Collection {active-coll-id :id} {:name "Active Collection"
-                                                           :authority_level "official"
+                                                           :is_remote_synced true
                                                            :archived false}
                    :model/Document {doc1-id :id} {:name "Document in Archived Collection"
                                                   :collection_id archived-coll-id
@@ -118,14 +118,14 @@
           (is (= archived-coll-id (:entity-coll-id doc1)))
           (is (nil? (:collection_id doc1)))
           (is (nil? (:collection_name doc1)))
-          (is (nil? (:collection_authority_level doc1))))
+          (is (nil? (:collection_is_remote_synced doc1))))
         ;; Document from active collection should have collection info
         (let [doc2 (first (filter #(= (:id %) doc2-id) results))]
           (is (= "Document in Active Collection" (:name doc2)))
           (is (= active-coll-id (:entity-coll-id doc2)))
           (is (= active-coll-id (:collection_id doc2)))
           (is (= "Active Collection" (:collection_name doc2)))
-          (is (= "official" (:collection_authority_level doc2))))))))
+          (is (true? (:collection_is_remote_synced doc2))))))))
 
 (deftest select-documents-for-recents-archived-documents-test
   (testing "includes archived documents in results"

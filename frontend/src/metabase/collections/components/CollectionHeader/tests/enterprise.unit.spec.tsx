@@ -15,9 +15,7 @@ describe("Instance Analytics Collection Header", () => {
       can_write: false,
     },
     enterprisePlugins: ["audit_app" as const, "collections" as const],
-    // 😬 this test needs the official_collections feature flag so that it
-    // doesn't cause the following test block to fail
-    tokenFeatures: { audit_app: true, official_collections: true },
+    tokenFeatures: { audit_app: true },
   };
 
   it("should not offer to create new collection for instance analytics collections", () => {
@@ -78,9 +76,7 @@ describe("instance analytics custom reports collection", () => {
       entity_id: createMockEntityId("okNLSZKdSxaoG58JSQY54"),
     },
     enterprisePlugins: "*" as const, // TODO: specify exact plugins needed
-    // 😬 this test needs the official_collections feature flag so that it
-    // doesn't cause the following test block to fail
-    tokenFeatures: { audit_app: true, official_collections: true },
+    tokenFeatures: { audit_app: true },
     isAdmin: true,
   };
 
@@ -106,50 +102,41 @@ describe("instance analytics custom reports collection", () => {
 });
 
 describe("Official Collections Header", () => {
-  const officialCollectionOptions = {
+  const syncedCollectionOptions = {
     collection: {
       id: 144,
       name: "Rock Collection",
       can_write: true,
+      is_remote_synced: true,
     },
-    enterprisePlugins: ["collections" as const, "audit_app" as const],
-    tokenFeatures: { official_collections: true },
+    enterprisePlugins: ["remote_sync" as const],
+    tokenFeatures: { remote_sync: true },
     isAdmin: true,
   };
 
-  it("should allow admin users to designate official collections", async () => {
-    setup(officialCollectionOptions);
-    await userEvent.click(getIcon("ellipsis"));
-    expect(
-      await screen.findByText("Make collection official"),
-    ).toBeInTheDocument();
+  it("should show official icon for remote synced collection", () => {
+    setup(syncedCollectionOptions);
     expect(getIcon("official_collection")).toBeInTheDocument();
   });
 
-  it("should not allow non-admin users to designate official collections", async () => {
+  it("should not show official icon for regular collection", () => {
     setup({
-      ...officialCollectionOptions,
-      isAdmin: false,
+      ...syncedCollectionOptions,
+      collection: {
+        ...syncedCollectionOptions.collection,
+        is_remote_synced: false,
+      },
     });
-    await userEvent.click(getIcon("ellipsis"));
-    expect(
-      screen.queryByText("Make collection official"),
-    ).not.toBeInTheDocument();
     expect(queryIcon("official_collection")).not.toBeInTheDocument();
   });
 
-  it("should not allow admin users to designate read-only collections as official", async () => {
-    setup({
-      ...officialCollectionOptions,
-      collection: {
-        ...officialCollectionOptions.collection,
-        can_write: false,
-      },
-    });
+  it("should not offer to designate official collections", async () => {
+    setup(syncedCollectionOptions);
     await userEvent.click(getIcon("ellipsis"));
+    await screen.findByRole("menu");
     expect(
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();
-    expect(queryIcon("official_collection")).not.toBeInTheDocument();
+    expect(screen.queryByText("Remove Official badge")).not.toBeInTheDocument();
   });
 });

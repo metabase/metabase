@@ -27,7 +27,6 @@ jest.mock("metabase/common/search/analytics", () => ({
 const TEST_REGULAR_COLLECTION = createMockCollection({
   id: 1,
   name: "Regular Collection",
-  authority_level: null,
 });
 
 const TEST_RESULT_QUESTION = createWrappedSearchResult({

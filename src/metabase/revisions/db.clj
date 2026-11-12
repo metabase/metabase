@@ -89,11 +89,6 @@
    revision-id :- ms/PositiveInt]
   (t2/select-one :model/Revision :model model-name, :model_id model-id, :id revision-id))
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
-
 (mu/defn dashcards
   "The DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]

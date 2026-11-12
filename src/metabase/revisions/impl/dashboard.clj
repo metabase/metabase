@@ -25,7 +25,7 @@
     :last_viewed_at})
 
 (def ^:private excluded-columns-for-dashcard-revision
-  [:entity_id :created_at :updated_at :collection_authority_level])
+  [:entity_id :created_at :updated_at])
 
 (def ^:private excluded-columns-for-dashboard-tab-revision
   [:created_at :updated_at :entity_id])

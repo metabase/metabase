@@ -93,11 +93,12 @@
            :created-at :created_at
            :updated-at :updated_at
            :exploration-id false
-           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
+           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+           :official [:coalesce :collection.is_remote_synced false]}
    :search-terms [:name :description]
    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
    :render-terms {:exploration-name :name
-                  :collection-authority_level :collection.authority_level
+                  :collection-is_remote_synced :collection.is_remote_synced
                   :collection-location        :collection.location
                   :collection-name            :collection.name
                   :collection-position        true

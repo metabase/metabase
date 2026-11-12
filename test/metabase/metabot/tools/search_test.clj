@@ -187,7 +187,7 @@
                 :notes        ["Total results: 0"
                                "<no-results>"
                                "Only these entity types were searched: dashboard, metric. If other types could match, add them to `entity_types`."
-                               "This Metabot searches only curated content, such as verified items and items in official collections."
+                               "This Metabot searches only curated content, which is the content in synced collections."
                                "This Metabot searches only inside its own collection."
                                retry-note
                                "</no-results>"]}
@@ -200,7 +200,7 @@
                 :notes        ["Total results: 0"
                                failed-note
                                "<no-results>"
-                               "This Metabot searches only curated content, such as verified items and items in official collections."
+                               "This Metabot searches only curated content, which is the content in synced collections."
                                retry-note
                                "</no-results>"]}
                (explain #'search/search-tool {:keyword_queries ["zzz" "broken"]} {:use_verified_content true})))))))
@@ -239,18 +239,16 @@
            (#'search/search-result->item
             {:id 1 :type "table" :name "orders" :display_name "Orders"
              :database_id 2 :database_schema "PUBLIC" :database_name "Sample"
-             :collection {:id 3 :name "Finance" :authority_level nil}
+             :collection {:id 3 :name "Finance" :is_remote_synced false}
              :score 0.99 :description "wide table"}))))
   (testing "no collection -> no collection key"
     (is (= {:id 5 :type "dashboard" :name "Revenue"}
            (#'search/search-result->item
             {:id 5 :type "dashboard" :name "Revenue" :collection nil}))))
-  (testing "carries a question's display (as a string) + moderated_status for the exact icon"
-    (is (= {:id 7 :type "question" :name "Revenue" :display "line"
-            :moderated_status "verified"}
+  (testing "carries a question's display (as a string) for the exact icon"
+    (is (= {:id 7 :type "question" :name "Revenue" :display "line"}
            (#'search/search-result->item
-            {:id 7 :type "question" :name "Revenue" :display :line
-             :moderated_status "verified"}))))
+            {:id 7 :type "question" :name "Revenue" :display :line}))))
   (testing "carries the base table of a measure or segment, which the client needs to link to it"
     (is (= [{:id 8 :type "measure" :name "Revenue" :database_id 2 :table_id 10}
             {:id 9 :type "segment" :name "Big orders" :database_id 2 :table_id 10}]
@@ -469,7 +467,7 @@
               :curated        true
               :data_authority "authoritative"
               :data_layer     "final"
-              :collection     {:id 3 :name "Official" :authority_level "official"}})))))
+              :collection     {:id 3 :name "Official" :is_remote_synced true}})))))
 
 (deftest ^:parallel search-result-xml-renders-curation-signals-test
   (testing "the XML the LLM actually sees carries curated/data_layer/data_authority for a table result —
@@ -484,7 +482,7 @@
                    :curated        true
                    :data_authority "authoritative"
                    :data_layer     "final"
-                   :collection     {:id 3 :name "Official" :authority_level "official"}})
+                   :collection     {:id 3 :name "Official" :is_remote_synced true}})
           xml    (llm-shape/search-result->xml result)]
       (is (str/includes? xml "is_curated=\"true\""))
       (is (str/includes? xml "is_official=\"true\""))
@@ -498,7 +496,6 @@
                   :name "Sales Model"
                   :description "Model for sales"
                   :database_id 43
-                  :verified true
                   :collection nil
                   :updated_at "2024-01-02"
                   :created_at "2024-01-02"}
@@ -507,7 +504,6 @@
                     :name "Sales Model"
                     :description "Model for sales"
                     :database_id 43
-                    :verified true
                     :official false
                     :collection {}
                     :updated_at "2024-01-02"
@@ -538,19 +534,17 @@
                   :id 3
                   :name "Main Dashboard"
                   :description "Dashboard desc"
-                  :verified false
                   :can_write false
-                  :collection {:id 10 :name "Finance" :authority_level "official"}
+                  :collection {:id 10 :name "Finance" :is_remote_synced true}
                   :updated_at "2024-01-03"
                   :created_at "2024-01-03"}
           expected {:id 3
                     :type "dashboard"
                     :name "Main Dashboard"
                     :description "Dashboard desc"
-                    :verified false
                     :can_write false
                     :official true
-                    :collection {:id 10 :name "Finance" :authority_level "official"}
+                    :collection {:id 10 :name "Finance" :is_remote_synced true}
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
       (is (= expected (#'search/postprocess-search-result result))))))
@@ -561,7 +555,7 @@
                     :id         8
                     :name       "Quarterly plan"
                     :can_write  false
-                    :collection {:id 10 :name "Finance" :authority_level "official"}
+                    :collection {:id 10 :name "Finance" :is_remote_synced true}
                     :updated_at "2024-01-03"
                     :created_at "2024-01-02"}
           expected {:id          8
@@ -570,19 +564,18 @@
                     :description nil
                     :can_write   false
                     :official    true
-                    :collection  {:id 10 :name "Finance" :authority_level "official"}
+                    :collection  {:id 10 :name "Finance" :is_remote_synced true}
                     :updated_at  "2024-01-03"
                     :created_at  "2024-01-02"}]
       (is (= expected (#'search/postprocess-search-result result))))))
 
 (deftest ^:parallel postprocess-search-result-test-5
-  (testing "question (card) result postprocessing with moderated_status"
+  (testing "question (card) result postprocessing"
     (let [result {:model "card"
                   :id 4
                   :name "Q1"
                   :description "Question desc"
-                  :moderated_status "verified"
-                  :collection {:id 11 :name "Analytics" :authority_level nil}
+                  :collection {:id 11 :name "Analytics" :is_remote_synced false}
                   :updated_at "2024-01-04"
                   :created_at "2024-01-04"}
           expected {:id 4
@@ -590,10 +583,8 @@
                     :name "Q1"
                     :description "Question desc"
                     :database_id nil
-                    :verified true
                     :official false
-                    :moderated_status "verified"
-                    :collection {:id 11 :name "Analytics" :authority_level nil}
+                    :collection {:id 11 :name "Analytics" :is_remote_synced false}
                     :updated_at "2024-01-04"
                     :created_at "2024-01-04"}]
       (is (= expected (#'search/postprocess-search-result result))))))
@@ -604,7 +595,6 @@
                   :id 5
                   :name "Revenue"
                   :description "Metric desc"
-                  :verified nil
                   :updated_at "2024-01-05"
                   :created_at "2024-01-05"}
           expected {:id 5
@@ -612,7 +602,6 @@
                     :name "Revenue"
                     :description "Metric desc"
                     :database_id nil
-                    :verified false
                     :official false
                     :collection {}
                     :updated_at "2024-01-05"
@@ -889,7 +878,7 @@
                   [{:id archived-id :type "document" :name "Archived doc"}]))))))))
 
 (deftest enrich-with-collection-descriptions-test
-  (mt/with-premium-features #{:content-verification}
+  (mt/with-premium-features #{}
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Collection {finance-coll-id :id} {:name "Finance Team"
@@ -1118,9 +1107,9 @@
 (deftest embedded-metabot-search-test
   (mt/with-test-user :crowberto
     (search.tu/with-temp-index-table
-      (mt/with-temp [:model/Collection {collection-id :id} {:name "Embedded sources" :authority_level "official"}
-                     :model/Collection {elsewhere-id :id} {:name "Other sources" :authority_level "official"}
-                     :model/Collection {drafts-id :id} {:name "Embedded drafts"
+      (mt/with-temp [:model/Collection {collection-id :id} {:name "Embedded sources" :is_remote_synced true}
+                     :model/Collection {elsewhere-id :id} {:name "Other sources" :is_remote_synced true}
+                     :model/Collection {drafts-id :id} {:name "Embedded drafts" :is_remote_synced true
                                                         :location (collection/location-path collection-id)}
                      :model/Dashboard {included-id :id} {:name "Embedded report" :collection_id collection-id}
                      :model/Dashboard {draft-id :id} {:name "Embedded report draft" :collection_id drafts-id}
@@ -1136,8 +1125,8 @@
                                :metabot metabot}]
               (is (= #{included-id draft-id}
                      (into #{} (map :id) (search/search (assoc-in search-args [:metabot :use_verified_content] false)))))
-              (is (= [included-id]
-                     (mapv :id (search/search search-args)))))))))))
+              (is (= #{included-id draft-id}
+                     (into #{} (map :id) (search/search search-args)))))))))))
 
 (deftest confined-collection-is-not-overridable-test
   (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a

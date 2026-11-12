@@ -78,7 +78,7 @@
 ;;
 ;; <code> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "database"]</code>
 ;;
-;; On the EE side, we also give points if something's an official collection and if it's verified.
+;; On the EE side, we also give points if something is in a remote-synced (official) collection.
 ;;
 ;; Finally, what we actually search is defined in the search
 ;; config [here](https://github.com/metabase/metabase/blob/8d5f5db02c84899a053e20468986050b2034a9a4/src/metabase/search/config.clj#L73-L109),
@@ -120,7 +120,7 @@
     so dashboards outrank metrics and models outrank tables.
   - Library membership is not scored.
   - A table's `data_layer` is not scored.
-  - Official-collection and verified scores use their default weights, not the context's boosts.
+  - The official score uses its default weight, not the context's boost.
 
   Results also omit `curated`."
   (:require

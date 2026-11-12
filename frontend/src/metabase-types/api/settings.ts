@@ -270,7 +270,6 @@ const tokenStatusFeatures = [
   "config-text-file",
   "content-management",
   "content-translation",
-  "content-verification",
   "data-complexity-score",
   "dashboard-subscription-filters",
   "database-auth-providers",
@@ -287,7 +286,6 @@ const tokenStatusFeatures = [
   "metabase-store-managed",
   "metabot-v3",
   "no-upsell",
-  "official-collections",
   "query-reference-validation",
   "question-error-logs",
   "refresh-token-features",
@@ -344,7 +342,6 @@ export const tokenFeatures = [
   "cloud_custom_smtp",
   "content_diagnostics",
   "content_translation",
-  "content_verification",
   "custom-viz",
   "custom-viz-available",
   "data-complexity-score",
@@ -357,7 +354,6 @@ export const tokenFeatures = [
   "metabase-ai-managed",
   "metabot-v3",
   "multi-factor-auth",
-  "official_collections",
   "sandboxes",
   "scim",
   "sso_google",
@@ -709,8 +705,6 @@ export type UserSettings = {
   "expand-bookmarks-in-nav"?: boolean;
   "expand-collections-in-nav"?: boolean;
   "expand-library-in-nav"?: boolean;
-  "browse-filter-only-verified-models"?: boolean;
-  "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
   "trial-banner-dismissal-timestamp"?: string | null;

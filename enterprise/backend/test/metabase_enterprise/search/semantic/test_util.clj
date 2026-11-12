@@ -420,7 +420,7 @@
       test-data
       (mt/with-temp [:model/Collection
                      {col1 :id}
-                     {:name "Wildlife Collection" :archived false}
+                     {:name "Wildlife Collection" :archived false :is_remote_synced true}
 
                      :model/Collection
                      {col2 :id}
@@ -431,7 +431,7 @@
                      {:name "Cryptozoology", :archived false}
 
                      :model/Card
-                     {card1 :id}
+                     _
                      {:name "Dog Training Guide" :collection_id col1 :creator_id (mt/user->id :crowberto)
                       :archived false :query_type "native" :dataset_query (dog-training-native-query)}
 
@@ -454,14 +454,6 @@
                      :model/Card
                      _
                      {:name "Bigfoot Sightings" :collection_id col3 :creator_id (mt/user->id :crowberto) :archived false}
-
-                     :model/ModerationReview
-                     _
-                     {:moderated_item_type "card"
-                      :moderated_item_id card1
-                      :moderator_id (mt/user->id :crowberto)
-                      :status "verified"
-                      :most_recent true}
 
                      :model/Dashboard
                      _

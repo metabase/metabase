@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.activity-feed.models.recent-views :as recent-views]
-   [metabase.content-verification.core :as moderation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -170,24 +169,20 @@
                         :user_recently_viewed)))))
 
 (deftest recent-views-verified-content-filter-test
-  (testing "Recent views filtering by curated content (verified is one curation signal)"
+  (testing "Recent views filtering by curated content (official is one curation signal)"
     (mt/with-test-user :rasta
-      (mt/with-temp [:model/Card      {vq1 :id}        {:type "question" :name "verified q1"}
-                     :model/Card      {vq2 :id}        {:type "question" :name "verified q2"}
-                     :model/Card      {vm1 :id}        {:type "model"    :name "verified m1"}
-                     :model/Card      {vm2 :id}        {:type "model"    :name "verified m2"}
-                     :model/Dashboard {vd :id}         {:name "verified d"}
+      (mt/with-temp [:model/Collection {official :id}  {:is_remote_synced true}
+                     :model/Card      {vq1 :id}        {:type "question" :name "verified q1" :collection_id official}
+                     :model/Card      {vq2 :id}        {:type "question" :name "verified q2" :collection_id official}
+                     :model/Card      {vm1 :id}        {:type "model"    :name "verified m1" :collection_id official}
+                     :model/Card      {vm2 :id}        {:type "model"    :name "verified m2" :collection_id official}
+                     :model/Dashboard {vd :id}         {:name "verified d" :collection_id official}
                      :model/Card      {uq :id}         {:type "question" :name "unverified q"}
                      :model/Card      {um :id}         {:type "model"    :name "unverified m"}
                      :model/Dashboard {ud :id}         {:name "unverified d"}
                      :model/Table     {table-id :id}   {}
                      :model/Metabot   metabot {:name "test metabot"
                                                :use_verified_content true}]
-        (doseq [[id type] [[vq1 "card"] [vq2 "card"] [vm1 "card"] [vm2 "card"] [vd "dashboard"]]]
-          (moderation/create-review! {:moderated_item_id   id
-                                      :moderated_item_type type
-                                      :moderator_id        (mt/user->id :crowberto)
-                                      :status              "verified"}))
         ;; Insert verified items first (oldest), then table, then unverified (newest). Without
         ;; filtering, `(take 5 …)` captures the 3 unverified + the table + 1 verified.
         ;; Recents in newest-first order: ud, um, uq, table, vd, vm2, vm1, vq2, vq1.
@@ -214,16 +209,15 @@
               table*  (as-pair "table"     table-id)
               keys-of (fn [items] (set (map (juxt :type :id) items)))]
           (testing "The default Metabot includes recent views"
-            (mt/with-premium-features #{:content-verification}
-              (let [items (-> (create-context {}) :user_recently_viewed)
-                    ks    (keys-of items)]
-                (is (= 5 (count items)))
-                (is (contains? ks uq*))
-                (is (contains? ks um*))
-                (is (contains? ks ud*))
-                (is (contains? ks table*)))))
-          (testing "use_verified_content=true -> filters recents to curated content"
-            (mt/with-premium-features #{:content-verification}
+            (let [items (-> (create-context {}) :user_recently_viewed)
+                  ks    (keys-of items)]
+              (is (= 5 (count items)))
+              (is (contains? ks uq*))
+              (is (contains? ks um*))
+              (is (contains? ks ud*))
+              (is (contains? ks table*))))
+          (testing "use_verified_content=true -> filters recents to curated content, with no premium feature"
+            (mt/with-premium-features #{}
               (let [items (-> (context/create-context {} {:metabot metabot})
                               :user_recently_viewed)
                     ks    (keys-of items)]
@@ -232,43 +226,11 @@
                 (is (not (contains? ks uq*)))
                 (is (not (contains? ks um*)))
                 (is (not (contains? ks ud*)))
-                (testing "filter is applied *before* `take 5` — verified items deeper in the list survive"
+                (testing "filter is applied *before* `take 5` — official items deeper in the list survive"
                   (is (= 5 (count items))
-                      "Should keep 5 items even though 3 unverified items were ahead of older verified items")
+                      "Should keep 5 items even though 3 unofficial items were ahead of older official items")
                   (is (contains? ks vm2*))
-                  (is (contains? ks vm1*))))))
-          (testing "filtering is gated on the setting, not the :content-verification feature — curated is
-                    precomputed at ingestion, so recents still filter without the feature (matches search)"
-            (mt/with-premium-features #{}
-              (let [items (-> (context/create-context {} {:metabot metabot})
-                              :user_recently_viewed)
-                    ks    (keys-of items)]
-                (is (not (contains? ks uq*)))
-                (is (not (contains? ks um*)))
-                (is (not (contains? ks ud*)))))))))))
-
-(deftest recent-views-most-recent-review-wins-test
-  (testing "A card that was verified and later un-verified is correctly excluded"
-    (mt/with-test-user :rasta
-      (mt/with-premium-features #{:content-verification}
-        (mt/with-temp [:model/Card    {card-id :id}      {:type "question" :name "flip-flop"}
-                       :model/Metabot metabot {:name "test metabot"
-                                               :use_verified_content true}]
-          ;; First verify, then un-verify. create-review! marks older rows as most_recent=false.
-          (moderation/create-review! {:moderated_item_id   card-id
-                                      :moderated_item_type "card"
-                                      :moderator_id        (mt/user->id :crowberto)
-                                      :status              "verified"})
-          (moderation/create-review! {:moderated_item_id   card-id
-                                      :moderated_item_type "card"
-                                      :moderator_id        (mt/user->id :crowberto)
-                                      :status              nil})
-          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
-          (let [items (-> (context/create-context {} {:metabot metabot})
-                          :user_recently_viewed)
-                ids   (set (map :id items))]
-            (is (not (contains? ids card-id))
-                "Most-recent review with status=nil means the card is no longer verified")))))))
+                  (is (contains? ks vm1*)))))))))))
 
 (deftest enhance-context-with-schema-mbql-query-test
   (testing "MBQL adhoc query gets source table added to used_tables"

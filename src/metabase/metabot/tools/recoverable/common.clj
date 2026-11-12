@@ -171,7 +171,7 @@
              ;; never by its own name
              [:label :string]]}
   [{:keys [label]}]
-  {:message  (str "`" label "` is not available: this Metabot only uses curated content (verified, official, or "
-                  "Library content).")
+  {:message  (str "`" label "` is not available: this Metabot only uses curated content (content in "
+                  "synced collections).")
    :recovery [{:uses #{"search"}
                :text "Call `search` to find curated tables, models, or metrics and use one of those instead."}]})

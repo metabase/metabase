@@ -19,7 +19,6 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Button, Flex, Icon, Input, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
@@ -151,11 +150,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
             <SelectList>
               {collections.map((collection) => {
                 const icon = getIcon({ ...collection, model: "collection" });
-                const iconColor = PLUGIN_COLLECTIONS.isRegularCollection(
-                  collection,
-                )
-                  ? "text-secondary"
-                  : icon.color;
+                const iconColor = icon.color ?? "text-secondary";
                 return (
                   <SelectList.Item
                     key={collection.id}

@@ -78,23 +78,14 @@
              :dashboard_id [:in dashboard-ids]
              {:order-by [[:dashboard_id :asc] [:position :asc] [:id :asc]]}))
 
-(mu/defn dashboard-collection-authority-levels
-  "The id and Collection `authority_level` of the Dashboards with `dashboard-ids`."
-  [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
-  (mdb/query {:select    [:dashboard.id :collection.authority_level]
-              :from      [[:report_dashboard :dashboard]]
-              :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
-              :where     [:in :dashboard.id dashboard-ids]}))
-
 (mu/defn dashcards-with-visible-cards-for-dashboards
   "The DashboardCards of the Dashboards with `dashboard-ids` whose Card is visible (unarchived, a dashboard question
-  not archived by itself, or absent), with their Card's Collection authority level, in dashboard then creation order."
+  not archived by itself, or absent), in dashboard then creation order."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select :model/DashboardCard
-             {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
+             {:select    [:dashcard.*]
               :from      [[:report_dashboardcard :dashcard]]
-              :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
-                          [:collection :collection] [:= :collection.id :card.collection_id]]
+              :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]]
               :where     [:and
                           [:in :dashcard.dashboard_id dashboard-ids]
                           [:or

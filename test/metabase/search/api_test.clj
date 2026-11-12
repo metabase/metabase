@@ -10,7 +10,6 @@
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
    [metabase.collections.models.collection :as collection]
-   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
@@ -39,7 +38,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
+(def ^:private default-collection {:id false :name nil :is_remote_synced false :type nil})
 
 (use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
                                   (search.tu/with-appdb-search-if-available-otherwise-legacy (thunk)))))
@@ -51,7 +50,6 @@
    :location                   nil
    :bookmark                   false
    :collection                 default-collection
-   :collection_authority_level nil
    :collection_position        nil
    :context                    nil
    :created_at                 true
@@ -64,7 +62,6 @@
    :id                         true
    :initial_sync_status        nil
    :model_name                 nil
-   :moderated_status           nil
    :last_editor_common_name    nil
    :last_editor_id             false
    :last_edited_at             false
@@ -126,6 +123,7 @@
                                             :collection (assoc default-collection :id true :name true)
                                             :effective_location "/"
                                             :location "/"
+                                            :is_remote_synced false
                                             :updated_at false
                                             :type nil
                                             :can_write true))
@@ -213,7 +211,7 @@
   (on-search-types #{"dashboard" "pulse" "card" "dataset" "metric" "action"}
                    #(assoc % :collection {:id true,
                                           :name (if (= (:model %) "action") nil true)
-                                          :authority_level nil
+                                          :is_remote_synced false
                                           :type nil})
                    (default-search-results)))
 
@@ -572,22 +570,6 @@
       (testing "return a subset of model for created-by filter"
         (is (= #{"dashboard" "dataset" "card" "metric" "action" "measure"}
                (get-available-models :q search-term :created_by (mt/user->id :rasta)))))
-      (testing "return a subset of model for verified filter"
-        (mt/with-temp
-          [:model/Card {v-card-id :id} {:name (format "%s Verified Card" search-term)}
-           :model/Card {v-model-id :id} {:name (format "%s Verified Model" search-term) :type :model}
-           :model/Card {v-metric-id :id} {:name (format "%s Verified Metric" search-term) :type :metric}
-           :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
-          (testing "when has both :content-verification features"
-            (mt/with-premium-features #{:content-verification}
-              (mt/with-verified! {:card [v-card-id v-model-id v-metric-id]}
-                (is (= #{"card" "dataset" "metric"}
-                       (get-available-models :q search-term :verified true))))))
-          (testing "when has :content-verification feature only"
-            (mt/with-premium-features #{:content-verification}
-              (mt/with-verified! {:card [v-card-id]}
-                (is (= #{"card"}
-                       (get-available-models :q search-term :verified true))))))))
       (testing "return a subset of model for created_at filter"
         (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric" "measure"}
                (get-available-models :q search-term :created_at "today"))))
@@ -623,21 +605,20 @@
       (is (= (sort-by :dashboardcard_count (cleaned-results dashboard-count-results))
              (sort-by :dashboardcard_count (unsorted-search-request-data :rasta :q "dashboard-count")))))))
 
-(deftest moderated-status-test
-  (let [search-term "moderated-status-test"]
-    (mt/with-temp [:model/Card {card-id :id} {:name "moderated-status-test"}]
-      ;; an item could have multiple moderation-review, and it's current status is defined as
-      ;; moderation-review.most_recent, so we creates multiple moderation review here to make sure
-      ;; test result return the most recent status and don't duplicate the result
-      (doseq [status ["verified" nil "verified"]]
-        (moderation-review/create-review! {:moderated_item_id   card-id
-                                           :moderated_item_type "card"
-                                           :moderator_id        (mt/user->id :crowberto)
-                                           :status              status}))
-      (is (=? [{:id               card-id
-                :model            "card"
-                :moderated_status "verified"}]
-              (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term)))))))
+(deftest official-status-test
+  (testing "search results expose whether their collection is remote-synced"
+    (let [search-term "official-status-test"]
+      (mt/with-temp [:model/Collection {synced-id :id} {:name (str search-term " synced") :is_remote_synced true}
+                     :model/Collection {plain-id :id}  {:name (str search-term " plain")}
+                     :model/Card       {synced-card :id} {:name (str search-term " synced card") :collection_id synced-id}
+                     :model/Card       {plain-card :id}  {:name (str search-term " plain card") :collection_id plain-id}]
+        (let [results (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term))
+              by-id   (fn [model id] (some #(when (and (= model (:model %)) (= id (:id %))) %) results))]
+          (is (=? {:collection {:id synced-id :is_remote_synced true}} (by-id "card" synced-card)))
+          (is (=? {:collection {:id plain-id :is_remote_synced false}} (by-id "card" plain-card)))
+          (is (=? {:is_remote_synced true} (by-id "collection" synced-id)))
+          (is (=? {:is_remote_synced false} (by-id "collection" plain-id)))
+          (is (not-any? #(contains? % :moderated_status) results)))))))
 
 (deftest archived-permissions-test
   (testing "Users without perms for a collection can't see search results that were trashed from that collection"
@@ -1372,68 +1353,6 @@
             (is (= {:last_edited_by "nullable vector of value must be an integer greater than zero."}
                    (:errors resp)))))))))
 
-(deftest verified-filter-test
-  (let [search-term "Verified filter"]
-    (mt/with-temp
-      [:model/Card {v-card-id :id}  {:name (format "%s Verified Card" search-term)}
-       :model/Card {_card-id :id}   {:name (format "%s Normal Card" search-term)}
-       :model/Card {_model-id :id}  {:name (format "%s Normal Model" search-term) :type :model}
-       :model/Card {v-model-id :id} {:name (format "%s Verified Model" search-term) :type :model}
-       :model/Dashboard {v-dash-id :id} {:name (format "%s Verified Dashboard" search-term)}]
-      (mt/with-verified! {:card      [v-card-id v-model-id]
-                          :dashboard [v-dash-id]}
-        (mt/with-premium-features #{:content-verification}
-          (testing "Able to filter only verified items"
-            (let [resp (mt/user-http-request :crowberto :get 200 "search"
-                                             :q search-term
-                                             :verified true
-                                             :calculate_available_models true)]
-              (testing "do not returns duplicated verified cards"
-                (is (= 1 (->> resp
-                              :data
-                              (filter #(= {:model "card" :id v-card-id} (select-keys % [:model :id])))
-                              count))))
-              (testing "only a subset of models are applicable"
-                (is (= #{"card" "dataset" "dashboard"} (set (:available_models resp)))))
-              (testing "results contains only verified entities"
-                (is (= #{[v-card-id  "card"       "Verified filter Verified Card"]
-                         [v-model-id "dataset"    "Verified filter Verified Model"]
-                         [v-dash-id  "dashboard"  "Verified filter Verified Dashboard"]}
-                       (->> (:data resp)
-                            (map (juxt :id :model :name))
-                            set))))))
-          (testing "Returns schema error if attempt to search for non-verified items"
-            (is (= {:verified "nullable true"}
-                   (:errors (mt/user-http-request :crowberto :get 400 "search" :q "x" :verified false)))))
-          (testing "Works with models filter"
-            (testing "return intersections of supported models with provided models"
-              (is (= #{"card" "dashboard"}
-                     (->> (mt/user-http-request :crowberto :get 200 "search"
-                                                :q search-term :verified true :models "card" :models "dashboard" :model "table")
-                          :data
-                          (map :model)
-                          set))))))
-        (mt/with-premium-features #{:content-verification}
-          (testing "Returns verified cards and models only if :content-verification is enabled"
-            (let [resp (mt/user-http-request :crowberto :get 200 "search"
-                                             :q search-term
-                                             :verified true
-                                             :calculate_available_models true)]
-              (testing "only a subset of models are applicable"
-                (is (= #{"card" "dataset" "dashboard"} (set (:available_models resp)))))
-              (testing "results contains only verified entities"
-                (is (= #{[v-card-id  "card"    "Verified filter Verified Card"]
-                         [v-model-id "dataset" "Verified filter Verified Model"]
-                         [v-dash-id  "dashboard" "Verified filter Verified Dashboard"]}
-                       (->> (:data resp)
-                            (map (juxt :id :model :name))
-                            set)))))))
-        (testing "error if doesn't have premium-features"
-          (mt/with-premium-features #{}
-            (mt/assert-has-premium-feature-error
-             "Content Management or Official Collections"
-             (mt/user-http-request :crowberto :get 402 "search" :q search-term :verified true))))))))
-
 (deftest created-at-api-test
   (let [search-term "created-at-filtering"]
     (with-search-items-in-root-collection search-term
@@ -1763,21 +1682,21 @@
       (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
         (is (= {:id              (u/the-id coll-2)
                 :name            "Collection 2"
-                :authority_level nil
+                :is_remote_synced false
                 :type            nil}
                (-> result :data first :collection))))
       (perms/revoke-collection-permissions! (perms/all-users-group) coll-2)
       (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
         (is (= {:id              (u/the-id coll-1)
                 :name            "Collection 1"
-                :authority_level nil
+                :is_remote_synced false
                 :type            nil}
                (-> result :data first :collection))))
       (perms/revoke-collection-permissions! (perms/all-users-group) coll-1)
       (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
         (is (= {:id              "root"
                 :name            "Our analytics"
-                :authority_level nil
+                :is_remote_synced false
                 :type            nil}
                (-> result :data first :collection)))))))
 
@@ -1892,7 +1811,7 @@
             (is (= {:id mid-col-id
                     :name "middle level col"
                     :type "bar"
-                    :authority_level nil
+                    :is_remote_synced false
                     :effective_ancestors [{:id top-col-id
                                            :name "top level col"
                                            :type "foo"}]}
@@ -2021,8 +1940,7 @@
         (search/update! (t2/instance :model/Card {:id card-id}))
         (testing "The card data also include `dashboard` info"
           (is (= {:id dash-id
-                  :name (named "dashboard")
-                  :moderation_status nil}
+                  :name (named "dashboard")}
                  (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                       :data
                       (filter #(= card-id (:id %)))

@@ -114,7 +114,7 @@
 
 (defn- collection [entity-id collection-name]
   {:entity_id entity-id :name collection-name :slug nil :description nil :location "/" :namespace :data-apps :type nil
-   :authority_level nil :archived false :archived_directly false :archive_operation_id nil
+   :archived false :archived_directly false :archive_operation_id nil
    :is_remote_synced false :is_sample false :personal_owner_id nil :created_at nil})
 
 (defn- file-path

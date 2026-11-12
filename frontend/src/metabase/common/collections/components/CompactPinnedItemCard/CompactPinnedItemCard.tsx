@@ -13,7 +13,7 @@ import { EventSandbox } from "metabase/common/components/EventSandbox";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Box, Card, Checkbox, Ellipsified, Group } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import type {
@@ -89,7 +89,6 @@ export function CompactPinnedItemCard({
   const icon = getIcon({
     model: item.model,
     display: item.display,
-    moderated_status: item.moderated_status,
   });
   const description = item.description || DEFAULT_DESCRIPTION[item.model] || "";
   const actionMenuItem = isCollectionItem(item) ? item : null;
@@ -174,11 +173,16 @@ export function CompactPinnedItemCard({
             >
               {item.name}
             </Ellipsified>
-            <PLUGIN_MODERATION.ModerationStatusIcon
-              status={item.moderated_status}
-              filled
-              size={14}
-            />
+            {item.model !== "collection" && (
+              <PLUGIN_REMOTE_SYNC.OfficialBadge
+                collection={
+                  isCollectionItem(item)
+                    ? item.collection
+                    : item.parent_collection
+                }
+                size={14}
+              />
+            )}
           </Group>
           <MarkdownPreview
             className={S.description}

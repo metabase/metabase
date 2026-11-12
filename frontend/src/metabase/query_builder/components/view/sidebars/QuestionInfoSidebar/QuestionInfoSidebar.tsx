@@ -13,7 +13,7 @@ import { Link } from "metabase/common/components/Link";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import { InsightsAction } from "metabase/common/components/upsells/components/InsightsAction";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { ActionIcon, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -100,8 +100,9 @@ export const QuestionInfoSidebar = ({
               onChange={handleSave}
               canWrite={canWrite}
             />
-            <PLUGIN_MODERATION.ModerationReviewTextForQuestion
-              question={question}
+            <PLUGIN_REMOTE_SYNC.OfficialBadge
+              collection={question.collection()}
+              showLabel
             />
           </Stack>
         </SidebarSection>

@@ -14,26 +14,34 @@ const setup = (props: CommonSetupProps = {}) => {
 };
 
 describe("PaletteResults EE", () => {
-  describe("content verification", () => {
-    it("should show verified badges for recents", async () => {
+  describe("official content", () => {
+    it("should show official badges for recents in official collection", async () => {
       setup();
-      //Foo Question should be displayed with a verified badge
       expect(
         await within(
-          await screen.findByRole("option", { name: "Foo Question" }),
-        ).findByRole("img", { name: /verified_filled/ }),
+          await screen.findByRole("option", { name: "Bar Dashboard" }),
+        ).findByTestId("official-badge"),
       ).toBeInTheDocument();
+      expect(
+        within(
+          await screen.findByRole("option", { name: "Foo Question" }),
+        ).queryByTestId("official-badge"),
+      ).not.toBeInTheDocument();
     });
 
-    it("should show verified badges for search results", async () => {
+    it("should show official badges for search results in official collection", async () => {
       setup({ query: "ques" });
 
-      //Foo Question should be displayed with a verified badge
       expect(
         await within(
-          await screen.findByRole("option", { name: "Foo Question" }),
-        ).findByRole("img", { name: /verified_filled/ }),
+          await screen.findByRole("option", { name: "Bar Question" }),
+        ).findByTestId("official-badge"),
       ).toBeInTheDocument();
+      expect(
+        within(
+          await screen.findByRole("option", { name: "Foo Question" }),
+        ).queryByTestId("official-badge"),
+      ).not.toBeInTheDocument();
     });
   });
 });

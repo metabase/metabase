@@ -4,18 +4,17 @@ import { t } from "ttag";
 import { useListRevisionsQuery, useRevertRevisionMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
-import { getActivityTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
+import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Box, Card, Text } from "metabase/ui";
-import type { CardId, ModerationReview } from "metabase-types/api";
+import type { CardId } from "metabase-types/api";
 
 import S from "./ActivityTimelineCard.module.css";
 
 type ActivityTimelineCardProps = {
   entity: "card";
   id: CardId;
-  moderationReviews?: ModerationReview[];
   canWrite: boolean;
   "data-testid": string;
 };
@@ -33,7 +32,6 @@ export function ActivityTimelineCard(props: ActivityTimelineCardProps) {
 function ActivityTimeline({
   entity,
   id,
-  moderationReviews,
   canWrite,
   "data-testid": dataTestId,
 }: ActivityTimelineCardProps) {
@@ -46,9 +44,8 @@ function ActivityTimeline({
   const [revertRevision] = useRevertRevisionMutation();
 
   const events = useMemo(
-    () =>
-      getActivityTimelineEvents({ revisions, moderationReviews, currentUser }),
-    [moderationReviews, revisions, currentUser],
+    () => getTimelineEvents({ revisions, currentUser }),
+    [revisions, currentUser],
   );
 
   if (isLoading || error != null) {

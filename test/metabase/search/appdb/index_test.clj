@@ -199,7 +199,6 @@
   {:model               nil
    :model_id            nil
    :name                nil
-   :official_collection nil
    :database_id         nil
    :pinned              nil
    :view_count          nil
@@ -209,8 +208,7 @@
    :model_updated_at    nil
    :dashboardcard_count nil
    :last_edited_at      nil
-   :last_editor_id      nil
-   :verified            nil})
+   :last_editor_id      nil})
 
 (defn- index-entity
   [entity]
@@ -231,7 +229,7 @@
                      {:model                    model-type
                       :model_id                 (str card-id)
                       :name                     card-name
-                      :official_collection      nil
+                      :official                 false
                       :database_id              (mt/id)
                       :pinned                   false
                       :view_count               0
@@ -241,17 +239,16 @@
                       :model_updated_at         yesterday
                       :last_viewed_at           yesterday
                       :last_edited_at           nil
-                      :last_editor_id           nil
-                      :verified                 nil})
+                      :last_editor_id           nil})
                     (ingest-then-fetch! model-type card-name))))))
       (testing (format "everything %s" model-type)
         (let [card-name    (mt/random-name)
               yesterday    (t/- (now) (t/days 1))
               two-days-ago (t/- yesterday (t/days 1))]
           (mt/with-temp
-            [:model/Collection    {coll-id :id}      {:name            "My collection"
-                                                      ;; :official_collection = true
-                                                      :authority_level "official"}
+            [:model/Collection    {coll-id :id}      {:name             "My collection"
+                                                      ;; :official = true
+                                                      :is_remote_synced true}
              :model/Card          {card-id :id}      {:name                card-name
                                                       :type                card-type
                                                       :query_type          "query"
@@ -282,18 +279,13 @@
                                                      :user_id     (mt/user->id :rasta)
                                                      :most_recent true
                                                      :timestamp   yesterday
-                                                     :object      {}}
-             ;; :verified = true
-             :model/ModerationReview _              {:moderated_item_type "card"
-                                                     :moderated_item_id   card-id
-                                                     :most_recent         true
-                                                     :status              "verified"
-                                                     :moderator_id        (mt/user->id :crowberto)}]
+                                                     :object      {}}]
             (is (=? (index-entity
                      {:model                    model-type
                       :model_id                 (str card-id)
                       :name                     card-name
-                      :official_collection      true
+                      :official                 true
+                      :curated                  true
                       :database_id              (mt/id)
                       :pinned                   true
                       :view_count               42
@@ -303,8 +295,7 @@
                       :model_updated_at         two-days-ago
                       :dashboardcard_count      2
                       :last_edited_at           yesterday
-                      :last_editor_id           (mt/user->id :rasta)
-                      :verified                 true})
+                      :last_editor_id           (mt/user->id :rasta)})
                     (ingest-then-fetch! model-type card-name)))))))))
 
 (deftest database-ingestion-test
@@ -351,8 +342,8 @@
     (let [collection-name (mt/random-name)
           yesterday       (t/- (now) (t/days 1))]
       (mt/with-temp [:model/Collection {coll-id :id} {:name collection-name
-                                                      ;; :authority_level = "official"
-                                                      :authority_level "official"
+                                                      ;; :official = true
+                                                      :is_remote_synced true
                                                       ;; :archived = true
                                                       :archived true
                                                       ;; :type = "collection"
@@ -365,6 +356,7 @@
                   :collection_id    coll-id
                   :name             collection-name
                   :archived         true
+                  :official         true
                   :model_created_at yesterday})
                 (ingest-then-fetch! "collection" collection-name)))))))
 

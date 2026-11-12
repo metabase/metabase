@@ -40,14 +40,12 @@
 
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
-  [{:keys [verified moderated_status collection data_authority curated data_layer can_write] :as result}]
+  [{:keys [collection data_authority curated data_layer can_write] :as result}]
   (let [model (:model result)
-        verified? (or (boolean verified) (= moderated_status "verified"))
-        collection-info (select-keys collection [:id :name :authority_level])
-        ;; Curation signals beyond verified, so the LLM can see *why* content is curated. `:curated` is
-        ;; the precomputed rollup (present on the appdb/semantic engines); `:data_layer` is table-only.
-        ;; assoc-some keeps them off results that don't carry them (e.g. the in-place fallback).
-        official? (= "official" (:authority_level collection-info))
+        collection-info (select-keys collection [:id :name :is_remote_synced])
+        official? (boolean (if (= "collection" model)
+                             (:is_remote_synced result)
+                             (:is_remote_synced collection)))
         common-fields {:id          (:id result)
                        :type        (metabot.search-models/search-model->entity-type model)
                        :name        (:name result)
@@ -76,8 +74,7 @@
 
       "dashboard"
       (-> common-fields
-          (merge {:verified   verified?
-                  :official   official?
+          (merge {:official   official?
                   :collection collection-info})
           (m/assoc-some :curated curated
                         :can_write can_write))
@@ -106,12 +103,10 @@
       ;; Questions, metrics, and datasets
       (-> common-fields
           (merge {:database_id (:database_id result)
-                  :verified    verified?
                   :official    official?
                   :collection  collection-info})
           (m/assoc-some :curated curated
-                        :display (:display result)
-                        :moderated_status moderated_status)))))
+                        :display (:display result))))))
 
 (defn- enrich-with-collection-descriptions
   "Fetch and merge collection descriptions for all search results that have collection IDs."
@@ -507,10 +502,7 @@
                     (u/index-by :id (filter mi/can-read? (metabot.db/card-search-rows ids))))
         coll-ids  (->> (vals id->card) (keep :collection_id) distinct)
         id->coll  (when (seq coll-ids)
-                    (u/index-by :id (metabot.db/collection-summaries coll-ids)))
-        ;; verified is already a set (t2/select-fn-set), possibly nil when there were no ids
-        verified  (when (seq ids)
-                    (metabot.db/verified-item-ids ids "card"))]
+                    (u/index-by :id (metabot.db/collection-summaries coll-ids)))]
     (for [id ids
           :let [c (id->card id)]
           :when c]
@@ -523,8 +515,8 @@
          :name        (:name c)
          :description (:description c)
          :database_id (:database_id c)
-         :verified    (contains? verified id)
-         :collection  (when coll (select-keys coll [:id :name :authority_level]))}))))
+         :official    (boolean (:is_remote_synced coll))
+         :collection  (when coll (select-keys coll [:id :name :is_remote_synced]))}))))
 
 (defn- measure-segment-refs->results
   "Build search-result records for measure/segment refs (`{:id .. :type \"measure\"|\"segment\"}`),
@@ -595,7 +587,7 @@
                ". If other types could match, add them to `entity_types`."))
 
     (:use_verified_content metabot)
-    (conj "This Metabot searches only curated content, such as verified items and items in official collections.")
+    (conj "This Metabot searches only curated content, which is the content in synced collections.")
 
     (confined-collection-id metabot profile-id)
     (conj "This Metabot searches only inside its own collection.")))
@@ -652,13 +644,12 @@
 
 (defn- search-result->item
   "Trim a search result to the fields the chain-of-thought results card renders.
-  `:display` (a question's viz type) and `:moderated_status` let the client pick the
-  exact entity icon, matching the app's search/command-palette icons.
+  `:display` (a question's viz type) lets the client pick the exact entity icon, matching the app's
+  search/command-palette icons.
   `:table_id` is the base table of a measure or segment, which the client needs to link to it."
   [r]
   (-> (select-keys r [:id :type :name :display_name :database_id :database_schema :database_name])
       (m/assoc-some :display (some-> (:display r) name)
-                    :moderated_status (:moderated_status r)
                     :table_id (when (#{"measure" "segment"} (:type r)) (:base_table_id r))
                     :collection (some-> (:collection r) (select-keys [:id :name])))))
 
@@ -669,7 +660,7 @@
 
 (mr/def ::search-scope
   "What a search reaches: the collection or database it is limited to, if any. `verified-only` is true when the
-  search is limited to verified content but `read_resource` is not, as in the profiles exempt from curation."
+  search is limited to curated content but `read_resource` is not, as in the profiles exempt from curation."
   [:map {:closed true}
    [:collection-id [:maybe :int]]
    [:database-id   [:maybe :int]]

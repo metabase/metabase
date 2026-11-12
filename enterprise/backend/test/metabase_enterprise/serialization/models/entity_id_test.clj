@@ -90,7 +90,6 @@
     :model/MetabotUsedTable
     :model/ModelIndex
     :model/ModelIndexValue
-    :model/ModerationReview
     :model/Notification
     :model/NotificationCard
     :model/NotificationSubscription

@@ -12,7 +12,6 @@
    [metabase.cache.core :as cache]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
-   [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
@@ -1158,7 +1157,6 @@
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
   (queries.db/delete-parameter-cards-for-card! id)
-  (queries.db/delete-card-moderation-reviews! id)
   (queries.db/delete-card-revisions! id)
   ;; delete any card-type notifications for this card — must materialize IDs first because
   ;; Notification's before-delete deletes the NotificationCard, which would make a subquery
@@ -1321,70 +1319,6 @@
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
-(defn- card-is-verified?
-  "Return true if card is verified, false otherwise. Assumes that moderation reviews are ordered so that the most recent
-  is the first. This is the case from the hydration function for moderation_reviews."
-  [card]
-  (-> card :moderation_reviews first :status #{"verified"} boolean))
-
-(defn- changed?
-  "Return whether there were any changes in the objects. ONLY keys in `after` are compared. If any are missing from
-  `before` an exception will be thrown.
-
-  returns false, `description` has not changed:
-  (changed? {:collection_id 1 :description \"foo\"}
-            {:description \"foo\"})
-
-  returns true, `description` has changed:
-  (changed? {:collection_id 1 :description \"foo\"}
-            {:description \"diff\"})
-
-  throws an exception, `before` is missing keys from `after`:
-  (changed? {:collection_id 1}
-            {:collection_id 1 :description \"foobar\"})
-
-  For keys that will be transformed before we insert them in the database, automatically runs
-  `(out-transform (in-transform ...))` before comparing to make sure we are comparing the canonical form."
-  [card-before updates]
-  ;; normalize the query before comparison
-  (let [transforms (t2/transforms :model/Card)
-        after (->> updates
-                   (map (fn [[k v]]
-                          (let [tvi (get-in transforms [k :in] identity)
-                                tvo (get-in transforms [k :out] identity)
-                                tv (tvo (tvi v))]
-                            [k tv])))
-                   (into {}))
-        before  (select-keys card-before (keys after))]
-    (when-not (set/subset? (set (keys after))
-                           (set (keys before)))
-      (throw (ex-info "`before-card` card is missing keys from `updates`"
-                      {:missing-keys (apply disj
-                                            (set (keys after))
-                                            (set (keys before)))})))
-    (boolean (some (fn [k] (api/column-will-change? (get before k) (get after k))) (keys after)))))
-
-(def ^:private card-compare-keys
-  "When comparing a card to possibly unverify, only consider these keys as changing something 'important' about the
-  query."
-  #{:table_id
-    :database_id
-    :query_type ;; these first three may not even be changeable
-    :dataset_query})
-
-(defn maybe-unverify!
-  "Remove `card`'s verification review when `updates` change something important about its query."
-  [card updates actor]
-  (when (and (card-is-verified? card)
-             (changed? card (select-keys updates card-compare-keys)))
-    ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
-    ;; to remove it regardless if enterprise edition is present at the moment.
-    (moderation/create-review! {:moderated_item_id   (:id card)
-                                :moderated_item_type "card"
-                                :moderator_id        (:id actor)
-                                :status              nil
-                                :text                (tru "Unverified due to edit")})))
-
 (mu/defn- mbql-clause->identifier-for-parameter-updates
   "Get the unique key used to power the parameter mapping update stuff added in #49308. Key is an MBQL-5-style clause
   but with an empty options clause."
@@ -1516,7 +1450,7 @@
 
 (defn- update-card-in-db!
   "Write `card-updates` to the Card and the rows that depend on it, in one transaction."
-  [card-before-update card-updates actor delete-old-dashcards?]
+  [card-before-update card-updates delete-old-dashcards?]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
     (api/maybe-reconcile-collection-position! (select-keys card-before-update [:collection_id :collection_position]) (select-keys card-updates [:collection_id :collection_position]))
@@ -1529,7 +1463,6 @@
                                                         :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                         :result_metadata :verified-result-metadata?})]
       (assert-is-valid-dashboard-internal-update card-updates card-before-update)
-      (maybe-unverify! card-before-update updated-fields actor)
       (queries.db/update-card! (:id card-before-update)
                                (m/update-existing updated-fields :dataset_query
                                                   #(lib/normalize ::queries.schema/card.dataset-query %)))
@@ -1567,7 +1500,7 @@
   [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
   ;; The card hooks delete, archive, or move a card's actions without events, so compare the actions before and after.
   (let [actions-before (queries.db/actions-for-model (:id card-before-update))]
-    (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)
+    (update-card-in-db! card-before-update card-updates delete-old-dashcards?)
     (when (seq actions-before)
       (doseq [[topic action] (changed-action-events actions-before (queries.db/actions-for-model (:id card-before-update)))]
         (events/publish-event! topic {:object action :user-id api/*current-user-id*}))))
@@ -1813,11 +1746,10 @@
                   :last-viewed-at       :last_used_at
                   :native-query         {:fn maybe-extract-native-query
                                          :fields [:dataset_query :query_type]}
-                  :official-collection  [:= "official" :collection.authority_level]
+                  :official             [:coalesce :collection.is_remote_synced false]
                   :last-edited-at       :r.timestamp
                   :last-editor-id       :r.user_id
                   :pinned               [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-                  :verified             [:= "verified" :mr.status]
                   :view-count           true
                   :created-at           true
                   :updated-at           true
@@ -1826,14 +1758,13 @@
                   :collection-location  :collection.location
                   :root-collection-type {:fn collection/root-collection-type}}
    :search-terms [:name :description]
-   :render-terms {:archived-directly          true
-                  :collection-authority_level :collection.authority_level
-                  :collection-name            :collection.name
+   :render-terms {:archived-directly           true
+                  :collection-is_remote_synced :collection.is_remote_synced
+                  :collection-name             :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
-                  :collection-position        true
+                  :collection-position         true
                   ;; This field can become stale, unless we change to calculate it just-in-time.
-                  :display                    true
-                  :moderated-status           :mr.status}
+                  :display                     true}
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
@@ -1847,11 +1778,7 @@
                                                 ;; Interesting for inversion, another condition on whether to update.
                                                 ;; For now, let's just swallow the extra update (2x amplification)
                                                 [:= :r.most_recent true]
-                                                [:= :r.model "Card"]]]
-                  :mr         [:model/ModerationReview [:and
-                                                        [:= :mr.moderated_item_type "card"]
-                                                        [:= :mr.moderated_item_id :this.id]
-                                                        [:= :mr.most_recent true]]]}
+                                                [:= :r.model "Card"]]]}
    ;; Workaround for dataflow :((((((
    ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
    ;;       and could cause a large increase in the query count for dashboard updates.
@@ -1876,12 +1803,7 @@
                              :last_used_at
                              :report_card.collection_id]
                     :from :report_card
-                    :left-join [:moderation_review [:and
-                                                    [:= :moderation_review.moderated_item_id :report_card.id]
-                                                    [:= :moderation_review.moderated_item_type (h2x/literal "card")]
-                                                    [:= :moderation_review.most_recent true]
-                                                    [:= :moderation_review.status (h2x/literal "verified")]]
-                                :pulse_card [:= :pulse_card.card_id :report_card.id]
+                    :left-join [:pulse_card [:= :pulse_card.card_id :report_card.id]
                                 :pulse [:and
                                         [:= :pulse_card.pulse_id :pulse.id]
                                         [:= :pulse.archived false]]
@@ -1890,7 +1812,7 @@
                     :where [:and
                             [:= :sandboxes.id nil]
                             [:= :pulse.id nil]
-                            [:= :moderation_review.id nil]
+                            [:= [:coalesce :collection.is_remote_synced false] false]
                             [:= :report_card.archived false]
                             [:<= :report_card.last_used_at (-> args :cutoff-date)]
                             ;; find things only in regular collections, not the `instance-analytics` collection.

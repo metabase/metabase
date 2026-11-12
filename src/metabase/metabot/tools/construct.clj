@@ -643,7 +643,7 @@
 (defn- uncurated-source!
   "Reject the query: a curated-only Metabot may not read `uncurated`, the `[kind id]` pairs it names."
   [uncurated]
-  (throw (ex-info (str "This Metabot only uses curated content (verified, official, or Library content), "
+  (throw (ex-info (str "This Metabot only uses curated content (content in synced collections), "
                        "and the query reads a table, model, or metric that is not curated.")
                   {:agent-error? true
                    :status-code  400

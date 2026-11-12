@@ -316,15 +316,14 @@
   "Format collection for LLM consumption.
    Matches Python Collection.llm_representation exactly, except we additionally say when the collection is in the
    trash."
-  [{:keys [id name description authority_level path archived]}]
+  [{:keys [id name description is_remote_synced path archived]}]
   (render-llm-template
    :collection
    {:collection_id              (some-> id str)
     :collection_name            (or name "Our analytics")
     :collection_path            path
     :collection_description     description
-    ;; A Collection read from the app DB has its authority level as a keyword.
-    :collection_authority_level (some-> authority_level u/qualified-name)
+    :collection_official        (boolean is_remote_synced)
     :collection_archived        (boolean archived)}))
 
 (defn- drill-in-location-context
@@ -505,14 +504,14 @@
   Include its database name, portable entity ID, and the source required to use it in `construct_notebook_query`.
   The source is identified by `base_table_fully_qualified_name` or `source_card_portable_entity_id`.
   When no source is usable, include `source_unavailable` instead."
-  [{:keys [id name description verified queryable-dimensions join-required-dimensions collection
+  [{:keys [id name description official queryable-dimensions join-required-dimensions collection
            default_time_dimension_field_name database_name base_table_portable_fk
            portable_entity_id source_card_name source_card_portable_entity_id source_unavailable]}]
   (render-llm-template
    :metric
    {:metric_id                     (str id)
     :metric_name                   name
-    :metric_verified               (boolean verified)
+    :metric_official               (boolean official)
     :metric_description            description
     :metric_database_name          database_name
     :metric_base_table_fqn         (when (and (vector? base_table_portable_fk)
@@ -582,7 +581,7 @@
    `<metabase-model>` element as a JSON `<query>` block — same canonical portable MBQL 5
    representations form used elsewhere. Note: Python uses <metabase-model> tag but closes
    with </model>."
-  [{:keys [id name description verified fields database_id database_name database_engine
+  [{:keys [id name description official fields database_id database_name database_engine
            related_tables related_tables_total related_tables_without_fields
            measures segments portable_entity_id query_json]}]
   (let [fqn (model-fully-qualified-name id name)]
@@ -590,7 +589,7 @@
      :model
      {:model_id                 (str id)
       :model_name               name
-      :model_verified           (boolean verified)
+      :model_official           (boolean official)
       :model_database_id        (str database_id)
       :model_database_name      database_name
       :model_database_engine    (database-engine-or-unknown database_engine)
@@ -692,11 +691,11 @@
   `<metabase_question>` element as a JSON `<query>` block. The format is the same canonical
   portable MBQL 5 representations the LLM writes into `construct_notebook_query` and gets
   back in that tool's result — so existing cards and freshly-built queries share one form."
-  [{:keys [id name description verified collection visualization display fields portable_entity_id query_json]}]
+  [{:keys [id name description official collection visualization display fields portable_entity_id query_json]}]
   (render-llm-template
    :question
    {:question_id (str id)
-    :question_verified (boolean verified)
+    :question_official (boolean official)
     :question_name name
     :question_description description
     :question_display_type (some-> display clojure.core/name)
@@ -808,7 +807,7 @@
   "Format dashboard for LLM consumption.
    Matches Python Dashboard.llm_representation exactly, except we additionally surface who created and last edited
    the dashboard, whether it is in the trash, its filters, and the tab the user has open."
-  [{:keys [id name description verified archived collection parameters dashcards open_tab] :as dashboard}]
+  [{:keys [id name description official archived collection parameters dashcards open_tab] :as dashboard}]
   ;; Group cards by tab and sort
   ;; TODO (Chris 2026-07-09) -- tabs sort by raw id here but by position in
   ;; resources/fetch-dashboard-items; align on position
@@ -831,7 +830,7 @@
     (render-llm-template
      :dashboard
      {:dashboard_id (str id)
-      :dashboard_verified (boolean verified)
+      :dashboard_official (boolean official)
       :dashboard_archived (boolean archived)
       :dashboard_name name
       :dashboard_description description
@@ -925,7 +924,7 @@
    Metric results also identify the source to use with `[metric, {}, <portable_entity_id>]` in an aggregation.
    `base_table_fully_qualified_name` and `database_name` identify a table source; `source_card_portable_entity_id`
    identifies a card source. `source_unavailable` means that no usable source can be offered."
-  [{:keys [id type name description verified official curated can_write data_authority data_layer collection
+  [{:keys [id type name description official curated can_write data_authority data_layer collection
            database_id database_name database_engine database_schema portable_entity_id
            base_table_portable_fk source_card_name source_card_portable_entity_id source_unavailable]}]
   (let [fqn (cond
@@ -949,8 +948,6 @@
                     (when-let [uri-type (search-result-uri-type type)]
                       (metabase-uri uri-type id)))
       :search_name name
-      :search_has_verified (some? verified)
-      :search_verified verified
       :search_has_official (some? official)
       :search_official official
       :search_has_curated (some? curated)
@@ -1114,7 +1111,7 @@
   "Attributes rendered as XML attrs on each <item> element. Order matters for stable output."
   [:type :id :dashcard_id :tab_id :all_tabs :row :col :size_x :size_y :name :uri
    :database_id :collection_id :table_id :can_write
-   :schema :display_name :authority_level :is_personal :path :location
+   :schema :display_name :is_official :is_personal :path :location
    :engine :sql_unavailable :timestamp])
 
 (defn- item-attrs->xml

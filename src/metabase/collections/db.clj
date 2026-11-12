@@ -255,13 +255,13 @@
 
 (mu/defn insert-collection!
   "Insert `collection` and return the new instance."
-  [collection :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
+  [collection :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
   (t2/insert-returning-instance! :model/Collection collection))
 
 (mu/defn update-collection!
   "Apply `changes` to the ::collections.schema/collection with `collection-id`, returning the number updated."
   [collection-id :- ::lib.schema.id/collection
-   changes       :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
+   changes       :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
   (t2/update! :model/Collection :id collection-id changes))
 
 (mu/defn collection-remote-synced-by-item-id

@@ -49,7 +49,7 @@
   (let [change-keys (set (keys (t2/changes collection)))]
     (when (and (collection/library-root-collection? collection)
                (seq (set/intersection change-keys
-                                      #{:name :description :archived :location :personal_owner_id :slug :namespace :type :authority_level :is_sample})))
+                                      #{:name :description :archived :location :personal_owner_id :slug :namespace :type :is_sample})))
       (throw (ex-info "Cannot update properties on a semantic layer collection" {})))
     (when (and (collection/is-library-collection? (:id collection))
                (contains? change-keys :location)

@@ -57,7 +57,6 @@
  [metabase.queries.models.card
   current-card-schema-version
   fully-parameterized?
-  maybe-unverify!
   model?
   sole-dashboard-id
   starting-card-schema-version

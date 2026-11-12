@@ -38,7 +38,6 @@
    [:type [:enum "card" "collection" "dashboard" "document" "exploration"]]
    [:item_id                             ms/PositiveInt]
    [:name                                ms/NonBlankString]
-   [:authority_level    {:optional true} [:maybe :string]]
    [:is_remote_synced   {:optional true} :boolean]
    [:card_type          {:optional true} [:maybe ::queries.schema/card.type]]
    [:description        {:optional true} [:maybe :string]]
@@ -67,7 +66,7 @@
                             (:card_type normalized-result) (update :card_type keyword))]
     (-> normalized-result
         (select-keys [:item_id :type :name :card_type :description :display
-                      :authority_level :is_remote_synced])
+                      :is_remote_synced])
         (assoc :id id-str))))
 
 (mu/defn bookmarks-for-user :- [:sequential BookmarkResult]

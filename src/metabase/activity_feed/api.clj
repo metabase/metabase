@@ -21,17 +21,11 @@
   "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."
   [views]
   (let [grouped (group-by :model views)
-        ;; We perform selects for each model type separately, but then bring them back into a flat list to hydrate
-        ;; with moderation_reviews data all at once.
         items (mapcat (fn [[model views']]
                         (when (seq views')
                           (->> (models-query model (map :model_id views'))
                                (mapv #(assoc % :model model)))))
-                      grouped)
-        items (->> (t2/hydrate items :moderation_reviews)
-                   (map (fn [{:keys [moderation_reviews] :as item}]
-                          (let [status (some #(when (:most_recent %) (:status %)) moderation_reviews)]
-                            (assoc item :moderated_status status)))))]
+                      grouped)]
     ;; Now group the flat list of items into a map.
     (update-vals (group-by :model items) #(m/index-by :id %))))
 
@@ -142,17 +136,9 @@
     api/generic-204-no-content))
 
 (defn- official?
-  "Returns true if the item belongs to an official collection. False otherwise. Assumes that `:authority_level` exists
-  if the item can be placed in a collection."
-  [{:keys [authority_level]}]
-  (boolean
-   (when authority_level
-     (#{"official"} authority_level))))
-
-(defn- verified?
-  "Return true if the item is verified, false otherwise. Assumes that `:moderated_status` is hydrated."
-  [{:keys [moderated_status]}]
-  (= moderated_status "verified"))
+  "Whether the item belongs to a remote-synced collection."
+  [{:keys [is_remote_synced]}]
+  (true? is_remote_synced))
 
 (defn- score-items
   [items]
@@ -161,15 +147,11 @@
           max-count (apply max (map :cnt items))]
       (map-indexed
        (fn [recency-pos {:keys [cnt model_object] :as item}]
-         (let [verified-wt 1
-               official-wt 1
+         (let [official-wt 1
                recency-wt 2
                views-wt 4
                scores (remove nil?
-                              [;; cards and dashboards? can be 'verified' in enterprise
-                               (when (verified? model_object) verified-wt)
-                               ;; items may exist in an 'official' collection in enterprise
-                               (when (official? model_object) official-wt)
+                              [(when (official? model_object) official-wt)
                                ;; most recent item = 1 * recency-wt, least recent item of 10 items = 1/10 * recency-wt
                                (when-not (zero? n-items)
                                  (* (/ (- n-items recency-pos) n-items) recency-wt))
@@ -193,12 +175,12 @@
 (mu/defn get-popular-items-model-and-id :- [:sequential recent-views/Item]
   "Returns the 'popular' items for the current user. This is a list of 5 items that the user has viewed recently.
    The items are sorted by a weighted score that takes into account the total count of views, the recency of the view,
-   whether the item is 'official' or 'verified', and more."
+   whether the item is official, and more."
   []
   ;; we do a weighted score which incorporates:
   ;; - total count -> higher = higher score
   ;; - recently viewed -> more recent = higher score
-  ;; - official/verified -> yes = higher score
+  ;; - official -> yes = higher score
   (let [views            (views-and-runs views-limit card-runs-limit)
         model->id->items (models-for-views views)
         filtered-views   (for [{:keys [model model_id] :as view-log} views

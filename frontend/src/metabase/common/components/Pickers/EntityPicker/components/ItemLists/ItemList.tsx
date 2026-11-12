@@ -5,9 +5,7 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { getIsTenantUser } from "metabase/current-user";
-import { PLUGIN_MODERATION } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import {
   Box,
   type BoxProps,
@@ -19,7 +17,7 @@ import {
 } from "metabase/ui";
 
 import { useOmniPickerContext } from "../../context";
-import type { OmniPickerItem } from "../../types";
+import { type OmniPickerItem, isInCollectionTree } from "../../types";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 import { ItemListLoader } from "../ItemListLoader";
 
@@ -67,7 +65,6 @@ export function ItemList({
     return items ? items.filter((i) => !isHiddenItem(i)) : items;
   }, [items, isHiddenItem]);
   const isCurrentLevel = path.length - 2 === pathIndex;
-  const isTenantUser = useSelector(getIsTenantUser);
   const getEntityPickerIcon = useGetEntityPickerIcon();
 
   const activeItemIndex = useMemo(() => {
@@ -102,7 +99,6 @@ export function ItemList({
         const isSelected = index === activeItemIndex;
         const icon = getEntityPickerIcon(item, {
           isSelected: isSelected && isCurrentLevel,
-          isTenantUser,
         });
         const isDisabled = isDisabledItem(item);
         const tooltip = options.getItemTooltip?.(item);
@@ -127,16 +123,15 @@ export function ItemList({
                 }
                 mb={0}
                 label={
-                  <Flex align="center">
-                    {tc(item.name)}{" "}
-                    <PLUGIN_MODERATION.ModerationStatusIcon
-                      status={
-                        "moderated_status" in item && item.moderated_status
-                      }
-                      filled
-                      size={14}
-                      ml="0.5rem"
-                    />
+                  <Flex align="center" gap="sm">
+                    {tc(item.name)}
+                    {isInCollectionTree(item) &&
+                      item.model !== "collection" && (
+                        <PLUGIN_REMOTE_SYNC.OfficialBadge
+                          collection={item.collection}
+                          size={14}
+                        />
+                      )}
                   </Flex>
                 }
                 active={isSelected}

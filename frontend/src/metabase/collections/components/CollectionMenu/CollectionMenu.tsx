@@ -20,7 +20,6 @@ import type { Collection } from "metabase-types/api";
 export interface CollectionMenuProps {
   collection: Collection;
   isAdmin: boolean;
-  onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
 
 const mergeArrays = (arr: ReactNode[][]): ReactNode[] => {
@@ -35,7 +34,6 @@ const mergeArrays = (arr: ReactNode[][]): ReactNode[] => {
 export const CollectionMenu = ({
   collection,
   isAdmin,
-  onUpdateCollection,
 }: CollectionMenuProps): JSX.Element | null => {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -70,15 +68,6 @@ export const CollectionMenu = ({
         component={ForwardRefLink}
         to={`${url}/move`}
       >{t`Move`}</Menu.Item>,
-    );
-  }
-
-  if (isAdmin && !isRoot && canWrite) {
-    editItems.push(
-      ...PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems(
-        collection,
-        onUpdateCollection,
-      ),
     );
   }
 

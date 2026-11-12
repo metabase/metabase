@@ -15,7 +15,6 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config :refer [*request-id*]]
    [metabase.events.core :as events]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -289,8 +288,7 @@
   :model/Collection)
 
 (t2/deftransforms :model/Collection
-  {:namespace       mi/transform-keyword
-   :authority_level mi/transform-keyword})
+  {:namespace mi/transform-keyword})
 
 (defn library-root-collection?
   "Is this one of the immutable system-created Library collections (root, data, metrics, or dashboards)?
@@ -357,10 +355,6 @@
   ([_model pk :- pos-int?]
    (or (is-trash? pk)
        (mi/can-read? (collections.db/collection pk)))))
-
-(def AuthorityLevel
-  "Malli Schema for valid collection authority levels, normalized from their names."
-  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :official])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Slug Validation                                                   |
@@ -432,7 +426,6 @@
    [:personal_owner_id     {:optional true} [:maybe ms/PositiveInt]]
    [:slug                  {:optional true} :string]
    [:namespace             {:optional true} [:maybe [:or :keyword :string]]]
-   [:authority_level       {:optional true} [:maybe [:or :keyword :string]]]
    [:entity_id             {:optional true} :string]
    [:created_at            {:optional true} ms/TemporalInstant]
    [:type                  {:optional true} [:maybe [:or :keyword :string]]]
@@ -467,7 +460,6 @@
    [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:model                 {:optional true} [:maybe :string]]
    [:model_ranking         {:optional true} [:maybe :int]]
-   [:moderated_status      {:optional true} [:maybe :string]]
    [:query_type            {:optional true} [:maybe :string]]
    [:table_id              {:optional true} [:maybe ms/PositiveInt]]
    [:total_count           {:optional true} [:maybe :int]]
@@ -1120,7 +1112,7 @@
 (def ^:private effective-parent-fields
   "Fields that should be included when hydrating the `:effective_parent` of a collection. Used for displaying recent views
   and collection search results."
-  [:id :name :authority_level :type])
+  [:id :name :is_remote_synced :type])
 
 (defn- effective-parent-root []
   (select-keys
@@ -1724,7 +1716,6 @@
                        "Personal Collection"
                        "Tenant Collection")
         unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a {0}." ctype)
-                      :authority_level   (tru "You are not allowed to change the authority level of a {0}." ctype)
                       ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving`
                       ;; functions also check to make sure you're not operating on Personal Collections. But as an extra safety net it
                       ;; doesn't hurt to check here too.
@@ -1841,11 +1832,10 @@
      [400 "You cannot modify the Trash Collection."])
     (api/check
      (not (and (or (:archived collection-updates)
-                   (some? (:authority_level collection-updates))
                    (contains? collection-updates :location)
                    (some collection-updates [:type :personal_owner_id :is_sample :archive_operation_id]))
                (perms/data-app-collection? (:id collection-before-updates))))
-     [400 "A data app's collection stays a top-level collection of data apps: it can't be moved, trashed, made official or given a type."])
+     [400 "A data app's collection stays a top-level collection of data apps: it can't be moved, trashed or given a type."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (or (:personal_owner_id collection-before-updates)
@@ -1976,8 +1966,8 @@
 
 (defmethod serialization/spec :model/Collection [_]
   {:schema    ::collections.schema/external-collection
-   :copy      [:archive_operation_id :archived :archived_directly :authority_level :description :entity_id
-               :is_remote_synced :is_sample :namespace :slug :type]
+   :copy      [:archive_operation_id :archived :archived_directly :description :entity_id :is_remote_synced
+               :is_sample :namespace :slug :type]
    :transform {:name              {:export export-names
                                    :import (fn [_store _entities names _opts] names)}
                :location          {:as     :parent_id
@@ -2246,6 +2236,7 @@
 (search.spec/define-spec "collection"
   {:model        :model/Collection
    :attrs        {:collection-id        :id
+                  :official             [:coalesce :is_remote_synced false]
                   :collection-type      :type
                   :collection-location  :location
                   :root-collection-type {:fn root-collection-type}
@@ -2259,7 +2250,7 @@
    :render-terms {:archived-directly          true
                   ;; Why not make this a search term? I suspect it was just overlooked before.
                   :description                true
-                  :collection_authority_level :authority_level
+                  :collection_is_remote_synced :is_remote_synced
                   :collection_name            :name
                   ;; `:location` is read by the toucan2 effective-location hydration when collection
                   ;; results pass through `metabase.search.impl/add-collection-effective-location`.

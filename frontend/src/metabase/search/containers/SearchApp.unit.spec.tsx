@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
@@ -20,7 +19,6 @@ import {
   within,
 } from "__support__/ui";
 import type { SearchFilters } from "metabase/common/search/types";
-import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { checkNotNull } from "metabase/utils/types";
@@ -111,24 +109,17 @@ const setup = async ({
   searchFilters = {},
   searchItems = TEST_SEARCH_RESULTS,
   users = TEST_USER_LIST,
-  hasContentVerification = false,
   nativeQueryContents,
 }: {
   searchText: string;
   searchFilters?: SearchFilters;
   searchItems?: SearchResult[];
   users?: UserListResult[];
-  hasContentVerification?: boolean;
   nativeQueryContents?: ReadonlyMap<SearchResult["id"], string>;
 }) => {
   const settings = mockSettings({
-    "token-features": createMockTokenFeatures({
-      content_verification: hasContentVerification,
-    }),
+    "token-features": createMockTokenFeatures(),
   });
-  if (hasContentVerification) {
-    setupEnterpriseOnlyPlugin("content_verification");
-  }
 
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupSearchEndpoints(searchItems, undefined, { nativeQueryContents });
@@ -212,9 +203,6 @@ const DATE_FILTER_CASES = [
 ];
 
 describe("SearchApp", () => {
-  // Undo plugins that a test registers, such as content verification.
-  afterEach(reinitialize);
-
   describe("rendering search results and pagination", () => {
     it("renders empty state when there are no search results", async () => {
       // let's pick some text that doesn't ever match anything
@@ -600,26 +588,6 @@ describe("SearchApp", () => {
       expectLocationParam(router, "search_native_query", ["true"]);
       expectLocationParam(router, "page", []);
       await waitFor(() => expectLastSearchRequestParam("offset", ["0"]));
-    });
-  });
-  describe("verified filter", () => {
-    it("should hydrate the verified filter from the URL and turn it off", async () => {
-      const { router } = await setup({
-        searchText: "e",
-        searchFilters: { verified: true },
-        hasContentVerification: true,
-      });
-      const getVerifiedSwitch = () => getFilter("verified").getByRole("switch");
-
-      expect(getVerifiedSwitch()).toBeChecked();
-      expectLastSearchRequestParam("verified", ["true"]);
-      expect(screen.getByText('Results for "e"')).toBeInTheDocument();
-
-      await userEvent.click(getVerifiedSwitch());
-
-      expectLocationParam(router, "verified", []);
-      await waitFor(() => expectLastSearchRequestParam("verified", []));
-      expect(getVerifiedSwitch()).not.toBeChecked();
     });
   });
 });

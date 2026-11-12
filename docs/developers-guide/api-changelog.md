@@ -7,6 +7,24 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- Official collections and verified content have been replaced by remote sync: content is official when it is in a
+  remote-synced collection. The `content_verification` and `official_collections` premium features are no longer
+  reported in `token-features`, and tokens that still carry them work as before.
+  - The `/api/moderation-review` endpoints have been removed.
+  - Collections no longer have `authority_level`. `POST /api/collection` and `PUT /api/collection/:id` no longer take
+    it, and no response returns it, nor `collection_authority_level`, including the collection items, tree, search,
+    recents, bookmarks and the `collection` of cards, dashboards and tables. Every collection in a response has
+    `is_remote_synced` instead, and dashboard cards have `collection_is_remote_synced` in place of
+    `collection_authority_level`.
+  - On `GET /api/collection/:id/items` and `GET /api/collection/root/items`, `official_collections_first` now sorts
+    remote-synced collections first.
+  - Cards and dashboards no longer have `moderation_reviews`, `moderated_status` or `moderation_status`, nor do
+    collection items, search results, recents or activity items.
+  - `GET /api/search` no longer takes `verified`. Use `curated` to restrict results to official content, which is
+    now the only curated content.
+  - A serialization export no longer lists the `authority_level` of collections. An export made by an earlier version
+    lists it and still imports; the key has no effect.
+
 - The Agent API (`/api/agent`) is deprecated and will be removed in Metabase 67. Use the MCP server for your agents
   instead. The Agent API is now off by default: every endpoint answers `403 Forbidden` until an admin turns it on in
   **Admin > AI > MCP**, or the instance starts with `MB_DEPRECATED_AGENT_API_ENABLED=true`.

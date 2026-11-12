@@ -24,7 +24,6 @@
    [metabase.classloader.core :as classloader]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
-   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.lib.core :as lib]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
@@ -1128,50 +1127,6 @@
                                                                                  (throw (java.sql.SQLException. "Syntax error")))]
         (is (thrown? java.sql.SQLException (#'reindex-search-index!)))
         (is (= 1 @attempts))))))
-
-(defn do-with-verified!
-  "Impl for [[with-verified!]]."
-  [cards-or-dashes thunk]
-  (with-model-cleanup [:model/ModerationReview]
-    (doseq [[item-type model-or-ids] cards-or-dashes
-            model-or-id              model-or-ids]
-      (doseq [status ["verified" nil "verified"]]
-        ;; create multiple moderation review for a card, but the end result is it's still verified
-        (moderation-review/create-review!
-         {:moderated_item_id   (u/the-id model-or-id)
-          :moderated_item_type (name item-type)
-          :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
-          :status              status})))
-    (thunk)))
-
-(defmacro with-verified!
-  "Execute the body with all `card-or-ids` verified."
-  [cards-or-dashes & body]
-  `(do-with-verified! ~cards-or-dashes (fn [] ~@body)))
-
-(deftest with-verified-test
-  (t2.with-temp/with-temp [:model/Card {card-id :id} {}]
-    (with-verified! {:card [card-id]}
-      (is (=? #{{:moderated_item_id card-id
-                 :moderated_item_type :card
-                 :most_recent true
-                 :status "verified"}
-                {:moderated_item_id card-id
-                 :moderated_item_type :card
-                 :most_recent false
-                 :status nil}
-                {:moderated_item_id card-id
-                 :moderated_item_type :card
-                 :most_recent false
-                 :status "verified"}}
-              (t2/select-fn-set #(select-keys % [:moderated_item_id :moderated_item_type :most_recent :status])
-                                :model/ModerationReview
-                                :moderated_item_id card-id
-                                :moderated_item_type "card"))))
-    (testing "everything is cleaned up after the macro"
-      (is (= 0 (t2/count :model/ModerationReview
-                         :moderated_item_id card-id
-                         :moderated_item_type "card"))))))
 
 (defn call-with-paused-query
   "This is a function to make testing query cancellation eaiser as it can be complex handling the multiple threads

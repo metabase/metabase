@@ -38,14 +38,14 @@
           (testing (str "with engine " engine)
             (testing "Global search"
               (let [results (mt/user-http-request :crowberto :get 200 "search" :search_engine engine)]
-                (is (=? [{:collection {:authority_level nil, :id parent-coll, :name "Parent Collection", :type "library-data"}
+                (is (=? [{:collection {:is_remote_synced false, :id parent-coll, :name "Parent Collection", :type "library-data"}
                           :database_id (mt/id)
                           :id table-1
                           :model "table"
                           :name "Published Table"
                           :table_id table-1
                           :table_name "Published Table"}
-                         {:collection {:authority_level nil, :id child-coll, :name "Child Collection", :type "library-data"}
+                         {:collection {:is_remote_synced false, :id child-coll, :name "Child Collection", :type "library-data"}
                           :database_id (mt/id)
                           :id table-2
                           :model "table"
@@ -58,7 +58,7 @@
                           :name "Unpublished Table"
                           :table_id table-3
                           :table_name "Unpublished Table"}
-                         {:collection {:authority_level nil, :id "root", :name "Our analytics", :type nil}
+                         {:collection {:is_remote_synced false, :id "root", :name "Our analytics", :type nil}
                           :database_id (mt/id)
                           :id table-4
                           :model "table"
@@ -66,11 +66,11 @@
                           :table_id table-4
                           :table_name "Root Published Table"}]
                         (->> (:data results)
-                             (filter (comp #{table-1 table-2 table-3 table-4} :id))
+                             (filter #(and (= "table" (:model %)) (#{table-1 table-2 table-3 table-4} (:id %))))
                              (sort-by :id))))))
             (testing "Filter by parent collection returns published tables in that collection and descendants"
               (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll :search_engine engine)]
-                (is (=? {:collection {:authority_level nil
+                (is (=? {:collection {:is_remote_synced false
                                       :id              parent-coll
                                       :name            "Parent Collection"
                                       :type            "library-data"}

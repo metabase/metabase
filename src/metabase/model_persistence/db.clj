@@ -16,7 +16,7 @@
 
 (mu/defn persisted-info-listing
   "Up to `limit` PersistedInfo listing rows (id, database, definition, active, state, error, refresh window,
-  table name, creator, card name/archived/type, database name, and collection id/name/authority level) for
+  table name, creator, card name/archived/type, database name, and collection id/name/remote-synced flag) for
   unarchived model Cards, optionally narrowed to `persisted-info-id`, `db-ids`, and/or `card-id`, newest
   refresh first, paginated from `offset` by `limit`."
   [persisted-info-id :- [:maybe ms/PositiveInt]
@@ -34,7 +34,7 @@
                                   [:c.type :card_type]
                                   [:db.name :database_name]
                                   [:col.id :collection_id] [:col.name :collection_name]
-                                  [:col.authority_level :collection_authority_level]]
+                                  [:col.is_remote_synced :collection_is_remote_synced]]
                       :from      [[:persisted_info :p]]
                       :left-join [[:metabase_database :db] [:= :db.id :p.database_id]
                                   [:report_card :c]        [:= :c.id :p.card_id]

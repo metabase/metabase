@@ -486,8 +486,7 @@
             [:name            ms/NonBlankString]
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
-            [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-            [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
+            [:namespace       {:optional true} [:maybe ms/NonBlankString]]]]
   (collections/create-collection! body))
 
 ;; Update-collection business logic lives in `metabase.collections.update` so that non-REST
@@ -610,8 +609,7 @@
                           [:name             {:optional true} [:maybe ms/NonBlankString]]
                           [:description      {:optional true} [:maybe ms/NonBlankString]]
                           [:archived         {:default false} [:maybe ms/BooleanValue]]
-                          [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
-                          [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
+                          [:parent_id        {:optional true} [:maybe ms/PositiveInt]]]]
   (collection-detail (collections/update-collection! id collection-updates)))
 
 ;; Returns the number of Collection rows deleted, which `t2/delete!` hands back -- 1 whenever the checks above pass.

@@ -172,12 +172,12 @@ describe("scenarios > sidecar > tenant users", () => {
       });
     });
 
-    cy.log("admins see the synced collection icon");
+    cy.log("admins see the official collection icon");
     cy.visit("/");
     H.navigationSidebar()
       .findByText("Shared tenant collection 1")
       .closest("li")
-      .icon("synced_collection")
+      .icon("official_collection")
       .should("be.visible");
 
     cy.signOut();
@@ -186,16 +186,10 @@ describe("scenarios > sidecar > tenant users", () => {
 
     // Check sidebar
     H.navigationSidebar().within(() => {
-      // Synced collections should show a regular folder icon for tenant users
       cy.findByText("Shared tenant collection 1")
         .closest("li")
-        .icon("folder")
+        .icon("official_collection")
         .should("be.visible");
-
-      cy.findByText("Shared tenant collection 1")
-        .closest("li")
-        .icon("synced_collection")
-        .should("not.exist");
     });
 
     // Check picker
@@ -212,7 +206,7 @@ describe("scenarios > sidecar > tenant users", () => {
 
       cy.findByText("Shared tenant collection 1")
         .closest("a")
-        .icon("folder")
+        .icon("official_collection")
         .should("be.visible");
     });
   });
