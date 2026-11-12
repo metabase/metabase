@@ -38,6 +38,7 @@
   data-source
   db-type
   in-transaction?
+  quartz-data-source
   quoting-style
   unique-identifier]
 
