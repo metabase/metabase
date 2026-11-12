@@ -22,6 +22,7 @@ import {
   dismissToasts,
   findShownListbox,
   findToast,
+  flushRequests,
   selectOption,
   typeAndBlur,
   undo,
@@ -259,7 +260,8 @@ describe("DataModelV1 > field section (advanced permissions)", () => {
     jest.spyOn(Analytics, "trackSimpleEvent");
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await flushRequests();
     jest.restoreAllMocks();
   });
 
@@ -360,6 +362,7 @@ describe("DataModelV1 > field section (advanced permissions)", () => {
 
       await selectOption(await findDisplayValuesInput(), "Custom mapping");
 
+      await findToast("Display values of Num updated");
       await waitFor(() => {
         expect(getLastRequestBody(valuesRoute)).toEqual({
           values: [
@@ -381,7 +384,6 @@ describe("DataModelV1 > field section (advanced permissions)", () => {
         event_detail: "display_values",
         triggered_from: "admin",
       });
-      await findToast("Display values of Num updated");
       await dismissToasts();
 
       const modal = await screen.findByRole("dialog");
@@ -518,17 +520,15 @@ describe("DataModelV1 > field section (advanced permissions)", () => {
         ).getByText("123%"),
       );
 
-      await waitFor(() => {
-        expect(
-          getLastRequestBody(`stateful-field-${ORDERS.QUANTITY}-put`),
-        ).toEqual({ settings: { number_style: "percent" } });
-      });
+      await findToast("Formatting of Quantity updated");
+      expect(
+        getLastRequestBody(`stateful-field-${ORDERS.QUANTITY}-put`),
+      ).toEqual({ settings: { number_style: "percent" } });
       expect(Analytics.trackSimpleEvent).toHaveBeenCalledWith({
         event: "metadata_edited",
         event_detail: "formatting",
         triggered_from: "admin",
       });
-      await findToast("Formatting of Quantity updated");
 
       // the feature_level_permissions plugin asks for the editable data model
       const metadataUrls = fetchMock.callHistory
@@ -830,6 +830,12 @@ describe("DataModelV1 > field section (advanced permissions)", () => {
       expect(
         within(editModal).queryByDisplayValue("XYZ"),
       ).not.toBeInTheDocument();
+      await userEvent.click(
+        within(editModal).getByRole("button", { name: "Cancel" }),
+      );
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
     });
 
     it("should undo the foreign key display values", async () => {
@@ -845,9 +851,9 @@ describe("DataModelV1 > field section (advanced permissions)", () => {
           human_readable_field_id: PEOPLE.NAME,
         }),
       );
-      expect(await screen.findByPlaceholderText("Choose a field")).toHaveValue(
-        "Name",
-      );
+      const fkTargetInput =
+        await screen.findByPlaceholderText("Choose a field");
+      await waitFor(() => expect(fkTargetInput).toHaveValue("Name"));
 
       await undo("Display values of User ID updated");
       await waitFor(() =>
