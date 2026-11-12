@@ -8,6 +8,7 @@ import { getSupportedClauses } from "../clause";
 import { formatIdentifier } from "../identifier";
 import { tokenAtPos } from "../position";
 
+import { getExpectedColumnType } from "./argument-type";
 import type { SuggestOptions } from "./suggest";
 import { matchOptions } from "./text-match";
 import type { ExpressionSuggestion } from "./types";
@@ -274,7 +275,7 @@ export function suggestRelatedColumns({
       column,
     };
   });
-  return suggestRelated(
+  const source = suggestRelated(
     "columns",
     options,
     (option) => option.displayLabel ?? option.label,
@@ -283,6 +284,25 @@ export function suggestRelatedColumns({
       token?.text.startsWith("[") === true ||
       (columnsOutsideBrackets && isIdentifier(token)),
   );
+  if (source == null) {
+    return null;
+  }
+
+  // Inside a function, only the columns of the type its value takes.
+  return async function (context: CompletionContext) {
+    const result = await source(context);
+    const expectedType = getExpectedColumnType(
+      context.state.doc.toString(),
+      context.pos,
+    );
+    if (result == null || expectedType == null) {
+      return result;
+    }
+    const options = result.options.filter(
+      (option) => option.column == null || expectedType.test(option.column),
+    );
+    return options.length > 0 ? { ...result, options } : null;
+  };
 }
 
 export function suggestRelatedFunctions({

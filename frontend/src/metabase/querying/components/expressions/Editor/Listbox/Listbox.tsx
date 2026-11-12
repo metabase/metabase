@@ -84,16 +84,23 @@ export function Listbox({
                   {completion.heading}
                 </li>
               )}
-              <CompletionItem
-                completion={completion}
-                index={index}
-                selected={selectedOption === index}
-                onCompletionClick={onCompletionClick}
-                query={query}
-                stageIndex={stageIndex}
-                database={database}
-                reportTimezone={reportTimezone}
-              />
+              {completion.type === "empty" ? (
+                // No column of the type the function takes: nothing to pick.
+                <li role="presentation" className={S.empty}>
+                  {completion.displayLabel}
+                </li>
+              ) : (
+                <CompletionItem
+                  completion={completion}
+                  index={index}
+                  selected={selectedOption === index}
+                  onCompletionClick={onCompletionClick}
+                  query={query}
+                  stageIndex={stageIndex}
+                  database={database}
+                  reportTimezone={reportTimezone}
+                />
+              )}
             </Fragment>
           ))}
         </DelayGroup>

@@ -36,6 +36,16 @@
   line-height: 1.15;
 }
 
+/* "There are no text columns to use here.", when no column fits the value */
+.empty {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding-inline: var(--mantine-spacing-sm);
+  color: var(--mb-color-text-secondary);
+}
+
 .item {
   flex-shrink: 0;
   display: flex;
