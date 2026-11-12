@@ -222,7 +222,7 @@
     (mt/dataset test-data
       (let [table-id (mt/id :orders)
             published-events (atom [])]
-        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [& args] (swap! published-events conj args))]
+        (with-redefs [events/publish-event! (fn [& args] (swap! published-events conj args))]
           (testing "returns dataset in same format as POST /api/dataset"
             (let [response (mt/user-http-request :rasta :get 202 (format "table/%d/data" table-id))]
               (is (contains? response :data))
