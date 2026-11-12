@@ -112,17 +112,17 @@ export function ChangingFieldsGroup({
             )}
           </Menu.Dropdown>
         </Menu>
+        <HistoryKeyAndDates
+          dimensionTable={table}
+          historyTable={historyTable}
+          readOnly={readOnly}
+        />
       </Group>
       {summary != null && (
         <Text size="sm" c="text-secondary">
           {summary}
         </Text>
       )}
-      <HistoryKeyAndDates
-        dimensionTable={table}
-        historyTable={historyTable}
-        readOnly={readOnly}
-      />
       {children}
     </Stack>
   );

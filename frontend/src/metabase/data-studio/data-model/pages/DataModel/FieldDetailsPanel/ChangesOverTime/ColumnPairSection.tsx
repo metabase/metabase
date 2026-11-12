@@ -123,12 +123,20 @@ export function ColumnPairSection({
               </Group>
             }
           />
+          <DetailsRow
+            label={t`Old values`}
+            value={
+              <Group justify="space-between" wrap="nowrap" w="100%">
+                <Text>{t`Kept in ${history.historyTable.display_name}`}</Text>
+                <HistoryKeyAndDates
+                  dimensionTable={table}
+                  historyTable={history.historyTable}
+                  readOnly={disabled}
+                />
+              </Group>
+            }
+          />
         </DetailsTable>
-        <HistoryKeyAndDates
-          dimensionTable={table}
-          historyTable={history.historyTable}
-          readOnly={disabled}
-        />
         {history.reference != null && (
           <Text size="sm" c="text-secondary">
             {t`"${getThenName(field, pair)}" uses the ${names.fact.toLowerCase()}'s ${names.eventDate.toLowerCase()}.`}

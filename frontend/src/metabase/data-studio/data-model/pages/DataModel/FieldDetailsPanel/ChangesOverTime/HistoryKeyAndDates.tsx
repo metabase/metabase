@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import {
   type HistoryBinding,
@@ -7,10 +7,9 @@ import {
   inferBindingForHistoryTable,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import { Anchor, Popover, Text } from "metabase/ui";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { ActionIcon, Icon, Popover, Select, Stack, Tooltip } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
-
-import { InlineFieldSelect } from "./InlineSelect";
 
 type BindingKey = keyof Pick<
   HistoryBinding,
@@ -24,71 +23,71 @@ type HistoryKeyAndDatesProps = {
 };
 
 /**
- * PROTOTYPE: mocked. How a history table's rows line up with its dimension,
- * as one line. Metabase guesses it; "Change" edits it in place, so there's
- * no History tab to visit.
+ * PROTOTYPE: mocked. A settings icon for how a history table's rows line up
+ * with its dimension. Metabase guesses it, so it stays out of sight.
  */
 export function HistoryKeyAndDates({
   dimensionTable,
   historyTable,
   readOnly,
 }: HistoryKeyAndDatesProps) {
-  const [isEditing, { toggle, close }] = useDisclosure(false);
+  const [isOpened, { toggle, close }] = useDisclosure(false);
   const { getTableStructure, setHistoryBinding } = useTableStructures();
   const inferred = inferBindingForHistoryTable(dimensionTable, historyTable);
   const binding = getTableStructure(historyTable).history;
-  const fields = historyTable.fields ?? [];
   const values: Record<BindingKey, FieldId | null> = {
     durableKeyFieldId: binding.durableKeyFieldId ?? inferred.keyFieldId,
     validFromFieldId: binding.validFromFieldId ?? inferred.validFromFieldId,
     validToFieldId: binding.validToFieldId ?? inferred.validToFieldId,
   };
-  const nameOf = (key: BindingKey) =>
-    findFieldById(historyTable, values[key])?.display_name ?? t`nothing`;
-  const fieldSelect = (key: BindingKey, label: string) => (
-    <InlineFieldSelect
-      key={key}
-      label={label}
-      fields={fields}
-      value={values[key]}
-      disabled={readOnly}
-      withinPortal={false}
-      onChange={(fieldId) =>
-        setHistoryBinding(historyTable, { [key]: fieldId })
-      }
-    />
-  );
+  const data = (historyTable.fields ?? []).map((field) => ({
+    value: String(getRawTableFieldId(field)),
+    label: field.display_name,
+  }));
+  const rows: { key: BindingKey; label: string }[] = [
+    { key: "durableKeyFieldId", label: t`Matched on` },
+    { key: "validFromFieldId", label: t`True from` },
+    { key: "validToFieldId", label: t`True until` },
+  ];
+  const settingsLabel = t`${historyTable.display_name} settings`;
 
   return (
-    <Text size="sm" c="text-secondary">
-      {jt`In ${(
-        <strong key="table">{historyTable.display_name}</strong>
-      )}, matched on ${(
-        <strong key="key">{nameOf("durableKeyFieldId")}</strong>
-      )}, true from ${(
-        <strong key="from">{nameOf("validFromFieldId")}</strong>
-      )} until ${<strong key="to">{nameOf("validToFieldId")}</strong>}.`}{" "}
-      {!readOnly && (
-        <Popover
-          opened={isEditing}
-          onChange={(isOpened) => !isOpened && close()}
-          position="bottom-start"
-          shadow="md"
-        >
-          <Popover.Target>
-            <Anchor component="button" size="sm" onClick={toggle}>
-              {t`Change`}
-            </Anchor>
-          </Popover.Target>
-          <Popover.Dropdown p="lg" maw={520}>
-            <Text lh={2.4}>
-              {jt`Rows of ${(
-                <strong key="table">{historyTable.display_name}</strong>
-              )} are matched on ${fieldSelect("durableKeyFieldId", t`Matched on`)} and true from ${fieldSelect("validFromFieldId", t`True from`)} until ${fieldSelect("validToFieldId", t`True until`)}.`}
-            </Text>
-          </Popover.Dropdown>
-        </Popover>
-      )}
-    </Text>
+    <Popover
+      opened={isOpened}
+      onChange={(next) => !next && close()}
+      position="bottom-end"
+      shadow="md"
+    >
+      <Popover.Target>
+        <Tooltip label={settingsLabel}>
+          <ActionIcon aria-label={settingsLabel} onClick={toggle}>
+            <Icon name="gear" />
+          </ActionIcon>
+        </Tooltip>
+      </Popover.Target>
+      <Popover.Dropdown p="md" w={260}>
+        <Stack gap="sm">
+          {rows.map(({ key, label }) => (
+            <Select
+              key={key}
+              label={label}
+              data={data}
+              value={
+                findFieldById(historyTable, values[key]) != null
+                  ? String(values[key])
+                  : null
+              }
+              disabled={readOnly}
+              comboboxProps={{ withinPortal: false }}
+              onChange={(next) =>
+                setHistoryBinding(historyTable, {
+                  [key]: next != null ? Number(next) : null,
+                })
+              }
+            />
+          ))}
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
   );
 }

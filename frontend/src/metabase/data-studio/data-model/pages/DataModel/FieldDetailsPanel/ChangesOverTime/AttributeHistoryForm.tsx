@@ -8,7 +8,7 @@ import {
   useChangingAttributes,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Radio, Select, Stack } from "metabase/ui";
+import { Box, Group, Radio, Select, Stack } from "metabase/ui";
 import type { Field, Table } from "metabase-types/api";
 
 import { DimensionChangePreview, getPreviewNames } from "./EndUserPreview";
@@ -61,41 +61,47 @@ export function AttributeHistoryForm({
   return (
     <SidebarSection title={t`Changes over time`}>
       <Stack gap="xl">
-        <Select
-          label={t`Old values`}
-          description={
-            historyTable ? (
+        <Group gap="xs" align="flex-end" wrap="nowrap">
+          <Select
+            flex={1}
+            label={t`Old values`}
+            description={
+              historyTable
+                ? undefined
+                : t`When a ${attributeName} changes, the old one is overwritten.`
+            }
+            inputWrapperOrder={["label", "input", "description"]}
+            data={[
+              { value: NOT_KEPT, label: t`Not kept` },
+              ...candidates.map((candidate) => ({
+                value: String(candidate.id),
+                label: t`Kept in ${candidate.display_name}`,
+              })),
+            ]}
+            value={historyTable ? String(historyTable.id) : NOT_KEPT}
+            disabled={disabled}
+            onChange={(value) => {
+              const next = candidates.find(
+                (candidate) => String(candidate.id) === value,
+              );
+              const column = findColumnByName(next, field);
+              setAttribute(field, {
+                source: next ? "history-table" : "none",
+                historyTableId: next?.id ?? null,
+                valueFieldId: column ? getRawTableFieldId(column) : null,
+              });
+            }}
+          />
+          {historyTable != null && (
+            <Box pb={4}>
               <HistoryKeyAndDates
                 dimensionTable={table}
                 historyTable={historyTable}
                 readOnly={disabled}
               />
-            ) : (
-              t`When a ${attributeName} changes, the old one is overwritten.`
-            )
-          }
-          inputWrapperOrder={["label", "input", "description"]}
-          data={[
-            { value: NOT_KEPT, label: t`Not kept` },
-            ...candidates.map((candidate) => ({
-              value: String(candidate.id),
-              label: t`Kept in ${candidate.display_name}`,
-            })),
-          ]}
-          value={historyTable ? String(historyTable.id) : NOT_KEPT}
-          disabled={disabled}
-          onChange={(value) => {
-            const next = candidates.find(
-              (candidate) => String(candidate.id) === value,
-            );
-            const column = findColumnByName(next, field);
-            setAttribute(field, {
-              source: next ? "history-table" : "none",
-              historyTableId: next?.id ?? null,
-              valueFieldId: column ? getRawTableFieldId(column) : null,
-            });
-          }}
-        />
+            </Box>
+          )}
+        </Group>
         {historyTable != null && history.reference != null && (
           <Radio.Group
             label={t`When people group ${names.facts} by ${field.display_name}, show`}
