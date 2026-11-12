@@ -41,6 +41,10 @@
 ;; A write through the setter stores nothing and logs what to use. The getter throws, so nothing can read the
 ;; setting by mistake. It is not sent to clients and not exported.
 ;;
+;; A serialization import writes with `setting/set-value-of-type!`, which skips the setter and the getter: it stores
+;; the value of an export of 0.65 in a row that nothing reads. An import of a key that has no definition fails, so
+;; this stub is what keeps an export of 0.65 importable.
+;;
 ;; The getter throws an `ex-info`, not a plain `Exception` as the upload settings do: `GET /api/setting/:key` turns
 ;; only an `ExceptionInfo` into the generic 403 for a non-admin.
 ;;
