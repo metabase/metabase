@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { Comment } from "metabase-types/api";
+import type { Comment, MentionableUser } from "metabase-types/api";
 
 export const setupCommentEndpoints = (
   comments: Comment[],
@@ -11,4 +11,8 @@ export const setupCommentEndpoints = (
   url.searchParams.append("target_id", target_id.toString());
 
   fetchMock.get(`path:${url.pathname}${url.search}`, { comments });
+};
+
+export const setupListMentionsEndpoint = (users: MentionableUser[]) => {
+  fetchMock.get("path:/api/comment/mentions", { data: users });
 };
