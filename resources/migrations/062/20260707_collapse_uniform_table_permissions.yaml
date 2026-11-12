@@ -6,7 +6,7 @@
 ## rewrite) both timed out on the largest instances — the ones that needed the collapse most. The
 ## collapse is an optimization, not a correctness fix (the redundant representation is understood by all
 ## versions >= 49), so the changeSet below retires the whole migration rather than iterating on it again.
-## Instances that already ran it keep the collapsed form; 2026/20261112_collapse_blocked_view_data_permissions.yaml
+## Instances that already ran it keep the collapsed form; v58.2026-11-12T00:00:00 in 058_update_migrations.yaml
 ## collapses the rest.
 ##
 ## The SQL at the end of this file is the manual collapse that operators could run before that migration existed.
