@@ -94,7 +94,8 @@ describe("DataAppEmbed", () => {
     });
   });
 
-  it("refuses an API key from a production host and says why", () => {
+  it("refuses an API key from a production host and says why, even though a key waives the license", () => {
+    jest.spyOn(PLUGIN_EMBEDDING_IFRAME_SDK, "isEnabled").mockReturnValue(false);
     setupSettings({ apiKey: "development-key" }, "https://host.example.com");
     render(<DataAppEmbed />);
 

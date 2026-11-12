@@ -402,6 +402,59 @@ describe("DataApp", () => {
     expect(postMessage).not.toHaveBeenCalled();
   });
 
+  const remountWithAuthConfig = (nextAuthConfig: MetabaseAuthConfig) => {
+    ensureMetabaseProviderPropsStore().setProps({
+      authConfig: {
+        metabaseInstanceUrl: CONFIG.metabaseInstanceUrl,
+        apiKey: "development-key",
+      },
+    });
+    const { iframe } = setup({ path: "sales" });
+
+    act(() =>
+      ensureMetabaseProviderPropsStore().setProps({
+        authConfig: nextAuthConfig,
+      }),
+    );
+
+    const next = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+    const postMessage = jest.spyOn(next.contentWindow!, "postMessage");
+    message(next, "metabase.embed.iframeReady");
+
+    return { iframe, next, postMessage };
+  };
+
+  it("replaces the iframe and sends the new key when the API key is swapped", () => {
+    const { iframe, next, postMessage } = remountWithAuthConfig({
+      metabaseInstanceUrl: CONFIG.metabaseInstanceUrl,
+      apiKey: "next-key",
+    });
+
+    expect(next).not.toBe(iframe);
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith(
+      {
+        type: "metabase.embed.setSettings",
+        data: expect.objectContaining({ apiKey: "next-key" }),
+      },
+      ORIGIN,
+    );
+  });
+
+  it("replaces the iframe and sends no key when the API key is removed", () => {
+    const { iframe, next, postMessage } = remountWithAuthConfig(CONFIG);
+
+    expect(next).not.toBe(iframe);
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith(
+      {
+        type: "metabase.embed.setSettings",
+        data: expect.not.objectContaining({ apiKey: expect.anything() }),
+      },
+      ORIGIN,
+    );
+  });
+
   it("does not load the iframe with an API key outside localhost", () => {
     jest.mocked(getIsLocalhost).mockReturnValue(false);
     ensureMetabaseProviderPropsStore().setProps({
