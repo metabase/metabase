@@ -34,6 +34,9 @@ import {
   getOptionValue,
 } from "./utils";
 
+// text starting with = is a formula, not a prompt
+const FORMULA_PREFIX = "=";
+
 type SummaryWellInputProps = {
   wellId: SummaryWellId;
   sections: SummaryFieldSection[];
@@ -88,6 +91,10 @@ export function SummaryWellInput({
 
   const prompt = searchText.trim();
   const isGenerating = formulaGenerator?.state.status === "loading";
+  const canGenerate =
+    !!formulaGenerator &&
+    prompt.length > 0 &&
+    !prompt.startsWith(FORMULA_PREFIX);
 
   const handleFormulaAdd = () => {
     setSearchText("");
@@ -175,7 +182,7 @@ export function SummaryWellInput({
           style={{ overflowY: "auto" }}
         >
           {matchingSections.length === 0 &&
-            (formulaGenerator && prompt.length > 0 ? (
+            (formulaGenerator && canGenerate ? (
               <GenerateFormulaOption
                 generator={formulaGenerator}
                 prompt={prompt}

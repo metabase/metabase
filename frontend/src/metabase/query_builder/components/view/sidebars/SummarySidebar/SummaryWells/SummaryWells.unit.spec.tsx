@@ -582,6 +582,19 @@ describe("SummaryWells", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("offers no Generate option for a formula", async () => {
+      setup({ hasNlqAccess: true });
+
+      await userEvent.type(getValuesField(), "=Sum");
+
+      expect(
+        await screen.findByText("No matching metrics or columns"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: /Generate/ }),
+      ).not.toBeInTheDocument();
+    });
+
     it("offers no Generate option when a column matches", async () => {
       setup({ hasNlqAccess: true });
 
