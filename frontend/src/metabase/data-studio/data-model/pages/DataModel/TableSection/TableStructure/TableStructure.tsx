@@ -144,57 +144,59 @@ export function TableStructure({
         }
       />
       {isHistoryRole && (
-        <>
-          <DetailsRow
-            label={t`Matched on`}
-            labelAside={<InfoIcon info={historyInfo.matchedOn} />}
-            fillValue
-            value={
-              <ColumnSelect
-                label={t`Matched on`}
-                fields={fields}
-                value={structure.history.durableKeyFieldId}
-                disabled={readOnly}
-                onChange={(durableKeyFieldId) =>
-                  setHistoryBinding(table, { durableKeyFieldId })
-                }
-              />
-            }
-          />
-          <DetailsRow
-            label={t`Start date`}
-            labelAside={<InfoIcon info={historyInfo.trueFrom} />}
-            fillValue
-            value={
-              <ColumnSelect
-                label={t`Start date`}
-                fields={fields}
-                value={structure.history.validFromFieldId}
-                disabled={readOnly}
-                onChange={(validFromFieldId) =>
-                  setHistoryBinding(table, { validFromFieldId })
-                }
-              />
-            }
-          />
-          <DetailsRow
-            label={t`End date`}
-            labelAside={<InfoIcon info={historyInfo.trueUntil} />}
-            fillValue
-            value={
-              <ColumnSelect
-                label={t`End date`}
-                fields={fields}
-                value={structure.history.validToFieldId}
-                placeholder={t`The next version`}
-                disabled={readOnly}
-                onChange={(validToFieldId) =>
-                  setHistoryBinding(table, { validToFieldId })
-                }
-              />
-            }
-          />
-        </>
+        <DetailsRow
+          label={t`Matched on`}
+          labelAside={<InfoIcon info={historyInfo.matchedOn} />}
+          fillValue
+          value={
+            <ColumnSelect
+              label={t`Matched on`}
+              fields={fields}
+              value={structure.history.durableKeyFieldId}
+              disabled={readOnly}
+              onChange={(durableKeyFieldId) =>
+                setHistoryBinding(table, { durableKeyFieldId })
+              }
+            />
+          }
+        />
+      )}
+      {isHistoryRole && (
+        <DetailsRow
+          label={t`Start date`}
+          labelAside={<InfoIcon info={historyInfo.trueFrom} />}
+          fillValue
+          value={
+            <ColumnSelect
+              label={t`Start date`}
+              fields={fields}
+              value={structure.history.validFromFieldId}
+              disabled={readOnly}
+              onChange={(validFromFieldId) =>
+                setHistoryBinding(table, { validFromFieldId })
+              }
+            />
+          }
+        />
+      )}
+      {isHistoryRole && (
+        <DetailsRow
+          label={t`End date`}
+          labelAside={<InfoIcon info={historyInfo.trueUntil} />}
+          fillValue
+          value={
+            <ColumnSelect
+              label={t`End date`}
+              fields={fields}
+              value={structure.history.validToFieldId}
+              placeholder={t`The next version`}
+              disabled={readOnly}
+              onChange={(validToFieldId) =>
+                setHistoryBinding(table, { validToFieldId })
+              }
+            />
+          }
+        />
       )}
       <DetailsRow
         label={t`Each row is`}

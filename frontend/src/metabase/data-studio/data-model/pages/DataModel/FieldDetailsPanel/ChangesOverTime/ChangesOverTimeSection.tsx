@@ -148,55 +148,55 @@ export function ChangesOverTimeSection({
             }
           />
           {currentTable != null && (
-            <>
-              <DetailsRow
-                label={t`Stored as`}
-                labelAside={
-                  <InfoIcon
-                    info={t`The column in ${currentTable.display_name} that holds earlier values of ${fieldName}.`}
-                  />
-                }
-                fillValue
-                value={
-                  <ColumnSelect
-                    label={t`Stored as`}
-                    fields={currentTable.fields ?? []}
-                    value={attribute.valueFieldId}
-                    placeholder={t`Pick its column`}
-                    disabled={disabled}
-                    onChange={(valueFieldId) =>
-                      setAttribute(field, { valueFieldId })
+            <DetailsRow
+              label={t`Stored as`}
+              labelAside={
+                <InfoIcon
+                  info={t`The column in ${currentTable.display_name} that holds earlier values of ${fieldName}.`}
+                />
+              }
+              fillValue
+              value={
+                <ColumnSelect
+                  label={t`Stored as`}
+                  fields={currentTable.fields ?? []}
+                  value={attribute.valueFieldId}
+                  placeholder={t`Pick its column`}
+                  disabled={disabled}
+                  onChange={(valueFieldId) =>
+                    setAttribute(field, { valueFieldId })
+                  }
+                />
+              }
+            />
+          )}
+          {currentTable != null && (
+            <DetailsRow
+              label={t`Value used in other tables`}
+              labelAside={
+                <InfoIcon
+                  info={t`When a table that links to ${table.display_name} is grouped by ${fieldName}: use the value the ${entityName} had at that row's date, or today's value for every row.`}
+                />
+              }
+              fillValue
+              value={
+                <Select
+                  aria-label={t`Value used in other tables`}
+                  classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+                  data={valueUsedOptions}
+                  value={attribute.defaultVersion}
+                  disabled={disabled}
+                  onChange={(value) => {
+                    const option = valueUsedOptions.find(
+                      (option) => option.value === value,
+                    );
+                    if (option) {
+                      setAttribute(field, { defaultVersion: option.value });
                     }
-                  />
-                }
-              />
-              <DetailsRow
-                label={t`Value used in other tables`}
-                labelAside={
-                  <InfoIcon
-                    info={t`When a table that links to ${table.display_name} is grouped by ${fieldName}: use the value the ${entityName} had at that row's date, or today's value for every row.`}
-                  />
-                }
-                fillValue
-                value={
-                  <Select
-                    aria-label={t`Value used in other tables`}
-                    classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-                    data={valueUsedOptions}
-                    value={attribute.defaultVersion}
-                    disabled={disabled}
-                    onChange={(value) => {
-                      const option = valueUsedOptions.find(
-                        (option) => option.value === value,
-                      );
-                      if (option) {
-                        setAttribute(field, { defaultVersion: option.value });
-                      }
-                    }}
-                  />
-                }
-              />
-            </>
+                  }}
+                />
+              }
+            />
           )}
         </DetailsTable>
         {currentTable != null && (
