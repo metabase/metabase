@@ -42,6 +42,8 @@ runs:
           const label = version ? `${title} ${getGenericVersion(version)} failed` : `${title} failed`;
           const runLink = githubRunLink(label, context.runId.toString(), owner, repo);
 
+          console.log(`sending Slack message: ${runLink}`);
+
           await sendReleaseSlackMessage({
             channelName: process.env.SLACK_RELEASE_CHANNEL,
             version: version || undefined,
