@@ -9,6 +9,7 @@
   (:require
    [metabase.change-log.cascade :as change-log.cascade]
    [metabase.change-log.db :as change-log.db]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -24,15 +25,23 @@
 (defn- table [model]
   (name (t2/table-name model)))
 
+(defn- mistake!
+  "Reports a mistake in calling code. In dev and test it throws, so that a test catches it. In production it only logs
+  a warning, so that the write goes ahead."
+  [message]
+  (if config/is-prod?
+    (log/warn message)
+    (throw (ex-info message {}))))
+
 (defn- log!
-  "Logs `changes`, a seq of `[table-name row-ids action]`. A row key that is not an integer gets a warning instead of
-  an entry, so that the write goes ahead."
+  "Logs `changes`, a seq of `[table-name row-ids action]`. A row key that is not an integer is a [[mistake!]], and
+  gets no entry."
   [changes]
   (doseq [[table-name row-ids action] changes
           :let  [n (count (remove integer? row-ids))]
           :when (pos? n)]
-    (log/warnf "Not logging %d %s on %s to the change log: row key missing or not an integer. See %s."
-               n action table-name "metabase.change-log.core"))
+    (mistake! (format "Not logging %d %s on %s to the change log: row key missing or not an integer. See %s."
+                      n action table-name "metabase.change-log.core")))
   (run! change-log.db/insert-entries!
         (partition-all 1000 (for [[table-name row-ids action] changes
                                   id                          row-ids
@@ -48,17 +57,17 @@
       (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id channel-id)
       (t2/delete! :pulse_channel_recipient :pulse_channel_id channel-id))
 
-  It does nothing while the log is off, and only warns if `model` is not logged. It does not log what a delete
-  cascades to: those rows need their own call."
+  While the log is off, it only checks `model`: one that is not logged is a [[mistake!]]. It does not log what a
+  delete cascades to: those rows need their own call."
   [model  :- :keyword
    action :- [:enum :insert :update :delete]
    & conditions :- [:* [:schema {::mr/deliberately-open true, :description "what `t2/select` takes after the model"}
                         :any]]]
-  (when (premium-features/enable-change-log?)
-    (if (isa? (t2/resolve-model model) :hook/change-log)
-      (log! [[(table model) (change-log.db/matching-pks model (vec conditions)) (name action)]])
-      (log/warnf "Not logging %s on %s to the change log: the model does not derive :hook/change-log."
-                 (name action) model))))
+  (if (isa? (t2/resolve-model model) :hook/change-log)
+    (when (premium-features/enable-change-log?)
+      (log! [[(table model) (change-log.db/matching-pks model (vec conditions)) (name action)]]))
+    (mistake! (format "Not logging %s on %s to the change log: the model does not derive :hook/change-log."
+                      (name action) model))))
 
 (defn- pk-of [model]
   (let [pk (first (t2/primary-keys model))]

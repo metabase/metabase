@@ -79,15 +79,18 @@
             (is (= (set (t2/select-pks-set :model/Field :table_id (:id t) :name [:in names]))
                    (set (map second rows))))
             (is (every? #(= ["metabase_field" "insert"] [(first %) (last %)]) rows))))
-        (testing "an insert that does not return the key still inserts, and warns instead of logging"
+        (testing "an insert that does not return the key throws in dev and test"
           (mt/with-temp [:model/Pulse pulse {}
                          :model/Card  card  {}]
-            (mt/with-log-messages-for-level [messages [metabase.change-log :warn]]
-              (is (= [] (logged-by #(t2/insert-returning-instance!
-                                     [:model/PulseCard :include_csv]
-                                     {:pulse_id (:id pulse), :card_id (:id card), :position 0}))))
-              (is (t2/exists? :model/PulseCard :pulse_id (:id pulse)))
-              (is (= 1 (count (messages)))))))
+            (let [insert! #(t2/insert-returning-instance! [:model/PulseCard :include_csv]
+                                                          {:pulse_id (:id pulse), :card_id (:id card), :position 0})]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"row key missing" (insert!)))
+              (testing "and in production it still inserts, and warns instead of logging"
+                (with-redefs [config/is-prod? true]
+                  (mt/with-log-messages-for-level [messages [metabase.change-log :warn]]
+                    (is (= [] (logged-by insert!)))
+                    (is (t2/exists? :model/PulseCard :pulse_id (:id pulse)))
+                    (is (= 1 (count (messages))))))))))
         (testing "a model keyed by a column other than `id` logs that key"
           (mt/with-temp [:model/Field f {:table_id (:id t)}]
             (is (= [["metabase_field_user_settings" (:id f) "insert"]]
@@ -182,10 +185,15 @@
             (t2/with-transaction [_conn nil {:rollback-only true}]
               (is (contains? (set (logged-by permissions.db/deactivate-all-tenants!))
                              ["tenant" (:id tenant) "update"])))))
-        (testing "`log-rows!` on a model that is not logged warns instead of logging"
-          (mt/with-log-messages-for-level [messages [metabase.change-log :warn]]
-            (is (= [] (logged-by #(change-log/log-rows! :model/Collection :update :id 1))))
-            (is (= 1 (count (messages))))))))))
+        (testing "`log-rows!` on a model that is not logged throws in dev and test, also while the log is off"
+          (mt/with-premium-features #{}
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not derive :hook/change-log"
+                                  (change-log/log-rows! :model/Collection :update :id 1))))
+          (testing "and in production it warns instead of logging"
+            (with-redefs [config/is-prod? true]
+              (mt/with-log-messages-for-level [messages [metabase.change-log :warn]]
+                (is (= [] (logged-by #(change-log/log-rows! :model/Collection :update :id 1))))
+                (is (= 1 (count (messages))))))))))))
 
 (deftest foreign-keys-test
   (testing "reads the foreign keys that lead to logged tables, with their ON DELETE rule, from the app DB"

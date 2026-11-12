@@ -19,8 +19,8 @@
   tables that the database deletes (`ON DELETE CASCADE`) or updates (`ON DELETE SET NULL`) with it, at any depth. The
   model needs a primary key of one integer column and a namespace that loads at startup: `metabase.change-log.hooks-test`
   check both. The insert hook reads the key from the rows the insert returns, so an insert that picks its returned columns
-  must include the key: `[:model/User :id :email]`, not `[:model/User :email]`. Without the key, the insert goes ahead
-  and Metabase logs a warning instead of an entry.
+  must include the key: `[:model/User :id :email]`, not `[:model/User :email]`. Without the key, the insert throws in
+  dev and test. In production it goes ahead, and Metabase logs a warning instead of an entry.
 
   A write that skips the model (raw SQL, `t2/query`, `t2/update!` on the table name) logs its rows with [[log-rows!]].
 

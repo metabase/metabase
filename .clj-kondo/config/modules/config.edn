@@ -545,7 +545,8 @@
    :uses #{app-db
            premium-features
            task
-           util}}
+           util
+           util.config}}
 
   ;; TODO -- way too many API namespaces.
   channel
