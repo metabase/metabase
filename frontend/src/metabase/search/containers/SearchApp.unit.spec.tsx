@@ -20,6 +20,7 @@ import {
   within,
 } from "__support__/ui";
 import type { SearchFilters } from "metabase/common/search/types";
+import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { checkNotNull } from "metabase/utils/types";
@@ -71,6 +72,18 @@ const TEST_ITEMS: Partial<SearchResult>[] = [
 
 const TEST_SEARCH_RESULTS: SearchResult[] = TEST_ITEMS.map((metadata, index) =>
   createMockSearchResult({ ...metadata, id: index + 1 }),
+);
+
+// Every type that full page search reads from the URL, including the ones
+// that the shared results above leave out.
+const TYPE_HYDRATION_ITEMS: Partial<SearchResult>[] = [
+  ...TEST_ITEMS,
+  { name: "Test Indexed Record", model: "indexed-entity" },
+  { name: "Test Document", model: "document" },
+];
+
+const TYPE_HYDRATION_RESULTS: SearchResult[] = TYPE_HYDRATION_ITEMS.map(
+  (metadata, index) => createMockSearchResult({ ...metadata, id: index + 1 }),
 );
 
 const TEST_DATABASE = createMockDatabase();
@@ -197,6 +210,9 @@ const DATE_FILTER_CASES = [
 ];
 
 describe("SearchApp", () => {
+  // Undo plugins that a test registers, such as content verification.
+  afterEach(reinitialize);
+
   describe("rendering search results and pagination", () => {
     it("renders empty state when there are no search results", async () => {
       // let's pick some text that doesn't ever match anything
@@ -307,11 +323,12 @@ describe("SearchApp", () => {
   describe("hydrating search filters from URL", () => {
     // TODO: Add tests for other filters as they come
 
-    it.each(TEST_SEARCH_RESULTS)(
+    it.each(TYPE_HYDRATION_RESULTS)(
       "should filter by type = $name",
       async ({ name, model }) => {
         await setup({
           searchText: name,
+          searchItems: TYPE_HYDRATION_RESULTS,
           // Unjustified type cast. FIXME
           searchFilters: { type: [model as EnabledSearchModel] },
         });
@@ -501,6 +518,7 @@ describe("SearchApp", () => {
       await userEvent.click(getFilter("type").getByLabelText("close icon"));
 
       expectLocationParam(router, "type", []);
+      expectLocationParam(router, "q", ["e"]);
       await waitFor(() => expectLastSearchRequestParam("models", []));
       expect(getFilter("type").getByText("Content type")).toBeInTheDocument();
       expect(
@@ -566,7 +584,6 @@ describe("SearchApp", () => {
       await waitFor(() => expectLastSearchRequestParam("offset", ["0"]));
     });
   });
-  // Keep this block last: the content verification plugin stays registered for the rest of the file.
   describe("verified filter", () => {
     it("should hydrate the verified filter from the URL and turn it off", async () => {
       const { router } = await setup({
