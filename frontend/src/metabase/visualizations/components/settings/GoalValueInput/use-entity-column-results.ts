@@ -1,6 +1,8 @@
 import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
 import {
+  type GoalRefErrorReason,
   type GoalValueResult,
+  getFailedQueryReason,
   resolveGoalValue,
   toReferencedEntity,
 } from "metabase/viz-core";
@@ -10,14 +12,17 @@ import type {
   GoalForeignEntityRef,
 } from "metabase-types/api";
 
-type ResolveColumn = (column: string) => GoalValueResult;
+type EntityColumnResults = {
+  resolveColumn: (column: string) => GoalValueResult;
+  errorReason: GoalRefErrorReason | undefined;
+};
 
 export function useEntityColumnResults(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   entity: GoalForeignEntityRef | null,
   { enabled }: { enabled: boolean },
-): ResolveColumn {
+): EntityColumnResults {
   const { currentData: freshDataset } = useReferencedEntitiesQuery(
     datasetQuery,
     enabled && entity != null ? [toReferencedEntity(entity)] : [],
@@ -29,12 +34,17 @@ export function useEntityColumnResults(
     freshData?.referenced_entities?.[entity.type]?.[entity.id] != null
       ? freshData
       : data;
+  const entityResult =
+    entity && sourceData.referenced_entities?.[entity.type]?.[entity.id];
 
-  return (column) => {
-    if (entity == null) {
-      return { value: null };
-    }
-
-    return resolveGoalValue(sourceData, { ...entity, column });
+  return {
+    errorReason:
+      entityResult?.status === "failed"
+        ? getFailedQueryReason(entityResult.error_type)
+        : undefined,
+    resolveColumn: (column) =>
+      entity
+        ? resolveGoalValue(sourceData, { ...entity, column })
+        : { value: null },
   };
 }
