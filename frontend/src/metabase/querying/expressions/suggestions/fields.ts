@@ -11,6 +11,7 @@ import {
   type ExpectedColumnType,
   getExpectedColumnType,
 } from "./argument-type";
+import { isOnPlaceholder } from "./placeholders";
 import type { CompletionResult, ExpressionSuggestion } from "./types";
 import { fuzzyMatcher } from "./util";
 
@@ -56,9 +57,9 @@ export function suggestFields({
     if (templateFieldKind === "text") {
       return null;
     }
-    if (templateFieldKind === "column") {
-      // A template's column is a placeholder, not a search term: offer every
-      // column that fits, to replace it.
+    if (templateFieldKind === "column" || isOnPlaceholder(context.state)) {
+      // A template's column or a function's placeholder isn't a search term:
+      // offer every column that fits, to replace it.
       const { from, to } = context.state.selection.main;
       return {
         from,

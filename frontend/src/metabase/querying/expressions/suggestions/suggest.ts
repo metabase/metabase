@@ -28,7 +28,11 @@ import { suggestFunctions } from "./functions";
 import { suggestLiterals } from "./literals";
 import { suggestMeasures } from "./measures";
 import { suggestMetrics } from "./metrics";
-import { placeholders } from "./placeholders";
+import {
+  isOnPlaceholder,
+  openOnPlaceholders,
+  placeholders,
+} from "./placeholders";
 import { openWhenEmpty, suggestPopular } from "./popular";
 import { suggestSegments } from "./segments";
 import { suggestRelatedColumns, suggestRelatedFunctions } from "./semantic";
@@ -54,10 +58,15 @@ export function suggestions(options: SuggestOptions) {
       quietOnTemplateBlanks(suggestRelatedColumns(options)),
     ].filter(isNotNull),
   });
-  return [completion, placeholders, popular != null ? openWhenEmpty() : []];
+  return [
+    completion,
+    placeholders,
+    openOnPlaceholders,
+    popular != null ? openWhenEmpty() : [],
+  ];
 }
 
-/** On a template's blank, only the column list may show. */
+/** On a template's blank or a placeholder, only the column list may show. */
 function quietOnTemplateBlanks(
   source: CompletionSource | null,
 ): CompletionSource | null {
@@ -65,5 +74,8 @@ function quietOnTemplateBlanks(
     return null;
   }
   return (context) =>
-    getTemplateFieldKind(context.state) === null ? source(context) : null;
+    getTemplateFieldKind(context.state) === null &&
+    !isOnPlaceholder(context.state)
+      ? source(context)
+      : null;
 }

@@ -1,4 +1,3 @@
-import { snippet } from "@codemirror/autocomplete";
 import { unifiedMergeView } from "@codemirror/merge";
 import { EditorSelection, type EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
@@ -31,6 +30,7 @@ import {
   formatIdentifier,
   getClauseDefinition,
   insertExpressionTemplate,
+  insertWithPlaceholders,
   tokenAtPos,
 } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
@@ -513,7 +513,7 @@ export function Editor(props: EditorProps) {
 
     const { from, to } = view.state.selection.main;
     view.focus();
-    snippet(expressionClauseSnippet(clause))(view, null, from, to);
+    insertWithPlaceholders(view, expressionClauseSnippet(clause), from, to);
   }, []);
 
   const handleTemplateClick = useCallback((code: string) => {
