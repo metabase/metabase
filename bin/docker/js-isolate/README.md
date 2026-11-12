@@ -1,6 +1,6 @@
 # GraalJS isolate for the Alpine image
 
-Static-viz runs chart JavaScript in a GraalVM polyglot isolate (`libpolyglotisolate.so`). The upstream library is built against glibc, but the Docker image is Alpine (musl), so `Dockerfile` here builds it against musl. It's published as `metabase/graaljs-musl:<graalvm version>` by `.github/workflows/js-isolate.yml`. The Metabase image copies it into `/app/js-isolate`, and `metabase.core.bootstrap` points Truffle at it.
+Static-viz runs chart JavaScript in a GraalVM polyglot isolate (`libpolyglotisolate.so`). The upstream library is built against glibc, but the Docker image is Alpine (musl), so `Dockerfile` here builds it against musl. It's published as `metabase/graaljs-isolate-musl:<graalvm version>` by `.github/workflows/js-isolate.yml`. The Metabase image copies it into `/app/js-isolate`, and `metabase.core.bootstrap` points Truffle at it.
 
 The image also ships Truffle's `libtruffleattach` in `/app/truffle-attach`, so static-viz works when `$HOME` isn't writable (non-root UID, read-only root filesystem). Outside the image, use `-Dpolyglot.engine.userResourceCache=<writable dir>` instead.
 
@@ -17,7 +17,7 @@ The isolate must match the GraalVM version in `deps.edn`: a mismatch can crash t
 `native-image` can't cross-compile and needs about 8 GB of memory:
 
 ```
-docker buildx build --load --platform linux/amd64 -t graaljs-musl:local bin/docker/js-isolate
+docker buildx build --load --platform linux/amd64 -t graaljs-isolate-musl:local bin/docker/js-isolate
 cp target/uberjar/metabase.jar bin/docker/
-docker build --build-arg JS_ISOLATE_IMAGE=graaljs-musl:local -t metabase:local bin/docker
+docker build --build-arg JS_ISOLATE_IMAGE=graaljs-isolate-musl:local -t metabase:local bin/docker
 ```
