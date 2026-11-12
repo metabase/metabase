@@ -1769,7 +1769,6 @@
            metabase.metrics.core}
    :uses #{api
            app-db
-           collections
            events
            lib
            lib.be
@@ -4183,6 +4182,7 @@
            api-scope
            collections
            lib.schema
+           permissions
            premium-features
            util}
    :model-imports #{:model/Card
@@ -4216,7 +4216,6 @@
    :uses #{analytics
            analytics.interface
            audit-app
-           collections
            driver
            models
            util

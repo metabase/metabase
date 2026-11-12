@@ -149,10 +149,7 @@
   `archived?` is given (true or false, not nil), further restricted to that archived status.
 
   `visibility-clause` is the one Honey SQL argument left in this namespace, and is always a
-  `metabase.collections.models.collection/visible-collection-filter-clause`. That builder needs this namespace (it
-  looks up the Trash, the user's personal Collection subtree, and their root-Collection permission), so this
-  namespace cannot call it back without a require cycle — building the clause here means first moving the whole
-  Collection-visibility machinery below this namespace."
+  `perms/visible-collections-filter-clause` built by the caller."
   [children-location-prefix :- :string
    current-user-id          :- [:maybe ::lib.schema.id/user]
    archived?                :- [:maybe :boolean]
@@ -250,9 +247,7 @@
                     {:where [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]}))
 
 (defn collections-matching
-  "The Collections matching the Honey SQL `query` map. The caller builds the whole query because it needs clause
-  builders like `visible-collection-filter-clause`, which live in `metabase.collections.models.collection` and so
-  can't be called from here without a require cycle (that namespace already requires this one)."
+  "The Collections matching the Honey SQL `query` map, which the caller builds."
   [query]
   (t2/select :model/Collection (h2x/assert-map-or-nil! query)))
 
@@ -554,19 +549,6 @@
   (app-db/query query))
 
 ;;; ------------------------------------------------ Permissions ------------------------------------------------
-
-(mu/defn user-has-root-collection-permission?
-  "Whether the User with `user-id` belongs to a group holding a Permissions row for one of the root collection
-  `objects`."
-  [user-id :- ::lib.schema.id/user
-   objects :- [:sequential :string]]
-  (t2/exists? :model/Permissions {:select [:p.*]
-                                  :from   [[:permissions :p]]
-                                  :join   [[:permissions_group :pg] [:= :pg.id :p.group_id]
-                                           [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
-                                  :where  [:and
-                                           [:= :pgm.user_id user-id]
-                                           [:in :p.object objects]]}))
 
 (mu/defn group-ids-with-permission-object
   "The set of group IDs holding a Permissions row for `object`."

@@ -3,8 +3,9 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [clojure.string :as str]
-   [metabase.collections.models.collection :as collection]
+   [metabase.api.common :as api]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
@@ -125,9 +126,8 @@
               {:where [:and
                        [:= :id table-id]
                        [:= :is_published true]
-                       (collection/visible-collection-filter-clause
-                        :collection_id {} {:current-user-id user-id
-                                           :is-superuser?   superuser?})]}))
+                       (perms/visible-collections-filter-clause :metabase_table.collection_id {:user-id user-id
+                                                                                               :is-superuser?   superuser?} {:root-namespace nil})]}))
 
 (mu/defn any-published-table-visible?
   "Whether the current user can read the Collection of any published Table."
@@ -135,7 +135,7 @@
   (t2/exists? :model/Table
               {:where [:and
                        [:= :is_published true]
-                       (collection/visible-collection-filter-clause :collection_id)]}))
+                       (perms/visible-collections-filter-clause :metabase_table.collection_id {:user-id api/*current-user-id*, :is-superuser? api/*is-superuser?*} {:root-namespace nil})]}))
 
 (mu/defn published-table-visible-in-database?
   "Whether the current user can read the Collection of any published Table in the Database with `database-id`."
@@ -144,4 +144,4 @@
               {:where [:and
                        [:= :db_id database-id]
                        [:= :is_published true]
-                       (collection/visible-collection-filter-clause :collection_id)]}))
+                       (perms/visible-collections-filter-clause :metabase_table.collection_id {:user-id api/*current-user-id*, :is-superuser? api/*is-superuser?*} {:root-namespace nil})]}))

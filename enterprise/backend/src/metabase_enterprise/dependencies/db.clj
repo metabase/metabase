@@ -92,12 +92,9 @@
                     (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet :model/Action)
                     (let [archived-column (u/qualified-key table-name :archived)
                           visible-in-root (fn [root-namespace]
-                                            (collection/visible-collection-filter-clause
-                                             (u/qualified-key table-name :collection_id)
-                                             {:include-archived-items include-archived-items
-                                              :root-namespace         root-namespace}
-                                             {:current-user-id user-id
-                                              :is-superuser?   is-superuser?}))]
+                                            (perms/visible-collections-filter-clause (u/qualified-key table-name :collection_id) {:user-id user-id
+                                                                                                                                  :is-superuser?   is-superuser?} {:include-archived-items include-archived-items
+                                                                                                                                                                   :root-namespace         root-namespace}))]
                       (when-not (and (= model :model/NativeQuerySnippet)
                                      (or (perms/sandboxed-user?)
                                          (not (perms/user-has-highest-permission-anywhere? user-id :perms/create-queries))))

@@ -5,8 +5,8 @@
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.bookmarks.schema :as bookmarks.schema]
-   [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -291,9 +291,10 @@
                                      :let  [field (keyword (str (name table) "." "archived"))]]
                                  [:or [:= field false] [:= field nil]]))
         visible?         (fn [collection-id-field]
-                           (collection/visible-collection-filter-clause collection-id-field
-                                                                        {:cte-name :visible_collection_ids}
-                                                                        user-scope))
+                           (perms/visible-collections-filter-clause collection-id-field
+                                                                    {:user-id       (:current-user-id user-scope)
+                                                                     :is-superuser? (:is-superuser? user-scope)}
+                                                                    {:include-archived-items :all :root-namespace nil}))
         readable-conditions [:or
                              [:and [:= :bookmark.type (h2x/literal "card")]       (visible? :card.collection_id)]
                              [:and [:= :bookmark.type (h2x/literal "dashboard")]  (visible? :dashboard.collection_id)]
@@ -301,11 +302,7 @@
                              [:and [:= :bookmark.type (h2x/literal "document")]   (visible? :document.collection_id)]
                              [:and [:= :bookmark.type (h2x/literal "exploration")] (visible? :exploration.collection_id)]]]
     (mdb/query
-     {:with [[:visible_collection_ids (collection/visible-collection-query
-                                       {:include-archived-items :all
-                                        :permission-level        :read}
-                                       user-scope)]]
-      :select select-fields
+     {:select select-fields
       :from [[(bookmarks-union-query user-id) :bookmark]]
       :left-join left-joins
       :where [:and where-conditions readable-conditions]

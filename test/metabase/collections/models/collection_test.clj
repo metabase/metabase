@@ -403,9 +403,14 @@
   "Every Collection ID the current user can see under `visibility-config`."
   ([] (visible-collection-ids {}))
   ([visibility-config]
-   (cond-> (t2/select-pks-set :model/Collection
-                              {:where (collection/visible-collection-filter-clause :id visibility-config)})
-     (collection/should-display-root-collection? visibility-config) (conj "root"))))
+   (let [user-info {:user-id api/*current-user-id*, :is-superuser? (boolean api/*is-superuser?*)}
+         options   (merge {:root-namespace nil} visibility-config)]
+     (cond-> (t2/select-pks-set :model/Collection
+                                {:where (perms/visible-collections-filter-clause :collection.id user-info options)})
+       (seq (t2/query {:select [[[:inline 1] :one]]
+                       :from   [[^:allow-subquery {:select [[nil :collection_id]]} :row]]
+                       :where  (perms/visible-collections-filter-clause :row.collection_id user-info options)}))
+       (conj "root")))))
 
 (deftest visible-collection-ids-test
   (with-collection-hierarchy! [{:keys [a b c d e f g]}]

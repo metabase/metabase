@@ -1,6 +1,5 @@
 (ns metabase.search.permissions
   (:require
-   [metabase.collections.models.collection :as collection]
    [metabase.data-apps.core :as data-apps]
    [metabase.permissions.core :as perms]
    [metabase.search.config :refer [SearchContext]]
@@ -21,13 +20,11 @@
   "Build the WHERE clause corresponding to which collections the given user has access to."
   [{:keys [archived current-user-id is-superuser?]} :- SearchContext collection-id-col :- :keyword]
   [:and
-   (collection/visible-collection-filter-clause
-    collection-id-col
-    {:include-archived-items    :all
-     :include-trash-collection? true
-     :permission-level          (if archived :write :read)}
-    {:current-user-id current-user-id
-     :is-superuser?   is-superuser?})
+   (perms/visible-collections-filter-clause collection-id-col {:user-id current-user-id
+                                                               :is-superuser?   is-superuser?} {:include-archived-items    :all
+                                                                                                :include-trash-collection? true
+                                                                                                :permission-level          (if archived :write :read)
+                                                                                                :root-namespace            nil})
    ;; This is to allow the set of namespaces indexed by the search spec for appdb-based search to also apply to
    ;; legacy search so it performs the same on MySQL
    ;; TODO(edpaget 2025-12-04): this should be a default value of the search context and then search can be restricted
