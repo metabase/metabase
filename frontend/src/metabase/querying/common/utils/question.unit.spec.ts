@@ -1,10 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PRODUCTS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -17,11 +18,9 @@ function getModelQuestion(sourceTableId = ORDERS_ID) {
     createMockCard({
       id: 1,
       type: "model",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: { "source-table": sourceTableId },
-      },
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: sourceTableId } }],
+      }),
     }),
     metadata,
   );

@@ -14,6 +14,8 @@
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
+(set! *warn-on-reflection* true)
+
 (deftest update-slack-settings-test
   (testing "PUT /api/slack/settings"
     (testing "An admin can set a valid Slack app token to the slack-app-token setting"

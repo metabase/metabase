@@ -1,5 +1,6 @@
 ---
 title: PostgreSQL
+summary: Connect Metabase to PostgreSQL or Supabase, including which versions are supported and every connection setting.
 redirect_from:
   - /docs/latest/administration-guide/databases/postgresql
 ---
@@ -52,7 +53,7 @@ The name of the database you're connecting to.
 
 ### Username
 
-The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of [privileges](../users-roles-privileges.md).
+The username Metabase uses to connect to your database. Create a dedicated database user for Metabase with read-only access to the schemas and tables you want to analyze. For write operations like uploads, actions, or transforms, use a separate [writable connection](../writable-connection.md). For instructions, see [Database users, roles, and privileges](../users-roles-privileges.md). You can set up multiple connections to the same database using different user accounts, each with different sets of privileges.
 
 ### Password
 
@@ -192,7 +193,7 @@ Set up an additional connection used for write operations. See [Writable connect
 
 ## Data actions
 
-Turn on **Data actions** to let people run actions on this database: both [actions on models](../../data-modeling/models/actions/introduction.md) and [data actions](../../data-modeling/data-actions.md). Actions can read, write, and delete data, so your database user needs write permissions.
+Turn on **Data actions** to let people run actions on this database: [data actions](../../data-modeling/data-actions.md), actions in [data apps](../../data-apps/build.md), and [model actions](../../data-modeling/models/actions/introduction.md). Actions can read, write, and delete data, so your database user needs write permissions.
 
 ## Model persistence
 

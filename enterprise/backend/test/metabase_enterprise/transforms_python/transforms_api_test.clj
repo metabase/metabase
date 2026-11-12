@@ -31,7 +31,7 @@
           (letfn [(create-transform! []
                     (let [schema            (get-test-schema)
                           transform-payload {:name   "My beautiful python runner"
-                                             :source {:type            "python"
+                                             :source {:type            :python
                                                       :body            "print('hello world')"
                                                       :source-tables   []
                                                       :source-database (mt/id)}
@@ -47,7 +47,7 @@
                   (is (= "Premium features required for this transform type are not enabled."
                          (mt/user-http-request :lucky :post 402 "transform"
                                                {:name   "My beautiful python runner"
-                                                :source {:type            "python"
+                                                :source {:type            :python
                                                          :body            "print('hello world')"
                                                          :source-tables   []
                                                          :source-database (mt/id)}
@@ -61,7 +61,7 @@
                   (is (= "Premium features required for this transform type are not enabled."
                          (mt/user-http-request :lucky :post 402 "transform"
                                                {:name   "My beautiful python runner"
-                                                :source {:type            "python"
+                                                :source {:type            :python
                                                          :body            "print('hello world')"
                                                          :source-tables   []
                                                          :source-database (mt/id)}
@@ -76,7 +76,7 @@
                     (is (= "print('hello chris')"
                            (-> (mt/user-http-request :lucky :put 200 (format "transform/%s" (:id transform))
                                                      {:name   "My beautiful python runner"
-                                                      :source {:type            "python"
+                                                      :source {:type            :python
                                                                :body            "print('hello chris')"
                                                                :source-tables   []
                                                                :source-database (mt/id)}
@@ -92,7 +92,7 @@
       (testing "Updating a python transform requires both :transforms-basic and :transforms-python features"
         (mt/with-temp [:model/Transform {id :id
                                          :as transform} {:name   "Original Python Transform"
-                                                         :source {:type            "python"
+                                                         :source {:type            :python
                                                                   :body            "print('original')"
                                                                   :source-tables   []
                                                                   :source-database (mt/id)}
@@ -116,7 +116,7 @@
             (with-transform-cleanup! [table-name "test_run_python"]
               (let [schema (get-test-schema)
                     transform-payload {:name   "Test Run Python Transform"
-                                       :source {:type            "python"
+                                       :source {:type            :python
                                                 :body            "def transform():\n    pass"
                                                 :source-tables   []
                                                 :source-database (mt/id)}
@@ -145,7 +145,7 @@
                                                                      :schema schema
                                                                      :name   "target_table"}]
               (let [original           {:name   "Gadget Products"
-                                        :source {:type  "python"
+                                        :source {:type  :python
                                                  :source-database (mt/id)
                                                  :source-tables [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]
                                                  :body  (str "import pandas as pd\n"
@@ -223,7 +223,7 @@
               {:post [(integer? %)]}
               (:id (mt/user-http-request :crowberto :post 200 "transform"
                                          {:name   "Python logging test"
-                                          :source {:type            "python"
+                                          :source {:type            :python
                                                    :body            (program->source program)
                                                    :source-database (mt/id)
                                                    :source-tables   [(transforms.tu/default-source-table-entry)]}
@@ -328,7 +328,7 @@
                                                 :name "python_target_table"
                                                 :active true}
                      :model/Transform transform {:name "Python Transform Cross DB"
-                                                 :source {:type "python"
+                                                 :source {:type :python
                                                           :source-database (mt/id)
                                                           :source-tables [(transforms.tu/default-source-table-entry)]
                                                           :body "def transform():\n    pass"}
@@ -351,7 +351,7 @@
   (letfn [(create-transform [{:keys [desc program]} target]
             (mt/user-http-request :crowberto :post 200 "transform"
                                   {:name   (format "Python cancellation test: %s" desc)
-                                   :source {:type            "python"
+                                   :source {:type            :python
                                             :body            (str/join "\n" program)
                                             :source-database (mt/id)
                                             :source-tables   [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]}
@@ -515,7 +515,7 @@
                                                                      :schema schema
                                                                      :name   "schema_change_test"}]
               (let [initial-transform {:name   "Schema Change Integration Test"
-                                       :source {:type            "python"
+                                       :source {:type            :python
                                                 :source-database (mt/id)
                                                 :source-tables   [(transforms.tu/default-source-table-entry)]
                                                 :body            (str "import pandas as pd\n"
@@ -532,7 +532,7 @@
                   (is (= [["Alice" 25] ["Bob" 30]] initial-rows) "Initial data should be Alice and Bob with ages"))
                 ;; Update transform with different schema via API endpoint
                 (let [updated-transform (assoc initial-transform
-                                               :source {:type            "python"
+                                               :source {:type            :python
                                                         :source-database (mt/id)
                                                         :source-tables   [(transforms.tu/default-source-table-entry)]
                                                         :body            (str "import pandas as pd\n"
@@ -569,7 +569,7 @@
                                   :schema      (get-test-schema)
                                   :table       "transforms_products"}]
                   transform-payload {:name   "Transform with table ref"
-                                     :source {:type            "python"
+                                     :source {:type            :python
                                               :body            "def transform(input):\n    return input"
                                               :source-database (mt/id)
                                               :source-tables   source-tables}

@@ -127,7 +127,14 @@ export {
   type PermissionOption,
   type PostActionFunction,
 } from "./oss/permissions";
-export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
+export {
+  PLUGIN_REMOTE_SYNC,
+  type RemoteSyncChangesArea,
+  type RemoteSyncChangesBadgeProps,
+  type RemoteSyncChangesTarget,
+  type RemoteSyncSettingsModalProps,
+  type RemoteSyncSetupMenuItemProps,
+} from "./oss/remote-sync";
 export {
   PLUGIN_REPLACEMENT,
   type SourceReplacementButtonChildProps,
@@ -151,11 +158,13 @@ export {
   type SnippetSidebarMenuOption,
 } from "./oss/snippets";
 export {
+  PLUGIN_DATA_TESTING,
+  type DataTestingPlugin,
+} from "./oss/data-testing";
+export {
   PLUGIN_TRANSFORMS,
   PLUGIN_TRANSFORMS_PYTHON,
-  PLUGIN_TRANSFORMS_TESTING,
   type TransformsPlugin,
-  type TransformsTestingPlugin,
   type PythonTransformEditorProps,
   type PythonTransformSourceSectionProps,
   type PythonTransformSourceValidationResult,
@@ -179,12 +188,7 @@ export { PLUGIN_TENANTS } from "./oss/tenants";
 export { definePluginSlot } from "./slot";
 
 // Re-export types that are used by other files
-export type {
-  GetAuthProviders,
-  GitSyncSetupMenuItemProps,
-  PluginGroupManagersType,
-  SyncedCollectionsSidebarSectionProps,
-} from "./types";
+export type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 import { reinitializeRequestHandlers } from "metabase/api/client";
 

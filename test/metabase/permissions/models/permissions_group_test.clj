@@ -94,6 +94,23 @@
         (testing (format "Group = %s" (pr-str (:name group)))
           (is (group-has-full-access? (u/the-id group) database-id)))))))
 
+(deftest all-tenant-users-get-least-access-to-newly-created-databases-test
+  (let [group-id (u/the-id (perms-group/all-external-users))]
+    (mt/with-restored-data-perms-for-group! group-id
+      (doseq [database-id (t2/select-pks-set :model/Database :router_database_id nil)]
+        (perms/set-database-permission! group-id database-id :perms/view-data :unrestricted)
+        (perms/set-database-permission! group-id database-id :perms/create-queries :query-builder-and-native)
+        (perms/set-database-permission! group-id database-id :perms/download-results :one-million-rows))
+      (mt/with-model-cleanup [:model/Database]
+        (let [database-id (t2/insert-returning-pk! :model/Database
+                                                   {:name "Test" :engine "h2" :details "{}"})]
+          (is (= {:perms/view-data      :blocked
+                  :perms/create-queries :no}
+                 (t2/select-fn->fn :perm_type :perm_value :model/DataPermissions
+                                   :group_id group-id
+                                   :db_id database-id
+                                   :perm_type [:in [:perms/view-data :perms/create-queries]]))))))))
+
 (deftest add-remove-from-admin-group-test
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "adding user to Admin should set is_superuser -> true"

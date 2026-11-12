@@ -1,0 +1,12 @@
+allowed_hosts:
+- https://allowed.data-app.test
+- http://localhost:4444
+collection: sandboxAppCollection1
+description: null
+entity_id: sandboxDataApp0000001
+name: Sandbox
+path: dist/index.js
+slug: sandbox
+version: 1
+serdes/meta:
+- model: DataApp

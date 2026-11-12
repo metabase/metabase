@@ -13,6 +13,8 @@
 
 (p/import-vars
  [metabase.sso.common
+  ldap-directory-user
+  sso-only-user?
   sync-group-memberships!]
  [metabase.sso.ldap
   find-user
@@ -24,7 +26,9 @@
   check-oidc-configuration]
  [metabase.sso.oidc.state
   wrap-oidc-redirect
-  clear-oidc-state-cookie]
+  clear-oidc-state-cookie
+  valid-redirect-url?
+  validate-redirect-url!]
  [metabase.sso.settings
   google-auth-client-id
   google-auth-enabled

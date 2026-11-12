@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting guides
+summary: Find the guide for your problem, with likely causes, how to spot them, and how to fix them.
 ---
 
 # Troubleshooting guides

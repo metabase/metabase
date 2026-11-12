@@ -8,11 +8,10 @@ import {
   type TreemapTree,
   getTreemapRootNodeId,
 } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { RawSeries } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockNativeCard,
-} from "metabase-types/api/mocks/card";
+import { createMockCard } from "metabase-types/api/mocks/card";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -32,16 +31,19 @@ import {
 const groupingCol = createMockColumn({
   name: "Category",
   display_name: "Category",
+  source: "breakout",
   base_type: "type/Text",
 });
 const subGroupingCol = createMockColumn({
   name: "Product",
   display_name: "Product",
+  source: "breakout",
   base_type: "type/Text",
 });
 const valueCol = createMockColumn({
   name: "Sales",
   display_name: "Sales",
+  source: "aggregation",
   base_type: "type/Number",
   semantic_type: "type/Number",
 });
@@ -423,7 +425,18 @@ describe("getTreemapClickData", () => {
   it("omits dimensions for a native card (no field refs to filter on)", () => {
     // Unjustified type cast. FIXME
     const nativeRawSeries = [
-      { card: createMockNativeCard(), data: rawSeries2[0].data },
+      {
+        card: createMockCard({
+          dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+            query: "",
+          }),
+          query_type: "native",
+        }),
+        data: {
+          ...rawSeries2[0].data,
+          cols: cols2.map((col) => ({ ...col, source: "native" })),
+        },
+      },
     ] as RawSeries;
 
     const clickData = getTreemapClickData({

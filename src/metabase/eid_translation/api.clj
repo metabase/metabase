@@ -1,6 +1,7 @@
 (ns metabase.eid-translation.api
   "`/api/eid-translation` routes."
   (:require
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.macros :as api.macros]
    [metabase.eid-translation.schema :as eid-translation.schema]
    [metabase.eid-translation.util :as eid-translation]))
@@ -11,6 +12,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/translate"
   "Translate entity IDs to model IDs."
+  {:scope api-scope/data-app}
   [_route-params
    _query-params
    {:keys [entity_ids]} :- [:map {:closed true}

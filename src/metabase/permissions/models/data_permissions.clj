@@ -1336,8 +1336,14 @@
   #{})
 
 (defenterprise data-app-collection?
-  "Whether the collection with `collection-id` is one a data app owns. OSS has none."
+  "Whether the collection is in the data-apps namespace. OSS has none."
   metabase-enterprise.data-apps.models.data-app
+  [_collection-id]
+  false)
+
+(defenterprise collection-owned-by-data-app?
+  "Whether the collection with `collection-id` belongs to an existing data app. OSS has none."
+  metabase-enterprise.data-apps.core
   [_collection-id]
   false)
 
@@ -1633,17 +1639,13 @@
   :full)
 
 (defn has-db-transforms-permission?
-  "Returns true if the given user has the transforms permission for the given source db.
-  Superusers always pass. A nil `database-id` (an orphaned transform whose source database
-  was deleted) only grants permission to superusers."
+  "Returns true if the given user has the transforms permission for the given source db."
   [user-id database-id]
   (and (not= database-id audit/audit-db-id)
-       (or (is-superuser? user-id)
-           (and (some? database-id)
-                (user-has-permission-for-database? user-id
-                                                   :perms/transforms
-                                                   :yes
-                                                   database-id)))))
+       (user-has-permission-for-database? user-id
+                                          :perms/transforms
+                                          :yes
+                                          database-id)))
 
 (defn has-any-transforms-permission?
   "Returns true if the current user has the transforms permission for _any_ source db."

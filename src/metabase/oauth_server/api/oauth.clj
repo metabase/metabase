@@ -24,13 +24,15 @@
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as proto]
    [oidc-provider.registration :as reg]
+   [oidc-provider.store :as oidc.store]
    [oidc-provider.token-endpoint :as oidc.token-endpoint]
    [oidc-provider.util :as oidc-util]
    [ring.util.response :as response]
    [throttle.core :as throttle])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.net URI URISyntaxException URLEncoder)))
+   (java.net URI URISyntaxException URLEncoder)
+   (java.time Clock)))
 
 (set! *warn-on-reflection* true)
 
@@ -158,6 +160,9 @@
 
 (def ^:private invalid-target-description
   "The resource parameter must be an absolute URI without a fragment.")
+
+(def ^:private not-held-scope-description
+  "None of the requested scopes were granted to this refresh token. Omit scope to refresh with the original grant.")
 
 (defn- narrowed-away-scope-description
   "The `error_description` for an authorization request in which no requested scope is accepted by `resources`."
@@ -316,7 +321,7 @@
   [{:keys [attempts attempts-threshold attempt-ttl-ms]} throttle-key]
   (if-let [[_ blocking-attempt-ms] (nth (filter (fn [[attempt-key]] (= throttle-key attempt-key)) @attempts)
                                         (dec attempts-threshold) nil)]
-    (quot (+ 999 (max 0 (- (+ blocking-attempt-ms attempt-ttl-ms) (System/currentTimeMillis)))) 1000)
+    (quot (+ 999 (max 0 (- (+ blocking-attempt-ms attempt-ttl-ms) (u.throttle/now-ms)))) 1000)
     0))
 
 (defn- do-with-token-throttling
@@ -452,16 +457,24 @@
 
 (defn- token-error-code
   "The RFC 6749 section 5.2 `error` code for the ex-data of an exception thrown while handling a token request."
-  [{:keys [error] :as data}]
-  (or error
+  [{:keys [oauth-error error] :as data}]
+  (or oauth-error
+      error
       ;; oidc-provider names a code only for its PKCE, expired refresh token, and resource-indicator errors. Its other
       ;; grant failures carry the code or refresh token that failed, or the client or redirect URI the grant is bound
       ;; to as `:expected`/`:actual`. Malformed requests carry none of these. A missing `redirect_uri` also carries
       ;; `:code`, and `invalid_grant` is right for it too: the code is consumed by then, so a retry cannot succeed.
-      (if (or (contains? data :code)
-              (contains? data :refresh-token)
-              (and (contains? data :expected) (contains? data :actual)))
+      ;; Its scope rejections carry `:requested`, and `invalid_scope` tells the client the scope is at fault.
+      (cond
+        (or (contains? data :code)
+            (contains? data :refresh-token)
+            (and (contains? data :expected) (contains? data :actual)))
         "invalid_grant"
+
+        (contains? data :requested)
+        "invalid_scope"
+
+        :else
         "invalid_request")))
 
 (defn- error-description
@@ -557,9 +570,10 @@
   `:error-description` when the request names no scope, when none of its scopes are registered, when none of them
   survive narrowing, or when incompatible resources are requested.
 
-  Applied by both the consent page and the decision endpoint. The consent form's signature proves only that the form
-  was not tampered with by a third party: it is keyed by the CSRF token the page shows the user, so the user can
-  re-sign anything. The endpoint that issues the code has to apply these rules itself.
+  Applied by the consent page, the decision endpoint, and a refresh that names a `scope`. The consent form's
+  signature proves only that the form was not tampered with by a third party: it is keyed by the CSRF token the
+  page shows the user, so the user can re-sign anything. The endpoint that issues the code has to apply these
+  rules itself.
 
   Never returns a blank scope. The decision endpoint leans on that: it answers a nil grant with 403 `params_tampered`,
   which is only the right status while the sole way to reach it is a choice naming an unoffered scope. A blank offer
@@ -585,6 +599,57 @@
                         {:oauth-error       "invalid_scope"
                          :error-description (narrowed-away-scope-description (:resource parsed))
                          :resource          (:resource parsed)})))))
+
+(defn- refreshable-token
+  "The stored refresh token a refresh `body` names, when oidc-provider would get as far as checking its scope: the
+   client authenticates, may use the refresh grant, and owns the token, and the token is unexpired. Otherwise nil.
+
+   Authenticates with oidc-provider's own `authenticate-client`, so a client that fails it gets exactly the error the
+   library would give. Skipped when the token does not resolve, which the library rejects without needing this."
+  [provider authorization-header {:keys [refresh_token] :as body}]
+  (when-let [token-data (some->> (not-empty refresh_token)
+                                 (oidc.store/get-refresh-token (:token-store provider)))]
+    (let [client (oidc.token-endpoint/authenticate-client body authorization-header (:client-store provider))
+          now    (.millis ^Clock (:clock (:provider-config provider)))]
+      (when (and (some #{"refresh_token"} (:grant-types client))
+                 (= (:client-id token-data) (:client-id client))
+                 ;; the token store filters out revoked tokens, not expired ones
+                 (let [expiry (:expiry token-data)]
+                   (or (nil? expiry) (<= now expiry))))
+        token-data))))
+
+(defn- with-refresh-scope-to-grant
+  "The token request `body` with the `scope` of a refresh trimmed the same way authorization trims one: unregistered
+   scopes are dropped and the rest narrowed by [[scope-to-grant]] to the request's `resource`, else the one the refresh
+   token was issued for, which is the resource oidc-provider issues the new token for. Scopes the refresh token does not
+   hold are then dropped too, as RFC 6749 section 3.3 allows, so a client that always refreshes with the same `scope`
+   keeps working after the user declines part of it at consent; the response's `scope` says what was granted. Throws
+   `ex-info` carrying `:oauth-error` `invalid_scope` when no requested scope survives.
+
+   Trimmed only once [[refreshable-token]] finds the request would reach oidc-provider's scope check, so a dead token,
+   another client's token, or bad client credentials still get the library's own answer. A blank `scope` is dropped,
+   which RFC 6749 section 6 treats as the original grant; oidc-provider would read it as asking for no scopes and mint
+   a token with none. Any other `body` is returned unchanged."
+  [provider authorization-header {:keys [grant_type scope resource] :as body}]
+  (cond
+    (not= grant_type "refresh_token")
+    body
+
+    (str/blank? scope)
+    (dissoc body :scope)
+
+    :else
+    (if-let [token-data (refreshable-token provider authorization-header body)]
+      (let [requested (scope-tokens (scope-to-grant {:scope    scope
+                                                     :resource (or resource (:resource token-data))}))
+            held      (into #{} (:scope token-data))]
+        ;; oidc-provider splits `scope` on single spaces and stores what it gets, so pass it deduplicated and
+        ;; single-spaced.
+        (assoc body :scope (or (not-empty (str/join " " (filter held requested)))
+                               (throw (ex-info "no requested scope is held by the refresh token"
+                                               {:oauth-error       "invalid_scope"
+                                                :error-description not-held-scope-description})))))
+      body)))
 
 (defn- authorization-consent-response
   "Validate the authorization request `query-params` and return the consent page response, which sets the CSRF
@@ -775,7 +840,9 @@
                                                              :scopes    (when (some? (:scope body))
                                                                           (or (scope-tokens (:scope body)) []))
                                                              :resource  (:resource body)})
-                                                           (oidc/token-request provider body authorization-header))]
+                                                           (oidc/token-request provider
+                                                                               (with-refresh-scope-to-grant provider authorization-header body)
+                                                                               authorization-header))]
                                             {:status  200
                                              :headers {"Content-Type"  "application/json"
                                                        "Cache-Control" "no-store"

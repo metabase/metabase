@@ -1,4 +1,5 @@
-(ns metabase.test.util.dynamic-redefs-test
+;; The runner would otherwise proxy these tests' vars before they run, and many of them check a first redefinition.
+(ns ^{:metabase.test.util.dynamic-redefs/proxy-on-first-redef true} metabase.test.util.dynamic-redefs-test
   (:require
    [clojure.test :refer :all]
    [clojure.test.check.clojure-test :refer [defspec]]
@@ -9,6 +10,7 @@
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [potemkin :as p]
    [potemkin.namespaces :as p.namespaces])
   (:import
@@ -98,6 +100,35 @@
          #"Cannot proxy multimethods"
          (mt/with-dynamic-fn-redefs [a-multimethod (constantly :redefined)]
            (a-multimethod "hi"))))))
+
+(methodical/defmulti a-methodical-multimethod {:arglists '([x])} class)
+(methodical/defmethod a-methodical-multimethod String [_] :string)
+(p/import-def a-methodical-multimethod reexported-methodical-multimethod)
+
+;; Not ^:parallel: the `with-redefs` case replaces the re-export's root for every thread.
+(deftest ^:synchronized with-dynamic-fn-redefs-methodical-multimethod-test
+  (testing "Cannot proxy a methodical multimethod, or a re-export of one"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Cannot proxy multimethods"
+         (mt/with-dynamic-fn-redefs [a-methodical-multimethod (constantly :redefined)]
+           (a-methodical-multimethod "hi"))))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Cannot proxy multimethods"
+         (mt/with-dynamic-fn-redefs [reexported-methodical-multimethod (constantly :redefined)]
+           (reexported-methodical-multimethod "hi")))))
+  (testing "Cannot proxy the re-export either while a with-redefs stub hides the multimethod"
+    (with-redefs [reexported-methodical-multimethod (constantly :stub)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Cannot proxy multimethods"
+           (mt/with-dynamic-fn-redefs [reexported-methodical-multimethod (constantly :redefined)]
+             (reexported-methodical-multimethod "hi"))))))
+  (testing "a defmethod through the re-export still compiles afterwards"
+    ;; `methodical/defmethod` reads the multimethod from the var when it expands, which a proxy breaks.
+    (eval `(methodical/defmethod reexported-methodical-multimethod Long [~'_] :long))
+    (is (= :long (reexported-methodical-multimethod 1)))))
 
 (defn mock-me-inner []
   :mock/original)
@@ -588,6 +619,50 @@
                           #"Cannot proxy non-IFn values"
                           (dynamic-redefs/patch-vars! [(reexport! (fresh-source! 23)
                                                                   'metabase.test.util.dynamic-redefs-test)])))))
+
+(defn- fresh-ns!
+  "Create a namespace for compiling redefs in, outside this one's opt-out."
+  [metadata]
+  (doto (create-ns (gensym "metabase.test.util.dynamic-redefs-test.compiled-"))
+    (alter-meta! merge metadata)))
+
+(defn- compile-redef!
+  "Compile, without running, a `with-dynamic-fn-redefs` of `syms` in the namespace `a-ns`."
+  [a-ns syms]
+  (binding [*ns* a-ns]
+    (eval `(fn []
+             (dynamic-redefs/with-dynamic-fn-redefs [~@(mapcat (fn [s] [s '(clojure.core/constantly :redef)]) syms)]
+               nil)))))
+
+(deftest proxy-compiled-targets-test
+  (let [a-ns      (fresh-ns! {})
+        fn-target (intern a-ns 'fn-target (fn [] :original))
+        kw-target (intern a-ns 'kw-target :k)
+        multi     (intern a-ns 'multi (MultiFn. "multi" identity :default #'clojure.core/global-hierarchy))
+        unbound   (intern a-ns 'unbound)]
+    (compile-redef! a-ns '[fn-target kw-target multi unbound])
+    (testing "compiling the macro only records the vars"
+      (is (every? #(nil? (dynamic-redefs/dynamic-value %)) [fn-target kw-target multi unbound])))
+    (let [{:keys [skipped failed]} (dynamic-redefs/proxy-compiled-targets!)]
+      (testing "the runner's call proxies a fn and a keyword"
+        (is (= {} failed))
+        (is (= :original ((dynamic-redefs/dynamic-value fn-target))))
+        (is (= :k (dynamic-redefs/dynamic-value kw-target))))
+      (testing "and skips a multimethod and an unbound var"
+        (is (every? (set skipped) [multi unbound]))
+        (is (every? #(nil? (dynamic-redefs/dynamic-value %)) [multi unbound]))))
+    (testing "so a captured value is the proxy, and a replacement that calls it fails on the first run"
+      (let [captured @fn-target]
+        (is (thrown-with-msg? AssertionError #"runaway recursion"
+                              (redefined! fn-target captured fn-target)))))))
+
+(deftest proxy-compiled-targets-opt-out-test
+  (testing "a namespace that opts out keeps its vars unproxied until a test redefines them"
+    (let [a-ns   (fresh-ns! {::dynamic-redefs/proxy-on-first-redef true})
+          target (intern a-ns 'target (fn [] :original))]
+      (compile-redef! a-ns '[target])
+      (dynamic-redefs/proxy-compiled-targets!)
+      (is (nil? (dynamic-redefs/dynamic-value target))))))
 
 (deftest first-redef-of-reexport-and-source-race-test
   (testing "a re-export and its source, each first redefined at the same moment on its own thread"

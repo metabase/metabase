@@ -123,7 +123,7 @@ function DatabaseEditAppInner({
                 <Flex
                   direction="column"
                   gap={{ base: "2rem", sm: "5.5rem" }}
-                  mb={{ base: "3rem", sm: "5.5rem" }}
+                  pb={{ base: "3rem", sm: "5.5rem" }}
                 >
                   <DatabaseConnectionInfoSection database={database} />
 

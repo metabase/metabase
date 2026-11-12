@@ -24,11 +24,11 @@ The easiest way to get started with Metabase is to sign up for a free trial of [
 
 Run as a JAR, using Docker, or on [Metabase Cloud](https://store.metabase.com/checkout).
 
-### [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
+### [Setting up Metabase](./getting-started/setting-up-metabase.md)
 
 Once installed, set up your Metabase and connect to your data.
 
-### [Getting started](https://www.metabase.com/learn/metabase-basics/getting-started)
+### [Getting started](./getting-started/start.md)
 
 With your data connected, get started asking questions, creating dashboards, and sharing your work.
 
@@ -127,6 +127,7 @@ Metabase's reference documentation.
 ### Data apps
 
 - [Data apps overview](./data-apps/start.md)
+- [Getting started with data apps](./data-apps/getting-started.md)
 - [Build a data app](./data-apps/build.md)
 - [Manage data apps](./data-apps/manage.md)
 
@@ -148,8 +149,9 @@ Metabase's reference documentation.
 
 ### Actions
 
-- [Actions overview](./data-modeling/models/actions/start.md)
-- [Introduction to actions](./data-modeling/models/actions/introduction.md)
+- [Data actions](./data-modeling/data-actions.md)
+- [Model actions](./data-modeling/models/actions/start.md)
+- [Introduction to model actions](./data-modeling/models/actions/introduction.md)
 - [Basic actions](./data-modeling/models/actions/basic.md)
 - [Custom actions](./data-modeling/models/actions/custom.md)
 
@@ -239,7 +241,7 @@ Metabase's reference documentation.
 ### Configuration
 
 - [Configuration overview](./configuring-metabase/start.md)
-- [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
+- [Setting up Metabase](./getting-started/setting-up-metabase.md)
 - [General settings](./configuring-metabase/settings.md)
 - [Allow iframes and images from other domains](./configuring-metabase/domains.md)
 - [Email](./configuring-metabase/email.md)
@@ -258,6 +260,7 @@ Metabase's reference documentation.
 
 - [Monitor overview](./monitor/start.md)
 - [Dependency diagnostics](./monitor/dependency-diagnostics.md)
+- [Content diagnostics](./monitor/content-diagnostics.md)
 - [Erroring questions](./monitor/erroring-questions.md)
 - [Alerts management](./monitor/alerts-management.md)
 - [Background tasks](./monitor/background-tasks.md)

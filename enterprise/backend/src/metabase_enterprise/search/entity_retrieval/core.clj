@@ -140,7 +140,7 @@
       ;; Readiness can change after the tool is offered (for example settings can select an unavailable model).
       ;; Domain/configuration failures should make this optional retrieval path disappear, while JVM errors and
       ;; other unexpected exception types still escape.
-      (log/warn e "configured embedding model could not be resolved; returning no library results")
+      (log/warn e "configured embedding model could not be resolved; library search is unavailable")
       nil)))
 
 (defn- missing-table-error?
@@ -403,23 +403,25 @@
   blended score (cosine similarity plus a slight doc_type bump).
   Each result is shaped `{:entity {:model :id} :doc_type :doc_text :score}`, best score first; the caller
   dedupes the (many-per-entity) docs down to distinct entities.
-  Returns [] when the pgvector store is unconfigured.
+  Returns [] for no matches, :busy during an index update, or :unavailable when the index or embedding
+  configuration cannot serve a search.
 
   Hits are not permission-filtered — see [[metabase.search.entity-retrieval.mirror/search-unfiltered]] for what a
   caller owes the current user."
   :feature :library-retrieval
   [user-search-prompt limit]
   (if-not (available?)
-    []
+    :unavailable
     (let [pgvector  (semantic.db.datasource/ensure-initialized-data-source!)
           limit     (or limit default-limit)
           model     (resolved-configured-model-for-search)]
       ;; Check compatibility under a short non-blocking read lock. Even metadata-table DDL can otherwise block this
       ;; preflight behind reconcile before we reach the protected query path. The later locked recheck remains
       ;; authoritative because a reconcile can begin while the embedding is generated.
-      (if-not (and model
-                   (true? (reconcile/with-index-read-lock pgvector #(index-compatible? % model))))
-        []
+      (case (when model (reconcile/with-index-read-lock pgvector #(index-compatible? % model)))
+        nil   (if model :busy :unavailable)
+        false :unavailable
+        true
         (let [embedding (embedding/get-embedding model (embedding/prefix-search-query model user-search-prompt)
                                                  {:type :query :record-tokens? true})
               lit       (index-table/format-embedding embedding)
@@ -431,7 +433,7 @@
                ;; The compatibility check and query share the reconcile lock and connection. A setting change
                ;; after the tool was offered must never query same-width vectors from another immutable space.
                (if-not (index-compatible? conn model)
-                 []
+                 :unavailable
                  (let [rows (try
                               (jdbc/execute!
                                conn
@@ -445,7 +447,7 @@
                                    (sql/format {:quoted true}))
                                {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                               (catch SQLException e
-                                ;; Only the index-not-ready states degrade to no results — the index, not the agent,
+                                ;; Only the index-not-ready states report unavailable here: the index, not the agent,
                                 ;; is at fault and the next reconcile heals it:
                                 ;;   42P01  vectors table doesn't exist yet (pre-first-build; expected at boot, stay quiet)
                                 ;;   22000  stored vectors incompatible with the query vector (a dimension/format change
@@ -453,17 +455,19 @@
                                 ;; Any other SQL error — a connection loss or pgvector outage — propagates so the tool
                                 ;; reports the search as unavailable rather than as an empty library.
                                 (case (.getSQLState e)
-                                  "42P01" []
-                                  "22000" (do (log/warnf "library entity index incompatible with the query vector; returning no results: %s" (ex-message e))
-                                              [])
+                                  "42P01" :unavailable
+                                  "22000" (do (log/warnf "library entity index incompatible with the query vector: %s" (ex-message e))
+                                              :unavailable)
                                   (do (analytics/inc! :metabase-entity-retrieval/search-failed)
                                       (throw e)))))]
-                   (->> rows
-                        (map (fn [row]
-                               {:entity   {:model (:entity_type row) :id (:entity_local_id row)}
-                                :doc_type (:doc_type row)
-                                :doc_text (:doc_text row)
-                                :score    (score row)}))
-                        (sort-by (comp :total_score :score) >)
-                        vec)))))
-           []))))))
+                   (if (= :unavailable rows)
+                     :unavailable
+                     (->> rows
+                          (map (fn [row]
+                                 {:entity   {:model (:entity_type row) :id (:entity_local_id row)}
+                                  :doc_type (:doc_type row)
+                                  :doc_text (:doc_text row)
+                                  :score    (score row)}))
+                          (sort-by (comp :total_score :score) >)
+                          vec))))))
+           :busy))))))

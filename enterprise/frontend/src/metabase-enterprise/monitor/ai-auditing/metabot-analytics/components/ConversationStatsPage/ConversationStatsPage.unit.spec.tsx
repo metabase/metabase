@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupGroupsEndpoint,
   setupTenantEntpoints,
@@ -28,6 +29,7 @@ import {
   ROBERT_TENANT,
   selectFilterOption,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/tests/fixtures";
+import * as Lib from "metabase-lib";
 import type { ClickObject } from "metabase-lib";
 import type { Dataset, RawSeries, RowValue } from "metabase-types/api";
 import {
@@ -94,30 +96,9 @@ const TABLE_NAME_BY_ID = new Map(
   ),
 );
 
-const FIELD_NAME_BY_ID = new Map(
-  (auditDatabase.tables ?? []).flatMap((table) =>
-    (table.fields ?? []).map(
-      (field) => [Number(field.id), field.name] as const,
-    ),
-  ),
-);
-
-function fieldIdByName(tableName: string, fieldName: string): number {
-  const table = auditDatabase.tables?.find(({ name }) => name === tableName);
-  const field = table?.fields?.find(({ name }) => name === fieldName);
-  if (field == null) {
-    throw new Error(`No field ${tableName}.${fieldName} in the audit fixture`);
-  }
-  return Number(field.id);
-}
-
-const CONVERSATIONS_USER_ID_FIELD_ID = fieldIdByName(
-  "v_metabot_conversations",
-  "user_id",
-);
-const CONVERSATIONS_TENANT_ID_FIELD_ID = fieldIdByName(
-  "v_metabot_conversations",
-  "tenant_id",
+const AUDIT_PROVIDER = Lib.metadataProvider(
+  AUDIT_DB_ID,
+  createMockMetadata({ databases: [auditDatabase] }),
 );
 
 const DAY_BUCKETS = ["2026-04-15T00:00:00", "2026-04-16T00:00:00"];
@@ -133,38 +114,33 @@ const BREAKOUT_VALUES: Record<string, RowValue[]> = {
   group_name: ["Administrators", "data"],
 };
 
-type FieldRef = [string, { "temporal-unit"?: string }, number];
-type FilterClause = [string, object, FieldRef, ...unknown[]];
-type RequestStage = {
-  "source-table": number;
-  aggregation?: unknown[];
-  breakout?: FieldRef[];
-  filters?: FilterClause[];
-  joins?: unknown[];
-};
-
-function parseStage(body: unknown): RequestStage | null {
+function parseQuery(body: unknown): Lib.Query | null {
   if (typeof body !== "string") {
     return null;
   }
-  return JSON.parse(body).stages?.[0] ?? null;
+  return Lib.fromJsQuery(AUDIT_PROVIDER, JSON.parse(body));
 }
 
-function getBreakoutValues(stage: RequestStage): RowValue[] {
-  const [breakout] = stage.breakout ?? [];
+function getBreakout(query: Lib.Query) {
+  return Lib.breakouts(query, -1)[0];
+}
+
+function getBreakoutValues(query: Lib.Query): RowValue[] {
+  const breakout = getBreakout(query);
   if (!breakout) {
     return [];
   }
-  const columnName = FIELD_NAME_BY_ID.get(breakout[2]);
+  const columnName = Lib.displayInfo(query, -1, breakout).name;
   if (columnName === "created_at") {
-    return breakout[1]?.["temporal-unit"] === "hour"
+    const bucket = Lib.temporalBucket(breakout);
+    return bucket && Lib.displayInfo(query, -1, bucket).shortName === "hour"
       ? HOUR_BUCKETS
       : DAY_BUCKETS;
   }
-  const values = BREAKOUT_VALUES[columnName ?? ""];
+  const values = BREAKOUT_VALUES[columnName];
   if (!values) {
     throw new Error(
-      `Unexpected breakout column in dataset request: ${String(columnName)}`,
+      `Unexpected breakout column in dataset request: ${columnName}`,
     );
   }
   return values;
@@ -181,18 +157,20 @@ function buildCountResponse(count: number): Dataset {
   });
 }
 
-function getViewName(stage: RequestStage): string {
-  return TABLE_NAME_BY_ID.get(stage["source-table"]) ?? "";
+function getViewName(query: Lib.Query): string {
+  return TABLE_NAME_BY_ID.get(Number(Lib.primarySourceTableId(query))) ?? "";
 }
 
 function buildDatasetResponse(body: unknown, emptyViews: string[]): Dataset {
-  const stage = parseStage(body);
-  if (stage && !stage.breakout) {
-    return buildCountResponse(emptyViews.includes(getViewName(stage)) ? 0 : 2);
+  const query = parseQuery(body);
+  if (query && !getBreakout(query)) {
+    return buildCountResponse(emptyViews.includes(getViewName(query)) ? 0 : 2);
   }
-  const values = stage ? getBreakoutValues(stage) : [];
+  const values = query ? getBreakoutValues(query) : [];
   const aggregationNames =
-    (stage?.aggregation ?? []).length > 1 ? ["sum", "sum_2"] : ["count"];
+    query && Lib.aggregations(query, -1).length > 1
+      ? ["sum", "sum_2"]
+      : ["count"];
 
   return createMockDataset({
     data: createMockDatasetData({
@@ -212,16 +190,23 @@ function buildDatasetResponse(body: unknown, emptyViews: string[]): Dataset {
   });
 }
 
-function getDatasetStages(): RequestStage[] {
+function getDatasetQueries(): Lib.Query[] {
   return fetchMock.callHistory
     .calls("dataset")
-    .map((call) => parseStage(call.options?.body))
-    .filter((stage): stage is RequestStage => stage != null);
+    .map((call) => parseQuery(call.options?.body))
+    .filter((query): query is Lib.Query => query != null);
 }
 
-function getFilteredFieldIds(): number[] {
-  return getDatasetStages().flatMap((stage) =>
-    (stage.filters ?? []).map((filter) => filter[2]?.[2]),
+function getFilteredColumns(): string[] {
+  return getDatasetQueries().flatMap((query) =>
+    Lib.filters(query, -1).flatMap((filter) => {
+      const parts = Lib.filterParts(query, -1, filter);
+      if (!parts || !("column" in parts)) {
+        return [];
+      }
+      const info = Lib.displayInfo(query, -1, parts.column);
+      return [`${getViewName(query)}.${info.name}`];
+    }),
   );
 }
 
@@ -246,8 +231,8 @@ function setup({
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
   // useAuditTable pulls the table's fields (and its FK targets') from here.
   fetchMock.post("path:/api/dataset/query_metadata", async (call) => {
-    const stage = parseStage(call.options.body);
-    if (stage && getViewName(stage) === heldView) {
+    const query = parseQuery(call.options.body);
+    if (query && getViewName(query) === heldView) {
       await heldMetadata.promise;
     }
     return {
@@ -261,8 +246,8 @@ function setup({
   fetchMock.post(
     "path:/api/dataset",
     async (call) => {
-      const stage = parseStage(call.options.body);
-      if (stage && !stage.breakout && getViewName(stage) === heldView) {
+      const query = parseQuery(call.options.body);
+      if (query && !getBreakout(query) && getViewName(query) === heldView) {
         await heldCount.promise;
       }
       return buildDatasetResponse(call.options.body, emptyViews);
@@ -475,8 +460,9 @@ describe("ConversationStatsPage", () => {
       releaseHeldMetadata();
       await waitFor(() =>
         expect(
-          getDatasetStages().some(
-            (stage) => !stage.breakout && getViewName(stage) === VIEW_USAGE_LOG,
+          getDatasetQueries().some(
+            (query) =>
+              !getBreakout(query) && getViewName(query) === VIEW_USAGE_LOG,
           ),
         ).toBe(true),
       );
@@ -534,8 +520,8 @@ describe("ConversationStatsPage", () => {
         });
       });
       await waitFor(() => {
-        expect(getFilteredFieldIds()).toContain(
-          CONVERSATIONS_TENANT_ID_FIELD_ID,
+        expect(getFilteredColumns()).toContain(
+          `${VIEW_CONVERSATIONS}.tenant_id`,
         );
       });
     });
@@ -557,7 +543,7 @@ describe("ConversationStatsPage", () => {
         });
       });
       await waitFor(() => {
-        expect(getFilteredFieldIds()).toContain(CONVERSATIONS_USER_ID_FIELD_ID);
+        expect(getFilteredColumns()).toContain(`${VIEW_CONVERSATIONS}.user_id`);
       });
     });
 
@@ -573,10 +559,10 @@ describe("ConversationStatsPage", () => {
         });
       });
       await waitFor(() => {
-        const joinedStages = getDatasetStages().filter(
-          (stage) => (stage.joins ?? []).length > 0,
+        const joinedQueries = getDatasetQueries().filter(
+          (query) => Lib.joins(query, -1).length > 0,
         );
-        expect(joinedStages.length).toBeGreaterThan(0);
+        expect(joinedQueries.length).toBeGreaterThan(0);
       });
     });
   });

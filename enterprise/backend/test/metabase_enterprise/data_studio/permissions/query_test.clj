@@ -39,22 +39,24 @@
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/User       {user-id :id}       {}
                      :model/Collection {collection-id :id} {:type "library-data"}]
-        (try
-          (schema.table-user-settings/upsert-user-settings (t2/select-one :model/Table :id (mt/id :venues))
-                                                           {:is_published  true
-                                                            :collection_id collection-id})
-          (let [all-users (perms/all-users-group)]
-            (perms/set-database-permission! all-users (mt/id) :perms/view-data      db-view-data)
-            (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
-            (if grant?
-              (perms/grant-collection-read-permissions! all-users collection-id)
-              (perms/revoke-collection-permissions!     all-users collection-id))
-            (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data      :unrestricted)
-            (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no))
-          (f user-id collection-id)
-          (finally
-            (schema.table-user-settings/unset-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
-                                                             [:is_published :collection_id])))))))
+        (mt/with-temp-vals-in-db :model/Table (mt/id :venues) (select-keys (t2/select-one :model/Table :id (mt/id :venues))
+                                                                           [:is_published :collection_id])
+          (try
+            (schema.table-user-settings/upsert-table-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
+                                                                    {:is_published  true
+                                                                     :collection_id collection-id})
+            (let [all-users (perms/all-users-group)]
+              (perms/set-database-permission! all-users (mt/id) :perms/view-data      db-view-data)
+              (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
+              (if grant?
+                (perms/grant-collection-read-permissions! all-users collection-id)
+                (perms/revoke-collection-permissions!     all-users collection-id))
+              (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data      :unrestricted)
+              (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no))
+            (f user-id collection-id)
+            (finally
+              (schema.table-user-settings/unset-table-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
+                                                                     [:is_published :collection_id]))))))))
 
 (deftest published-table-test
   (testing "Published tables grant query access via collection permissions only with library enabled\n"

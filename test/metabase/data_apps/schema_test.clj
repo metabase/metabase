@@ -14,18 +14,18 @@
   (mr/validate schema (normalize schema x)))
 
 (deftest data-app-update-normalizes-each-column-it-is-given-test
-  (is (= {:name "sales" :display_name "Sales dashboard" :description nil :version 1
+  (is (= {:slug "sales" :name "Sales dashboard" :description nil :version 1
           :bundle_path "dist/index.js" :allowed_hosts []}
          (normalize ::data-apps.schema/data-app.update
-                    {:name "sales" :display_name " Sales dashboard " :description "  " :version nil
+                    {:slug "sales" :name " Sales dashboard " :description "  " :version nil
                      :bundle_path "./dist/index.js" :allowed_hosts nil})))
   (is (= {:enabled false} (normalize ::data-apps.schema/data-app.update {:enabled false}))))
 
-(deftest data-app-insert-requires-the-manifest-columns-test
-  (is (valid? ::data-apps.schema/data-app.insert {:name "a" :display_name "A" :bundle_path "i.js"}))
-  (doseq [k [:name :display_name :bundle_path]]
-    (is (not (valid? ::data-apps.schema/data-app.insert
-                     (dissoc {:name "a" :display_name "A" :bundle_path "i.js"} k)))
+(deftest data-app-create-requires-manifest-columns-test
+  (is (valid? ::data-apps.schema/data-app.create {:slug "a" :name "A" :bundle_path "i.js"}))
+  (doseq [k [:slug :name :bundle_path]]
+    (is (not (valid? ::data-apps.schema/data-app.create
+                     (dissoc {:slug "a" :name "A" :bundle_path "i.js"} k)))
         (str "should require " k))))
 
 (deftest version-test
@@ -53,14 +53,14 @@
   (testing "a slug is used verbatim"
     (is (= "inventory-2" (normalize ::data-apps.schema/slug "inventory-2"))))
   (testing "a slug that can't appear in a URL as-is, or collides with an API sub-route, is rejected"
-    (doseq [bad [nil "" "Sales" "my_app" "sales app" "-sales" "sales-" "sales\n" "repo-status" "sandbox-host"
+    (doseq [bad [nil "" "Sales" "my_app" "sales app" "-sales" "sales-" "sales\n" "repo-status"
                  (apply str (repeat 101 "a"))]]
       (is (not (valid? ::data-apps.schema/slug bad)) (str "should reject: " (pr-str bad))))))
 
-(deftest display-name-test
-  (is (= "X" (normalize ::data-apps.schema/display-name "  X ")))
+(deftest name-test
+  (is (= "X" (normalize ::data-apps.schema/name "  X ")))
   (doseq [bad [nil "" "   "]]
-    (is (not (valid? ::data-apps.schema/display-name bad)) (str "should reject: " (pr-str bad)))))
+    (is (not (valid? ::data-apps.schema/name bad)) (str "should reject: " (pr-str bad)))))
 
 (deftest allowed-hosts-test
   (testing "valid entries are lowercased, trailing-slash-stripped, and de-duplicated"
@@ -86,3 +86,23 @@
 (deftest bundle-test
   (is (valid? ::data-apps.schema/bundle (byte-array 3)))
   (is (not (valid? ::data-apps.schema/bundle (byte-array (inc data-apps.schema/max-bundle-bytes))))))
+
+(deftest query-spec-test
+  (let [stage {:source {:type :table :id 1}}]
+    (testing "a query spec has one stage on a table"
+      (is (valid? ::data-apps.schema/query-spec {:stages [stage]})))
+    (testing "a query spec of several stages, or none, is rejected"
+      (doseq [stages [[] [stage stage]]]
+        (is (not (valid? ::data-apps.schema/query-spec {:stages stages})) (str "should reject: " (pr-str stages)))))
+    (testing "a stage on a card is rejected"
+      (is (not (valid? ::data-apps.schema/query-spec {:stages [{:source {:type :card :id 1}}]}))))
+    (testing "a stage holds no joins or custom expressions"
+      (doseq [k [:joins :expressions]]
+        (is (not (valid? ::data-apps.schema/query-spec {:stages [(assoc stage k [])]})) (str "should reject: " k))))))
+
+(deftest action-spec-test
+  (testing "an action spec is an implicit action of a known kind on a table"
+    (is (valid? ::data-apps.schema/action-spec {:kind "row/update" :table {:id 1}})))
+  (testing "an unknown kind, or a table without an ID, is rejected"
+    (doseq [bad [{:kind "row/upsert" :table {:id 1}} {:kind "row/update" :table {}}]]
+      (is (not (valid? ::data-apps.schema/action-spec bad)) (str "should reject: " (pr-str bad))))))

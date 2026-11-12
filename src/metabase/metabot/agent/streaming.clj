@@ -14,10 +14,10 @@
 ;; These match the Python AI Service's AISDKDataTypes enum
 
 (def state-type "AI-SDK data type for state updates." "state")
-(def todo-list-type "AI-SDK data type for todo lists." "todo_list")
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
 (def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
+(def dashboard-saved-type "AI-SDK data type for a dashboard that a tool saved." "dashboard_saved")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 (def search-results-type "AI-SDK data type for a search tool's result list." "search_results")
@@ -29,7 +29,9 @@
   ;; state is diffed separately into the row's state column
   ;; search_results and tool_title render under the client-only chain of
   ;; thought, never rehydrated
-  #{state-type search-results-type tool-title-type})
+  #{search-results-type
+    state-type
+    tool-title-type})
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -74,17 +76,6 @@
   {:type :data
    :data-type state-type
    :data state-map})
-
-(defn todo-list-part
-  "Create a TODO_LIST data part for streaming.
-  Todos should be a vector of todo item maps with :id, :content, :status, :priority keys.
-
-  This matches Python AI Service's:
-  ai_sdk.create_data_part(data_type=AISDKDataTypes.TODO_LIST, version=1, value=todos)"
-  [todos]
-  {:type :data
-   :data-type todo-list-type
-   :data todos})
 
 (defn code-edit-part
   "Create a CODE_EDIT data part for streaming.
@@ -137,6 +128,16 @@
   [value]
   {:type :data
    :data-type entity-saved-type
+   :data value})
+
+(defn dashboard-saved-part
+  "Create a DASHBOARD_SAVED data part for streaming.
+  The `value` describes a dashboard a tool created, edited, trashed or restored:
+  `{:dashboard_id :action :name :url :collection_id :open :saved_charts}`.
+  The frontend links it, reloads it when it is open, and opens it when `:open` is true."
+  [value]
+  {:type :data
+   :data-type dashboard-saved-type
    :data value})
 
 (defn search-results-part

@@ -25,15 +25,12 @@ export const DashboardInfoButton = (
     }
   };
 
-  useRegisterShortcut(
-    [
-      {
-        id: "dashboard-toggle-info-sidebar",
-        perform: handleClick,
-      },
-    ],
-    [isShowingDashboardInfoSidebar],
-  );
+  useRegisterShortcut([
+    {
+      id: "dashboard-toggle-info-sidebar",
+      perform: handleClick,
+    },
+  ]);
 
   return (
     <ToolbarButton

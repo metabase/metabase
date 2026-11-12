@@ -44,10 +44,10 @@
 
   &[data-selected] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-background_surface-brand-strong);
 
     &:hover {
-      background-color: var(--mb-color-core-brand);
+      background-color: var(--mb-color-background_surface-brand-strong-hover);
     }
   }
 }
@@ -55,7 +55,7 @@
 .weekday {
   width: 2.5rem;
   height: 2rem;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-lg);
   text-align: center;
@@ -100,7 +100,7 @@
 
   &[data-selected] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-background_surface-brand-strong);
   }
 }
 
@@ -226,7 +226,7 @@
 
   &[data-selected] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-background_surface-brand-strong);
   }
 
   &:hover:not([data-selected], :disabled) {

@@ -150,6 +150,16 @@ describe("Tooltip", () => {
     });
   });
 
+  it("lets the pointer through until it has finished fading in", async () => {
+    const { user } = setup();
+
+    await user.hover(screen.getByRole("button", { name: "Target" }));
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip).not.toHaveAttribute("data-hoverable");
+
+    await waitFor(() => expect(tooltip).toHaveAttribute("data-hoverable"));
+  });
+
   it("hides the previous tooltip straight away when the pointer moves to another target", async () => {
     const { user } = setupNeighbouringTargets();
 

@@ -7,6 +7,8 @@
    [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ------------------------------------------------ ClientStore -------------------------------------------------------
 
 (deftest client-store-register-and-get-test

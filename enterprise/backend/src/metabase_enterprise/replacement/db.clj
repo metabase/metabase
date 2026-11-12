@@ -13,7 +13,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn run
@@ -75,7 +74,7 @@
 (mu/defn tables-with-ids
   "The Tables with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Table :id [:in ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in ids]))
 
 (mu/defn dashboards-with-ids
   "The Dashboards with `ids`."
@@ -182,23 +181,23 @@
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id :model/Table :id table-id))
 
 (mu/defn active-fields-of-table
   "The active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :table_id table-id :active true))
 
 (mu/defn active-field-ids-of-table
   "The IDs of the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-pks-set :model/Field :table_id table-id :active true))
 
 (mu/defn active-fk-to-fields-exists?
   "Whether an active Field on an active Table points at one of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/exists? :model/Field {:from  [(warehouse-schema-overlay/field-query)]
-                            :join  [(warehouse-schema-overlay/table-query {:user-settings? false})
+  (t2/exists? :model/Field {:from  [(t2/table-name :model/Field)]
+                            :join  [(t2/table-name :model/Table)
                                     [:= :metabase_field.table_id :metabase_table.id]]
                             :where [:and
                                     [:in :metabase_field.fk_target_field_id field-ids]

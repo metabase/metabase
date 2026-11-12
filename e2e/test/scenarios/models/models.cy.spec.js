@@ -518,7 +518,7 @@ describe("scenarios > models", () => {
               name: "ID",
               display_name: "ID",
               type: "dimension",
-              dimension: ["field", PRODUCTS.ID, null],
+              "field-id": PRODUCTS.ID,
               "widget-type": "category",
               default: null,
             },
@@ -535,7 +535,7 @@ describe("scenarios > models", () => {
     H.modal().within(() => {
       cy.findByText("Variables in models aren't supported yet");
       cy.button("Turn this into a model").should("not.exist");
-      cy.icon("close").click();
+      cy.findByLabelText("Close").click();
     });
     H.openQuestionActions();
     assertIsQuestion();

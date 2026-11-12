@@ -19,6 +19,7 @@
      subscription reads cover live Pulse rows and rows migrated to the notification API."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -66,7 +67,7 @@
   [dataset-query]
   (or (not-empty (get-in dataset-query [:native :template-tags]))
       (when-let [tags (some (comp not-empty :template-tags) (:stages dataset-query))]
-        (into {} (map (juxt :name identity)) tags))))
+        (u/index-by :name tags))))
 
 (defn- source-cards-readable?
   "Whether the current user can read every Card `query` reads, at any depth.
@@ -325,7 +326,7 @@
   [row]
   (let [markdown   (:content_markdown row)
         spans      (::spans row)
-        span-by-id (into {} (map (juxt :node-id identity)) spans)
+        span-by-id (u/index-by :node-id spans)
         ancestor-ids (node-id->ancestor-ids row)
         threads    (->> (comments/comments-for-document (:id row))
                         (group-by :child_target_id)
@@ -393,6 +394,15 @@
                                     #(cond-> % (map? (:link %)) (update :link read-checked-link)))
                             u/remove-nils))
                       dashcards)}))
+
+(defn- dashboard-parameters
+  "The `parameters` include: each stored parameter with every property, and the ids of the dashcards wired to it.
+   The concise row shows only some of those properties."
+  [row]
+  (let [dash                   (::dashboard row)
+        param-id->dashcard-ids (projections/parameter-dashcard-ids dash)]
+    {:parameters (mapv #(m/assoc-some % :dashcard_ids (param-id->dashcard-ids (u/qualified-name (:id %))))
+                       (:parameters dash))}))
 
 ;;; ----------------------------------------------------- alert ----------------------------------------------------
 
@@ -508,7 +518,7 @@
    "segment"      {:fetch #(fetch-measure-or-segment :model/Segment %)
                    :includes {"definition" (definition-include #(measure-or-segment-definition :segment %))}}
    "dashboard"    {:fetch fetch-dashboard
-                   :includes {"parameters" (fn [row] {:parameters (vec (:parameters row))})
+                   :includes {"parameters" dashboard-parameters
                               "layout"     (fn [row] {:layout (dashboard-layout row)})}}
    "document"     {:fetch fetch-document
                    :includes {"layout"   (fn [row] {:layout (document-layout row)})

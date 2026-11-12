@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import {
   createMockCollection,
@@ -136,8 +136,8 @@ describe("PaletteResults", () => {
   it("should allow you to search entities, and provide a docs link", async () => {
     setup({ query: "Bar" });
 
-    await waitFor(async () => {
-      expect(await screen.findByText("Results")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Results")).toBeInTheDocument();
     });
 
     expect(
@@ -324,6 +324,29 @@ describe("PaletteResults", () => {
       await screen.findByText(`Search Metabase's docs for "new action"`),
     ).toBeInTheDocument();
     expect(screen.queryByText("New action")).not.toBeInTheDocument();
+  });
+
+  it("should start a new research", async () => {
+    const { router } = setup({ query: "new research" });
+
+    await userEvent.click(await screen.findByText("New research"));
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/question/research"),
+    );
+  });
+
+  it("should not offer the New research action without NLQ access", async () => {
+    setup({
+      query: "new research",
+      metabotPermissions: { "metabot-nlq": "no" },
+    });
+
+    expect(
+      await screen.findByText(`Search Metabase's docs for "new research"`),
+    ).toBeInTheDocument();
+    await act(() => fetchMock.callHistory.flush(true));
+    expect(screen.queryByText("New research")).not.toBeInTheDocument();
   });
 
   it("should start a new metric", async () => {

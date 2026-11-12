@@ -17,7 +17,8 @@
    [metabase.models.interface :as mi]
    [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
-   [metabase.pulse.core :as pulse]))
+   [metabase.pulse.core :as pulse]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,33 +30,42 @@
    Layout keys (sizing, container styling) describe the dashboard itself and survive redaction."
   [:card.title :card.description :column_settings :series_settings :click_behavior])
 
+(defn- readable-card?
+  "Whether `card`, a dashcard's `:card` or an entry in its `:series`, is a card row the current user can read."
+  [card]
+  ;; A compiled dry run leaves a card as nil or a bare `{:id}` when it has no row for it, as for a card the user
+  ;; cannot read that the dashboard references only as a parameter's values source. A bare map is not a model
+  ;; instance, so `mi/can-read?` would throw on it.
+  (and (t2/instance-of? :model/Card card) (mi/can-read? card)))
+
 (defn- redact-dashcard
   [dashcard]
-  (cond-> dashcard
-    ;; The projection reads an absent `:card` the same way it reads an unhydrated one — as an id
-    ;; with no name — so removing it is the whole redaction *for the projection*. The `layout`
-    ;; include reads this same dashcard directly, though, and `:visualization_settings` /
-    ;; `:parameter_mappings` are stored snapshots that describe the card: the title, the warehouse
-    ;; column names it renders, and the field ids its filters are wired to. Leaving them behind
-    ;; hands a caller who was just denied the card exactly what the denial withheld, so they go
-    ;; with it.
-    (not (some-> (:card dashcard) mi/can-read?))
-    ;; `:parameter_mappings` is emptied rather than removed: it is a required key on a DashboardCard,
-    ;; and `dashboard->resolved-params` — which the parameters summary runs over the same row — fails
-    ;; its schema when the key is absent.
-    (-> (dissoc :card)
-        (assoc :parameter_mappings []))
+  ;; A text, heading or link card has no card, so its mappings and settings are dashboard data and stay.
+  (let [hidden-card? (and (:card_id dashcard) (not (readable-card? (:card dashcard))))]
+    (cond-> dashcard
+      ;; The projection reads an absent `:card` the same way it reads an unhydrated one — as an id
+      ;; with no name — so removing it is the whole redaction *for the projection*. The `layout`
+      ;; include reads this same dashcard directly, though, and `:visualization_settings` /
+      ;; `:parameter_mappings` are stored snapshots that describe the card: the title, the warehouse
+      ;; column names it renders, and the field ids its filters are wired to. Leaving them behind
+      ;; hands a caller who was just denied the card exactly what the denial withheld, so they go
+      ;; with it.
+      hidden-card?
+      ;; `:parameter_mappings` is emptied rather than removed: it is a required key on a DashboardCard,
+      ;; and `dashboard->resolved-params` — which the parameters summary runs over the same row — fails
+      ;; its schema when the key is absent.
+      (-> (dissoc :card)
+          (assoc :parameter_mappings []))
 
-    ;; Guarded on there being something to strip rather than on the key's presence: a dashcard read
-    ;; from the app db is a Toucan instance, where `update` on an absent key still writes it back as
-    ;; nil and the projection then reports a key the dashcard never had.
-    (and (not (some-> (:card dashcard) mi/can-read?))
-         (seq (:visualization_settings dashcard)))
-    (assoc :visualization_settings
-           (not-empty (apply dissoc (:visualization_settings dashcard) card-describing-viz-keys)))
+      ;; Guarded on there being something to strip rather than on the key's presence: a dashcard read
+      ;; from the app db is a Toucan instance, where `update` on an absent key still writes it back as
+      ;; nil and the projection then reports a key the dashcard never had.
+      (and hidden-card? (seq (:visualization_settings dashcard)))
+      (assoc :visualization_settings
+             (not-empty (apply dissoc (:visualization_settings dashcard) card-describing-viz-keys)))
 
-    (seq (:series dashcard))
-    (update :series (partial mapv #(cond-> % (not (mi/can-read? %)) (select-keys [:id]))))))
+      (seq (:series dashcard))
+      (update :series (partial mapv #(cond-> % (not (readable-card? %)) (select-keys [:id])))))))
 
 (defn redact-dashboard
   "`dash`, with its dashcards' `:card` and `:series` populated — by hydration on a saved dashboard,

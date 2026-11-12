@@ -160,6 +160,11 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User :id user-id))
 
+(mu/defn user-sso-source
+  "The `sso_source` of the User with `user-id`, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one-fn :sso_source :model/User :id user-id))
+
 (mu/defn user-login-status
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]

@@ -2,6 +2,7 @@
   "Malli schemas for the glossary module."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -21,3 +22,11 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])
+
+(mr/def ::external-glossary
+  "A Glossary as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::glossary [:entity_id :term :definition :creator_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

@@ -161,7 +161,7 @@
    ;; - `search.cy.spec.js`
    ;; - `models.cy.spec.js`
    ;; - `documents.cy.spec.ts`
-   ;; - `document-links.cy.spec.ts`
+   ;; - `rich-text-input.cy.spec.ts`
    ;; - `custom-viz.cy.spec.ts`
    ;; - `search-snowplow.cy.spec.js`
    :metabot

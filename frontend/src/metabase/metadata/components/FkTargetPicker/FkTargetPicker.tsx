@@ -4,7 +4,6 @@ import { t } from "ttag";
 import {
   areFieldsComparable,
   getFieldDisplayName,
-  getRawTableFieldId,
 } from "metabase/metadata/utils/field";
 import {
   Flex,
@@ -78,7 +77,7 @@ export const FkTargetPicker = ({
       throw new Error("unreachable");
     }
 
-    return getRawTableFieldId(field);
+    return field.id;
   };
 
   const handleChange = (value: string | null) => {
@@ -92,6 +91,7 @@ export const FkTargetPicker = ({
     <Select
       aria-label={t`Foreign key target`}
       comboboxProps={{
+        keepMounted: false,
         middlewares: {
           flip: true,
           size: {
@@ -144,7 +144,7 @@ export const FkTargetPicker = ({
 
               {field?.description && (
                 <Text
-                  c="text-disabled"
+                  c="text-secondary"
                   className={S.description}
                   component="span"
                   lh="1rem"
@@ -174,7 +174,7 @@ function getData(comparableIdFields: Field[], includeSchema: boolean) {
           field.table,
           includeSchema && field.table ? field.table.schema : undefined,
         ),
-        value: stringifyValue(getRawTableFieldId(field)) ?? "",
+        value: stringifyValue(field.id) ?? "",
       };
     })
     .sort((a, b) => a.label.localeCompare(b.label));

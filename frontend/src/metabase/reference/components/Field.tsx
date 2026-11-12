@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { getIn } from "icepick";
 import { memo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -111,20 +110,9 @@ const Field = ({
                     <Icon className={S.chartIcon} name={icon} size={20} />
                   )}
                 </div>
-                <span
-                  className={
-                    getIn(FIELD_SEMANTIC_TYPES_MAP, [
-                      field.semantic_type ?? "",
-                      "name",
-                    ])
-                      ? CS.textMedium
-                      : CS.textLight
-                  }
-                >
-                  {getIn(FIELD_SEMANTIC_TYPES_MAP, [
-                    field.semantic_type ?? "",
-                    "name",
-                  ]) || t`No field type`}
+                <span className={CS.textSecondary}>
+                  {FIELD_SEMANTIC_TYPES_MAP[field.semantic_type ?? ""]?.name ||
+                    t`No field type`}
                 </span>
               </div>
             )}

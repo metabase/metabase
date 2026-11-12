@@ -109,14 +109,14 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
   }
 
   if (isRootTrashCollection(collection)) {
-    return <Icon name="trash" size={24} c="text-disabled" />;
+    return <Icon name="trash" size={24} c="text-secondary" />;
   }
 
   if (
     collection.archived &&
     PLUGIN_COLLECTIONS.isRegularCollection(collection)
   ) {
-    return <Icon name="folder" size={24} c="text-disabled" />;
+    return <Icon name="folder" size={24} c="text-secondary" />;
   }
 
   return (

@@ -63,6 +63,7 @@ export const UserInput = ({
   return (
     <Select<string | null>
       comboboxProps={{
+        keepMounted: false,
         middlewares: {
           flip: true,
           size: {

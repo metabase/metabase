@@ -88,7 +88,7 @@
 }
 
 .listEntityIcon {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
 
   &:hover {
     color: var(--mb-color-core-brand);

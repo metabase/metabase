@@ -22,12 +22,16 @@ import {
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  SAMPLE_DB_ID,
+  createOrdersTable,
   createSampleDatabase,
-  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import { SET_CURRENT_STATE } from "../store/actions";
@@ -43,6 +47,12 @@ jest.mock("metabase/router", () => ({
   getPendingNavigationPath: jest.fn(() => null),
 }));
 
+function createSavedStructuredCard() {
+  return createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  });
+}
+
 type UpdateUrlOptions = Parameters<typeof updateUrl>[1];
 
 function buildSavedQuestion(card: Card): Question {
@@ -51,11 +61,15 @@ function buildSavedQuestion(card: Card): Question {
     questions: [card],
   });
   const metadata = createMockMetadataFromState(createMockState({ entities }));
-  return checkNotNull(metadata.question(card.id));
+  return new Question(card, metadata);
 }
 
 function buildPristineTableQuestion(): Question {
-  return checkNotNull(tableMetadata.table(ORDERS_ID)).newQuestion();
+  return Question.create({
+    DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+    DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+    metadata: tableMetadata,
+  }).setDefaultDisplay();
 }
 
 const tableMetadata = createMockMetadataFromState(
@@ -325,7 +339,7 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
       const question = buildPristineTableQuestion();
       const expectedUrl = Urls.table({
         id: ORDERS_ID,
-        name: question.metadata().table(ORDERS_ID)?.display_name,
+        name: createOrdersTable().display_name,
       });
 
       window.history.replaceState({}, "", "/table/anything");

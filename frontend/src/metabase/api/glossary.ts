@@ -1,11 +1,7 @@
+import type { GlossaryItem } from "metabase-types/api";
+
 import { Api } from "./api";
 import { idTag, invalidateTags, listTag } from "./tags";
-
-export type GlossaryItem = {
-  id: number;
-  term: string;
-  definition: string;
-};
 
 export type ListGlossaryRequest = {
   search?: string;
@@ -52,7 +48,8 @@ export const glossaryApi = Api.injectEndpoints({
       }),
       // Optimistically add the new item to the list cache
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        const tempId = Date.now();
+        // A negative id marks the entry as pending until the server's row replaces it
+        const tempId = -Date.now();
         const patchResult = dispatch(
           glossaryApi.util.updateQueryData(
             "listGlossary",

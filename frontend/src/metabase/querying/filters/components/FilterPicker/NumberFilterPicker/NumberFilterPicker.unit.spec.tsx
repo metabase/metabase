@@ -206,6 +206,22 @@ describe("NumberFilterPicker", () => {
         expect(getNextFilterColumnName()).toBe("Total");
       });
 
+      it("should keep only the first number of a comma-separated input (metabase#9339)", async () => {
+        const { getNextFilterParts } = setup();
+
+        await setOperator("Greater than");
+        const input = screen.getByPlaceholderText("Enter a number");
+        await userEvent.type(input, "9339,1234");
+        await userEvent.tab();
+
+        expect(input).toHaveValue("9339");
+        await userEvent.click(screen.getByText("Add filter"));
+        expect(getNextFilterParts()).toMatchObject({
+          operator: ">",
+          values: [9339],
+        });
+      });
+
       it("should add a filter with a big integer value", async () => {
         const query = createQuery();
         const columns = Lib.filterableColumns(query, -1);

@@ -166,9 +166,7 @@ export const ComponentProviderInternal = (
                   <>
                     <Global styles={SCOPED_CSS_RESET} />
 
-                    <SdkFontsGlobalStyles
-                      baseUrl={authConfig.metabaseInstanceUrl}
-                    />
+                    <SdkFontsGlobalStyles />
 
                     <SdkUsageProblemDisplay
                       authConfig={authConfig}

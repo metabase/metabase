@@ -1,10 +1,13 @@
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+
 import { isResolved } from "./useApiKeyUsageHasData";
 
 const resolvedArgs = {
   isLoadingTables: false,
   isFetching: false,
   isFetchingKeys: false,
-  query: {},
+  query: Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   data: {},
   apiKeys: [],
   hasError: false,

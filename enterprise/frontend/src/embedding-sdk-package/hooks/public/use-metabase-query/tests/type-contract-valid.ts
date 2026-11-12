@@ -38,13 +38,38 @@ const _questionEntityId: "ordersQuestionEntity1" =
   ordersQuestionQuery.source.entityId;
 
 const CreateOrder = defineAction({
-  action: { ...TEST_SCHEMA.actions.createOrder, id: "createOrderEntity" },
+  entityId: "createOrderEntity",
+  kind: "row/create",
+  table: TEST_SCHEMA.tables.orders,
 });
 
-const _actionEntityId: "createOrderEntity" = CreateOrder.action.id;
+const _actionEntityId: "createOrderEntity" = CreateOrder.entityId;
+
+const REVIEWS_TABLE = {
+  type: "table",
+  id: 3,
+  fields: {
+    reviewId: {
+      type: "column",
+      fieldId: 300,
+      tableId: 3,
+      name: "Review ID",
+      slug: "review_id",
+      jsType: "number",
+    },
+  },
+} as const;
+
+const CreateReview = defineAction({
+  entityId: "createReviewEntity",
+  kind: "row/create",
+  table: REVIEWS_TABLE,
+});
 
 const UpdateOrder = defineAction({
-  action: TEST_SCHEMA.actions.updateOrder,
+  entityId: "updateOrderEntity",
+  kind: "row/update",
+  table: TEST_SCHEMA.tables.orders,
 });
 
 function CardQueryFixtures() {
@@ -169,25 +194,28 @@ function ValidTypeFixtures() {
 
   void createOrder.execute({ status: "shipped" });
 
-  const createdCount: number | undefined =
-    createOrder.result?.["rows-affected"];
+  const createdRow = createOrder.result?.["created-row"];
 
-  void createdCount;
+  void createdRow;
 
   const updateOrder = useDataAppAction(UpdateOrder);
 
   void updateOrder.execute({ id: 1 });
 
+  // A parameter is keyed by its column's slug, not its name.
+  void useDataAppAction(CreateReview).execute({ review_id: 1 });
+
   // The SDK hook takes a plain definition object, and a `defineAction` export too.
   const sdkCreateOrder = useAction({
-    action: TEST_SCHEMA.actions.createOrder,
+    entityId: "createOrderEntity",
+    kind: "row/create",
+    table: TEST_SCHEMA.tables.orders,
   });
 
   void sdkCreateOrder.execute({ status: "shipped" });
   void useAction(CreateOrder).execute({ status: "shipped" });
 
-  const updatedCount: number | undefined =
-    updateOrder.result?.["rows-affected"];
+  const updatedCount: number | undefined = updateOrder.result?.["rows-updated"];
 
   void updatedCount;
 
@@ -234,6 +262,20 @@ function ValidTypeFixtures() {
     scalarAggregationResult.data?.rows[0]?.sum;
 
   void scalarAggregationValue;
+
+  const latestOrderResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [
+        aggregations.max(TEST_SCHEMA.tables.orders.fields.createdAt),
+      ],
+    }),
+  );
+
+  const latestOrderCreatedAt: string | null | undefined =
+    latestOrderResult.data?.rows[0]?.max;
+
+  void latestOrderCreatedAt;
 
   const namedAggregationResult = useMetabaseQuery(
     defineQuery({

@@ -1,7 +1,15 @@
+import {
+  getAggregationResultColumnDefaultName,
+  getAggregationResultColumnJavaScriptType,
+} from "embedding-sdk-shared/lib/create-metabase-query/result-columns";
+
 import type { SchemaColumn, SchemaJavaScriptType } from "../data-schema";
 
 import type {
+  AggregationColumn,
+  CountAggregation,
   CountAggregationSchema,
+  FieldAggregation,
   FieldAggregationOperator,
   FieldAggregationSchema,
   NamedSavedAggregation,
@@ -13,13 +21,17 @@ type AggregationOptions<TName extends string> = {
   name: TName;
 };
 
+type AggregationDimension = {
+  jsType?: SchemaJavaScriptType;
+};
+
 export function count(): CountAggregationSchema;
 export function count<const TName extends string>(
   options: AggregationOptions<TName>,
 ): CountAggregationSchema<TName>;
 export function count(
   options?: AggregationOptions<string>,
-): CountAggregationSchema<string> {
+): CountAggregation & { columns: readonly [AggregationColumn] } {
   return {
     type: "operator",
     operator: "count",
@@ -27,7 +39,7 @@ export function count(
     ...(options && { name: options.name }),
     columns: [
       {
-        name: options?.name ?? "count",
+        name: options?.name ?? getAggregationResultColumnDefaultName("count"),
         displayName: "Count",
         jsType: "number",
       },
@@ -35,150 +47,149 @@ export function count(
   };
 }
 
-export const sum = <const TDimension, const TName extends string = "sum">(
+export function sum<const TDimension>(
   dimension: NumericAggregationDimension<TDimension>,
-  options?: AggregationOptions<TName>,
+): FieldAggregationSchema<"sum", NumericAggregationDimension<TDimension>>;
+export function sum<const TDimension, const TName extends string>(
+  dimension: NumericAggregationDimension<TDimension>,
+  options: AggregationOptions<TName>,
 ): FieldAggregationSchema<
   "sum",
   NumericAggregationDimension<TDimension>,
-  "number",
-  NoInfer<TName>
-> => fieldAggregation("sum", "Sum", dimension, options);
+  TName
+>;
+export function sum(
+  dimension: AggregationDimension,
+  options?: AggregationOptions<string>,
+) {
+  return fieldAggregation("sum", "Sum", dimension, options);
+}
 
-export const avg = <const TDimension, const TName extends string = "avg">(
+export function avg<const TDimension>(
   dimension: NumericAggregationDimension<TDimension>,
-  options?: AggregationOptions<TName>,
+): FieldAggregationSchema<"avg", NumericAggregationDimension<TDimension>>;
+export function avg<const TDimension, const TName extends string>(
+  dimension: NumericAggregationDimension<TDimension>,
+  options: AggregationOptions<TName>,
 ): FieldAggregationSchema<
   "avg",
   NumericAggregationDimension<TDimension>,
-  "number",
-  NoInfer<TName>
-> => fieldAggregation("avg", "Average", dimension, options);
+  TName
+>;
+export function avg(
+  dimension: AggregationDimension,
+  options?: AggregationOptions<string>,
+) {
+  return fieldAggregation("avg", "Average", dimension, options);
+}
 
-export const median = <const TDimension, const TName extends string = "median">(
+export function median<const TDimension>(
   dimension: NumericAggregationDimension<TDimension>,
-  options?: AggregationOptions<TName>,
+): FieldAggregationSchema<"median", NumericAggregationDimension<TDimension>>;
+export function median<const TDimension, const TName extends string>(
+  dimension: NumericAggregationDimension<TDimension>,
+  options: AggregationOptions<TName>,
 ): FieldAggregationSchema<
   "median",
   NumericAggregationDimension<TDimension>,
-  "number",
-  NoInfer<TName>
-> => fieldAggregation("median", "Median", dimension, options);
+  TName
+>;
+export function median(
+  dimension: AggregationDimension,
+  options?: AggregationOptions<string>,
+) {
+  return fieldAggregation("median", "Median", dimension, options);
+}
 
-export const distinct = <
-  const TDimension,
-  const TName extends string = "count",
->(
+export function distinct<const TDimension>(
   dimension: TDimension,
-  options?: AggregationOptions<TName>,
-): FieldAggregationSchema<"distinct", TDimension, "number", NoInfer<TName>> =>
-  fieldAggregation("distinct", "Distinct values", dimension, options);
+): FieldAggregationSchema<"distinct", TDimension>;
+export function distinct<const TDimension, const TName extends string>(
+  dimension: TDimension,
+  options: AggregationOptions<TName>,
+): FieldAggregationSchema<"distinct", TDimension, TName>;
+export function distinct(
+  dimension: AggregationDimension,
+  options?: AggregationOptions<string>,
+) {
+  return fieldAggregation("distinct", "Distinct values", dimension, options);
+}
 
-export const min = <const TDimension, const TName extends string = "min">(
+export function min<const TDimension>(
   dimension: OrderableAggregationDimension<TDimension>,
-  options?: AggregationOptions<TName>,
+): FieldAggregationSchema<"min", OrderableAggregationDimension<TDimension>>;
+export function min<const TDimension, const TName extends string>(
+  dimension: OrderableAggregationDimension<TDimension>,
+  options: AggregationOptions<TName>,
 ): FieldAggregationSchema<
   "min",
   OrderableAggregationDimension<TDimension>,
-  "number",
-  NoInfer<TName>
-> => fieldAggregation("min", "Minimum", dimension, options);
+  TName
+>;
+export function min(
+  dimension: AggregationDimension,
+  options?: AggregationOptions<string>,
+) {
+  return fieldAggregation("min", "Minimum", dimension, options);
+}
 
-export const max = <const TDimension, const TName extends string = "max">(
+export function max<const TDimension>(
   dimension: OrderableAggregationDimension<TDimension>,
-  options?: AggregationOptions<TName>,
+): FieldAggregationSchema<"max", OrderableAggregationDimension<TDimension>>;
+export function max<const TDimension, const TName extends string>(
+  dimension: OrderableAggregationDimension<TDimension>,
+  options: AggregationOptions<TName>,
 ): FieldAggregationSchema<
   "max",
   OrderableAggregationDimension<TDimension>,
-  "number",
-  NoInfer<TName>
-> => fieldAggregation("max", "Maximum", dimension, options);
+  TName
+>;
+export function max(
+  dimension: AggregationDimension,
+  options?: AggregationOptions<string>,
+) {
+  return fieldAggregation("max", "Maximum", dimension, options);
+}
 
-const fieldAggregation = <
-  TOperator extends FieldAggregationOperator,
-  TDimension,
-  TName extends string,
->(
-  type: TOperator,
+function fieldAggregation(
+  operator: FieldAggregationOperator,
   displayName: string,
-  dimension: TDimension,
-  options: AggregationOptions<TName> | undefined,
-): FieldAggregationSchema<TOperator, TDimension, "number", TName> =>
-  // The column's `name`/`jsType` are computed at runtime (`string` /
-  // `SchemaJavaScriptType`), while the schema type states them as the literals
-  // derived from `TName` and `TOperator` — TS can't connect the two.
-  ({
+  dimension: AggregationDimension,
+  options: AggregationOptions<string> | undefined,
+): FieldAggregation & { columns: readonly [AggregationColumn] } {
+  return {
     type: "operator",
-    operator: type,
+    operator,
     args: [dimension],
     ...(options && { name: options.name }),
     columns: [
       {
-        name: options?.name ?? getFieldAggregationColumnName(type),
+        name: options?.name ?? getAggregationResultColumnDefaultName(operator),
         displayName,
-        jsType: getFieldAggregationColumnJavaScriptType(type, dimension),
+        jsType: getAggregationResultColumnJavaScriptType(
+          operator,
+          dimension.jsType,
+        ),
       },
     ],
-  }) as unknown as FieldAggregationSchema<
-    TOperator,
-    TDimension,
-    "number",
-    TName
-  >;
-
-const getFieldAggregationColumnName = (
-  type: FieldAggregationOperator,
-): string => (type === "distinct" ? "count" : type);
-
-function getFieldAggregationColumnJavaScriptType(
-  type: FieldAggregationOperator,
-  dimension: unknown,
-): SchemaJavaScriptType {
-  if (type !== "min" && type !== "max") {
-    return "number";
-  }
-
-  if (
-    dimension == null ||
-    typeof dimension !== "object" ||
-    !("jsType" in dimension)
-  ) {
-    return "number";
-  }
-
-  const { jsType } = dimension;
-
-  if (isOrderableJavaScriptType(jsType)) {
-    return jsType;
-  }
-
-  return "number";
+  };
 }
-
-const isOrderableJavaScriptType = (
-  value: unknown,
-): value is Exclude<SchemaJavaScriptType, "unknown"> =>
-  value === "string" ||
-  value === "number" ||
-  value === "boolean" ||
-  value === "Date";
 
 type SavedAggregation<TType extends "measure" | "metric"> = {
   type: TType;
   columns?: readonly SchemaColumn[];
 };
 
-const namedSavedAggregation = <TAggregation, TName extends string>(
-  aggregation: TAggregation & { columns?: readonly SchemaColumn[] },
-  name: TName,
-): NamedSavedAggregation<TAggregation, TName> =>
-  // The column type is the wrapped aggregation's first column with the new
-  // name, a conditional type TS can't check the spread against.
-  ({
+function namedSavedAggregation<TType extends "measure" | "metric">(
+  aggregation: SavedAggregation<TType>,
+  name: string,
+): NamedSavedAggregation<SavedAggregation<TType>> {
+  return {
     name,
     value: aggregation,
     columns: [{ ...aggregation.columns?.[0], name }],
-  }) as unknown as NamedSavedAggregation<TAggregation, TName>;
+  };
+}
 
 export function measure<const TMeasure extends SavedAggregation<"measure">>(
   measure: TMeasure,

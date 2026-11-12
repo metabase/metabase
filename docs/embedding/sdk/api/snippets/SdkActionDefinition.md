@@ -1,22 +1,26 @@
 ```ts
 type SdkActionDefinition = {
-  action: {
-    id: SdkActionId;
+  entityId: SdkEntityId;
+  kind: "row/create" | "row/update" | "row/delete";
+  table: {
+    id: number;
   };
 };
 ```
 
-How a data app names an action: a `defineAction` definition from the app's
-typed schema, whose `action.id` is the entity ID of an action in the app's
-collection.
+How a data app names an action: a `defineAction` definition of an implicit
+action on a table. The dev preview runs it without saving it, and a
+production build runs the action `entityId` names.
 
 ## Properties
 
 <!-- [<snippet properties>] -->
 
-| Property                     | Type                                                                        |
-| :--------------------------- | :-------------------------------------------------------------------------- |
-| <a id="action"></a> `action` | \{ `id`: [`SdkActionId`](/docs/latest/embedding/sdk/api/SdkActionId.md); \} |
-| `action.id`                  | [`SdkActionId`](/docs/latest/embedding/sdk/api/SdkActionId.md)              |
+| Property                         | Type                                                           |
+| :------------------------------- | :------------------------------------------------------------- |
+| <a id="entityid"></a> `entityId` | [`SdkEntityId`](/docs/latest/embedding/sdk/api/SdkEntityId.md) |
+| <a id="kind"></a> `kind`         | `"row/create"` \| `"row/update"` \| `"row/delete"`             |
+| <a id="table"></a> `table`       | \{ `id`: `number`; \}                                          |
+| `table.id`                       | `number`                                                       |
 
 <!-- [<endsnippet properties>] -->

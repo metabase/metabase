@@ -2,10 +2,12 @@ import type { StoryFn } from "@storybook/react";
 import { Fragment, type ReactNode, useState } from "react";
 
 import {
+  ActionIcon,
   Box,
   Button,
   Checkbox,
   Flex,
+  Icon,
   MODAL_DENSITIES,
   MODAL_LAYOUTS,
   Modal,
@@ -179,6 +181,32 @@ const ConfirmationTemplate = (args: ModalProps) => {
   );
 };
 
+const BackButtonTemplate = (args: ModalProps) => {
+  const [step, setStep] = useState<"closed" | "first" | "second">("closed");
+  const handleClose = () => setStep("closed");
+  return (
+    <Flex justify="center">
+      <Button variant="filled" onClick={() => setStep("first")}>
+        Open example
+      </Button>
+      <Modal
+        {...args}
+        title={step === "second" ? "Static embedding" : "Embed this question"}
+        opened={step !== "closed"}
+        headerActions={HEADER_ACTION}
+        onBack={step === "second" ? () => setStep("first") : undefined}
+        onClose={handleClose}
+      >
+        {step === "first" ? (
+          <Button onClick={() => setStep("second")}>Static embedding</Button>
+        ) : (
+          <Text>Click the title or the Back button to go back.</Text>
+        )}
+      </Modal>
+    </Flex>
+  );
+};
+
 const SingleButtonTemplate = (args: ModalProps) => {
   const [isOpen, setOpen] = useState(false);
   const handleOpen = () => setOpen(true);
@@ -277,16 +305,26 @@ interface OverviewRow {
   title: string;
   body?: string;
   withCloseButton?: boolean;
+  withBackButton?: boolean;
+  headerActions?: ReactNode;
   footer?: ReactNode;
   /** Replaces the body and footer, e.g. a form that wraps both */
   content?: ReactNode;
   density?: ModalDensity;
   /** Layouts to show the row in. Defaults to all of them */
   layouts?: readonly ModalLayout[];
+  /** Shown instead of the modal in the other layouts */
+  unsupportedLayoutLabel?: string;
   height?: number;
 }
 
 const PRIMARY_BUTTON = <Button variant="filled">Button</Button>;
+
+const HEADER_ACTION = (
+  <ActionIcon variant="subtle" aria-label="Edit">
+    <Icon name="pencil" />
+  </ActionIcon>
+);
 
 const OVERVIEW_ROWS: readonly OverviewRow[] = [
   {
@@ -324,6 +362,38 @@ const OVERVIEW_ROWS: readonly OverviewRow[] = [
     footer: PRIMARY_BUTTON,
   },
   {
+    id: "back-button",
+    label: "Back button",
+    title: "Modal",
+    body: "An accessible overlay dialog.",
+    withBackButton: true,
+    footer: PRIMARY_BUTTON,
+    layouts: ["default"],
+    unsupportedLayoutLabel: "Not supported in the centered layout",
+  },
+  {
+    id: "header-actions",
+    label: "Header actions",
+    title: "Modal",
+    body: "An accessible overlay dialog.",
+    headerActions: HEADER_ACTION,
+    footer: PRIMARY_BUTTON,
+    layouts: ["default"],
+    unsupportedLayoutLabel: "Not supported in the centered layout",
+  },
+  {
+    id: "back-button-long-title",
+    label: "Back button, long title",
+    title:
+      "A much longer modal title that wraps onto a second line to show how it sits next to the back button",
+    body: "An accessible overlay dialog.",
+    withBackButton: true,
+    headerActions: HEADER_ACTION,
+    footer: PRIMARY_BUTTON,
+    layouts: ["default"],
+    unsupportedLayoutLabel: "Not supported in the centered layout",
+  },
+  {
     id: "no-body",
     label: "No body text",
     title: "Modal",
@@ -359,6 +429,7 @@ const OVERVIEW_ROWS: readonly OverviewRow[] = [
     density: "relaxed",
     content: <InviteTeammateForm />,
     layouts: ["default"],
+    unsupportedLayoutLabel: "Use the default layout for forms",
     height: 760,
   },
 ];
@@ -400,6 +471,8 @@ const OverviewCell = ({
       density={row.density}
       title={row.title}
       withCloseButton={row.withCloseButton ?? true}
+      onBack={row.withBackButton ? () => undefined : undefined}
+      headerActions={row.headerActions}
       illustration={
         layout === "centered" ? <IllustrationPlaceholder /> : undefined
       }
@@ -436,9 +509,7 @@ const OverviewTemplate: StoryFn<ModalProps> = () => (
             (row.layouts ?? MODAL_LAYOUTS).includes(layout) ? (
               <OverviewCell key={layout} row={row} layout={layout} />
             ) : (
-              <StoryLabel key={layout}>
-                Use the default layout for forms
-              </StoryLabel>
+              <StoryLabel key={layout}>{row.unsupportedLayoutLabel}</StoryLabel>
             ),
           )}
         </Fragment>
@@ -485,6 +556,11 @@ export const Centered = {
 
 export const Opened = {
   render: OpenedTemplate,
+};
+
+export const BackButton = {
+  render: BackButtonTemplate,
+  name: "Back button and header actions",
 };
 
 export const SingleButton = {

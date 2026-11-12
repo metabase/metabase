@@ -72,7 +72,7 @@ Edit one bullet - match its text only, never the `- ` marker, so the edit stays 
 
 ## Comments
 
-`get_content {"type": "document", "id": 12, "include": ["comments"]}` returns threads grouped by anchored block, each with `anchor: {start, end, text}` — the exact character slice of the returned `content_markdown` — and `thread` messages (`id`, `creator`, `text`, `is_resolved`, `created_at`). A thread whose block was rewritten or deleted appears under `orphaned_comments`: the discussion still exists but points at no text, and only the UI can re-anchor it. MCP can read comments but not reply, resolve, or re-anchor — tell the user when a thread needs that.
+`get_content {"items": [{"type": "document", "id": 12}], "include": ["comments"]}` returns threads grouped by anchored block, each with `anchor: {start, end, text}` — the exact character slice of the returned `content_markdown` — and `thread` messages (`id`, `creator`, `text`, `is_resolved`, `created_at`). A thread whose block was rewritten or deleted appears under `orphaned_comments`: the discussion still exists but points at no text, and only the UI can re-anchor it. MCP can read comments but not reply, resolve, or re-anchor — tell the user when a thread needs that.
 
 ## Don't
 
@@ -84,4 +84,4 @@ Edit one bullet - match its text only, never the `- ` marker, so the edit stays 
 
 ## To confirm
 
-`get_content {"type": "document", "id": 12}` returns the stored `content_markdown` (clone ids included); add `"include": ["layout"]` for the block outline, `["comments"]` for anchors. Rendering in the editor has no API check.
+`get_content {"items": [{"type": "document", "id": 12}]}` returns the stored `content_markdown` (clone ids included); add `"include": ["layout"]` for the block outline, `["comments"]` for anchors. Rendering in the editor has no API check.

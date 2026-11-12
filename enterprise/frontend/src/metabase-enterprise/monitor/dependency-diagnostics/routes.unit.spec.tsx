@@ -207,7 +207,7 @@ describe("dependency diagnostics section counts", () => {
         ]),
       ),
     ).toEqual({
-      "breaking-types": ["table", "card", "transform"],
+      "breaking-types": ["table", "card"],
       "breaking-card-types": ["question", "model"],
       "breaking-include-personal-collections": ["true"],
       "unreferenced-types": ["table", "card", "segment", "measure", "snippet"],

@@ -1,6 +1,5 @@
 import { createAction } from "@reduxjs/toolkit";
 
-import { getDataStudioReturnPath } from "metabase/common/data-studio/utils/return-to";
 import type { Dispatch } from "metabase/redux/store";
 import { type Location, navigate } from "metabase/router";
 import type {
@@ -21,17 +20,15 @@ export const setEditingDashboard = (
   location?: Omit<Location, "query" | "action">,
 ) => {
   return (dispatch: Dispatch) => {
-    const isLeavingEditMode = dashboard === null;
-    const returnPath = isLeavingEditMode
-      ? getDataStudioReturnPath(location?.state)
-      : undefined;
-
-    // Leaving edit mode drops hash params from the URL. The location is captured
-    // when the caller rendered, so navigating with no hash to strip would
+    // Leaving edit mode drops any hash params from the URL. The caller passes the
+    // current location, since this no longer reads the retired routing slice.
+    //
+    // Only navigate when there is actually a hash to strip. The location is
+    // captured when the caller rendered, so navigating unconditionally would
     // clobber query params written since then (e.g. the tab the dashboard URL
     // sync just selected, which it will not re-add because it dedupes on the
     // previous params).
-    if (isLeavingEditMode && returnPath == null && location?.hash) {
+    if (dashboard === null && location?.hash) {
       navigate(`${location.pathname}${location.search}`);
     }
 
@@ -39,11 +36,6 @@ export const setEditingDashboard = (
       type: SET_EDITING_DASHBOARD,
       payload: dashboard,
     });
-
-    // After the dispatch, so the unsaved-changes guard lets the return through
-    if (returnPath != null) {
-      navigate(returnPath, { replace: true });
-    }
   };
 };
 

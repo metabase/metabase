@@ -7,6 +7,8 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defn- not-handling-api-request?
   []
   (nil? @api/*current-user*))

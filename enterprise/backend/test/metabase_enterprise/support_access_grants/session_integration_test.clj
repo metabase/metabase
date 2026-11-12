@@ -16,6 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 ;; :test-users is load-bearing, not boilerplate -- deactivating the support user is only legal while another admin
@@ -484,3 +485,44 @@
                              :set    {:expires_at (t/minus (t/instant) (t/minutes 1))}
                              :where  [:= :id (:id session)]})
               (is (= "Unauthenticated" (mt/client session-key :get 401 "user/current"))))))))))
+
+(deftest reset-password-grant-tokens-cost-same-bcrypt-work-test
+  (testing "POST /api/session/reset_password and GET /api/session/password_reset_token_valid run the same number of bcrypt checks for grant users as for any other token that gets the same answer"
+    (mt/with-temp [:model/User {creator-id :id} {}
+                   :model/User {grant-id :id} {}
+                   :model/User {both-id :id} {}
+                   :model/User {inactive-id :id} {}
+                   :model/User {reset-id :id} {}
+                   :model/SupportAccessGrantLog grant {:user_id               creator-id
+                                                       :ticket_number         "TEST-BCRYPT"
+                                                       :notes                 "Test bcrypt cost"
+                                                       :grant_start_timestamp (t/offset-date-time)
+                                                       :grant_end_timestamp   (t/plus (t/offset-date-time) (t/hours 1))
+                                                       :revoked_at            nil}]
+      (sag.provider/create-support-access-reset! grant-id grant)
+      (sag.provider/create-support-access-reset! both-id grant)
+      (auth-identity/create-password-reset! both-id)
+      (auth-identity/create-password-reset! reset-id)
+      (let [inactive-token (sag.provider/create-support-access-reset! inactive-id grant)
+            checks         (atom 0)
+            bcrypt         (mt/original-fn #'u.password/bcrypt-verify)
+            invalid-token  {"malformed"                   "not-a-token"
+                            "wrong reset secret"          (str reset-id "_" (random-uuid))
+                            "wrong grant secret"          (str grant-id "_" (random-uuid))
+                            "wrong secret, grant + reset" (str both-id "_" (random-uuid))}
+            cost           (fn [f] (reset! checks 0) (f) @checks)]
+        (t2/update! :model/User :id inactive-id {:is_active false})
+        (mt/with-dynamic-fn-redefs [u.password/bcrypt-verify (fn [token hash] (swap! checks inc) (bcrypt token hash))]
+          (testing "reset_password answering Invalid reset token"
+            (let [costs (into {} (for [[label token] (assoc invalid-token "deactivated grant user" inactive-token)]
+                                   [label (cost #(is (= {:errors {:password "Invalid reset token"}}
+                                                        (mt/client :post 400 "session/reset_password"
+                                                                   {:token token :password "SomePassword12!!"}))))]))]
+              (is (apply = (vals costs)) (pr-str costs))
+              (is (not (t2/exists? :model/AuthIdentity :user_id inactive-id :provider "password"))
+                  "the deactivated grant user gets no password")))
+          (testing "password_reset_token_valid answering false"
+            (let [costs (into {} (for [[label token] (assoc invalid-token "deactivated grant user" inactive-token)]
+                                   [label (cost #(is (= {:valid false}
+                                                        (mt/client :get 200 "session/password_reset_token_valid" :token token))))]))]
+              (is (apply = (vals costs)) (pr-str costs)))))))))

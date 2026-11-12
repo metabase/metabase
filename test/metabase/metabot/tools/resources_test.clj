@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api-scope.core :as api-scope]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -24,10 +25,10 @@
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
@@ -505,6 +506,46 @@
     (is (nil? (#'read-resource/check-numeric-id-segment!
                "metabase://table/3/fields/c75/17" ["table" "3" "fields" "c75" "17"])))))
 
+(deftest non-numeric-database-id-points-at-databases-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [[uri listing-uri] [["metabase://database/redshift"                      "metabase://databases"]
+                               ["metabase://database/redshift/tables"               "metabase://databases"]
+                               ["metabase://database/redshift/schemas/core/tables"  "metabase://databases"]
+                               ["metabase://database/99999999999999999999"          "metabase://databases"]
+                               ["metabase://collection/our-analytics/items"         "metabase://collections?tree=true"]]]
+      (testing uri
+        (let [{[{:keys [error content]}] :resources} (read-uris {:uris [uri]})]
+          (is (nil? content))
+          (is (str/includes? error listing-uri))
+          (is (not (str/includes? error "Call `search`"))))))
+    (testing "the collection step names the URI of the root collection"
+      (let [{[{:keys [error]}] :resources} (read-uris {:uris ["metabase://collection/our-analytics/items"]})]
+        (is (str/includes? error "has no numeric id: use `metabase://collection/root`"))))))
+
+(deftest non-numeric-id-lookup-step-without-search-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [[uri listing-uri] [["metabase://database/redshift/schemas/core/tables" "metabase://databases"]
+                               ["metabase://collection/our-analytics/items"        "metabase://collections?tree=true"]]]
+      (testing (str "a tool set without `search` (nlq) still gets a way to find the id: " uri)
+        (let [{:keys [output]} (runtime/invoke (tools/entries [read-resource/read-resource-tool])
+                                               {:profile-id :nlq :metabot nil :user-scope api-scope/unrestricted
+                                                :tool-names #{"read_resource"}}
+                                               "read_resource"
+                                               {:uris [uri]})]
+          (is (str/includes? output listing-uri)))))))
+
+(deftest non-numeric-id-other-kinds-keep-search-step-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [uri ["metabase://table/orders" "metabase://model/VZbHZIeqQ2HhZv5r0pO6a"]]
+      (testing uri
+        (let [{[{:keys [error]}] :resources} (read-uris {:uris [uri]})]
+          (is (str/includes? error "Call `search` and build the URI"))
+          (is (not (str/includes? error "metabase://databases"))))))
+    (testing "a numeric database id that does not exist is still a plain not-found"
+      (let [{[{:keys [error]}] :resources} (read-uris {:uris ["metabase://database/99999999"]})]
+        (is (str/includes? error "was not found"))
+        (is (not (str/includes? error "Invalid id")))))))
+
 (comment
   (mt/with-current-user (mt/user->id :crowberto)
     (read-uris
@@ -534,6 +575,44 @@
                   (read-uris
                    {:uris ["metabase://table/99999"]}))))))))
 
+(deftest read-question-fields-of-one-physical-field-test
+  (testing "Two breakouts of one field get different field IDs, and each one resolves to its own column"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} {:type          :question
+                                                :dataset_query (let [mp         (mt/metadata-provider)
+                                                                     created-at (lib.metadata/field mp (mt/id :orders :created_at))]
+                                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                     (lib/aggregate (lib/count))
+                                                                     (lib/breakout (lib/with-temporal-bucket created-at :month))
+                                                                     (lib/breakout (lib/with-temporal-bucket created-at :year))))}]
+        (let [created-at-id (mt/id :orders :created_at)
+              {:keys [resources]} (read-uris {:uris [(str "metabase://question/" card-id "/fields")]})
+              fields (get-in resources [0 :content :structured-output :fields])]
+          (is (= [created-at-id "CREATED_AT_2" "count"]
+                 (map :field_id fields)))
+          (testing "a drill-in on each field ID resolves its own column, and only the first column has a portable path"
+            ;; Both columns have Field 14, so the output is the same for both. Record the alias of the resolved column.
+            (let [output-fn (mt/original-fn #'field-stats/field-metadata-output)
+                  drill-in  (fn [field-id]
+                              (let [alias (atom nil)]
+                                (mt/with-dynamic-fn-redefs [field-stats/field-metadata-output
+                                                            (fn [query columns all-columns col field-id limit]
+                                                              (reset! alias (:lib/desired-column-alias col))
+                                                              (output-fn query columns all-columns col field-id limit))]
+                                  (let [{:keys [portable_fk]} (:structured-output
+                                                               (field-stats/field-values {:entity-type "question"
+                                                                                          :entity-id   card-id
+                                                                                          :field-id    field-id
+                                                                                          :limit       5}))]
+                                    {:column-alias @alias :portable-fk? (vector? portable_fk)}))))]
+              (are [field-id column-alias portable-fk?] (= {:column-alias column-alias :portable-fk? portable-fk?}
+                                                           (drill-in field-id))
+                created-at-id  "CREATED_AT"   true
+                "CREATED_AT_2" "CREATED_AT_2" false)))
+          (testing "only the first column gets the portable path of the field"
+            (is (= [true false false]
+                   (map (comp vector? :portable_fk) fields)))))))))
+
 (deftest read-dashboard-resource-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dashboard-id :id dashboard-name :name}
@@ -543,12 +622,112 @@
           (is (=? {:resources [{:content {:structured-output map?}}]}
                   result))
           (is (str/includes? (:output result) dashboard-name))))
+      (testing "a dashboard in the root collection gives the root as its path"
+        (is (str/includes? (:output (read-uris {:uris [(str "metabase://dashboard/" dashboard-id)]}))
+                           "name=\"Our analytics\" path=\"Our analytics\"")))
       (testing "fetches dashboard items through the cards alias"
         (is (=? {:resources [{:content {:structured-output {:list-type :dashboard-items}}}]}
                 (read-uris {:uris [(str "metabase://dashboard/" dashboard-id "/cards")]}))))
       (testing "returns error for unknown dashboard"
         (is (=? {:resources [{:error string?}]}
                 (read-uris {:uris ["metabase://dashboard/99999"]})))))))
+
+(defn- date-mapping
+  "A mapping that connects the dashboard filter \"date\" to the card with `card-id`."
+  [card-id]
+  {:parameter_id "date", :card_id card-id, :target [:dimension [:field 1 nil]]})
+
+(deftest read-dashboard-details-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection    {parent-id :id} {:name "Sales"}
+                   :model/Collection    {coll-id :id}   {:name "EMEA", :location (str "/" parent-id "/")}
+                   :model/Collection    {secret-id :id} {:name "Secret"}
+                   :model/Card          {card-id :id}   {:name "Revenue", :collection_id coll-id}
+                   :model/Card          {hidden-id :id} {:name "Payroll", :collection_id secret-id}
+                   :model/Dashboard     {dash-id :id}   {:name          "EMEA overview"
+                                                         :collection_id coll-id
+                                                         :creator_id    (mt/user->id :crowberto)
+                                                         :parameters    [{:id      "date"
+                                                                          :name    "Date"
+                                                                          :slug    "date"
+                                                                          :type    :date/all-options
+                                                                          :default "past30days"}]}
+                   :model/DashboardCard {dc-id :id}     {:dashboard_id       dash-id
+                                                         :card_id            card-id
+                                                         :parameter_mappings [(date-mapping card-id)]}
+                   :model/DashboardCard _               {:dashboard_id       dash-id
+                                                         :card_id            hidden-id
+                                                         :parameter_mappings [(date-mapping hidden-id)]}
+                   :model/Revision      _               {:model    "Dashboard"
+                                                         :model_id dash-id
+                                                         :user_id  (mt/user->id :rasta)
+                                                         :object   {}}]
+      ;; Rasta can read the dashboard's collection, but neither its parent nor the hidden card's
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [{:keys [output]} (read-uris {:uris [(str "metabase://dashboard/" dash-id)]})]
+          (testing "says who created and last edited the dashboard, and when"
+            (is (re-find #"<created by=\"Crowberto Corv\" at=\"\d{4}-\d\d-\d\d" output))
+            (is (re-find #"<last_edited by=\"Rasta Toucan\" at=\"\d{4}-\d\d-\d\d" output)))
+          (testing "gives the collection with the path the user can see"
+            (is (str/includes? output (str "<collection id=\"" coll-id "\" name=\"EMEA\" path=\"EMEA\">"))))
+          (testing "gives each filter's default and the dashcards it filters that the user can see"
+            (is (str/includes? output (str "<filter id=\"date\" name=\"Date\" type=\"date/all-options\""
+                                           " default=\"past30days\" connected_dashcards=\"" dc-id "\"/>")))))))))
+
+(deftest read-dashboard-in-personal-collection-test
+  (mt/with-temp [:model/User      {sso-id :id}  {:first_name nil, :last_name nil, :email "sso@example.com"}
+                 :model/Dashboard {dash-id :id} {:name          "Mine"
+                                                 :collection_id (:id (collection/user->personal-collection
+                                                                      (mt/user->id :rasta)))
+                                                 :creator_id    sso-id}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [{:keys [output]} (read-uris {:uris [(str "metabase://dashboard/" dash-id)]})]
+        (testing "a personal collection's path starts at the collection, under the name the user sees"
+          (is (re-find (re-pattern (str "<collection id=\"\\d+\" name=\"Rasta Toucan&#39;s Personal Collection\""
+                                        " path=\"Rasta Toucan&#39;s Personal Collection\">"))
+                       output)))
+        (testing "a creator without a first or last name goes by their email"
+          (is (str/includes? output "<created by=\"sso@example.com\"")))))))
+
+(deftest read-dashboard-collection-trash-and-authority-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Collection {sales-id :id}    {:name "Sales"}
+                   :model/Collection emea              {:name "EMEA", :location (str "/" sales-id "/")}
+                   :model/Collection ops               {:name "Ops"}
+                   :model/Collection {nordics-id :id}  {:name "Nordics", :location (str "/" (:id ops) "/")}
+                   :model/Collection {official-id :id} {:name "Finance", :authority_level "official"}
+                   :model/Dashboard  {trashed-id :id}  {:name "EMEA overview", :collection_id (:id emea)}
+                   :model/Dashboard  {nested-id :id}   {:name "Nordics overview", :collection_id nordics-id}
+                   :model/Dashboard  {direct-id :id}   {:name              "Old sales"
+                                                        :collection_id     sales-id
+                                                        :archived          true
+                                                        :archived_directly true}
+                   :model/Dashboard  {official :id}    {:name "Finance overview", :collection_id official-id}]
+      (collection/archive-collection! emea)
+      (collection/archive-collection! ops)
+      (let [read-dashboard #(:output (read-uris {:uris [(str "metabase://dashboard/" %)]}))]
+        (testing "a dashboard in a trashed collection has its path through the Trash, and both are archived"
+          (let [output (read-dashboard trashed-id)]
+            (is (str/includes? output (str "<collection id=\"" (:id emea) "\" name=\"EMEA\""
+                                           " path=\"Our analytics / Trash / EMEA\" archived=\"true\">")))
+            (is (str/includes? output (str "<dashboard id=\"" trashed-id "\" is_verified=\"false\" archived=\"true\">")))))
+        (testing (str "a dashboard in a collection trashed with its parent keeps the collection's location, and both are"
+                      " archived")
+          (let [output (read-dashboard nested-id)]
+            (is (str/includes? output (str "<collection id=\"" nordics-id "\" name=\"Nordics\""
+                                           " path=\"Our analytics / Ops / Nordics\" archived=\"true\">")))
+            (is (str/includes? output (str "<dashboard id=\"" nested-id "\" is_verified=\"false\" archived=\"true\">")))))
+        (testing "a dashboard trashed directly from a live collection is archived, with that collection's path"
+          (let [output (read-dashboard direct-id)]
+            (is (str/includes? output (str "<collection id=\"" sales-id "\" name=\"Sales\""
+                                           " path=\"Our analytics / Sales\">")))
+            (is (str/includes? output " archived=\"true\">"))))
+        (testing "a dashboard in an official collection shows the collection's authority level, and is not archived"
+          (let [output (read-dashboard official)]
+            (is (str/includes? output (str "<collection id=\"" official-id "\" name=\"Finance\""
+                                           " path=\"Our analytics / Finance\" authority_level=\"official\">")))
+            (is (not (str/includes? output "archived=")))))))))
 
 (deftest read-document-resource-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -620,7 +799,7 @@
   current user cannot read. Swapped in for both so a test can tell which one a caller picked."
   [tag recorded]
   (let [refuse (fn [] (swap! recorded conj tag) (throw (ex-info "Forbidden" {:status-code 403})))]
-    (reify resolve.mp/ContentStore
+    (reify protocol.mp/ContentStore
       (card-by-entity-id    [_ _] (refuse))
       (measure-by-entity-id [_ _] (refuse))
       (segment-by-entity-id [_ _] (refuse))
@@ -754,7 +933,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id transform-name :name}
                      {:name   "Gadget Products"
-                      :source {:type  "query"
+                      :source {:type  :query
                                :query (lib/native-query (mt/metadata-provider)
                                                         "SELECT * FROM products WHERE category = 'Gadget'")}}]
         (testing "fetches transform info"
@@ -777,7 +956,7 @@
      (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
        (mt/with-temp [:model/Transform {transform-id :id}
                       {:name   "Orders Rollup"
-                       :source {:type  "query"
+                       :source {:type  :query
                                 :query (lib/query (mt/metadata-provider)
                                                   (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
          (mt/with-data-analyst-role! (mt/user->id :rasta)
@@ -796,6 +975,33 @@
                (mt/with-current-user (mt/user->id :rasta)
                  (let [result (read-uris {:uris [(str "metabase://transform/" transform-id)]})]
                    (is (some? (get-in result [:resources 0 :content :structured-output :source :query])))))))))))))
+
+(mt/when-ee-evailable
+ (deftest read-transform-resource-source-card-permission-test
+   (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
+     (mt/with-non-admin-groups-no-root-collection-perms
+       (mt/with-full-data-perms-for-all-users!
+         (mt/with-data-analyst-role! (mt/user->id :rasta)
+           (let [mp (mt/metadata-provider)]
+             (mt/with-temp [:model/Collection {collection-id :id} {}
+                            :model/Card {card-id :id}
+                            {:collection_id collection-id
+                             :database_id   (mt/id)
+                             :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                            :model/Transform {transform-id :id}
+                            {:name   "Private source card"
+                             :source {:type  :query
+                                      :query (lib/query mp (lib.metadata/card mp card-id))}}]
+               (let [uri (str "metabase://transform/" transform-id)]
+                 (testing "a source card in an unreadable collection prevents reading the transform"
+                   (mt/with-current-user (mt/user->id :rasta)
+                     (is (=? {:resources [{:error #"(?s)^Transform \d+ was not found\..*"}]}
+                             (read-uris {:uris [uri]})))))
+                 (testing "the source query renders after granting read on the collection"
+                   (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+                   (mt/with-current-user (mt/user->id :rasta)
+                     (is (string? (get-in (read-uris {:uris [uri]})
+                                          [:resources 0 :content :structured-output :source :query]))))))))))))))
 
 (defn- read-title
   "The chain-of-thought title `read-resource` derives from what it read."
@@ -939,7 +1145,7 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Transform {transform-id :id}
                        {:name   "Permission test transform"
-                        :source {:type  "query"
+                        :source {:type  :query
                                  :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
           (with-redefs [mi/can-read? (constantly false)]
             (doseq [uri [(str "metabase://transform/" transform-id)
@@ -1153,7 +1359,7 @@
                        :model/Transform {tx-other-db :id}
                        {:name               "Other-DB Transform"
                         :source_database_id db2
-                        :source             {:type "query"
+                        :source             {:type :query
                                              :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
           (testing "/derived for a table in db1 must exclude transforms whose source is in db2"
             (let [{:keys [output]} (read-uris
@@ -1335,12 +1541,14 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:name "Dash card"}
-                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id card-id}]
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id card-id
+                                                     :row 2 :col 4 :size_x 6 :size_y 3}]
       (testing "metabase://dashboard/{id}/items returns each dashcard with its dashcard_id"
         (let [{:keys [output]} (read-uris {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
           (is (str/includes? output "Dash card"))
           (is (str/includes? output (str "uri=\"metabase://question/" card-id "\"")))
-          (is (str/includes? output (str "dashcard_id=\"" dc-id "\""))))))))
+          (is (str/includes? output (str "dashcard_id=\"" dc-id "\"")))
+          (is (str/includes? output "row=\"2\" col=\"4\" size_x=\"6\" size_y=\"3\"")))))))
 
 (deftest read-dashboard-items-groups-by-tab-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -1369,10 +1577,12 @@
           (is (< (idx "Tab One") (idx "Tab Two") (idx "Empty Tab"))))
         (testing "dashcards come grouped by tab, not interleaved by raw row/col"
           (is (< (idx "Legacy Heading") (idx "First Tab Heading") (idx "Second Tab Heading"))))
-        (testing "items carry the tab_id that add mutations accept; nil-tab dashcards get the first tab's"
-          ;; tab1: its <tab> element + the legacy (nil-tab) heading + the first-tab heading
-          (is (= 3 (count (re-seq (re-pattern (str "tab_id=\"" tab1-id "\"")) output))))
-          (is (= 2 (count (re-seq (re-pattern (str "tab_id=\"" tab2-id "\"")) output)))))))))
+        (testing "items carry the tab_id that add mutations accept"
+          ;; each tab: its <tab> element + its heading
+          (is (= 2 (count (re-seq (re-pattern (str "tab_id=\"" tab1-id "\"")) output))))
+          (is (= 2 (count (re-seq (re-pattern (str "tab_id=\"" tab2-id "\"")) output)))))
+        (testing "a dashcard with no tab shows on every tab, so it carries all_tabs instead"
+          (is (re-find #"<item [^>]*all_tabs=\"true\"[^>]*>Legacy Heading" output)))))))
 
 (deftest read-dashboard-items-includes-virtual-dashcards-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -1877,7 +2087,41 @@
           (testing "Structured output contains expected fields"
             (is (=? {:fields [{:display_name "Category"}
                               {:display_name "Count"}]}
-                    structured))))))))
+                    structured)))
+          (testing "Rendered text lists the result columns the LLM must reference by name"
+            (is (str/includes? output "### Fields"))
+            (is (str/includes? output (str "<field id=\"" (mt/id :products :category) "\" name=\"CATEGORY\"")))
+            (is (str/includes? output "<field id=\"count\" name=\"count\""))))
+        (testing "The base URI omits the fields, which only /fields returns"
+          (let [read-result (read-uris {:uris [(str "metabase://question/" question-id)]})
+                output      (:output read-result)
+                structured  (get-in read-result [:resources 0 :content :structured-output])]
+            (is (re-find #"<name>\S*My fav card" output))
+            (is (empty? (:fields structured)))
+            (is (not (str/includes? output "### Fields")))
+            (is (not (str/includes? output "<field ")))))))))
+
+(deftest read-native-question-resource-test
+  (testing "/fields on a native question renders its result columns, which have no Field ids"
+    (let [query    (lib/native-query (mt/metadata-provider)
+                                     "SELECT CATEGORY AS CAT, COUNT(*) AS N FROM PRODUCTS GROUP BY CATEGORY")
+          metadata (-> query
+                       qp/process-query
+                       :data :results_metadata :columns)]
+      (mt/with-temp
+        [:model/Card {question-id :id} {:name            "Native card"
+                                        :dataset_query   query
+                                        :result_metadata metadata}]
+        (mt/with-test-user :crowberto
+          (let [read-result (read-uris
+                             {:uris [(str "metabase://question/" question-id "/fields")]})
+                output      (:output read-result)
+                structured  (get-in read-result [:resources 0 :content :structured-output])]
+            (is (=? {:fields [{:name "CAT"} {:name "N"}]}
+                    structured))
+            (is (str/includes? output "### Fields"))
+            (is (str/includes? output "<field id=\"CAT\" name=\"CAT\""))
+            (is (str/includes? output "<field id=\"N\" name=\"N\""))))))))
 
 ;; ===== Pagination =====
 

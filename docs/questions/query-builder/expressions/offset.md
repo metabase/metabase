@@ -1,5 +1,6 @@
 ---
 title: Offset
+summary: Pull a value from another row to build year-over-year comparisons and rolling averages.
 ---
 
 # Offset

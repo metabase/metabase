@@ -1,5 +1,6 @@
 ---
 title: Developing Metabase with Emacs
+summary: Set up Emacs for Metabase development, including indentation for Metabase's macros.
 ---
 
 # Developing Metabase with Emacs

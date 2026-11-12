@@ -9,6 +9,8 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- test-check []
   {:health 100
    :message "test check"})

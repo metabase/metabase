@@ -81,12 +81,9 @@
                               :database-routing                true
                               :connection-impersonation        true
                               :jdbc/set-query-timeout          false
-                              :regex/lookaheads-and-lookbehinds false}]
+                              :regex/lookaheads-and-lookbehinds false
+                              :stage-ctes                       true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
-
-(defmethod sql.qp/use-ctes-for-stages? :starburst
-  [_driver]
-  true)
 
 (defn- handle-execution-error-details
   [^Exception e details]

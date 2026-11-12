@@ -5,19 +5,24 @@
   a slow schedule and so should not be treated as inactive ([[schedule-fresh-transform-ids]])."
   (:require
    [java-time.api :as t]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.models.transform-schedule :as transform-schedule]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.util Date)
    (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)
 
-(defn- fired-since?
+(mu/defn- fired-since? :- [:maybe :boolean]
   "True if `cron` has a fire time after `last-success` and at or before `now` — i.e. a scheduled run
   was due since the last success. Unparseable crons are ignored."
-  [cron ^Date last-success ^Date now]
+  [cron                   :- :string
+   ^Date last-success     :- (ms/InstanceOfClass Date)
+   ^Date now              :- (ms/InstanceOfClass Date)]
   (try
     (when-let [next-fire (.getNextValidTimeAfter (CronExpression. ^String cron) last-success)]
       (not (.after next-fire now)))
@@ -25,11 +30,14 @@
       (log/warnf "Ignoring unparseable transform job schedule %s: %s" (pr-str cron) (ex-message e))
       false)))
 
-(defn- fresh-ids
+(mu/defn- fresh-ids :- [:set ::lib.schema.id/transform]
   "Subset of `ids` that have a timestamp in `id->last-run` and whose schedules have not fired
   based on `schedules-by-id` since the `now` timestamp.
   IDs with no schedules are fresh once they have a timestamp; IDs with no timestamp are never fresh."
-  [now ids schedules-by-id id->last-run]
+  [now             :- ms/TemporalInstant
+   ids             :- [:maybe [:or [:set ::lib.schema.id/transform] [:sequential ::lib.schema.id/transform]]]
+   schedules-by-id :- [:map-of ::lib.schema.id/transform [:set :string]]
+   id->last-run    :- [:maybe [:map-of ::lib.schema.id/transform ms/TemporalInstant]]]
   (let [now-date (Date/from (t/instant now))]
     (into #{}
           (for [id ids
@@ -39,22 +47,23 @@
                 :when (not-any? #(fired-since? % ran-date now-date) (schedules-by-id id))]
             id))))
 
-(defn schedule-fresh-transform-ids
+(mu/defn schedule-fresh-transform-ids :- [:set ::lib.schema.id/transform]
   "IDs of transforms that are between fires of an active job schedule as of `now`.
   Covered transforms have ≥1 active scheduled job and no schedule fire time has elapsed since
   their most recent run (any status) - e.g. a six-month cadence whose last run was two months
   ago - and should not be treated as inactive by recency checks like staleness. Transforms that
   have never run are never schedule-fresh."
-  [now]
+  [now :- ms/TemporalInstant]
   (let [schedules-by-id (transform-schedule/schedules-for-transforms)
         ids             (keys schedules-by-id)]
     (fresh-ids now ids schedules-by-id (transform-run/last-run-start-times ids))))
 
-(defn fresh-dep-ids
+(mu/defn fresh-dep-ids :- [:maybe [:set ::lib.schema.id/transform]]
   "Subset of `dep-ids` safe to skip as of `now`: a dep that has never succeeded is never fresh; a
   scheduled one is fresh while none of its schedules has fired since its last success; an unscheduled
   one is fresh once it has succeeded."
-  [now dep-ids]
+  [now     :- ms/TemporalInstant
+   dep-ids :- [:maybe [:or [:set ::lib.schema.id/transform] [:sequential ::lib.schema.id/transform]]]]
   (when (seq dep-ids)
     (fresh-ids now dep-ids
                (transform-schedule/schedules-for-transforms dep-ids)

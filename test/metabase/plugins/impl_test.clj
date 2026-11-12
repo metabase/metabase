@@ -1,9 +1,11 @@
 (ns metabase.plugins.impl-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.plugins.impl :as impl]
    [metabase.test :as mt])
   (:import
+   (java.io File)
    (java.nio.file Path Paths)))
 
 (set! *warn-on-reflection* true)
@@ -60,3 +62,17 @@
       (#'impl/load!))
     (is (= [] @registered)
         "a bare-dependency JAR that resolves to a bundled-name manifest at registration is refused")))
+
+(deftest ^:parallel module-driver-manifests-are-bundled-test
+  ;; Bundled manifests are found only at `metabase/<plugin>/metabase-plugin.yaml` (see `bundled-manifest-paths`). A
+  ;; driver whose manifest sits anywhere else is silently missing from a built Metabase, though its own tests can still
+  ;; pass: `metabase.test.initialize.plugins` also looks for manifests at the old `resources/metabase-plugin.yaml`.
+  (doseq [^File dir (.listFiles (io/file "modules/drivers"))
+          :when     (.isDirectory dir)
+          :let      [driver    (.getName dir)
+                     resources (.toPath (io/file dir "resources"))]]
+    (testing driver
+      (is (= [(str "metabase/" driver "/metabase-plugin.yaml")]
+             (for [^File f (file-seq (.toFile resources))
+                   :when   (= "metabase-plugin.yaml" (.getName f))]
+               (str (.relativize resources (.toPath f)))))))))

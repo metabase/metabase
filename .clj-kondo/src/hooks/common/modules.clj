@@ -34,6 +34,16 @@
   (or (get-in modules [module :ns-prefix])
       (default-ns-prefix module)))
 
+(defn module-dir
+  "Repo-relative directory holding `module`'s namespaces in `tree`, which is `\"src\"` or `\"test\"`.
+  Examples: `src/metabase/lib_be` for `lib-be`, `enterprise/backend/test/metabase_enterprise/sso` for `enterprise/sso`.
+  Plugin code under `modules/<plugin>/src` is not covered: the result there is a directory that does not exist."
+  [modules module tree]
+  (let [ns-prefix (module-ns-prefix modules module)]
+    (str (when (str/starts-with? ns-prefix "metabase-enterprise.") "enterprise/backend/")
+         tree "/"
+         (-> ns-prefix (str/replace "." "/") (str/replace "-" "_")))))
+
 (defn build-prefix->module
   "Map each declared namespace prefix to its module, for [[declared-module]]."
   [modules]
@@ -84,16 +94,20 @@
           (when (contains? modules oss)
             oss))))))
 
+(defn lineage
+  "The module followed by its ancestors, nearest first."
+  [modules module]
+  (take-while some? (iterate #(parent-module modules %) module)))
+
 (defn descendant-of?
   "Whether `module` is `ancestor` or one of its descendants."
   [modules module ancestor]
-  (boolean (some #{ancestor} (take-while some? (iterate #(parent-module modules %) module)))))
+  (boolean (some #{ancestor} (lineage modules module))))
 
 (defn module-team
   "Team owning `module`: its own `:team`, else its nearest ancestor's."
   [modules module]
-  (some #(get-in modules [% :team])
-        (take-while some? (iterate #(parent-module modules %) module))))
+  (some #(get-in modules [% :team]) (lineage modules module)))
 
 (defn- rest-module? [module]
   (re-find #"[.-]rest$" (str module)))

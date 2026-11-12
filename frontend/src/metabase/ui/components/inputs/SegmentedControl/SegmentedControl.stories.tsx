@@ -1,5 +1,5 @@
 import type { StoryFn } from "@storybook/react";
-import { Fragment, useEffect, useRef } from "react";
+import { type ComponentType, Fragment, useEffect, useRef } from "react";
 
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import {
@@ -8,6 +8,7 @@ import {
   SegmentedControl,
   type SegmentedControlItem,
   type SegmentedControlProps,
+  Stack,
 } from "metabase/ui";
 import {
   StoryBoard,
@@ -43,6 +44,22 @@ const ICON_TOOLTIP_DATA = [
   },
 ] satisfies SegmentedControlItem<string>[];
 
+const LONG_LABEL_DATA = [
+  { label: "On", value: "on" },
+  { label: "Only when the value is above the goal line", value: "above" },
+  { label: "Off", value: "off" },
+] satisfies SegmentedControlItem<string>[];
+
+const LONG_LABEL_AND_ICON_DATA = [
+  { label: "On", icon: "check", value: "on" },
+  {
+    label: "Only when the value is above the goal line",
+    icon: "line",
+    value: "above",
+  },
+  { label: "Off", icon: "close", value: "off" },
+] satisfies SegmentedControlItem<string>[];
+
 const ICON_ELEMENT_DATA = [
   { ariaLabel: "Code", icon: <Icon name="embed" />, value: "code" },
   { ariaLabel: "Preview", icon: <Icon name="eye_filled" />, value: "preview" },
@@ -76,6 +93,18 @@ export const IconOnlyWithTooltip = {
 export const FullWidth = {
   name: "Full width",
   args: { data: TEXT_AND_ICON_DATA, fullWidth: true },
+};
+
+export const LongLabels = {
+  name: "Long labels",
+  args: { data: LONG_LABEL_DATA, defaultValue: "on" },
+  decorators: [
+    (Story: ComponentType) => (
+      <Box w="20rem">
+        <Story />
+      </Box>
+    ),
+  ],
 };
 
 export const Disabled = {
@@ -134,7 +163,7 @@ function HoveredTooltipExample() {
 
   useEffect(() => {
     const targets = ref.current?.querySelectorAll(
-      `.${S.SegmentedControlTooltipTarget}`,
+      `.${S.SegmentedControlItemBody}`,
     );
     targets?.[1]?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
   }, []);
@@ -197,6 +226,27 @@ const OverviewTemplate: StoryFn = () => (
       <Box mt="3rem">
         <HoveredTooltipExample />
       </Box>
+    </StorySection>
+
+    <StorySection title="Long labels">
+      <StoryJsx>
+        {
+          '<SegmentedControl data={[…, { label: "Only when the value is above the goal line" }, …]} />'
+        }
+      </StoryJsx>
+      <Stack mt="sm" gap="md">
+        {[LONG_LABEL_DATA, LONG_LABEL_AND_ICON_DATA].map((data, index) => (
+          <Stack key={index} gap="sm" align="flex-start">
+            <SegmentedControl data={data} defaultValue="on" />
+            <Box w="20rem">
+              <SegmentedControl data={data} defaultValue="on" />
+            </Box>
+            <Box w="9rem">
+              <SegmentedControl data={data} defaultValue="on" />
+            </Box>
+          </Stack>
+        ))}
+      </Stack>
     </StorySection>
 
     <StorySection title="Full width">

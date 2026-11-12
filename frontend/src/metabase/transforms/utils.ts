@@ -193,7 +193,7 @@ export type ValidationResult = {
 export function getValidationResult(query: Lib.Query): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
-    const tags = Object.values(Lib.templateTags(query));
+    const tags = Lib.templateTags(query);
 
     const invalidResults = tags
       .map(validateTemplateTag)
@@ -251,10 +251,6 @@ export const isMbqlQuery = (
   }
   return !Lib.queryDisplayInfo(query).isNative;
 };
-
-export function isMissingSourceDatabase(transform: Transform) {
-  return transform.source_database_id == null;
-}
 
 /**
  * Returns the duration in ms of a transform run, or null when it cannot be

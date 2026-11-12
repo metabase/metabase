@@ -29,7 +29,7 @@
 }
 
 .detailSubtitleLight {
-  composes: textLight from "style";
+  composes: textSecondary from "style";
   padding-top: 6px;
 }
 

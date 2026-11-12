@@ -7,6 +7,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn now-ms
+  "Return the monotonic clock reading in milliseconds that `throttle.core` timestamps attempts with."
+  []
+  (quot (System/nanoTime) 1000000))
+
 (defn throttle-exception?
   "True when `e` is a throttle-limit exception thrown by `throttle.core`."
   [^ExceptionInfo e]

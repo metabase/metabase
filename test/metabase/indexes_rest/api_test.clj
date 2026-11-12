@@ -21,11 +21,11 @@
   non-hosted instances, so a superuser passes the transform read/write checks the index endpoints rely on."
   []
   {:name   (mt/random-name)
-   :source {:type "query" :query (query-test-util/make-query :source-table "venues")}
+   :source {:type :query :query (query-test-util/make-query :source-table "venues")}
    :target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
 
 (defn- temp-incremental-transform-spec []
-  (assoc-in (temp-transform-spec) [:target :type] "table-incremental"))
+  (update (temp-transform-spec) :target assoc :type "table-incremental" :target-incremental-strategy {:type "append"}))
 
 (def ^:private btree {:kind "btree" :name "by_cat" :columns [{:name "name"}]})
 
