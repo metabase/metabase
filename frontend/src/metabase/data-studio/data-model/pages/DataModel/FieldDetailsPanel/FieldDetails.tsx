@@ -16,7 +16,10 @@ import {
   useFieldCasting,
   useFieldUpdateHandlers,
 } from "metabase/metadata/hooks";
-import { useTableStructures } from "metabase/metadata/table-structure";
+import {
+  useChangingAttributes,
+  useTableStructures,
+} from "metabase/metadata/table-structure";
 import {
   canCoerceFieldType,
   getFieldRawName,
@@ -29,10 +32,13 @@ import { trackMetadataChange } from "../../../analytics";
 import { DetailsEditableText } from "../DetailPanel";
 
 import {
+  AttributeHistoryForm,
   AttributeHistorySection,
+  ColumnPairSection,
+  GroupMembershipSection,
   RelationshipVersionSection,
-  useCanChangeOverTime,
   useCanPickRelationshipVersion,
+  useIsDimensionAttribute,
 } from "./ChangesOverTime";
 import { CustomFieldSection } from "./CustomFieldSection";
 import S from "./FieldDetails.module.css";
@@ -78,7 +84,8 @@ export function FieldDetails({ field, table, header }: FieldDetailsProps) {
   const readOnly = !table.can_write;
   const isHistoryTable = useIsHistoryTable(table);
   const isHistoryAttribute = useIsHistoryAttribute(field, table);
-  const canChangeOverTime = useCanChangeOverTime(field, table);
+  const { variant } = useChangingAttributes();
+  const isDimensionAttribute = useIsDimensionAttribute(field, table);
   const canPickRelationshipVersion = useCanPickRelationshipVersion(
     field,
     table,
@@ -229,14 +236,35 @@ export function FieldDetails({ field, table, header }: FieldDetailsProps) {
               )}
             </DetailsTable>
           </SidebarSection>
-          {canChangeOverTime && (
+          {variant === "attribute" && isDimensionAttribute && (
             <AttributeHistorySection
               field={field}
               table={table}
               disabled={readOnly}
             />
           )}
-          {canPickRelationshipVersion && (
+          {variant === "form" && isDimensionAttribute && (
+            <AttributeHistoryForm
+              field={field}
+              table={table}
+              disabled={readOnly}
+            />
+          )}
+          {variant === "group" && isDimensionAttribute && (
+            <GroupMembershipSection
+              field={field}
+              table={table}
+              disabled={readOnly}
+            />
+          )}
+          {variant === "columns" && isDimensionAttribute && (
+            <ColumnPairSection
+              field={field}
+              table={table}
+              disabled={readOnly}
+            />
+          )}
+          {variant === "relationship" && canPickRelationshipVersion && (
             <RelationshipVersionSection
               field={field}
               table={table}

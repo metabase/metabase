@@ -1,18 +1,15 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
-import type { VersionChoice } from "metabase/metadata/table-structure";
 import {
-  Divider,
-  Group,
-  Icon,
-  Loader,
-  Paper,
-  SimpleGrid,
-  Stack,
-  Text,
-} from "metabase/ui";
+  type VersionChoice,
+  findColumnByName,
+} from "metabase/metadata/table-structure";
+import { Group, Icon, Loader, Stack, Text } from "metabase/ui";
+import type { Field, Table } from "metabase-types/api";
 
-import type { EndUserExample } from "./use-end-user-example";
+import { singularName } from "./names";
+import type { DimensionHistory } from "./use-dimension-history";
+import { type EndUserExample, useEndUserExample } from "./use-end-user-example";
 
 export type PreviewNames = {
   facts: string;
@@ -37,9 +34,24 @@ function getSentence(names: PreviewNames, version: VersionChoice) {
     : t`Grouping ${facts} by ${dimension} → ${attribute} uses the ${lower(dimension)}'s current ${lower(attribute)}, even on older ${lower(facts)}.`;
 }
 
+export function getPreviewNames(
+  history: DimensionHistory,
+  dimensionTable: Table,
+  attribute: Field,
+): PreviewNames {
+  const { reference, eventDateField } = history;
+  return {
+    facts: reference?.table.display_name ?? t`Events`,
+    fact: singularName(reference?.table.display_name ?? t`Event`),
+    dimension: reference?.field.display_name ?? dimensionTable.display_name,
+    attribute: attribute.display_name,
+    eventDate: eventDateField?.display_name ?? t`Date`,
+  };
+}
+
 /**
- * One sentence on what a version choice means, and two real rows that show
- * it: what people get when they group the fact table by the attribute.
+ * One sentence on what a version choice means, and one real change that
+ * shows it: what two events by the same entity show around that change.
  */
 export function EndUserPreview({
   names,
@@ -52,12 +64,45 @@ export function EndUserPreview({
         <Icon name="eye" c="text-secondary" mt={2} />
         <Text size="sm">{getSentence(names, version)}</Text>
       </Group>
-      <ExampleRows names={names} version={version} example={example} />
+      <ExampleSentences names={names} version={version} example={example} />
     </Stack>
   );
 }
 
-function ExampleRows({ names, version, example }: EndUserPreviewProps) {
+/** The end-user preview for one attribute of a dimension with history */
+export function DimensionChangePreview({
+  history,
+  dimensionTable,
+  attribute,
+  version,
+}: {
+  history: DimensionHistory;
+  dimensionTable: Table;
+  attribute: Field;
+  version: VersionChoice;
+}) {
+  const example = useEndUserExample({
+    binding: history.binding,
+    historyTable: history.historyTable,
+    valueField: findColumnByName(history.historyTable, attribute),
+    dimensionTable,
+    factTable: history.reference?.table,
+    fkField: history.reference?.field,
+    eventDateField: history.eventDateField,
+  });
+  if (history.reference == null) {
+    return null;
+  }
+  return (
+    <EndUserPreview
+      names={getPreviewNames(history, dimensionTable, attribute)}
+      version={version}
+      example={example}
+    />
+  );
+}
+
+function ExampleSentences({ names, version, example }: EndUserPreviewProps) {
   if (example.status === "loading") {
     return <Loader size="xs" />;
   }
@@ -65,42 +110,19 @@ function ExampleRows({ names, version, example }: EndUserPreviewProps) {
     return null;
   }
   return (
-    <Paper
-      withBorder
-      radius="md"
-      px="md"
-      py="sm"
-      bg="background_page-secondary"
-    >
-      <Stack gap="xs">
-        <SimpleGrid cols={3} spacing="md">
-          <Text size="xs" fw="bold" c="text-secondary">
-            {names.fact}
-          </Text>
-          <Text size="xs" fw="bold" c="text-secondary">
-            {names.eventDate}
-          </Text>
-          <Text size="xs" fw="bold" c="text-secondary">
-            {`${names.dimension} → ${names.attribute}`}
-          </Text>
-        </SimpleGrid>
-        {example.events.map((event) => (
-          <Stack key={event.id} gap="xs">
-            <Divider />
-            <SimpleGrid cols={3} spacing="md">
-              <Text size="sm">{`#${event.id}`}</Text>
-              <Text size="sm">{event.date}</Text>
-              <Text size="sm" fw="bold">
-                {version === "at-event" ? event.valueThen : event.valueNow}
-              </Text>
-            </SimpleGrid>
-          </Stack>
-        ))}
-        <Divider />
-        <Text size="xs" c="text-secondary">
-          {t`${example.entityLabel}'s ${lower(names.attribute)} changed from ${example.before} to ${example.after} on ${example.changedOn}.`}
+    <Stack gap="xxs" pl="lg">
+      <Text size="sm" c="text-secondary">
+        {t`For example, ${example.entityLabel}'s ${lower(names.attribute)} changed from ${example.before} to ${example.after} on ${example.changedOn}.`}
+      </Text>
+      {example.events.map((event) => (
+        <Text key={event.id} size="sm" c="text-secondary">
+          {jt`${names.fact} #${event.id} from ${event.date} shows ${(
+            <strong key="value">
+              {version === "at-event" ? event.valueThen : event.valueNow}
+            </strong>
+          )}.`}
         </Text>
-      </Stack>
-    </Paper>
+      ))}
+    </Stack>
   );
 }

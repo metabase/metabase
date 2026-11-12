@@ -6,9 +6,15 @@ import { FieldOrderPicker } from "metabase/metadata/components";
 import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useTableUpdateHandlers } from "metabase/metadata/hooks";
+import { useChangingAttributes } from "metabase/metadata/table-structure";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Button, Icon, Loader, Stack } from "metabase/ui";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
+import {
+  ChangingFieldsGroup,
+  useGroupMembers,
+} from "../../FieldDetailsPanel/ChangesOverTime";
 import {
   ListSearchBar,
   ListSearchEmptyState,
@@ -46,6 +52,12 @@ export function TableFieldsTab({
     [query],
   );
   const hasMatches = fields.some(filterField);
+  const { variant } = useChangingAttributes();
+  const { history, memberIds } = useGroupMembers(table);
+  const isTracked = (field: Field) =>
+    memberIds.includes(getRawTableFieldId(field));
+  const groupHistoryTable =
+    variant === "group" ? history.historyTable : undefined;
 
   if (fields.length === 0) {
     return (
@@ -103,14 +115,39 @@ export function TableFieldsTab({
         style={{ display: isSorting ? "none" : "block" }}
         aria-hidden={isSorting}
       >
-        {hasMatches ? (
+        {hasMatches && groupHistoryTable != null && (
+          <Stack gap="xl">
+            <TableFieldList
+              table={table}
+              activeFieldId={activeFieldId}
+              filterField={(field) => filterField(field) && !isTracked(field)}
+              getFieldHref={getFieldHref}
+            />
+            <ChangingFieldsGroup
+              table={table}
+              history={history}
+              historyTable={groupHistoryTable}
+              memberFields={fields.filter(isTracked)}
+              readOnly={readOnly}
+            >
+              <TableFieldList
+                table={table}
+                activeFieldId={activeFieldId}
+                filterField={(field) => filterField(field) && isTracked(field)}
+                getFieldHref={getFieldHref}
+              />
+            </ChangingFieldsGroup>
+          </Stack>
+        )}
+        {hasMatches && groupHistoryTable == null && (
           <TableFieldList
             table={table}
             activeFieldId={activeFieldId}
             filterField={filterField}
             getFieldHref={getFieldHref}
           />
-        ) : (
+        )}
+        {!hasMatches && (
           <ListSearchEmptyState>{t`No fields match "${query}"`}</ListSearchEmptyState>
         )}
       </Box>

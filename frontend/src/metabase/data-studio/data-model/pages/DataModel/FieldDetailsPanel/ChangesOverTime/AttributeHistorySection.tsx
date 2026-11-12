@@ -9,14 +9,9 @@ import {
   type VersionChoice,
   findColumnByName,
   findFieldById,
-  getReferencingFields,
+  getHistoryTableCandidates,
   getVersionChoiceOptions,
-  inferEventDateField,
-  isHistoryTableName,
-  isRoleA,
   useChangingAttributes,
-  useSchemaTables,
-  useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Select, Stack } from "metabase/ui";
@@ -25,9 +20,17 @@ import type { Field, Table } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
 
-import { EndUserPreview, type PreviewNames } from "./EndUserPreview";
+import {
+  EndUserPreview,
+  type PreviewNames,
+  getPreviewNames,
+} from "./EndUserPreview";
 import { ColumnSelect, PastValuesRows } from "./PastValuesRows";
-import { singularName } from "./names";
+import {
+  useDimensionHistory,
+  useHistoryTableBinding,
+  useIsHistoryTable,
+} from "./use-dimension-history";
 import { useEndUserExample } from "./use-end-user-example";
 
 type AttributeHistorySectionProps = {
@@ -36,50 +39,43 @@ type AttributeHistorySectionProps = {
   disabled: boolean;
 };
 
-export function useCanChangeOverTime(field: Field, table: Table) {
-  const { variant } = useChangingAttributes();
-  const { role } = useTableStructures().getTableStructure(table);
-  const isHistoryTable =
-    isHistoryTableName(table) ||
-    (role != null && isRoleA(role, "role/HistoryDimension"));
-  return (
-    variant === "attribute" && !isHistoryTable && !isPK(field) && !isFK(field)
-  );
+export function useIsDimensionAttribute(field: Field, table: Table) {
+  const isHistoryTable = useIsHistoryTable();
+  return !isHistoryTable(table) && !isPK(field) && !isFK(field);
 }
 
 /**
- * PROTOTYPE: mocked. Whether a dimension attribute keeps its old values, where
- * they live, and which value people get when they group facts by it.
+ * PROTOTYPE: mocked. Whether a dimension attribute keeps its old values, in
+ * which history table, and which value people get when they group facts by it.
  */
 export function AttributeHistorySection({
   field,
   table,
   disabled,
 }: AttributeHistorySectionProps) {
-  const { tables } = useSchemaTables(table);
+  const history = useDimensionHistory(table);
+  const isHistoryTable = useIsHistoryTable();
+  const getBinding = useHistoryTableBinding();
   const { getAttribute, setAttribute } = useChangingAttributes();
-  const attribute = getAttribute(field, table, tables);
-  const historyTable = tables.find(
-    (other) => other.id === attribute.historyTableId,
-  );
-  const isKept = attribute.source === "history-table" && historyTable != null;
-  const reference = getReferencingFields(table, tables)[0];
-  const eventDateField = reference && inferEventDateField(reference.table);
-  const names: PreviewNames = {
-    facts: reference?.table.display_name ?? t`Events`,
-    fact: singularName(reference?.table.display_name ?? t`Event`),
-    dimension: reference?.field.display_name ?? table.display_name,
-    attribute: field.display_name,
-    eventDate: eventDateField?.display_name ?? t`Date`,
-  };
+  const attribute = getAttribute(field, table, history.tables);
+  const candidates = getHistoryTableCandidates(
+    table,
+    history.tables,
+    isHistoryTable,
+  ).filter((candidate) => findColumnByName(candidate, field) != null);
+  const historyTable =
+    attribute.source === "history-table"
+      ? history.tables.find((other) => other.id === attribute.historyTableId)
+      : undefined;
+  const names = getPreviewNames(history, table, field);
   const example = useEndUserExample({
-    binding: attribute,
+    binding: getBinding(table, historyTable),
     historyTable,
     valueField: findFieldById(historyTable, attribute.valueFieldId),
     dimensionTable: table,
-    factTable: reference?.table,
-    fkField: reference?.field,
-    eventDateField,
+    factTable: history.reference?.table,
+    fkField: history.reference?.field,
+    eventDateField: history.eventDateField,
   });
 
   return (
@@ -90,21 +86,19 @@ export function AttributeHistorySection({
       <Stack gap="lg">
         <DetailsTable>
           <PastValuesRows
-            dimensionTable={table}
-            tables={tables}
-            binding={attribute}
+            candidates={candidates}
+            historyTable={historyTable}
             notKeptLabel={t`Not kept: a change overwrites it`}
             disabled={disabled}
-            onChange={(update, nextHistoryTable) =>
+            onChange={(next) =>
               setAttribute(field, {
-                ...update,
-                ...(nextHistoryTable && {
-                  valueFieldId: getColumnIdByName(nextHistoryTable, field),
-                }),
+                source: next ? "history-table" : "none",
+                historyTableId: next?.id ?? null,
+                valueFieldId: getColumnIdByName(next, field),
               })
             }
           />
-          {isKept && (
+          {historyTable != null && (
             <>
               <DetailsRow
                 label={t`Stored as`}
@@ -138,7 +132,7 @@ export function AttributeHistorySection({
             </>
           )}
         </DetailsTable>
-        {isKept && reference && (
+        {historyTable != null && history.reference != null && (
           <EndUserPreview
             names={names}
             version={attribute.defaultVersion}
@@ -150,7 +144,7 @@ export function AttributeHistorySection({
   );
 }
 
-function getColumnIdByName(historyTable: Table, field: Field) {
+function getColumnIdByName(historyTable: Table | undefined, field: Field) {
   const column = findColumnByName(historyTable, field);
   return column ? getRawTableFieldId(column) : null;
 }

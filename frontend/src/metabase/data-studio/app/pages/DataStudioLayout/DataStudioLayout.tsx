@@ -8,6 +8,7 @@ import {
   getUserIsAdmin,
   useUserKeyValue,
 } from "metabase/current-user";
+import { ScdVariantSwitcher } from "metabase/data-studio/data-model/pages/DataModel/FieldDetailsPanel/ChangesOverTime";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks/use-data-studio-settings";
 import {
   AreaLayout,
@@ -292,6 +293,7 @@ export function DataStudioLayout() {
       hasBrandIcons
     >
       <Outlet />
+      <ScdVariantSwitcher />
     </AreaLayout>
   );
 }

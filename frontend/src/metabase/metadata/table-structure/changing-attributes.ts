@@ -5,12 +5,26 @@ import _ from "underscore";
 import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isDate, isFK, isPK } from "metabase-lib/v1/types/utils/isa";
-import type { Field, FieldId, Table, TableId } from "metabase-types/api";
+import type {
+  Field,
+  FieldId,
+  MeasureId,
+  Table,
+  TableId,
+} from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { inferHistoryBinding } from "./inference";
 
-export const SCD_PROTOTYPE_VARIANTS = ["attribute", "relationship"] as const;
+export const SCD_PROTOTYPE_VARIANTS = [
+  "attribute",
+  "relationship",
+  "form",
+  "group",
+  "sentence",
+  "columns",
+  "measure",
+] as const;
 
 export type ScdPrototypeVariant = (typeof SCD_PROTOTYPE_VARIANTS)[number];
 
@@ -37,10 +51,25 @@ export type RelationshipVersioning = PastValuesBinding & {
   attributeVersions: Record<string, VersionChoice>;
 };
 
+export type ColumnPair = {
+  showCurrent: boolean;
+  showThen: boolean;
+  thenName: string | null;
+};
+
 type ChangingAttributesState = {
   variant: ScdPrototypeVariant;
   attributes: Record<string, Partial<ChangingAttribute>>;
   relationships: Record<string, Partial<RelationshipVersioning>>;
+  dimensionVersions: Record<string, VersionChoice>;
+  columnPairs: Record<string, Partial<ColumnPair>>;
+  measureVersions: Record<string, VersionChoice>;
+};
+
+const DEFAULT_COLUMN_PAIR: ColumnPair = {
+  showCurrent: true,
+  showThen: true,
+  thenName: null,
 };
 
 const NO_PAST_VALUES: PastValuesBinding = {
@@ -66,6 +95,39 @@ const isVersionChoice = (value: unknown): value is VersionChoice =>
 
 const isSource = (value: unknown): value is PastValuesSource =>
   value === "none" || value === "history-table";
+
+function parseRecord<T>(
+  value: unknown,
+  isValue: (entry: unknown) => entry is T,
+): Record<string, T> {
+  if (!isObject(value)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, T] =>
+      isValue(entry[1]),
+    ),
+  );
+}
+
+function parseColumnPair(value: unknown): Partial<ColumnPair> {
+  if (!isObject(value)) {
+    return {};
+  }
+  return _.omit(
+    {
+      showCurrent:
+        typeof value.showCurrent === "boolean" ? value.showCurrent : undefined,
+      showThen:
+        typeof value.showThen === "boolean" ? value.showThen : undefined,
+      thenName:
+        value.thenName === null || typeof value.thenName === "string"
+          ? value.thenName
+          : undefined,
+    },
+    (entry) => entry === undefined,
+  );
+}
 
 const parseId = (value: unknown): number | null | undefined =>
   value === null || typeof value === "number" ? value : undefined;
@@ -129,7 +191,14 @@ function parseRelationship(value: unknown): Partial<RelationshipVersioning> {
 
 function parseState(value: unknown): ChangingAttributesState {
   if (!isObject(value)) {
-    return { variant: "attribute", attributes: {}, relationships: {} };
+    return {
+      variant: "attribute",
+      attributes: {},
+      relationships: {},
+      dimensionVersions: {},
+      columnPairs: {},
+      measureVersions: {},
+    };
   }
   return {
     variant:
@@ -141,6 +210,11 @@ function parseState(value: unknown): ChangingAttributesState {
     relationships: isObject(value.relationships)
       ? _.mapObject(value.relationships, parseRelationship)
       : {},
+    dimensionVersions: parseRecord(value.dimensionVersions, isVersionChoice),
+    columnPairs: isObject(value.columnPairs)
+      ? _.mapObject(value.columnPairs, parseColumnPair)
+      : {},
+    measureVersions: parseRecord(value.measureVersions, isVersionChoice),
   };
 }
 
@@ -154,13 +228,42 @@ export function isHistoryTableName(table: Pick<Table, "name">) {
 export function getHistoryTableCandidates(
   dimensionTable: Pick<Table, "id" | "name">,
   tables: Table[],
+  isHistoryTable: (table: Table) => boolean = isHistoryTableName,
 ): Table[] {
   const base = singular(dimensionTable.name);
   return _.sortBy(
     tables.filter(
-      (other) => other.id !== dimensionTable.id && isHistoryTableName(other),
+      (other) => other.id !== dimensionTable.id && isHistoryTable(other),
     ),
     (other) => (other.name.toLowerCase().startsWith(base) ? 0 : 1),
+  );
+}
+
+export function getDimensionTableForHistory(
+  historyTable: Table,
+  tables: Table[],
+): Table | undefined {
+  const historyName = historyTable.name.toLowerCase();
+  const dimensions = tables.filter(
+    (table) =>
+      table.id !== historyTable.id &&
+      !isHistoryTableName(table) &&
+      getTrackedAttributes(table, historyTable).length > 0,
+  );
+  return _.sortBy(dimensions, (table) =>
+    historyName.startsWith(singular(table.name)) ? 0 : 1,
+  )[0];
+}
+
+export function getTrackedAttributes(
+  dimensionTable: Pick<Table, "fields">,
+  historyTable: Pick<Table, "fields"> | undefined,
+): Field[] {
+  return (dimensionTable.fields ?? []).filter(
+    (field) =>
+      !isPK(field) &&
+      !isFK(field) &&
+      findColumnByName(historyTable, field) != null,
   );
 }
 
@@ -353,8 +456,80 @@ export function useChangingAttributes() {
     [updateState],
   );
 
+  const setVariant = useCallback(
+    (variant: ScdPrototypeVariant) =>
+      updateState((current) => ({ ...current, variant })),
+    [updateState],
+  );
+
+  const getDimensionVersion = useCallback(
+    (table: Pick<Table, "id">): VersionChoice =>
+      state.dimensionVersions[String(table.id)] ?? "at-event",
+    [state],
+  );
+
+  const setDimensionVersion = useCallback(
+    (table: Pick<Table, "id">, version: VersionChoice) =>
+      updateState((current) => ({
+        ...current,
+        dimensionVersions: {
+          ...current.dimensionVersions,
+          [String(table.id)]: version,
+        },
+      })),
+    [updateState],
+  );
+
+  const getColumnPair = useCallback(
+    (field: Field): ColumnPair => ({
+      ...DEFAULT_COLUMN_PAIR,
+      ...state.columnPairs[attributeKey(field)],
+    }),
+    [state],
+  );
+
+  const setColumnPair = useCallback(
+    (field: Field, update: Partial<ColumnPair>) =>
+      updateState((current) => ({
+        ...current,
+        columnPairs: {
+          ...current.columnPairs,
+          [attributeKey(field)]: {
+            ...current.columnPairs[attributeKey(field)],
+            ...update,
+          },
+        },
+      })),
+    [updateState],
+  );
+
+  const getMeasureVersion = useCallback(
+    (measureId: MeasureId): VersionChoice =>
+      state.measureVersions[String(measureId)] ?? "at-event",
+    [state],
+  );
+
+  const setMeasureVersion = useCallback(
+    (measureId: MeasureId, version: VersionChoice) =>
+      updateState((current) => ({
+        ...current,
+        measureVersions: {
+          ...current.measureVersions,
+          [String(measureId)]: version,
+        },
+      })),
+    [updateState],
+  );
+
   return {
     variant: state.variant,
+    setVariant,
+    getDimensionVersion,
+    setDimensionVersion,
+    getColumnPair,
+    setColumnPair,
+    getMeasureVersion,
+    setMeasureVersion,
     getAttribute,
     setAttribute,
     getRelationship,

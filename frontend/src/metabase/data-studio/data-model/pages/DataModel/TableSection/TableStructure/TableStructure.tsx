@@ -24,6 +24,7 @@ import {
   getTableRoleRowDescription,
   isRoleA,
   isTableRole,
+  useChangingAttributes,
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -47,6 +48,7 @@ import {
   DETAILS_CELL_INPUT_CLASS_NAMES,
   DetailsEditableText,
 } from "../../DetailPanel";
+import { HistorySentence } from "../../FieldDetailsPanel/ChangesOverTime";
 import { CustomPropertiesSection } from "../CustomProperties/CustomPropertiesSection";
 import { EntityCustomPropertiesSection } from "../CustomProperties/EntityCustomPropertiesSection";
 import { InferredValue } from "../InferenceReview";
@@ -247,6 +249,11 @@ export function useIsHistoryTable(table: Table) {
 export function TableHistorySection({ table, readOnly }: TableStructureProps) {
   const { getTableStructure, setHistoryBinding, setScdType, setScdDetails } =
     useTableStructures();
+  const { variant } = useChangingAttributes();
+
+  if (variant === "sentence") {
+    return <HistorySentence table={table} readOnly={readOnly} />;
+  }
 
   return (
     <HistoryBindingSection

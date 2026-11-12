@@ -10,6 +10,8 @@ import {
   findColumnByName,
   findFieldById,
   getEventDateFields,
+  getHistoryTableCandidates,
+  getTrackedAttributes,
   useChangingAttributes,
   useSchemaTables,
 } from "metabase/metadata/table-structure";
@@ -22,6 +24,10 @@ import { VersionSelect } from "./AttributeHistorySection";
 import { EndUserPreview, type PreviewNames } from "./EndUserPreview";
 import { ColumnSelect, PastValuesRows } from "./PastValuesRows";
 import { singularName } from "./names";
+import {
+  useHistoryTableBinding,
+  useIsHistoryTable,
+} from "./use-dimension-history";
 import { useEndUserExample } from "./use-end-user-example";
 
 type RelationshipVersionSectionProps = {
@@ -42,9 +48,8 @@ function useDimensionTable(field: Field, table: Table) {
 }
 
 export function useCanPickRelationshipVersion(field: Field, table: Table) {
-  const { variant } = useChangingAttributes();
   const { dimensionTable } = useDimensionTable(field, table);
-  return variant === "relationship" && isFK(field) && dimensionTable != null;
+  return isFK(field) && dimensionTable != null;
 }
 
 /**
@@ -58,12 +63,20 @@ export function RelationshipVersionSection({
 }: RelationshipVersionSectionProps) {
   const { tables, dimensionTable } = useDimensionTable(field, table);
   const { getRelationship, setRelationship } = useChangingAttributes();
+  const isHistoryTable = useIsHistoryTable();
+  const getBinding = useHistoryTableBinding();
   const relationship = getRelationship(field, table, dimensionTable, tables);
-  const historyTable = tables.find(
-    (other) => other.id === relationship.historyTableId,
-  );
-  const isKept =
-    relationship.source === "history-table" && historyTable != null;
+  const candidates = dimensionTable
+    ? getHistoryTableCandidates(dimensionTable, tables, isHistoryTable).filter(
+        (candidate) =>
+          getTrackedAttributes(dimensionTable, candidate).length > 0,
+      )
+    : [];
+  const historyTable =
+    relationship.source === "history-table"
+      ? tables.find((other) => other.id === relationship.historyTableId)
+      : undefined;
+  const isKept = historyTable != null;
   const eventDateField = findFieldById(table, relationship.asOfFieldId);
   const attributes = (dimensionTable?.fields ?? []).filter(
     (attribute) => !isPK(attribute) && !isFK(attribute),
@@ -83,7 +96,9 @@ export function RelationshipVersionSection({
     eventDate: eventDateField?.display_name ?? t`Date`,
   };
   const example = useEndUserExample({
-    binding: relationship,
+    binding: dimensionTable
+      ? getBinding(dimensionTable, historyTable)
+      : relationship,
     historyTable,
     valueField:
       previewAttribute && findColumnByName(historyTable, previewAttribute),
@@ -105,12 +120,16 @@ export function RelationshipVersionSection({
       <Stack gap="lg">
         <DetailsTable>
           <PastValuesRows
-            dimensionTable={dimensionTable}
-            tables={tables}
-            binding={relationship}
+            candidates={candidates}
+            historyTable={historyTable}
             notKeptLabel={t`Not kept: only current values`}
             disabled={disabled}
-            onChange={(update) => setRelationship(field, update)}
+            onChange={(next) =>
+              setRelationship(field, {
+                source: next ? "history-table" : "none",
+                historyTableId: next?.id ?? null,
+              })
+            }
           />
           {isKept && (
             <>
