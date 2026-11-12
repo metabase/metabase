@@ -4,6 +4,7 @@
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -103,3 +104,8 @@
                   :collection-position        true
                   :collection-type            :collection.type
                   :archived-directly          true}})
+
+(t2/define-after-select :model/Exploration
+  [instance]
+  (remote-sync/register-loaded! :model/Collection (:collection_id instance))
+  instance)

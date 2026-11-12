@@ -857,6 +857,7 @@
 
 (t2/define-after-select :model/Card
   [card]
+  (remote-sync/register-loaded! :model/Collection (:collection_id card))
   ;; +===============================================================================================+
   ;; |   DO NOT EDIT THIS FUNCTION DIRECTLY!                                                         |
   ;; |   Future revisions to the shapes of cards should be handled via [[upgrade-card-schema-to]].   |

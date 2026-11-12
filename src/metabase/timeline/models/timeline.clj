@@ -22,6 +22,7 @@
 
 (t2/define-after-select :model/Timeline
   [timeline]
+  (remote-sync/register-loaded! :model/Collection (:collection_id timeline))
   ;; We used to have a "balloons" icon but we removed it.
   ;; Use the default icon instead. (metabase#34586, metabase#35129)
   (update timeline :icon (fn [icon]

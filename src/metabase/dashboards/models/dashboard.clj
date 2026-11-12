@@ -137,6 +137,7 @@
 
 (t2/define-after-select :model/Dashboard
   [dashboard]
+  (remote-sync/register-loaded! :model/Collection (:collection_id dashboard))
   (-> dashboard
       migrate-parameters-list
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled))

@@ -785,3 +785,8 @@
 (defmethod remote-sync/spec :model/ImplicitAction
   [_model]
   {:synced-filter-clause actions.db/synced-action-details-clause})
+
+(t2/define-after-select :model/Action
+  [instance]
+  (remote-sync/register-loaded! :model/Collection (:collection_id instance))
+  instance)

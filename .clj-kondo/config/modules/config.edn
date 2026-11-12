@@ -1134,6 +1134,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            request
            search
            settings

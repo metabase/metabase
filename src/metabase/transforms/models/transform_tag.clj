@@ -68,6 +68,7 @@
     {:name name}))
 
 (t2/define-after-select :model/TransformTag [tag]
+  (remote-sync/register-loaded! :model/TransformTag (:id tag))
   (if (nil? (:built_in_type tag))
     tag
     (merge tag (translate-name tag))))

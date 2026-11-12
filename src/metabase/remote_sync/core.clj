@@ -17,6 +17,7 @@
   can-write-filter-clause
   can-write?
   do-with-read-only-pks-cache
+  register-loaded!
   read-only?
   synced-changes?
   synced-collection-from-parent?

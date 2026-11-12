@@ -325,6 +325,7 @@
     collection))
 
 (t2/define-after-select :model/Collection [collection]
+  (remote-sync/register-loaded! :model/Collection (:id collection))
   (maybe-localize-system-collection-name collection))
 
 (doto :model/Collection

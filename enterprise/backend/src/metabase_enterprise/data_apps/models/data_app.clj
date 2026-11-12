@@ -117,6 +117,7 @@
 ;; untouched rather than gaining a spurious `:allowed_hosts` key.
 (t2/define-after-select :model/DataApp
   [app]
+  (remote-sync/register-loaded! :model/DataApp (:id app))
   (cond-> app
     (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
 

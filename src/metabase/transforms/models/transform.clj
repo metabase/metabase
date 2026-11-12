@@ -234,6 +234,7 @@
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
+  (remote-sync/register-loaded! :model/Transform (:id transform))
   (if source
     (assoc transform :source_type (transforms-base.u/transform-source-type source))
     transform))

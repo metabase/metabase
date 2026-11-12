@@ -173,6 +173,7 @@
 
 (t2/define-after-select :model/Measure
   [measure]
+  (remote-sync/register-loaded! :model/TableUserSettings (:table_id measure))
   (perms/register-loaded! :model/Table (:table_id measure))
   (normalize-definition-from-db measure))
 

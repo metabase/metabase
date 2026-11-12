@@ -242,3 +242,8 @@
   [_model]
   {:parent               (fn [{:keys [transform_id]}] [:model/Transform transform_id])
    :synced-filter-clause data-testing.db/synced-transform-tests-clause})
+
+(t2/define-after-select :model/TransformTest
+  [instance]
+  (remote-sync/register-loaded! :model/TransformTest (:id instance))
+  instance)

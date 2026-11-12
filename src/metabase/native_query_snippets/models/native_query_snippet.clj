@@ -282,3 +282,8 @@
 (defmethod remote-sync/spec :model/NativeQuerySnippet
   [_model]
   {:synced-filter-clause native-query-snippets.db/synced-snippets-clause})
+
+(t2/define-after-select :model/NativeQuerySnippet
+  [instance]
+  (remote-sync/register-loaded! :model/NativeQuerySnippet (:id instance))
+  instance)

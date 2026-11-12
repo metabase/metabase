@@ -498,6 +498,7 @@
 
 (t2/define-after-select :model/Document
   [document]
+  (remote-sync/register-loaded! :model/Collection (:collection_id document))
   (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------

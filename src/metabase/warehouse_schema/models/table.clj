@@ -157,6 +157,7 @@
 
 (t2/define-after-select :model/Table
   [table]
+  (remote-sync/register-loaded! :model/TableUserSettings (:id table))
   (perms/register-loaded! :model/Table (:id table))
   (dissoc table :is_defective_duplicate :unique_table_helper))
 
