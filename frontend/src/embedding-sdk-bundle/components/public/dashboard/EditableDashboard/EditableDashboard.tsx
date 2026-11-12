@@ -101,6 +101,7 @@ export const EditableDashboardInner = (props: EditableDashboardProps) => {
 export const EditableDashboard = Object.assign(
   withPublicComponentWrapper(EditableDashboardInner, {
     supportsGuestEmbed: false,
+    sdkComponentName: "EditableDashboard",
   }),
   {
     schema: editableDashboardSchema,

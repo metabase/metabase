@@ -8,16 +8,25 @@ import {
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupCollectionByIdEndpoint,
+  setupDashboardNotFoundEndpoint,
+  setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
   setupEmbeddingDataPickerDecisionEndpoints,
   setupNotFoundCardEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { mockGetBoundingClientRect, screen, waitFor } from "__support__/ui";
 import type * as SdkSnowplow from "embedding-sdk-bundle/analytics/snowplow";
 import { trackSdkMetaplowEvent } from "embedding-sdk-bundle/analytics/snowplow";
 import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion/InteractiveQuestion";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion/StaticQuestion";
+import { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard/InteractiveDashboard";
+import {
+  TEST_DASHBOARD_ID,
+  setupSdkDashboard,
+  tableDashcard,
+} from "embedding-sdk-bundle/components/public/dashboard/tests/setup";
 import {
   TEST_DATASET,
   TEST_DB,
@@ -37,6 +46,8 @@ import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockCollection,
+  createMockDashboard,
+  createMockDashboardQueryMetadata,
   createMockDataset,
 } from "metabase-types/api/mocks";
 
@@ -202,6 +213,95 @@ describe("embedding_sdk_first_component_performance", () => {
       const event = await waitForSinglePerformanceEvent();
       expect(Object.keys(event)).toEqual(expect.arrayContaining(EVENT_FIELDS));
       expect(event).toMatchObject({ client: "embedding-sdk-react" });
+    });
+  });
+
+  describe("InteractiveDashboard", () => {
+    describe("when every card query has returned", () => {
+      it("sends a success event with every mark in order", async () => {
+        const tableCardQuery = defer<Dataset>();
+        await setupSdkDashboard({
+          component: InteractiveDashboard,
+          tableCardQueryResponse: tableCardQuery.promise,
+        });
+        expect(getPerformanceEvents()).toEqual([]);
+
+        tableCardQuery.resolve(createMockDataset());
+
+        const event = await waitForSinglePerformanceEvent();
+        expect(event).toMatchObject({
+          component: "InteractiveDashboard",
+          result: "success",
+        });
+        expect(event.error).toBeUndefined();
+        expectMarksInOrder(event, COMPONENT_MARKS);
+      });
+    });
+
+    describe("when a card has more than one series", () => {
+      it("waits for the last series, even after `onLoad`", async () => {
+        const secondSeriesCard = createMockCard({ id: 2, name: "Series 2" });
+        const secondSeriesQuery = defer<Dataset>();
+        setupDashcardQueryEndpoints(
+          TEST_DASHBOARD_ID,
+          { ...tableDashcard, card_id: secondSeriesCard.id },
+          secondSeriesQuery.promise,
+        );
+        const onLoad = jest.fn();
+
+        await setupSdkDashboard({
+          component: InteractiveDashboard,
+          dashcards: [{ ...tableDashcard, series: [secondSeriesCard] }],
+          props: { onLoad },
+        });
+
+        // We use `onLoad` to know that the first series has returned
+        await waitFor(() => expect(onLoad).toHaveBeenCalled());
+        expect(getPerformanceEvents()).toEqual([]);
+
+        secondSeriesQuery.resolve(createMockDataset());
+
+        expect(await waitForSinglePerformanceEvent()).toMatchObject({
+          result: "success",
+        });
+      });
+    });
+
+    describe("when a card query fails", () => {
+      it("sends a success event with error `card_query`, because the rest of the dashboard is on screen", async () => {
+        await setupSdkDashboard({
+          component: InteractiveDashboard,
+          tableCardQueryResponse: createMockDataset({
+            error: "The query failed",
+          }),
+        });
+
+        expect(await waitForSinglePerformanceEvent()).toMatchObject({
+          result: "success",
+          error: "card_query",
+        });
+      });
+    });
+
+    describe("when the dashboard request fails", () => {
+      it("sends a failure event with error `load`", async () => {
+        const dashboard = createMockDashboard({ id: TEST_DASHBOARD_ID });
+        setupDashboardNotFoundEndpoint(dashboard);
+        setupDashboardQueryMetadataEndpoint(
+          dashboard,
+          createMockDashboardQueryMetadata(),
+        );
+
+        renderSdkComponent(
+          <InteractiveDashboard dashboardId={TEST_DASHBOARD_ID} />,
+        );
+
+        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        expect(await waitForSinglePerformanceEvent()).toMatchObject({
+          result: "failure",
+          error: "load",
+        });
+      });
     });
   });
 
