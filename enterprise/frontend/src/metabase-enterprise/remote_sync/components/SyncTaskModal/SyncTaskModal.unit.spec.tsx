@@ -16,14 +16,14 @@ type SetupOpts = {
   taskId?: number;
 };
 
-const setup = ({ task, taskId = 1 }: SetupOpts) => {
+function setup({ task, taskId = 1 }: SetupOpts) {
   const onClose = jest.fn<void, []>();
   setupRemoteSyncEndpoints({ currentTask: task });
   renderWithProviders(
     <SyncTaskModal title="Pulling changes" taskId={taskId} onClose={onClose} />,
   );
   return { onClose };
-};
+}
 
 describe("SyncTaskModal", () => {
   it("shows progress of running tasks, which can be cancelled", async () => {

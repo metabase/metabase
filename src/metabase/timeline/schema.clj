@@ -11,7 +11,8 @@
   [:merge
    ::timeline.update
    [:map {:closed true}
-    [:id            ms/PositiveInt]]])
+    [:id            ms/PositiveInt]
+    [:collection    {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]]])
 
 (mr/def ::timeline.update
   "What an update (or insert) of a Timeline accepts: every column of `:timeline` except `id`, all optional."

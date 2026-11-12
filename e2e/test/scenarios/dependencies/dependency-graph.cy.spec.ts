@@ -648,7 +648,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       );
 
       cy.log("open the dependencies tab of the data action");
-      cy.findByRole("link", { name: "Dependencies" }).click();
+      cy.findByRole("tab", { name: "Dependencies" }).click();
       H.DependencyGraph.graph().within(() => {
         cy.findByLabelText(TABLE_DISPLAY_NAME).should("be.visible");
         cy.findByLabelText(TABLE_BASED_ACTION_NAME).should("be.visible");

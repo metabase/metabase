@@ -1,5 +1,6 @@
 (ns metabase-enterprise.workspaces.settings
   (:require
+   [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -24,4 +25,7 @@
   :visibility :internal
   :export?    false
   :audit      :never
-  :doc        false)
+  :doc        false
+  ;; Outside workspace mode a node trusts its cache of the Databases with remappings, and rows may have changed
+  ;; while it was in workspace mode. Fires on every node when its settings cache picks up the change.
+  :on-change  (fn [_old _new] (table-remapping/invalidate-database-ids!)))
