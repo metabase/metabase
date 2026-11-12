@@ -289,24 +289,18 @@
 ;;; Exemptions and opt-ins
 ;;; =============================================================================
 
+(defn- graph
+  "A module graph of `modules` with no dependencies between them."
+  [modules]
+  (zipmap modules (repeat #{})))
+
 (deftest driver-test-rules-have-no-problems-test
-  (testing "the real exemptions and opt-ins are declared, not redundant, and each opt-in changes something"
+  (testing "the real exemptions and opt-ins are declared and each changes its module's decision"
     (is (= [] (mage.modules/driver-test-rule-problems (mage.modules/dependencies)
                                                       mage.modules/driver-test-rules)))))
 
 (deftest driver-test-rule-problems-test
-  (let [deps  '{a             #{}
-                a.sub         #{}
-                a.sub.in      #{}
-                a.sub.in.deep #{}
-                b.sub         #{}
-                x             #{}
-                x.t           #{}
-                x.t.e         #{}
-                x.t.o         #{}
-                x.te          #{}
-                x.to          #{}
-                y             #{}}
+  (let [deps  (graph '[a a.sub a.sub.in a.sub.in.deep b.sub x x.t x.t.e x.t.o x.te x.to y])
         rules '{:triggers   #{x.t x.te x.to}
                 :exemptions #{a a.sub nope x x.t.e x.te y}
                 :opt-ins    #{a.sub.in a.sub.in.deep b.sub x.t.o x.to y}}]
@@ -325,19 +319,11 @@
 (deftest exemption-rules-test
   ;; A made-up graph, so the rules are tested apart from the real module config.
   ;; The trigger `t` uses every module, so each one decides on its exemption alone.
-  (let [deps  '{t                       #{a a.sub a.sub.in a.sub.in.deep a.sub.in.deep.out x x.t both enterprise/a}
-                a                       #{}
-                a.sub                   #{}
-                a.sub.in                #{}
-                a.sub.in.deep           #{}
-                a.sub.in.deep.out       #{}
-                x                       #{}
-                x.t                     #{}
-                both                    #{}
-                enterprise/a            #{}}
-        rules '{:triggers   #{t x.t both}
-                :exemptions #{a a.sub.in.deep.out x both}
-                :opt-ins    #{a.sub.in}}]
+  (let [modules '[a a.sub a.sub.in a.sub.in.deep a.sub.in.deep.out x x.t both enterprise/a]
+        deps    (assoc (graph modules) 't (set modules))
+        rules   '{:triggers   #{t x.t both}
+                  :exemptions #{a a.sub.in.deep.out x both}
+                  :opt-ins    #{a.sub.in}}]
     (are [changed expected] (= expected (mage.modules/driver-deps-affected? deps [changed] rules))
       ;; exemptions and what they cover
       'a                 false
@@ -352,6 +338,10 @@
       't                 true
       'x.t               true
       'both              false)))
+
+(deftest driver-deps-affected-rejects-undeclared-trigger-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not declared in the module config: \(gone\)"
+                        (mage.modules/driver-deps-affected? (graph '[a]) '[a] '{:triggers #{gone}}))))
 
 (deftest driver-tests-needed-test
   (let [deps (mage.modules/dependencies)]
