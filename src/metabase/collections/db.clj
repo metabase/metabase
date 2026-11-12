@@ -7,6 +7,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -28,10 +29,12 @@
   "The clause over the Collection table aliased `alias` selecting the collections remote sync syncs: the synced
   top-level ones with their descendants, and those of the `always-synced` namespaces."
   [always-synced :- [:sequential :keyword]
-   alias         :- :keyword]
+   alias         :- :keyword
+   opts          :- ::remote-sync.schema/synced-filter-opts]
   (let [column #(u/qualified-key alias %)]
     [:and
-     [:= (column :archived) false]
+     (when-not (:include-archived? opts)
+       [:= (column :archived) false])
      [:or
       [:exists ^:allow-subquery {:select [[[:inline 1] :one]]
                                  :from   [[(t2/table-name :model/Collection) :synced_root]]
@@ -59,11 +62,6 @@
   [type :- :string]
   (t2/select-one :model/Collection :type type))
 
-(mu/defn root-remote-synced-collection
-  "The top-level remote-synced ::collections.schema/collection, or nil."
-  []
-  (t2/select-one :model/Collection :is_remote_synced true :location "/"))
-
 (mu/defn personal-collection-of-user
   "The personal ::collections.schema/collection of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
@@ -79,11 +77,6 @@
   "Whether an unarchived ::collections.schema/collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id :archived false))
-
-(mu/defn remote-synced-collection-exists?
-  "Whether a remote-synced ::collections.schema/collection with `collection-id` exists."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :is_remote_synced true))
 
 (mu/defn personal-collection?
   "Whether the ::collections.schema/collection with `collection-id` is a personal ::collections.schema/collection."
@@ -353,12 +346,6 @@
 
 ;;; ---------------------------------------------- ::collections.schema/collection contents ----------------------------------------------
 
-(mu/defn instance-by-id
-  "The instance of `model` with `id`, or nil."
-  [model :- :keyword
-   id    :- ms/PositiveInt]
-  (t2/select-one model :id id))
-
 (mu/defn collection-namespaces-of
   "A map of ID to the namespace of the ::collections.schema/collection holding each instance of `model` with `ids`."
   [model :- :keyword
@@ -618,3 +605,9 @@
   "The IDs of the Users among `user-ids` that are not API key users."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pks-set :model/User :id [:in user-ids] :type [:not= :api-key]))
+
+(mu/defn synced-collection-items :- [:sequential ::collections.schema/collection]
+  "The Collections with `ids`, with their ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (-> (t2/select [:model/Collection :id :name :type :location] :id [:in ids])
+      (t2/hydrate :effective_ancestors)))

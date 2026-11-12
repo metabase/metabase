@@ -5,11 +5,13 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -19,20 +21,24 @@
 
 (mu/defn synced-dashboard-tabs-clause :- [:fn vector?]
   "The clause over the DashboardTab table aliased `alias` selecting the tabs of the Dashboards remote sync syncs."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :dashboard_id :model/Dashboard))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :dashboard_id :model/Dashboard opts))
 
 (mu/defn synced-dashcards-clause :- [:fn vector?]
   "The clause over the DashboardCard table aliased `alias` selecting the cards of the Dashboards remote sync syncs."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :dashboard_id :model/Dashboard))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :dashboard_id :model/Dashboard opts))
 
 (mu/defn synced-dashboards-clause :- [:fn vector?]
   "The clause over the Dashboard table aliased `alias` selecting the Dashboards remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
   [:and
-   [:= (u/qualified-key alias :archived) false]
-   (remote-sync/synced-fk-clause alias :collection_id :model/Collection)])
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
@@ -418,3 +424,11 @@
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select [:model/DashboardCard :id :dashboard_id :card_id :action_id :parameter_mappings :visualization_settings]
              :dashboard_id [:in [:auto/param dashboard-ids]]))
+
+(mu/defn synced-dashboard-items :- [:sequential ::dashboards.schema/dashboard]
+  "The Dashboards with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Dashboard :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))

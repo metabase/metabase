@@ -94,3 +94,24 @@
     (testing "on read-write instance, they can"
       (remote-sync.tu/with-remote-sync [url :read-write]
         (is (true? (remote-sync/can-write? :model/TransformTag (:id daily))))))))
+
+(deftest archived-synced-content-stays-read-only-test
+  (mt/with-temp [:model/Collection         synced   {:name "Synced" :is_remote_synced true :location "/"}
+                 :model/Collection         archived {:name             "Archived child"
+                                                     :location         (str "/" (:id synced) "/")
+                                                     :is_remote_synced true
+                                                     :archived         true}
+                 :model/Card               card     {:name "Card in archived child" :collection_id (:id archived)}
+                 :model/NativeQuerySnippet snippet  {:name "Archived snippet" :content "1" :archived true}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "on read-only instance, archived content that unarchiving would sync can't be written"
+        (remote-sync.tu/with-remote-sync [url :read-only]
+          (is (false? (mi/can-write? archived)))
+          (is (false? (mi/can-write? card)))
+          (is (false? (mi/can-write? snippet)))
+          (is (false? (mi/can-update? snippet {:archived false})))))
+      (testing "on read-write instance, it can"
+        (remote-sync.tu/with-remote-sync [url :read-write]
+          (is (true? (mi/can-write? archived)))
+          (is (true? (mi/can-write? card)))
+          (is (true? (mi/can-update? snippet {:archived false}))))))))

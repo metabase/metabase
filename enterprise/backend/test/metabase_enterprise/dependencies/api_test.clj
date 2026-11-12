@@ -3172,7 +3172,7 @@
     (mt/with-premium-features #{:dependencies :data-apps}
       (data-apps.tu/with-published-tables! [(mt/id :venues)]
         (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                       {:name "birds" :display_name "Birds" :description "Sightings" :bundle_path "birds.js"}
+                       {:slug "birds" :name "Birds" :description "Sightings" :bundle_path "birds.js"}
                        :model/Card {card-id :id} (data-app-card collection-id)]
           (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
             (deps.test/synchronously-run-dependency-job!)
@@ -3181,7 +3181,7 @@
                                                               :type "data-app")
                   node (fn [node-type node-id]
                          (m/find-first #(= [node-type node-id] ((juxt :type :id) %)) nodes))]
-              (is (=? {:data {:name "birds" :display_name "Birds" :description "Sightings"}}
+              (is (=? {:data {:slug "birds" :name "Birds" :description "Sightings"}}
                       (node "data-app" app-id)))
               (is (=? {:dependents_count {:data-app 1}}
                       (node "card" card-id)))
@@ -3195,7 +3195,7 @@
   (testing "GET /api/ee/dependencies/graph/dependents lists the data apps a user can read"
     (data-apps.tu/with-published-tables! [(mt/id :venues)]
       (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                     {:name "birds" :display_name "Birds" :bundle_path "birds.js" :enabled false}
+                     {:slug "birds" :name "Birds" :bundle_path "birds.js" :enabled false}
                      :model/Card {card-id :id} (data-app-card collection-id)]
         (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
           (deps.test/synchronously-run-dependency-job!)
@@ -3221,7 +3221,7 @@
   (testing "GET /api/ee/dependencies/graph gives a non-admin only a data app's names, as the data-app API does"
     (mt/with-premium-features #{:dependencies :data-apps}
       (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                     {:name "birds" :display_name "Birds" :description "Sightings" :bundle_path "birds.js"}
+                     {:slug "birds" :name "Birds" :description "Sightings" :bundle_path "birds.js"}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
         (perms/grant-collection-read-permissions! group-id collection-id)
@@ -3230,7 +3230,7 @@
                               :nodes
                               (m/find-first #(= ["data-app" app-id] ((juxt :type :id) %)))
                               :data))]
-          (is (= {:name "birds" :display_name "Birds"}
+          (is (= {:slug "birds" :name "Birds"}
                  (app-data :rasta)))
           (testing "an admin also gets the description and creation time"
             (is (=? {:description "Sightings" :created_at some?}
@@ -3240,7 +3240,7 @@
   (testing "GET /api/ee/dependencies/graph refuses a data app start node without the data apps feature"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                     {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                     {:slug "birds" :name "Birds" :bundle_path "birds.js"}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
         (perms/grant-collection-read-permissions! group-id collection-id)
@@ -3254,7 +3254,7 @@
   (testing "GET /api/ee/dependencies/graph/unreferenced lists data apps, finds them by their display name, and sorts them
            by location"
     (mt/with-premium-features #{:dependencies :data-apps}
-      (mt/with-temp [:model/DataApp {app-id :id} {:name "birds" :display_name "Bird sightings unreftest" :bundle_path "birds.js"}]
+      (mt/with-temp [:model/DataApp {app-id :id} {:slug "birds" :name "Bird sightings unreftest" :bundle_path "birds.js"}]
         (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
           (deps.test/synchronously-run-dependency-job!)
           (let [unreferenced (fn [& params]
@@ -3262,7 +3262,7 @@
                                            :query "unreftest"
                                            params)
                                     :data
-                                    (into #{} (map (juxt :type :id (comp :display_name :data))))))]
+                                    (into #{} (map (juxt :type :id (comp :name :data))))))]
             (is (= #{["data-app" app-id "Bird sightings unreftest"]}
                    (unreferenced :types "data-app" :sort-column "location")))
             (testing "without a types filter"
@@ -3272,8 +3272,8 @@
 (deftest graph-data-app-read-check-skips-the-bundle-test
   (testing "the graph endpoints check a data app start node without reading its bundle"
     (mt/with-premium-features #{:dependencies :data-apps}
-      (mt/with-temp [:model/DataApp {app-id :id} {:name         "birds"
-                                                  :display_name "Birds"
+      (mt/with-temp [:model/DataApp {app-id :id} {:slug         "birds"
+                                                  :name         "Birds"
                                                   :bundle_path  "birds.js"
                                                   :bundle       (byte-array [1 2 3])}]
         (testing "a full row read counts"

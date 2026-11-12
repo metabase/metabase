@@ -24,7 +24,8 @@
            "measure"   :model/Measure
            "segment"   :model/Segment
            "transform" :model/Transform}
-    config/ee-available? (assoc "transform-test" :model/TransformTest)))
+    config/ee-available? (assoc "transform-test" :model/TransformTest
+                                "card-test"      :model/CardTest)))
 
 (def ^:private Entity
   "Schema for a valid revisionable entity name."
@@ -32,11 +33,17 @@
    [:enum {:api/regex (u.regex/re-or (keys entity->model))}]
    (keys entity->model)))
 
-(defn- model-and-instance [entity-name id]
+(defn- entity-model
+  "The model named by `entity-name`, with its namespace loaded."
+  [entity-name]
   (let [model (entity->model entity-name)]
     (assert (keyword? model))
-    ;; Ensure the model namespace is loaded before using it
+    ;; Load the model namespace first: it defines the model's revision methods.
     (t2.model/resolve-model model)
+    model))
+
+(defn- model-and-instance [entity-name id]
+  (let [model (entity-model entity-name)]
     [model (revisions.db/entity model id)]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -118,9 +125,12 @@
                                                      [:id          ms/PositiveInt]
                                                      [:entity      Entity]
                                                      [:revision_id ms/PositiveInt]]]
-  (let [[model instance] (model-and-instance entity id)
-        _                (api/write-check instance)
-        revision         (api/check-404 (revisions.db/revision (name model) id revision-id))]
+  (let [model    (entity-model entity)
+        ;; Before any lookup, so that a refusal does not depend on whether `id` exists.
+        _        (revision/check-revert-available model)
+        instance (revisions.db/entity model id)
+        _        (api/write-check instance)
+        revision (api/check-404 (revisions.db/revision (name model) id revision-id))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
     (when (= model :model/Card)
       ;; TODO -- we should be using something like `api/read-check` for this, but unfortunately the impl for Cards
@@ -128,7 +138,7 @@
       ;; restoring saved content, so a reverted query may keep referencing columns marked "Do not include"
       (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)
                                                    {:allow-sensitive-fields? true}))
-    (when (contains? #{:model/Transform :model/TransformTest} model)
+    (when (contains? #{:model/Transform :model/TransformTest :model/CardTest} model)
       (api/check-403 (mi/can-write? (merge instance (:object revision)))))
     ;; for Segments and Measures `table_id` is re-derived from `definition` on update, so when the restored definition
     ;; specifies a source table, check write perms against that table rather than the revision's stored `table_id`
@@ -162,9 +172,6 @@
   [{:keys [id entity]} :- [:map {:closed true}
                            [:entity Entity]
                            [:id     ms/PositiveInt]]]
-  (let [model (entity->model entity)]
-    (assert (keyword? model))
-    ;; Ensure the model namespace is loaded before using it
-    (t2.model/resolve-model model)
+  (let [model (entity-model entity)]
     (api/read-check model id)
     (revision/revisions+details model id)))

@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  createMockSetupGuideChecklist,
   setupDatabaseListEndpoint,
   setupLlmProviderTypesEndpoint,
   setupLlmProvidersEndpoint,
@@ -10,6 +10,7 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
   setupSettingsEndpoints,
+  setupSetupGuideChecklistEndpoint,
   setupTokenStatusEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -58,9 +59,8 @@ function setup({
     "embedded-metabot-enabled?": isEmbeddedMetabotEnabled,
   });
 
-  fetchMock.get("path:/api/embedding-hub/checklist", {
-    checklist,
-    "data-isolation-strategy": null,
+  setupSetupGuideChecklistEndpoint({
+    checklist: createMockSetupGuideChecklist(checklist),
   });
 
   setupPropertiesEndpoints(settings);
@@ -134,7 +134,53 @@ function isLocked(title: string) {
   return getCard(title).getAttribute("aria-disabled") === "true";
 }
 
+function expectStepOrder(titles: string[]) {
+  const cards = screen
+    .getAllByTestId("embedding-hub-checklist-card")
+    .map((card) => card.textContent ?? "");
+
+  expect(cards).toHaveLength(titles.length);
+  titles.forEach((title, index) => {
+    expect(cards[index]).toContain(title);
+  });
+}
+
+const UNLICENSED_STEP_ORDER = [
+  "Connect a database",
+  "Create a dashboard",
+  "Get embed snippet",
+  AI_CARD,
+  TENANTS_CARD,
+  SSO_CARD,
+  PRODUCTION_CARD,
+  THEME_CARD,
+];
+
 describe("EmbeddingHubGetStartedPage", () => {
+  it("promotes AI into the first section and locks the Fine-tune steps", async () => {
+    setup();
+
+    expect(await screen.findByText(SSO_CARD)).toBeInTheDocument();
+
+    expectStepOrder(UNLICENSED_STEP_ORDER);
+
+    // The upsell banner is what stands in for the Fine-tune subtitle.
+    expect(
+      screen.getByText(
+        "Upgrade to Metabase Pro to configure advanced options.",
+      ),
+    ).toBeVisible();
+
+    // A feature-locked step is inert, with no link to follow.
+    expect(
+      screen.queryByRole("link", { name: SSO_CARD }),
+    ).not.toBeInTheDocument();
+    expect(isLocked(SSO_CARD)).toBe(true);
+
+    // AI is never locked: the admin AI page needs no token.
+    expect(screen.getByRole("button", { name: AI_CARD })).toBeVisible();
+  });
+
   describe("per-feature locking", () => {
     it("locks every Fine-tune step when the instance licenses nothing", async () => {
       setup();
@@ -165,6 +211,29 @@ describe("EmbeddingHubGetStartedPage", () => {
       expect(await screen.findByText(TENANTS_CARD)).toBeInTheDocument();
       expect(isLocked(TENANTS_CARD)).toBe(false);
       expect(isLocked(SSO_CARD)).toBe(true);
+    });
+
+    it("links the tenants step to the permissions wizard", async () => {
+      const { router } = setup({ hasTenants: true });
+
+      expect(
+        await screen.findByRole("heading", {
+          name: "Get started with Metabase Embedding",
+        }),
+      ).toBeInTheDocument();
+
+      const card = await screen.findByRole("link", { name: TENANTS_CARD });
+
+      expect(card).toHaveAttribute(
+        "href",
+        "/embedding/get-started/permissions",
+      );
+
+      await userEvent.click(card);
+
+      expect(router?.location.pathname).toBe(
+        "/embedding/get-started/permissions",
+      );
     });
 
     it("unlocks the theme step on embedding_simple", async () => {

@@ -8,8 +8,10 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -31,7 +33,8 @@
 
 (mu/defn synced-transform-tags-clause :- [:fn vector?]
   "The clause over the TransformTag table aliased `alias` selecting the tags remote sync syncs, all but the built-in ones."
-  [alias :- :keyword]
+  [alias :- :keyword
+   _opts :- ::remote-sync.schema/synced-filter-opts]
   [:= (u/qualified-key alias :built_in_type) nil])
 
 (mu/defn built-in-transform-tags-clause :- [:fn vector?]
@@ -41,8 +44,9 @@
 
 (mu/defn synced-transform-transform-tags-clause :- [:fn vector?]
   "The clause over the TransformTransformTag table aliased `alias` selecting the tags of synced transforms."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :transform_id :model/Transform))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :transform_id :model/Transform opts))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
@@ -922,3 +926,16 @@
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+
+(mu/defn synced-transform-items :- [:sequential ::transforms.schema/transform]
+  "The Transforms with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection :transforms)]
+    (-> (t2/select [:model/Transform :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn synced-transform-tag-items :- [:sequential ::transforms.schema/transform-tag]
+  "The TransformTags with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (t2/select [:model/TransformTag :id :name] :id [:in ids]))

@@ -29,6 +29,7 @@
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.usage :as usage]
@@ -928,6 +929,40 @@
       (testing "and the calls whose input comes after the error are dropped"
         (is (not-any? #(= "late" (:toolCallId %)) result))))))
 
+(deftest tool-executor-xf-never-starts-a-complete-call-after-an-error-test
+  (testing "a call whose input completed before an :error chunk never runs if the pool has not started it"
+    (let [release (promise)
+          busy    (java.util.concurrent.CountDownLatch. 20)
+          pool    @#'self.core/tool-executor
+          ran     (atom false)
+          tools   (update-in test-util/TOOLS ["get-time" :fn]
+                             (fn [get-time]
+                               (fn [args]
+                                 (reset! ran true)
+                                 (get-time args))))]
+      ;; Hold every thread of the pool, so that no call starts until the stream has ended
+      (dotimes [_ 20]
+        (.execute ^java.util.concurrent.Executor pool ^Runnable #(do (.countDown busy) @release)))
+      (try
+        (is (.await busy 5 java.util.concurrent.TimeUnit/SECONDS))
+        (let [chunks  (concat (test-util/parts->aisdk-chunks
+                               [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "UTC"}}])
+                              [{:type :error :errorText "Overloaded"}])
+              errored (promise)
+              result  (future (into [] (comp (self.core/tool-executor-xf tools)
+                                             (map (fn [chunk]
+                                                    (when (= :error (:type chunk))
+                                                      (deliver errored true))
+                                                    chunk)))
+                                    chunks))]
+          (is (deref errored 5000 false))
+          (deliver release true)
+          (is (= (vec chunks) (deref result 5000 nil))
+              "the stream passes through, with no result for call-1")
+          (is (not @ran)))
+        (finally
+          (deliver release true))))))
+
 (deftest tool-executor-xf-returns-results-in-call-order-test
   (testing "calls that run at the same time and finish in reverse order return their results in call order"
     (let [n        10
@@ -987,8 +1022,8 @@
              (validation-error schema {:names 5})))
       (is (= "Invalid tool arguments: `names` must be an array of strings; received an object."
              (validation-error schema {:names {:a 1}}))))
-    (testing "a bad element reports the element's constraint without a received clause"
-      (is (= "Invalid tool arguments: `names` should be a string."
+    (testing "a bad element is named by its index, with what it received"
+      (is (= "Invalid tool arguments: `names[1]` should be a string; received a number."
              (validation-error schema {:names ["ok" 5]}))))
     (testing "an unsupported key is called out as such"
       (is (= "Invalid tool arguments: `nope` is not a supported argument."
@@ -998,7 +1033,129 @@
              (validation-error schema {:limit 999}))))
     (testing "arguments that aren't an object at all"
       (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
-             (validation-error schema ["orders"]))))))
+             (validation-error schema ["orders"])))))
+  (testing "a schema with no message of its own reports that the argument is not valid"
+    (is (= "Invalid tool arguments: `even` is not valid; received a number."
+           (validation-error [:map [:even [:fn even?]]] {:even 1})))))
+
+(deftest ^:parallel nested-tool-argument-validation-test
+  (let [schema [:map {:closed true}
+                [:name {:optional true} :string]
+                [:ops {:optional true} [:sequential [:map {:closed true}
+                                                     [:op :string]
+                                                     [:card_id {:optional true} :int]]]]]]
+    (testing "an error in one operation names its index and field"
+      (is (= "Invalid tool arguments: `ops[1].card_id` should be an integer; received a string."
+             (validation-error schema {:ops [{:op "add_card", :card_id 1} {:op "add_card", :card_id "x"}]}))))
+    (testing "a missing or unsupported nested key is named by its path"
+      (is (= "Invalid tool arguments: `ops[0].op` is required."
+             (validation-error schema {:ops [{:card_id 1}]})))
+      (is (= "Invalid tool arguments: `ops[0].nope` is not a supported argument."
+             (validation-error schema {:ops [{:op "add_card", :nope 1}]}))))
+    (testing "every failure is reported, each under its own path"
+      (is (= (str "Invalid tool arguments: `name` should be a string; received a number."
+                  " `ops[0].card_id` should be an integer; received a string."
+                  " `ops[1].op` is required.")
+             (validation-error schema {:name 5, :ops [{:op "add_card", :card_id "y"} {:card_id 2}]}))))))
+
+(deftest ^:parallel alternative-tool-argument-validation-test
+  (testing "errors from the alternatives of an `:or` go under the `:or`'s own path"
+    (let [schema [:map {:closed true}
+                  [:target [:or
+                            [:map {:closed true} [:collection_id :int]]
+                            [:map {:closed true} [:dashboard_id :int]]]]]]
+      (is (re-find #"^Invalid tool arguments: `target` "
+                   (validation-error schema {:target {:document_id 1}})))))
+  (testing "an `:or` inside a list keeps the index of each element that failed"
+    (let [schema [:map {:closed true}
+                  [:ops [:sequential [:or
+                                      [:map {:closed true} [:card_id :int]]
+                                      [:map {:closed true} [:text :string]]]]]]]
+      (is (= (str "Invalid tool arguments: `ops[1]` and `[3]` are missing required fields, from among `card_id`, `text`;"
+                  " have unsupported fields: `nope`.")
+             (validation-error schema {:ops [{:card_id 1} {:nope 1} {:text "ok"} {:nope 2}]}))))))
+
+(deftest ^:parallel alternative-tool-argument-received-test
+  (let [schema [:map {:closed true}
+                [:schedule [:or
+                            [:map {:closed true} [:frequency [:= "hourly"]]]
+                            [:map {:closed true} [:frequency [:= "daily"]] [:hour [:int {:max 23}]]]]]
+                [:ops {:optional true} [:sequential [:or
+                                                     [:map {:closed true} [:card_id :int]]
+                                                     [:map {:closed true} [:text :string]]]]]]]
+    (testing "a value of the right type with errors inside it does not say what it received"
+      (is (= "Invalid tool arguments: `schedule` should be \"hourly\"; has unsupported fields: `hour`; should be at most 23."
+             (validation-error schema {:schedule {:frequency "daily" :hour 25}}))))
+    (testing "a value of the wrong type says what it received"
+      (is (= "Invalid tool arguments: `schedule` invalid type; received a string."
+             (validation-error schema {:schedule "daily"}))))
+    (testing "a value that was sent but lacks the fields every alternative needs is not called missing"
+      (is (= "Invalid tool arguments: `schedule` is missing required fields, from among `frequency`, `hour`."
+             (validation-error schema {:schedule {}})))
+      (is (= (str "Invalid tool arguments: `ops[1]` is missing required fields, from among `card_id`, `text`."
+                  " `schedule` is required.")
+             (validation-error schema {:ops [{:card_id 1} {}]}))))
+    (testing "a value with only keys no alternative supports names them"
+      (is (= "Invalid tool arguments: `ops[0]` has unsupported fields: `nope`."
+             (validation-error [:map [:ops [:sequential [:or
+                                                         [:map {:closed true} [:card_id {:optional true} :int]]
+                                                         [:map {:closed true} [:text {:optional true} :string]]]]]]
+                               {:ops [{:nope 1}]}))))))
+
+(deftest ^:parallel schedule-tool-argument-validation-test
+  (let [schema [:map {:closed true} [:schedule tools.create-alert/schedule-schema]]]
+    (testing "a schedule is checked against its own frequency, so a missing field is named"
+      (is (= "Invalid tool arguments: `schedule.day_of_week` is required."
+             (validation-error schema {:schedule {:frequency "weekly" :hour 9}})))
+      (is (= "Invalid tool arguments: `schedule.hour` should be at most 23; received a number."
+             (validation-error schema {:schedule {:frequency "daily" :hour 25}}))))
+    (testing "a schedule without a known frequency says which frequencies there are"
+      (is (= (str "Invalid tool arguments: `schedule.frequency` should be either \"hourly\", \"daily\", \"weekly\""
+                  " or \"monthly\"; received a string.")
+             (validation-error schema {:schedule {:frequency "yearly"}})))
+      (is (= (str "Invalid tool arguments: `schedule.frequency` should be either \"hourly\", \"daily\", \"weekly\""
+                  " or \"monthly\"; received null.")
+             (validation-error schema {:schedule {}}))))
+    (testing "a well-formed schedule is accepted"
+      (is (nil? (validation-error schema {:schedule {:frequency "weekly" :day_of_week "monday" :hour 9}}))))))
+
+(deftest ^:parallel list-tool-argument-validation-test
+  (let [schema [:map {:closed true}
+                [:ids {:optional true} [:sequential :int]]
+                [:ops {:optional true} [:sequential [:map {:closed true} [:card_id :int]]]]
+                [:name {:optional true} :string]
+                [:tag {:optional true} :string]]]
+    (testing "list indexes are ordered as numbers"
+      (is (= (str "Invalid tool arguments: `ids[3]` should be an integer; received a string."
+                  " `ids[10]` should be an integer; received a boolean.")
+             (validation-error schema {:ids (assoc (vec (range 12)) 3 "a" 10 true)}))))
+    (testing "the same error in several elements of a list is one sentence"
+      (is (= "Invalid tool arguments: `ids[3]` and `[10]` should be an integer; received a string."
+             (validation-error schema {:ids (assoc (vec (range 12)) 3 "a" 10 "b")})))
+      (is (= (str "Invalid tool arguments: `ids[0]`, `[1]`, `[2]` and 197 more should be an integer;"
+                  " received a string. `name` should be a string; received a number.")
+             (validation-error schema {:ids (vec (repeat 200 "x")) :name 5}))))
+    (testing "the same error inside several elements of a list is one sentence, naming each by its full path"
+      (is (= (str "Invalid tool arguments: `ops[0].card_id`, `ops[1].card_id`, `ops[2].card_id` and 4 more should be"
+                  " an integer; received a string. `tag` should be a string; received a number.")
+             (validation-error schema {:ops (vec (repeat 7 {:card_id "x"})) :tag 5}))))
+    (testing "an argument gets at most five sentences, so a later argument is still reported"
+      (is (= (str "Invalid tool arguments: `ops[0].card_id` should be an integer; received a string."
+                  " `ops[1].card_id` should be an integer; received a boolean."
+                  " `ops[2].card_id` should be an integer; received a number."
+                  " `ops[3].card_id` should be an integer; received an object."
+                  " `ops[4].card_id` should be an integer; received an array."
+                  " And 1 more problem in `ops`."
+                  " `tag` should be a string; received a number.")
+             (validation-error schema {:ops (mapv #(hash-map :card_id %) ["x" true 1.5 {} [] nil]) :tag 5}))))))
+
+(deftest ^:parallel qualified-tool-argument-validation-test
+  (testing "a qualified key is named with its namespace, so the model can find the key it sent"
+    (is (= (str "Invalid tool arguments: `destination.lib/type` is not a supported argument."
+                " `lib/type` is not a supported argument.")
+           (validation-error [:map {:closed true}
+                              [:destination [:map {:closed true} [:type :string]]]]
+                             {:destination {:type "x" :lib/type "y"} :lib/type "z"})))))
 
 (deftest ^:parallel tool-unparseable-arguments-test
   (testing "arguments the provider streamed as invalid JSON are reported as such"
@@ -2267,10 +2424,21 @@
                                              :cacheReadTokens     800}
                         :model "test-model" :id "msg-1"}
                        {:type :tool-input :id "call-3" :function "lookup_jane_doe_4165551234"
-                        :arguments {:tz "UTC"}}])]
+                        :arguments {:tz "UTC"}}])
+            done     {"call-1" (promise) "call-2" (promise)}
+            run-tool (mt/original-fn #'self.core/run-tool)]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                     (constantly (concat (drop-last 2 chunks)
-                                                        [{:type :error :errorText "Overloaded"}]))]
+                                                        ;; A call that has not started when the error comes never
+                                                        ;; runs, so the error comes once call-1 and call-2 are done
+                                                        (lazy-seq
+                                                         (run! #(deref % 5000 nil) (vals done))
+                                                         [{:type :error :errorText "Overloaded"}])))
+                                    self.core/run-tool
+                                    (fn [tool-call-id & args]
+                                      (let [result (apply run-tool tool-call-id args)]
+                                        (some-> (done tool-call-id) (deliver true))
+                                        result))]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
               (let [[spans logs] (tracing.tu/with-span-exporter [exporter]

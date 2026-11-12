@@ -125,7 +125,7 @@
 ;;; matches a real previous-stage column.
 ;;; ============================================================
 
-(defn- dequote-identifier
+(defn dequote-identifier
   "Strip one balanced pair of surrounding ASCII double-quotes from `s`. Idempotent; returns
   non-strings and unquoted strings unchanged."
   [s]

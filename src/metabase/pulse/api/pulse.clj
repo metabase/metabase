@@ -399,11 +399,7 @@
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/test"
+(api.macros/defendpoint :post "/test" :- [:map {:closed true} [:ok [:= true]]]
   "Test send an unsaved pulse."
   [_route-params
    _query-params
@@ -443,11 +439,7 @@
       (pulse.send/send-pulse! pulse)))
   {:ok true})
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id/subscription"
+(api.macros/defendpoint :delete "/:id/subscription" :- ::api/generic-204-no-content
   "For users to unsubscribe themselves from a pulse subscription."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]

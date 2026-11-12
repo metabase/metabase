@@ -14,6 +14,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -44,11 +45,11 @@
 
 (set! *warn-on-reflection* true)
 
-(def DBEngineString
-  "Schema for a valid database engine name, e.g. `h2` or `postgres`."
+(def DBEngine
+  "Schema for a valid database engine, e.g. `:h2` or `:postgres`, normalized from its name."
   (mu/with-api-error-message
    [:and
-    ms/NonBlankString
+    ::lib.schema.common/keyword
     [:fn
      {:error/message "Valid database engine"}
      #(u/ignore-exceptions (driver/the-driver %))]]
@@ -635,7 +636,7 @@
     :as   body}
    :- [:map {:closed true}
        [:name              ms/NonBlankString]
-       [:engine            DBEngineString]
+       [:engine            DBEngine]
        [:details           ms/DatabaseDetails]
        [:is_full_sync      {:default true}   [:maybe ms/BooleanValue]]
        [:is_on_demand      {:default false}  [:maybe ms/BooleanValue]]
@@ -675,7 +676,7 @@
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
         (analytics/track-event! :snowplow/database
                                 {:event        :database-connection-successful
-                                 :database     engine
+                                 :database     (u/qualified-name engine)
                                  :database-id  (u/the-id <>)
                                  :source       connection_source
                                  :dbms-version (:version (driver/dbms-version (keyword engine) (driver.u/lib-database (u/the-id <>))))}))
@@ -683,7 +684,7 @@
       (do
         (analytics/track-event! :snowplow/database
                                 {:event    :database-connection-failed
-                                 :database engine
+                                 :database (u/qualified-name engine)
                                  :source   connection_source})
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
@@ -746,7 +747,7 @@
    _query-params
    {{:keys [engine details id]} :details} :- [:map {:closed true}
                                               [:details [:map {:closed true}
-                                                         [:engine  DBEngineString]
+                                                         [:engine  DBEngine]
                                                          [:details ms/DatabaseDetails]
                                                          [:id {:optional true} [:maybe ms/PositiveInt]]]]]]
   (api/check-superuser)
@@ -839,7 +840,7 @@
     :as   body}
    :- [:map {:closed true}
        [:name               {:optional true} [:maybe ms/NonBlankString]]
-       [:engine             {:optional true} [:maybe DBEngineString]]
+       [:engine             {:optional true} [:maybe DBEngine]]
        [:refingerprint      {:optional true} [:maybe :boolean]]
        [:details            {:optional true} [:maybe ms/DatabaseDetails]]
        [:write_data_details {:optional true} [:maybe ms/DatabaseDetails]]
@@ -996,11 +997,7 @@
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -1020,12 +1017,8 @@
 ;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/sync_schema"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/sync_schema" :- [:map {:closed true} [:status [:= :ok]]]
   "Trigger a manual update of the schema metadata for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -1054,12 +1047,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/dismiss_spinner"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/dismiss_spinner" :- [:map {:closed true} [:status [:= :ok]]]
   "Manually set the initial sync status of the `Database` and corresponding
   tables to be `complete` (see #20863)"
   [{:keys [id]} :- [:map {:closed true}
@@ -1087,12 +1076,8 @@
 ;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/rescan_values"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/rescan_values" :- [:map {:closed true} [:status [:= :ok]]]
   "Trigger a manual scan of the field values for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -1119,12 +1104,8 @@
 ;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/discard_values"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/discard_values" :- [:map {:closed true} [:status [:= :ok]]]
   "Discards all saved field values for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]

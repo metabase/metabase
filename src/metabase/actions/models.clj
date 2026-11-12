@@ -703,10 +703,9 @@
 
 (defmethod serialization/spec :model/Action [_]
   {:schema    ::actions.schema/external-action
-   :copy      [:archived :archived_directly :description :entity_id :name :public_uuid]
+   :copy      [:archived :archived_directly :description :entity_id :name :public_uuid :type]
    :skip      [:public_uuid_prefix]
-   :transform {:type                   serialization/keyword-transform
-               :creator_id             serialization/user-transform
+   :transform {:creator_id             serialization/user-transform
                :made_public_by_id      serialization/user-transform
                :collection_id          (serialization/fk-transform :model/Collection)
                :model_id               (serialization/fk-transform :model/Card)
@@ -754,7 +753,7 @@
                          [[:model/Collection collection-id]])
                        (when-let [model-id (:model_id action)]
                          [[:model/Card model-id]])
-                       (when (= (:type action) "query")
+                       (when (= (keyword (:type action)) :query)
                          (serialization/import-mbql-dependencies (:dataset_query (first (:query action))))))))
         entities))
 
@@ -776,7 +775,7 @@
 
 (defmethod remote-sync/spec :model/Action
   [_model]
-  {:parent               (fn [{:keys [model_id]}] (some->> model_id (vector :model/Card)))
+  {:synced-items         actions.db/synced-action-items
    :synced-filter-clause actions.db/synced-actions-clause})
 
 (defmethod remote-sync/spec :model/QueryAction
