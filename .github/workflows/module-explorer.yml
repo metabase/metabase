@@ -28,7 +28,7 @@ jobs:
   publish:
     name: Publish module data
     # The site accepts uploads only from this repository's master, so a run anywhere else would fail at the end.
-    if: ${{ github.repository == 'metabase/metabase' }}
+    if: ${{ github.repository == 'metabase/metabase' && github.ref == 'refs/heads/master' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     env:
