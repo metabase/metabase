@@ -109,6 +109,15 @@ const openGroup = async (name: RegExp) => {
   await userEvent.click(screen.getByRole("button", { name }));
 };
 
+const showDetails = async (checkId: HealthCheckId) => {
+  await userEvent.click(
+    within(screen.getByTestId(`health-check-card-${checkId}`)).getByRole(
+      "button",
+      { name: "Show details" },
+    ),
+  );
+};
+
 describe("HealthChecksPage", () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -155,7 +164,7 @@ describe("HealthChecksPage", () => {
       screen.queryByText("All security checks pass"),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "sync icon Re-check" }),
+      screen.queryByRole("button", { name: "sync icon Refresh" }),
     ).not.toBeInTheDocument();
   });
 
@@ -167,7 +176,46 @@ describe("HealthChecksPage", () => {
     await openGroup(/Couldn't check/);
 
     expect(getCardTitles()).toEqual(["Encryption key", "Supported version"]);
-    expect(screen.getByText("No version info")).toBeInTheDocument();
+  });
+
+  it("shows empty groups as disabled", async () => {
+    await setup({ checks: [FAILING_CHECK] });
+
+    expect(
+      screen.getByRole("button", { name: /Couldn't check/ }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Passed/ })).toBeDisabled();
+  });
+
+  it("shows an empty failing group as disabled", async () => {
+    await setup({ checks: [UNKNOWN_CHECK] });
+
+    expect(screen.getByRole("button", { name: /Failing/ })).toBeDisabled();
+    expect(screen.queryByTestId(/^health-check-card-/)).not.toBeInTheDocument();
+  });
+
+  it("does not offer details for a check without items", async () => {
+    await setup({ checks: [{ ...FAILING_CHECK, items: [] }] });
+
+    expect(
+      within(
+        screen.getByTestId(`health-check-card-${FAILING_CHECK.id}`),
+      ).queryByRole("button", { name: "Show details" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("toggles the items of a check", async () => {
+    await setup({ checks: [FAILING_CHECK] });
+
+    expect(screen.queryByText("Not set")).not.toBeInTheDocument();
+
+    await showDetails(FAILING_CHECK.id);
+
+    expect(screen.getByText("Not set")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Hide details" }));
+
+    expect(screen.queryByText("Not set")).not.toBeInTheDocument();
   });
 
   it("sorts checks by severity inside a group", async () => {
@@ -245,6 +293,8 @@ describe("HealthChecksPage", () => {
       ],
     });
 
+    await showDetails(FAILING_CHECK.id);
+
     const getItemTexts = () =>
       screen
         .getAllByTestId("health-check-item")
@@ -260,6 +310,7 @@ describe("HealthChecksPage", () => {
   it("shows the items of a passing check without collapsing them", async () => {
     await setup({ checks: [PASSING_CHECK] });
     await openGroup(/Passed/);
+    await showDetails(PASSING_CHECK.id);
 
     expect(screen.getByText("Redirect is on")).toBeInTheDocument();
     expect(
@@ -334,6 +385,7 @@ describe("HealthChecksPage", () => {
       await setup({
         checks: [{ ...FAILING_CHECK, id: checkId, items: [item] }],
       });
+      await showDetails(checkId);
 
       const row = screen.getByTestId("health-check-item");
       expect(
@@ -368,6 +420,7 @@ describe("HealthChecksPage", () => {
     },
   ])("does not link $name", async ({ checkId, item }) => {
     await setup({ checks: [{ ...FAILING_CHECK, id: checkId, items: [item] }] });
+    await showDetails(checkId);
 
     const row = screen.getByTestId("health-check-item");
     expect(within(row).getByText(item.entity_name ?? "")).toBeInTheDocument();
@@ -438,6 +491,7 @@ describe("HealthChecksPage", () => {
         },
       ],
     });
+    await showDetails("all-users-permissions");
 
     expect(
       screen
@@ -463,7 +517,7 @@ describe("HealthChecksPage", () => {
     await setup({ checks: [FAILING_CHECK, PASSING_CHECK] });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "sync icon Re-check" }),
+      screen.getByRole("button", { name: "sync icon Refresh" }),
     );
 
     expect(
@@ -482,13 +536,13 @@ describe("HealthChecksPage", () => {
     await setup({ checks: [FAILING_CHECK] });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "sync icon Re-check" }),
+      screen.getByRole("button", { name: "sync icon Refresh" }),
     );
 
     expect(track).toHaveBeenCalledTimes(1);
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "sync icon Re-check" }),
+        screen.getByRole("button", { name: "sync icon Refresh" }),
       ).toBeEnabled(),
     );
   });
@@ -498,7 +552,7 @@ describe("HealthChecksPage", () => {
     await setup({ checks: [FAILING_CHECK] });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "sync icon Re-check" }),
+      screen.getByRole("button", { name: "sync icon Refresh" }),
     );
 
     expect(
@@ -523,7 +577,7 @@ describe("HealthChecksPage", () => {
 
     expect(screen.getByText("An error occurred")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "sync icon Re-check" }),
+      screen.queryByRole("button", { name: "sync icon Refresh" }),
     ).not.toBeInTheDocument();
   });
 });
