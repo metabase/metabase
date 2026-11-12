@@ -2616,6 +2616,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DataApp
+                    :model/Database
                     :model/Table
                     :model/User}}
 

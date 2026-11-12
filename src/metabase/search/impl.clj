@@ -421,11 +421,17 @@
   "How many results are permission-checked together, so that one load answers the Tables among them."
   500)
 
-(defn- register-result-tables!
-  "Remembers the Tables of the table results among `results`, so that checking one of them answers them all, and
-  returns the results."
+(defn- register-result-rows!
+  "Remembers the Tables and Databases of `results`, so that checking one of them answers them all, and returns the
+  results."
   [results]
-  (run! #(when (= "table" (:model %)) (models.cache/register-loaded! :model/Table (:id %))) results)
+  (run! (fn [{:keys [model id database_id]}]
+          (case model
+            "table"    (models.cache/register-loaded! :model/Table id)
+            "database" (models.cache/register-loaded! :model/Database id)
+            nil)
+          (models.cache/register-loaded! :model/Database database_id))
+        results)
   results)
 
 (defn check-result-permissions
@@ -524,7 +530,7 @@
                            (take search.config/*db-max-results*)
                            (map normalize-result)
                            (partition-all permission-check-batch-size)
-                           (mapcat register-result-tables!)
+                           (mapcat register-result-rows!)
                            (filter (partial check-permissions-for-model search-ctx))
                            (map (partial normalize-result-more search-ctx))
                            (keep #(search.engine/score scoring-ctx %)))]

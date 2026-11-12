@@ -6,6 +6,7 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
@@ -321,7 +322,9 @@
                            (group-by :model)
                            (map (fn [[k v]] [k (set (map :id v))])))]
     (if (seq model-and-ids)
-      (let [;; query all entities in 1 db call
+      (let [_ (doseq [[model ids] model-and-ids, id ids]
+                (models.cache/register-loaded! (serialization/link-card-model->toucan-model model) id))
+            ;; query all entities in 1 db call
             ;; {[:table 3] {:name ...}}
             model-and-id->info
             (-> (m/index-by (juxt :model :id) (dashboards.db/link-card-info-rows model-and-ids))
