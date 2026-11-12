@@ -15,7 +15,8 @@ import {
   within,
 } from "__support__/ui";
 import { initialState as documentsInitialState } from "metabase/documents/documents.slice";
-import { Route } from "metabase/router";
+import { Route, useParams } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 import type { Comment, User } from "metabase-types/api";
 import {
   createMockDocument,
@@ -463,6 +464,57 @@ describe("CommentsSidesheet", () => {
         expect(screen.queryByText(hidden)).not.toBeInTheDocument();
       },
     );
+
+    it("shows the comments of the new node when the open sidebar switches nodes", async () => {
+      setupStatefulCommentEndpoints({
+        comments: [
+          commentWithText("Heading comment", {
+            id: 1,
+            child_target_id: HEADING_ID,
+          }),
+          commentWithText("Paragraph comment", { id: 2 }),
+        ],
+        currentUser: ADMIN,
+      });
+
+      function RoutedCommentsSidesheet() {
+        const params = useParams<{ childTargetId: string }>();
+        return <CommentsSidesheet params={params} onClose={jest.fn()} />;
+      }
+
+      const { router } = renderWithProviders(
+        <Route
+          path="/document/:entityId/comments/:childTargetId"
+          element={<RoutedCommentsSidesheet />}
+        />,
+        {
+          withRouter: true,
+          initialRoute: `/document/${DOCUMENT_ID}/comments/${PARAGRAPH_ID}`,
+          storeInitialState: createMockState({
+            currentUser: ADMIN,
+            documents: {
+              ...documentsInitialState,
+              currentDocument: createMockDocument({ id: DOCUMENT_ID }),
+            },
+          }),
+        },
+      );
+
+      expect(await screen.findByText("Paragraph comment")).toBeInTheDocument();
+      expect(screen.queryByText("Heading comment")).not.toBeInTheDocument();
+      const sidebar = screen.getByTestId("comments-sidebar");
+
+      act(() => {
+        checkNotNull(router).navigate(
+          `/document/${DOCUMENT_ID}/comments/${HEADING_ID}`,
+        );
+      });
+
+      expect(await screen.findByText("Heading comment")).toBeInTheDocument();
+      expect(screen.queryByText("Paragraph comment")).not.toBeInTheDocument();
+      // the same sidebar stays mounted across the switch
+      expect(screen.getByTestId("comments-sidebar")).toBe(sidebar);
+    });
   });
 
   describe("resolving and unresolving", () => {
