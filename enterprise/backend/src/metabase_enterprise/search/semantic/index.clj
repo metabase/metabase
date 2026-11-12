@@ -141,7 +141,7 @@
     (let [colls                (semantic-search.db/collection-owners-and-locations collection-ids)
           {personal     true
            non-personal false} (group-by (comp some? :personal_owner_id) colls)
-          direct               (into {} (map (juxt :id :personal_owner_id)) personal)
+          direct               (u/index-by :id :personal_owner_id personal)
           roots                (keep (fn [{:keys [id location]}]
                                        (when-let [root-id (some-> location (str/split #"/" 3) second parse-long)]
                                          [id root-id]))
@@ -1001,8 +1001,8 @@
         coll-readable? (memoize perms/can-read-via-parent-collection?)
         fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         slow-t2-instances (vec
-                           (for [[t2-model docs] (group-by doc->t2-model slow-docs)
-                                 t2-instance (semantic-search.db/instances t2-model (map :id docs))]
+                           (for [[t2-model ids] (u/group-by doc->t2-model :id slow-docs)
+                                 t2-instance (semantic-search.db/instances t2-model ids)]
                              t2-instance))
         doc->t2 (comp (u/index-by (juxt :id t2/model) slow-t2-instances)
                       (juxt :id doc->t2-model))
@@ -1023,8 +1023,7 @@
   [docs collection-id]
   (let [collection-ids (keep :collection_id docs)
         collections-map (when (seq collection-ids)
-                          (->> (semantic-search.db/collection-locations collection-ids)
-                               (into {} (map (juxt :id identity)))))]
+                          (u/index-by :id (semantic-search.db/collection-locations collection-ids)))]
     (filterv (fn [doc]
                (let [doc-collection-id (:collection_id doc)]
                  (or (= doc-collection-id collection-id)

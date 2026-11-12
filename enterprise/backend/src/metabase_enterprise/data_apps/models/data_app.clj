@@ -244,4 +244,5 @@
 
 (defmethod remote-sync/spec :model/DataApp
   [_model]
-  {:label :slug})
+  {:name         :slug
+   :synced-items data-apps.db/synced-data-app-items})

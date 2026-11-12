@@ -142,9 +142,10 @@
       [:headers [:map-of :string :string]]
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
-  of the workspace's databases is not `:provisioned`. A scoped credential (an
-  `mb:workspace-manager` API key or token) gets the config without the parent
-  databases' SSH tunnel secrets."
+  of the workspace's databases is not `:provisioned`; retry later. 422 if a
+  database's connection settings need an admin to fix them; retrying does not help.
+  A scoped credential (an `mb:workspace-manager` API key or token) gets the config
+  without the parent databases' SSH tunnel secrets."
   {:scope api-scope.workspace-manager/workspace-manager}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params

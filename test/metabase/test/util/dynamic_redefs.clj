@@ -1,6 +1,7 @@
 (ns metabase.test.util.dynamic-redefs
   (:require
-   [clojure.string :as str])
+   [clojure.string :as str]
+   [methodical.util :as methodical])
   (:import
    (clojure.lang MultiFn Namespace Var)
    (java.util Collections Map WeakHashMap)))
@@ -140,17 +141,24 @@
   ;; So each proxy records its own original, and replacements are bound to a proxy, not to the var.
   (.put proxies proxy [a-var original source]))
 
+(defn- multimethod?
+  "Whether `root` is a Clojure or a methodical multimethod."
+  [root]
+  ;; The proxy stays on the var, so a later `defmethod` through the var finds a plain fn instead of the multimethod.
+  ;; A methodical multimethod is an immutable value that `defmethod` reads back from the var, so it breaks too.
+  (or (instance? MultiFn root) (methodical/multifn? root)))
+
 (defn- check-proxyable
   "Throws when `root`, the root of `a-var`, is not an `IFn`, or is a multimethod."
   [a-var root]
   ;; These are throws, not asserts, so they fire even when `*assert*` is false.
   (when-not (ifn? root)
     (throw (ex-info (str "Cannot proxy non-IFn values: " a-var) {:var a-var, :value root})))
-  (when (instance? MultiFn root)
+  (when (multimethod? root)
     (throw (ex-info (str "Cannot proxy multimethods: " a-var ". "
-                         "with-dynamic-fn-redefs replaces the var's root with a proxy, which breaks "
-                         "dispatch and pollutes the JVM for other tests. Use defmethod (or add-method) "
-                         "with a dedicated test dispatch value instead.")
+                         "with-dynamic-fn-redefs leaves a proxy on the var for the rest of the JVM, so a later "
+                         "defmethod through it fails. Use with-redefs in a test that is not ^:parallel, or add a "
+                         "method for a dedicated test dispatch value.")
                     {:var a-var}))))
 
 (defn- var->proxy!
@@ -241,6 +249,9 @@
         (when-not (proxy-entry a-var)
           (check-proxyable a-var (.getRawRoot a-var))
           (when source
+            ;; A `with-redefs` stub can hide the root of a re-export, and taking over would link it to its source for
+            ;; good, so check what the source holds too.
+            (check-proxyable a-var (proxied-original source))
             (take-over! a-var source))
           ;; Anything else gets a proxy over the root it has: a var that is not a re-export, or a re-export under a
           ;; stub, where the stub is what the proxy has to fall back to.
@@ -264,6 +275,46 @@
              *local-redefs*
              var->replacement))
 
+(defonce ^:private compiled-targets
+  ;; Every var named by a compiled `with-dynamic-fn-redefs` form, for [[proxy-compiled-targets!]].
+  (atom #{}))
+
+(defn- record-targets!
+  "Add the vars that `syms` resolve to, in the namespace being compiled, to [[compiled-targets]].
+   A namespace whose metadata has `::proxy-on-first-redef` is left out, so its tests can check what happens when a
+   var is redefined for the first time."
+  [env syms]
+  (when-not (::proxy-on-first-redef (meta *ns*))
+    ;; Recording is best effort: a symbol that does not resolve here fails, if it is wrong, when the form runs.
+    (swap! compiled-targets into (keep #(let [v (try (resolve env %) (catch Exception _ nil))]
+                                          (when (var? v) v)))
+           syms)))
+
+(defn- proxyable?
+  "Whether `a-var` is bound to a value the macro accepts: an `IFn` that is not a multimethod."
+  [^Var a-var]
+  ;; Check bound first: an unbound var's root is a `Var$Unbound`, which is itself an `IFn`.
+  (and (.isBound a-var)
+       (let [root (.getRawRoot a-var)]
+         (and (ifn? root) (not (multimethod? root))))))
+
+(defn proxy-compiled-targets!
+  "Proxy every var named by a compiled `with-dynamic-fn-redefs` form that the macro could proxy.
+   Returns `{:proxied n, :skipped vars, :failed {var exception}}`.
+   The test runner calls this before the first test, so a value that a test body captures from such a var is the
+   proxy even on the test's first run."
+  []
+  ;; Leave the rest, such as multimethods, for the macro to refuse when a test runs it. A failure only costs one var
+  ;; its early proxy, so record it rather than abort the run.
+  (let [{targets true, skipped false} (group-by proxyable? @compiled-targets)
+        failed                        (into {} (for [a-var targets
+                                                     :let  [e (try (patch-vars! [a-var]) nil (catch Exception e e))]
+                                                     :when e]
+                                                 [a-var e]))]
+    {:proxied (- (count targets) (count failed))
+     :skipped (vec skipped)
+     :failed  failed}))
+
 (defn- sym->var [sym] `(var ~sym))
 
 (defn- bindings->var->definition
@@ -279,9 +330,15 @@
 
    Limitations:
    - Only a var that holds an `IFn` can be redefined.
-     Keywords and collections count. A multimethod, or a value that is not an `IFn`, throws.
+     Keywords and collections count. A multimethod of either kind, or a value that is not an `IFn`, throws.
+     Use [[with-redefs]] for a multimethod, in a test that is not `^:parallel`.
    - A replacement that calls the redefined var recurses, because the var now resolves to the proxy.
+     So does a replacement that calls a value captured from the var, such as `(let [orig f] ...)`.
      To delegate to the original, capture it with [[original-fn]].
+   - The test runner proxies every var this macro names before the first test, so a captured value is the proxy even
+     on a test's first run, and a replacement that calls it fails on that run.
+     A run that skips the runner's entry points, such as one started from CIDER, proxies each var on its first
+     redefinition instead, so the mistake only shows on a later run.
    - Only threads that inherit the calling thread's dynamic bindings see the replacement.
      That covers `future`, `core.async/go` and `core.async/thread`.
      A raw `Thread`, a Quartz worker and an unwrapped `ExecutorService` task do not inherit them.
@@ -294,6 +351,7 @@
    - A [[with-redefs]] that binds a re-export to its source's own function does not hold: the re-export keeps
      calling whatever its source calls."
   [bindings & body]
+  (record-targets! &env (take-nth 2 bindings))
   (let [var->definition (bindings->var->definition bindings)]
     `(do
        (patch-vars! ~(vec (keys var->definition)))

@@ -1790,8 +1790,8 @@
       (testing "archiving document publishes archive event"
         (mt/with-model-cleanup [:model/Document]
           (let [events (atom [])]
-            (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
-                                                                (swap! events conj {:topic topic :event event}))]
+            (with-redefs [events/publish-event! (fn [topic event]
+                                                  (swap! events conj {:topic topic :event event}))]
               (mt/user-http-request :crowberto
                                     :put 200 (format "document/%s" doc-id)
                                     {:archived true})
@@ -1800,8 +1800,8 @@
       (testing "unarchiving document publishes update event"
         (mt/with-model-cleanup [:model/Document]
           (let [events (atom [])]
-            (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
-                                                                (swap! events conj {:topic topic :event event}))]
+            (with-redefs [events/publish-event! (fn [topic event]
+                                                  (swap! events conj {:topic topic :event event}))]
               (mt/user-http-request :crowberto
                                     :put 200 (format "document/%s" doc-id)
                                     {:archived false})
@@ -2001,8 +2001,8 @@
                                                  :document (documents.test-util/text->prose-mirror-ast "Event test")
                                                  :archived true}]
       (let [events (atom [])]
-        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
-                                                            (swap! events conj {:topic topic :event event}))]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (swap! events conj {:topic topic :event event}))]
           (mt/user-http-request :crowberto :delete 204 (format "document/%s" doc-id))
           ;; Should have published document-delete event
           (is (some #(= :event/document-delete (:topic %)) @events))

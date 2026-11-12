@@ -410,7 +410,6 @@ describe(
                 H.visitQuestion(ORDERS_QUESTION_ID);
                 H.questionInfoButton().click();
                 H.sidesheet().within(() => {
-                  cy.findByRole("tab", { name: "History" }).click();
                   cy.findByText(/added a description/i).should("be.visible");
                   cy.findByTestId("question-revert-button").should("not.exist");
                 });

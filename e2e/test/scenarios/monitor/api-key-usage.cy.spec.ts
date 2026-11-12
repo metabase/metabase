@@ -85,7 +85,7 @@ describe("scenarios > monitor > api key usage", { viewportWidth: 1600 }, () => {
     H.main().findByText(SEEDED_KEY_NAME).should("be.visible");
 
     cy.log("The Events tab shows the seeded call, attributed to its creator");
-    H.main().findByRole("link", { name: "Events" }).click();
+    H.main().findByRole("tab", { name: "Events" }).click();
     eventsTable().within(() => {
       cy.findByText("Created by").should("be.visible");
       cy.findByText(SEEDED_KEY_NAME).should("be.visible");
