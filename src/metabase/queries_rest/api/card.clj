@@ -5,6 +5,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.collections.governing-collection :as governing-collection]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.data-apps.core :as data-apps]
@@ -716,13 +717,8 @@
           (reverse (range starting-position (+ (count sorted-cards) starting-position)))
           (reverse sorted-cards)))))
 
-(defn- write-check-collection-or-root [collection-id-or-nil]
-  (if collection-id-or-nil
-    (api/write-check :model/Collection collection-id-or-nil)
-    (api/write-check collection/root-collection)))
-
 (defn- move-cards-to-collection! [new-collection-id-or-nil card-ids]
-  (write-check-collection-or-root new-collection-id-or-nil)
+  (governing-collection/check-write-governing-collection nil new-collection-id-or-nil)
   ;; for each affected card...
   (when (seq card-ids)
     (let [cards  (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil) ; poisioned NULLs = ick
@@ -733,7 +729,7 @@
         (api/write-check card))
       ;; ...and check that we have write permissions for the old collections, root included
       (doseq [old-collection-id (set (map :collection_id cards))]
-        (write-check-collection-or-root old-collection-id))
+        (governing-collection/check-write-governing-collection nil old-collection-id))
       ;; Ensure all of the card updates occur in a transaction. Read committed (the default) really isn't what we want
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
       ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll

@@ -201,10 +201,8 @@
              (mi/can-read? :model/Card (u/the-id %))
              (can-read-attachments? %)) cards)
    ;; nil is root, except for a dashboard subscription, which the before-insert hook files with its dashboard
-   (cond
-     (some? collection-id) (mi/can-write? :model/Collection collection-id)
-     (some? dashboard-id)  true
-     :else                 (mi/can-write? collection/root-collection))
+   (or (and (nil? collection-id) (some? dashboard-id))
+       (governing-collection/can-write-governing-collection? nil collection-id))
    ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
    (or (nil? dashboard-id) (mi/can-read? :model/Dashboard dashboard-id))))
 

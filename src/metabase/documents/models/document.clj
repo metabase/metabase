@@ -160,14 +160,10 @@
    when moving a document. Uses the same permission pattern as check-allowed-to-change-collection.
    Throws 403 exception if permissions are insufficient."
   [old-collection-id new-collection-id]
-  (if old-collection-id
-    (api/write-check :model/Collection old-collection-id)
-    (api/write-check collection/root-collection))
-  (if new-collection-id
-    (do
-      (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
-      (api/write-check :model/Collection new-collection-id))
-    (api/write-check collection/root-collection)))
+  (governing-collection/check-write-governing-collection nil old-collection-id)
+  (when new-collection-id
+    (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id)))
+  (governing-collection/check-write-governing-collection nil new-collection-id))
 
 ;;; ------------------------------------------------ Write orchestration -------------------------------------------
 
