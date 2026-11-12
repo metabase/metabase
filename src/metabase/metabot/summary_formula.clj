@@ -21,12 +21,8 @@
   "Limit the length of a request's natural-language prompt, in characters."
   500)
 
-(def ^:private max-columns
-  "The most columns a request can list."
-  200)
-
-(def ^:private max-metrics
-  "The most metrics a request can list."
+(def ^:private max-seq-items
+  "Limit the number of items in each request list."
   200)
 
 (def ^:private max-string-input-chars
@@ -56,12 +52,14 @@
   [:map {:closed true}
    [:mode        [:enum "aggregation" "expression"]]
    [:prompt      [:and ms/NonBlankString [:string {:max max-prompt-chars}]]]
-   [:columns     [:sequential {:max max-columns}
+   [:columns     [:sequential {:max max-seq-items}
                   [:map {:closed true}
                    [:name ::capped-non-blank-string]
                    [:type {:optional true} [:maybe ::column-type]]]]]
    [:metrics     {:optional true}
-    [:maybe [:sequential {:max max-metrics} ::capped-non-blank-string]]]
+    [:maybe [:sequential {:max max-seq-items} ::capped-non-blank-string]]]
+   [:measures    {:optional true}
+    [:maybe [:sequential {:max max-seq-items} ::capped-non-blank-string]]]
    [:table_name  {:optional true} [:maybe ::capped-non-blank-string]]
    [:database_id ms/PositiveInt]])
 
@@ -156,11 +154,12 @@
         items))
 
 (defn- remove-tagged-inputs
-  "Drop the columns and metrics whose names contain a block tag from `request`."
+  "Drop the columns, metrics and measures whose names contain a block tag from `request`."
   [request]
   (-> request
       (update :columns #(remove-tagged :name %))
-      (update :metrics #(remove-tagged identity %))))
+      (update :metrics #(remove-tagged identity %))
+      (update :measures #(remove-tagged identity %))))
 
 (defn- format-column
   [{column-name :name column-type :type}]
@@ -168,11 +167,13 @@
                              (str " (" (llm-shape/escape-xml-content column-type) ")"))))
 
 (defn- user-message
-  [{:keys [prompt columns metrics table_name]}]
+  [{:keys [prompt columns metrics measures table_name]}]
+  ;; metrics and measures are both just named aggregations to the LLM, so they're
+  ;; listed together under "metrics".
   (->> [(format-xml "table-name" (when-not (str/blank? table_name)
                                    [(llm-shape/escape-xml-content table_name)]))
         (format-xml "columns" (map format-column columns))
-        (format-xml "metrics" (map #(str "[" % "]") metrics))
+        (format-xml "metrics" (map #(str "[" % "]") (concat metrics measures)))
         (format-xml "user-request" [(llm-shape/escape-xml-content prompt)])]
        (remove nil?)
        (str/join "\n")))
@@ -200,8 +201,8 @@
             (u/truncate max-name-chars))))
 
 (defn- check-inputs!
-  "Throw a 400 unless `request` has the columns and metrics its mode needs."
-  [{:keys [mode columns metrics]}]
+  "Throw a 400 unless `request` has the columns, metrics and measures its mode needs."
+  [{:keys [mode columns metrics measures]}]
   (let [invalid! (fn [field message]
                    (throw (ex-info message {:status-code 400 :errors {field message}})))]
     (case mode
@@ -209,10 +210,13 @@
                       (seq metrics)
                       (invalid! :metrics (tru "Metrics can only be used in aggregation mode."))
 
+                      (seq measures)
+                      (invalid! :measures (tru "Measures can only be used in aggregation mode."))
+
                       (empty? columns)
                       (invalid! :columns (tru "Provide at least one column.")))
-      "aggregation" (when-not (or (seq columns) (seq metrics))
-                      (invalid! :columns (tru "Provide at least one column or metric."))))))
+      "aggregation" (when-not (or (seq columns) (seq metrics) (seq measures))
+                      (invalid! :columns (tru "Provide at least one column, metric or measure."))))))
 
 (defn- unavailable-error
   "Return an HTTP exception for an unavailable LLM call with `reason`."
@@ -277,14 +281,16 @@
 (mu/defn suggest-formula :- ::response-schema
   "Draft a custom expression for `prompt`, a natural-language phrase typed into a summary well. `mode` is
   `\"aggregation\"` for Values or `\"expression\"` for the custom columns Rows and Columns group by. `columns` are maps
-  of `:name` (the column's name in expression syntax, without brackets) and an optional `:type`. `database_id` is the
-  database of the query being summarized, which the current user must be able to query.
+  of `:name` and an optional `:type`, a short hint like `number` made of letters, digits, spaces and `_./-`. Column,
+  metric and measure names are the names the expression editor resolves, without brackets, like `User → Name`.
+  `database_id` is the database of the query being summarized, which the current user must be able to query.
 
-  Returns `{:expression <source> :name <name>}`. Throws an HTTP error with a plain-text message when
-  the request can't be served, including when nothing in the columns or metrics fits or the LLM call fails. The
-  managed AI lock's error propagates as it is. Metrics are aggregations, so expression mode rejects them and needs at
-  least one column. The prompt, table name and column types are XML-escaped, and a column or metric whose name
-  contains a prompt block tag is left out with a warning, before checking that enough inputs are left."
+  Returns `{:expression <source> :name <name>}`. Throws an HTTP error with a plain-text message when the request can't
+  be served, including when nothing in the columns, metrics or measures fits or the LLM call fails. The managed AI
+  lock's error propagates as it is. Metrics and measures are aggregations, so expression mode rejects them
+  and needs at least one column. The prompt, table name and column types are XML-escaped, and a column, metric or
+  measure whose name contains a prompt block tag is left out with a warning, before checking that enough inputs are
+  left."
   [request :- ::request-schema]
   ;; Drop tagged inputs before checking that enough are left.
   (let [{:keys [database_id prompt] :as request} (remove-tagged-inputs request)]
