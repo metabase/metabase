@@ -51,7 +51,7 @@
                                 (:auto_cruft_columns settings))]
           (remove nil?)
           (every? valid-regex-patterns?)))
-   ;; Every reader trims it, so a number or boolean from YAML would break them.
+   ;; A schema name is a string; a number or boolean from YAML is not one.
    (fn workspace-schema-is-a-string? [settings]
      ((some-fn nil? string?) (:database-workspace-schema settings)))))
 

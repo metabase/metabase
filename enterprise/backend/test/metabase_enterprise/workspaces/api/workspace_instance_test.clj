@@ -33,7 +33,7 @@
              (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))))))
 
 (deftest current-with-workspace-test
-  (testing "GET /ee/workspace-instance/current returns {:data {:databases {<id> <schema>}}} from the settings"
+  (testing "GET /ee/workspace-instance/current returns {:data {:databases [{:database_id :schema}]}} from the settings"
     (ws.tu/with-workspace-db! (mt/id) "ws_alice"
       (fn []
         (is (= {:data {:databases [{:database_id (mt/id) :schema "ws_alice"}]}}
@@ -85,7 +85,7 @@
 (deftest post-current-refused-on-a-parent-test
   (testing "POST /ee/workspace-instance/current returns 400 on an instance with workspaces of its own"
     (mt/with-temp [:model/Workspace _ {:name "parent-ws"}]
-      (is (re-find #"workspaces of its own"
+      (is (re-find #"manages workspaces"
                    (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
                                          {:databases []}))))))
 

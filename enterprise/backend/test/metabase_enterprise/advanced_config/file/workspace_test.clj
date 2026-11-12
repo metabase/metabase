@@ -7,9 +7,12 @@
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.driver.settings :as driver.settings]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.encryption :as encryption]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2])
   (:import
@@ -356,3 +359,69 @@
                                                 :details  (:details (mt/db))
                                                 :settings {:database-workspace-schema 5}}]}})))
           (is (nil? (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema]))))))))
+
+(deftest first-boot-after-upgrade-keeps-remap-rows-of-unchanged-schema-test
+  (testing "the first boot after an upgrade, whose :workspace section names the schema the stored instance-workspace
+            held, keeps the remap rows"
+    (mt/with-premium-features #{:config-text-file :workspaces}
+      (mt/with-temp [:model/Database {db-id :id} {:name "ws-upgrade-db" :engine :postgres}]
+        (let [json (str "{\"name\":\"old\",\"databases\":{\"" db-id
+                        "\":{\"input_schemas\":[\"public\"],\"output\":{\"schema\":\"ws_old\"}}}}")
+              row  {:database_id db-id :from_db "" :from_schema "public" :from_table_name "t"
+                    :to_db "" :to_schema "ws_old" :to_table_name "public__t"}
+              config {:version 1
+                      :config  {:workspace {:name      "old"
+                                            :databases {:ws-upgrade-db {:input_schemas ["public"]
+                                                                        :output        {:schema "ws_old"}}}}}}
+              boot!  #(with-redefs-fn {#'advanced-config.file/config-from-disk (constantly config)}
+                        advanced-config.file/boot-initialize!)]
+          (try
+            (t2/delete! :setting :key "workspaces-enabled")
+            (t2/insert! :setting {:key            "instance-workspace"
+                                  :value          json
+                                  :value_with_aad (encryption/maybe-encrypt
+                                                   json {:aad (mdb.setting/setting-aad "instance-workspace")})})
+            (setting/restore-cache!)
+            (t2/insert! :model/TableRemapping row)
+            (boot!)
+            (is (true? (ws/workspace-mode?)))
+            (is (= {:schema "ws_old"} (ws/db-workspace-namespace db-id)))
+            (is (= ["ws_old"] (t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id)))
+            (testing "control: a later boot of the same config keeps a row"
+              (when-not (t2/exists? :model/TableRemapping :database_id db-id)
+                (t2/insert! :model/TableRemapping row))
+              (boot!)
+              (is (= ["ws_old"] (t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id))))
+            (finally
+              (t2/delete! :setting :key "instance-workspace")
+              (setting/restore-cache!)
+              (t2/delete! :model/TableRemapping :database_id db-id))))))))
+
+(deftest config-with-conflicting-schemas-is-refused-test
+  (testing "a config whose databases[].settings and :workspace section name different schemas for one database is
+            refused before anything is written, so no boot deletes the remap rows"
+    (binding [driver.settings/*allow-testing-h2-connections* true]
+      (mt/with-premium-features #{:config-text-file :workspaces}
+        (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+          (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine   :h2
+                                                                   :details  (:details (mt/db))
+                                                                   :settings {:database-workspace-schema "ws_l"}}]
+            (let [config (fn [settings-schema]
+                           {:version 1
+                            :config  {:databases [{:name     db-name
+                                                   :engine   "h2"
+                                                   :details  (:details (mt/db))
+                                                   :settings {:database-workspace-schema settings-schema}}]
+                                      :workspace {:name      "W"
+                                                  :databases {(keyword db-name) {:input_schemas ["PUBLIC"]
+                                                                                 :output        {:schema "ws_l"}}}}}})]
+              (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "PUBLIC"
+                                                 :from_table_name "VENUES"
+                                                 :to_db "" :to_schema "ws_l" :to_table_name "PUBLIC__VENUES"})
+              (is (thrown-with-msg? ExceptionInfo #"two workspace schemas"
+                                    (advanced-config.file/initialize! (config "ws_s"))))
+              (is (= ["ws_l"] (t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id)))
+              (is (= "ws_l" (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema])))
+              (testing "control: a config whose two forms agree loads and keeps the row"
+                (is (= :ok (advanced-config.file/initialize! (config " ws_l "))))
+                (is (= ["ws_l"] (t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id)))))))))))

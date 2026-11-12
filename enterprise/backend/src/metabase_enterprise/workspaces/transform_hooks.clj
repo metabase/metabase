@@ -4,7 +4,8 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,6 +23,15 @@
   ;; The to-spec arrives denormalized (`""` sentinels already converted to nil),
   ;; so we can `assoc` directly without a per-call shim.
   (assoc target :db to-db :schema to-schema :name to-name))
+
+(defn- check-workspace-schema!
+  "On a workspace instance, throws a 400 when database `db-id` has no `database-workspace-schema`, so that no
+   transform writes to, or is checked against, a production table: fail closed."
+  [db-id]
+  (when (and (ws/workspace-mode?) (nil? (ws/db-workspace-namespace db-id)))
+    (throw (ex-info (tru "Database {0} has no workspace schema (`database-workspace-schema`), and this instance is a workspace, so its transforms have no safe target."
+                         db-id)
+                    {:status-code 400 :database-id db-id}))))
 
 (defenterprise resolve-transform-target
   "Enterprise impl of the transform-target rewrite hook.
@@ -43,18 +53,15 @@
    copy via the QP middleware (see `metabase-enterprise.workspaces.query-processor.middleware`).
 
    On a non-workspace instance the canonical target passes through unchanged. On a
-   workspace instance, a database with no `database-workspace-schema` refuses the
-   transform (400) rather than writing to production: fail closed.
+   workspace instance, throws a 400 when the database has no `database-workspace-schema`,
+   so that no transform writes to a production table.
 
    Deliberately ungated on premium features: a token expiry shouldn't silently cause
    workspace transforms to overwrite production tables. If a `WorkspaceDatabase` is
    provisioned, the rewrite must apply."
   :feature :none
   [db-id target]
-  (when (and (ws/workspace-mode?) (nil? (ws/db-workspace-namespace db-id)))
-    (throw (ex-info (str "This is a workspace instance and database " db-id " has no workspace schema;"
-                         " refusing to write the transform's output to production.")
-                    {:status-code 400 :database-id db-id})))
+  (check-workspace-schema! db-id)
   (if (some? (ws/db-workspace-namespace db-id))
     (retarget target (ws.table-remapping/add-transform-target-mapping! db-id target))
     target))
@@ -63,9 +70,12 @@
   "Enterprise impl of the read-only transform-target hook: the target
    [[resolve-transform-target]] would return, computed via
    [[ws.table-remapping/transform-target-remapping]] so no `TableRemapping` is recorded.
+   Throws the same 400 as [[resolve-transform-target]] on a workspace instance when the
+   database has no `database-workspace-schema`, so that no check reads a production table.
    Ungated on premium features for the same reason as [[resolve-transform-target]]."
   :feature :none
   [db-id target]
+  (check-workspace-schema! db-id)
   (if (some? (ws/db-workspace-namespace db-id))
     (retarget target (ws.table-remapping/transform-target-remapping db-id target))
     target))

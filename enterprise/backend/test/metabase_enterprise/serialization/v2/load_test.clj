@@ -11,6 +11,8 @@
    [metabase-enterprise.serialization.v2.extract :as serdes.extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.collections.models.collection :as collection]
@@ -3356,3 +3358,42 @@
             (is (=? {:active true}
                     (t2/select-one [:model/TransformJob :active] :entity_id (:entity_id extracted))))
             (t2/delete! :model/TransformJob :entity_id (:entity_id extracted))))))))
+
+(deftest import-of-non-string-workspace-schema-keeps-workspace-instance-api-working-test
+  (testing "after an import that carries a non-string database-workspace-schema, GET /api/ee/workspace-instance/current
+            still answers in workspace mode"
+    (mt/with-premium-features #{:workspaces :serialization}
+      (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :settings {:database-workspace-schema "ws_src"}}]
+        (try
+          (let [extracted      (assoc-in (ts/extract-one "Database" db-id) [:settings :database-workspace-schema] 42)
+                current-status #(:status (mt/user-http-request-full-response
+                                          :crowberto :get "ee/workspace-instance/current"))]
+            (ws.settings/workspaces-enabled! true)
+            (testing "control: before the import"
+              (is (= 200 (current-status))))
+            (serdes.load/load-metabase! (ts/ingestion-in-memory [extracted]))
+            (is (= 200 (current-status)))
+            (is (= "ws_src" (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema]))))
+          (finally
+            (ws/clear-instance-workspace!)))))))
+
+(deftest import-changing-workspace-schema-leaves-no-remap-row-to-another-schema-test
+  (testing "an import does not change a database's database-workspace-schema, so no remap row points at another schema"
+    (mt/with-premium-features #{:workspaces :serialization}
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                  :settings {:database-workspace-schema "ws_src"
+                                                             :database-enable-actions   true}}]
+        (try
+          (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "public" :from_table_name "t"
+                                             :to_db "" :to_schema "ws_src" :to_table_name "public__t"})
+          (testing "an export leaves the workspace schema out, and keeps the other settings"
+            (is (= {:database-enable-actions true} (:settings (ts/extract-one "Database" db-id)))))
+          (serdes.load/load-metabase!
+           (ts/ingestion-in-memory [(assoc-in (ts/extract-one "Database" db-id)
+                                              [:settings :database-workspace-schema] "ws_changed")]))
+          (let [settings (t2/select-one-fn :settings :model/Database :id db-id)]
+            (is (= {:database-workspace-schema "ws_src" :database-enable-actions true} settings))
+            (is (every? #{(:database-workspace-schema settings)}
+                        (t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id))))
+          (finally
+            (t2/delete! :model/TableRemapping :database_id db-id)))))))

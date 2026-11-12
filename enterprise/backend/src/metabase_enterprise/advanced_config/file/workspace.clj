@@ -81,6 +81,32 @@
       (throw (ex-info (str "Workspace config references unknown database: " (pr-str db-name))
                       {:database-name db-name}))))
 
+(defn- workspace-schema
+  "The schema the `workspace` section names for a database: `:output`'s `:schema`, or its `:db` on engines without
+  schemas (MySQL), where the parent puts the namespace there."
+  [{:keys [output]}]
+  (or (:schema output) (:db output)))
+
+(defn check-schemas-agree!
+  "Throw when, for one database, the `databases` section's `database-workspace-schema` and the `workspace` section name
+  different schemas. Each boot would write both in turn, and each write of a different schema deletes the database's
+  remap rows. `config` is the parsed `:config` map."
+  [config]
+  (let [section-schemas (into {}
+                              (map (fn [[db-name database]]
+                                     [(clojure.core/name db-name) (workspace-schema database)]))
+                              (:databases (ordered->plain (:workspace config))))]
+    (doseq [{db-name :name settings :settings} (:databases config)
+            :let [settings-schema (:database-workspace-schema settings)
+                  section-schema  (get section-schemas db-name)]
+            :when (and (string? settings-schema)
+                       (string? section-schema)
+                       (not= (str/trim settings-schema) (str/trim section-schema)))]
+      (throw (ex-info (format (str "Database %s has two workspace schemas in config.yml: %s in its settings, %s in"
+                                   " the workspace section.")
+                              (pr-str db-name) (pr-str settings-schema) (pr-str section-schema))
+                      {:database-name db-name})))))
+
 (defn apply-workspace-section!
   "Boot-time materialization of the parsed `:workspace` section.
 
@@ -100,9 +126,9 @@
   [section-config]
   (let [{:keys [name databases]} (ordered->plain section-config)
         schemas (into {}
-                      (map (fn [[db-name-kw {:keys [output]}]]
+                      (map (fn [[db-name-kw database]]
                              [(:id (resolve-db (clojure.core/name db-name-kw)))
-                              (or (:schema output) (:db output))]))
+                              (workspace-schema database)]))
                       databases)]
     (ws/set-instance-workspace! schemas)
     (log/infof "Loaded workspace %s from config.yml with %d database(s)"

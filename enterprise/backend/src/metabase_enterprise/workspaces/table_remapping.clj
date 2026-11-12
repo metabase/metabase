@@ -570,7 +570,8 @@
   "Idempotently ensure a remapping row exists, via the active store.
 
    Idempotent on the unique key `(database_id, from_db, from_schema, from_table_name)`:
-   a duplicate is a no-op (the existing row is left untouched). Concurrent-insert races
+   a duplicate is a no-op, and a row from `from-spec` that points elsewhere is updated to
+   `to-spec`, so a run repairs a row a schema change left behind. Concurrent-insert races
    are handled portably by [[metabase.app-db.core/update-or-insert!]]. Returns truthy when
    the remapping is in place after the call.
 

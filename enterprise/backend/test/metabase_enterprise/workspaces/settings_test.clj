@@ -1,12 +1,18 @@
 (ns metabase-enterprise.workspaces.settings-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.permissions.core :as perms]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.interface :as transforms.i]
+   [metabase.util.encryption :as encryption]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -39,7 +45,7 @@
 (deftest workspaces-enabled-refused-on-a-parent-test
   (testing "an instance with workspaces of its own can't turn workspaces-enabled on"
     (mt/with-temp [:model/Workspace _ {:name "parent-ws"}]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"workspaces of its own"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"manages workspaces"
                             (ws.settings/workspaces-enabled! true)))
       (is (false? (ws/workspace-mode?))))))
 
@@ -131,19 +137,38 @@
             (is (nil? (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema])))))))))
 
 (deftest put-setting-workspaces-enabled-refused-under-env-var-test
-  (testing "with MB_WORKSPACES_ENABLED set, PUT /api/setting/workspaces-enabled refuses a different value, like /current"
+  (testing "with MB_WORKSPACES_ENABLED set, PUT /api/setting/workspaces-enabled refuses a different value, like
+            /current"
     (ws.settings/workspaces-enabled! true)
     (t2/insert! :model/TableRemapping {:database_id (mt/id) :from_db "" :from_schema "PUBLIC" :from_table_name "VENUES"
                                        :to_db "" :to_schema "ws" :to_table_name "PUBLIC__VENUES"})
     (mt/with-temp-env-var-value! [mb-workspaces-enabled "true"]
-      (doseq [value [false nil]]
+      (doseq [value [false "FALSE"]]
         (testing (pr-str value)
-          (is (= "workspaces-enabled is set to true by the MB_WORKSPACES_ENABLED env var and can't be changed at runtime."
+          (is (= (str "workspaces-enabled is set to true by the MB_WORKSPACES_ENABLED env var and can't be changed at"
+                      " runtime.")
                  (mt/user-http-request :crowberto :put 400 "setting/workspaces-enabled" {:value value})))
           (testing "and the remap rows survive"
             (is (= 1 (t2/count :model/TableRemapping))))))
-      (testing "writing the env var's own value is allowed"
-        (mt/user-http-request :crowberto :put 204 "setting/workspaces-enabled" {:value true})))))
+      (testing "writing the env var's own value is allowed, in any case"
+        (mt/user-http-request :crowberto :put 204 "setting/workspaces-enabled" {:value true})
+        (mt/user-http-request :crowberto :put 204 "setting/workspaces-enabled" {:value "TRUE"}))
+      (testing "resetting the stored value (nil) changes nothing the env var doesn't hide, so it's allowed"
+        (mt/user-http-request :crowberto :put 204 "setting/workspaces-enabled" {:value nil})
+        (is (true? (ws/workspace-mode?)))
+        (testing "and the remap rows survive"
+          (is (= 1 (t2/count :model/TableRemapping))))))))
+
+(deftest config-file-conflicting-with-workspaces-enabled-env-var-stops-boot-test
+  (testing "a config.yml settings value that conflicts with MB_WORKSPACES_ENABLED throws, so boot stops on purpose"
+    (mt/with-temp-env-var-value! [mb-workspaces-enabled "true"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"set to true by the MB_WORKSPACES_ENABLED env var"
+                            (advanced-config.file/initialize! {:version 1
+                                                               :config  {:settings {:workspaces-enabled false}}})))
+      (is (true? (ws/workspace-mode?)))
+      (testing "control: a config.yml value that matches the env var loads"
+        (is (= :ok (advanced-config.file/initialize! {:version 1
+                                                      :config  {:settings {:workspaces-enabled true}}})))))))
 
 (deftest put-database-workspace-schema-superuser-only-test
   (testing "a non-superuser with manage-database permission can't set or clear database-workspace-schema"
@@ -161,7 +186,105 @@
                      (mt/user-http-request :rasta :put 403 (str "database/" db-id)
                                            {:settings {:database-workspace-schema value}})))
               (is (= "ws" (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema])))))
+          (testing "sending the current value is refused too, so the status doesn't confirm a guess"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 (str "database/" db-id)
+                                         {:settings {:database-workspace-schema "ws"}}))))
+          (testing "a snake_case key is the same setting, so it's refused too and stores nothing"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 (str "database/" db-id)
+                                         {:settings {:database_workspace_schema "evil"}})))
+            (is (= {:database-workspace-schema "ws"} (t2/select-one-fn :settings :model/Database :id db-id))))
+          (testing "another database-local setting is still the manager's to change"
+            (mt/user-http-request :rasta :put 200 (str "database/" db-id)
+                                  {:settings {:database-enable-actions true}})
+            (is (true? (get-in (t2/select-one :model/Database :id db-id) [:settings :database-enable-actions]))))
           (testing "a superuser can"
             (mt/user-http-request :crowberto :put 200 (str "database/" db-id)
                                   {:settings {:database-workspace-schema "elsewhere"}})
-            (is (= "elsewhere" (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema])))))))))
+            (is (= "elsewhere"
+                   (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema])))
+            (testing "and a snake_case key is stored as the setting, after the type check"
+              (is (= "Setting database-workspace-schema must be a string."
+                     (mt/user-http-request :crowberto :put 400 (str "database/" db-id)
+                                           {:settings {:database_workspace_schema 5}})))
+              (mt/user-http-request :crowberto :put 200 (str "database/" db-id)
+                                    {:settings {:database_workspace_schema "snake"}})
+              (is (= "snake" (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema])))
+              (is (not (contains? (t2/select-one-fn :settings :model/Database :id db-id)
+                                  :database_workspace_schema))))))))))
+
+(defn- transform-write-target!
+  "Run a Python transform on `PUBLIC.MODE_EXIT_T` of the test database through `transforms.execute/execute!`, with
+  the executor stubbed. Returns the `[schema name]` the executor would write, or `:refused`."
+  []
+  (let [captured (atom nil)]
+    (with-redefs [transforms.i/execute! (fn [transform _opts]
+                                          (reset! captured (:target transform))
+                                          {:status :succeeded})]
+      (try
+        (transforms.execute/execute! {:id     990
+                                      :source {:type :python :body "" :source-tables []}
+                                      :target {:database (mt/id) :schema "PUBLIC" :name "MODE_EXIT_T" :type "table"}})
+        ((juxt :schema :name) @captured)
+        (catch clojure.lang.ExceptionInfo _
+          :refused)))))
+
+(defn- insert-mode-exit-remap-row! [schema]
+  (t2/insert! :model/TableRemapping {:database_id (mt/id) :from_db "" :from_schema "PUBLIC"
+                                     :from_table_name "MODE_EXIT_T"
+                                     :to_db "" :to_schema schema :to_table_name "PUBLIC__MODE_EXIT_T"}))
+
+(defn- pre-settings-instance-workspace-json
+  "The `instance-workspace` JSON that `POST /api/ee/workspace-instance/current` stored before workspace mode became
+  the `workspaces-enabled` setting."
+  [schema]
+  (str "{\"name\":\"old\",\"databases\":{\"" (mt/id)
+       "\":{\"input_schemas\":[\"PUBLIC\"],\"output\":{\"schema\":\"" schema "\"}}}}"))
+
+(deftest upgrade-from-instance-workspace-keeps-transforms-off-the-canonical-table-test
+  (testing "a sidecar upgraded from the instance-workspace setting stays a workspace, and does not write the canonical
+            table"
+    (mt/with-premium-features #{:workspaces :transforms :transforms-python}
+      (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings nil}
+        (testing "control: in workspace mode the transform writes the copy"
+          (workspaces.tu/with-workspace-db! (mt/id) "ws_old"
+            (fn []
+              (is (= ["ws_old" "PUBLIC__MODE_EXIT_T"] (transform-write-target!))))))
+        (testing "instance-workspace stored in the app DB, workspaces-enabled unset"
+          (let [json (pre-settings-instance-workspace-json "ws_old")]
+            (try
+              (t2/delete! :setting :key "workspaces-enabled")
+              (t2/insert! :setting {:key            "instance-workspace"
+                                    :value          json
+                                    :value_with_aad (encryption/maybe-encrypt
+                                                     json {:aad (mdb.setting/setting-aad "instance-workspace")})})
+              (setting/restore-cache!)
+              (insert-mode-exit-remap-row! "ws_old")
+              (ws/translate-instance-workspace-setting!)
+              (is (true? (ws/workspace-mode?)))
+              (is (= ["ws_old" "PUBLIC__MODE_EXIT_T"] (transform-write-target!)))
+              (testing "and the old setting is deleted, so no build reads it again"
+                (is (not (t2/exists? :setting :key "instance-workspace"))))
+              (finally
+                (t2/delete! :setting :key "instance-workspace")
+                (setting/restore-cache!)
+                (ws/clear-instance-workspace!)))))
+        (testing "MB_INSTANCE_WORKSPACE set, nothing stored"
+          (try
+            (t2/delete! :setting :key "workspaces-enabled")
+            (setting/restore-cache!)
+            (insert-mode-exit-remap-row! "ws_old")
+            (mt/with-temp-env-var-value! [mb-instance-workspace (pre-settings-instance-workspace-json "ws_old")]
+              (ws/translate-instance-workspace-setting!)
+              (is (= ["ws_old" "PUBLIC__MODE_EXIT_T"] (transform-write-target!))))
+            (finally
+              (ws/clear-instance-workspace!))))
+        (testing "control: a stored workspaces-enabled wins over the old setting"
+          (try
+            (ws.settings/workspaces-enabled! false)
+            (mt/with-temp-env-var-value! [mb-instance-workspace (pre-settings-instance-workspace-json "ws_old")]
+              (ws/translate-instance-workspace-setting!)
+              (is (false? (ws/workspace-mode?))))
+            (finally
+              (ws/clear-instance-workspace!))))))))

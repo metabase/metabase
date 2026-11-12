@@ -11,6 +11,7 @@
    [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase-enterprise.workspaces.query-processor.middleware :as ws.middleware]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
+   [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
@@ -18,6 +19,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.settings.core :as setting]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
@@ -236,6 +238,11 @@
         (finally
           (ws.table-remapping/clear-mappings-for-db! db-id))))))
 
+(defn- write-workspaces-enabled-as-another-node!
+  "Store `value` for `workspaces-enabled` without its setter and without changing this node's settings cache."
+  [value]
+  (t2/update! :model/Setting "workspaces-enabled" {:value value}))
+
 (deftest rows-kept-after-leaving-workspace-mode-stay-enforced-test
   (testing "a row another node recorded in workspace mode still remaps reads after workspace mode ends with the row kept"
     (mt/with-premium-features #{:workspaces}
@@ -268,9 +275,10 @@
               (testing "control: in workspace mode the row remaps reads"
                 (is (true? (ws.remapping/enabled-for-db? db-id)))
                 (is (re-find #"(?i)ws_kept" (rewritten))))
-              (mt/with-dynamic-fn-redefs [ws.db/delete-all-table-remappings! (fn [] (throw (ex-info "row delete failed" {})))]
-                (mt/user-http-request :crowberto :delete 500 "ee/workspace-instance/current"))
-              (is (not (ws/workspace-mode?)) "premise: DELETE /current cleared the workspace")
+              ;; workspace mode ends with no delete, as when a restart drops MB_WORKSPACES_ENABLED
+              (write-workspaces-enabled-as-another-node! "false")
+              (setting/restore-cache!)
+              (is (not (ws/workspace-mode?)) "premise: workspace mode ended")
               (is (t2/exists? :model/TableRemapping :database_id db-id) "premise: the row was kept")
               (is (true? (ws.remapping/enabled-for-db? db-id)))
               (is (= {:db "" :schema "ws_kept" :table "PUBLIC__VENUES"}
@@ -303,3 +311,50 @@
         (is (true? (ws.remapping/enabled-for-db? db-id)))
         (finally
           (ws.table-remapping/clear-mappings-for-db! db-id))))))
+
+(defn- insert-remapping-row!
+  "Insert a remap row of the test database as a plain HoneySQL statement, so no model hook runs."
+  [table to-schema]
+  (t2/query-one {:insert-into :table_remapping
+                 :values      [{:database_id     (mt/id)
+                                :from_db         ""
+                                :from_schema     "PUBLIC"
+                                :from_table_name table
+                                :to_db           ""
+                                :to_schema       to-schema
+                                :to_table_name   (str "PUBLIC__" table)
+                                :created_at      :%now}]}))
+
+(deftest lagging-node-pickup-of-turn-off-deletes-no-remapping-test
+  (testing "a node that picks up workspaces-enabled=false from its settings cache, maybe inside another request's
+            transaction, deletes no remap row: the node that turned it off already did"
+    (mt/with-premium-features #{:workspaces}
+      (try
+        (ws.table-remapping/clear-mappings-for-db! (mt/id))
+        (workspaces.tu/with-workspace-db!
+          (mt/id) "ws_lagging"
+          (fn []
+            (insert-remapping-row! "VENUES" "ws_lagging")
+            (write-workspaces-enabled-as-another-node! "false")
+            (is (ws/workspace-mode?) "premise: this node still has the old value cached")
+            (let [deletes (atom 0)
+                  real    (mt/original-fn #'ws.db/delete-all-table-remappings!)]
+              (mt/with-dynamic-fn-redefs [ws.db/delete-all-table-remappings! (fn [] (swap! deletes inc) (real))]
+                (try
+                  (t2/with-transaction [_]
+                    (setting/restore-cache!)
+                    (throw (ex-info "unrelated failure later in the same transaction" {})))
+                  (catch clojure.lang.ExceptionInfo _)))
+              (is (not (ws/workspace-mode?)) "premise: this node picked up the change")
+              (is (zero? @deletes)))))
+        (finally
+          (ws.table-remapping/clear-mappings-for-db! (mt/id)))))
+    (testing "control: the node that turns it off deletes the rows"
+      (mt/with-premium-features #{:workspaces}
+        (try
+          (ws.settings/workspaces-enabled! true)
+          (insert-remapping-row! "VENUES" "ws_lagging")
+          (ws.settings/workspaces-enabled! false)
+          (is (not (t2/exists? :model/TableRemapping :database_id (mt/id))))
+          (finally
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))

@@ -7,6 +7,15 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- `GET /api/ee/workspace-instance/current` returns `{"data": {"databases": [{"database_id", "schema"}]}}`, one entry for
+  each database that has a `database-workspace-schema`. It no longer returns `name`, `can_write`, or each database's
+  `input_schemas` and `output`. `POST /api/ee/workspace-instance/current` takes and returns the same
+  `{"databases": [{"database_id", "schema"}]}` shape, and refuses the old body with `400`. `POST` and
+  `DELETE /current` no longer return `400` on an instance that `config.yml` set up; `DELETE /current` returns `400`
+  while `MB_WORKSPACES_ENABLED=true`, and `POST /current` while `MB_WORKSPACES_ENABLED=false`. The
+  `instance-workspace` setting and `MB_INSTANCE_WORKSPACE` are replaced by the `workspaces-enabled` setting and each
+  database's `database-workspace-schema`; Metabase translates an old value into them at startup.
+
 - `POST /api/ee/transform-test/run`, which ran a transform test that wasn't saved, has been removed. Save the test and
   run it with `POST /api/ee/transform-test/:id/run`.
 

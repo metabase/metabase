@@ -60,9 +60,7 @@
   (* 60 1000 1000 1000))
 
 (defn invalidate-database-ids!
-  "Drop this process's [[database-ids-with-remappings]] cache. The model hooks call it after a commit; the
-  `workspaces-enabled` setting calls it when its value changes on this node, and so do the writes of a database's
-  `database-workspace-schema` in `metabase-enterprise.workspaces.core`."
+  "Drop this process's [[database-ids-with-remappings]] cache, so that the next call queries the app DB."
   []
   (swap! database-ids-cache (fn [{:keys [generation]}] {:generation (inc generation), :database-ids nil, :read-at 0})))
 

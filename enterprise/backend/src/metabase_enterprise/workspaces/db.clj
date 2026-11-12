@@ -250,23 +250,25 @@
                  :from_table_name (:table from-spec)))
 
 (mu/defn upsert-table-remapping!
-  "Insert a TableRemapping from `from-spec` to `to-spec` unless one from `from-spec` already exists. Idempotent on the
+  "Make the TableRemapping from `from-spec` point at `to-spec`: insert it, or update one that points elsewhere, such as
+  a row left from an earlier workspace schema. Leaves a row that already points at `to-spec` untouched. Keyed on the
   unique constraint `(database_id, from_db, from_schema, from_table_name)`: [[app-db/update-or-insert!]] retries the
   lookup when a concurrent insert wins the race."
   [database-id :- ::lib.schema.id/database
    from-spec   :- ::table-spec
    to-spec     :- ::table-spec]
-  (app-db/update-or-insert!
-   :model/TableRemapping
-   {:database_id     database-id
-    :from_db         (:db from-spec)
-    :from_schema     (:schema from-spec)
-    :from_table_name (:table from-spec)}
-   (fn [existing]
-     (when-not existing
-       {:to_db         (:db to-spec)
-        :to_schema     (:schema to-spec)
-        :to_table_name (:table to-spec)}))))
+  (let [to-columns {:to_db         (:db to-spec)
+                    :to_schema     (:schema to-spec)
+                    :to_table_name (:table to-spec)}]
+    (app-db/update-or-insert!
+     :model/TableRemapping
+     {:database_id     database-id
+      :from_db         (:db from-spec)
+      :from_schema     (:schema from-spec)
+      :from_table_name (:table from-spec)}
+     (fn [existing]
+       (when (not= to-columns (select-keys existing (keys to-columns)))
+         to-columns)))))
 
 (mu/defn delete-table-remapping!
   "Delete the TableRemapping of the Database with `database-id` whose source is `from-spec`. Returns the number of

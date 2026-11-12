@@ -39,10 +39,11 @@
      does a hash-map get. Hot path -- called per-table during sync, so stays O(1) per call.")
   ;; writes
   (insert-mapping!* [store db-id from-spec to-spec]
-    "Idempotently ensure a remapping exists. `from-spec` and `to-spec` are pre-normalized
-     `::table-spec` maps. Returns truthy when the remapping is in place after the call
-     (whether this call inserted it or it already existed). Handles the concurrent-insert
-     race portably -- callers don't see SQL state codes. Spec slots must be all-string;
+    "Idempotently ensure the remapping from `from-spec` points at `to-spec`, replacing one that
+     points elsewhere. `from-spec` and `to-spec` are pre-normalized `::table-spec` maps. Returns
+     truthy when the remapping is in place after the call (whether this call wrote it or it
+     already existed). Handles the concurrent-insert race portably -- callers don't see SQL
+     state codes. Spec slots must be all-string;
      use `\"\"` as the sentinel for slots a driver doesn't emit (nil slots are a contract
      violation).")
   (remove-mapping!* [store db-id from-spec]
@@ -69,12 +70,10 @@
 
   Outside workspace mode the cache can miss rows that another node inserted, for at most one minute after this node
   last filled it. Rows can exist outside workspace mode: a restart that drops `MB_WORKSPACES_ENABLED`, which is
-  never stored in the app DB; a `workspaces-enabled` change or a `DELETE /current` that turns the setting off and
-  then fails to delete the rows; and a run that records its row while `DELETE /current` runs. The same window
+  never stored in the app DB, and a run that records its row while `workspaces-enabled` is turned off. The same window
   applies while another node is in workspace mode and this one is not yet: until this node's settings cache picks up
   a runtime change, or during a rolling restart that adds or removes `MB_WORKSPACES_ENABLED`. A change of the
-  `workspaces-enabled` setting that this node sees drops the cache, and so does a change of a database's
-  `database-workspace-schema` made on this node."
+  `workspaces-enabled` setting that this node sees drops the cache."
   [db-id]
   (or (ws/workspace-mode?)
       (contains? (table-remapping/database-ids-with-remappings) db-id)))
@@ -122,11 +121,9 @@
   (get-mapping* [_ db-id from-spec]
     (get-in @!mappings [db-id from-spec]))
   (insert-mapping!* [_ db-id from-spec to-spec]
-    ;; Idempotent: if `from-spec` already maps to anything, leave it alone (matches
-    ;; `app-db/update-or-insert!`'s "no update" semantics). Either way return the pair
-    ;; that's now in place so the caller sees a truthy result.
-    (when-not (contains? (get @!mappings db-id {}) from-spec)
-      (swap! !mappings update db-id (fnil assoc {}) from-spec to-spec))
+    ;; Like the app-DB store: `from-spec` maps to `to-spec` afterwards, whatever it mapped to
+    ;; before. Return the pair that's now in place so the caller sees a truthy result.
+    (swap! !mappings update db-id (fnil assoc {}) from-spec to-spec)
     [from-spec (get-in @!mappings [db-id from-spec])])
   (remove-mapping!* [_ db-id from-spec]
     (if (contains? (get @!mappings db-id {}) from-spec)
@@ -198,11 +195,11 @@
   (get-mapping* *remapping-store* db-id from-spec))
 
 (defn insert-mapping!
-  "Idempotently ensure a remapping exists in the active store. Specs MUST be
+  "Idempotently ensure the remapping from `from-spec` points at `to-spec` in the active store. Specs MUST be
    pre-normalized `::table-spec` maps — `\"\"` (not nil) for slots a driver doesn't
    emit. The user-facing wrappers in `table-remapping` handle that normalization.
 
-   Returns truthy when the remapping is in place after the call (insert or already-existed)."
+   Returns truthy when the remapping is in place after the call (written or already-existed)."
   [db-id from-spec to-spec]
   (insert-mapping!* *remapping-store* db-id from-spec to-spec))
 

@@ -26,7 +26,8 @@
   When workspace isolation is active for `db-id`, the EE impl rewrites the target's
   `:schema` to the workspace's output schema and records a `TableRemapping` so that
   subsequent queries against the canonical `(schema, name)` pair resolve to the
-  workspace copy via the QP middleware.
+  workspace copy via the QP middleware. It throws a 400 on a workspace instance when the
+  database has no workspace schema.
 
   OSS / no-workspace fallback: returns the target unchanged."
   metabase-enterprise.workspaces.transform-hooks

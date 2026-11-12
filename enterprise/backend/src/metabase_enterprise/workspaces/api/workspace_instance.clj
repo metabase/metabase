@@ -57,8 +57,8 @@
 
 (api.macros/defendpoint :post "/current" :- WorkspaceInstance
   "Make this instance a workspace: turn `workspaces-enabled` on and set each listed
-  database's `database-workspace-schema`, clearing it on every other database. The
-  same settings can be set through the settings API, env vars, or `config.yml`."
+  database's `database-workspace-schema`, clearing it on every other database. A database
+  whose schema changes or is cleared loses its `TableRemapping` rows."
   [_route-params
    _query-params
    body :- WorkspaceInstance]
@@ -67,10 +67,9 @@
   (present-workspace-instance (ws/instance-workspace)))
 
 (api.macros/defendpoint :delete "/current" :- :nil
-  "Turn `workspaces-enabled` off. After this returns, the instance is not a workspace
-  and `GET /current` returns `nil`. Also drops every `TableRemapping` row, since stale
-  mappings would otherwise keep rewriting queries once the instance is a workspace
-  again."
+  "Turn `workspaces-enabled` off and delete every `TableRemapping` row: reads of a remapped
+  table follow its row whether or not the instance is a workspace. After this returns,
+  `GET /current` returns `{:data nil}`. Returns 400 while `MB_WORKSPACES_ENABLED=true`."
   []
   (api/check-superuser)
   (ws/clear-instance-workspace!)

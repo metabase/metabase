@@ -10,9 +10,11 @@
 
    - **Instance-side state.** An instance is a workspace when its `workspaces-enabled`
      setting is on. Each database's database-local `database-workspace-schema` setting
-     names the schema its transforms write to. Both are ordinary settings: the settings
-     API, env vars, or `config.yml` set them (the `:workspace` section loader,
-     `metabase-enterprise.advanced-config.file.workspace`, translates the older form).
+     names the schema its transforms write to. `workspaces-enabled` is set through the
+     settings API, `MB_WORKSPACES_ENABLED` or `config.yml`; `database-workspace-schema`
+     through `PUT /api/database/:id` or `config.yml`. `POST /current` sets both. The
+     `config.yml` `:workspace` section (`metabase-enterprise.advanced-config.file.workspace`)
+     sets both from the format that came before these settings.
      Workspace-aware code (transform target rewriting, table-remapping QP middleware)
      reads them via [[workspace-mode?]] / [[db-workspace-namespace]].
 
@@ -31,17 +33,17 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.workspaces.db :as ws.db]
-   [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.settings :as ws.settings]
-   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.settings.core :as setting]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -103,9 +105,12 @@
 
 (defn- database-workspace-schema
   "The trimmed, non-blank `database-workspace-schema` database-local setting of `database`,
-   or nil. `PUT /api/database/:id` stores the value untrimmed, so every reader trims here."
+   or nil. `PUT /api/database/:id` stores the value untrimmed, so every reader trims here.
+   A serdes import stores the value with no type check, so a non-string value counts as none."
   [database]
-  (some-> (get-in database [:settings :database-workspace-schema]) str/trim not-empty))
+  (let [schema (get-in database [:settings :database-workspace-schema])]
+    (when (string? schema)
+      (not-empty (str/trim schema)))))
 
 (defn instance-workspace
   "The workspace this instance is, as `{:databases {<db-id> <schema>}}`, or nil when
@@ -121,8 +126,10 @@
 (mu/defn set-instance-workspace! :- :nil
   "Make this instance a workspace: set each database's `database-workspace-schema` from
    `schemas`, a map of database id to schema, then turn `workspaces-enabled` on. Clears
-   the schema, and the remap rows, of every database not in `schemas`. One transaction,
-   flag last, so no transform sees workspace mode with a schema missing. Throws a 400
+   the schema of every database not in `schemas`. A database whose schema changes, or is
+   cleared because it is not in `schemas`, loses its remap rows. The writes run in one
+   transaction, and the flag is written last, so that no transform sees workspace mode
+   before every listed schema is stored. Throws a 400
    for an unknown database id, on a parent, or when `MB_WORKSPACES_ENABLED=false`.
    Trims each schema, so a repeat call with `\" ws \"` matches the stored `\"ws\"`
    and keeps the remap rows."
@@ -141,10 +148,7 @@
                                               (dissoc settings :database-workspace-schema)))
         ;; Rows pointing at the old schema would keep redirecting reads there.
         (ws.db/delete-table-remappings-of-database! id))
-      (ws.settings/workspaces-enabled! true)
-      ;; A node outside workspace mode trusts its cache of the Databases with remappings; drop it once the new
-      ;; schemas and flag are visible to other readers.
-      (app-db/do-after-commit table-remapping/invalidate-database-ids!)))
+      (ws.settings/workspaces-enabled! true)))
   nil)
 
 (defn delete-stale-table-remappings!
@@ -154,8 +158,7 @@
    [[set-instance-workspace!]]: `PUT /api/database/:id` and the `config.yml` loader."
   [previous-database database]
   (when (not= (database-workspace-schema previous-database) (database-workspace-schema database))
-    (ws.db/delete-table-remappings-of-database! (:id database))
-    (app-db/do-after-commit table-remapping/invalidate-database-ids!))
+    (ws.db/delete-table-remappings-of-database! (:id database)))
   nil)
 
 (defn clear-instance-workspace!
@@ -165,9 +168,36 @@
    since that value wins over the stored one."
   []
   (ws.settings/workspaces-enabled! false)
-  ;; The setting's :on-change deletes them only when the value changes; delete them
+  ;; The setting's setter deletes them only when the value changes; delete them
   ;; here too so stale rows from an earlier run go regardless.
   (ws.db/delete-all-table-remappings!)
+  nil)
+
+(defn translate-instance-workspace-setting!
+  "Startup step for the removed `instance-workspace` setting, stored or set by
+   `MB_INSTANCE_WORKSPACE`. When it names a workspace and `workspaces-enabled` is neither
+   stored nor set by its env var, store each of its databases' schemas as
+   `database-workspace-schema`, skipping database ids that no longer exist, then turn
+   `workspaces-enabled` on. The remap rows stay: they point at the schemas the old setting
+   named, which are the ones stored. Then delete the stored value, so that only the new
+   settings say whether this instance is a workspace. Without this step an upgraded sidecar
+   leaves workspace mode, and its transforms write the production tables."
+  []
+  (when-let [{:keys [databases]} (ws.settings/instance-workspace)]
+    (when-not (or (setting/db-stored-value :workspaces-enabled)
+                  (setting/env-var-value :workspaces-enabled))
+      (log/warn (str "Translating the removed instance-workspace setting into workspaces-enabled and"
+                     " database-workspace-schema"))
+      (t2/with-transaction [_conn]
+        (doseq [[database-id {:keys [output]}] databases
+                :let  [database (ws.db/database (parse-long (name database-id)))
+                       schema   (some-> (or (:schema output) (:db output)) str/trim not-empty)]
+                :when (and database schema)]
+          (ws.db/update-database-settings! (:id database)
+                                           (assoc (:settings database) :database-workspace-schema schema)))
+        (ws.settings/workspaces-enabled! true)))
+    (when (setting/db-stored-value :instance-workspace)
+      (ws.settings/instance-workspace! nil)))
   nil)
 
 (defenterprise workspace-mode?

@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase-enterprise.workspaces.transform-hooks :as ws.transform-hooks]
@@ -30,8 +31,24 @@
                                 ws/db-workspace-namespace  (constantly nil)
                                 ws.table-remapping/add-transform-target-mapping!
                                 (fn [& _] (throw (ex-info "must not record a remap" {})))]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"refusing to write the transform's output to production"
-                            (ws.transform-hooks/resolve-transform-target 42 {:schema "public" :name "orders" :type :table}))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database 42 has no workspace schema"
+                            (ws.transform-hooks/resolve-transform-target
+                             42 {:schema "public" :name "orders" :type :table}))))))
+
+(deftest workspace-transform-target-fails-closed-test
+  (testing "on a workspace instance, the read-only target of a database with no workspace schema is refused too,
+            so no existence check reads the production table"
+    (mt/with-dynamic-fn-redefs [ws/workspace-mode?         (constantly true)
+                                ws/db-workspace-namespace (constantly nil)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database 42 has no workspace schema"
+                            (ws.transform-hooks/workspace-transform-target
+                             42 {:schema "public" :name "orders" :type :table}))))
+    (testing "control: outside workspace mode the canonical target passes through"
+      (mt/with-dynamic-fn-redefs [ws/workspace-mode?         (constantly false)
+                                  ws/db-workspace-namespace (constantly nil)]
+        (is (= {:schema "public" :name "orders" :type :table}
+               (ws.transform-hooks/workspace-transform-target
+                42 {:schema "public" :name "orders" :type :table})))))))
 
 (deftest resolve-transform-target-rewrites-schema-test
   (testing "with a provisioned WorkspaceDatabase, target's :schema and :name come from the recorded to-spec"
@@ -93,6 +110,89 @@
                     "to-side is rewritten via remapped-table-name; executor and row agree byte-for-byte"))))
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
+
+(defn- recorded-copy
+  "The `[schema table]` that the test database's remapping of `canonical` points at, or nil."
+  [canonical]
+  (t2/select-one-fn (juxt :to_schema :to_table_name) :model/TableRemapping
+                    :database_id     (mt/id)
+                    :from_schema     (:schema canonical)
+                    :from_table_name (:name canonical)))
+
+(defn- run-records!
+  "Resolve `canonical`'s write target and record its remapping, as a run does. Returns the `[schema table]` the run
+  writes."
+  [canonical]
+  ((juxt :schema :name) (ws.transform-hooks/resolve-transform-target (mt/id) canonical)))
+
+(deftest run-after-a-failed-schema-change-delete-records-its-own-copy-test
+  (testing "after a schema change whose remapping delete failed, a retry and a successful run leave the remapping on
+            the copy that run wrote"
+    (with-instance-workspace-for-db! "ws_first"
+      (fn []
+        (let [canonical   {:schema "PUBLIC" :name "VENUES" :type :table}
+              put-schema! (fn [schema]
+                            (mt/user-http-request :crowberto :put (str "database/" (mt/id))
+                                                  {:settings {:database-workspace-schema schema}}))]
+          (try
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))
+            (run-records! canonical)
+            (testing "control: a schema change whose delete succeeds"
+              (put-schema! "ws_second")
+              (let [written (run-records! canonical)]
+                (is (= ["ws_second" "PUBLIC__VENUES"] written))
+                (is (= written (recorded-copy canonical)))))
+            (mt/with-dynamic-fn-redefs [ws.db/delete-table-remappings-of-database!
+                                        (fn [_] (throw (ex-info "remapping delete failed" {})))]
+              (put-schema! "ws_third"))
+            (put-schema! "ws_third")
+            (let [written (run-records! canonical)]
+              (is (= ["ws_third" "PUBLIC__VENUES"] written) "premise: the run writes the new schema")
+              (is (= written (recorded-copy canonical))))
+            (finally
+              (ws.table-remapping/clear-mappings-for-db! (mt/id)))))))))
+
+(deftest run-recording-across-a-schema-change-leaves-the-next-run-its-own-copy-test
+  (testing "a run that records while POST /current changes the schema does not stop the next run's remapping from
+            pointing at its copy"
+    (with-instance-workspace-for-db! "ws_first"
+      (fn []
+        (let [canonical   {:schema "PUBLIC" :name "VENUES" :type :table}
+              enter!      (fn [schema]
+                            (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current"
+                                                  {:databases [{:database_id (mt/id) :schema schema}]}))
+              at-insert   (promise)
+              proceed     (promise)
+              first-call? (atom true)
+              real-upsert (mt/original-fn #'ws.db/upsert-table-remapping!)]
+          (try
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))
+            (run-records! canonical)
+            (testing "control: a schema change with no run in progress"
+              (enter! "ws_second")
+              (let [written (run-records! canonical)]
+                (is (= ["ws_second" "PUBLIC__VENUES"] written))
+                (is (= written (recorded-copy canonical)))))
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))
+            ;; only the run in the future records; POST /current inserts no remap row
+            (mt/with-dynamic-fn-redefs [ws.db/upsert-table-remapping! (fn [& args]
+                                                                        (when (compare-and-set! first-call? true false)
+                                                                          (deliver at-insert true)
+                                                                          @proceed)
+                                                                        (apply real-upsert args))]
+              (let [run (future (run-records! canonical))]
+                (is (true? (deref at-insert 30000 ::timeout))
+                    "premise: the run read the old schema and reached its insert")
+                (try
+                  (enter! "ws_third")
+                  (finally
+                    (deliver proceed true)))
+                (is (not= ::timeout (deref run 30000 ::timeout)))))
+            (let [written (run-records! canonical)]
+              (is (= ["ws_third" "PUBLIC__VENUES"] written) "premise: the next run writes the new schema")
+              (is (= written (recorded-copy canonical))))
+            (finally
+              (ws.table-remapping/clear-mappings-for-db! (mt/id)))))))))
 
 (defn- with-stubbed-execute-multimethod!
   "Replace `transforms.i/execute!` with a stub that captures the transform map it receives.
