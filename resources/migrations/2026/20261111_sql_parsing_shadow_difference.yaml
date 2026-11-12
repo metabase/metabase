@@ -104,11 +104,12 @@ databaseChangeLog:
   - changeSet:
       id: ryscr2
       author: rileythomp
-      comment: Index sql_parsing_shadow_difference.input_hash
+      comment: Add a unique index on sql_parsing_shadow_difference.input_hash
       changes:
         - createIndex:
             tableName: sql_parsing_shadow_difference
             indexName: idx_sql_parsing_shadow_difference_input_hash
+            unique: true
             columns:
               - column:
                   name: input_hash

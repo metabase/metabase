@@ -9,10 +9,14 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.db :as sql-tools.db]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -44,11 +48,29 @@
   [s n]
   (some-> s (u/truncate n)))
 
+(defn- canonical
+  "`x` with every map and set in a fixed order, so that equal values print the same."
+  [x]
+  (walk/postwalk (fn [form]
+                   (cond
+                     (map? form) (into (sorted-map-by #(compare (pr-str %1) (pr-str %2))) form)
+                     (set? form) (into (sorted-set-by #(compare (pr-str %1) (pr-str %2))) form)
+                     :else       form))
+                 x))
+
 (defn- input-hash
-  "SHA-256 of the input. The arguments go in by their value hash, since equal maps can print in different orders."
+  "SHA-256 of the input, with the arguments in [[canonical]] order."
   [{:keys [method dialect primary-backend shadow-backend sql args]}]
   (codecs/bytes->hex
-   (buddy-hash/sha256 (pr-str [method dialect primary-backend shadow-backend sql (hash args)]))))
+   (buddy-hash/sha256 (pr-str [method dialect primary-backend shadow-backend sql (canonical args)]))))
+
+(defn- unique-violation?
+  "True when `e`, or an exception that caused it, is a unique constraint violation (SQL state class 23)."
+  [^Throwable e]
+  (some (fn [^Throwable t]
+          (some-> (when (instance? SQLException t) (.getSQLState ^SQLException t))
+                  (str/starts-with? "23")))
+        (take-while some? (iterate #(.getCause ^Throwable %) e))))
 
 (defn record!
   "Keep `difference`, a map that [[metabase.sql-parsing.core/set-shadow-difference-recorder!]] describes."
@@ -58,17 +80,23 @@
                     :primary_result (->json primary)
                     :shadow_result  (->json shadow)}]
     (when (zero? (sql-tools.db/shadow-difference-seen-again! hash-value changes))
-      (let [id (sql-tools.db/insert-shadow-difference!
-                (merge changes
-                       {:input_hash      hash-value
-                        :method          (name method)
-                        :dialect         (some-> dialect name)
-                        :primary_backend (name primary-backend)
-                        :shadow_backend  (name shadow-backend)
-                        :sql             (truncate sql max-sql-length)
-                        :arguments       (when (seq args)
-                                           (->json args))}))]
-        (when (< max-rows id)
+      (let [row {:input_hash      hash-value
+                 :method          (name method)
+                 :dialect         (some-> dialect name)
+                 :primary_backend (name primary-backend)
+                 :shadow_backend  (name shadow-backend)
+                 :sql             (truncate sql max-sql-length)
+                 :arguments       (when (seq args)
+                                    (->json args))}
+            id  (try
+                  (sql-tools.db/insert-shadow-difference! (merge changes row))
+                  (catch Exception e
+                    ;; another thread or instance inserted the same input first
+                    (when-not (unique-violation? e)
+                      (throw e))
+                    (sql-tools.db/shadow-difference-seen-again! hash-value changes)
+                    nil))]
+        (when (and id (< max-rows id))
           (sql-tools.db/delete-shadow-differences-up-to! (- id max-rows)))))))
 
 (sql-parsing/set-shadow-difference-recorder! #'record!)
