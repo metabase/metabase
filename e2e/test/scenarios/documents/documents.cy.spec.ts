@@ -69,8 +69,6 @@ describe("documents", () => {
     H.sidesheet().findByLabelText("Close").click();
     H.sidesheet().should("not.exist");
 
-    // The reload reopens the navbar, which hides the breadcrumbs
-    H.closeNavigationSidebar();
     H.appBar()
       .findByRole("link", { name: /First collection/ })
       .click();
