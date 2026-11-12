@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
 import {
   createMockCollection,
@@ -10,7 +10,7 @@ import {
 
 import { createChildCollection, createLibraryCollection, setup } from "./setup";
 
-describe("NavbarLibrarySection", () => {
+describe("NavbarOfficialContentSection", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     fetchMock.removeRoutes();
@@ -57,15 +57,49 @@ describe("NavbarLibrarySection", () => {
       expect(screen.getByLabelText("metric icon")).toBeInTheDocument();
     });
 
-    it("should not render when no library collection exists", () => {
+    it("should not render without library or official collections", () => {
       const regularCollection = createMockCollection({
         id: 2,
         name: "Regular",
         type: null,
+        location: "/",
       });
       setup({ collections: [regularCollection] });
 
-      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("section", { name: "Official content" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should list semantic layer first, then top-level official collections", async () => {
+      setup({
+        collections: [
+          createMockCollection({
+            id: 3,
+            name: "Sales",
+            location: "/",
+            is_remote_synced: true,
+          }),
+          createMockCollection({
+            id: 4,
+            name: "Scratch",
+            location: "/",
+            is_remote_synced: false,
+          }),
+          createLibraryCollection({
+            name: "Semantic layer",
+            children: [createChildCollection({ name: "Metrics" })],
+          }),
+        ],
+      });
+
+      const tree = await screen.findByRole("tree", {
+        name: "official-collection-tree",
+      });
+      const names = within(tree)
+        .getAllByRole("treeitem")
+        .map((item) => item.textContent);
+      expect(names).toEqual(["Semantic layer", "Metrics", "Sales"]);
     });
   });
 

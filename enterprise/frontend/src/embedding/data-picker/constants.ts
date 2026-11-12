@@ -67,7 +67,7 @@ export const LIBRARY_INFO_ITEM: DataTypeInfoItem = {
   id: DATA_BUCKET.LIBRARY,
   icon: "repository",
   get name() {
-    return t`Library`;
+    return t`Semantic layer`;
   },
   get description() {
     return t`Curated tables and metrics.`;

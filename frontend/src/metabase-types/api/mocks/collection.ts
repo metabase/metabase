@@ -68,7 +68,7 @@ export const createMockLibraryCollection = (
 ): Collection =>
   createMockCollection({
     id: 1,
-    name: "Library",
+    name: "Semantic layer",
     type: "library",
     ...opts,
   });

@@ -7,6 +7,7 @@ import * as Urls from "metabase/urls";
 import {
   createMockBookmark,
   createMockCard,
+  createMockCollection,
   createMockDashboard,
   createMockModelResult,
   createMockUser,
@@ -269,6 +270,31 @@ describe("nav > containers > MainNavbar", () => {
         "href",
         Urls.collection(TEST_COLLECTION),
       );
+    });
+
+    it("should move top-level official collections into official content section", async () => {
+      await setup({
+        extraCollections: [
+          createMockCollection({
+            id: 4,
+            name: "Synced collection",
+            location: "/",
+            is_remote_synced: true,
+          }),
+        ],
+      });
+
+      const officialSection = await screen.findByRole("section", {
+        name: "Official content",
+      });
+      expect(
+        within(officialSection).getByText("Synced collection"),
+      ).toBeInTheDocument();
+      expect(
+        within(
+          screen.getByRole("tree", { name: "collection-tree" }),
+        ).queryByText("Synced collection"),
+      ).not.toBeInTheDocument();
     });
 
     it("should not highlight collections when not selected", async () => {

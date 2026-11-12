@@ -241,7 +241,7 @@ export function SearchScopeSelector() {
   const options = [
     { label: t`Everywhere`, value: "all" },
     libraryCollection?.id
-      ? { label: t`Library`, value: String(libraryCollection.id) }
+      ? { label: t`Semantic layer`, value: String(libraryCollection.id) }
       : null,
     lastCollection
       ? {

@@ -94,7 +94,7 @@ export function DataStudioLayout() {
         )}
       </AreaTabGroup>
 
-      <AreaTabGroup label={t`Library`} showLabel={isNavbarOpened}>
+      <AreaTabGroup label={t`Official content`} showLabel={isNavbarOpened}>
         <AreaTab
           label={t`Semantic layer`}
           icon="repository"

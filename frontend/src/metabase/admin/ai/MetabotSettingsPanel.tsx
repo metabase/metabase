@@ -100,7 +100,7 @@ function MetabotOfficialContentPane({ metabot }: { metabot: MetabotInfo }) {
       <SettingHeader
         id="official-content"
         title={t`Official content`}
-        description={t`When enabled, Metabot will only use official content or content published to the library.`}
+        description={t`When enabled, Metabot will only use official content.`}
       />
       <Switch
         label={t`Only use official content`}

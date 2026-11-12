@@ -86,7 +86,7 @@
       (let [result (collection/maybe-localize-system-collection-name
                     {:name "Wrong Name" :type collection/library-collection-type
                      :entity_id @#'collection/library-entity-id})]
-        (is (= "Library" (str (:name result))))))
+        (is (= "Semantic layer" (str (:name result))))))
     (testing "Data gets canonical name"
       (let [result (collection/maybe-localize-system-collection-name
                     {:name "Wrong Name" :type collection/library-data-collection-type
@@ -1956,7 +1956,8 @@
   (mt/with-empty-h2-app-db!
     (testing "Can create a library if none exist"
       (let [library (collection/create-library-collection!)]
-        (is (= "Library" (:name library)))
+        (is (= "Semantic layer" (:name library)))
+        (is (= "Library" (t2/select-one-fn :name :collection :id (:id library))))
         (is (= ["Data" "Metrics"] (sort (map :name (collection/descendants library)))))
         (is (= #{true} (t2/select-fn-set :is_remote_synced :model/Collection
                                          :id [:in (cons (:id library) (map :id (collection/descendants library)))])))

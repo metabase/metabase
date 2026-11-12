@@ -19,7 +19,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { NavbarLibrarySection } from "../NavbarLibrarySection";
+import { NavbarOfficialContentSection } from "../NavbarOfficialContentSection";
 
 export const createChildCollection = (
   overrides: Partial<Collection> = {},
@@ -96,7 +96,7 @@ export const setup = ({
     <Route
       path="/"
       element={
-        <NavbarLibrarySection
+        <NavbarOfficialContentSection
           collections={collections}
           selectedId={undefined}
           onItemSelect={jest.fn()}

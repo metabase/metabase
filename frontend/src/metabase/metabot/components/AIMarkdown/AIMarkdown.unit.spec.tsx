@@ -158,8 +158,8 @@ describe("AIMarkdown", () => {
     expect(card).toHaveTextContent("Confirmed orders");
     expect(await within(card).findByText("2 fields")).toBeInTheDocument();
     expect(
-      await within(card).findByRole("link", { name: "Library" }),
-    ).toHaveAttribute("href", "/collection/6464-library");
+      await within(card).findByRole("link", { name: "Semantic layer" }),
+    ).toHaveAttribute("href", "/collection/6464-semantic-layer");
     expect(within(card).getByRole("link", { name: "Data" })).toHaveAttribute(
       "href",
       "/collection/10-data",

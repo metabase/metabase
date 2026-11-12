@@ -252,7 +252,7 @@ describe("DataReferenceLibraryPane", () => {
     await waitForLoaderToBeRemoved();
 
     expect(
-      screen.getByText("No published tables in your library yet."),
+      screen.getByText("No published tables in your semantic layer yet."),
     ).toBeInTheDocument();
     expect(screen.queryByText("In this database")).not.toBeInTheDocument();
   });

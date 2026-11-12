@@ -19,7 +19,7 @@ import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
 import type { Collection, CollectionType } from "metabase-types/api";
 
-type LibraryCollectionSectionProps = {
+type NavbarOfficialContentSectionProps = {
   collections: Collection[];
   selectedId?: string | number;
   onItemSelect: () => void;
@@ -85,46 +85,72 @@ function buildSectionTree(
   };
 }
 
-export function NavbarLibrarySection({
+function buildSemanticLayerTree(
+  libraryCollection: Collection,
+  allCollections: Collection[],
+): CollectionTreeItem {
+  const sectionTrees = [
+    buildSectionTree(
+      libraryCollection,
+      allCollections,
+      "library-data",
+      t`Data`,
+    ),
+    buildSectionTree(
+      libraryCollection,
+      allCollections,
+      "library-metrics",
+      t`Metrics`,
+    ),
+    buildSectionTree(
+      libraryCollection,
+      allCollections,
+      "library-dashboards",
+      t`Dashboards`,
+    ),
+  ];
+
+  return {
+    ...libraryCollection,
+    icon: getCollectionIcon(libraryCollection),
+    children: sectionTrees.filter(
+      (node): node is CollectionTreeItem => node != null,
+    ),
+  };
+}
+
+export function isTopLevelOfficialCollection(collection: Collection) {
+  return collection.is_remote_synced === true && collection.location === "/";
+}
+
+export function NavbarOfficialContentSection({
   collections,
   selectedId,
   onItemSelect,
-}: LibraryCollectionSectionProps) {
-  const [expandLibrary = true, setExpandLibrary] = useUserSetting(
-    "expand-library-in-nav",
-  );
+}: NavbarOfficialContentSectionProps) {
+  const [expandOfficialContent = true, setExpandOfficialContent] =
+    useUserSetting("expand-library-in-nav");
 
-  const libraryTree = useMemo(() => {
-    const libraryCollection = collections.find(isLibraryCollection);
-    if (!libraryCollection) {
-      return [];
-    }
+  const libraryCollection = collections.find(isLibraryCollection);
 
-    const dataTree = buildSectionTree(
-      libraryCollection,
-      collections,
-      "library-data",
-      t`Data`,
-    );
-    const metricsTree = buildSectionTree(
-      libraryCollection,
-      collections,
-      "library-metrics",
-      t`Metrics`,
-    );
-    const dashboardsTree = buildSectionTree(
-      libraryCollection,
-      collections,
-      "library-dashboards",
-      t`Dashboards`,
+  const officialTree = useMemo(() => {
+    const officialCollections = buildCollectionTree(
+      collections.filter(
+        (collection) =>
+          isTopLevelOfficialCollection(collection) &&
+          !isLibraryCollection(collection),
+      ),
     );
 
-    return [dataTree, metricsTree, dashboardsTree].filter(
-      (node): node is CollectionTreeItem => node != null,
-    );
-  }, [collections]);
+    return libraryCollection
+      ? [
+          buildSemanticLayerTree(libraryCollection, collections),
+          ...officialCollections,
+        ]
+      : officialCollections;
+  }, [collections, libraryCollection]);
 
-  if (libraryTree.length === 0) {
+  if (officialTree.length === 0) {
     return null;
   }
 
@@ -132,21 +158,22 @@ export function NavbarLibrarySection({
     <SidebarSection>
       <ErrorBoundary>
         <CollapseSection
-          header={<SidebarHeading>{t`Library`}</SidebarHeading>}
-          initialState={expandLibrary ? "expanded" : "collapsed"}
+          header={<SidebarHeading>{t`Official content`}</SidebarHeading>}
+          initialState={expandOfficialContent ? "expanded" : "collapsed"}
           iconPosition="right"
           iconSize={8}
           role="section"
-          aria-label={t`Library`}
-          onToggle={setExpandLibrary}
+          aria-label={t`Official content`}
+          onToggle={setExpandOfficialContent}
         >
           <Tree
-            data={libraryTree}
+            data={officialTree}
             selectedId={selectedId}
+            initialExpandedIds={libraryCollection ? [libraryCollection.id] : []}
             onSelect={onItemSelect}
             TreeNode={SidebarCollectionLink}
             role="tree"
-            aria-label="library-collection-tree"
+            aria-label="official-collection-tree"
             rightSection={(item) =>
               typeof item.id === "number" && (
                 <PLUGIN_REMOTE_SYNC.ChangesBadge

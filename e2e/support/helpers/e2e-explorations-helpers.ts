@@ -45,7 +45,7 @@ export function startManualExploration(): void {
 }
 
 /**
- * The metrics picker opens on the "Library" tab whenever the metrics library is
+ * The metrics picker opens on the "Semantic layer" tab whenever the metrics library is
  * enabled — which it always is under the pro token these specs activate, so
  * the tabs are unconditionally present. (A one-shot existence check here would
  * silently skip the click when the tabs render a tick after the dialog.)
