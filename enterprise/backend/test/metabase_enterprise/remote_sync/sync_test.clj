@@ -153,3 +153,37 @@
             (t2/update! :model/Card :id (:id card) {:name "Renamed card"})
             (testing "a new entity is created and a changed one updated"
               (is (= #{["create" "New card"] ["update" "Renamed card"]} (changes))))))))))
+
+(deftest push-refuses-unsynced-goal-sources-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection synced   {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Collection unsynced {:name "Unsynced" :location "/"}
+                     :model/Card       source   {:name "Unsynced goal source" :collection_id (:id unsynced)}
+                     :model/Card       _        {:name                   "Synced chart"
+                                                 :collection_id          (:id synced)
+                                                 :display                :line
+                                                 :visualization_settings {:graph.show_goal  true
+                                                                          :graph.goal_value {:id     (:id source)
+                                                                                             :type   "card"
+                                                                                             :column "total"}}}]
+        (testing "a push fails, naming the goal source, when a synced chart's goal reads unsynced content"
+          (is (=? {:status :error :message #"Synced chart uses Card .+, which isn't synced\..*"}
+                  (remote-sync.tu/push! url nil))))))))
+
+(deftest push-refuses-unsynced-measure-goal-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection synced  {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Measure    measure {:name       "Unsynced measure"
+                                                :table_id   (mt/id :venues)
+                                                :definition {}}
+                     :model/Card       _       {:name                   "Synced chart"
+                                                :collection_id          (:id synced)
+                                                :display                :progress
+                                                :visualization_settings {:progress.goal {:id     (:id measure)
+                                                                                         :type   "measure"
+                                                                                         :column "count"}}}]
+        (testing "a push names a goal's measure that isn't synced"
+          (is (=? {:status :error :message #"Synced chart uses Measure .+, which isn't synced\..*"}
+                  (remote-sync.tu/push! url nil))))))))
