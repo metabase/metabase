@@ -204,9 +204,8 @@
   ;; Exemptions come first, so a module that is both a trigger and an exemption, such as
   ;; `enterprise/transforms`, stays exempt.
   (cond
-    (contains? exemptions module) :exempt
-    (or (contains? opt-ins module)
-        (contains? triggers module))  :included))
+    (contains? exemptions module)                               :exempt
+    (or (contains? opt-ins module) (contains? triggers module)) :included))
 
 (defn- driver-exempt?
   "Whether changes to `module` should skip driver tests under `rules`, shaped like [[driver-test-rules]].
@@ -246,7 +245,7 @@
           modules)))
 
 (defn- unaffected-modules
-  "Return the set of modules that are unaffected "
+  "Set of modules in `deps` that changes to `modules` do not affect."
   [deps modules]
   (set/difference
    (into (sorted-set) (keys deps))
@@ -270,9 +269,8 @@
      (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
                           (pr-str missing))
                      {:missing missing})))
-   (let [unaffected (unaffected-modules deps (remove #(driver-exempt? deps rules %) modules))]
-     (boolean
-      (some #(not (contains? unaffected %)) triggers)))))
+   (let [affected (affected-modules deps (remove #(driver-exempt? deps rules %) modules))]
+     (boolean (some affected triggers)))))
 
 (defn- changes-important-file-for-drivers?
   "Whether we should always run driver tests because `updated-files` touches something important like
