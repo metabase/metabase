@@ -53,6 +53,17 @@ describe("AccountHeader", () => {
     ).toBeInTheDocument();
   });
 
+  it.each(["ldap", "google"] as const)(
+    "login history tab should be available with sso_source %s (metabase#15558)",
+    (ssoSource) => {
+      setup({ user: getUser({ sso_source: ssoSource }) });
+
+      expect(
+        screen.getByRole("tab", { name: "Login History" }),
+      ).toBeInTheDocument();
+    },
+  );
+
   it("should change location when a tab is selected", () => {
     const { onChangeLocation } = setup();
 
@@ -100,6 +111,24 @@ describe("AccountHeader", () => {
         screen.getByRole("tab", { name: "Authentication" }),
       ).toBeInTheDocument();
     });
+
+    it.each(["ldap", "google", "jwt", "saml"] as const)(
+      "should prevent %s users from editing SSO credentials (metabase#23298)",
+      (ssoSource) => {
+        setup({
+          user: getUser({
+            sso_source: ssoSource,
+            has_used_password: false,
+          }),
+          isMfaEnabled: false,
+        });
+
+        expect(screen.getByText("john@metabase.test")).toBeInTheDocument();
+        expect(
+          screen.queryByRole("tab", { name: "Authentication" }),
+        ).not.toBeInTheDocument();
+      },
+    );
 
     it("should hide the tab for an LDAP user when two-factor authentication is disabled for the instance", () => {
       setup({ user: getUser({ sso_source: "ldap" }), isMfaEnabled: false });
