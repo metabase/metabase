@@ -324,10 +324,7 @@
     true))
 
 (defn- tool-map
-  "Create a map of model-facing tool name -> tool from a sequence of tools.
-
-  A tool is a converted record or a var that is still the old shape; its declaration answers either
-  way, which is why this no longer reads var metadata."
+  "A map of each tool's model-facing name to the tool, for converted records and old-shape vars alike."
   [tools]
   (u/index-by tool-name tools))
 

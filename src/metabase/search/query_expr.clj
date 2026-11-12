@@ -179,8 +179,7 @@
 
 (defn ->like-predicate
   "Compile `expr` to a HoneySQL predicate that finds each leaf's text, case-insensitively, in `column`.
-  A term or phrase matches as a literal substring anywhere, a phrase as written.
-  A prefix matches at the start of the text or after a space."
+  A term or phrase matches as a literal substring anywhere; a prefix only at the start of the text or after a space."
   [expr column]
   (let [like (fn [pattern] [:like [:lower column] pattern])
         go   (fn go [e]

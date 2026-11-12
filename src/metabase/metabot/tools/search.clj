@@ -1055,11 +1055,11 @@
    :recovery (conj (if (seq scope) (browse-steps scope) []) no-retry-step)})
 
 (defn- failed-search-scope
-  "The [[search-scope]] to recover from a failed search with, or an empty map when building it fails too.
-  Building it can read the app DB, which may be why the search failed."
-  [& args]
+  "The [[search-scope]] to recover from a failed search with, or an empty map when building it fails too."
+  [metabot profile-id database-id collection-id entity-types]
+  ;; Building the scope can read the app DB, which may be why the search failed.
   (try
-    (apply search-scope args)
+    (search-scope metabot profile-id database-id collection-id entity-types)
     (catch InterruptedException e
       (throw e))
     (catch Exception e
@@ -1162,11 +1162,17 @@
                  "semantic search isn't set up on this instance")
    :workaround "search for the likely words, and give synonyms as `or` alternatives where the search tool allows"})
 
+(def ^:private semantic-query-description
+  (str "What you're looking for, described in plain words. Write a short description of the data, not keywords or "
+       "operators."))
+
+;; One `:re` checks both that the query is a string and that it isn't blank, so a bad value gets one error message
+;; rather than the two that `ms/NonBlankString` gives.
 (def ^:private semantic-query-schema
-  [:and
-   {:description (str "What you're looking for, described in plain words. Write a short description of the data, "
-                      "not keywords or operators.")}
-   ms/NonBlankString])
+  [:re {:description   semantic-query-description
+        :error/message "should be a non-blank string"
+        :json-schema   {:type "string", :minLength 1, :description semantic-query-description}}
+   #"\S"])
 
 (defn- keyword-query-schema
   [ops description]

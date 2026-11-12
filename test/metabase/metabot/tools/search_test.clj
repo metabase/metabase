@@ -700,8 +700,8 @@
   (testing "one mistake repeated across a long list does not hide a later argument's error"
     (is (= (str "Invalid tool arguments: `entity_types[0]`, `[1]`, `[2]` and 197 more should be either "
                 "\"collection\", \"dashboard\", \"document\", \"measure\", \"metric\", \"model\", \"question\", "
-                "\"segment\" or \"table\"; received a number. `query` should be a string; non-blank string; "
-                "received a number.")
+                "\"segment\" or \"table\"; received a number. `query` should be a non-blank string; received a "
+                "number.")
            (test-util/tool-boundary-error "semantic_search" #'metabot.tools/semantic-search-tool
                                           {:entity_types (vec (repeat 200 5))
                                            :query        5})))))
@@ -1913,7 +1913,7 @@
                   @captured)))))))
 
 (deftest ^:parallel only-one-keyword-tool-is-available-test
-  (testing "each profile's keyword search tools are alternatives: exactly one serves this instance"
+  (testing "each profile offers exactly one keyword search tool on this instance"
     (doseq [profile [:general :sql :nlq]
             :let [prefix (case profile :general "" :sql "sql-" :nlq "nlq-")
                   vars   (for [matcher ["fulltext" "substring"]]
