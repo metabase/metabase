@@ -118,7 +118,7 @@
       new-deps))))
 
 (def driver-test-exemptions
-  "Modules whose changes skip driver tests, though drivers depend on them in the module graph.
+  "Modules whose changes don't count as reaching the driver-test triggers, though the triggers depend on them.
   An exemption covers the module's submodules too, except those in [[driver-test-opt-ins]]."
   '#{analytics
      api
@@ -208,7 +208,7 @@
     (or (contains? opt-ins module) (contains? triggers module)) :included))
 
 (defn- driver-exempt?
-  "Whether changes to `module` should skip driver tests under `rules`, shaped like [[driver-test-rules]].
+  "Whether `rules`, shaped like [[driver-test-rules]], leave changes to `module` out of [[driver-deps-affected?]].
   The nearest listed module among `module` and its ancestors decides."
   [deps rules module]
   (= :exempt (some #(listed-decision rules %) (modules/lineage deps module))))
@@ -285,7 +285,8 @@
         updated-files))
 
 (defn driver-tests-needed?
-  "Whether CI runs driver tests beyond H2 and Postgres for a change to `updated-files`.
+  "Whether a change to `updated-files` needs driver tests beyond H2 and Postgres, by the rules of `-driver-decisions`.
+  PR labels are not considered.
   The `updated` modules are the ones those files belong to.
   True when an important file changed, a module in [[modules-triggering-cloud-drivers]] changed itself,
   or [[driver-deps-affected?]] holds."
