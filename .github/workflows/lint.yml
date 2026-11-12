@@ -194,7 +194,7 @@ jobs:
   # See https://github.com/metabase/metabase/blob/2a7df44f02718377e08ab10ff27821853a427c02/bin/lint-migrations-file/src/lint_migrations_file.cljc#L390
   check-migration-versions:
     needs: files-changed
-    if: needs.files-changed.outputs.migrations == 'true'
+    if: github.event_name == 'pull_request' && needs.files-changed.outputs.migrations == 'true'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
