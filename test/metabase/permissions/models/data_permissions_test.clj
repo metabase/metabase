@@ -52,10 +52,10 @@
                                     (swap! calls conj [:probe perm-type perm-value opts])
                                     (and (= [perm-type perm-value] [:perms/create-queries :query-builder])
                                          (nil? (:exclude-db-ids opts))))
-                                  permissions.db/permission-rank-pair
-                                  (fn [_user-id perm-type scope]
-                                    (swap! calls conj [:rank-pair perm-type scope])
-                                    {:mn nil :mx nil})]
+                                  permissions.db/user-database-level-values
+                                  (fn [_user-id perm-type db-ids]
+                                    (swap! calls conj [:database-level perm-type db-ids])
+                                    [])]
         (testing "most permissive value probes values in coalesce order, stopping at first grant"
           (is (= :query-builder
                  (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries)))
@@ -78,7 +78,7 @@
           (is (= :no (data-perms/database-permission-for-user user-id :perms/manage-database 10)))
           (is (= :no (data-perms/database-permission-for-user user-id :perms/manage-database 10)))
           (is (= [[:probe :perms/create-queries :query-builder-and-native {:exclude-db-ids nil}]
-                  [:rank-pair :perms/manage-database {:db-id 10 :database-level? true}]]
+                  [:database-level :perms/manage-database [10]]]
                  @calls)))
         (testing "other users are not cached"
           (reset! calls [])
@@ -1541,11 +1541,11 @@
                     (is (= (binding [data-perms/*use-perms-cache?* false]
                              (answers))
                            (binding [data-perms/*permission-cache* (atom {})
-                                     data-perms/*loaded-table-ids* (atom {:pending #{} :loaded #{}})]
+                                     data-perms/*loaded-table-ids* (atom #{})]
                              (run! data-perms/register-loaded-table! table-ids)
                              (t2/with-call-count [call-count]
                                (u/prog1 (answers)
-                                 (is (<= (call-count) 3) "one load answers every check"))))))))))))))))
+                                 (is (<= (call-count) (* 3 (count random-values))) "one load per permission type answers every check"))))))))))))))))
 
 (deftest race-conditions-test
   ;; This test is probabilistic: success doesn't *necessarily* prove we're doing things correctly, but
