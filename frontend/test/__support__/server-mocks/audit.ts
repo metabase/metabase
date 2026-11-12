@@ -7,7 +7,7 @@ import type {
   User,
 } from "metabase-types/api";
 
-interface AuditInfo {
+export interface AuditInfo {
   dashboard_overview: DashboardId;
   question_overview: CardId;
   custom_reports: CollectionId;

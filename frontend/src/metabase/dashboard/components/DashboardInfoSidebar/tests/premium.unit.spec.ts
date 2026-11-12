@@ -37,4 +37,40 @@ describe("DashboardInfoSidebar > enterprise", () => {
       expect(screen.getByText("jenny8675309")).toBeInTheDocument();
     });
   });
+
+  describe("Insights link", () => {
+    const setupWithAuditApp = (opts: SetupOpts) =>
+      setup({
+        ...opts,
+        settings: createMockSettings({
+          "token-features": createMockTokenFeatures({ audit_app: true }),
+        }),
+        enterprisePlugins: ["audit_app", "collections"],
+      });
+
+    it("should show an Insights link to users who can see usage analytics", async () => {
+      await setupWithAuditApp({ dashboard: createMockDashboard({ id: 2 }) });
+
+      expect(
+        await screen.findByRole("tab", { name: "Overview" }),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByRole("link", { name: /Insights/i }),
+      ).toHaveAttribute("href", "/dashboard/201?dashboard_id=2");
+    });
+
+    it("should not show an Insights link to users without access to usage analytics", async () => {
+      await setupWithAuditApp({
+        dashboard: createMockDashboard({ id: 2 }),
+        auditInfo: {},
+      });
+
+      expect(
+        await screen.findByRole("tab", { name: "Overview" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /Insights/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

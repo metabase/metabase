@@ -1,5 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  type AuditInfo,
   setupAuditInfoEndpoint,
   setupDashboardEndpoints,
   setupPerformanceEndpoints,
@@ -12,7 +13,12 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { Route } from "metabase/router";
-import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
+import type {
+  Dashboard,
+  Settings,
+  TokenFeatures,
+  User,
+} from "metabase-types/api";
 import {
   createMockDashboard,
   createMockSettings,
@@ -27,22 +33,26 @@ export interface SetupOpts {
   dashboard?: Dashboard;
   settings?: Settings;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  auditInfo?: Partial<AuditInfo>;
+  user?: Partial<User>;
 }
 
 export async function setup({
   dashboard = createMockDashboard(),
   settings = createMockSettings(),
   enterprisePlugins = [],
+  auditInfo,
+  user,
 }: SetupOpts = {}) {
   const setDashboardAttribute = jest.fn();
   const onClose = jest.fn();
 
-  const currentUser = createMockUser();
+  const currentUser = createMockUser(user);
   setupDashboardEndpoints(dashboard);
   setupUsersEndpoints([currentUser]);
   setupRevisionsEndpoints([]);
   setupPerformanceEndpoints([]);
-  setupAuditInfoEndpoint();
+  setupAuditInfoEndpoint({ auditInfo });
 
   const state = createMockState({
     currentUser,
