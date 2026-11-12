@@ -33,3 +33,5 @@ export const TYPE_FILTER_MODELS = [
   "exploration",
   "table",
 ] as const satisfies readonly CollectionItemModel[];
+
+export type CollectionTypeFilterModel = (typeof TYPE_FILTER_MODELS)[number];
