@@ -612,27 +612,49 @@
                           (dynamic-redefs/patch-vars! [(reexport! (fresh-source! 23)
                                                                   'metabase.test.util.dynamic-redefs-test)])))))
 
+(defn- fresh-ns!
+  "Create a namespace for compiling redefs in, outside this one's opt-out."
+  [metadata]
+  (doto (create-ns (gensym "metabase.test.util.dynamic-redefs-test.compiled-"))
+    (alter-meta! merge metadata)))
+
+(defn- compile-redef!
+  "Compile, without running, a `with-dynamic-fn-redefs` of `syms` in the namespace `a-ns`."
+  [a-ns syms]
+  (binding [*ns* a-ns]
+    (eval `(fn []
+             (dynamic-redefs/with-dynamic-fn-redefs [~@(mapcat (fn [s] [s '(clojure.core/constantly :redef)]) syms)]
+               nil)))))
+
 (deftest proxy-compiled-targets-test
-  (let [ns-sym  (gensym "metabase.test.util.dynamic-redefs-test.compiled-")
-        target  (intern (create-ns ns-sym) 'target (fn [] :original))
-        keyword (intern (the-ns ns-sym) 'keyword-target :k)]
-    ;; Compile, but never run, a redef of each var in a namespace without this one's opt-out.
-    (binding [*ns* (the-ns ns-sym)]
-      (eval '(clojure.core/fn []
-               (metabase.test.util.dynamic-redefs/with-dynamic-fn-redefs [target         (clojure.core/constantly :r)
-                                                                          keyword-target :other]
-                 (target)))))
+  (let [a-ns      (fresh-ns! {})
+        fn-target (intern a-ns 'fn-target (fn [] :original))
+        kw-target (intern a-ns 'kw-target :k)
+        multi     (intern a-ns 'multi (MultiFn. "multi" identity :default #'clojure.core/global-hierarchy))
+        unbound   (intern a-ns 'unbound)]
+    (compile-redef! a-ns '[fn-target kw-target multi unbound])
     (testing "compiling the macro only records the vars"
-      (is (nil? (dynamic-redefs/dynamic-value target)))
-      (is (nil? (dynamic-redefs/dynamic-value keyword))))
-    (testing "the runner's call proxies them, a keyword as well as a fn"
-      (is (=? {:failed {}} (dynamic-redefs/proxy-compiled-targets!)))
-      (is (= :original ((dynamic-redefs/dynamic-value target))))
-      (is (= :k (dynamic-redefs/dynamic-value keyword))))
+      (is (every? #(nil? (dynamic-redefs/dynamic-value %)) [fn-target kw-target multi unbound])))
+    (let [{:keys [skipped failed]} (dynamic-redefs/proxy-compiled-targets!)]
+      (testing "the runner's call proxies a fn and a keyword"
+        (is (= {} failed))
+        (is (= :original ((dynamic-redefs/dynamic-value fn-target))))
+        (is (= :k (dynamic-redefs/dynamic-value kw-target))))
+      (testing "and skips a multimethod and an unbound var"
+        (is (every? (set skipped) [multi unbound]))
+        (is (every? #(nil? (dynamic-redefs/dynamic-value %)) [multi unbound]))))
     (testing "so a captured value is the proxy, and a replacement that calls it fails on the first run"
-      (let [captured @target]
+      (let [captured @fn-target]
         (is (thrown-with-msg? AssertionError #"runaway recursion"
-                              (redefined! target captured target)))))))
+                              (redefined! fn-target captured fn-target)))))))
+
+(deftest proxy-compiled-targets-opt-out-test
+  (testing "a namespace that opts out keeps its vars unproxied until a test redefines them"
+    (let [a-ns   (fresh-ns! {::dynamic-redefs/proxy-on-first-redef true})
+          target (intern a-ns 'target (fn [] :original))]
+      (compile-redef! a-ns '[target])
+      (dynamic-redefs/proxy-compiled-targets!)
+      (is (nil? (dynamic-redefs/dynamic-value target))))))
 
 (deftest first-redef-of-reexport-and-source-race-test
   (testing "a re-export and its source, each first redefined at the same moment on its own thread"

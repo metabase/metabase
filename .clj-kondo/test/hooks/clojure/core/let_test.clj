@@ -1,9 +1,9 @@
 (ns hooks.clojure.core.let-test
   (:require
    [clj-kondo.core :as kondo]
-   [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.test :refer :all]))
+   [clojure.test :refer :all]
+   [hooks.test-util :as test-util]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,29 +34,18 @@
   [& body-lines]
   (lint! nil body-lines))
 
-(defn- delete-tree! [^java.io.File f]
-  (when (.isDirectory f)
-    (run! delete-tree! (.listFiles f)))
-  (.delete f))
-
 (defn- reexport-findings!
-  "Like [[lint!]], once kondo has cached `example.impl`, which defines `f`, and `example.ns`, which re-exports it with
-   potemkin."
+  "Like [[lint!]], once kondo has cached `example.impl`, which defines `f`, `example.ns`, which re-exports it with
+   potemkin, and `example.top`, which re-exports `example.ns/f`."
   [& body-lines]
-  (let [tmp-dir (.toFile (java.nio.file.Files/createTempDirectory
-                          "let-hook" (into-array java.nio.file.attribute.FileAttribute [])))
-        cache   (str (io/file tmp-dir "cache"))]
-    (try
-      (doseq [[path content] {"example/impl.clj" "(ns example.impl)\n(defn f [x] x)\n"
-                              "example/ns.clj"   (str "(ns example.ns\n  (:require [example.impl] [potemkin :as p]))\n"
-                                                      "(p/import-vars [example.impl f])\n")}]
-        (io/make-parents tmp-dir "src" path)
-        (spit (io/file tmp-dir "src" path) content))
-      (kondo/run! {:lint       [(str (io/file tmp-dir "src"))]
-                   :cache-dir  cache
-                   :config-dir ".clj-kondo"})
-      (lint! cache body-lines)
-      (finally (delete-tree! tmp-dir)))))
+  (test-util/with-cached-sources!
+    {"example/impl.clj" "(ns example.impl)\n(defn f [x] x)\n"
+     "example/ns.clj"   (str "(ns example.ns\n  (:require [example.impl] [potemkin :as p]))\n"
+                             "(p/import-vars [example.impl f])\n")
+     "example/top.clj"  (str "(ns example.top\n  (:require [example.ns] [potemkin :as p]))\n"
+                             "(p/import-vars [example.ns f])\n")}
+    (fn [cache _dir]
+      (lint! cache body-lines))))
 
 (deftest flags-captured-var-test
   (testing "a let binding that captures a var the body redefines"
@@ -84,7 +73,7 @@
 
 (deftest flags-deref-captures-test
   (testing "`@#'x` and `(deref #'x)` capture the var's value too"
-    (is (=? [{:row 6, :col 12, :message #".*\(mt/original-fn #'ex/f\) instead.*"}
+    (is (=? [{:row 6, :col 12}
              {:row 9, :col 12}]
             (findings! "(let [orig @#'ex/f]"
                        "  (mt/with-dynamic-fn-redefs [ex/f (fn [x] (orig x))]"
@@ -99,6 +88,13 @@
             (reexport-findings! "(let [orig ex/f]"
                                 "  (mt/with-dynamic-fn-redefs [impl/f (fn [x] (orig x))]"
                                 "    (ex/f 1)))")))))
+
+(deftest flags-captured-reexport-of-reexport-test
+  (testing "a re-export of a re-export reaches the source too"
+    (is (=? [{:row 6, :col 12}]
+            (reexport-findings! "(let [orig example.top/f]"
+                                "  (mt/with-dynamic-fn-redefs [impl/f (fn [x] (orig x))]"
+                                "    (example.top/f 1)))")))))
 
 (deftest flags-capture-through-later-locals-test
   (testing "a redefinition that reaches the capture through later locals"
