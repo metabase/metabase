@@ -313,7 +313,7 @@
 (defn- halt-order
   "The handles of the running components, in the order [[halt!]] stops them.
    Each comes before every component it uses in `graph`, directly or through components that are not running.
-   Components with no such path between them come in the reverse of their first-start order."
+   Otherwise components come in the reverse of their first-start order, as far as those paths allow."
   [graph]
   (let [running     @started-components
         position    (zipmap @start-order (range))
@@ -360,7 +360,7 @@
   "Stop every running component [[start!]] started.
    The `dependencies` map takes a component key to the keys of the components it uses, and defaults to empty.
    A component stops before everything it uses, directly or through other components, even one that started later.
-   Components with no such path between them stop in the reverse of the order they first started in.
+   Otherwise components stop in the reverse of the order they first started in, as far as the dependencies allow.
    Throws before stopping anything if `dependencies` has a cycle, or if called from a component's start.
    From the moment it begins, every start throws until [[reopen!]], so nothing a stopping component starts again is
    left running.
