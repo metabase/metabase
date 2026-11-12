@@ -729,6 +729,140 @@
                [[:inline 1] :readable]]
       :from   [[:eligible_collections :c]]}]}))
 
+;;; ------------------------------------------- Collection permissions -------------------------------------------
+
+(mr/def ::collection-grants
+  "What a user holds on Collections beyond their groups' permission rows."
+  [:map {:closed true}
+   [:user-id               ::lib.schema.id/user]
+   [:superuser?            :boolean]
+   [:data-analyst?         :boolean]
+   [:tenant-collection-ids [:sequential ms/PositiveInt]]])
+
+(defn- collection-rows-clause
+  "Whether a group of the user with `user-id` holds a collection-access row with one of `values` on the Collection
+  aliased `c`."
+  [user-id values]
+  [:exists ^:allow-subquery {:select [1]
+                             :from   [[(t2/table-name :model/Permissions) :p]]
+                             :join   [[(t2/table-name :model/PermissionsGroupMembership) :pgm]
+                                      [:= :pgm.group_id :p.group_id]]
+                             :where  [:and
+                                      [:= :pgm.user_id user-id]
+                                      [:= :p.collection_id :c.id]
+                                      [:= :p.perm_type "perms/collection-access"]
+                                      [:in :p.perm_value values]]}])
+
+(defn- own-collection-clause
+  "Whether the user of `grants` writes the Collection aliased `c` whatever their groups hold: the trash, their personal
+  Collection and its descendants, their tenant Collections, and the transforms namespace for a data analyst."
+  [{:keys [user-id data-analyst? tenant-collection-ids]}]
+  [:or
+   [:= :c.type "trash"]
+   [:= :c.personal_owner_id user-id]
+   [:exists ^:allow-subquery {:select [1]
+                              :from   [[(t2/table-name :model/Collection) :personal]]
+                              :where  [:and
+                                       [:= :personal.personal_owner_id user-id]
+                                       [:like :c.location [:concat "/" :personal.id "/%"]]]}]
+   (when (seq tenant-collection-ids)
+     [:in :c.id tenant-collection-ids])
+   (when data-analyst?
+     [:= :c.namespace "transforms"])])
+
+(defn- collection-level-clause
+  "Whether the user of `grants` has `level` (`:read` or `:read-and-write`) on the Collection aliased `c`."
+  [{:keys [user-id superuser?] :as grants} level]
+  (if superuser?
+    [:= [:inline 1] [:inline 1]]
+    [:or
+     (own-collection-clause grants)
+     (collection-rows-clause user-id (if (= level :read) ["read" "read-and-write"] ["read-and-write"]))]))
+
+(defn- visible-collection-clause
+  "The Collections aliased `c` listed to users: not archived, not the trash, and not a shared tenant Collection on an
+  instance without tenants."
+  [use-tenants?]
+  [:and
+   [:= :c.archived false]
+   [:or [:= :c.type nil] [:not= :c.type "trash"]]
+   (when-not use-tenants?
+     [:or [:= :c.namespace nil] [:not= :c.namespace "shared-tenant-collection"]])])
+
+(defn- collection-rank-case
+  "A CASE giving 2 when the user of `grants` writes the Collection aliased `c`, 1 when they only read it, and 0
+  otherwise."
+  [grants]
+  [:case
+   (collection-level-clause grants :read-and-write) [:inline 2]
+   (collection-level-clause grants :read)           [:inline 1]
+   :else                                            [:inline 0]])
+
+(mu/defn collection-permission-ranks :- [:sequential [:map [:id ms/PositiveInt] [:rank :int]]]
+  "The rank (see [[collection-rank-case]]) of the user of `grants` on each of the Collections with `collection-ids`."
+  [grants         :- ::collection-grants
+   collection-ids :- [:sequential ms/PositiveInt]]
+  (t2/query {:select [:c.id [(collection-rank-case grants) :rank]]
+             :from   [[(t2/table-name :model/Collection) :c]]
+             :where  [:in :c.id collection-ids]}))
+
+(mu/defn best-visible-collection-rank :- :int
+  "The highest rank (see [[collection-rank-case]]) of the user of `grants` on a Collection listed to them (see
+  [[visible-collection-clause]])."
+  [grants       :- ::collection-grants
+   use-tenants? :- :boolean]
+  (let [some-collection (fn [level]
+                          [:exists ^:allow-subquery {:select [1]
+                                                     :from   [[(t2/table-name :model/Collection) :c]]
+                                                     :where  [:and
+                                                              (visible-collection-clause use-tenants?)
+                                                              (collection-level-clause grants level)]}])]
+    (:rank (t2/query-one {:select [[[:case
+                                     (some-collection :read-and-write) [:inline 2]
+                                     (some-collection :read)           [:inline 1]
+                                     :else                             [:inline 0]]
+                                    :rank]]}))))
+
+(mu/defn root-collection-rank :- :int
+  "The rank (see [[collection-rank-case]]) of the user with `user-id` on a root Collection, whose permission rows have
+  the objects `write-object` and `read-object`."
+  [user-id      :- ::lib.schema.id/user
+   write-object :- :string
+   read-object  :- :string]
+  (let [objects (into #{}
+                      (map :object)
+                      (t2/query {:select [:p.object]
+                                 :from   [[(t2/table-name :model/Permissions) :p]]
+                                 :join   [[(t2/table-name :model/PermissionsGroupMembership) :pgm]
+                                          [:= :pgm.group_id :p.group_id]]
+                                 :where  [:and
+                                          [:= :pgm.user_id user-id]
+                                          [:in :p.object [write-object read-object]]]}))]
+    (cond
+      (contains? objects write-object) 2
+      (contains? objects read-object)  1
+      :else                            0)))
+
+(mu/defn visible-collection-filter-clause :- [:fn vector?]
+  "A HoneySQL where-clause holding when `collection-id-field`, qualified by its table so that it can't name a column of
+  `collection`, is a Collection listed to the user of `grants` (see [[visible-collection-clause]]) on which they have
+  `level`, or nil when `root-visible?`. It checks each row's Collection on its own, so a query asking whether some such
+  row exists stops at the first one."
+  [grants              :- ::collection-grants
+   use-tenants?        :- :boolean
+   collection-id-field :- :keyword
+   level               :- [:enum :read :read-and-write]
+   root-visible?       :- :boolean]
+  [:or
+   (when root-visible?
+     [:= collection-id-field nil])
+   [:exists ^:allow-subquery {:select [1]
+                              :from   [[(t2/table-name :model/Collection) :c]]
+                              :where  [:and
+                                       [:= :c.id collection-id-field]
+                                       (visible-collection-clause use-tenants?)
+                                       (collection-level-clause grants level)]}]])
+
 ;;; ------------------------------------------------- Users -------------------------------------------------
 
 (mu/defn user-superuser?

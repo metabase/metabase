@@ -1,6 +1,7 @@
 (ns metabase.permissions.core
   "`permissions` module API namespace."
   (:require
+   [metabase.permissions.collection-permissions]
    [metabase.permissions.data-access-token]
    [metabase.permissions.data-permissions]
    [metabase.permissions.data-permissions.sql]
@@ -24,6 +25,7 @@
   metabase.permissions.models.application-permissions-revision/keep-me
   metabase.permissions.models.collection-permission-graph-revision/keep-me
   metabase.permissions.models.collection.graph/keep-me
+  metabase.permissions.collection-permissions/keep-me
   metabase.permissions.data-permissions/keep-me
   metabase.permissions.data-permissions.sql/keep-me
   metabase.permissions.models.permissions/keep-me
@@ -38,6 +40,11 @@
   metabase.permissions.validation/keep-me)
 
 (p/import-vars
+ [metabase.permissions.collection-permissions
+  collection-permission-filter-clause
+  collection-permission-for-user
+  some-collection-permission-for-user
+  user-has-permission-for-collection?]
  [metabase.permissions.db
   group-tenant-flags
   groups-by-ids]

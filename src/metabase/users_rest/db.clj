@@ -2,9 +2,9 @@
   "Application database queries for the users REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.users.core :as users]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
@@ -52,23 +52,24 @@
   (t2/select-one-fn :sso_source :model/User :id user-id))
 
 (mu/defn has-visible-card?
-  "Whether an unarchived, non-internal Card visible to the current user exists, optionally narrowed to `card-type`
-  (nil for any type)."
-  [card-type :- [:maybe :string]]
+  "Whether an unarchived, non-internal Card that the User with `user-id` can read exists, optionally narrowed to
+  `card-type` (nil for any type)."
+  [user-id   :- ::lib.schema.id/user
+   card-type :- [:maybe :string]]
   (t2/exists? :model/Card
               {:where (into [:and
                              [:= :archived false]
-                             (collection/visible-collection-filter-clause)
+                             (perms/collection-permission-filter-clause user-id :report_card.collection_id :read nil)
                              (mi/exclude-internal-content-hsql :model/Card)]
                             (when card-type [[:= :type card-type]]))}))
 
 (mu/defn has-visible-dashboard?
-  "Whether an unarchived, non-internal Dashboard visible to the current user exists."
-  []
+  "Whether an unarchived, non-internal Dashboard that the User with `user-id` can read exists."
+  [user-id :- ::lib.schema.id/user]
   (t2/exists? :model/Dashboard
               {:where [:and
                        [:= :archived false]
-                       (collection/visible-collection-filter-clause)
+                       (perms/collection-permission-filter-clause user-id :report_dashboard.collection_id :read nil)
                        (mi/exclude-internal-content-hsql :model/Dashboard)]}))
 
 (mu/defn first-login
@@ -82,16 +83,6 @@
   case the result is nil."
   [dashboard-id :- [:maybe :int]]
   (t2/select-one :model/Dashboard :id dashboard-id))
-
-(mu/defn writable-collection-exists?
-  "Whether the current user can write to at least one Collection (excluding the Trash and archived items)."
-  []
-  (t2/exists? :model/Collection
-              {:where (collection/visible-collection-filter-clause
-                       :id
-                       {:include-trash-collection? false
-                        :include-archived-items    :exclude
-                        :permission-level          :write})}))
 
 (mu/defn other-user-with-email-exists?
   "Whether a User other than `user-id` has an email matching `email` case-insensitively."
