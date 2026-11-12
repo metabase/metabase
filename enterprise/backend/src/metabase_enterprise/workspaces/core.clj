@@ -249,11 +249,11 @@
     ex))
 
 (defn- provision-workspace-databases!
-  "Provision every WorkspaceDatabase of the hydrated workspace `ws` synchronously
-  (blocking), failing fast on the first error."
+  "Provision every `:provisioning` WorkspaceDatabase of the hydrated workspace `ws`
+  synchronously (blocking), failing fast on the first error."
   [ws]
   (doseq [{wsd-id :id} (:databases ws)]
-    (provisioning/provision-single! wsd-id)))
+    (provisioning/provision-workspace-database! wsd-id provisioning/dispatching-provisioner)))
 
 (defn- teardown-workspace-databases!
   "Tear down every WorkspaceDatabase of `workspace-id` — any state, blocking.
@@ -286,8 +286,10 @@
    Returns the created workspace, hydrated.
 
    The workspace and its WorkspaceDatabase rows are committed BEFORE provisioning
-   starts — deliberately NOT one big transaction. The rows are the durable record
-   of warehouse resources that may (partially) exist, so they must survive an
+   starts — deliberately NOT one big transaction. Every row is inserted
+   `:provisioning`, so a delete gets the 409 `workspace_busy` until the create
+   ends, also before a row's turn comes. The rows are the durable record of
+   warehouse resources that may (partially) exist, so they must survive an
    instance crash mid-provision; a rollback would erase them while the warehouse
    objects live on. Cleanup after a provisioning failure is therefore explicit:
    every database is torn down; when the cleanup removes everything, the Workspace
@@ -299,8 +301,11 @@
   (let [databases (mapv (fn [db-id]
                           (let [database (assert-database-exists db-id)]
                             (assert-database-eligible-for-workspaces database)
+                            ;; `:provisioning` from the insert, so the busy check refuses a delete
+                            ;; before this database's turn comes
                             {:database_id   db-id
-                             :input_schemas (workspace-database/database-input-schemas database)}))
+                             :input_schemas (workspace-database/database-input-schemas database)
+                             :status        :provisioning}))
                         database_ids)
         ws        (workspace/create-workspace! {:name       name
                                                 :creator_id creator_id
