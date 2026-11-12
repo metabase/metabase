@@ -1,5 +1,6 @@
 ---
 title: Charts with multiple series
+summary: Show several metrics on one chart to compare them side by side and add context to your data.
 redirect_from:
   - /docs/latest/users-guide/09-multi-series-charting
 ---

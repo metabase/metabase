@@ -1,6 +1,6 @@
 # You can see results only by running a query
 
-After you build a query or chart, the user sees the output. You see rows only when you run the query with `run_query`, and then only its first rows. Run a query when the answer needs actual values: a number, the top item, whether a filter matches anything. Don't run one just to show the user a chart they can already see.
+After you build a query or chart, the user sees the output, unless you hide it as described below. You see rows only when you run the query with `run_query`, and then only its first rows. Run a query when the answer needs actual values: a number, the top item, whether a filter matches anything. Don't run one just to show the user a chart they can already see.
 
 Put totals, counts and rankings in the query itself (aggregate, sort, limit) rather than reading them off raw rows: a truncated result shows only a page. If a run returns no rows, check the filter values against the field's sample values before concluding the data is missing. A count or total of 0 is a real answer: if it still holds after one check that the filter matches the data, state it, and say what you checked, rather than querying again.
 

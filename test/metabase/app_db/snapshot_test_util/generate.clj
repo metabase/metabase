@@ -35,9 +35,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations :as custom-migrations]
-   [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.app-db.snapshot-test-util :as snapshot]
    [metabase.app-db.snapshot-test-util.dump :as dump]
@@ -109,16 +107,16 @@
           (throw (ex-info "The server started for this flavor reports a different one"
                           {:flavor flavor, :detected detected}))))
       (log/info (u/format-color 'blue "Migrating empty %s app db through %s..." flavor through))
-      ;; the same bindings [[impl/do-with-temp-empty-app-db]] installs, plus the sample content every test app DB is
-      ;; set up without: custom migrations read the app DB through the dynamic var, and must not hand work to Quartz
-      ;; against a DB that is about to vanish
-      (binding [mdb.connection/*application-db*                (mdb.connection/application-db db-type data-source)
-                custom-migrations.util/*allow-temp-scheduling* false
-                custom-migrations/*create-sample-content*      false]
-        ;; without version tracking: the snapshot then looks like an install from before `databasechangelog_version`
-        ;; existed, and whatever loads it backfills its version from the `vNN.` ids, the way such an install is
-        ;; upgraded. Migration tests split it into per-major deployments as they would a full replay.
-        (impl/run-migrations-in-range! conn ["v00.00-000" through] {:track-versions? false}))
+      ;; migration tests' bindings, and no sample content, as for every test app DB
+      (impl/do-with-app-db-bindings
+       db-type data-source
+       (fn []
+         (binding [custom-migrations/*create-sample-content* false]
+           ;; without version tracking: the snapshot then looks like an install from before
+           ;; `databasechangelog_version` existed, and whatever loads it backfills its version from the `vNN.` ids, the
+           ;; way such an install is upgraded. Migration tests split it into per-major deployments as they would a full
+           ;; replay.
+           (impl/run-migrations-in-range! conn ["v00.00-000" through] {:track-versions? false}))))
       (stamp-changelog! conn (snapshot/executed-at version))
       {:flavor  flavor
        :content (file-content version flavor

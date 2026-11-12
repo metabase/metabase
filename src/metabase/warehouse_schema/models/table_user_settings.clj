@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -181,7 +182,7 @@
    :identity  [:table_id]
    :primary-key :table_id
    :copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
-               :show_in_getting_started :data_authority :data_source :owner_email :is_published
+               :show_in_getting_started :data_authority :data_source :data_layer :owner_email :is_published
                :description_set :visibility_type_set :data_layer_set :data_source_set]
    :skip      [:caveats_set :points_of_interest_set]
    :defaults  {:description_set     false
@@ -190,7 +191,6 @@
                :data_source_set     false}
    :transform {:collection_id (serialization/fk-transform :model/Collection)
                :owner_user_id serialization/user-transform
-               :data_layer    serialization/keyword-transform
                :table_id      serialization/table-transform}})
 
 (defmethod serialization/storage-paths :model/TableUserSettings [_ entities _ctx]
@@ -223,3 +223,9 @@
                                                  (select-keys settings (user-settings/user-set-table-columns settings))))
     (when (:field_order entity)
       (table/update-field-positions! (warehouse-schema.db/table table_id)))))
+
+(defmethod remote-sync/spec :model/TableUserSettings
+  [_model]
+  {:name                 (fn [{:keys [display_name table_id]}] (or display_name (last table_id)))
+   :synced-items         warehouse-schema.db/synced-table-user-settings-items
+   :synced-filter-clause warehouse-schema.db/synced-table-user-settings-clause})

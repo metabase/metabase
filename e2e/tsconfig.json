@@ -3,14 +3,12 @@
   "compilerOptions": {
     "outDir": "build",
     "noEmit": true,
-    "baseUrl": "./",
     "rootDir": "..",
     "types": [
       "cypress",
       "@testing-library/cypress",
       "cypress-real-events",
-      "@cypress/grep",
-      "../enterprise/frontend/src/embedding-sdk-shared/types/globals.d.ts"
+      "@cypress/grep"
     ],
     "paths": {
       "e2e/*": ["./*"],
@@ -23,10 +21,13 @@
       "@metabase/embedding-sdk-react/data-app-dev": [
         "../enterprise/frontend/src/embedding-sdk-package/data-app-dev.ts"
       ],
-      "*": ["../frontend/src/*"]
+      "*": ["../frontend/src/*", "./*"]
     }
   },
-  "include": ["**/*"],
+  "include": [
+    "**/*",
+    "../enterprise/frontend/src/embedding-sdk-shared/types/globals.d.ts"
+  ],
   // Data-app fixtures and host apps are standalone SDK apps (built by Vite,
   // typechecked by their own tsconfig) — not part of the e2e TS program.
   "exclude": ["support/assets/data-apps", "embedding-sdk-host-apps"]

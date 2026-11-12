@@ -1,6 +1,9 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 
-import { getSubpathSafeUrl } from "metabase/urls";
+import {
+  NEAR_MEMBRANE_SANDBOX_HOST_URL,
+  getSubpathSafeUrl,
+} from "metabase/urls";
 import type { CustomVizPluginId } from "metabase-types/api";
 
 import { makeDistortionCallback } from "./distortions";
@@ -12,13 +15,9 @@ function isLiveTarget(target: object): boolean {
   return target instanceof CSSStyleDeclaration;
 }
 
-// Same-origin endpoint that serves a tiny HTML document with a permissive,
-// per-document CSP (allowing `'unsafe-eval'`).
-const SANDBOX_HOST_URL = "/api/ee/custom-viz-plugin/sandbox-host";
-
 function getSandboxIframeSrc(mode: SandboxMode): string | undefined {
   if (mode === "hosted") {
-    return getSubpathSafeUrl(SANDBOX_HOST_URL);
+    return getSubpathSafeUrl(NEAR_MEMBRANE_SANDBOX_HOST_URL);
   }
   // "blank" skips the sandbox-host endpoint and lets the library fall back to
   // about:blank. Used in Storybook where no backend serves the endpoint.

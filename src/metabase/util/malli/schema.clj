@@ -210,22 +210,6 @@
    [:fn {:json-schema {:type "string"}} #(isa? (keyword %) :type/*)]
    (deferred-tru "value must be a valid field data type (keyword or string).")))
 
-(def FieldSemanticOrRelationTypeKeywordOrString
-  "Like `FieldSemanticOrRelationType` but accepts either a keyword or string."
-  (mu/with-api-error-message
-   [:fn {:json-schema {:type "string"}}
-    (fn [k]
-      (let [k (keyword k)]
-        (or (isa? k :Semantic/*)
-            (isa? k :Relation/*))))]
-   (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
-
-(def CoercionStrategyKeywordOrString
-  "Like `CoercionStrategy` but accepts either a keyword or string."
-  (mu/with-api-error-message
-   [:fn {:json-schema {:type "string"}} #(isa? (keyword %) :Coercion/*)]
-   (deferred-tru "value must be a valid coercion strategy (keyword or string).")))
-
 (defn- open-map
   "A map whose keys are deliberately not ours to declare. The marker property is what lets
   [[metabase.api.macros.defendpoint.closed-schemas]] accept it; nothing outside this namespace should set it."
@@ -233,11 +217,6 @@
   (mu/with-api-error-message
    [:map {:closed false, ::mr/deliberately-open true, :description description}]
    (deferred-tru "Value must be a map.")))
-
-(def VisualizationSettings
-  "Chart-rendering settings authored by the frontend. The backend stores and echoes them and reads no fixed key set, so
-  the keys are whatever the visualization the user picked needs."
-  (open-map "visualization settings"))
 
 (def DatabaseDetails
   "Connection details for a Database. The keys are the driver's `connection-properties`, so they differ per driver and
@@ -271,7 +250,7 @@
   (open-json ::ring-response-body "response body"))
 
 (def VisualizationSettingsValue
-  "A value nested inside [[VisualizationSettings]], whose shape the frontend owns."
+  "A value nested inside visualization settings, whose shape the frontend owns."
   (open-json ::visualization-settings-value "visualization settings value"))
 
 (def HttpRequestBody

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { RowValue, RowValues } from "metabase-types/api";
 
 type Graph = Map<RowValue, Set<RowValue>>;

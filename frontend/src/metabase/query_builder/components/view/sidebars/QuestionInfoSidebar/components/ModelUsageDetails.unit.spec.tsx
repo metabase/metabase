@@ -16,9 +16,9 @@ import {
 } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Card, Collection, Database, Settings } from "metabase-types/api";
 import {
@@ -174,10 +174,8 @@ async function setup({
     questions: [card, ...usedBy],
   });
 
-  const model = checkNotNull(metadata.question(card.id));
-  const usedByQuestions = usedBy.map((q) =>
-    checkNotNull(metadata.question(q.id)),
-  );
+  const model = new Question(card, metadata);
+  const usedByQuestions = usedBy.map((q) => new Question(q, metadata));
 
   setupDatabasesEndpoints(databases);
   setupCardsUsingModelEndpoint(card, usedBy);

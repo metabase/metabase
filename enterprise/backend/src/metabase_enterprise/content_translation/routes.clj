@@ -59,12 +59,7 @@
      :body (with-out-str
              (csv/write-csv *out* csv-data))}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post
-  "/upload-dictionary"
+(api.macros/defendpoint :post "/upload-dictionary" :- [:map {:closed true} [:success [:= true]]]
   "Upload a CSV of content translations"
   {:multipart {:max-file-size (long max-content-translation-dictionary-size-bytes)
                :max-file-count 1}}

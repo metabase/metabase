@@ -573,6 +573,12 @@
            (log/debugf "Error setting default holdability for connection: %s" (ex-message e)))))
      (f conn))))
 
+;; Not the Postgres impl, which unwraps a pgjdbc connection and sets autosave. Autosave issues SAVEPOINT, which Redshift
+;; rejects. A failed statement in a transform test therefore still aborts the transaction for every statement after it.
+(defmethod driver/do-with-test-connection :redshift
+  [driver database f]
+  ((get-method driver/do-with-test-connection :sql-jdbc) driver database f))
+
 (defn- prepare-statement ^PreparedStatement [^Connection conn sql]
   (.prepareStatement conn
                      sql
@@ -1068,10 +1074,18 @@
           owners  (->> (concat (relation-owners-in-schema     conn schema-name)
                                (default-acl-grantors-in-schema conn schema-name))
                        distinct
-                       (remove #(= % me))
-                       (map (fn [o] {:owner o})))]
+                       (remove #(= % me)))]
       (when (seq owners)
-        (driver.postgres/raise-unmemberable-default-priv-owners! schema-name owners)))))
+        ;; Redshift has no role membership to grant: the remedies are owning the objects, or a superuser login
+        (throw (ex-info (format (str "The admin connection's login %s is not a member of %d role(s) that own objects "
+                                     "or default privileges in schema %s: %s. On Redshift it cannot act for them, so "
+                                     "the workspace user would lose access to their future tables. Make the login "
+                                     "the owner of those objects, or connect as a superuser, and retry.")
+                                (quote-field me) (count owners) (quote-schema schema-name)
+                                (str/join ", " owners))
+                        {:status-code 412
+                         :schema      schema-name
+                         :owners      (vec owners)}))))))
 
 (defmethod driver/init-workspace-isolation! :redshift
   [_driver database workspace]

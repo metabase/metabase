@@ -10,8 +10,8 @@ import { ActionContext } from "metabase/actions/containers/ActionCreator/ActionC
 import type { CreateQueryActionParams } from "metabase/actions/types";
 import { getDefaultFormSettings } from "metabase/actions/utils";
 import { useSelector } from "metabase/redux";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   ActionFormSettings,
   DatabaseId,
@@ -75,12 +75,6 @@ export function QueryActionContextProvider({
 
   const [question, setQuestion] = useState(initialQuestion);
 
-  const query = useMemo(
-    // Unjustified type cast. FIXME
-    () => question.legacyNativeQuery() as NativeQuery,
-    [question],
-  );
-
   const [formSettings, setFormSettings] = useState(initialFormSettings);
 
   const action = useMemo(() => {
@@ -93,7 +87,9 @@ export function QueryActionContextProvider({
   }, [initialAction, question, formSettings]);
 
   const isNew = !initialAction && !question.isSaved();
-  const canSave = !query.isEmpty();
+  const query = question.query();
+  const canSave =
+    Lib.databaseID(query) != null && Lib.rawNativeQuery(query).length > 0;
 
   useEffect(() => {
     setInitialQuestion(resolvedQuestion);
@@ -120,20 +116,21 @@ export function QueryActionContextProvider({
     [question],
   );
 
-  const handleQueryChange = useCallback((nextQuery: NativeQuery) => {
-    setQuestion(nextQuery.question().applyTemplateTagParameters());
+  const handleQueryChange = useCallback((nextQuery: Lib.Query) => {
+    setQuestion((question) =>
+      question.setQuery(nextQuery).applyTemplateTagParameters(),
+    );
   }, []);
 
   const renderEditorBody = useCallback(
     ({ isEditable }: EditorBodyProps) => (
       <QueryActionEditor
-        query={query}
         question={question}
         isEditable={isEditable}
         onChangeQuestionQuery={handleQueryChange}
       />
     ),
-    [query, question, handleQueryChange],
+    [question, handleQueryChange],
   );
 
   const isDirty = useMemo(() => {

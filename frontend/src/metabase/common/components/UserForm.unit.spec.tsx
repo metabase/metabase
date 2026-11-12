@@ -315,10 +315,8 @@ describe("UserForm", () => {
         await screen.findAllByText("Attribute keys can't have the same name"),
       ).toHaveLength(2);
 
-      await waitFor(async () =>
-        expect(
-          await screen.findByRole("button", { name: "Update" }),
-        ).toBeDisabled(),
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Update" })).toBeDisabled(),
       );
     });
   });

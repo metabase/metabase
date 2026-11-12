@@ -90,10 +90,6 @@ export type DetailsPermission =
   | DataPermissionValue.NO
   | DataPermissionValue.YES;
 
-export type DetailsPermissions = {
-  [key: DatabaseId]: DetailsPermission;
-};
-
 export type DownloadSchemasPermission =
   | DownloadPermission
   | { [key: SchemaName]: DownloadTablePermission };
@@ -111,7 +107,7 @@ export type DatabasePermissions = {
   [DataPermission.CREATE_QUERIES]?: NativePermissions;
   [DataPermission.DATA_MODEL]?: DataModelPermissions;
   [DataPermission.DOWNLOAD]?: DownloadAccessPermission;
-  [DataPermission.DETAILS]?: DetailsPermissions;
+  [DataPermission.DETAILS]?: DetailsPermission;
   [DataPermission.TRANSFORMS]?: TransformsPermission;
 };
 

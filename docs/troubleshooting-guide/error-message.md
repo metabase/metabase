@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting error messages
+summary: Match the error message you're seeing to the troubleshooting guide that fixes it.
 ---
 
 # Troubleshooting error messages

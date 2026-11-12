@@ -18,7 +18,7 @@
 
 /* Vertical line running through the icon column, connecting circles.
    Sits behind the icon circles, which cover it on their own footprint. */
-.rows::before {
+.connected::before {
   content: "";
   position: absolute;
   left: 0.75rem; /* center of 24px (1.5rem) icon circle */
@@ -31,6 +31,6 @@
 
 /* A single row has no circles to connect, and when its value wraps, the
    line would show above and below its icon. */
-.rows:has(> :only-child)::before {
+.connected:has(> :only-child)::before {
   display: none;
 }

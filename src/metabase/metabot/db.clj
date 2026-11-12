@@ -465,6 +465,17 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
+(mu/defn active-visible-tables-named
+  "The ID, schema, and name of the active, unhidden Tables in the Database with `database-id` whose name is one of
+  `table-names`."
+  [database-id :- ::lib.schema.id/database
+   table-names :- [:sequential {:min 1} :string]]
+  (t2/select [:model/Table :id :schema :name]
+             :db_id database-id
+             :name [:in table-names]
+             :active true
+             :visibility_type nil))
+
 (mu/defn active-table-with-columns
   "The `columns` of the active Table with `table-id`, or nil."
   [columns :- [:sequential :keyword]
@@ -715,6 +726,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
+(mu/defn dashboard-questions
+  "The Cards among `card-ids` that are saved inside a dashboard, which is their `:dashboard_id`."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select :model/Card :id [:in card-ids] :dashboard_id [:not= nil]))
+
 (mu/defn card-by-entity-id
   "The Card with `entity-id`, or nil."
   [entity-id :- :string]
@@ -836,6 +852,12 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :name :description :database_id :collection_id :type] :id [:in card-ids]))
 
+(mu/defn cards-for-read-check
+  "The ID, Collection ID, and Document ID of the unarchived Cards with `card-ids`, which is what `mi/can-read?` needs
+  to check a Card without another query."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select [:model/Card :id :collection_id :document_id] :id [:in card-ids] :archived false))
+
 (mu/defn unarchived-card-summaries
   "The presentable columns of the unarchived Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
@@ -885,12 +907,34 @@
   (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
                                                        :metabot_chart_id        chart-id}))
 
+(mu/defn conversation-dashboard-questions
+  "The unarchived dashboard questions of `dashboard-id` that were saved from `chart-id` in the conversation with
+  `conversation-id`, oldest first."
+  [conversation-id :- :string
+   chart-id        :- :string
+   dashboard-id    :- ::lib.schema.id/dashboard]
+  (t2/select :model/Card
+             :metabot_conversation_id conversation-id
+             :metabot_chart_id        chart-id
+             :dashboard_id            dashboard-id
+             :archived                false
+             {:order-by [[:id :asc]]}))
+
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select-one :model/Collection :id collection-id))
+
+(mu/defn collection-with-ancestors
+  "The Collection with `collection-id`, hydrated with the ancestors the current user can read, root first, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (some-> (t2/select-one [:model/Collection
+                          :id :name :location :namespace :personal_owner_id :type :archived :archived_directly
+                          :authority_level]
+                         :id [:auto/param collection-id])
+          (t2/hydrate :effective_ancestors)))
 
 (mu/defn collection-name
   "The name of the Collection with `collection-id`."
@@ -945,9 +989,12 @@
   (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-summary
-  "The ID, description, name, Collection ID, and parameters of the Dashboard with `dashboard-id`, or nil."
+  "The ID, description, name, Collection ID, parameters, creator ID, creation time and archived flag of the Dashboard
+  with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters] :id [:auto/param dashboard-id]))
+  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters :creator_id :created_at
+                  :archived]
+                 :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-name
   "The name of the Dashboard with `dashboard-id`."
@@ -970,10 +1017,11 @@
   (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn dashcards
-  "The ID, Card, action, tab, and settings of the DashboardCards of the Dashboard with `dashboard-id`, in grid
-  order."
+  "The ID, Card, action, tab, position, size, filter mappings, and settings of the DashboardCards of the Dashboard
+  with `dashboard-id`, in grid order."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id :visualization_settings]
+  (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id :row :col :size_x :size_y
+              :parameter_mappings :visualization_settings]
              :dashboard_id dashboard-id
              {:order-by [[:row :asc] [:col :asc]]}))
 

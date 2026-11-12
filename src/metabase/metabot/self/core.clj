@@ -7,6 +7,8 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.ai-tracing.core :as ait]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.tools.error :as tools.error]
@@ -24,7 +26,7 @@
    [metabase.util.o11y :refer [with-span]])
   (:import
    (java.io BufferedReader Closeable FilterInputStream InputStream IOException)
-   (java.util.concurrent CompletableFuture Executors ExecutorService)
+   (java.util.concurrent CompletableFuture Executor Executors ThreadPoolExecutor)
    (java.util.function BiFunction Supplier)))
 
 (set! *warn-on-reflection* true)
@@ -982,20 +984,45 @@
 
 ;;; Tool executor
 
-(defonce ^:private tool-executor
+(defonce ^:private ^ThreadPoolExecutor tool-executor
+  ;; One pool per instance, shared by every user and conversation. A call waits here when 20 calls already run.
   (Executors/newFixedThreadPool
    20
    (.. (Thread/ofVirtual) (name "tool-executor-") factory)))
+
+(defmethod analytics.core/pull-collector ::tool-executor [_]
+  ;; Reading the pool's counters is cheap, so every scrape refreshes them.
+  {:min-interval-s 0
+   :f (fn []
+        (analytics/set-gauge! :metabase-metabot/tool-executor-pool-size (.getMaximumPoolSize tool-executor))
+        (analytics/set-gauge! :metabase-metabot/tool-executor-active (.getActiveCount tool-executor))
+        (analytics/set-gauge! :metabase-metabot/tool-executor-queued (.size (.getQueue tool-executor))))})
+
+(def ^:private ^Executor observed-tool-executor
+  "Runs each task on [[tool-executor]] and observes the time the task waits there for a free thread."
+  (reify Executor
+    (execute [_ task]
+      (let [submitted (u/start-timer)]
+        (.execute tool-executor
+                  ^Runnable (fn []
+                              ;; The task completes the call's future, so it runs even if the observation throws
+                              (try
+                                (analytics/observe! :metabase-metabot/tool-executor-wait-ms
+                                                    (u/since-ms submitted))
+                                (finally
+                                  (.run task)))))))))
 
 (defn- submit-virtual
   "Submit a thunk to run on a virtual thread, bounded by pool size, once every future in `after` has completed.
   Waiting takes no thread from the pool. Returns a CompletableFuture of the thunk's value."
   [after thunk]
   (if (seq after)
+    ;; `handleAsync` hands the thunk to the executor only when `after` completes, so the wait timer starts when the
+    ;; thunk reaches the pool and the wait on `after` is in no metric.
     (.handleAsync (CompletableFuture/allOf (into-array CompletableFuture after))
                   (reify BiFunction (apply [_ _ _] (thunk)))
-                  ^ExecutorService tool-executor)
-    (CompletableFuture/supplyAsync (reify Supplier (get [_] (thunk))) ^ExecutorService tool-executor)))
+                  observed-tool-executor)
+    (CompletableFuture/supplyAsync (reify Supplier (get [_] (thunk))) observed-tool-executor)))
 
 (defn- collect-tool-result
   "Normalize tool result into a vector of output chunks.

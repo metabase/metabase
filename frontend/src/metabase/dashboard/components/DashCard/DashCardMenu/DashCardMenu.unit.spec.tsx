@@ -14,9 +14,9 @@ import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { Route } from "metabase/router";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
@@ -111,7 +111,7 @@ const setup = ({
   });
 
   const metadata = createMockMetadataFromState(storeInitialState);
-  const question = checkNotNull(metadata.question(card.id));
+  const question = new Question(card, metadata);
   const dashcard = createMockDashboardCard({
     ...card,
     dashboard_id: card.dashboard_id ?? undefined,
@@ -306,7 +306,7 @@ describe("DashCardMenu.shouldRender", () => {
       }),
     }),
   );
-  const question = checkNotNull(metadata.question(TEST_CARD.id));
+  const question = new Question(TEST_CARD, metadata);
 
   it("should render when the question is editable", () => {
     expect(
