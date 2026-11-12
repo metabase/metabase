@@ -154,7 +154,7 @@
   from its own replacement fails on its first run rather than on a later one."
   [_options]
   (let [{:keys [proxied skipped failed]} (dynamic-redefs/proxy-compiled-targets!)]
-    (log/infof "with-dynamic-fn-redefs: proxied %d vars before the run; %d are not plain fns: %s"
+    (log/infof "with-dynamic-fn-redefs: proxied %d vars before the run; skipped %d it cannot proxy: %s"
                proxied (count skipped) (pr-str (sort-by str skipped)))
     (doseq [[a-var e] failed]
       (log/warnf e "with-dynamic-fn-redefs: could not proxy %s before the run" a-var))))

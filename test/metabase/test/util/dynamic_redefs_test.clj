@@ -613,18 +613,22 @@
                                                                   'metabase.test.util.dynamic-redefs-test)])))))
 
 (deftest proxy-compiled-targets-test
-  (let [ns-sym (gensym "metabase.test.util.dynamic-redefs-test.compiled-")
-        target (intern (create-ns ns-sym) 'target (fn [] :original))]
-    ;; Compile, but never run, a redef of `target` in a namespace without this one's opt-out.
+  (let [ns-sym  (gensym "metabase.test.util.dynamic-redefs-test.compiled-")
+        target  (intern (create-ns ns-sym) 'target (fn [] :original))
+        keyword (intern (the-ns ns-sym) 'keyword-target :k)]
+    ;; Compile, but never run, a redef of each var in a namespace without this one's opt-out.
     (binding [*ns* (the-ns ns-sym)]
       (eval '(clojure.core/fn []
-               (metabase.test.util.dynamic-redefs/with-dynamic-fn-redefs [target (clojure.core/constantly :redef)]
+               (metabase.test.util.dynamic-redefs/with-dynamic-fn-redefs [target         (clojure.core/constantly :r)
+                                                                          keyword-target :other]
                  (target)))))
-    (testing "compiling the macro only records the var"
-      (is (nil? (dynamic-redefs/dynamic-value target))))
-    (testing "the runner's call proxies it"
+    (testing "compiling the macro only records the vars"
+      (is (nil? (dynamic-redefs/dynamic-value target)))
+      (is (nil? (dynamic-redefs/dynamic-value keyword))))
+    (testing "the runner's call proxies them, a keyword as well as a fn"
       (is (=? {:failed {}} (dynamic-redefs/proxy-compiled-targets!)))
-      (is (= :original ((dynamic-redefs/dynamic-value target)))))
+      (is (= :original ((dynamic-redefs/dynamic-value target))))
+      (is (= :k (dynamic-redefs/dynamic-value keyword))))
     (testing "so a captured value is the proxy, and a replacement that calls it fails on the first run"
       (let [captured @target]
         (is (thrown-with-msg? AssertionError #"runaway recursion"

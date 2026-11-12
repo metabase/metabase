@@ -141,15 +141,20 @@
   ;; So each proxy records its own original, and replacements are bound to a proxy, not to the var.
   (.put proxies proxy [a-var original source]))
 
+(defn- multimethod?
+  "Whether `root` is a Clojure or a methodical multimethod."
+  [root]
+  ;; The proxy stays on the var, so a later `defmethod` through the var finds a plain fn instead of the multimethod.
+  ;; A methodical multimethod is an immutable value that `defmethod` reads back from the var, so it breaks too.
+  (or (instance? MultiFn root) (methodical/multifn? root)))
+
 (defn- check-proxyable
   "Throws when `root`, the root of `a-var`, is not an `IFn`, or is a multimethod."
   [a-var root]
   ;; These are throws, not asserts, so they fire even when `*assert*` is false.
   (when-not (ifn? root)
     (throw (ex-info (str "Cannot proxy non-IFn values: " a-var) {:var a-var, :value root})))
-  ;; The proxy stays on the var, so a later `defmethod` through the var finds a plain fn instead of the multimethod.
-  ;; A methodical multimethod is an immutable value that `defmethod` reads back from the var, so it breaks too.
-  (when (or (instance? MultiFn root) (methodical/multifn? root))
+  (when (multimethod? root)
     (throw (ex-info (str "Cannot proxy multimethods: " a-var ". "
                          "with-dynamic-fn-redefs leaves a proxy on the var for the rest of the JVM, so a later "
                          "defmethod through it fails. Use with-redefs in a test that is not ^:parallel, or add a "
@@ -282,25 +287,33 @@
                                           (when (var? v) v)))
            syms)))
 
+(defn- proxyable?
+  "Whether `a-var` is bound to a value the macro accepts: an `IFn` that is not a multimethod."
+  [^Var a-var]
+  ;; Check bound first: an unbound var's root is a `Var$Unbound`, which is itself an `IFn`.
+  (and (.isBound a-var)
+       (let [root (.getRawRoot a-var)]
+         (and (ifn? root) (not (multimethod? root))))))
+
 (defn proxy-compiled-targets!
-  "Proxy every var named by a compiled `with-dynamic-fn-redefs` form whose root is a plain fn.
+  "Proxy every var named by a compiled `with-dynamic-fn-redefs` form that the macro could proxy.
    Returns `{:proxied n, :skipped vars, :failed {var exception}}`.
    The test runner calls this before the first test, so a value that a test body captures from such a var is the
    proxy even on the test's first run."
   []
-  ;; Skip anything that is not a plain fn, such as a multimethod, and leave it to the macro to refuse or proxy when a
-  ;; test redefines it. A failure only costs one var its early proxy, so record it rather than abort the run.
-  (let [{plain true, other false} (group-by #(fn? (.getRawRoot ^Var %)) @compiled-targets)
-        failed                    (into {}
-                                        (keep (fn [a-var]
-                                                (try
-                                                  (patch-vars! [a-var])
-                                                  nil
-                                                  (catch Exception e
-                                                    [a-var e]))))
-                                        plain)]
-    {:proxied (- (count plain) (count failed))
-     :skipped (vec other)
+  ;; Leave the rest, such as multimethods, for the macro to refuse when a test runs it. A failure only costs one var
+  ;; its early proxy, so record it rather than abort the run.
+  (let [{targets true, skipped false} (group-by proxyable? @compiled-targets)
+        failed                        (into {}
+                                            (keep (fn [a-var]
+                                                    (try
+                                                      (patch-vars! [a-var])
+                                                      nil
+                                                      (catch Exception e
+                                                        [a-var e]))))
+                                            targets)]
+    {:proxied (- (count targets) (count failed))
+     :skipped (vec skipped)
      :failed  failed}))
 
 (defn- sym->var [sym] `(var ~sym))
