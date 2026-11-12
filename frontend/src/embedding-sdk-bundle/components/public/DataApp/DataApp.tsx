@@ -15,6 +15,7 @@ import { DataAppFrame } from "./DataAppFrame";
 
 /** @category DataApp */
 export interface DataAppProps {
+  // TODO(DAT-115): add `onPathChange` so the host can navigate back after the user navigates inside the app.
   /**
    * App slug and optional route/query, such as `my-store/orders?active=true`.
    *
