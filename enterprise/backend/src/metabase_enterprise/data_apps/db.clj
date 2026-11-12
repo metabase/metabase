@@ -148,13 +148,13 @@
                                (when-not (premium-features/has-feature? :tenants)
                                  [:= :member.tenant_id nil])]}))
 
-(mu/defn data-app-readable?
-  "Whether the non-superuser with `user-id` can read the DataApp with `app-id`."
+(mu/defn readable-data-app-ids-among :- [:set ms/PositiveInt]
+  "The ids, among `app-ids`, of the DataApps that the non-superuser with `user-id` can read."
   [user-id :- ms/PositiveInt
-   app-id  :- ms/PositiveInt]
-  (t2/exists? :model/DataApp {:where [:and
-                                      [:= :id app-id]
-                                      [:in :id (readable-data-app-ids-select user-id false)]]}))
+   app-ids :- [:sequential ms/PositiveInt]]
+  (set (t2/select-pks-set :model/DataApp {:where [:and
+                                                  [:in :id app-ids]
+                                                  [:in :id (readable-data-app-ids-select user-id false)]]})))
 
 (mu/defn readable-data-apps
   "The DataApps that the User with `user-id` can read, without their bundles, ordered by name."

@@ -13,11 +13,19 @@
 (doto :model/MetabotConversation
   (derive :metabase/model))
 
+(t2/define-after-select :model/MetabotConversation
+  [conversation]
+  (when-let [user-id api/*current-user-id*]
+    (mi/register-pending! [::participant user-id] (:id conversation)))
+  conversation)
+
 (defn participant?
-  "True if `user-id` has sent at least one message in `conversation-id`."
+  "True if `user-id` has sent at least one message in `conversation-id`, looked up with the other conversations the
+  request loaded."
   [conversation-id user-id]
   (when (and conversation-id user-id)
-    (metabot.db/participant? conversation-id user-id)))
+    (mi/batched-lookup [::participant user-id] conversation-id
+                       #(zipmap (metabot.db/conversation-ids-with-message-from user-id %) (repeat true)))))
 
 (defmethod mi/can-read? :model/MetabotConversation
   ;; Access: superuser, or originator (first-writer, set on insert and never

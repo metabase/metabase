@@ -118,6 +118,8 @@
 (t2/define-after-select :model/DataApp
   [app]
   (remote-sync/register-loaded! :model/DataApp (:id app))
+  (when-let [user-id api/*current-user-id*]
+    (mi/register-pending! [::readable user-id] (:id app)))
   (cond-> app
     (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
 
@@ -126,8 +128,11 @@
   ([_model pk]
    (and (premium-features/has-feature? :data-apps)
         (or api/*is-superuser?*
-            (and api/*current-user-id*
-                 (data-apps.db/data-app-readable? api/*current-user-id* pk))))))
+            (let [user-id api/*current-user-id*]
+              (boolean
+               (and user-id
+                    (mi/batched-lookup [::readable user-id] pk
+                                       #(zipmap (data-apps.db/readable-data-app-ids-among user-id %) (repeat true))))))))))
 
 (defmethod mi/can-write? :model/DataApp
   ([app]       (mi/can-write? :model/DataApp (:id app)))

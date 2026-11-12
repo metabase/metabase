@@ -277,11 +277,13 @@
 
 ;;; -------------------------------------------------- Messages --------------------------------------------------
 
-(mu/defn participant?
-  "Whether the User with `user-id` has sent a message in the MetabotConversation with `conversation-id`."
-  [conversation-id :- :string
-   user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id user-id))
+(mu/defn conversation-ids-with-message-from :- [:set :string]
+  "The ids, among `conversation-ids`, of the MetabotConversations in which the User with `user-id` has sent a message."
+  [user-id          :- ::lib.schema.id/user
+   conversation-ids :- [:sequential :string]]
+  (set (t2/select-fn-set :conversation_id [:model/MetabotMessage :conversation_id]
+                         :conversation_id [:in conversation-ids]
+                         :user_id user-id)))
 
 (mu/defn- other-participant?
   "Whether a User other than `user-id` has sent a message in the MetabotConversation with `conversation-id`."

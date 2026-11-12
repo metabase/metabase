@@ -303,6 +303,17 @@
   [notification-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/NotificationHandler :notification_id [:in notification-ids]))
 
+(mu/defn notification-ids-with-user-recipient :- [:set ms/PositiveInt]
+  "The ids, among `notification-ids`, of the Notifications that have the User with `user-id` as a recipient of a
+  handler."
+  [user-id          :- ::lib.schema.id/user
+   notification-ids :- [:sequential ms/PositiveInt]]
+  (set (t2/select-fn-set :notification_id [:model/NotificationHandler :notification_id]
+                         {:join  [[:notification_recipient :nr] [:= :nr.notification_handler_id :notification_handler.id]]
+                          :where [:and
+                                  [:in :notification_handler.notification_id notification-ids]
+                                  [:= :nr.user_id [:auto/param user-id]]]})))
+
 (mu/defn handler-notification-ids-for-email
   "The set of Notification IDs of the handlers whose recipients (joined to their user) have an exact, lower-cased
   `email` match, either directly (via the recipient's User) or among `raw-value-handler-ids` (handler IDs already

@@ -235,6 +235,18 @@
                 [:= :c.archived false]]
     :order-by [[:pc.position :asc]]}))
 
+(mu/defn pulse-ids-with-active-recipient :- [:set ::lib.schema.id/pulse]
+  "The ids, among `pulse-ids`, of the Pulses that have the active User with `user-id` as a recipient of a channel."
+  [user-id   :- ::lib.schema.id/user
+   pulse-ids :- [:sequential ::lib.schema.id/pulse]]
+  (set (t2/select-fn-set :pulse_id [:model/PulseChannel :pulse_id]
+                         {:join  [[:pulse_channel_recipient :pcr] [:= :pcr.pulse_channel_id :pulse_channel.id]
+                                  [:core_user :u] [:= :u.id :pcr.user_id]]
+                          :where [:and
+                                  [:in :pulse_channel.pulse_id pulse-ids]
+                                  [:= :pcr.user_id [:auto/param user-id]]
+                                  [:= :u.is_active true]]})))
+
 (mu/defn pulse-card-refs
   "The Card id (as `:id`), export options, and DashboardCard id of the PulseCards of the Pulse with `pulse-id`, in
   position order."

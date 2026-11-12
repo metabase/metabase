@@ -780,49 +780,58 @@
   (contains? (current-user-permissions-set) "/"))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *parent-rows*
-  "An atom `{model-spec {:pending #{id} :rows {id row}}}` of the rows that permission checks of loaded rows read, bound
-  per request, or nil. A model spec is a model, or a vector of a model and the columns to select."
+(def ^:dynamic *batched-lookups*
+  "An atom `{key {:pending #{id} :values {id value}}}` of the values that permission checks of loaded rows read, bound
+  per request, or nil."
   nil)
 
-(defn do-with-parent-rows-cache
-  "Calls `thunk` with [[*parent-rows*]] bound, keeping a cache already in place."
+(defn do-with-batched-lookups
+  "Calls `thunk` with [[*batched-lookups*]] bound, keeping a cache already in place."
   [thunk]
-  (binding [*parent-rows* (or *parent-rows* (atom {}))]
+  (binding [*batched-lookups* (or *batched-lookups* (atom {}))]
     (thunk)))
+
+(defn register-pending!
+  "Remembers that this request loaded a row whose permission checks look up `id` under `key`, so that the first
+  [[batched-lookup]] under `key` looks up this id too."
+  [key id]
+  (when-let [cache (and (some? id) *batched-lookups*)]
+    (when-not (contains? (get-in @cache [key :values]) id)
+      (swap! cache update-in [key :pending] (fnil conj #{}) id))))
+
+(defn batched-lookup
+  "The value of `id` under `key`, computed by `lookup`, which takes ids and returns `{id value}`, for `id` and the
+  pending ids of `key` in a request, and for `id` alone outside one."
+  [key id lookup]
+  (when id
+    (if-let [cache *batched-lookups*]
+      (let [{:keys [pending values]} (get @cache key)]
+        (if (contains? values id)
+          (get values id)
+          (let [ids   (conj (or pending #{}) id)
+                found (into {} (mapcat #(lookup (vec %))) (partition-all 1000 ids))]
+            (swap! cache update key
+                   #(-> %
+                        (update :pending (fnil (fn [p] (reduce disj p ids)) #{}))
+                        (update :values (fnil into {}) (map (fn [i] [i (get found i)])) ids)))
+            (get found id))))
+      (get (lookup [id]) id))))
 
 (defn register-parent!
   "Remembers that this request loaded a row whose permission checks read the row of `model-spec` with `:id` `id`, so
   that the first [[parent-row]] of `model-spec` selects this row too."
   [model-spec id]
-  (when-let [cache (and (pos-int? id) *parent-rows*)]
-    (when-not (contains? (get-in @cache [model-spec :rows]) id)
-      (swap! cache update-in [model-spec :pending] (fnil conj #{}) id))))
+  (register-pending! model-spec id))
 
 (defn parent-row
   "The row of `model-spec`, a model or a vector of a model and its columns, with `:id` `id`, or nil, selected with the
   pending parents of `model-spec` in a request."
   [model-spec id]
-  (when id
-    (if-let [cache *parent-rows*]
-      (let [{:keys [pending rows]} (get @cache model-spec)]
-        (if (contains? rows id)
-          (get rows id)
-          (let [ids   (conj (or pending #{}) id)
-                found (into {}
-                            (comp (mapcat #(models.db/entities-by-id model-spec (vec %)))
-                                  (map (juxt :id identity)))
-                            (partition-all 1000 ids))]
-            (swap! cache update model-spec
-                   #(-> %
-                        (update :pending (fnil (fn [p] (reduce disj p ids)) #{}))
-                        (update :rows (fnil into {}) (map (fn [i] [i (get found i)])) ids)))
-            (get found id))))
-      (first (models.db/entities-by-id model-spec [id])))))
+  (batched-lookup model-spec id #(u/index-by :id (models.db/entities-by-id model-spec %))))
 
-(defn- forget-parent-rows!
+(defn- forget-batched-lookups!
   []
-  (when-let [cache *parent-rows*]
+  (when-let [cache *batched-lookups*]
     (when (seq @cache)
       (reset! cache {}))))
 
@@ -830,9 +839,9 @@
   (methodical/add-aux-method-with-unique-key!
    #'t2.pipeline/transduce-query :before [query-type :default :default]
    (fn [_rf _query-type _model _parsed-args resolved-query]
-     (forget-parent-rows!)
+     (forget-batched-lookups!)
      resolved-query)
-   ::forget-parent-rows))
+   ::forget-batched-lookups))
 
 (mu/defn- check-perms-with-fn
   ([fn-symb       :- qualified-symbol?

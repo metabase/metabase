@@ -120,15 +120,26 @@
   ;; to trigger deleting the scheduled jobs
   (pulse.db/delete-pulse-channels-for-pulse! (u/the-id pulse)))
 
+(t2/define-after-select :model/Pulse
+  [pulse]
+  (mi/register-pending! ::alert-card (:id pulse))
+  (when-let [user-id api/*current-user-id*]
+    (mi/register-pending! [::active-recipient user-id] (:id pulse)))
+  pulse)
+
+(defn- first-cards
+  "The first non-archived Card of each of the Pulses with `pulse-ids`, by Pulse id."
+  [pulse-ids]
+  (update-vals (group-by :pulse_id (pulse.db/pulse-cards-for-pulses pulse-ids))
+               #(dissoc (first %) :pulse_id)))
+
 (defn- alert->card
   "Return the Card associated with an Alert, fetching it if needed, for permissions-checking purposes."
   [alert]
   (or
    ;; if `card` is already present as a top-level key we can just use that directly
    (:card alert)
-   ;; otherwise fetch the associated `:cards` (if not already fetched) and then pull the first one out, since Alerts
-   ;; can only have one Card
-   (-> (t2/hydrate alert :cards) :cards first)
+   (mi/batched-lookup ::alert-card (:id alert) first-cards)
    ;; if there's still not a Card, throw an Exception!
    (throw (Exception. (tru "Invalid Alert: Alert does not have a Card associated with it")))))
 
@@ -157,12 +168,11 @@
 
 (defn- current-user-is-recipient?
   [notification]
-  (let [channels (:channels (t2/hydrate notification [:channels :recipients]))
-        recipient-ids (for [{recipients :recipients} channels
-                            recipient recipients]
-                        (:id recipient))]
+  (let [user-id api/*current-user-id*]
     (boolean
-     (some #{api/*current-user-id*} recipient-ids))))
+     (and user-id
+          (mi/batched-lookup [::active-recipient user-id] (:id notification)
+                             #(zipmap (pulse.db/pulse-ids-with-active-recipient user-id %) (repeat true)))))))
 
 (defmethod mi/can-read? :model/Pulse
   [notification]

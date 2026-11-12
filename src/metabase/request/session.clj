@@ -58,7 +58,7 @@
        (fn []
          (perms/with-relevant-permissions-for-user metabase-user-id
            (remote-sync/do-with-read-only-pks-cache
-            #(mi/do-with-parent-rows-cache thunk))))))))
+            #(mi/do-with-batched-lookups thunk))))))))
 
 (defn with-current-user-fetch-user-for-id
   "Part of the impl for `with-current-user` -- don't use this directly."

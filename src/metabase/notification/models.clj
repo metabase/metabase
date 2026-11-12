@@ -76,6 +76,8 @@
 
 (t2/define-after-select :model/Notification
   [notification]
+  (when-let [user-id (mi/current-user-id)]
+    (mi/register-pending! [::user-recipient user-id] (:id notification)))
   (dissoc notification :internal_id))
 
 (methodical/defmethod t2/batched-hydrate [:model/Notification :subscriptions]
@@ -467,6 +469,11 @@
 (t2/deftransforms :model/NotificationCard
   {:send_condition (mi/transform-validator mi/transform-keyword (partial mi/assert-enum card-subscription-send-conditions))})
 
+(t2/define-after-select :model/NotificationCard
+  [notification-card]
+  (mi/register-parent! :model/Card (:card_id notification-card))
+  notification-card)
+
 (def ^:private notification-card-entries
   [[:card_id                          ms/PositiveInt]
    [:notification_id {:optional true} [:maybe ms/PositiveInt]]
@@ -589,12 +596,11 @@
 (defn current-user-is-recipient?
   "Check if the current user is a recipient of a notification."
   [notification]
-  (->> (:handlers (t2/hydrate notification [:handlers :recipients]))
-       (mapcat :recipients)
-       (map :user_id)
-       distinct
-       (some #{(mi/current-user-id)})
-       boolean))
+  (let [user-id (mi/current-user-id)]
+    (boolean
+     (and user-id
+          (mi/batched-lookup [::user-recipient user-id] (:id notification)
+                             #(zipmap (notification.db/notification-ids-with-user-recipient user-id %) (repeat true)))))))
 
 (defn current-user-is-creator?
   "Check if the current user is the creator of a notification."
