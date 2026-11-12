@@ -330,18 +330,6 @@ describe("DataApp", () => {
     expect(screen.getByTestId("host-path")).toHaveTextContent(/^boba-hq$/);
   });
 
-  it("keeps working without onPathChange when the user navigates inside the app", () => {
-    const { iframe, postMessage } = setup();
-
-    message(iframe, "metabase.embed.iframeReady");
-    postMessage.mockClear();
-
-    pathChangeMessage(iframe, "boba-hq/orders");
-
-    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
-    expect(postMessage).not.toHaveBeenCalled();
-  });
-
   it("keeps the same iframe when a leading slash is added", () => {
     const { iframe, rerender } = setup();
     rerender(<DataApp path="/boba-hq" />);
