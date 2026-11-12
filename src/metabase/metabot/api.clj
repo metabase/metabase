@@ -16,6 +16,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.api.conversations]
+   [metabase.metabot.api.custom-expression]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
    [metabase.metabot.api.permissions]
@@ -29,7 +30,6 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
-   [metabase.metabot.summary-formula :as metabot.summary-formula]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
@@ -462,21 +462,15 @@
   (metabot.feedback/persist-source-feedback! body)
   api/generic-204-no-content)
 
-(api.macros/defendpoint :post "/summary-formula" :- ::metabot.summary-formula/response-schema
-  "Draft a custom expression from the summary sidebar's natural-language request in `body`."
-  [_route-params
-   _query-params
-   body :- ::metabot.summary-formula/request-schema]
-  (metabot.summary-formula/suggest-formula body))
-
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot` routes."
   (handlers/routes
    (handlers/route-map-handler
-    {"/metabot"       metabase.metabot.api.metabot/routes
-     "/conversations" metabase.metabot.api.conversations/routes
-     "/permissions"   metabase.metabot.api.permissions/routes
-     "/document"      metabase.metabot.api.document/routes
+    {"/metabot"           metabase.metabot.api.metabot/routes
+     "/conversations"     metabase.metabot.api.conversations/routes
+     "/custom-expression" metabase.metabot.api.custom-expression/routes
+     "/permissions"       metabase.metabot.api.permissions/routes
+     "/document"          metabase.metabot.api.document/routes
      ;; premium check happens in the route so we still ack events to prevent slack retrying
-     "/slack"         metabase.slackbot.api/routes})
+     "/slack"             metabase.slackbot.api/routes})
    (api.macros/ns-handler *ns* +auth)))
