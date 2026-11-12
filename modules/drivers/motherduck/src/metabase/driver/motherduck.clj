@@ -51,17 +51,20 @@
   ;; expects a root certificate file in ~/.postgresql instead. `verify-full` also checks the hostname. Through an SSH
   ;; tunnel, pgjdbc would check it against localhost, so check only the chain there.
   ;; The startup option enables Metabase compatibility, including Postgres-style array serialization and command tags
-  ;; for CREATE TABLE and INSERT.
+  ;; for CREATE TABLE and INSERT. Single attach mode attaches only the connected database instead of the whole
+  ;; MotherDuck workspace, which avoids a background attach fan-out of every database in the account. See
+  ;; https://motherduck.com/docs/sql-reference/postgres-endpoint/
   ;; The endpoint ignores the user name and the form has no field for it; send the one MotherDuck's docs use.
   (-> (sql-jdbc.conn/connection-details->spec :postgres (assoc details :ssl true, :user "postgres"))
       (assoc :sslmode    (if tunnel-enabled "verify-ca" "verify-full")
              :sslfactory "org.postgresql.ssl.DefaultJavaSSLFactory"
-             :options    "--compatibility-mode=metabase")))
+             :options    "--compatibility-mode=metabase --attach_mode=single")))
 
 ;;; Resetting the current database at checkout
 ;;;
 ;;; SQL on a connection can switch its current database, with `USE`, `SET search_path` or `SET schema`, and the switch
-;;; lasts for the session. A MotherDuck connection can see every database in the account, and `USE` is idiomatic
+;;; lasts for the session. A MotherDuck connection starts with only its own database attached, but SQL can `ATTACH`
+;;; any database in the account for the rest of the session, and `ATTACH` plus `USE` is idiomatic
 ;;; DuckDB, so analysts will write it in native queries. Metabase qualifies tables with only the schema, so later
 ;;; queries and syncs that reuse the pooled connection would read the other database: queries fail, or silently return
 ;;; another database's data, and sync can deactivate every table.

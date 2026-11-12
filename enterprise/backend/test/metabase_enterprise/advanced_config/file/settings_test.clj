@@ -81,6 +81,24 @@
         (is (=? [{:level :warn, :message (u/colorize :yellow "Ignoring unknown setting in config: config-from-file-settings-test-setting-FAKE.")}]
                 (messages)))))))
 
+(deftest stub-setting-test
+  (testing "A config file that sets a stub Setting stores nothing for it, and its other Settings are applied"
+    ;; `agent-api-enabled?` is a stub with no effect since 0.66.0. A config file written for 0.65 can have it.
+    (mt/with-temporary-setting-values [config-from-file-settings-test-setting nil]
+      (mt/with-log-messages-for-level [messages [metabase.agent-api.settings :warn]]
+        (is (= :ok
+               (advanced-config.file/initialize!
+                {:version 1
+                 :config  {:settings {:agent-api-enabled?                     true
+                                      :config-from-file-settings-test-setting "applied"}}})))
+        (testing "the setter of the stub logs what to use"
+          (is (=? [{:level   :warn
+                    :message #"agent-api-enabled\? has been removed.*"}]
+                  (messages))))
+        (is (nil? (setting/db-stored-value :agent-api-enabled?)))
+        (is (= "applied"
+               (config-from-file-settings-test-setting)))))))
+
 (deftest boot-initialize-test
   (testing "The OSS boot hook applies the config file from disk, with `{{env VAR}}` templates expanded"
     (mt/with-temp-file [filename "boot-config-file.yml"]
