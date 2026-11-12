@@ -56,11 +56,6 @@
           (keep #(file->module prefix->module %))
           updated-files)))
 
-(defn- updated-modules [git-ref]
-  (let [git-ref (or git-ref "master")
-        updated-files (u/updated-files git-ref)]
-    (updated-files->updated-modules updated-files)))
-
 (def ^:private backend-test-source-file-extensions
   [".clj" ".cljc"])
 
@@ -122,96 +117,118 @@
       acc
       new-deps))))
 
-(def driver-affecting-overrides
-  "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
-  '#{metabot.agent-api
-     metabot.agent-api.usage
-     analytics
-     analytics.interface
+(def driver-test-exemptions
+  "Modules whose changes don't count as reaching the driver-test triggers, though the triggers depend on them.
+  An exemption covers the module's submodules too, except those in [[driver-test-opt-ins]]."
+  '#{analytics
      api
      api-keys
      api-scope
      appearance
      audit-app
-     sso.auth-identity
      auth-provider
      batch-processing
-     bookmarks
      channel
-     util.classloader
      collections
-     util.config
      content-verification
-     explorations.contextual-interestingness
-     custom-viz-plugin
+     core.initialization-status
+     core.version
      dashboards
      data-apps
      dependencies
      documents
-     api.eid-translation
      embedding
-     enterprise/api
-     enterprise/sso.scim
-     enterprise/serialization
-     enterprise/sso
      enterprise/transforms
-     enterprise/transforms.inspector
-     search.entity-retrieval
      events
      explorations
      formatter
      funnysql
      geojson
-     glossary
      indexed-entities
-     core.initialization-status
      interestingness
-     analytics.internal-stats
-     metabot.llm
-     session.login-history
-     mcp
+     lib.types
      measures
      metabot
      mq
      notification
-     mcp.oauth-server
-     osi
      permissions
      premium-features
      public-sharing
      pulse
      remote-sync
      request
-     request.schema
      sample-data
      search
-     warehouses.secrets
      segments
      server
      session
      settings
      setup
-     metabot.slackbot
      sso
      staleness
      startup
      system
      task
-     task.history
-     task.secure-delegate
      tiles
      timeline
      tracing
      transforms.feature-gating
-     lib.types
      users
-     users.schema
      util
-     core.version
-     audit-app.view-log
      warehouses.schema
+     warehouses.secrets
      workspaces
      xrays})
+
+(def driver-test-opt-ins
+  "Submodules of [[driver-test-exemptions]] that their exemption doesn't cover, so their changes count again.
+  An opt-in covers the module's own submodules too."
+  '#{users.tenants
+     util.graph})
+
+(def ^:private driver-test-rules
+  "The trigger, exemption and opt-in sets that [[driver-deps-affected?]] uses by default."
+  {:triggers   (set/union default-modules-which-trigger-drivers modules-triggering-cloud-drivers)
+   :exemptions driver-test-exemptions
+   :opt-ins    driver-test-opt-ins})
+
+(defn- listed-decision
+  "How `rules`, shaped like [[driver-test-rules]], list `module` itself.
+  Returns `:exempt` for an exemption, `:included` for an opt-in or a trigger, and nil for an unlisted module."
+  [{:keys [triggers exemptions opt-ins]} module]
+  ;; Exemptions come first, so a module that is both a trigger and an exemption, such as
+  ;; `enterprise/transforms`, stays exempt.
+  (cond
+    (contains? exemptions module)                               :exempt
+    (or (contains? opt-ins module) (contains? triggers module)) :included))
+
+(defn- driver-exempt?
+  "Whether `rules`, shaped like [[driver-test-rules]], leave changes to `module` out of [[driver-deps-affected?]].
+  The nearest listed module among `module` and its ancestors decides."
+  [deps rules module]
+  (= :exempt (some #(listed-decision rules %) (modules/lineage deps module))))
+
+(defn driver-test-rule-problems
+  "Mistakes in `rules`, shaped like [[driver-test-rules]], against the module graph `deps`.
+  Returns one map per mistake, with the `:module` and a `:type`.
+  The type is `:undeclared` for an exemption or opt-in missing from `deps`.
+  It is `:redundant-exemption` or `:redundant-opt-in` for an entry that its module's decision doesn't need."
+  [deps {:keys [exemptions opt-ins] :as rules}]
+  ;; Comparing [[driver-exempt?]] with and without the entry covers a module listed more than once, such as a trigger
+  ;; that is also an exemption.
+  (let [redundant? (fn [rule-set module]
+                     (= (driver-exempt? deps rules module)
+                        (driver-exempt? deps (update rules rule-set disj module) module)))]
+    (concat
+     (for [module (sort-by str (concat exemptions opt-ins))
+           :when  (not (contains? deps module))]
+       {:type :undeclared, :module module})
+     (for [module (sort-by str exemptions)
+           :when  (redundant? :exemptions module)]
+       {:type :redundant-exemption, :module module})
+     (for [module (sort-by str opt-ins)
+           :when  (redundant? :opt-ins module)]
+       {:type :redundant-opt-in, :module module}))))
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.
@@ -223,7 +240,7 @@
           modules)))
 
 (defn- unaffected-modules
-  "Return the set of modules that are unaffected "
+  "Set of modules in `deps` that changes to `modules` do not affect."
   [deps modules]
   (set/difference
    (into (sorted-set) (keys deps))
@@ -232,7 +249,54 @@
 (comment
   (unaffected-modules (dependencies) '#{enterprise/billing}))
 
-(defn- print-updated-and-unaffected-modules [deps updated driver-deps-affected?]
+(defn driver-deps-affected?
+  "Returns true if any trigger in `rules` is affected by the changed `modules`.
+  Changed modules that [[driver-exempt?]] exempts are left out.
+  The 1-arity and 2-arity use [[driver-test-rules]].
+  Throws when a trigger is not a declared module."
+  ([modules]
+   (driver-deps-affected? (dependencies) modules))
+  ([deps modules]
+   (driver-deps-affected? deps modules driver-test-rules))
+  ([deps modules {:keys [triggers] :as rules}]
+   ;; Fail clearly when a renamed trigger is missing from the config.
+   (when-let [missing (seq (remove #(contains? deps %) triggers))]
+     (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
+                          (pr-str missing))
+                     {:missing missing})))
+   (let [affected (affected-modules deps (remove #(driver-exempt? deps rules %) modules))]
+     (boolean (some affected triggers)))))
+
+(defn unreached-driver-test-exemptions
+  "Exemptions in `rules`, shaped like [[driver-test-rules]], that skip no driver tests in the module graph `deps`.
+  No trigger depends on such a module, or on a submodule that its exemption covers.
+  These are warnings rather than [[driver-test-rule-problems]], so that dropping a dependency never fails a build."
+  [deps {:keys [exemptions triggers] :as rules}]
+  (let [decider  (fn [module]
+                   (some #(when (listed-decision rules %) %) (modules/lineage deps module)))
+        covered  (group-by decider (keys deps))
+        reached? (fn [module]
+                   (some (affected-modules deps [module]) triggers))]
+    (for [module (sort-by str exemptions)
+          :when  (and (contains? deps module)
+                      (not-any? reached? (covered module)))]
+      module)))
+
+(defn- changes-important-file-for-drivers?
+  "Whether we should always run driver tests because `updated-files` touches something important like
+  `deps.edn`."
+  [updated-files]
+  (some (fn [filename]
+          (when (or (str/includes? filename "deps.edn")
+                    (str/includes? filename "modules/drivers/"))
+            (when-not *github-output-only?*
+              (println (str "Running driver tests because " (pr-str filename) " was changed")))
+            filename))
+        updated-files))
+
+(declare driver-tests-needed?)
+
+(defn- print-updated-and-unaffected-modules [deps updated needed?]
   (let [unaffected (unaffected-modules deps updated)]
     (println "These modules have changed:" (pr-str updated))
     (println)
@@ -243,7 +307,7 @@
     (println "(By unaffected, this means these modules do not have a direct or indirect dependency on the modules that have been changed.)")
     (println)
     (println)
-    (println (if driver-deps-affected?
+    (println (if needed?
                (c/red "Driver tests " (c/bold "MUST be run") ".")
                (c/green "Driver tests " (c/bold "CAN be skipped") "")))))
 
@@ -251,11 +315,11 @@
   "CLI entry point: print modules affected by changes since `git-ref`, plus driver-test guidance."
   [[git-ref, :as _command-line-args]]
   (let [modules-config (read-modules-config)
-        deps (dependencies)
-        updated (updated-modules git-ref)
-        affected (affected-modules deps updated)
-        driver-deps-affected? (not (contains? (unaffected-modules deps updated) 'driver))]
-    (print-updated-and-unaffected-modules deps updated driver-deps-affected?)
+        deps           (dependencies)
+        updated-files  (u/updated-files (or git-ref "master"))
+        updated        (updated-files->updated-modules updated-files)
+        affected       (affected-modules deps updated)]
+    (print-updated-and-unaffected-modules deps updated (driver-tests-needed? deps updated-files updated))
     (println)
     (println)
     (println "You can run tests for these modules and all downstream modules as follows:")
@@ -633,37 +697,6 @@
                                  ")")))))
     (u/exit 0)))
 
-(defn- changes-important-file-for-drivers?
-  "Whether we should always run driver tests because `updated-files` touches something important like
-  `deps.edn`."
-  [updated-files]
-  (some (fn [filename]
-          (when (or (str/includes? filename "deps.edn")
-                    (str/includes? filename "modules/drivers/"))
-            (when-not *github-output-only?*
-              (println (str "Running driver tests because " (pr-str filename) " was changed")))
-            filename))
-        updated-files))
-
-(defn driver-deps-affected?
-  "Returns true if any of `trigger-modules` are affected by the changed modules.
-   1-arity and 2-arity trigger on the union of [[default-modules-which-trigger-drivers]] and
-   [[modules-triggering-cloud-drivers]]."
-  ([modules]
-   (driver-deps-affected? (dependencies) modules))
-  ([deps modules]
-   (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
-                                                  modules-triggering-cloud-drivers)))
-  ([deps modules trigger-modules]
-   ;; Fail clearly when a renamed trigger is missing from the config.
-   (when-let [missing (seq (remove #(contains? deps %) trigger-modules))]
-     (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
-                          (pr-str missing))
-                     {:missing missing})))
-   (let [unaffected (unaffected-modules deps (remove driver-affecting-overrides modules))]
-     (boolean
-      (some #(not (contains? unaffected %)) trigger-modules)))))
-
 (defn cli-can-skip-driver-tests
   "Exits with zero status code if we can skip driver tests, nonzero if we cannot.
 
@@ -671,17 +704,13 @@
 
     ./bin/mage can-skip-driver-tests [git-ref]"
   [[git-ref, :as _arguments]]
-  (let [deps (dependencies)
-        git-ref (or git-ref "master")
-        updated-files (u/updated-files git-ref)
-        updated (updated-files->updated-modules updated-files)
-        drivers-affected? (driver-deps-affected? deps updated)]
+  (let [deps          (dependencies)
+        updated-files (u/updated-files (or git-ref "master"))
+        updated       (updated-files->updated-modules updated-files)
+        needed?       (driver-tests-needed? deps updated-files updated)]
     ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
-    (print-updated-and-unaffected-modules deps updated drivers-affected?)
-    (u/exit (cond
-              (changes-important-file-for-drivers? updated-files) 1
-              drivers-affected? 1
-              :else 0))))
+    (print-updated-and-unaffected-modules deps updated needed?)
+    (u/exit (if needed? 1 0))))
 
 ;;;; =============================================================================
 ;;;; Fix modules config
@@ -701,6 +730,10 @@
                 :jvm-args   ["-X:dev" "dev.modules-config/fix-config!"]
                 :nrepl-msg  (c/green "Regenerating modules config via the running dev REPL...")
                 :jvm-msg    (c/yellow "No dev REPL found — starting a JVM (slower; start your dev REPL for ~5s runs)...")})]
+    ;; Reported here because a change to the module graph is what leaves an exemption unreached.
+    (doseq [module (unreached-driver-test-exemptions (dependencies) driver-test-rules)]
+      (println (format "WARNING: no driver-test trigger depends on %s -- remove it from driver-test-exemptions in mage.modules"
+                       module)))
     (printf "\nFinished in %.1fs\n" (/ (u/since-ms timer) 1000.0))
     (flush)
     (u/exit (or exit 0))))
@@ -808,7 +841,7 @@
    The driver module is considered affected when:
    - Files in modules/drivers/* are changed (triggers all drivers)
    - deps.edn is changed (triggers all drivers)
-   - Clojure modules that the 'driver' module depends on are changed"
+   - A module that a driver-test trigger depends on is changed, unless [[driver-exempt?]] exempts it"
   [driver
    {:keys [force-run pr-labels skip particular-driver-changed? only-driver]}
    driver-deps-affected?
@@ -885,6 +918,39 @@
     {:should-run false
      :reason "driver module not affected"}))
 
+(defn- change-analysis
+  "What [[driver-decision]] needs to know about a change to `updated-files`, whose modules are `updated`.
+  Returns a map of `:updated`, `:driver-affected?`, `:important-file-changed?` and `:particular-driver-changed?`."
+  [deps updated-files updated]
+  {:updated                    (into (sorted-set) updated)
+   :driver-affected?           (driver-deps-affected? deps updated)
+   :important-file-changed?    (boolean (changes-important-file-for-drivers? updated-files))
+   :particular-driver-changed? (drivers-with-file-changes updated-files)})
+
+(defn- driver-decisions
+  "One [[driver-decision]] per driver in [[all-drivers]], each with its `:driver`.
+  Takes the `ctx` of [[driver-decision]] without `:particular-driver-changed?`, and a [[change-analysis]] or nil."
+  [ctx {:keys [updated driver-affected? important-file-changed? particular-driver-changed?]}]
+  (let [ctx (assoc ctx :particular-driver-changed? (or particular-driver-changed? #{}))]
+    (mapv (fn [driver]
+            (assoc (driver-decision driver
+                                    ctx
+                                    ;; module dependency check combines both conditions
+                                    (boolean (or driver-affected? important-file-changed?))
+                                    (or updated #{}))
+                   :driver driver))
+          all-drivers)))
+
+(defn driver-tests-needed?
+  "Whether `-driver-decisions` runs any driver beyond H2 and Postgres for a change to `updated-files`.
+  The `updated` modules are the ones those files belong to.
+  PR labels are not considered."
+  [deps updated-files updated]
+  (boolean
+   (some (fn [{:keys [driver should-run]}]
+           (and should-run (not (#{:h2 :postgres} driver))))
+         (driver-decisions {:pr-labels #{}} (change-analysis deps updated-files updated)))))
+
 (defn- cli-driver-decisions
   "Determine which driver tests should run based on PR context.
 
@@ -906,29 +972,15 @@
         ;; force-run and --only-driver each decide every driver on their own, so the change
         ;; analysis is not consulted there.
         analysis (when-not (or force-run only-driver)
-                   (let [updated-files (u/updated-files git-ref)
-                         updated (updated-files->updated-modules updated-files)
-                         driver-affected? (driver-deps-affected? updated)
-                         important-file-changed? (changes-important-file-for-drivers? updated-files)]
-                     {:particular-driver-changed? (drivers-with-file-changes updated-files)
-                      :updated updated
-                      :driver-affected? driver-affected?
-                      :important-file-changed? important-file-changed?}))
+                   (let [updated-files (u/updated-files git-ref)]
+                     (change-analysis (dependencies) updated-files (updated-files->updated-modules updated-files))))
         {:keys [particular-driver-changed? updated driver-affected? important-file-changed?]} analysis
         ctx {:git-ref git-ref
              :force-run force-run
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
-             :particular-driver-changed? (or particular-driver-changed? #{})
              :only-driver only-driver}
-        decisions (mapv (fn [driver]
-                          (assoc (driver-decision driver
-                                                  ctx
-                                                  ;; module dependency check combines both conditions
-                                                  (boolean (or driver-affected? important-file-changed?))
-                                                  (or updated #{}))
-                                 :driver driver))
-                        all-drivers)]
+        decisions (driver-decisions ctx analysis)]
     (if github-output-only?
       ;; In github-output-only mode, print just the key=value lines (no colors)
       (doseq [{:keys [driver should-run]} decisions]
@@ -940,7 +992,7 @@
           (println "=== Module Analysis ===")
           (println "Changed modules:" (pr-str updated))
           (println "Driver module affected:" driver-affected?)
-          (println "Important file changed:" (boolean important-file-changed?))
+          (println "Important file changed:" important-file-changed?)
           (println "Drivers with file changes:" (pr-str particular-driver-changed?)))
         (println "")
         ;; Print human-readable decision summary

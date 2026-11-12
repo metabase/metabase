@@ -287,18 +287,97 @@
           (str "The " a-module " module should trigger itself")))))
 
 ;;; =============================================================================
+;;; Exemptions and opt-ins
+;;; =============================================================================
+
+(defn- graph
+  "A module graph of `modules` with no dependencies between them."
+  [modules]
+  (zipmap modules (repeat #{})))
+
+(deftest exemption-rules-test
+  ;; A made-up graph, so the rules are tested apart from the real module config.
+  ;; The trigger `t` uses every module, so each one decides on its exemption alone.
+  (let [modules '[a a.sub a.sub.in a.sub.in.deep a.sub.in.deep.out x x.t both enterprise/a]
+        deps    (assoc (graph modules) 't (set modules))
+        rules   '{:triggers   #{t x.t both}
+                  :exemptions #{a a.sub.in.deep.out x both}
+                  :opt-ins    #{a.sub.in}}]
+    (are [changed expected] (= expected (mage.modules/driver-deps-affected? deps [changed] rules))
+      ;; exemptions and what they cover
+      'a                 false
+      'a.sub             false
+      'enterprise/a      false
+      ;; opt-ins and what they cover
+      'a.sub.in          true
+      'a.sub.in.deep     true
+      ;; the nearest listed ancestor wins
+      'a.sub.in.deep.out false
+      ;; triggers
+      't                 true
+      'x.t               true
+      'both              false)))
+
+(deftest driver-deps-affected-rejects-undeclared-trigger-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not declared in the module config: \(gone\)"
+                        (mage.modules/driver-deps-affected? (graph '[a]) '[a] '{:triggers #{gone}}))))
+
+(deftest driver-test-rule-problems-test
+  (let [deps  (graph '[a a.sub a.sub.in a.sub.in.deep b.sub x x.t x.t.e x.t.o x.te x.to y])
+        rules '{:triggers   #{x.t x.te x.to}
+                :exemptions #{a a.sub nope x x.t.e x.te y}
+                :opt-ins    #{a.sub.in a.sub.in.deep b.sub x.t.o x.to y}}]
+    ;; A trigger keeps itself and its submodules in, like an opt-in. So the exemptions `x.t.e` and `x.te` are needed,
+    ;; while the opt-ins `x.t.o` and `x.to` change nothing.
+    ;; An exemption on the same module beats the opt-in `y`.
+    (is (= '#{{:type :undeclared,          :module nope}
+              {:type :redundant-exemption, :module a.sub}
+              {:type :redundant-opt-in,    :module a.sub.in.deep}
+              {:type :redundant-opt-in,    :module b.sub}
+              {:type :redundant-opt-in,    :module x.t.o}
+              {:type :redundant-opt-in,    :module x.to}
+              {:type :redundant-opt-in,    :module y}}
+           (set (mage.modules/driver-test-rule-problems deps rules))))))
+
+(deftest unreached-driver-test-exemptions-test
+  ;; The trigger `t` uses `a.sub`, `b` and `c.sub.in`, and nothing else.
+  (let [deps  (assoc (graph '[a a.sub b c c.sub c.sub.in d]) 't '#{a.sub b c.sub.in})
+        rules '{:triggers   #{t}
+                :exemptions #{a b c d nope}
+                :opt-ins    #{c.sub}}]
+    ;; `a` is reached through the submodule it covers, and `b` directly.
+    ;; The opt-in `c.sub` takes `c.sub.in` out of `c`'s cover, which leaves `c` unreached.
+    ;; The undeclared `nope` is a problem for [[mage.modules/driver-test-rule-problems]] instead.
+    (is (= '[c d]
+           (mage.modules/unreached-driver-test-exemptions deps rules)))))
+
+(deftest driver-tests-needed-test
+  (let [deps (mage.modules/dependencies)]
+    (are [files modules expected] (= expected (mage.modules/driver-tests-needed? deps files modules))
+      ;; important files
+      ["deps.edn"]                          []                       true
+      ["modules/drivers/oracle/src/x.clj"]  []                       true
+      ;; a cloud-driver trigger, even an exempt one
+      []                                    '[enterprise/transforms] true
+      ;; a trigger, and no change
+      []                                    '[driver]                true
+      []                                    []                       false)))
+
+(deftest driver-test-rules-have-no-problems-test
+  (testing "the real exemptions and opt-ins are declared and each changes its module's decision"
+    (is (= [] (mage.modules/driver-test-rule-problems (mage.modules/dependencies)
+                                                      mage.modules/driver-test-rules)))))
+
+;;; =============================================================================
 ;;; Regression test: module graph should not become more connected
 ;;; =============================================================================
 
 (defn modules-affecting-drivers []
-  (let [deps (mage.modules/dependencies)
-        all (keys deps)]
-    (filter #(mage.modules/driver-deps-affected? [%]) all)))
+  (let [deps (mage.modules/dependencies)]
+    (filter #(mage.modules/driver-deps-affected? deps [%]) (keys deps))))
 
 (deftest module-graph-may-not-become-more-connected
-  (testing "The number of modules that trigger driver tests should not increase without explicit approval.
-            If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
-            Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
+  (testing "the number of modules that trigger driver tests does not grow without approval"
     (let [modules-triggering-drivers (modules-affecting-drivers)
           ;; This is a ratchet: it prevents accidental expansion of which modules
           ;; trigger driver tests. When a module transitively depends on driver code,
@@ -306,7 +385,8 @@
           ;; expensive. If this test fails, either:
           ;;   1. Your module legitimately affects drivers -- bump max-allowed-count
           ;;   2. Your module is infrastructure/gating, not driver logic
-          ;;      -- add it to driver-affecting-overrides in mage.modules
+          ;;      -- add it, or a parent module, to driver-test-exemptions in mage.modules.
+          ;;         An exemption covers its submodules, except those in driver-test-opt-ins.
           ;;
           ;; History:
           ;; 2026-02-06 Initial count: 37
@@ -324,7 +404,7 @@
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
                    If this is intentional, update max-allowed-count.
-                   Otherwise, add the new module(s) to driver-affecting-overrides."
+                   Otherwise, add the new module(s), or a parent module, to driver-test-exemptions."
                   max-allowed-count
                   (count modules-triggering-drivers)
                   (pr-str (sort modules-triggering-drivers)))))))
