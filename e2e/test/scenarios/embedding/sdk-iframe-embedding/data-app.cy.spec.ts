@@ -97,7 +97,7 @@ describe("scenarios > embedding > metabase-data-app web component", () => {
     H.enableTracking();
 
     cy.visit("http://localhost:4000");
-    loadDataApp("/orders", {
+    loadDataApp("/orders?customer=42", {
       origin: "http://different-than-metabase-instance.com",
     });
 
@@ -105,10 +105,21 @@ describe("scenarios > embedding > metabase-data-app web component", () => {
       .findByLabelText("Order count", { timeout: 30_000 })
       .should("have.text", "18760");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "setup",
-      global: { auth_method: "sso", locale_used: false },
-      components: [{ name: "data_app", properties: [] }],
+    cy.log("the event omits the app slug, route and query string");
+    H.expectSnowplowEvent({
+      event: {
+        page_urlpath: "/embed/embedded-apps",
+        page_urlquery: (query: string | null) => !query,
+        unstruct_event: {
+          data: {
+            data: {
+              event: "setup",
+              global: { auth_method: "sso", locale_used: false },
+              components: [{ name: "data_app", properties: [] }],
+            },
+          },
+        },
+      },
     });
 
     H.expectNoBadSnowplowEvents();
