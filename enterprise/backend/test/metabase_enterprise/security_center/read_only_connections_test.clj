@@ -48,6 +48,12 @@
                results)))
       (testing "the result holds no connection details"
         (is (every? #(= #{:id :name :engine :result} (set (keys %))) results))))
+    (testing "a database that lists no table privileges is not reported as read-only"
+      (is (= ["writable" "no-privileges" "read-only" "not-supported"]
+             (map :result (refresh-with! {"reader"  (privileges)
+                                          "writer"  (privileges :delete true)
+                                          "updater" []}
+                                         ["rc router" "rc destination" "rc mysql" "rc sqlite" "rc audit"])))))
     (testing "a database that can't be asked gets an error result, and the other databases are still checked"
       (is (= ["writable" "error" "read-only" "not-supported"]
              (map :result (refresh-with! {"reader"  (privileges)
@@ -95,6 +101,26 @@
       (is (= 1 (pool-size [])))
       (is (= 1 (pool-size (databases 2 :h2)))))))
 
+(deftest mariadb-test
+  (mt/with-temp [:model/Database {mariadb-id :id} {:name         "rc mariadb"
+                                                   :engine       :mysql
+                                                   :details      {:user "maria"}
+                                                   :dbms_version {:flavor "MariaDB", :version "11.4.13"}}
+                 :model/Database _                {:name "rc unsynced", :engine :mysql, :details {:user "unsynced"}}]
+    (let [asked   (atom #{})
+          results (refresh-with! {"maria"    #(do (swap! asked conj "maria") (privileges))
+                                  "unsynced" #(do (swap! asked conj "unsynced") [])}
+                                 ["rc mariadb" "rc unsynced"])]
+      (testing "a database that sync knows as MariaDB is not supported, and is not asked"
+        (is (= {:id mariadb-id, :name "rc mariadb", :engine "mariadb", :result "not-supported"}
+               (first results)))
+        (is (= #{"unsynced"} @asked)))
+      (testing "the item names MariaDB"
+        (is (=? [{:status :unknown, :message "MariaDB is not supported", :entity_id mariadb-id}]
+                (read-only-connections/items {:databases (take 1 results)}))))
+      (testing "before the first sync the server is not known, so the database is asked"
+        (is (= "no-privileges" (:result (second results))))))))
+
 (deftest log-test
   (testing "a database without an answer in time gets a line with its id and engine"
     (let [stuck (promise)]
@@ -128,14 +154,16 @@
                                 {:id 3, :name "Sample Database", :engine "sqlite", :result "not-supported"}
                                 {:id 4, :name "Slow", :engine "oracle", :result "timed-out"}
                                 {:id 5, :name "Down", :engine "sqlserver", :result "error"}
-                                {:id 6, :name "Gone", :engine "no-such-engine", :result "not-supported"}]}))
+                                {:id 6, :name "Gone", :engine "no-such-engine", :result "not-supported"}
+                                {:id 7, :name "Empty", :engine "mysql", :result "no-privileges"}]}))
           items  (read-only-connections/items stored)]
       (is (= [[:pass "The connection user of Birds can't write"]
               [:fail "The connection user of Sales can insert, update or delete"]
               [:unknown "SQLite is not supported"]
               [:unknown "Timed out after 30 s"]
               [:unknown "Couldn't check Down. Check the server logs for the underlying error."]
-              [:unknown "no-such-engine is not supported"]]
+              [:unknown "no-such-engine is not supported"]
+              [:unknown "Couldn't read the privileges of the connection user of Empty"]]
              (map (juxt :status :message) items)))
       (is (= [[:database 1 "Birds"] [:database 2 "Sales"]]
              (map (juxt :entity_type :entity_id :entity_name) (take 2 items))))

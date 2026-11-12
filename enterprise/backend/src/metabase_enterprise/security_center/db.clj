@@ -101,8 +101,9 @@
                                                  [:id      ms/PositiveInt]
                                                  [:name    :string]
                                                  [:engine  :keyword]
-                                                 [:details :map]]]
-  "The id, name, engine and connection details, in name order, of every database that Admin → Databases shows: every
-  database except the audit database, routing destinations included."
+                                                 [:details :map]
+                                                 [:dbms_version [:maybe :map]]]]
+  "The id, name, engine, connection details and synced server version, in name order, of every database that Admin →
+  Databases shows: every database except the audit database, routing destinations included."
   []
-  (t2/select [:model/Database :id :name :engine :details] :is_audit false {:order-by [:name]}))
+  (t2/select [:model/Database :id :name :engine :details :dbms_version] :is_audit false {:order-by [:name]}))

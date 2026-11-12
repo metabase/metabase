@@ -27,26 +27,40 @@
   ;; limits the threads of the refresh and the connections that one server gets from it at the same moment.
   10)
 
-(defn- writable?
+(defn- privileges-result
   [{:keys [engine details]}]
   ;; ends a read that the database never answers, so the thread and the connection are free again
-  (binding [driver.settings/*network-timeout-ms* timeout-ms]
-    (boolean (some (some-fn :insert :update :delete)
-                   (sql-jdbc/current-user-table-privileges-with-details engine details)))))
+  (let [rows (binding [driver.settings/*network-timeout-ms* timeout-ms]
+               (sql-jdbc/current-user-table-privileges-with-details engine details))]
+    (cond
+      ;; no rows says nothing about the user: the database has no tables, or the driver could not read the
+      ;; privileges, as for MariaDB
+      (empty? rows)                                 "no-privileges"
+      (some (some-fn :insert :update :delete) rows) "writable"
+      :else                                         "read-only")))
 
 (defn- check-database
-  "The result for one database: `\"read-only\"`, `\"writable\"`, or `\"error\"` when the database could not be asked."
+  "The result for one database: `\"read-only\"`, `\"writable\"`, `\"no-privileges\"` when the database lists no table
+  privileges, or `\"error\"` when the database could not be asked."
   [{:keys [id engine] :as database}]
   (try
-    (if (writable? database) "writable" "read-only")
+    (privileges-result database)
     (catch Throwable e
       ;; the message of a connection error can hold the host or the user, so it stays in the log
       (log/warnf e "Health check read-only-connections could not check database %d (%s)" id (name engine))
       "error")))
 
+(defn- mariadb?
+  ;; a MariaDB database has the engine `:mysql`; the version that sync stores names the server
+  [{:keys [engine dbms_version]}]
+  (and (= engine :mysql)
+       (= (:flavor dbms_version) "MariaDB")))
+
 (defn- supported?
-  [{:keys [engine]}]
-  (contains? supported-engines engine))
+  [{:keys [engine] :as database}]
+  (and (contains? supported-engines engine)
+       ;; the MySQL privileges method returns no rows on MariaDB, for every user
+       (not (mariadb? database))))
 
 (defn- check-databases
   "The result for each of `databases`, in order. Runs `check-fn` for the databases with a supported engine on a pool of
@@ -88,14 +102,16 @@
                (count databases) (u/since-ms timer) (frequencies results))
     {:databases (mapv (fn [database result]
                         (-> (select-keys database [:id :name])
-                            (assoc :engine (name (:engine database))
+                            (assoc :engine (if (mariadb? database) "mariadb" (name (:engine database)))
                                    :result result)))
                       databases
                       results)}))
 
 (defn- engine-name
   [engine]
-  (or (try
+  (or (when (= engine "mariadb")
+        "MariaDB")
+      (try
         (driver/display-name (keyword engine))
         (catch Exception _
           nil))
@@ -106,6 +122,7 @@
   (let [[status message] (case result
                            "read-only"     [:pass (tru "The connection user of {0} can''t write" db-name)]
                            "writable"      [:fail (tru "The connection user of {0} can insert, update or delete" db-name)]
+                           "no-privileges" [:unknown (tru "Couldn''t read the privileges of the connection user of {0}" db-name)]
                            "not-supported" [:unknown (tru "{0} is not supported" (engine-name engine))]
                            "timed-out"     [:unknown (tru "Timed out after 30 s")]
                            [:unknown (tru "Couldn''t check {0}. Check the server logs for the underlying error." db-name)])]

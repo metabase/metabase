@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.quoting :as quoting]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
@@ -459,14 +460,16 @@
           (is (= [1 true 2 false] params)))))))
 
 (deftest current-user-table-privileges-with-details-test
-  (mt/test-drivers (into #{}
-                         (filter #(get-method sql-jdbc.sync/current-user-table-privileges %))
-                         (sql-jdbc-drivers))
-    (testing "a connection opened from the details returns the rows that the pooled connection returns"
-      (let [rows (driver.sql-jdbc/current-user-table-privileges-with-details driver/*driver* (:details (mt/db)))]
-        (is (seq rows))
-        (is (= (set (driver/current-user-table-privileges driver/*driver* (lib.metadata/database (mt/metadata-provider))))
-               (set rows)))))))
+  ;; the drivers with a method of their own: a driver that only inherits one, as Redshift does, may not support it
+  (mt/test-drivers (set (keys (methods sql-jdbc.sync/current-user-table-privileges)))
+    (testing "a connection opened from the details returns the rows that a pooled connection returns"
+      (is (= (set (sql-jdbc.execute/do-with-connection-with-options
+                   driver/*driver*
+                   (mt/id)
+                   nil
+                   (fn [conn]
+                     (vec (sql-jdbc.sync/current-user-table-privileges driver/*driver* {:connection conn})))))
+             (set (driver.sql-jdbc/current-user-table-privileges-with-details driver/*driver* (:details (mt/db)))))))))
 
 (deftest ^:parallel dot-qualified-test
   (testing "the whole dotted path lands in the keyword's name, which HoneySQL leaves alone"
