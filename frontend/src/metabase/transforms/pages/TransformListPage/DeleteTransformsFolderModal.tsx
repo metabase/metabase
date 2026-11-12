@@ -175,8 +175,9 @@ function DeletedTree({ node, showTables }: DeletedTreeProps) {
   return (
     <Stack gap="sm">
       <DeletedRow icon={node.icon} name={node.name} />
+      {/* the indent is the icon (16px) plus the row gap (sm, 8px), so nested rows start under the parent's name */}
       {hasNestedRows && (
-        <Stack gap="sm" ml="lg">
+        <Stack gap="sm" ml="xl">
           {table != null && (
             <DeletedRow icon="table" name={getTargetTableName(table)} />
           )}
