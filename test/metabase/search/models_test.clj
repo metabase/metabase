@@ -419,6 +419,23 @@
                    {:checks (sort > @checks)
                     :runs   (sort > (map (fn [[[_model [_in _id-expr ids]]]] (count ids)) @runs))}))))))))
 
+(deftest reconcile-reindex-failure-keeps-tombstones-test
+  (testing "a reconcile whose re-index throws still removes the documents that stopped resolving"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id}  {:name "Failing Reindex Model", :type :model}
+                     :model/Action {alive-id :id} {:name "Surviving Action", :model_id card-id, :type :query}
+                     :model/Action {gone-id :id}  {:name "Deleted Action", :model_id card-id, :type :query}]
+        (let [cascading (cascading-documents-of card-id)]
+          ;; A raw delete, so the action's document is left for the reconcile to purge.
+          (t2/query {:delete-from :action, :where [:= :id gone-id]})
+          (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages]
+                                                                         (throw (ex-info "reindex failed" {})))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reindex failed"
+                                  (search/reconcile-cascading-documents! cascading))))
+          (is (= {:alive 1, :gone 0}
+                 {:alive (indexed-count "action" alive-id)
+                  :gone  (indexed-count "action" gone-id)})))))))
+
 (deftest cascade-enumeration-ceiling-test
   (testing "a fan-out past the ceiling is skipped rather than materialized"
     (search.tu/with-appdb-search-if-available-without-fallback

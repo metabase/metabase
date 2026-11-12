@@ -410,6 +410,18 @@
           (is (nil? @ran-on) "nothing runs before the commit")))
       (is (identical? (Thread/currentThread) @ran-on)))))
 
+(deftest after-commit-stops-on-interrupt-test
+  (testing "an interrupted after-commit! step skips the steps after it and leaves the thread interrupted"
+    (let [ran (atom [])]
+      (t2/with-transaction [_conn]
+        (search/after-commit! "probe"
+                              #(throw (InterruptedException. "interrupted"))
+                              #(swap! ran conj :later-step)))
+      ;; Read, and clear, the status before asserting, since reporting an assertion clears it.
+      (let [interrupted? (Thread/interrupted)]
+        (is (= {:ran [], :interrupted? true}
+               {:ran @ran, :interrupted? interrupted?}))))))
+
 (def ^:private recorded-deletes (atom []))
 
 (defn- record-delete [engine search-model ids]

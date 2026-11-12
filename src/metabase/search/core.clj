@@ -259,20 +259,31 @@
   [instance & [always?]]
   (enqueue-hook-selectors! [instance] always?))
 
-;; Steps run on the committing thread, while its connection is still checked out, so each one only queues work for
-;; the ingestion worker. Without a worker, as in tests that bind `*force-sync*`, the queued work runs at once instead,
-;; which is the synchronous DB I/O `mdb/do-after-commit` warns against.
+;; Steps run on the committing thread while its connection is still checked out, so each one only queues work.
+;; Without an ingestion worker the queued work runs at once, which is the synchronous DB I/O that
+;; `mdb/do-after-commit` warns against.
+;; There is no worker under `*force-sync*`, nor on a node whose first indexed engine was turned on after startup,
+;; because the worker starts only at boot.
 (defn after-commit!
   "Run each of `steps` in order once the enclosing transaction commits; a rollback discards them.
-  A step that throws is logged, naming the work by `description`, and the steps after it still run."
+  A step that throws is logged, naming the work by `description`, and the steps after it still run.
+  An interrupt stops the remaining steps."
   [description & steps]
   (mdb/do-after-commit
    (fn []
-     (doseq [step steps]
-       (try
-         (step)
-         (catch Throwable e
-           (log/errorf e "Failed search-index handoff: %s" description)))))))
+     (reduce (fn [_ step]
+               (try
+                 (step)
+                 nil
+                 ;; Later steps are skipped: on an interrupted thread their queries fail at once and log a second error.
+                 (catch InterruptedException e
+                   (.interrupt (Thread/currentThread))
+                   (log/errorf e "Interrupted; skipping the rest of the search-index handoff: %s" description)
+                   (reduced nil))
+                 (catch Throwable e
+                   (log/errorf e "Failed search-index handoff: %s" description))))
+             nil
+             steps))))
 
 ;; Ingestion re-derives what these messages name, and purges a document named by its own id once its row is gone.
 (defn bulk-update!
