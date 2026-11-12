@@ -24,6 +24,8 @@ import { isEmbedding } from "metabase/embedding/config";
 import { METAKEY } from "metabase/utils/browser";
 import { type Deferred, defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Card,
   ColumnSettings,
@@ -40,11 +42,9 @@ import {
   createMockColumn,
   createMockDatasetData,
   createMockFailedReferencedEntitiesResults,
-  createMockField,
   createMockMeasure,
   createMockReferencedEntitiesResults,
   createMockSearchResult,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
 import { GoalValueInput } from "./GoalValueInput";
@@ -73,7 +73,16 @@ const DATA = createMockDatasetData({
   rows: [[10, 42]],
 });
 
-const DATASET_QUERY = createMockStructuredDatasetQuery();
+const DATASET_QUERY = Lib.createTestJsQuery(
+  SAMPLE_PROVIDER,
+  DEFAULT_TEST_QUERY,
+);
+
+const GOAL_SOURCES = [
+  createMockSearchResult({ id: 4, model: "measure", name: "Goal measure" }),
+  createMockSearchResult({ id: 12, model: "metric", name: "Goal metric" }),
+  createMockSearchResult({ id: 15, model: "card", name: "Goal question" }),
+];
 
 type SetupOpts = {
   data?: DatasetData;
@@ -228,8 +237,8 @@ describe("GoalValueInput", () => {
         id: 9,
         name: "Orders",
         result_metadata: [
-          createMockField({ name: "total", base_type: "type/Integer" }),
-          createMockField({
+          createMockColumn({ name: "total", base_type: "type/Integer" }),
+          createMockColumn({
             name: "avg",
             display_name: "Average",
             base_type: "type/Integer",
@@ -269,8 +278,8 @@ describe("GoalValueInput", () => {
         id: 9,
         name: "Orders",
         result_metadata: [
-          createMockField({ name: "total", base_type: "type/Integer" }),
-          createMockField({
+          createMockColumn({ name: "total", base_type: "type/Integer" }),
+          createMockColumn({
             name: "avg",
             display_name: "Average",
             base_type: "type/Integer",
@@ -352,8 +361,8 @@ describe("GoalValueInput", () => {
         id: 9,
         name: "Orders",
         result_metadata: [
-          createMockField({ name: "total", base_type: "type/Integer" }),
-          createMockField({
+          createMockColumn({ name: "total", base_type: "type/Integer" }),
+          createMockColumn({
             name: "avg",
             display_name: "Average",
             base_type: "type/Integer",
@@ -552,7 +561,7 @@ describe("GoalValueInput", () => {
       id: 9,
       name: "Orders",
       result_metadata: [
-        createMockField({
+        createMockColumn({
           name: "avg",
           display_name: "Average",
           base_type: "type/Integer",
@@ -773,12 +782,12 @@ describe("GoalValueInput", () => {
         name: "Low and high",
         archived: true,
         result_metadata: [
-          createMockField({
+          createMockColumn({
             name: "LOW",
             display_name: "Minimum",
             base_type: "type/Integer",
           }),
-          createMockField({
+          createMockColumn({
             name: "HIGH",
             display_name: "Maximum",
             base_type: "type/Integer",
@@ -914,7 +923,7 @@ describe("GoalValueInput", () => {
         id: 9,
         name: "Orders",
         result_metadata: [
-          createMockField({
+          createMockColumn({
             name: "total",
             display_name: "Total",
             base_type: "type/Integer",
@@ -948,6 +957,57 @@ describe("GoalValueInput", () => {
     expect(
       screen.queryByRole("menuitem", { name: /Total/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("opens the root menu when clicking the pill of a metric with a breakout (UIT-156)", async () => {
+    setupMetricWithNumericBreakout();
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "sum",
+          value: 250,
+        }),
+      }),
+      value: { type: "card", id: 9, column: "sum" },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", {
+        name: /Value from another question/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Rating/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("names only the metric in the pill tooltip, without its sole column", async () => {
+    setupMetricWithNumericBreakout();
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "sum",
+          value: 250,
+        }),
+      }),
+      value: { type: "card", id: 9, column: "sum" },
+    });
+
+    await userEvent.hover(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+
+    expect(await screen.findByText("Revenue")).toBeInTheDocument();
+    expect(screen.queryByText(/Sum of Total/)).not.toBeInTheDocument();
   });
 
   it("resolves a measure reference and treats it as a single-column source", async () => {
@@ -992,12 +1052,12 @@ describe("GoalValueInput", () => {
       id: 15,
       name: "Other question",
       result_metadata: [
-        createMockField({
+        createMockColumn({
           name: "revenue",
           display_name: "Revenue",
           base_type: "type/Integer",
         }),
-        createMockField({
+        createMockColumn({
           name: "target",
           display_name: "Target",
           base_type: "type/Integer",
@@ -1054,24 +1114,55 @@ describe("GoalValueInput", () => {
     expect(screen.queryByText(/Other question/)).not.toBeInTheDocument();
   });
 
-  it("searches questions, but not models, when the instance has no measures or metrics", async () => {
+  it("lists only measures and metrics without a search query when the instance has any (UIT-157)", async () => {
+    setupEntityPicker(GOAL_SOURCES);
+    setup();
+
+    await openEntityPicker();
+
+    expect(await screen.findByText("Goal measure")).toBeInTheDocument();
+    expect(screen.getByText("Goal metric")).toBeInTheDocument();
+    expect(screen.queryByText("Goal question")).not.toBeInTheDocument();
+  });
+
+  it("searches questions, metrics, and measures with a search query when the instance has measures or metrics (UIT-157)", async () => {
+    setupEntityPicker(GOAL_SOURCES);
+    setup();
+
+    await openEntityPicker();
+    await screen.findByText("Goal measure");
+    await userEvent.type(screen.getByPlaceholderText("Search…"), "Goal");
+
+    expect(await screen.findByText("Goal question")).toBeInTheDocument();
+    expect(screen.getByText("Goal measure")).toBeInTheDocument();
+    expect(screen.getByText("Goal metric")).toBeInTheDocument();
+  });
+
+  it("lists and searches questions, but not models, when the instance has no measures and no metrics", async () => {
     setupEntityPicker([
-      createMockSearchResult({ id: 15, model: "card", name: "Other question" }),
+      createMockSearchResult({ id: 15, model: "card", name: "Goal question" }),
+      createMockSearchResult({ id: 16, model: "dataset", name: "Goal model" }),
     ]);
     setup();
 
-    await openMenu();
-    await userEvent.click(
-      screen.getByRole("menuitem", { name: /Value from another question/ }),
-    );
-    expect(await screen.findByText("Other question")).toBeInTheDocument();
+    await openEntityPicker();
+    expect(await screen.findByText("Goal question")).toBeInTheDocument();
+    expect(screen.queryByText("Goal model")).not.toBeInTheDocument();
 
     const url = new URL(
       checkNotNull(fetchMock.callHistory.lastCall("path:/api/search")).url,
     );
-    expect(url.searchParams.getAll("models")).toEqual(["card"]);
     expect(url.searchParams.get("limit")).toBe("5");
     expect(url.searchParams.has("ids")).toBe(false);
+
+    await userEvent.type(screen.getByPlaceholderText("Search…"), "Goal");
+    await waitFor(() =>
+      expect(fetchMock.callHistory.lastCall("path:/api/search")?.url).toContain(
+        "q=Goal",
+      ),
+    );
+    expect(await screen.findByText("Goal question")).toBeInTheDocument();
+    expect(screen.queryByText("Goal model")).not.toBeInTheDocument();
   });
 
   it("commits a single-column pick without opening the column list", async () => {
@@ -1100,20 +1191,11 @@ describe("GoalValueInput", () => {
     expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
   });
 
-  it("commits the sole column of a metric picked from search as a card reference", async () => {
+  it("commits the aggregation column of a metric picked from search, ignoring its breakouts (UIT-156)", async () => {
     setupEntityPicker([
       createMockSearchResult({ id: 9, model: "metric", name: "Revenue" }),
     ]);
-    setupCardEndpoints(
-      createMockCard({
-        id: 9,
-        name: "Revenue",
-        type: "metric",
-        result_metadata: [
-          createMockField({ name: "sum", base_type: "type/Integer" }),
-        ],
-      }),
-    );
+    setupMetricWithNumericBreakout();
     const { onChange } = setup();
 
     await openMenu();
@@ -1126,6 +1208,8 @@ describe("GoalValueInput", () => {
         column: "sum",
       }),
     );
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
   });
 
   it("commits the only numeric column of a source that also has non-numeric columns", async () => {
@@ -1137,9 +1221,9 @@ describe("GoalValueInput", () => {
         id: 9,
         name: "Orders",
         result_metadata: [
-          createMockField({ name: "name", base_type: "type/Text" }),
-          createMockField({ name: "total", base_type: "type/Integer" }),
-          createMockField({ name: "created_at", base_type: "type/DateTime" }),
+          createMockColumn({ name: "name", base_type: "type/Text" }),
+          createMockColumn({ name: "total", base_type: "type/Integer" }),
+          createMockColumn({ name: "created_at", base_type: "type/DateTime" }),
         ],
       }),
     );
@@ -1167,7 +1251,7 @@ describe("GoalValueInput", () => {
         id: 15,
         name: "Slow question",
         result_metadata: [
-          createMockField({ name: "revenue", base_type: "type/Integer" }),
+          createMockColumn({ name: "revenue", base_type: "type/Integer" }),
         ],
       }),
     );
@@ -1176,7 +1260,7 @@ describe("GoalValueInput", () => {
         id: 16,
         name: "Fast question",
         result_metadata: [
-          createMockField({ name: "total", base_type: "type/Integer" }),
+          createMockColumn({ name: "total", base_type: "type/Integer" }),
         ],
       }),
     );
@@ -1208,7 +1292,7 @@ describe("GoalValueInput", () => {
         id: 15,
         name: "Slow question",
         result_metadata: [
-          createMockField({ name: "revenue", base_type: "type/Integer" }),
+          createMockColumn({ name: "revenue", base_type: "type/Integer" }),
         ],
       }),
     );
@@ -1233,12 +1317,12 @@ describe("GoalValueInput", () => {
       id: 9,
       name: "Orders",
       result_metadata: [
-        createMockField({
+        createMockColumn({
           name: "total",
           display_name: "Total",
           base_type: "type/Integer",
         }),
-        createMockField({
+        createMockColumn({
           name: "avg",
           display_name: "Average",
           base_type: "type/Integer",
@@ -1312,12 +1396,12 @@ describe("GoalValueInput", () => {
           id: 9,
           name: "Orders",
           result_metadata: [
-            createMockField({
+            createMockColumn({
               name: "total",
               display_name: "Total",
               base_type: "type/Integer",
             }),
-            createMockField({
+            createMockColumn({
               name: "avg",
               display_name: "Average",
               base_type: "type/Integer",
@@ -1542,8 +1626,8 @@ describe("GoalValueInput", () => {
         id: 15,
         name: "No numbers",
         result_metadata: [
-          createMockField({ name: "name", base_type: "type/Text" }),
-          createMockField({ name: "created_at", base_type: "type/DateTime" }),
+          createMockColumn({ name: "name", base_type: "type/Text" }),
+          createMockColumn({ name: "created_at", base_type: "type/DateTime" }),
         ],
       }),
     );
@@ -1797,7 +1881,7 @@ describe("GoalValueInput", () => {
           name: "Orders",
           type: "model",
           result_metadata: [
-            createMockField({ name: "total", base_type: "type/Integer" }),
+            createMockColumn({ name: "total", base_type: "type/Integer" }),
           ],
         }),
       );
@@ -1829,10 +1913,10 @@ describe("GoalValueInput", () => {
         createMockCard({
           id: 9,
           name: "Orders",
-          type: "metric",
+          type: "model",
           result_metadata: [
-            createMockField({ name: "total", base_type: "type/Integer" }),
-            createMockField({
+            createMockColumn({ name: "total", base_type: "type/Integer" }),
+            createMockColumn({
               name: "avg",
               display_name: "Average",
               base_type: "type/Integer",
@@ -1859,7 +1943,7 @@ describe("GoalValueInput", () => {
       expect(trackSimpleEvent).toHaveBeenCalledWith({
         event: "dynamic_goal_set",
         triggered_from: "progress",
-        event_detail: "metric",
+        event_detail: "model",
       });
     });
 
@@ -1873,8 +1957,8 @@ describe("GoalValueInput", () => {
           name: "Orders",
           type: "question",
           result_metadata: [
-            createMockField({ name: "total", base_type: "type/Integer" }),
-            createMockField({
+            createMockColumn({ name: "total", base_type: "type/Integer" }),
+            createMockColumn({
               name: "avg",
               display_name: "Average",
               base_type: "type/Integer",
@@ -1930,8 +2014,8 @@ describe("GoalValueInput", () => {
           name: "Orders",
           type: "model",
           result_metadata: [
-            createMockField({ name: "total", base_type: "type/Integer" }),
-            createMockField({
+            createMockColumn({ name: "total", base_type: "type/Integer" }),
+            createMockColumn({
               name: "avg",
               display_name: "Average",
               base_type: "type/Integer",
@@ -2023,7 +2107,7 @@ describe("GoalValueInput", () => {
       await userEvent.hover(
         screen.getByRole("button", { name: "Change value source" }),
       );
-      expect(await screen.findByText("Orders → total")).toBeInTheDocument();
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
       fireEvent.keyDown(pill, { key: "Backspace" });
 
       expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
@@ -2138,8 +2222,32 @@ function setupMultiColumnSourceCard() {
       id: 9,
       name: "Low and high",
       result_metadata: [
-        createMockField({ name: "LOW", base_type: "type/Integer" }),
-        createMockField({ name: "HIGH", base_type: "type/Integer" }),
+        createMockColumn({ name: "LOW", base_type: "type/Integer" }),
+        createMockColumn({ name: "HIGH", base_type: "type/Integer" }),
+      ],
+    }),
+  );
+}
+
+function setupMetricWithNumericBreakout() {
+  setupCardEndpoints(
+    createMockCard({
+      id: 9,
+      name: "Revenue",
+      type: "metric",
+      result_metadata: [
+        createMockColumn({
+          name: "rating",
+          display_name: "Rating",
+          base_type: "type/Integer",
+          field_ref: ["field", 1, null],
+        }),
+        createMockColumn({
+          name: "sum",
+          display_name: "Sum of Total",
+          base_type: "type/Integer",
+          field_ref: ["aggregation", 0],
+        }),
       ],
     }),
   );
@@ -2232,6 +2340,13 @@ function getEntityPickerBackItem() {
 async function openMenu() {
   await userEvent.click(
     screen.getByRole("button", { name: "Pick a dynamic value" }),
+  );
+}
+
+async function openEntityPicker() {
+  await openMenu();
+  await userEvent.click(
+    screen.getByRole("menuitem", { name: /Value from another question/ }),
   );
 }
 

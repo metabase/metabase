@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { createAction } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
 import _ from "underscore";
@@ -280,7 +280,7 @@ export const fetchCardDataAction = createAsyncThunk<
       dashcard?.parameter_mappings ?? undefined,
     );
 
-    const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
+    const lastResult = dashcardData?.[dashcard.id]?.[card.id];
     if (!reload) {
       const savedDashcard =
         editingDashboard != null
@@ -823,7 +823,7 @@ export const fetchDashboard = createAsyncThunk(
     try {
       let entities;
       let linkTargets: DashboardLinkTargets = EMPTY_LINK_TARGETS;
-      let result;
+      let result: Dashboard;
       const dashboardLoadId = uuid();
 
       const dashboardType = getDashboardType(dashId);

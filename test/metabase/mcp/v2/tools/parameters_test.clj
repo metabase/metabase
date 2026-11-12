@@ -141,7 +141,7 @@
                                                                                  :display-name "Name"
                                                                                  :id           "_CARD_NAME_"
                                                                                  :type         :dimension
-                                                                                 :dimension    [:field (mt/id :categories :name) nil]
+                                                                                 :field-id     (mt/id :categories :name)
                                                                                  :widget-type  :string/=}}}}}]
     (f {:dashboard   dashboard
         :native-card native-card})))
@@ -771,7 +771,7 @@
                                                                        :display-name "Name"
                                                                        :id           "_PN_"
                                                                        :type         :dimension
-                                                                       :dimension    [:field (mt/id :people :name) nil]
+                                                                       :field-id     (mt/id :people :name)
                                                                        :widget-type  :string/=}}}}}]
       (mt/with-test-user :rasta
         (f card-id)))))

@@ -1,15 +1,32 @@
+import { configureStore } from "@reduxjs/toolkit";
+
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
+  setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupEmbeddingDataPickerDecisionEndpoints,
+  setupLibraryEndpoints,
+  setupLibrarySearchEndpoint,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { createMockEmbeddingDataPickerState } from "__support__/state/embedding-data-picker";
 import { renderWithProviders } from "__support__/ui";
-import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
+import { embed, setInitialUrlOptions } from "metabase/redux/embed";
+import { reducer as embeddingDataPickerReducer } from "metabase/redux/embedding-data-picker";
+import type {
+  EmbeddingDataPicker as EmbeddingDataPickerVariant,
+  EmbeddingEntityType,
+} from "metabase/redux/store/embedding-data-picker";
 import type { Query } from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { createMockModelResult } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockModelResult,
+  createMockSearchResult,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import {
   createOrdersTable,
   createPeopleTable,
@@ -19,10 +36,17 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
+import { EmbeddingDataPickerContextProvider } from "../context";
 
 interface SetupOpts {
+  embeddingType: "full-app" | "modular";
   hasModels?: boolean;
+  hasMetrics?: boolean;
+  hasLibrary?: boolean;
   entityTypes?: EmbeddingEntityType[];
+  dataPicker?: EmbeddingDataPickerVariant;
+  isJoinStep?: boolean;
+  hasNestedQueriesEnabled?: boolean;
 }
 
 const DEFAULT_OPTS: Partial<SetupOpts> = {
@@ -30,41 +54,95 @@ const DEFAULT_OPTS: Partial<SetupOpts> = {
 };
 
 export function setup({
+  embeddingType,
   hasModels = DEFAULT_OPTS.hasModels,
+  hasMetrics = false,
+  hasLibrary = false,
   entityTypes,
-}: SetupOpts = {}) {
+  dataPicker = "staged",
+  isJoinStep = false,
+  hasNestedQueriesEnabled = true,
+}: SetupOpts) {
   const query = createEmptyQuery();
 
-  setupEmbeddingDataPickerDecisionEndpoints("staged");
-
-  if (hasModels) {
-    setupSearchEndpoints(createSearchResults());
-  } else {
-    setupSearchEndpoints([]);
+  // `mockSettings` has to run first, as the Library plugin reads the token
+  // features when it initializes.
+  const settings = mockSettings({
+    "enable-nested-queries": hasNestedQueriesEnabled,
+    ...(hasLibrary && {
+      "token-features": createMockTokenFeatures({ library: true }),
+    }),
+  });
+  setupLibraryEndpoints({
+    hasLibrary,
+    library: { below: createLibraryCollection().below },
+  });
+  if (hasLibrary) {
+    setupEnterpriseOnlyPlugin("library");
+    setupCollectionsEndpoints({ collections: [createLibraryCollection()] });
+    setupLibrarySearchEndpoint(createLibrarySearchResults());
   }
+
+  setupEmbeddingDataPickerDecisionEndpoints(dataPicker);
+
+  setupSearchEndpoints([
+    ...(hasModels ? createModelSearchResults() : []),
+    ...(hasMetrics ? createMetricSearchResults() : []),
+    // The general search finds published tables and metrics too
+    ...(hasLibrary ? createLibrarySearchResults() : []),
+  ]);
   setupDatabasesEndpoints([createDatabase()]);
 
-  renderWithProviders(
+  const picker = (
     <EmbeddingDataPicker
       query={query}
       stageIndex={0}
-      canChangeDatabase={true}
+      canChangeDatabase={!isJoinStep}
       isDisabled={false}
       onChange={jest.fn()}
       title="Pick your starting data"
       placeholder="Pick your starting data"
       table={undefined}
-    />,
-    entityTypes
-      ? {
-          storeInitialState: createMockState({
-            embeddingDataPicker: createMockEmbeddingDataPickerState({
-              entityTypes,
-            }),
-          }),
-        }
-      : undefined,
+    />
   );
+
+  renderWithProviders(
+    embeddingType === "modular" ? (
+      <EmbeddingDataPickerContextProvider
+        entityTypes={entityTypes}
+        dataPicker="staged"
+      >
+        {picker}
+      </EmbeddingDataPickerContextProvider>
+    ) : (
+      picker
+    ),
+    {
+      storeInitialState: createMockState({
+        settings,
+        ...(embeddingType === "full-app" &&
+          entityTypes && {
+            embeddingDataPicker:
+              getFullAppEmbeddingDataPickerState(entityTypes),
+          }),
+      }),
+    },
+  );
+}
+
+// Full-app embedding takes `entity_types` from the URL, so this runs the real
+// entry point and its allowlist instead of writing the state directly
+function getFullAppEmbeddingDataPickerState(
+  entityTypes: EmbeddingEntityType[],
+) {
+  const store = configureStore({
+    reducer: { embeddingDataPicker: embeddingDataPickerReducer, embed },
+  });
+  const search = new URLSearchParams(
+    entityTypes.map((entityType) => ["entity_types", entityType]),
+  ).toString();
+  store.dispatch(setInitialUrlOptions({ search }));
+  return store.getState().embeddingDataPicker;
 }
 
 function createDatabase() {
@@ -78,7 +156,7 @@ function createDatabase() {
   });
 }
 
-function createSearchResults() {
+function createModelSearchResults() {
   return [
     createMockModelResult({
       id: 1,
@@ -91,7 +169,56 @@ function createSearchResults() {
   ];
 }
 
+function createLibraryCollection() {
+  return createMockCollection({
+    id: 6464,
+    name: "Library",
+    type: "library",
+    here: ["collection"],
+    below: ["table", "metric"],
+    children: [
+      createMockCollection({
+        id: 6465,
+        name: "Data",
+        type: "library-data",
+        here: ["table"],
+      }),
+      createMockCollection({
+        id: 6466,
+        name: "Metrics",
+        type: "library-metrics",
+        here: ["metric"],
+      }),
+    ],
+  });
+}
+
+function createLibrarySearchResults() {
+  return [
+    createMockSearchResult({
+      id: 4,
+      name: "Published Orders",
+      model: "table",
+    }),
+    createMockSearchResult({
+      id: 5,
+      name: "Published Revenue",
+      model: "metric",
+    }),
+  ];
+}
+
+function createMetricSearchResults() {
+  return [
+    createMockSearchResult({
+      id: 3,
+      name: "Revenue",
+      model: "metric",
+    }),
+  ];
+}
+
 function createEmptyQuery(): Query {
-  const question = Question.create();
+  const question = Question.create({ metadata: createMockMetadata() });
   return question.query();
 }

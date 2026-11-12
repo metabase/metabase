@@ -26,6 +26,7 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.tools.construct :as metabot-construct]
@@ -279,8 +280,9 @@
                 "\n"
                 "Shape: every clause is `[\"op\", {}, ...args]` with a MANDATORY empty options "
                 "map at position 1. Every field reference is "
-                "`[\"field\", {}, [<db-name>, <schema-or-null>, <table-name>, <column-name>]]` "
-                "(4-segment portable FK string array, NOT a numeric id). Cross-stage refs use "
+                "`[\"field\", {}, [<db-name>, <schema>, <table-name>, <column-name>]]` "
+                "(4-segment portable FK string array, NOT a numeric id; the schema is `null` only in a "
+                "database without schemas). Cross-stage refs use "
                 "a bare column-name string in the third slot: `[\"field\", {}, \"count\"]`.\n"
                 "\n"
                 "Top level: `{\"lib/type\": \"mbql/query\", \"stages\": [...]}`. Each stage has "
@@ -924,7 +926,7 @@
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]])
 
 (mr/def ::create-question-response
   [:map
@@ -974,7 +976,7 @@
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]])
 
 (mr/def ::create-metric-response
   [:map
@@ -1040,7 +1042,7 @@
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -1098,7 +1100,7 @@
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 

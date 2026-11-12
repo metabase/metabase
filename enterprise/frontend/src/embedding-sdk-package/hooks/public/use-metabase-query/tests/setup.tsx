@@ -7,6 +7,7 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-me
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
+import type * as MetabaseApi from "metabase/api";
 import { selectCard, selectTableQueryMetadata } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { selectMetadataProviderUnfiltered } from "metabase/metadata-store";
@@ -15,7 +16,7 @@ import * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import { TEST_METADATA } from "./fixtures";
+import { TEST_JS_METADATA, TEST_METADATA } from "./fixtures";
 
 jest.mock("embedding-sdk-package/hooks/private/use-lazy-selector", () => ({
   useLazySelector: jest.fn(() => ({ status: "success" })),
@@ -33,6 +34,7 @@ jest.mock("embedding-sdk-shared/hooks/use-sdk-loading-state", () => ({
 }));
 
 jest.mock("metabase/api", () => ({
+  ...jest.requireActual<typeof MetabaseApi>("metabase/api"),
   cardApi: {
     endpoints: {
       getCard: { name: "getCard" },
@@ -151,11 +153,8 @@ export const resetTestState = (): void => {
       : undefined,
   );
 
-  // One fixture drives the provider and both cache lookups.
-  const metadata = TEST_METADATA as unknown as Lib.Metadata;
-
   mockSelectMetadataProviderUnfiltered.mockImplementation(
-    (_state, databaseId) => Lib.metadataProvider(databaseId, metadata),
+    (_state, databaseId) => Lib.metadataProvider(databaseId, TEST_JS_METADATA),
   );
   // The RTK-generated selectors carry the whole endpoint map in their types,
   // which a fixture cannot satisfy. Only `data` is read from the result.

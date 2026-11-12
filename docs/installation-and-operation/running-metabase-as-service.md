@@ -1,5 +1,6 @@
 ---
 title: Running Metabase as a systemd service
+summary: Register Metabase as a systemd service on Linux that you can start, stop, and uninstall.
 redirect_from:
   - /docs/latest/operations-guide/running-metabase-on-debian
   - /docs/installation-and-operation/running-metabase-on-debian
@@ -91,7 +92,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=~
-ExecStart=/usr/bin/java --add-opens java.base/java.nio=ALL-UNNAMED -jar /home/metabase/metabase.jar
+ExecStart=/usr/bin/java -jar /home/metabase/metabase.jar
 EnvironmentFile=/home/metabase/.env
 User=metabase
 Type=simple

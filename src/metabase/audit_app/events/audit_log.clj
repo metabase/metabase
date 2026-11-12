@@ -358,6 +358,17 @@
   [topic event]
   (audit-log/record-event! topic event))
 
+(events/derive! ::card-test-event ::event)
+(events/derive! :event/card-test-create ::card-test-event)
+(events/derive! :event/card-test-update ::card-test-event)
+(events/derive! :event/card-test-delete ::card-test-event)
+(events/derive! :event/card-test-run-start ::card-test-event)
+(events/derive! :event/card-test-run-timeout ::card-test-event)
+
+(methodical/defmethod events/publish-event! ::card-test-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
 (events/derive! ::glossary-event ::event)
 (events/derive! :event/glossary-create ::glossary-event)
 (events/derive! :event/glossary-update ::glossary-event)

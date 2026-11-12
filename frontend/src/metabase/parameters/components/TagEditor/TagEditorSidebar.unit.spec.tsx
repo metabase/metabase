@@ -12,12 +12,12 @@ import {
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { TableId, TemplateTag } from "metabase-types/api";
 import {
   createMockCard,
-  createMockNativeDatasetQuery,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
@@ -31,20 +31,22 @@ import { TagEditorSidebar } from "./TagEditorSidebar";
 
 interface SetupOpts {
   query: string;
-  templateTags?: Record<string, TemplateTag>;
+  templateTags?: TemplateTag[];
   /**
    * Simulates opening a saved question directly: the store has only these tables, and the database list response has no tables.
    */
   loadedTableIds?: TableId[];
 }
 
-const setup = ({ query, templateTags = {}, loadedTableIds }: SetupOpts) => {
+const setup = ({ query, templateTags = [], loadedTableIds }: SetupOpts) => {
   const database = createSampleDatabase();
   const card = createMockCard({
-    dataset_query: createMockNativeDatasetQuery({
-      database: database.id,
-      native: { query, "template-tags": templateTags },
-    }),
+    dataset_query: Lib.toJsQuery(
+      Lib.withTemplateTags(
+        Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query }),
+        templateTags,
+      ),
+    ),
   });
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [database] }),
@@ -57,9 +59,8 @@ const setup = ({ query, templateTags = {}, loadedTableIds }: SetupOpts) => {
 
   const setTemplateTag = jest.fn<void, [TemplateTag]>();
   const props = {
-    query: checkNotNull(question.legacyNativeQuery()),
     question,
-    setDatasetQuery: jest.fn(),
+    setQuery: jest.fn(),
     setTemplateTag,
     setTemplateTagConfig: jest.fn(),
     setParameterValue: jest.fn(),
@@ -86,12 +87,7 @@ const setup = ({ query, templateTags = {}, loadedTableIds }: SetupOpts) => {
     });
   } else {
     setupDatabasesEndpoints([database]);
-    renderWithProviders(
-      <TagEditorSidebar
-        {...props}
-        databases={Object.values(metadata.databases)}
-      />,
-    );
+    renderWithProviders(<TagEditorSidebar {...props} />);
   }
 
   return { setTemplateTag };
@@ -116,13 +112,13 @@ describe("TagEditorSidebar", () => {
   it("shows the variable's settings when the query has a variable", () => {
     setup({
       query: "SELECT {{x}}",
-      templateTags: {
-        x: createMockTemplateTag({
+      templateTags: [
+        createMockTemplateTag({
           name: "x",
           "display-name": "X",
           type: "text",
         }),
-      },
+      ],
     });
 
     expect(screen.getByRole("tab", { name: "Settings" })).toBeInTheDocument();
@@ -137,14 +133,14 @@ describe("TagEditorSidebar", () => {
       name: "x",
       "display-name": "X",
       type: "dimension",
-      dimension: undefined,
+      "field-id": undefined,
       "widget-type": "none",
     });
 
-    it("should not render the default value and required controls (metabase#52812)", () => {
-      setup({ query: "SELECT {{x}}", templateTags: { x: FIELD_FILTER_TAG } });
+    it("should not render the default value and required controls (metabase#52812)", async () => {
+      setup({ query: "SELECT {{x}}", templateTags: [FIELD_FILTER_TAG] });
 
-      expect(screen.getByText("Field to map to")).toBeInTheDocument();
+      expect(await screen.findByText("Field to map to")).toBeInTheDocument();
       expect(
         screen.queryByText("Default filter widget value"),
       ).not.toBeInTheDocument();
@@ -156,13 +152,13 @@ describe("TagEditorSidebar", () => {
     it("should render the default value and required controls once a field is mapped", () => {
       setup({
         query: "SELECT {{x}}",
-        templateTags: {
-          x: {
+        templateTags: [
+          {
             ...FIELD_FILTER_TAG,
-            dimension: ["field", PEOPLE.SOURCE, null],
+            "field-id": PEOPLE.SOURCE,
             "widget-type": "string/=",
           },
-        },
+        ],
       });
 
       expect(
@@ -173,7 +169,7 @@ describe("TagEditorSidebar", () => {
     it("should allow changing the variable type (metabase#51679)", async () => {
       const { setTemplateTag } = setup({
         query: "SELECT {{x}}",
-        templateTags: { x: FIELD_FILTER_TAG },
+        templateTags: [FIELD_FILTER_TAG],
       });
 
       await userEvent.click(screen.getByTestId("variable-type-select"));
@@ -191,12 +187,12 @@ describe("TagEditorSidebar", () => {
       name: "x",
       "display-name": "X",
       type: "dimension",
-      dimension: ["field", PRODUCTS.CATEGORY, null],
+      "field-id": PRODUCTS.CATEGORY,
       "widget-type": "string/=",
     });
     const { setTemplateTag } = setup({
       query: "SELECT {{x}}",
-      templateTags: { x: tag },
+      templateTags: [tag],
       loadedTableIds: [PRODUCTS_ID],
     });
 
@@ -211,22 +207,22 @@ describe("TagEditorSidebar", () => {
 
     expect(setTemplateTag).toHaveBeenCalledWith({
       ...tag,
-      dimension: ["field", PEOPLE.ADDRESS, null],
+      "field-id": PEOPLE.ADDRESS,
     });
   });
 
   it("should show only one popover at a time and close it on an outside click (metabase#52811)", async () => {
     setup({
       query: "SELECT {{x}}",
-      templateTags: {
-        x: createMockTemplateTag({
+      templateTags: [
+        createMockTemplateTag({
           name: "x",
           "display-name": "X",
           type: "dimension",
-          dimension: undefined,
+          "field-id": undefined,
           "widget-type": "none",
         }),
-      },
+      ],
     });
 
     const fieldPicker = await screen.findByRole("dialog");

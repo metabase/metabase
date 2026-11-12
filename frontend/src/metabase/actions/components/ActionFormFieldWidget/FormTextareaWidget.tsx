@@ -20,7 +20,6 @@ export const FormTextareaWidget = forwardRef(function FormTextareaWidget(
     optional,
     options,
     type,
-    field,
     nullable,
     ...props
   }: FormTextareaWidgetProps,

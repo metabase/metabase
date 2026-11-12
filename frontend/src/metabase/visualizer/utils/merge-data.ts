@@ -3,7 +3,6 @@ import _ from "underscore";
 import type {
   Dataset,
   DatasetColumn,
-  Field,
   ReferencedEntitiesResults,
   RowValues,
   VisualizerColumnValueSource,
@@ -109,8 +108,7 @@ export function mergeVisualizerData({
     referenced_entities: mergeReferencedEntities(
       dataSources.map((dataSource) => datasets[dataSource.id]),
     ),
-    // this is incorrect - `data.cols` are not the same as `data.results_metadata.columns`
-    results_metadata: { columns: columns as unknown as Field[] },
+    results_metadata: { columns },
   };
 }
 

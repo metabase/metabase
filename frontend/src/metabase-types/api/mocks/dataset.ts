@@ -6,7 +6,6 @@ import type {
   EmbedDataset,
   EmbedDatasetData,
   ErrorEmbedDataset,
-  Field,
   MeasureId,
   ReferencedEntitiesResults,
   ReferencedEntityResult,
@@ -15,7 +14,7 @@ import type {
   TemplateTag,
 } from "metabase-types/api";
 
-import { createMockField } from "./field";
+import { EMPTY_NATIVE_QUERY } from "./query";
 
 export const createMockColumn = (
   data: Partial<DatasetColumn> = {},
@@ -88,7 +87,7 @@ export const createMockDatasetData = ({
   rows: [],
   cols,
   rows_truncated: 0,
-  results_metadata: createMockResultsMetadata(cols?.map(createMockField)),
+  results_metadata: createMockResultsMetadata(cols),
   native_form: { query: "" },
   ...opts,
 });
@@ -137,11 +136,7 @@ export const createMockEmbedDataset = (
     const { data = {}, ...rest } = opts;
     return {
       data: createMockEmbedDatasetData(data),
-      json_query: {
-        database: 1,
-        type: "native",
-        native: { query: "SELECT 1" },
-      },
+      json_query: EMPTY_NATIVE_QUERY,
       status: "success",
       ...rest,
     };
@@ -162,7 +157,7 @@ export const createMockTemplateTag = (
 });
 
 export const createMockResultsMetadata = (
-  columns: Field[] = [createMockField()],
+  columns: DatasetColumn[] = [createMockColumn()],
   opts?: Partial<ResultsMetadata>,
 ): ResultsMetadata => ({
   columns,

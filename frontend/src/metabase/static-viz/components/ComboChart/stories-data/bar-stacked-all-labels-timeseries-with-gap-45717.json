@@ -50,7 +50,6 @@
         "graph.dimensions": ["date", "value_type"],
         "stackable.stack_type": "stacked"
       },
-      "collection_preview": true,
       "entity_id": "FTCgtumB_srUCbDkNncvw",
       "archived_directly": false,
       "display": "bar",

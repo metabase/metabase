@@ -1,8 +1,7 @@
-import { useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { ActionIcon, Group, Icon, Modal, Text, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Modal, Text, Tooltip } from "metabase/ui";
 
 import type { ActionParametersInputFormProps } from "./ActionParametersInputForm";
 import ActionParametersInputForm from "./ActionParametersInputForm";
@@ -30,61 +29,38 @@ function ActionParametersInputModal({
   onClose,
   ...formProps
 }: ActionParametersInputModalProps) {
-  const [isOpenOrClosing, setIsOpenOrClosing] = useState(opened);
-
-  if (opened && !isOpenOrClosing) {
-    setIsOpenOrClosing(true);
-  }
-
-  // Unlike `Modal`, `Modal.Root` still renders its portal while closed, and
-  // the action button keeps this mounted, so render nothing once it has
-  // finished closing, but stay rendered until then so it can fade out
-  if (!isOpenOrClosing) {
-    return null;
-  }
-
   return (
-    <Modal.Root
+    <Modal
       data-testid="action-parameters-input-modal"
       opened={opened}
+      title={title}
       size="lg"
       density="relaxed"
+      headerActions={
+        onEdit && (
+          <Tooltip label={t`Edit this action`}>
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              aria-label={t`Edit this action`}
+              onClick={onEdit}
+            >
+              <Icon name="pencil" />
+            </ActionIcon>
+          </Tooltip>
+        )
+      }
       onClose={onClose}
-      onExitTransitionEnd={() => setIsOpenOrClosing(false)}
     >
-      <Modal.Overlay />
-      <Modal.Content>
-        <Modal.Header>
-          <Modal.Title>{title}</Modal.Title>
-          <Group gap="sm" wrap="nowrap">
-            {onEdit && (
-              <Tooltip label={t`Edit this action`}>
-                <ActionIcon
-                  variant="subtle"
-                  aria-label={t`Edit this action`}
-                  onClick={onEdit}
-                >
-                  <Icon name="pencil" />
-                </ActionIcon>
-              </Tooltip>
-            )}
-            <Modal.CloseButton />
-          </Group>
-        </Modal.Header>
-        <Modal.Body>
-          {showEmptyState ? (
-            <EmptyState message={t`Choose a record to update`} />
-          ) : (
-            <>
-              {showConfirmMessage && (
-                <ConfirmMessage message={confirmMessage} />
-              )}
-              <ActionParametersInputForm {...formProps} />
-            </>
-          )}
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
+      {showEmptyState ? (
+        <EmptyState message={t`Choose a record to update`} />
+      ) : (
+        <>
+          {showConfirmMessage && <ConfirmMessage message={confirmMessage} />}
+          <ActionParametersInputForm {...formProps} />
+        </>
+      )}
+    </Modal>
   );
 }
 

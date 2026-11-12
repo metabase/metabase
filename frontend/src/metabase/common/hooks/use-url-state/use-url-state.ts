@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEffectOnce, useLatest } from "react-use";
 import _ from "underscore";

@@ -4,18 +4,17 @@ import { act, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Database } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
   createMockReferencedEntitiesResults,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -29,12 +28,13 @@ beforeAll(() => loadVisualizationComponents(["progress"]));
 
 const CARD = createMockCard({
   display: "progress",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: createMockStructuredQuery({
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-    }),
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+      },
+    ],
   }),
   visualization_settings: {
     "progress.goal": { type: "card", id: 9, column: "goal" },

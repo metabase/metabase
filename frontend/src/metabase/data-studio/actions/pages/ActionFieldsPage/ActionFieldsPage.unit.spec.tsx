@@ -12,6 +12,8 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Database, Table, WritebackAction } from "metabase-types/api";
 import {
   createMockActionParameter,
@@ -19,11 +21,8 @@ import {
   createMockDatabase,
   createMockFieldSettings,
   createMockImplicitQueryAction,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
   createMockQueryAction,
   createMockTable,
-  createMockTemplateTag,
 } from "metabase-types/api/mocks";
 
 import { ActionFieldsPage } from "./ActionFieldsPage";
@@ -66,41 +65,24 @@ function setup({ action, database, table, fieldId = "status" }: SetupOpts) {
   );
 }
 
-const DATASET_QUERY = createMockNativeDatasetQuery({
-  database: 1,
-  native: createMockNativeQuery({
+const DATASET_QUERY = Lib.toLegacyQuery(
+  Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
     query: "UPDATE orders SET status = {{status}}",
-    "template-tags": {
-      status: createMockTemplateTag({
-        id: "status",
-        name: "status",
-        "display-name": "Status",
-        type: "text",
-      }),
+    templateTags: {
+      status: { type: "text", id: "status", "display-name": "Status" },
     },
   }),
-});
+);
 
-const TWO_VARIABLE_DATASET_QUERY = createMockNativeDatasetQuery({
-  database: 1,
-  native: createMockNativeQuery({
+const TWO_VARIABLE_DATASET_QUERY = Lib.toLegacyQuery(
+  Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
     query: "UPDATE orders SET status = {{status}} WHERE id = {{id}}",
-    "template-tags": {
-      status: createMockTemplateTag({
-        id: "status",
-        name: "status",
-        "display-name": "Status",
-        type: "text",
-      }),
-      id: createMockTemplateTag({
-        id: "id",
-        name: "id",
-        "display-name": "ID",
-        type: "number",
-      }),
+    templateTags: {
+      status: { type: "text", id: "status", "display-name": "Status" },
+      id: { type: "number", id: "id", "display-name": "ID" },
     },
   }),
-});
+);
 
 describe("ActionFieldsPage", () => {
   it("should only let a user change whether a table action's field is shown", async () => {

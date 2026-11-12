@@ -6,7 +6,7 @@ import type { ReferencedEntityKind } from "metabase/viz-core";
 import type { GoalForeignEntityRef } from "metabase-types/api";
 
 import type { ColumnOption, ReferencedEntityInfo } from "./types";
-import { getNumericColumnOptions } from "./utils";
+import { getCardGoalColumnOptions } from "./utils";
 
 export function useReferencedEntity(
   entity: GoalForeignEntityRef | null,
@@ -34,7 +34,7 @@ export function useReferencedEntity(
 
   const columns: ColumnOption[] = useMemo(() => {
     if (entity?.type === "card") {
-      return getNumericColumnOptions(card?.result_metadata ?? []);
+      return card != null ? getCardGoalColumnOptions(card) : [];
     }
 
     if (measure?.result_column_name) {

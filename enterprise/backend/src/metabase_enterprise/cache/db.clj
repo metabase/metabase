@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.core :as queries]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -104,7 +105,7 @@
 
 (mu/defn scheduled-base-query-to-rerun
   "The unparameterized query definition of the Card with `card-id` executed most recently after `started-after`, or
-  nil."
+  nil. Runs in `referenced-run-contexts` don't count."
   [card-id       :- ::lib.schema.id/card
    started-after :- ms/TemporalInstant]
   (t2/select-one :model/Query
@@ -116,6 +117,7 @@
                              [:= :qe.parameterized false]
                              [:= :qe.error nil]
                              [:= :qe.is_sandboxed false]
+                             (queries/not-referenced-run :qe.context)
                              [:>= :qe.started_at started-after]]
                   :order-by [[:qe.started_at :desc]]
                   :limit    1}))

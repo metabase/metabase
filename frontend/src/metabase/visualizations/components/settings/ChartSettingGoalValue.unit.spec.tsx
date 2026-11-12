@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { GoalValue } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
 import { ChartSettingGoalValue } from "./ChartSettingGoalValue";
@@ -28,7 +29,7 @@ function setup({ showSelfColumns, value = 5 }: SetupOpts = {}) {
   renderWithProviders(
     <ChartSettingGoalValue
       data={DATA}
-      datasetQuery={createMockStructuredDatasetQuery()}
+      datasetQuery={Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY)}
       display="line"
       id="goal"
       showSelfColumns={showSelfColumns}

@@ -224,6 +224,19 @@
   [database-id-or-metadata-providerable & body]
   `(do-with-metadata-provider ~database-id-or-metadata-providerable (^:once fn* [] ~@body)))
 
+(defn do-with-fresh-store
+  "Implementation for [[with-fresh-store]]."
+  [thunk]
+  (binding [*store* uninitialized-store]
+    (thunk)))
+
+(defmacro with-fresh-store
+  "Run `body` with no QP store bound, so a nested query binds its own. Otherwise it reuses the caller's store and
+  resolves its tables against the caller's database."
+  {:style/indent 0}
+  [& body]
+  `(do-with-fresh-store (^:once fn* [] ~@body)))
+
 ;;;;
 ;;;; DEPRECATED STUFF
 ;;;;

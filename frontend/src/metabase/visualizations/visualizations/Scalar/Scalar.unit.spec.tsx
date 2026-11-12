@@ -16,7 +16,13 @@ import { QuestionChartSettings } from "metabase/visualizations/components/ChartS
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
-import type { DatasetData, ScalarSegment, Series } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  DatasetData,
+  RowValue,
+  ScalarSegment,
+  Series,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -655,6 +661,66 @@ describe("Scalar with multiple series", () => {
     expect(screen.getAllByText("Orders").length).toBeGreaterThan(0);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
+});
+
+describe("Scalar value font size (#85061)", () => {
+  const LONG_SUFFIX = " active users this quarter";
+  const NUMBER_COLUMN = createMockColumn({
+    name: "count",
+    base_type: "type/Integer",
+  });
+  const TEXT_COLUMN = createMockColumn({
+    name: "count",
+    base_type: "type/Text",
+  });
+
+  interface SetupOpts {
+    column: DatasetColumn;
+    value: RowValue;
+    suffix?: string;
+  }
+
+  const getValueFontSize = ({ column, value, suffix }: SetupOpts) => {
+    const rawSeries = [
+      createMockSingleSeries(
+        { display: "scalar" },
+        { data: createMockDatasetData({ rows: [[value]], cols: [column] }) },
+      ),
+    ];
+    const { unmount } = renderWithProviders(
+      <Scalar
+        {...mockedProps}
+        series={rawSeries}
+        rawSeries={rawSeries}
+        settings={{ ...settings, column: () => ({ suffix }) }}
+        visualizationIsClickable={() => false}
+        width={230}
+        height={150}
+      />,
+    );
+    const { fontSize } = screen.getByTestId("scalar-value").style;
+    unmount();
+    return fontSize;
+  };
+
+  it("keeps the card font size for a number with a long suffix", () => {
+    expect(
+      getValueFontSize({
+        column: NUMBER_COLUMN,
+        value: 12345,
+        suffix: LONG_SUFFIX,
+      }),
+    ).toBe(getValueFontSize({ column: NUMBER_COLUMN, value: 12345 }));
+  });
+
+  it("shrinks the font size for a long text value", () => {
+    expect(
+      getValueFontSize({
+        column: TEXT_COLUMN,
+        value: `12,345${LONG_SUFFIX}`,
+      }),
+    ).not.toBe(getValueFontSize({ column: NUMBER_COLUMN, value: 12345 }));
   });
 });
 

@@ -32,7 +32,7 @@ export function DataAppActionFieldsPage() {
           action={action}
           fieldId={fieldId}
           getFieldsUrl={(fieldId) =>
-            Urls.dataStudioDataAppActionFields(app.name, action.id, fieldId)
+            Urls.dataStudioDataAppActionFields(app.slug, action.id, fieldId)
           }
         />
       ) : (
@@ -41,7 +41,7 @@ export function DataAppActionFieldsPage() {
           fieldId={fieldId}
           canChangeFieldType={canEditActionQuery(action, databases)}
           getFieldsUrl={(fieldId) =>
-            Urls.dataStudioDataAppActionFields(app.name, action.id, fieldId)
+            Urls.dataStudioDataAppActionFields(app.slug, action.id, fieldId)
           }
         />
       )}

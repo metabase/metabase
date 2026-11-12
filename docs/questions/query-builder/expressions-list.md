@@ -1,5 +1,6 @@
 ---
 title: List of expressions
+summary: Every aggregation and function you can use in custom expressions, with syntax and examples.
 redirect_from:
   - /docs/latest/users-guide/expressions-list
 ---
@@ -1076,7 +1077,7 @@ Limitations are noted for each aggregation and function above, and here they are
 
 **Vertica**: `Median`, `Percentile`, `datetime`, `float`, `splitPart`.
 
-If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
+If you're using or maintaining a third-party database driver, check the [driver changelog](../../developers-guide/driver-changelog.md) to see how your driver might be impacted.
 
 Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions) to learn more.
 

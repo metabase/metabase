@@ -130,8 +130,8 @@
           (mt/with-temp
             [:model/Collection {coll :id} {}
              ;; flagged: deciding run (10m ago) returned 0 rows; the newer parameterized, cache-hit,
-             ;; and errored runs are outside the evidence set - they don't clear it (and the errored
-             ;; run's own result_rows 0 must not steal as_of)
+             ;; errored and dynamic-goal runs are outside the evidence set - they don't clear it (and the
+             ;; errored run's own result_rows 0 must not steal as_of)
              :model/Card {flagged :id} {:collection_id coll}
              :model/QueryExecution _ {:card_id flagged :started_at (ago 10)
                                       :parameterized false :cache_hit false :result_rows 0}
@@ -142,6 +142,8 @@
                                       :error "Table not found"}
              :model/QueryExecution _ {:card_id flagged :started_at (ago 1)
                                       :parameterized false :cache_hit true :result_rows 5}
+             :model/QueryExecution _ {:card_id flagged :started_at (ago 1) :context :dynamic-goal
+                                      :parameterized false :cache_hit false :result_rows 5}
              ;; healthy: the latest unparameterized run has rows; the older 0-row run is superseded
              :model/Card {healthy :id} {:collection_id coll}
              :model/QueryExecution _ {:card_id healthy :started_at (ago 10)

@@ -1,26 +1,22 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupParameterSearchValuesEndpoint,
   setupParameterValuesEndpoints,
 } from "__support__/server-mocks";
-import { createMockState } from "__support__/state";
-import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Field as FieldType, ParameterValues } from "metabase-types/api";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import type {
+  Field,
+  ParameterValue,
+  ParameterValues,
+} from "metabase-types/api";
 import {
   createMockField,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
-import {
-  REVIEWS_ID,
-  createReviewsTable,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
 
 import { ParameterFieldWidget } from "./ParameterFieldWidget";
 
@@ -28,15 +24,13 @@ const FIELD_ID = 100;
 
 type SetupOpts = {
   parameter?: UiParameter;
-  fields?: Field[];
   parameterValues?: ParameterValues;
   parameterSearchValues?: Record<string, ParameterValues>;
-  fieldSettings?: Partial<FieldType>;
+  fieldSettings?: Partial<Field>;
 };
 
 function setup({
   parameter = createMockUiParameter(),
-  fields = [],
   parameterValues = createMockParameterValues(),
   parameterSearchValues = {},
   fieldSettings,
@@ -46,38 +40,19 @@ function setup({
     setupParameterSearchValuesEndpoint(query, values);
   });
 
-  const database = createSampleDatabase({
-    tables: [
-      createReviewsTable({
-        fields: [
-          createMockField({
-            id: FIELD_ID,
-            table_id: REVIEWS_ID,
-            ...fieldSettings,
-          }),
-        ],
-      }),
-    ],
-  });
-
-  const storeInitialState = createMockState({
-    entities: createMockEntitiesState({
-      databases: [database],
+  const field = getParameterFieldInfo(
+    createMockField({
+      id: FIELD_ID,
+      ...fieldSettings,
     }),
-  });
-
-  const metadata = createMockMetadataFromState(storeInitialState);
-  const field = metadata.field(FIELD_ID);
-  const fieldsToUse = field ? [field] : fields;
-
+  );
   const setValue = jest.fn();
   renderWithProviders(
     <ParameterFieldWidget
       parameter={parameter}
-      fields={fieldsToUse}
+      fields={[field]}
       setValue={setValue}
     />,
-    { storeInitialState },
   );
 
   return { setValue };
@@ -122,6 +97,24 @@ describe("ParameterFieldWidget", () => {
       const input = await screen.findByPlaceholderText("Search the list");
       await userEvent.type(input, "{enter}");
       expect(setValue).toHaveBeenCalledWith([]);
+    });
+
+    it("should show all values of a dropdown list (metabase#49577)", async () => {
+      const values: ParameterValue[] = [["foo"], ["bar"], ["baz"]];
+      setup({
+        parameter: {
+          ...parameter,
+          values_source_config: { values },
+        },
+        parameterValues: createMockParameterValues({ values }),
+      });
+
+      expect(
+        await screen.findByPlaceholderText("Search the list"),
+      ).toBeInTheDocument();
+      expect(await screen.findByTestId("foo-filter-value")).toBeVisible();
+      expect(screen.getByTestId("bar-filter-value")).toBeVisible();
+      expect(screen.getByTestId("baz-filter-value")).toBeVisible();
     });
 
     it("should not allow to submit empty values when the parameter required", async () => {
@@ -228,6 +221,24 @@ describe("ParameterFieldWidget", () => {
       expect(setValue).toHaveBeenCalledWith(["foo"]);
     });
 
+    it("should not show the values before a search term is typed (metabase#49577)", async () => {
+      setup({
+        parameter,
+        parameterValues: createMockParameterValues({
+          values: [["foo"], ["bar"]],
+        }),
+        parameterSearchValues,
+      });
+
+      const input = screen.getByRole("textbox");
+      await userEvent.click(input);
+      expect(screen.queryByText("foo")).not.toBeInTheDocument();
+      expect(screen.queryByText("bar")).not.toBeInTheDocument();
+
+      await userEvent.type(input, "f");
+      expect(await screen.findByText("foo")).toBeInTheDocument();
+    });
+
     it("should allow to submit an empty value on enter when the parameter is not required", async () => {
       const { setValue } = setup({
         parameter,
@@ -313,8 +324,7 @@ describe("ParameterFieldWidget", () => {
       base_type: "type/BigInteger",
       effective_type: "type/BigInteger",
       has_field_values: "list",
-      values: [[1000], [2000], [3000]],
-    } satisfies Partial<FieldType>;
+    } satisfies Partial<Field>;
 
     it("should format numbers with default separators when no custom settings", async () => {
       setup({

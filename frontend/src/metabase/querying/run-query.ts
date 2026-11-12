@@ -13,7 +13,7 @@ import type {
   CardQueryRequest,
   DashboardCardQueryRequest,
   Dataset,
-  DatasetQuery,
+  JsonQuery,
   ReferencedEntity,
 } from "metabase-types/api";
 
@@ -88,8 +88,7 @@ let adhocDatasetQueryCounter = 0;
 export function runAdhocDatasetQuery(
   dispatch: Dispatch,
   question: Question,
-  body: DatasetQuery & {
-    parameters?: unknown[];
+  body: JsonQuery & {
     ignore_cache?: boolean;
     referenced_entities?: ReferencedEntity[];
   },

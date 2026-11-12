@@ -2,18 +2,22 @@ import fetchMock from "fetch-mock";
 
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { DatasetData, GoalValue } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
   createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
 import { useResolvedGoalData } from "./use-resolved-goal-data";
 
-const DATASET_QUERY = createMockStructuredDatasetQuery();
+const DATASET_QUERY = Lib.createTestJsQuery(
+  SAMPLE_PROVIDER,
+  DEFAULT_TEST_QUERY,
+);
 
 const DATA = createMockDatasetData({
   cols: [createMockColumn({ name: "count" })],

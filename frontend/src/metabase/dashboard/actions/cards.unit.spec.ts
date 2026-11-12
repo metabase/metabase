@@ -11,6 +11,8 @@ import {
 } from "__support__/server-mocks";
 import { createMockDashboardState, createMockState } from "__support__/state";
 import type { State, StoreDashcard } from "metabase/redux/store";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   CardId,
   DashCardId,
@@ -29,14 +31,9 @@ import {
   createMockLinkDashboardCard,
   createMockParameter,
   createMockPlaceholderDashboardCard,
-  createMockStructuredDatasetQuery,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
-import {
-  ORDERS,
-  ORDERS_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { ORDERS, createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import type { SectionLayout } from "../sections";
 import { layoutOptions } from "../sections";
@@ -67,9 +64,9 @@ const UNUSED_PARAMETER = createMockParameter({
   name: "Not mapped to anything",
 });
 
-const dataset_query = createMockStructuredDatasetQuery({
-  query: { "source-table": ORDERS_ID },
-});
+const dataset_query = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
 
 const ORDERS_TABLE_CARD = createMockCard({ id: 1, dataset_query });
 const ORDERS_LINE_CHART_CARD = createMockCard({

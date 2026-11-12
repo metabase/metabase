@@ -369,7 +369,6 @@ export type DashboardCardQueryRequest = {
   dashboardId: DashboardId;
   dashcardId: DashCardId;
   cardId: CardId;
-  collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];
   referenced_entities?: ReferencedEntity[];

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 // This file contains plugins that are needed to make the sdk bundle work.
 
 import type { AsyncThunkAction } from "@reduxjs/toolkit";
@@ -258,6 +259,9 @@ export const getOrRefreshSession = createAsyncThunk(
     return refreshTokenPromise.unwrap();
   },
 );
+
+PLUGIN_EMBEDDING_SDK_AUTH.getOrRefreshSession = (config, store) =>
+  store.dispatch(getOrRefreshSession(config)).unwrap();
 
 const getRefreshToken = async ({
   metabaseInstanceUrl,

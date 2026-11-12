@@ -57,7 +57,7 @@ import type { ColumnOption, PickedItem } from "./types";
 import { useDynamicGoalSource } from "./use-dynamic-goal-source";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
-import { getNumericColumnOptions } from "./utils";
+import { getCardGoalColumnOptions, getNumericColumnOptions } from "./utils";
 
 const ROOT_MENU_MIN_WIDTH = 225;
 const COLUMN_MENU_MIN_WIDTH = 256;
@@ -153,6 +153,7 @@ export const GoalValueInput = ({
     : null;
   const pillTooltip = getPillTooltip({
     entityColumns: sourceInfo.columns,
+    entityKind: sourceInfo.kind,
     entityName: sourceInfo.name,
     foreignRef,
     selfColumnLabel,
@@ -276,9 +277,7 @@ export const GoalValueInput = ({
         { id: entityId, ignore_error: true },
         true,
       ).unwrap();
-      const numericColumns = getNumericColumnOptions(
-        card.result_metadata ?? [],
-      );
+      const numericColumns = getCardGoalColumnOptions(card);
       return numericColumns.length === 1
         ? { name: numericColumns[0].name, kind: card.type }
         : null;
@@ -493,11 +492,13 @@ export const GoalValueInput = ({
 
 function getPillTooltip({
   entityColumns,
+  entityKind,
   entityName,
   foreignRef,
   selfColumnLabel,
 }: {
   entityColumns: ColumnOption[];
+  entityKind: ReferencedEntityKind | undefined;
   entityName: string | undefined;
   foreignRef: GoalForeignColumnRef | null;
   selfColumnLabel: string | null;
@@ -514,8 +515,8 @@ function getPillTooltip({
     return columnLabel;
   }
 
-  // a measure has a single result column, so its column label is redundant
-  if (foreignRef.type === "measure") {
+  // a measure or a metric has a single result column, so its column label is redundant
+  if (entityKind === "measure" || entityKind === "metric") {
     return entityName;
   }
 

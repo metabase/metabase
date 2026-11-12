@@ -1,6 +1,5 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
-import { merge } from "icepick";
 import { shallowEqual } from "react-redux";
 import _ from "underscore";
 
@@ -19,8 +18,10 @@ import {
 import { getSetting } from "metabase/settings";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import { filterTimelinesByXAxes } from "metabase/timelines/panel/utils";
+import { deepMerge } from "metabase/utils/deep-merge";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
+import { getIsPKFromSourcePredicate } from "metabase/visualizations/components/ObjectDetail/utils";
 import {
   getCollectionTimelinesVisibility,
   getRecordedTimelineEventsVisibility,
@@ -40,7 +41,6 @@ import {
   normalizeParameterValue,
   normalizeParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import type {
   Bookmark,
   ColumnFormattingSetting,
@@ -49,9 +49,11 @@ import type {
   DatasetColumn,
   DatasetQuery,
   Field,
+  FieldId,
   Series,
   TimelineEventsVisibility,
 } from "metabase-types/api";
+import type { DeepPartial } from "metabase-types/utils/types";
 
 import { cleanIndexFlags } from "../model-indexes/actions";
 import { getWritableColumnProperties } from "../utils";
@@ -248,7 +250,12 @@ export const getQueryResults = createSelector(
 
     function applyMetadataDiff<T extends DatasetColumn | Field>(column: T): T {
       const columnDiff = metadataDiff[column.name];
-      return columnDiff ? merge(column, columnDiff) : column;
+      if (!columnDiff) {
+        return column;
+      }
+      // The diff only holds writable column properties that exist on both
+      // `DatasetColumn` and `Field`, so it is a partial of `T`.
+      return deepMerge(column, columnDiff as DeepPartial<T>);
     }
 
     return [
@@ -301,48 +308,48 @@ export const getNextRunParameters = createSelector(
   (parameters) => normalizeParameters(parameters),
 );
 
-export const getTableId = createSelector([getQuestion], (question) => {
-  if (!question) {
-    return;
-  }
+const getSourceTableId = createSelector([getQuestion], (question) =>
+  question != null ? Lib.primarySourceTableId(question.query()) : null,
+);
 
-  return Lib.sourceTableOrCardId(question.query());
-});
+export const getSourceCardId = createSelector([getQuestion], (question) =>
+  question != null ? Lib.primarySourceCardId(question.query()) : null,
+);
 
 export const getTableMetadata = createSelector(
-  [getTableId, getShallowTables],
+  [getSourceTableId, getShallowTables],
   (tableId, tables) => (tableId != null ? tables[tableId] : undefined),
 );
 
-const NO_FIELD_IDS: Field["id"][] = [];
+const NO_FIELD_IDS: FieldId[] = [];
 
 const getTableFieldIds = (state: QueryBuilderStoreState) => {
-  const tableId = getTableId(state);
+  const tableId = getSourceTableId(state);
   return tableId != null
     ? getShallowTableFieldIds(state, tableId)
     : NO_FIELD_IDS;
 };
 
 export const getTableForeignKeys = (state: QueryBuilderStoreState) => {
-  const tableId = getTableId(state);
+  const tableId = getSourceTableId(state);
   return (tableId != null && getShallowTableForeignKeys(state, tableId)) || [];
 };
 
 export const getPKColumnIndex = createSelector(
-  [getFirstQueryResult, getTableId],
-  (result, tableId) => {
+  [getFirstQueryResult, getSourceTableId, getSourceCardId],
+  (result, tableId, cardId) => {
     if (!result || !result.data) {
       return;
     }
     const { cols } = result.data;
+    const isPKFromSource = getIsPKFromSourcePredicate({ tableId, cardId });
 
-    const hasMultiplePks =
-      cols.filter(getIsPKFromTablePredicate(tableId)).length > 1;
+    const hasMultiplePks = cols.filter(isPKFromSource).length > 1;
 
     if (hasMultiplePks) {
       return -1;
     }
-    return cols.findIndex(getIsPKFromTablePredicate(tableId));
+    return cols.findIndex(isPKFromSource);
   },
 );
 
@@ -397,7 +404,7 @@ export const getRowIndexToPKMap = createSelector(
 function areLegacyQueriesEqual(
   queryA: DatasetQuery | undefined,
   queryB: DatasetQuery | undefined,
-  tableFieldIds: Field["id"][],
+  tableFieldIds: FieldId[],
 ) {
   if (queryA == null || queryB == null) {
     return false;
@@ -422,7 +429,7 @@ function areComposedEntitiesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: Field["id"][];
+  tableFieldIds: FieldId[];
 }) {
   const isQuestion = originalQuestion?.type() === "question";
   if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {
@@ -470,7 +477,7 @@ export function areQueriesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: Field["id"][];
+  tableFieldIds: FieldId[];
 }) {
   return (
     areLegacyQueriesEqual(
@@ -943,7 +950,9 @@ export const getIsVisualized = createSelector(
       question.display() !== "list") ||
       (settings != null &&
         (settings["table.pivot"] ||
-          (question.display() === "table" && settings["table.pivot_column"])))), // last case - pivot_column is set but display is set to table viz (#56094)
+          (question.display() === "table" &&
+            // "table.pivot_column" is typed `any` via the settings index signature; it is a column name string
+            (settings["table.pivot_column"] as string | undefined))))), // last case - pivot_column is set but display is set to table viz (#56094)
 );
 
 export const getIsLiveResizable = createSelector(

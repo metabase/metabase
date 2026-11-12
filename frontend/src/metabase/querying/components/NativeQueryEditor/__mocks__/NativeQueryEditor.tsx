@@ -2,6 +2,8 @@ import type { ChangeEvent } from "react";
 
 import { useLazyGetTableQuery } from "metabase/api";
 import { DataSourceSelectors } from "metabase/querying/components/NativeQueryEditor/DataSourceSelectors";
+import { setNativeQueryDatabaseId } from "metabase/querying/native";
+import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import type { NativeQueryEditorCoreProps } from "../NativeQueryEditorRoot";
@@ -11,37 +13,38 @@ type NativeQueryEditorProps = Pick<
   | "canChangeDatabase"
   | "editorContext"
   | "isNativeEditorOpen"
-  | "query"
   | "question"
   | "readOnly"
-  | "setDatasetQuery"
+  | "setQuery"
 >;
 
 export const NativeQueryEditor = ({
   canChangeDatabase = true,
   editorContext = "question",
   isNativeEditorOpen,
-  query,
   question,
   readOnly,
-  setDatasetQuery,
+  setQuery,
 }: NativeQueryEditorProps) => {
+  const query = question.query();
   const [fetchTable] = useLazyGetTableQuery();
 
   const onChange = (evt: ChangeEvent<HTMLTextAreaElement>) => {
-    setDatasetQuery(query.setQueryText(evt.target.value));
+    setQuery(Lib.withNativeQuery(query, evt.target.value));
   };
 
   const onDatabaseIdChange = (databaseId: DatabaseId) => {
     if (question.databaseId() !== databaseId) {
-      setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
+      setQuery(
+        setNativeQueryDatabaseId(query, databaseId, question.metadata()),
+      );
     }
   };
 
   const onTableIdChange = async (tableId: TableId) => {
     const table = await fetchTable({ id: tableId }).unwrap();
-    if (table.name !== query.collection()) {
-      setDatasetQuery(query.setCollectionName(table.name));
+    if (table.name !== Lib.nativeExtras(query)?.collection) {
+      setQuery(Lib.withNativeExtras(query, { collection: table.name }));
     }
   };
 
@@ -58,9 +61,7 @@ export const NativeQueryEditor = ({
           editorContext={editorContext}
         />
       )}
-      {query.queryText && (
-        <textarea value={query.queryText()} onChange={onChange} />
-      )}
+      <textarea value={Lib.rawNativeQuery(query)} onChange={onChange} />
     </div>
   );
 };

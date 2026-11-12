@@ -1,5 +1,5 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import type { Card, LegacyDatasetQuery, NativeQuery } from "metabase-types/api";
+import type { Card, DatabaseId } from "metabase-types/api";
 
 import {
   type Options,
@@ -12,8 +12,9 @@ export type NativeQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
   /**
    * Defaults to SAMPLE_DB_ID.
    */
-  database?: LegacyDatasetQuery["database"];
-  native: NativeQuery;
+  database?: DatabaseId | null;
+  // e2e tests still pass hand-written legacy MBQL; migrate them to the Lib test spec and drop `any`
+  native: any;
 };
 
 export const createNativeQuestion = (

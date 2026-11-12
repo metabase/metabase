@@ -158,6 +158,10 @@
       (testing "We don't rerun a cache refresh query execution"
         (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query) {:context :cache-refresh})]
           (is (nil? (@#'task.cache/scheduled-base-query-to-rerun card-id)))))
+      (testing "We don't rerun a query execution that ran the card as a dynamic goal"
+        (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query) {:card_id card-id
+                                                                                         :context :dynamic-goal})]
+          (is (nil? (@#'task.cache/scheduled-base-query-to-rerun card-id)))))
       (testing "We don't rerun an errored query execution"
         (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query) {:error "Error"})]
           (is (nil? (@#'task.cache/scheduled-base-query-to-rerun card-id)))))

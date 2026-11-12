@@ -8,6 +8,19 @@ const TIMEOUT_MS = 40000;
 const CLIENT_PORT = Cypress.expose("CLIENT_PORT");
 const CLIENT_HOST = `http://localhost:${CLIENT_PORT}`;
 
+const TASK_RUNS_MODEL_ENTITY_ID = "eiR5q0JEbDRy1-WnYIhm4";
+
+function visitTaskRunsQuestion(locale: string) {
+  cy.request("POST", "/api/eid-translation/translate", {
+    entity_ids: { card: [TASK_RUNS_MODEL_ENTITY_ID] },
+  }).then(({ body }) => {
+    const questionId = body.entity_ids[TASK_RUNS_MODEL_ENTITY_ID].id;
+    cy.visit({
+      url: `${CLIENT_HOST}/interactive-question?locale=${locale}&questionId=${questionId}`,
+    });
+  });
+}
+
 describe("Embedding SDK: shared Host Apps compatibility tests", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
@@ -37,9 +50,7 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
   });
 
   it("should load a metabase locale", () => {
-    cy.visit({
-      url: `${CLIENT_HOST}/interactive-question?locale=en-ZZ&questionId=1`,
-    });
+    visitTaskRunsQuestion("en-ZZ");
 
     cy.findByTestId("interactive-question-result-toolbar", {
       timeout: TIMEOUT_MS,
@@ -52,9 +63,7 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     const time = new Date("2025-01-01");
     cy.clock(time, ["Date"]);
 
-    cy.visit({
-      url: `${CLIENT_HOST}/interactive-question?locale=es&questionId=1`,
-    });
+    visitTaskRunsQuestion("es");
 
     cy.findByTestId("interactive-question-result-toolbar", {
       timeout: TIMEOUT_MS,
@@ -81,9 +90,7 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     const time = new Date("2025-01-01");
     cy.clock(time, ["Date"]);
 
-    cy.visit({
-      url: `${CLIENT_HOST}/interactive-question?locale=es&questionId=1`,
-    });
+    visitTaskRunsQuestion("es");
 
     cy.findByTestId("interactive-question-result-toolbar", {
       timeout: TIMEOUT_MS,

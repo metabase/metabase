@@ -18,7 +18,7 @@ import type {
   OnItemClick,
 } from "metabase/querying/components/DataReference/types";
 import { Box, Ellipsified, Text } from "metabase/ui";
-import { type SearchResult, isConcreteTableId } from "metabase-types/api";
+import type { SearchResult } from "metabase-types/api";
 
 import { useGetLibraryCollection } from "../../hooks/use-get-library-collection";
 
@@ -162,7 +162,7 @@ const LibraryTableList = ({
                 <NodeListItemLink
                   disabled={isSyncing}
                   onClick={() => {
-                    if (isConcreteTableId(table.id)) {
+                    if (typeof table.id === "number") {
                       onItemClick({ type: "table", id: table.id });
                     }
                   }}

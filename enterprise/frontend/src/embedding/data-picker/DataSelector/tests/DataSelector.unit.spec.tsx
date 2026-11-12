@@ -99,11 +99,12 @@ describe("DataSelector", () => {
     canSelectModel: true,
     canSelectTable: true,
     canSelectQuestion: true,
+    canSelectMetric: true,
+    canSelectSemanticLayer: true,
     entityLookups: emptyLookups,
     databases: [],
     availableModels: [],
-    hasLoadedDatabasesWithTablesSaved: false,
-    hasLoadedDatabasesWithSaved: false,
+    hasLoadedDatabases: false,
     hasLoadedDatabasesWithTables: false,
     hasDataAccess: false,
     hasNestedQueriesEnabled: false,
@@ -111,7 +112,7 @@ describe("DataSelector", () => {
     loaded: false,
     allLoading: false,
     fetchDatabases: () => Promise.resolve(),
-    fetchFields: () => Promise.resolve(),
+    fetchFields: () => Promise.resolve(createMockTable()),
     fetchQuestion: () => Promise.resolve(),
     fetchSchemas: () => Promise.resolve(),
     fetchSchemaTables: () => Promise.resolve(),
@@ -130,7 +131,7 @@ describe("DataSelector", () => {
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE, ANOTHER_DATABASE]}
         entityLookups={entityLookups}
         isOpen={true}
-        setSourceTableFn={setTable}
+        setSourceFn={setTable}
       />,
     );
 
@@ -159,8 +160,10 @@ describe("DataSelector", () => {
 
     // clicking on the table
     await userEvent.click(screen.getByText("Table in First Schema"));
-    const [tableId] = setTable.mock.calls[0];
-    expect(tableId).toEqual(MULTI_SCHEMA_TABLE1_ID);
+    expect(setTable).toHaveBeenCalledWith({
+      type: "table",
+      id: MULTI_SCHEMA_TABLE1_ID,
+    });
   });
 
   it("should fetch db, schema, and table progressively", async () => {

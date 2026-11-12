@@ -11,6 +11,8 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { DashboardCard } from "metabase-types/api";
 import {
   createMockCard,
@@ -18,7 +20,6 @@ import {
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
   createMockDataset,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -29,9 +30,11 @@ import { DashboardSubscriptionsButton } from "./DashboardSubscriptionsButton";
 
 const tableCard = createMockCard({
   id: 1,
-  dataset_query: createMockStructuredDatasetQuery({
-    query: { "source-table": ORDERS_ID },
-  }),
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    }),
+  ),
   name: "Here is a card title",
 });
 const tableDashcard = createMockDashboardCard({

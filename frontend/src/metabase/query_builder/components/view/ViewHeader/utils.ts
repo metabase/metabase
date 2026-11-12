@@ -9,9 +9,9 @@ import type Question from "metabase-lib/v1/Question";
  */
 export const canExploreResults = (question: Question): boolean => {
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+  const databaseInfo = Lib.databaseDisplayInfo(question.query());
   const canNest = Boolean(
-    question.database() != null &&
-    hasFeature(question.database()!, "nested-queries"),
+    databaseInfo != null && hasFeature(databaseInfo, "nested-queries"),
   );
 
   return (
@@ -39,7 +39,7 @@ export const canShowNativePreview = ({
   return (
     !isNative &&
     !isMetric &&
-    question.database()?.native_permissions === "write" &&
+    Lib.databaseDisplayInfo(question.query())?.nativePermissions === "write" &&
     queryBuilderMode === "notebook" &&
     !question.isArchived()
   );
