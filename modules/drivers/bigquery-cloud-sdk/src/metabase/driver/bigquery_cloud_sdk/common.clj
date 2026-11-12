@@ -86,14 +86,14 @@
 
 (mu/defn database-details->credentials
   "Returns `GoogleCredentials` (not scoped) for `details`, from whichever source :auth-mode names."
-  ^GoogleCredentials [{:keys [service-account-json credential-config-json] :as details}
+  ^GoogleCredentials [{:keys [service-account-json #_credential-config-json] :as details}
                       :- :metabase.lib.schema.common/database-details]
   (case (:auth-mode details)
     ;; default here if auth-mode isn't set for backwards-compatibility
     ("service-account" nil) (service-account-json->service-account-credential service-account-json)
     ;; this is currently disabled in metabase-plugin.yaml because we haven't been
     ;; able to confirm it actually works.
-    "credential-config" (credential-config-json->credentials credential-config-json)
+    ;; "credential-config" (credential-config-json->credentials credential-config-json)
     "application-default" (application-default-credentials)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
