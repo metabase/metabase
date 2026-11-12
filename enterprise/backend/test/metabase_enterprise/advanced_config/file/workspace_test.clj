@@ -404,8 +404,8 @@
       (mt/with-premium-features #{:config-text-file :workspaces}
         (mt/with-temporary-setting-values [config-from-file-sync-databases false]
           (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine   :h2
-                                                                   :details  (:details (mt/db))
-                                                                   :settings {:database-workspace-schema "ws_l"}}]
+                                                                    :details  (:details (mt/db))
+                                                                    :settings {:database-workspace-schema "ws_l"}}]
             (let [config (fn [settings-schema]
                            {:version 1
                             :config  {:databases [{:name     db-name
