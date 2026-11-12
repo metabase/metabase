@@ -608,12 +608,13 @@
 
   Marks modules whose namespace prefix differs from their name.
   With `--html`, writes the interactive explorer instead, and with `--json` the data it shows.
-  Exits with an error when given both."
+  Exits with an error when given both, or given `--output` or `--no-stats` without either."
   [{:keys [options] :as _parsed}]
-  (let [{:keys [html json]} options]
+  (let [{:keys [html json output no-stats]} options]
     (cond
-      (and html json) (u/exit "Give only one of --html, --json." 1)
-      (or html json)  (write-explorer! (read-modules-config) options)))
+      (and html json)      (u/exit "Give only one of --html, --json." 1)
+      (or html json)       (write-explorer! (read-modules-config) options)
+      (or output no-stats) (u/exit "Give --output and --no-stats only with --html or --json." 1)))
   (let [modules-config (read-modules-config)
         tree           (module-display-tree modules-config)
         roots          (cond->> (sorted-children tree)

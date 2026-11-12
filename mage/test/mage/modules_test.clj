@@ -527,17 +527,29 @@
   (is (thrown-with-msg? Exception #"Git failed:"
                         (#'module-explorer/git-output! "not-a-real-git-subcommand"))))
 
-(deftest modules-tree-refuses-html-and-json-test
-  (let [output (str (fs/path (fs/create-temp-dir) "explorer"))
-        out    (java.io.StringWriter.)
-        error  (binding [*out* out]
-                 (try
-                   (mage.modules/cli-print-module-tree {:options {:html true, :json true, :output output}})
-                   nil
-                   (catch clojure.lang.ExceptionInfo e e)))]
-    (is (= 1 (:babashka/exit (ex-data error))))
-    (is (= "Give only one of --html, --json.\n" (str out)))
-    (is (not (fs/exists? output)))))
+(defn- modules-tree-exit
+  "The exit code and printed text of `modules-tree` run with `options`."
+  [options]
+  (let [out   (java.io.StringWriter.)
+        error (binding [*out* out]
+                (try
+                  (mage.modules/cli-print-module-tree {:options options})
+                  nil
+                  (catch clojure.lang.ExceptionInfo e e)))]
+    [(:babashka/exit (ex-data error)) (str out)]))
+
+(deftest modules-tree-refuses-conflicting-options-test
+  (let [output (str (fs/path (fs/create-temp-dir) "explorer"))]
+    (testing "--html with --json"
+      (is (= [1 "Give only one of --html, --json.\n"]
+             (modules-tree-exit {:html true, :json true, :output output})))
+      (is (not (fs/exists? output))))
+    (testing "--output or --no-stats without --html or --json"
+      (are [options] (= [1 "Give --output and --no-stats only with --html or --json.\n"]
+                        (modules-tree-exit options))
+        {:output output}
+        {:no-stats true})
+      (is (not (fs/exists? output))))))
 
 (deftest explorer-state-codec-test
   (let [{:keys [exit out err]} (shell/sh "node" "mage/test/mage/module_explorer_state_test.js")]
