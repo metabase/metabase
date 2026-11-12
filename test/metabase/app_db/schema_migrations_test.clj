@@ -4917,8 +4917,8 @@
         (is (not (contains? (app) :slug)))))))
 
 (deftest collapse-blocked-view-data-permissions-test
-  (testing "uhpmy6 and w8cdn3: table-level view-data rows that repeat their db-level row collapse into it (#76077)"
-    (impl/test-migrations ["uhpmy6" "w8cdn3"] [migrate!]
+  (testing "uhpmy6: table-level view-data rows that are all blocked, or repeat their db-level row, collapse into it"
+    (impl/test-migrations ["uhpmy6"] [migrate!]
       (let [group-id          (t2/insert-returning-pk! :permissions_group {:name      "collapse-test-group"
                                                                            :entity_id (u/generate-nano-id)})
             db!               (fn [db-name]
