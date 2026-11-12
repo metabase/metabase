@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { checkNotNull } from "metabase/utils/types";
-import type { Collection, SearchResult } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -65,38 +65,48 @@ const CARD_SEARCH_MODELS = {
   metric: "metric",
 } as const;
 
+export type CardFixture = {
+  id: number;
+  name: string;
+  model: "card" | "dataset" | "metric";
+  collection: Collection;
+};
+
 /**
- * Search results for a question, a model and a metric with the suffixes 1 and
- * 2 in each collection, named like `${namePrefix} question 1`.
+ * A question, a model and a metric with the suffixes 1 and 2 in each
+ * collection, named like `${namePrefix} question 1`.
  */
-export const createCardSearchResults = (
+export const createCardFixtures = (
   collections: { collection: Collection; namePrefix: string }[],
-): SearchResult[] =>
+): CardFixture[] =>
   collections.flatMap(({ collection, namePrefix }, collectionIndex) =>
     Object.entries(CARD_SEARCH_MODELS).flatMap(([type, model], typeIndex) =>
-      ["1", "2"].map((suffix) =>
-        createMockSearchResult({
-          id: 1000 + collectionIndex * 100 + typeIndex * 10 + Number(suffix),
-          name: `${namePrefix} ${type} ${suffix}`,
-          model,
-          collection,
-        }),
-      ),
+      ["1", "2"].map((suffix) => ({
+        id: 1000 + collectionIndex * 100 + typeIndex * 10 + Number(suffix),
+        name: `${namePrefix} ${type} ${suffix}`,
+        model,
+        collection,
+      })),
     ),
   );
 
-/** The collection items of `collection` among `searchResults`. */
+export const createCardSearchResults = (cards: CardFixture[]) =>
+  cards.map(({ id, name, model, collection }) =>
+    createMockSearchResult({ id, name, model, collection }),
+  );
+
+/** The collection items of the `cards` in `collection`. */
 export const getCollectionItems = (
-  searchResults: SearchResult[],
+  cards: CardFixture[],
   collection: Collection,
 ) =>
-  searchResults
-    .filter((result) => result.collection.id === collection.id)
-    .map((result) =>
+  cards
+    .filter((card) => card.collection.id === collection.id)
+    .map(({ id, name, model }) =>
       createMockCollectionItem({
-        id: result.id,
-        name: result.name,
-        model: result.model,
+        id,
+        name,
+        model,
         collection_id: typeof collection.id === "number" ? collection.id : null,
       }),
     );

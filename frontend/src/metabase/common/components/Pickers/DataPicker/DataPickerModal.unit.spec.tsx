@@ -46,6 +46,7 @@ import {
   NORMAL_PERSONAL_COLLECTION,
   NORMAL_USER,
   ROOT,
+  createCardFixtures,
   createCardSearchResults,
   expectSearchResults,
   findSearchResult,
@@ -346,7 +347,7 @@ describe("DataPickerModal", () => {
 
   describe("card search", () => {
     it("should search the current collection for a normal user", async () => {
-      const searchItems = createCardSearchResults([
+      const cards = createCardFixtures([
         { collection: ROOT, namePrefix: "Root" },
         { collection: FIRST_COLLECTION, namePrefix: "Regular" },
         {
@@ -354,8 +355,9 @@ describe("DataPickerModal", () => {
           namePrefix: "Normal personal collection",
         },
       ]);
+      const searchItems = createCardSearchResults(cards);
       const itemsIn = (collection: Collection) =>
-        getCollectionItems(searchItems, collection);
+        getCollectionItems(cards, collection);
       await setup({
         currentUser: NORMAL_USER,
         collections: [ROOT, FIRST_COLLECTION, NORMAL_PERSONAL_COLLECTION],
@@ -433,13 +435,14 @@ describe("DataPickerModal", () => {
     });
 
     it("should only search everywhere from all personal collections", async () => {
-      const searchItems = createCardSearchResults([
+      const cards = createCardFixtures([
         { collection: ROOT, namePrefix: "Root" },
         {
           collection: ADMIN_PERSONAL_COLLECTION,
           namePrefix: "Admin personal collection",
         },
       ]);
+      const searchItems = createCardSearchResults(cards);
       await setup({
         currentUser: ADMIN_USER,
         collections: [
@@ -451,7 +454,7 @@ describe("DataPickerModal", () => {
           { collection: ROOT, items: [] },
           {
             collection: ADMIN_PERSONAL_COLLECTION,
-            items: getCollectionItems(searchItems, ADMIN_PERSONAL_COLLECTION),
+            items: getCollectionItems(cards, ADMIN_PERSONAL_COLLECTION),
           },
         ],
         searchItems,

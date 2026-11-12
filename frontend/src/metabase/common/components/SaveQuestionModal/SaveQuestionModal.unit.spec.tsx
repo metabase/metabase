@@ -732,8 +732,9 @@ describe("SaveQuestionModal", () => {
 
     it("should show a dashboard in a personal collection without sub-collections, next to the suggested dashboard", async () => {
       mockGetBoundingClientRect();
+      const ROOT_DASH_ID = 3;
       const ROOT_DASH = createMockDashboard({
-        id: 3,
+        id: ROOT_DASH_ID,
         collection_id: null,
         name: "Orders in a dashboard",
         tabs: [],
@@ -747,7 +748,7 @@ describe("SaveQuestionModal", () => {
         collection: rootCollection,
         collectionItems: [
           createMockCollectionItem({
-            id: ROOT_DASH.id,
+            id: ROOT_DASH_ID,
             model: "dashboard",
             name: ROOT_DASH.name,
             collection_id: null,
@@ -762,7 +763,7 @@ describe("SaveQuestionModal", () => {
         },
         recentSelections: [
           createMockRecentCollectionItem({
-            id: ROOT_DASH.id,
+            id: ROOT_DASH_ID,
             model: "dashboard",
             name: ROOT_DASH.name,
             can_write: true,

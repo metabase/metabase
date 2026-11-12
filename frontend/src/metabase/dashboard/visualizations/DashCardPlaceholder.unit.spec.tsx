@@ -22,11 +22,13 @@ import {
 import {
   ADMIN_PERSONAL_COLLECTION,
   ADMIN_USER,
+  type CardFixture,
   FIRST_COLLECTION,
   FIRST_COLLECTION_ID,
   NORMAL_PERSONAL_COLLECTION,
   NORMAL_USER,
   ROOT,
+  createCardFixtures,
   createCardSearchResults,
   expectSearchResults,
   findSearchResult,
@@ -38,7 +40,7 @@ import {
   typeSearchText,
 } from "metabase/common/components/Pickers/tests/search";
 import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
-import type { Collection, SearchResult, User } from "metabase-types/api";
+import type { Collection, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -52,7 +54,7 @@ import { DashCardPlaceholder } from "./DashCardPlaceholder";
 
 const PICKER_TITLE = "Pick what you want to replace this with";
 
-const SEARCH_RESULTS = createCardSearchResults([
+const CARDS = createCardFixtures([
   { collection: ROOT, namePrefix: "Root" },
   { collection: FIRST_COLLECTION, namePrefix: "Regular" },
   {
@@ -61,7 +63,7 @@ const SEARCH_RESULTS = createCardSearchResults([
   },
 ]);
 
-const ADMIN_SEARCH_RESULTS = createCardSearchResults([
+const ADMIN_CARDS = createCardFixtures([
   { collection: ROOT, namePrefix: "Root" },
   {
     collection: ADMIN_PERSONAL_COLLECTION,
@@ -69,8 +71,8 @@ const ADMIN_SEARCH_RESULTS = createCardSearchResults([
   },
 ]);
 
-const getSearchResultByName = (name: string, searchResults: SearchResult[]) => {
-  const result = searchResults.find((item) => item.name === name);
+const getCardByName = (name: string) => {
+  const result = CARDS.find((item) => item.name === name);
   if (!result) {
     throw new Error(`No search result named ${name}`);
   }
@@ -79,13 +81,13 @@ const getSearchResultByName = (name: string, searchResults: SearchResult[]) => {
 
 type SetupOpts = {
   currentUser?: User;
-  searchResults?: SearchResult[];
+  cards?: CardFixture[];
   collections?: Collection[];
 };
 
 const setup = async ({
   currentUser = NORMAL_USER,
-  searchResults = SEARCH_RESULTS,
+  cards = CARDS,
   collections = [ROOT, FIRST_COLLECTION, NORMAL_PERSONAL_COLLECTION],
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
@@ -116,12 +118,14 @@ const setup = async ({
               }),
             ]
           : []),
-        ...getCollectionItems(searchResults, collection),
+        ...getCollectionItems(cards, collection),
       ],
     }),
   );
-  setupSearchEndpoints(searchResults, undefined, { filterByScope: true });
-  searchResults.forEach(({ id, name }) => {
+  setupSearchEndpoints(createCardSearchResults(cards), undefined, {
+    filterByScope: true,
+  });
+  cards.forEach(({ id, name }) => {
     const card = createMockCard({ id, name });
     setupCardEndpoints(card);
     setupCardQueryMetadataEndpoint(card, createMockCardQueryMetadata());
@@ -180,7 +184,7 @@ describe("DashCardPlaceholder question picker", () => {
       expect(getScopeRadio("Everywhere")).toBeChecked();
       await userEvent.click(await findSearchResult(name));
 
-      await expectPickedCard(getSearchResultByName(name, SEARCH_RESULTS).id);
+      await expectPickedCard(getCardByName(name).id);
     },
   );
 
@@ -197,7 +201,7 @@ describe("DashCardPlaceholder question picker", () => {
       expect(getLastSearchParams().get("collection")).toBeNull();
       await userEvent.click(await findSearchResult(name));
 
-      await expectPickedCard(getSearchResultByName(name, SEARCH_RESULTS).id);
+      await expectPickedCard(getCardByName(name).id);
     },
   );
 
@@ -255,7 +259,7 @@ describe("DashCardPlaceholder question picker", () => {
   it("should only search everywhere from all personal collections", async () => {
     await setup({
       currentUser: ADMIN_USER,
-      searchResults: ADMIN_SEARCH_RESULTS,
+      cards: ADMIN_CARDS,
       collections: [
         ROOT,
         ADMIN_PERSONAL_COLLECTION,
