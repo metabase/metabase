@@ -99,7 +99,10 @@
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
-   for workspaces) and provision it (blocking)."
+   for workspaces) and provision it (blocking). A failed provisioning is an error,
+   never a 200: the database's status code, or 500, with `message` and
+   `cleanup_required`, true when the workspace was kept and must be deleted to
+   finish the teardown."
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
   (present-workspace
