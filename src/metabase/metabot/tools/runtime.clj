@@ -233,8 +233,9 @@
   (let [about-value? (every? #(= in (:in %)) errors)
         texts        (distinct (map :text errors))
         value        (get-in arguments in)
-        ;; Quoted JSON text that parses was decoded before the tool ran, so the type error here is for text that does
-        ;; not. Saying where it breaks gives the model something to fix; a type error alone gets the same call again.
+        ;; Only quoted JSON text that does not parse gets this message: saying where it breaks gives the model
+        ;; something to fix, and a type error alone gets the same call again. Text that parses was decoded before the
+        ;; tool ran, except inside a list, where it keeps the type error.
         json-error   (when (and about-value? (= texts ["invalid type"]) (json-text? value))
                        (json-text-error value))]
     (cond

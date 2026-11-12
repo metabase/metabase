@@ -111,8 +111,8 @@
         (fn [_ _] {:output "ok"})))
 
 (def ^:private object-tool
-  (tool {:name "build" :description "Takes an object argument."
-         :args [:map {:closed true} [:query :map]]}
+  (tool {:name "build" :description "Takes an object argument, and a list of them."
+         :args [:map {:closed true} [:query :map] [:filters {:optional true} [:sequential :map]]]}
         (fn [{:keys [query]} _] {:output (str "keys: " (pr-str (keys query)))})))
 
 (def ^:private memory-tool
@@ -219,7 +219,12 @@
              (:output (invoke "build" {:query (str "{\"limit\": " (apply str (repeat 1200 "1")) "}")})))))
     (testing "a plain string keeps the type message"
       (is (= "Invalid tool arguments: `query` invalid type; received a string."
-             (:output (invoke "build" {:query "orders"})))))))
+             (:output (invoke "build" {:query "orders"})))))
+    (testing "list elements that break the same way share one sentence"
+      (is (= (str "Invalid tool arguments: `filters[0]` and `[1]` were sent as strings of JSON text, and the text is "
+                  "not valid JSON near line 1, column 7. Fix the JSON and send the values themselves, not quoted "
+                  "strings.")
+             (:output (invoke "build" {:query {} :filters ["{\"a\": ]" "{\"b\": ]"]})))))))
 
 ;;; ------------------------------------------------ Recoverable ---------------------------------------------------
 
