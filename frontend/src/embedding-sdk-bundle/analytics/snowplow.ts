@@ -174,3 +174,12 @@ export function trackSdkSimpleEvent(event: EmbeddingSdkEvent): void {
     trackMetaplowEvent(name, data);
   }
 }
+
+export function trackSdkMetaplowEvent(
+  name: string,
+  data: Record<string, unknown>,
+): void {
+  if (sdkMetaplowEnabled) {
+    trackMetaplowEvent(name, data);
+  }
+}

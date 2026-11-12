@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { SDK_BUNDLE_FULL_PATH } from "build-configs/embedding-sdk/constants/sdk-bundle";
 import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk-package/constants/sdk-bundle-script-data-attribute-name";
 import { getSdkBundleScriptElement } from "embedding-sdk-package/lib/private/get-sdk-bundle-script-element";
+import { SDK_SCRIPT_ADDED_AT_DATASET_KEY } from "embedding-sdk-shared/constants/analytics";
 import {
   SDK_BUNDLE_ERROR,
   SDK_BUNDLE_LOADED,
@@ -114,6 +115,8 @@ const loadSdkBundle = (
     params.set("useLegacyMonolithicBundle", "true");
   }
   script.src = `${baseUrl}?${params}`;
+  // The bundle reads this as `bundle_load_start`
+  script.dataset[SDK_SCRIPT_ADDED_AT_DATASET_KEY] = String(performance.now());
 
   document.body.appendChild(script);
 

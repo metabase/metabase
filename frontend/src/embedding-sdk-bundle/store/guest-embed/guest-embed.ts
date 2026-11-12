@@ -1,3 +1,4 @@
+import { recordSdkPageMark } from "embedding-sdk-bundle/analytics/sdk-first-component-performance/event";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import {
   type OnBeforeRequestHandlerConfig,
@@ -14,6 +15,7 @@ import { getOrRefreshGuestSession } from "./auth";
 export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
   "sdk/token/INIT_GUEST_EMBED",
   async (authConfig: MetabaseAuthConfig, { dispatch }) => {
+    recordSdkPageMark("init_start");
     overrideRequestsForGuestEmbeds();
 
     if (authConfig.isGuest && authConfig.guestEmbedProviderUri) {
@@ -72,5 +74,6 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
     }
 
     await dispatch(refetchSiteSettings());
+    recordSdkPageMark("init_end");
   },
 );

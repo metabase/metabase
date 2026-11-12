@@ -1,7 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type PropsWithChildren, useMemo } from "react";
+import { type PropsWithChildren, useEffect, useMemo } from "react";
 import { jt, t } from "ttag";
 
+import { useSdkComponentPerformance } from "embedding-sdk-bundle/analytics/sdk-first-component-performance/react";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getErrorComponent } from "embedding-sdk-bundle/store/selectors";
 import type { SdkErrorComponentProps } from "embedding-sdk-bundle/types";
@@ -28,6 +29,14 @@ export const SdkError = ({
   const [visible, { close }] = useDisclosure(true);
 
   const CustomError = useSdkSelector(getErrorComponent);
+
+  const componentPerformance = useSdkComponentPerformance();
+  useEffect(() => {
+    // A "fixed" error is a banner over the page (the version mismatch), and the component still loads
+    if (type === "relative") {
+      componentPerformance?.finish({ result: "failure", error: "load" });
+    }
+  }, [componentPerformance, type]);
 
   const errorMessage = useMemo(() => {
     if (error && "code" in error && typeof error.code === "string") {
