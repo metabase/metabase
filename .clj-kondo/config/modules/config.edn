@@ -4501,19 +4501,19 @@
            events
            glossary
            lib.schema
-           measures
+           measures.schema
            models
            native-query-snippets
            premium-features
            queries
            remote-sync
-           segments
+           segments.schema
            serialization
            settings
            startup
            task
            timeline
-           transforms
+           transforms.schema
            util
            warehouses.schema
            enterprise/data-testing
