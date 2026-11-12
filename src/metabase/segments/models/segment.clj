@@ -202,7 +202,7 @@
   [{:keys [definition] :as segment}]
   (models.cache/register-loaded! :model/Segment (:id segment))
   (models.cache/register-loaded! :model/Table (:table_id segment))
-  (perms/register-loaded-table! (:table_id segment))
+  (perms/register-loaded! :model/Table (:table_id segment))
   (cond-> segment
     (some? definition) (assoc :definition (maybe-migrated-segment-definition segment))))
 

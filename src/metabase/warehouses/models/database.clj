@@ -393,7 +393,7 @@
 (t2/define-after-select :model/Database
   [{driver :engine, :as database}]
   (models.cache/register-loaded! :model/Database (:id database))
-  (perms/register-loaded-database! (:id database))
+  (perms/register-loaded! :model/Database (:id database))
   (letfn [(normalize-details [db]
             (binding [*normalizing-details* true]
               (driver/normalize-db-details

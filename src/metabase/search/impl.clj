@@ -424,7 +424,7 @@
   "Remembers the Tables of the table results among `results`, so that checking one of them answers them all, and
   returns the results."
   [results]
-  (run! #(when (= "table" (:model %)) (perms/register-loaded-table! (:id %))) results)
+  (run! #(when (= "table" (:model %)) (perms/register-loaded! :model/Table (:id %))) results)
   results)
 
 (defn check-result-permissions
