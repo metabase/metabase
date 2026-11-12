@@ -390,7 +390,7 @@ describe("GoalValueInput", () => {
     expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
   });
 
-  it("explains instead of listing columns when the picked question uses variables", async () => {
+  it("commits a picked question with variables and closes the menu, so the error below the input explains it", async () => {
     setupEntityPicker([
       createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
     ]);
@@ -415,17 +415,24 @@ describe("GoalValueInput", () => {
         error_type: "has-parameters",
       }),
     );
-    setup();
+    const { onChange } = setup();
 
     await openMenu();
     await pickEntity("Orders");
 
-    const explanation = await screen.findByRole("menuitem", {
-      name: /This question uses variables/,
-    });
-    expect(explanation).toHaveAttribute("data-disabled", "true");
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith({
+        type: "card",
+        id: 9,
+        column: "total",
+      }),
+    );
+    expect(onChange).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument(),
+    );
     expect(
-      screen.queryByRole("menuitem", { name: /Average/ }),
+      screen.queryByText(/This question uses variables/),
     ).not.toBeInTheDocument();
   });
 
@@ -1018,6 +1025,48 @@ describe("GoalValueInput", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("menuitem", { name: /Total/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens the root menu when clicking the pill of a question with variables, so another source can be picked", async () => {
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Orders",
+        type: "question",
+        result_metadata: [
+          createMockColumn({ name: "total", base_type: "type/Integer" }),
+          createMockColumn({
+            name: "avg",
+            display_name: "Average",
+            base_type: "type/Integer",
+          }),
+        ],
+      }),
+    );
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockFailedReferencedEntitiesResults({
+          error:
+            "Referenced card 9 uses variables, so it can't run on its own.",
+          error_type: "has-parameters",
+        }),
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", {
+        name: /Value from another question/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Average/ }),
     ).not.toBeInTheDocument();
   });
 

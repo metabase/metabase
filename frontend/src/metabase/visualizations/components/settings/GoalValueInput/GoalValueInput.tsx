@@ -1,6 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type KeyboardEvent, useCallback, useRef, useState } from "react";
-import { useUnmount } from "react-use";
+import {
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { useLatest, useUnmount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -223,7 +229,10 @@ export const GoalValueInput = ({
   };
 
   const openMenuFromPill = () => {
-    if (isSelfRef) {
+    if (resolved.error?.reason === "has-parameters") {
+      // no column of this source can be a goal, so only offer other sources
+      setMenuLevel("root");
+    } else if (isSelfRef) {
       setMenuLevel(selfColumns.length > 1 ? "self" : "root");
     } else {
       setMenuLevel(
@@ -248,6 +257,28 @@ export const GoalValueInput = ({
     menuDropdownRef.current?.focus();
     setMenuLevel(level);
   }
+
+  const [firstEntityColumn] = entityInfo.columns;
+  const isEntityRefused =
+    menuLevel === "entity" &&
+    firstEntityColumn != null &&
+    resolveEntityColumn(firstEntityColumn.name).error?.reason ===
+      "has-parameters";
+
+  const refuseEntity = useLatest(() => {
+    // every column fails the same way, so commit any: the error below the input then explains why
+    if (pickedEntity != null && firstEntityColumn != null) {
+      selectEntityColumn(firstEntityColumn.name);
+    } else {
+      closeMenu();
+    }
+  });
+
+  useEffect(() => {
+    if (isEntityRefused) {
+      refuseEntity.current();
+    }
+  }, [isEntityRefused, refuseEntity]);
 
   const openEntityPicker = () => {
     closeMenu();
@@ -456,21 +487,12 @@ export const GoalValueInput = ({
                 .with({ columns: [] }, () => (
                   <Menu.Item disabled>{t`No numeric columns`}</Menu.Item>
                 ))
-                .otherwise(({ columns, kind }) => {
-                  const [firstColumn] = columns;
-                  const sourceError =
-                    firstColumn && resolveEntityColumn(firstColumn.name).error;
-
-                  // the source can't be a goal at all, so no column is worth offering
-                  if (sourceError?.reason === "has-parameters") {
-                    return (
-                      <Menu.Item disabled maw={COLUMN_MENU_MIN_WIDTH}>
-                        {getGoalErrorMessage(sourceError, kind)}
-                      </Menu.Item>
-                    );
-                  }
-
-                  return columns.map((column) => (
+                .when(
+                  () => isEntityRefused,
+                  () => null,
+                )
+                .otherwise(({ columns }) =>
+                  columns.map((column) => (
                     <GoalColumnMenuItem
                       key={column.name}
                       formatOptions={formatOptions}
@@ -479,8 +501,8 @@ export const GoalValueInput = ({
                       selected={foreignRef?.column === column.name}
                       onClick={() => selectEntityColumn(column.name)}
                     />
-                  ));
-                })}
+                  )),
+                )}
             </>
           )}
         </Menu.Dropdown>
