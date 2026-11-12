@@ -151,7 +151,7 @@
   (into #{}
         (keep (fn [goal-value]
                 (let [{:keys [type id]} (dynamic-goals/goal-source goal-value)]
-                  (when-let [model (viz/goal-entity-models type)]
+                  (when-let [model (dynamic-goals/goal-entity-models type)]
                     (when (or (mbql/entity-id? id) (id-ref? id))
                       [model id])))))
         (dynamic-goals/dashcard-goal-values settings)))

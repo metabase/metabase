@@ -3422,7 +3422,8 @@
    :api  #{metabase.visualization-settings.core
            metabase.visualization-settings.dynamic-goals
            metabase.visualization-settings.ui-logic}
-   :uses #{lib.schema util}}
+   :uses #{lib.schema util}
+   :model-imports #{:model/Card :model/Measure}}
 
   warehouses
   {:team "UX West"

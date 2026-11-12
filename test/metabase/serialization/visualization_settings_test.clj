@@ -181,7 +181,7 @@
               [model x]))})
 
 (defn- goals-of
-  "`settings` without the keys export and import add, leaving the goal settings and visualizer nesting."
+  "Only the goal settings and visualizer nesting of `settings`."
   [settings]
   (select-keys settings [:graph.goal_value :progress.goal :gauge.segments :scalar.segments :visualization]))
 
@@ -204,8 +204,8 @@
 (deftest ^:parallel import-dynamic-goals-test
   (testing "entity ids resolve back to numeric ids"
     (is (= goal-viz-settings (goals-of (import-one goal-stubs exported-goal-viz-settings)))))
-  (testing "a numeric id from the source instance is not taken for an entity id"
-    (is (= {:graph.goal_value {:id 1 :type "card" :column "total"}}
+  (testing "a numeric id from the source instance can't select an unrelated destination entity"
+    (is (= {:graph.goal_value nil}
            (goals-of (import-one goal-stubs {:graph.goal_value {:id 1 :type "card" :column "total"}}))))))
 
 (deftest ^:parallel export-dynamic-goals-deleted-target-test

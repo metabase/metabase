@@ -208,28 +208,21 @@
       (m/update-existing :timeline.excluded_timeline_event_ids
                          #(walk-export-timeline-fks visit % :model/TimelineEvent))))
 
-(def goal-entity-models
-  "The model of each entity `:type` a dynamic goal can reference. Mirrors
-  [[metabase.query-processor.referenced-entities]]'s type table."
-  {"card"    :model/Card
-   "measure" :model/Measure})
-
 (defn- update-dynamic-goal-ids
-  "`settings` with the `:id` of every goal value referencing an entity, nested visualizer settings included, replaced by
-  `(f model id)`. Drops a goal whose `:type` names no model, or for which `f` returns nil, so an id never outlives the
-  entity it named."
+  "`settings` with each entity goal's `:id` replaced by `(f model id)`, nested visualizer settings included. A goal of an
+  unknown `:type`, or for which `f` returns nil, becomes nil, so an id never outlives the entity it named."
   [settings f]
   (dynamic-goals/update-dashcard-goal-values
    settings
    (fn [goal-value]
      (if-let [{:keys [type id]} (dynamic-goals/goal-source goal-value)]
-       (when-let [model (goal-entity-models type)]
+       (when-let [model (dynamic-goals/goal-entity-models type)]
          (some->> (f model id) (assoc goal-value :id)))
        goal-value))))
 
 (defn- walk-export-dynamic-goals
-  "Dynamic goals' database ids replaced by what `visit` returns, dropping a goal whose entity is gone. An id that is not
-  a database id, like an already exported one, stays as it is."
+  "Dynamic goals with their database ids replaced by what `visit` returns. A goal whose entity is gone becomes nil; any
+  other id, like an already exported one, stays as it is."
   [visit settings]
   (update-dynamic-goal-ids settings (fn [model id]
                                       (if (pos-int? id)
@@ -330,12 +323,12 @@
                          #(walk-import-timeline-fks visit % :model/TimelineEvent))))
 
 (defn- walk-import-dynamic-goals
-  "Dynamic goals' entity ids replaced by what `visit` returns. A value that is not an entity id stays as it is."
+  "Dynamic goals with their entity ids replaced by what `visit` returns. A goal whose id is not an entity id becomes nil,
+  so a source instance's database id can't select an unrelated destination entity."
   [visit settings]
   (update-dynamic-goal-ids settings (fn [model id]
-                                      (if (mbql/entity-id? id)
-                                        (visit model id)
-                                        id))))
+                                      (when (mbql/entity-id? id)
+                                        (visit model id)))))
 
 (defn- walk-import-viz-column-settings
   "Import `:column_settings`, dropping the `nil` that older exports wrote for settings without any."
