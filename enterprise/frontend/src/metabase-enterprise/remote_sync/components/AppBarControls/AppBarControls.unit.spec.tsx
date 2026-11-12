@@ -5,9 +5,9 @@ import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { RemoteSyncEntity, RemoteSyncType } from "metabase-types/api";
+import type { RemoteSyncDirtyItem, RemoteSyncType } from "metabase-types/api";
 import {
-  createMockRemoteSyncEntity,
+  createMockRemoteSyncDirtyItem,
   createMockRemoteSyncTask,
   createMockSettings,
   createMockUser,
@@ -17,15 +17,15 @@ import { AppBarControls } from "./AppBarControls";
 
 type SetupOpts = {
   syncType?: RemoteSyncType;
-  dirty?: RemoteSyncEntity[];
+  dirty?: RemoteSyncDirtyItem[];
   hasRemoteChanges?: boolean;
 };
 
-const setup = ({
+function setup({
   syncType = "read-write",
   dirty = [],
   hasRemoteChanges = false,
-}: SetupOpts = {}) => {
+}: SetupOpts = {}) {
   setupRemoteSyncEndpoints({
     dirty,
     hasRemoteChanges,
@@ -44,15 +44,16 @@ const setup = ({
       ),
     }),
   });
-};
+}
 
-const wasCalled = (path: string) =>
-  fetchMock.callHistory.called(`path:/api/ee/remote-sync/${path}`);
+function wasCalled(path: string) {
+  return fetchMock.callHistory.called(`path:/api/ee/remote-sync/${path}`);
+}
 
-const openSyncMenu = async () => {
+async function openSyncMenu() {
   await userEvent.click(screen.getByRole("button", { name: /main/ }));
   return screen.findByRole("menu");
-};
+}
 
 describe("AppBarControls", () => {
   it("shows synced branch", () => {
@@ -100,7 +101,10 @@ describe("AppBarControls", () => {
   });
 
   it("enables pulling and pushing when there are changes", async () => {
-    setup({ dirty: [createMockRemoteSyncEntity()], hasRemoteChanges: true });
+    setup({
+      dirty: [createMockRemoteSyncDirtyItem({ model: "card" })],
+      hasRemoteChanges: true,
+    });
     await openSyncMenu();
 
     await waitFor(() =>
@@ -134,7 +138,10 @@ describe("AppBarControls", () => {
   });
 
   it("asks what to do with unpushed changes before pulling", async () => {
-    setup({ dirty: [createMockRemoteSyncEntity()], hasRemoteChanges: true });
+    setup({
+      dirty: [createMockRemoteSyncDirtyItem({ model: "card" })],
+      hasRemoteChanges: true,
+    });
     await openSyncMenu();
     const pullItem = screen.getByRole("menuitem", { name: /Pull changes/ });
     await waitFor(() => expect(pullItem).toBeEnabled());

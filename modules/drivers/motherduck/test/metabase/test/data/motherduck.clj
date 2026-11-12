@@ -6,6 +6,7 @@
   endpoint behavior."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection-test :as connection-test]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -21,6 +22,7 @@
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql-jdbc.spec :as spec]
    [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util.log :as log]
    [metabase.util.random :as u.random])
   (:import
    (java.sql Connection)))
@@ -55,14 +57,41 @@
 ;;; |                                              Connection details                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Concurrent CI jobs share one MotherDuck account. Prefix each run's database names with
-;; temp_<date>_<hour>_<site-uuid>_ so jobs don't drop each other's data, and so the nightly sweep
-;; ([[tx/gc-orphans!]] below) can find databases that a cancelled job left behind.
+;; Concurrent CI jobs share one MotherDuck account, so every test database gets a qualified name.
+;;
+;; Static datasets (`defdataset` and `defdataset-edn`) never change once loaded, so every job shares one copy of each:
+;; `sha_<date>_<hash>_<name>`. The hash covers the dataset's definition, so a changed definition gets a new database.
+;; The date is the UTC day the name was first used, so each copy lives for about a day: the nightly sweep
+;; ([[tx/gc-orphans!]] below) drops it once nothing can still be using it, and a copy that a test polluted, say with
+;; a table it didn't get to drop, lasts a day rather than forever.
+;;
+;; Every other dataset is private to its JVM: temp_<date>_<hour>_<site-uuid>_<name>. after-run drops it, and the
+;; nightly sweep drops whatever a cancelled job left behind.
+
+(defn- already-qualified? [database-name]
+  (or (str/starts-with? database-name "temp_")
+      (str/starts-with? database-name "sha_")))
+
+(defn- static? [dbdef]
+  (boolean (get-in dbdef [:options :static])))
+
+(def ^:private ^{:arglists '([dataset-hash database-name])} shared-db-name
+  ;; Memoized, so a JVM that crosses midnight UTC keeps using the copy it already has rather than looking for a new
+  ;; one partway through, between checking whether a dataset is loaded and connecting to it.
+  (memoize
+   (fn [dataset-hash database-name]
+     (-> (format "sha_%s_%s_%s" (t/local-date (t/instant) (t/zone-id "UTC")) dataset-hash database-name)
+         (str/replace #"-" "_")))))
+
 (defn- qualified-db-name
-  [database-name]
-  (if (str/starts-with? database-name "temp_")
-    database-name
-    (sql.tu.unique-prefix/unique-prefix database-name)))
+  "Name of the MotherDuck database for `dbdef`. Callers that know only a dataset's name may pass `{:database-name
+  name}`, which is never static."
+  [{:keys [database-name], :as dbdef}]
+  (cond
+    (already-qualified? database-name) database-name
+    (static? dbdef)                    (shared-db-name (tx/hash-dataset (update dbdef :options dissoc :static))
+                                                       database-name)
+    :else                              (sql.tu.unique-prefix/unique-prefix database-name)))
 
 ;; Use the same endpoint and credentials for test setup and driver queries. MB_MOTHERDUCK_TEST_*
 ;; variables override the defaults; MB_MOTHERDUCK_TEST_TOKEN is required.
@@ -75,7 +104,7 @@
   (tx/db-test-env-var :motherduck :server-dbname "my_db"))
 
 (defmethod tx/dbdef->connection-details :motherduck
-  [_driver context {:keys [database-name]}]
+  [_driver context {:keys [database-name], :as dbdef}]
   {:host     (tx/db-test-env-var :motherduck :host "pg.us-east-1-aws.motherduck.com")
    :port     (parse-long (tx/db-test-env-var :motherduck :port "5432"))
    :user     (tx/db-test-env-var :motherduck :user "metabase")
@@ -83,7 +112,7 @@
    :ssl      true
    :dbname   (if (and database-name
                       (not= context :server))
-               (qualified-db-name database-name)
+               (qualified-db-name dbdef)
                (server-dbname))})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -115,16 +144,16 @@
 (defmethod sql.tx/session-schema :motherduck [_driver] "main")
 
 (defmethod sql.tx/create-db-sql :motherduck
-  [driver {:keys [database-name]}]
+  [driver dbdef]
   (format "CREATE DATABASE IF NOT EXISTS %s;"
-          (sql.tx/qualify-and-quote driver (qualified-db-name database-name))))
+          (sql.tx/qualify-and-quote driver (qualified-db-name dbdef))))
 
 ;; The inherited method uses a Postgres DO block to terminate other connections. DuckDB does not
 ;; support that block. The :server connection uses a different database, so DROP can run directly.
 (defmethod ddl/drop-db-ddl-statements :motherduck
-  [driver {:keys [database-name]} & _]
+  [driver dbdef & _]
   [(format "DROP DATABASE IF EXISTS %s CASCADE;"
-           (sql.tx/qualify-and-quote driver (qualified-db-name database-name)))])
+           (sql.tx/qualify-and-quote driver (qualified-db-name dbdef)))])
 
 ;; DuckDB can't add a foreign key with ALTER TABLE, so declare foreign keys in CREATE TABLE instead
 ;; (below) and skip the loader's separate step.
@@ -262,80 +291,157 @@
 ;;; |                                      create / load / cleanup lifecycle                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- do-with-server-connection
+  "Call `f` with a connection to the server database, which every database can be created and dropped from."
+  [f]
+  (sql-jdbc.execute/do-with-connection-with-options
+   :motherduck (spec/dbdef->spec :motherduck :server nil) {:write? true} f))
+
+(defn- execute-on-server! [^String sql]
+  (do-with-server-connection
+   (fn [^Connection conn]
+     (with-open [stmt (.createStatement conn)]
+       (.execute stmt sql)))))
+
+(defn- drop-database! [^Connection conn db-name]
+  (with-open [stmt (.createStatement conn)]
+    (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" db-name))))
+
+(defn- database-exists? [db-name]
+  (do-with-server-connection
+   (fn [^Connection conn]
+     (with-open [stmt (.prepareStatement conn (str "SELECT 1 FROM duckdb_databases() "
+                                                   "WHERE type = 'motherduck' AND database_name = ?"))]
+       (.setString stmt 1 db-name)
+       (with-open [rset (.executeQuery stmt)]
+         (.next rset))))))
+
 (defonce ^{:private true
-           :doc "Names of test databases created or reused by this run. Cleanup drops only
-                 databases registered here, including datasets left by earlier runs."}
+           :doc "Names of the private test databases created or reused by this run, for after-run to drop. Shared
+                 static datasets are never registered: other jobs are using them."}
   created-databases
   (atom #{}))
 
+(defn- load-db! [driver dbdef options]
+  (apply load-data/create-db! driver (update dbdef :table-definitions parents-first) options))
+
+(defn- create-shared-db!
+  "Load a static dataset into a private staging database, then publish it under its shared name with a single
+  zero-copy clone. Other jobs therefore see the shared database complete or not at all, never half-loaded.
+
+  Two jobs that miss the same dataset at the same time both load it, and the second clone is a no-op. Loading twice
+  is the price of not needing a lock between jobs."
+  [driver dbdef options]
+  (let [shared  (qualified-db-name dbdef)
+        staging (sql.tu.unique-prefix/unique-prefix (str "staging_" (:database-name dbdef)))]
+    (try
+      ;; A staging database left by an earlier, interrupted load in this hour may be half-loaded.
+      (execute-on-server! (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" staging))
+      (load-db! driver
+                (-> dbdef
+                    (assoc :database-name staging)
+                    (update :options dissoc :static))
+                options)
+      (execute-on-server! (format "CREATE DATABASE IF NOT EXISTS \"%s\" FROM \"%s\";" shared staging))
+      (finally
+        (try
+          (execute-on-server! (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" staging))
+          (catch Exception e
+            ;; The nightly sweep collects it, and the load's own exception, if any, is the one worth seeing.
+            (log/warnf e "Could not drop staging database %s" staging)))))))
+
 (defmethod tx/create-db! :motherduck
   [driver dbdef & options]
-  (swap! created-databases conj (qualified-db-name (:database-name dbdef)))
-  (apply load-data/create-db! driver (update dbdef :table-definitions parents-first) options))
+  (if (static? dbdef)
+    (create-shared-db! driver dbdef options)
+    (do
+      (swap! created-databases conj (qualified-db-name dbdef))
+      (load-db! driver dbdef options))))
+
+;; The test harness destroys a database whose load or sync failed. A shared database was cloned whole from a
+;; finished load, so it is never half-loaded, and other jobs may be querying it. The staging database a failed load
+;; leaves is dropped by [[create-shared-db!]].
+(defmethod tx/destroy-db! :motherduck
+  [driver dbdef]
+  (if (static? dbdef)
+    (log/warnf "Not dropping %s: other test runs share it" (qualified-db-name dbdef))
+    ((get-method tx/destroy-db! :postgres) driver dbdef)))
 
 (defmethod tx/dataset-already-loaded? :motherduck
   [driver dbdef]
-  ;; Include reused datasets in cleanup, even when create-db! does not run.
-  (swap! created-databases conj (qualified-db-name (:database-name dbdef)))
-  (try
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     (spec/dbdef->spec driver :db dbdef)
-     {:write? false}
-     (fn [^java.sql.Connection conn]
-       ;; An existing database may be left empty by an interrupted load. Check for the first
-       ;; dataset table rather than treating a successful connection as proof that data was loaded.
-       (with-open [stmt (.prepareStatement conn (str "SELECT 1 FROM duckdb_tables() "
-                                                     "WHERE database_name = current_database() AND table_name = ? "
-                                                     "LIMIT 1"))]
-         (.setString stmt 1 (:table-name (first (:table-definitions dbdef))))
-         (with-open [rset (.executeQuery stmt)]
-           (.next rset)))))
-    (catch Throwable _
-      ;; A missing database fails at connection time.
-      false)))
+  (if (static? dbdef)
+    ;; A shared database exists only once its load has finished; see create-shared-db!.
+    (database-exists? (qualified-db-name dbdef))
+    (do
+      ;; Include reused datasets in cleanup, even when create-db! does not run.
+      (swap! created-databases conj (qualified-db-name dbdef))
+      (try
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver
+         (spec/dbdef->spec driver :db dbdef)
+         {:write? false}
+         (fn [^java.sql.Connection conn]
+           ;; An existing database may be left empty by an interrupted load. Check for the first
+           ;; dataset table rather than treating a successful connection as proof that data was loaded.
+           (with-open [stmt (.prepareStatement conn (str "SELECT 1 FROM duckdb_tables() "
+                                                         "WHERE database_name = current_database() AND table_name = ? "
+                                                         "LIMIT 1"))]
+             (.setString stmt 1 (:table-name (first (:table-definitions dbdef))))
+             (with-open [rset (.executeQuery stmt)]
+               (.next rset)))))
+        (catch Throwable _
+          ;; A missing database fails at connection time.
+          false)))))
 
 (defmethod tx/before-run :motherduck
   [_driver]
   ;; Clear names left by an earlier run in the same JVM.
   (reset! created-databases #{}))
 
+(defn- drop-registered-databases!
+  "Drop each of `db-names`, carrying on past any that fail: one bad DROP must not leave the rest for the nightly
+  sweep. Return the names that could not be dropped."
+  [^Connection conn db-names]
+  (into []
+        (remove (fn [db-name]
+                  (try
+                    (drop-database! conn db-name)
+                    true
+                    (catch Exception e
+                      (log/warnf e "Could not drop test database %s; the nightly sweep will" db-name)
+                      false))))
+        db-names))
+
 (defmethod tx/after-run :motherduck
-  [driver]
-  ;; Drop the test databases registered during this run, including reused datasets.
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   (spec/dbdef->spec driver :server nil)
-   {:write? true}
-   (fn [^java.sql.Connection conn]
-     (doseq [db-name @created-databases]
-       (with-open [stmt (.createStatement conn)]
-         (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" db-name))))
-     (reset! created-databases #{}))))
+  [_driver]
+  ;; Drop the private test databases registered during this run, including reused ones.
+  (try
+    (let [failed (do-with-server-connection #(drop-registered-databases! % @created-databases))]
+      (when (seq failed)
+        (log/warnf "Could not drop %d of %d test database(s)" (count failed) (count @created-databases))))
+    (finally
+      (reset! created-databases #{}))))
 
 ;; For tests that create their own database. `dbdef->connection-details` prefixes the name, so create it under the
 ;; prefixed name too, and register it for cleanup. The inherited method ends other sessions with
 ;; `pg_terminate_backend`, which the endpoint doesn't have.
 (defmethod tx/drop-if-exists-and-create-db! :motherduck
-  [driver db-name & [just-drop]]
-  (let [db-name (qualified-db-name db-name)]
+  [_driver db-name & [just-drop]]
+  (let [db-name (qualified-db-name {:database-name db-name})]
     (swap! created-databases conj db-name)
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     (spec/dbdef->spec driver :server nil)
-     {:write? true}
+    (do-with-server-connection
      (fn [^Connection conn]
-       (with-open [stmt (.createStatement conn)]
-         (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" db-name))
-         (when-not (= just-drop :just-drop)
+       (drop-database! conn db-name)
+       (when-not (= just-drop :just-drop)
+         (with-open [stmt (.createStatement conn)]
            (.execute stmt (format "CREATE DATABASE \"%s\";" db-name))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Orphan GC                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Nightly sweep (`.github/workflows/test.cleanup-dwh-data.yml`) of databases left behind by jobs
-;; that were cancelled before after-run could drop them.
+;; Nightly sweep (`.github/workflows/test.cleanup-dwh-data.yml`) of private databases left behind by jobs that were
+;; cancelled before after-run could drop them, and of shared static datasets from earlier days.
 
 (defn- account
   "Label for the MotherDuck account under sweep, used as the `:server` key in the nightly report."
@@ -344,23 +450,34 @@
           (tx/db-test-env-var :motherduck :host "pg.us-east-1-aws.motherduck.com")
           (server-dbname)))
 
-(defn- do-with-server-connection [f]
-  (sql-jdbc.execute/do-with-connection-with-options
-   :motherduck (spec/dbdef->spec :motherduck :server nil) {:write? true} f))
-
-(defn- temp-database-names
-  "Names of every database in the account with the per-run temp_ prefix."
+(defn- test-database-names
+  "Names of every test database in the account: private temp_ ones and shared sha_ ones."
   [^Connection conn]
   (with-open [stmt (.createStatement conn)
               rset (.executeQuery stmt (str "SELECT database_name FROM duckdb_databases() "
-                                            "WHERE type = 'motherduck' AND starts_with(database_name, 'temp_')"))]
+                                            "WHERE type = 'motherduck' "
+                                            "AND (starts_with(database_name, 'temp_') "
+                                            "OR starts_with(database_name, 'sha_'))"))]
     (into [] (map :database_name) (resultset-seq rset))))
 
-(defn- drop-orphan [^Connection conn dry-run? db-name]
+(defn- old-shared-database?
+  "Is this shared static dataset more than `hours` past the end of the UTC day it is named for? Jobs start using a
+  shared name only on its own day, so by then none can still be using it. Names that don't parse are kept."
+  [hours db-name]
+  (if-let [[_ year month day] (re-matches #"^sha_(\d{4})_(\d{2})_(\d{2})_.*$" db-name)]
+    (t/before? (-> (t/local-date-time (parse-long year) (parse-long month) (parse-long day) 0 0)
+                   (t/plus (t/days 1) (t/hours hours)))
+               (t/local-date-time (t/instant) (t/zone-id "UTC")))
+    false))
+
+(defn- old-test-database? [hours db-name]
+  (or (sql.tu.unique-prefix/old-temp-dataset? hours db-name)
+      (old-shared-database? hours db-name)))
+
+(defn- drop-orphan! [^Connection conn dry-run? db-name]
   (try
     (when-not dry-run?
-      (with-open [stmt (.createStatement conn)]
-        (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" db-name))))
+      (drop-database! conn db-name))
     {:server (account)
      :name   db-name
      :status :deleted}
@@ -374,13 +491,13 @@
   [_driver {:keys [hours dry-run?]}]
   (do-with-server-connection
    (fn [conn]
-     (into [] (comp (filter #(sql.tu.unique-prefix/old-temp-dataset? hours %))
-                    (map #(drop-orphan conn dry-run? %)))
-           (temp-database-names conn)))))
+     (into [] (comp (filter #(old-test-database? hours %))
+                    (map #(drop-orphan! conn dry-run? %)))
+           (test-database-names conn)))))
 
 (defmethod tx/count-datasets :motherduck
   [_driver]
   {(account) (try
-               (count (do-with-server-connection temp-database-names))
+               (count (do-with-server-connection test-database-names))
                (catch Exception _
                  nil))})
