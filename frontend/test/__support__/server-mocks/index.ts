@@ -28,6 +28,7 @@ export * from "./embedding-sdk";
 export * from "./field";
 export * from "./gdrive";
 export * from "./geojson";
+export * from "./glossary";
 export * from "./google";
 export * from "./group";
 export * from "./impersonation";
