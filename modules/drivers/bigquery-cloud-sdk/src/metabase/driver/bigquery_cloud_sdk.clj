@@ -133,7 +133,8 @@
         config-scopes (if (= "credential-config" auth-mode)
                         (:scope (json/decode credential-config-json))
                         [])]
-    (when-not (= bigquery-scopes (filter (set bigquery-scopes) config-scopes))
+    (when-not (and (seq config-scopes)
+                   (= bigquery-scopes (filter (set bigquery-scopes) config-scopes)))
       (log/warn "BigQuery credential config does not contain needed scopes"
                 {:scopes config-scopes}))
     (if (or (perf/empty? config-scopes) (.createScopedRequired base-creds))
