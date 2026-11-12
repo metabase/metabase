@@ -365,6 +365,8 @@
    From the moment it begins, every start throws until [[reopen!]], so nothing a stopping component starts again is
    left running.
    It waits for the starts already running, so it stops those too, and holds no lock while it waits.
+   It does not wait for a stop already running on another thread, from [[stop!]] or another halt, so it can stop
+   what that component uses before the component's stop function returns.
    Throws after trying them all if any stop threw; see [[stop-all!]]."
   ([]
    (halt! {}))
