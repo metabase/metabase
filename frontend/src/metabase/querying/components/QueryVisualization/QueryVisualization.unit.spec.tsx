@@ -4,11 +4,11 @@ import { createMockMetadataFromState } from "__support__/metadata";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen, within } from "__support__/ui";
-import * as Lib from "metabase-lib";
-import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { OnOpenChartSettings } from "metabase/visualizations/types";
 import { loadVisualizationComponents } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   Dataset,
