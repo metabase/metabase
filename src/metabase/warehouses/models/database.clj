@@ -12,6 +12,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -391,6 +392,7 @@
 
 (t2/define-after-select :model/Database
   [{driver :engine, :as database}]
+  (models.cache/register-loaded! :model/Database (:id database))
   (letfn [(normalize-details [db]
             (binding [*normalizing-details* true]
               (driver/normalize-db-details

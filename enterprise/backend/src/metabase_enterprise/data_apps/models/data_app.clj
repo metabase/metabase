@@ -6,6 +6,7 @@
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
@@ -117,6 +118,7 @@
 ;; untouched rather than gaining a spurious `:allowed_hosts` key.
 (t2/define-after-select :model/DataApp
   [app]
+  (models.cache/register-loaded! :model/DataApp (:id app))
   (cond-> app
     (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
 

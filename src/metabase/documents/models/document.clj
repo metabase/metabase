@@ -9,6 +9,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -498,6 +499,8 @@
 
 (t2/define-after-select :model/Document
   [document]
+  (models.cache/register-loaded! :model/Document (:id document))
+  (models.cache/register-loaded! :model/Collection (:collection_id document))
   (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------

@@ -1824,7 +1824,8 @@
 
   models
   {:team "DevEx"
-   :api  #{metabase.models.db
+   :api  #{metabase.models.cache
+           metabase.models.db
            metabase.models.init
            metabase.models.interface
            metabase.models.resolution
@@ -1838,7 +1839,8 @@
            lib.legacy-mbql
            lib.schema
            util
-           util.classloader}
+           util.classloader
+           util.config}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Channel
@@ -2483,6 +2485,7 @@
            api
            embedding
            lib.schema
+           models
            permissions
            premium-features
            remote-sync

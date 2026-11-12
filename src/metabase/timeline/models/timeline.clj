@@ -2,6 +2,7 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.models.cache :as models.cache]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
@@ -22,6 +23,8 @@
 
 (t2/define-after-select :model/Timeline
   [timeline]
+  (models.cache/register-loaded! :model/Timeline (:id timeline))
+  (models.cache/register-loaded! :model/Collection (:collection_id timeline))
   ;; We used to have a "balloons" icon but we removed it.
   ;; Use the default icon instead. (metabase#34586, metabase#35129)
   (update timeline :icon (fn [icon]

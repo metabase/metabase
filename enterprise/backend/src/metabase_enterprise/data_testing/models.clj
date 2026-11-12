@@ -7,6 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
@@ -242,3 +243,8 @@
   [_model]
   {:synced-items         data-testing.db/synced-transform-test-items
    :synced-filter-clause data-testing.db/synced-transform-tests-clause})
+
+(t2/define-after-select :model/TransformTest
+  [instance]
+  (models.cache/register-loaded! :model/TransformTest (:id instance))
+  instance)

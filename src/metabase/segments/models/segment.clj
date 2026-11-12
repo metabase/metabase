@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -199,6 +200,8 @@
 
 (t2/define-after-select :model/Segment
   [{:keys [definition] :as segment}]
+  (models.cache/register-loaded! :model/Segment (:id segment))
+  (models.cache/register-loaded! :model/Table (:table_id segment))
   (cond-> segment
     (some? definition) (assoc :definition (maybe-migrated-segment-definition segment))))
 

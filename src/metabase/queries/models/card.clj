@@ -24,6 +24,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.metrics.core :as metrics]
+   [metabase.models.cache :as models.cache]
    [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
@@ -857,6 +858,9 @@
 
 (t2/define-after-select :model/Card
   [card]
+  (models.cache/register-loaded! :model/Card (:id card))
+  (models.cache/register-loaded! :model/Collection (:collection_id card))
+  (models.cache/register-loaded! :model/Database (:database_id card))
   ;; +===============================================================================================+
   ;; |   DO NOT EDIT THIS FUNCTION DIRECTLY!                                                         |
   ;; |   Future revisions to the shapes of cards should be handled via [[upgrade-card-schema-to]].   |

@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.events.core :as events]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -68,6 +69,7 @@
     {:name name}))
 
 (t2/define-after-select :model/TransformTag [tag]
+  (models.cache/register-loaded! :model/TransformTag (:id tag))
   (if (nil? (:built_in_type tag))
     tag
     (merge tag (translate-name tag))))
