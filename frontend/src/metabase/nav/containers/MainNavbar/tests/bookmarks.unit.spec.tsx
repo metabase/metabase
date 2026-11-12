@@ -97,7 +97,7 @@ describe("nav > containers > MainNavbar > bookmarks", () => {
 
     await userEvent.click(
       within(getBookmarksSection()).getByRole("button", {
-        name: "Remove bookmark",
+        name: "bookmark icon",
       }),
     );
 
