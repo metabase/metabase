@@ -8,7 +8,9 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
+import { createSnowplowTracker } from "metabase/analytics";
 import { PLUGIN_API } from "metabase/api/client";
+import { getUserId } from "metabase/current-user";
 import {
   SdkIframeApiKeyInProductionError,
   SdkIframeError,
@@ -17,6 +19,7 @@ import { useSdkIframeEmbedEventBus } from "metabase/embedding/embedding-iframe-s
 import type { SdkIframeEmbedSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { isLoopbackOrigin } from "metabase/utils/dom";
+import { getCollectorHostUrl, initMetaplow } from "metabase/utils/metaplow";
 import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data-apps/sandbox/types";
 
 import { readSlugFromUrl } from "../../lib/read-slug-from-url";
@@ -25,6 +28,11 @@ import { DataAppEmbedContent } from "./DataAppEmbedContent";
 
 // Creates SDK store for embedded data apps
 const store = getSdkStore();
+createSnowplowTracker(() => getUserId(store.getState()));
+initMetaplow({
+  hostUrl: getCollectorHostUrl(),
+  getUserId: () => getUserId(store.getState()),
+});
 
 export function DataAppEmbed() {
   const slug = useMemo(() => readSlugFromUrl(), []);

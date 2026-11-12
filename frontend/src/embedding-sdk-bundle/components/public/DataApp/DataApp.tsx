@@ -1,5 +1,6 @@
 import { type CSSProperties, useId, useMemo } from "react";
 
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { PublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
@@ -7,6 +8,7 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider
 import { useSdkStore } from "embedding-sdk-bundle/store";
 import {
   getDataAppEmbedUrl,
+  getEmbeddedAppSlugFromPath,
   normalizeDataAppPath,
   validateDataAppPath,
 } from "embedding-sdk-shared/data-apps/embedded-data-app-path";
@@ -43,6 +45,12 @@ function DataAppInner({ path, ...props }: DataAppProps) {
 
   const id = useId();
   const reduxStore = useSdkStore();
+
+  useTrackSdkComponentMount(
+    "DataApp",
+    getEmbeddedAppSlugFromPath(path) ?? null,
+    {},
+  );
 
   const authConfig = providerProps?.authConfig;
   const instanceUrl = authConfig?.metabaseInstanceUrl;
