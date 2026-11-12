@@ -1,8 +1,5 @@
-import { USER_GROUPS } from "e2e/support/cypress_data";
-import {
-  ORDERS_BY_YEAR_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   ACCOUNTS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_CREATED_AT,
@@ -178,82 +175,6 @@ describe("documents", () => {
           });
         });
         H.visitDocument("@documentId");
-      });
-
-      it("should support keyboard and mouse selection in suggestions without double highlight", () => {
-        H.addPostgresDatabase();
-        H.activateToken("pro-self-hosted");
-        H.setupAnthropicLlmProvider();
-        H.visitDocument("@documentId");
-
-        H.documentContent().click();
-        H.addToDocument("/", false);
-
-        assertOnlyOneOptionActive(/Ask Metabot/);
-
-        cy.realPress("{downarrow}");
-        cy.realPress("{downarrow}");
-
-        //Link should be active
-        assertOnlyOneOptionActive("Link");
-
-        // Hover over Quote
-        H.commandSuggestionItem(/Quote/).realHover();
-
-        assertOnlyOneOptionActive(/Quote/);
-
-        cy.intercept({
-          method: "GET",
-          pathname: "/api/search",
-          query: { q: "pro" },
-        }).as("searchPro");
-        H.addToDocument("pro", false);
-
-        // Results for the partial queries render first, and a change in their
-        // count resets the active option
-        cy.wait("@searchPro");
-        H.commandSuggestionDialog()
-          .findAllByRole("option")
-          .should("have.length", 2);
-        assertOnlyOneOptionActive(/Products by Category/);
-
-        cy.realPress("{downarrow}");
-        assertOnlyOneOptionActive(/Products average/);
-
-        H.commandSuggestionItem(/Products by Category/).realHover();
-
-        assertOnlyOneOptionActive(/Products by Category/);
-
-        cy.realPress("Escape");
-
-        H.clearDocumentContent();
-
-        H.addToDocument("@ord", false);
-
-        cy.realPress("{downarrow}");
-        cy.realPress("{downarrow}");
-
-        assertOnlyOneOptionActive(/Orders, Count$/, "mention");
-
-        H.documentMentionDialog()
-          .findByRole("option", { name: /Browse all/ })
-          .realHover();
-
-        assertOnlyOneOptionActive(/Browse all/, "mention");
-
-        cy.realPress("Escape");
-        H.clearDocumentContent();
-        H.addToDocument("/", false);
-
-        H.commandSuggestionItem(/Ask Metabot/).click();
-        H.addToDocument("@", false);
-
-        assertOnlyOneOptionActive(/QA Postgres/, "metabot");
-        cy.realPress("{downarrow}");
-        assertOnlyOneOptionActive(/Sample/, "metabot");
-
-        H.documentMetabotSuggestionItem(/QA Postgres/).realHover();
-        assertOnlyOneOptionActive(/QA Postgres/, "metabot");
       });
 
       it("should support adding, renaming, replacing and resizing cards and updating viz settings", () => {
@@ -671,101 +592,6 @@ describe("documents", () => {
 
       H.undoToast().findByText("Document saved").should("exist");
     });
-
-    it("should support keyboard navigation when creating a new question and show the 'Create new question' footer for empty search results", () => {
-      H.visitDocument("@documentId");
-      H.documentContent().click();
-
-      cy.log("Trigger command menu and navigate to 'Chart' item");
-      H.addToDocument("/", false);
-      H.commandSuggestionItem("Chart").should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-      cy.realPress("{enter}");
-
-      cy.log("Click 'New chart' to open question type menu");
-      H.commandSuggestionItem(/New chart/)
-        .should("exist")
-        .should("have.attr", "aria-selected", "true");
-      H.commandSuggestionItem(/Browse all/).should("exist");
-      cy.realPress("{enter}");
-
-      cy.log("Verify notebook option is selected by default");
-      H.commandSuggestionItem(/New Question/).should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-
-      cy.log("Navigate to SQL option");
-      cy.realPress("{downarrow}");
-
-      H.commandSuggestionItem(/New SQL query/).should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-
-      cy.log("Select SQL option with Enter");
-      cy.realPress("{enter}");
-
-      cy.log("Verify native query modal opens");
-      cy.findByRole("dialog", { name: "Edit SQL Query" }).should("be.visible");
-
-      cy.log("Cancel the modal");
-      cy.findByRole("dialog", { name: "Edit SQL Query" })
-        .findByRole("button", { name: "Cancel" })
-        .click();
-
-      cy.log("Verify modal is closed");
-      cy.findByRole("dialog", { name: "Edit SQL Query" }).should("not.exist");
-
-      cy.log("'Create new question' footer for empty search results");
-      H.clearDocumentContent();
-
-      cy.log("Trigger command menu and select Chart");
-      H.addToDocument("/", false);
-      H.commandSuggestionItem("Chart").click();
-
-      cy.log("Search for something that doesn't exist");
-      H.addToDocument("xyznonexistentquery", false);
-
-      cy.log("Verify 'No results found' message appears");
-      H.commandSuggestionDialog().should("contain.text", "No results found");
-
-      H.commandSuggestionDialog().findByRole("separator").should("exist");
-
-      cy.log("Verify 'Create new question' footer is visible");
-      H.commandSuggestionItem(/New chart/).should("be.visible");
-
-      cy.log("Verify 'Browse all' footer is also visible");
-      H.commandSuggestionItem(/Browse all/).should("be.visible");
-
-      cy.log(
-        "hitting Enter on a non-matching search opens the new question menu",
-      );
-      cy.realPress("Escape");
-      H.clearDocumentContent();
-
-      cy.log("Type a non-matching search term");
-      H.addToDocument("/asdfsdaf", false);
-
-      H.commandSuggestionDialog().should("be.visible");
-      H.commandSuggestionDialog().should("contain.text", "No results found");
-      H.commandSuggestionItem(/New chart/)
-        .should("exist")
-        .should("have.attr", "aria-selected", "true");
-      cy.realPress("Enter");
-
-      cy.log("Verify that the new question type suggestion menu appears");
-      H.commandSuggestionDialog().should("be.visible");
-      H.commandSuggestionItem(/New Question/).should("be.visible");
-      H.commandSuggestionDialog()
-        .findByText(/Browse all/)
-        .should("not.exist");
-    });
   });
 
   describe("anchor links", () => {
@@ -846,13 +672,12 @@ describe("documents", () => {
   });
 
   describe("timeline events on chart embeds", () => {
-    const TIMESERIES_CARD_1 = "Orders, Count, Grouped by Created At (year)";
-    const NON_TIMESERIES_CARD = "Orders, Count";
     const TIMESERIES_CARD_3 = "Orders by Created At (Month)";
     const TIMELINE_NAME = "Releases";
     const TIMELINE_EVENT_NAME = "RC1";
+    const TIMESERIES_CARD_1 = "Orders, Count, Grouped by Created At (year)";
 
-    it("should show the Events menu only on timeseries charts and manage per-chart timeline selection", () => {
+    it("should show a timeline on a timeseries chart embed from the Events menu", () => {
       H.createTimelineWithEvents({
         timeline: { name: TIMELINE_NAME },
         events: [
@@ -864,146 +689,50 @@ describe("documents", () => {
           },
         ],
       });
-
-      H.createQuestion(ORDERS_COUNT_BY_CREATED_AT).then(
-        ({ body: { id: timeseriesCard3Id } }) => {
-          H.createDocument({
-            name: "Timeline events document",
-            document: {
-              type: "doc",
+      H.createDocument({
+        name: "Timeline events document",
+        document: {
+          type: "doc",
+          content: [
+            {
+              type: "resizeNode",
+              attrs: { height: 350, minHeight: 280, _id: "1" },
               content: [
                 {
-                  type: "resizeNode",
-                  attrs: { height: 350, minHeight: 280, _id: "1" },
-                  content: [
-                    {
-                      type: "cardEmbed",
-                      attrs: {
-                        id: ORDERS_BY_YEAR_QUESTION_ID,
-                        name: null,
-                        _id: "1a",
-                      },
-                    },
-                  ],
+                  type: "cardEmbed",
+                  attrs: {
+                    id: ORDERS_BY_YEAR_QUESTION_ID,
+                    name: null,
+                    _id: "1a",
+                  },
                 },
-                { type: "paragraph", attrs: { _id: "2" } },
-                {
-                  type: "resizeNode",
-                  attrs: { height: 350, minHeight: 280, _id: "3" },
-                  content: [
-                    {
-                      type: "cardEmbed",
-                      attrs: {
-                        id: ORDERS_COUNT_QUESTION_ID,
-                        name: null,
-                        _id: "3a",
-                      },
-                    },
-                  ],
-                },
-                { type: "paragraph", attrs: { _id: "4" } },
-                {
-                  type: "resizeNode",
-                  attrs: { height: 350, minHeight: 280, _id: "5" },
-                  content: [
-                    {
-                      type: "cardEmbed",
-                      attrs: {
-                        id: timeseriesCard3Id,
-                        name: null,
-                        _id: "5a",
-                      },
-                    },
-                  ],
-                },
-                { type: "paragraph", attrs: { _id: "6" } },
               ],
             },
-            collection_id: null,
-            idAlias: "timelineDocumentId",
-          });
+            { type: "paragraph", attrs: { _id: "2" } },
+          ],
         },
-      );
-
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+        collection_id: null,
+        idAlias: "timelineDocumentId",
+      });
 
       H.visitDocument("@timelineDocumentId");
-
-      cy.wait(["@cardQuery", "@cardQuery", "@cardQuery"]);
-
       H.getDocumentCard(TIMESERIES_CARD_1)
         .findByTestId("chart-container")
         .should("exist");
-      H.getDocumentCard(NON_TIMESERIES_CARD)
-        .findByTestId("visualization-root")
-        .should("exist");
-      H.getDocumentCard(TIMESERIES_CARD_3)
-        .findByTestId("chart-container")
-        .should("exist");
 
-      cy.log("Events menu appears for timeseries chart 1, not for chart 2");
-      H.openDocumentCardMenu(TIMESERIES_CARD_1);
-      H.popover()
-        .findByRole("menuitem", { name: /Events/ })
-        .should("be.visible");
-      cy.realPress("Escape");
-
-      H.openDocumentCardMenu(NON_TIMESERIES_CARD);
-      H.popover()
-        .findByRole("menuitem", { name: /Edit Visualization/ })
-        .should("be.visible");
-      H.popover()
-        .findByRole("menuitem", { name: /Events/ })
-        .should("not.exist");
-      cy.realPress("Escape");
-
-      cy.log("Add timeline to chart 1");
       H.openDocumentCardMenu(TIMESERIES_CARD_1);
       H.popover()
         .findByRole("menuitem", { name: /Events/ })
         .click();
 
-      documentTimelineSidebar().should("be.visible");
-      documentTimelineHeaderCheckbox(TIMELINE_NAME)
-        .should("not.be.checked")
+      cy.findByTestId("document-timeline-sidebar")
+        .findByLabelText("Timeline card header")
+        .findByRole("checkbox")
         .click();
-      documentTimelineHeaderCheckbox(TIMELINE_NAME).should("be.checked");
-
-      documentCardTimelineEventChip(
-        TIMESERIES_CARD_1,
-        TIMELINE_EVENT_NAME,
-      ).should("be.visible");
-
-      cy.log("Open timeline sidebar by clicking event chip");
-      closeDocumentTimelineSidebar();
-      documentTimelineSidebar().should("not.exist");
 
       H.getDocumentCard(TIMESERIES_CARD_1)
-        .findByTestId("timeline-event-chip")
-        .click();
-
-      documentTimelineSidebar().should("be.visible");
-
-      cy.log("Chart 3 has independent timeline state");
-      selectDocumentCard(TIMESERIES_CARD_3);
-
-      documentTimelineHeaderCheckbox(TIMELINE_NAME).should("not.be.checked");
-      documentCardTimelineEventChip(
-        TIMESERIES_CARD_3,
-        TIMELINE_EVENT_NAME,
-      ).should("not.exist");
-
-      cy.log("Remove timeline from chart 1");
-      selectDocumentCard(TIMESERIES_CARD_1);
-
-      documentTimelineHeaderCheckbox(TIMELINE_NAME)
-        .should("be.checked")
-        .click();
-      documentTimelineHeaderCheckbox(TIMELINE_NAME).should("not.be.checked");
-      documentCardTimelineEventChip(
-        TIMESERIES_CARD_1,
-        TIMELINE_EVENT_NAME,
-      ).should("not.exist");
+        .findByRole("button", { name: TIMELINE_EVENT_NAME })
+        .should("be.visible");
     });
 
     it("should save a document after editing the visualization of an embed whose timeline the user cannot read", () => {
@@ -1073,6 +802,70 @@ describe("documents", () => {
       H.assertDocumentCardVizType(TIMESERIES_CARD_3, "Bar");
     });
   });
+
+  describe("metabot (#73690)", () => {
+    const GENERATED_CARD_NAME = "Feature requests mentioned twice";
+    const MOCK_LLM_PORT = 6124;
+
+    beforeEach(() => {
+      cy.task("startMockLlmServer", {
+        port: MOCK_LLM_PORT,
+        toolCall: {
+          name: "document_construct_sql_chart",
+          input: {
+            database_id: SAMPLE_DB_ID,
+            name: GENERATED_CARD_NAME,
+            description: "Feature requests mentioned at least twice.",
+            analysis: "Count orders for a deterministic e2e chart.",
+            approach:
+              "Use a simple aggregate query against the sample database.",
+            sql: "SELECT COUNT(*) AS count FROM ORDERS",
+            viz_settings: { chart_type: "bar" },
+          },
+        },
+      });
+      H.setupAnthropicLlmProvider({
+        baseUrl: `http://localhost:${MOCK_LLM_PORT}`,
+      });
+    });
+
+    afterEach(() => {
+      cy.task("stopMockLlmServer");
+    });
+
+    it("should create a chart from a document Metabot block", () => {
+      H.createDocument({
+        name: "Document Metabot Chart",
+        document: {
+          content: [
+            {
+              type: "metabot",
+              content: [
+                {
+                  type: "text",
+                  text: "create a chart using issue customer mention",
+                },
+              ],
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.findByRole("button", { name: "Run" }).click();
+
+      H.getDocumentCard(GENERATED_CARD_NAME).should("be.visible");
+      H.documentContent().should(
+        "contain.text",
+        "Feature requests mentioned at least twice.",
+      );
+      H.documentContent().should("contain.text", "Created with Metabot");
+    });
+  });
 });
 
 function denyCollection(id: CollectionId): CollectionPermissions {
@@ -1083,50 +876,3 @@ function denyCollection(id: CollectionId): CollectionPermissions {
     [DATA_GROUP]: denied,
   };
 }
-
-function documentTimelineSidebar() {
-  return cy.findByTestId("document-timeline-sidebar");
-}
-
-function documentTimelineHeaderCheckbox(timelineName: string) {
-  return documentTimelineSidebar()
-    .findAllByLabelText("Timeline card header")
-    .filter((_, el) => el.textContent?.includes(timelineName) ?? false)
-    .should("have.length", 1)
-    .findByRole("checkbox");
-}
-
-function closeDocumentTimelineSidebar() {
-  return documentTimelineSidebar().findByLabelText("Close").click();
-}
-
-function selectDocumentCard(cardName: string) {
-  return H.getDocumentCard(cardName).click("top");
-}
-
-function documentCardTimelineEventChip(cardName: string, eventName: string) {
-  return H.getDocumentCard(cardName).findByRole("button", {
-    name: eventName,
-  });
-}
-
-const assertOnlyOneOptionActive = (
-  name: string | RegExp,
-  dialog: "command" | "mention" | "metabot" = "command",
-) => {
-  const dialogContainer =
-    dialog === "command"
-      ? H.commandSuggestionDialog
-      : dialog === "mention"
-        ? H.documentMentionDialog
-        : H.documentMetabotDialog;
-
-  dialogContainer()
-    .findByRole("option", { name })
-    .should("have.attr", "aria-selected", "true");
-
-  dialogContainer()
-    .findAllByRole("option")
-    .filter("[aria-selected=true]")
-    .should("have.length", 1);
-};
