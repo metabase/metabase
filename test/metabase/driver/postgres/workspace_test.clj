@@ -740,6 +740,53 @@
          (is (not (role-exists? spec user)))
          (is (nil? (schema-owner spec (:schema workspace)))))))))
 
+(deftest grant-covers-tables-the-input-owner-creates-later-test
+  ;; MBCWS-60: an input schema gains tables after the grant, created by the role that owns its tables, which is not
+  ;; the admin login. Default privileges apply only to tables their FOR ROLE creates, the current role when omitted.
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2115)
+           user      (-> workspace :database_details :user)]
+       (provisioned! database workspace)
+       (exec! spec [(str "SET ROLE mb_ws_test_etl; CREATE TABLE sales.refunds (id int); "
+                         "INSERT INTO sales.refunds VALUES (1); RESET ROLE")])
+       (testing "the workspace user reads a table the input owner created after the grant"
+         (is (= [{:count 1}] (as-workspace-user workspace "SELECT count(*) FROM sales.refunds"))))
+       (testing "destroy still revokes every default privilege and drops the user"
+         (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))
+         (is (not (role-exists? spec user))))))))
+
+(deftest grant-refuses-a-membership-that-does-not-inherit-test
+  ;; From Postgres 16 a membership may not inherit. `pg_has_role(.., 'MEMBER')` is true for it, but `ALTER DEFAULT
+  ;; PRIVILEGES FOR ROLE` needs the role's privileges, so grant must refuse it before any change. The login holds its
+  ;; grant options directly, so the grant-option preconditions pass without the owner's privileges.
+  (do-with-warehouse!
+   (fn [spec database]
+     (when (<= 160000 (server-version spec))
+       (let [workspace (new-workspace! spec database 2116)
+             user      (-> workspace :database_details :user)
+             login     (:user admin-login)]
+         (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+         (exec! spec [(format "GRANT USAGE ON SCHEMA sales TO %s WITH GRANT OPTION" login)
+                      (format "GRANT SELECT ON ALL TABLES IN SCHEMA sales TO %s WITH GRANT OPTION" login)
+                      (format "REVOKE mb_ws_test_etl FROM %s" login)
+                      (format "GRANT mb_ws_test_etl TO %s WITH INHERIT FALSE" login)])
+         (try
+           (testing "grant throws a 412 naming the owner and a GRANT that inherits, before any change"
+             (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                  (provisioning #(driver/grant-workspace-read-access! :postgres database workspace
+                                                                                      ["sales"]))))]
+               (is (= {:status-code 412, :schema "sales", :owners ["mb_ws_test_etl"]} (ex-data e)))
+               (is (str/includes? (ex-message e)
+                                  (format "`GRANT \"mb_ws_test_etl\" TO \"%s\" WITH INHERIT TRUE;`" login))))
+             (is (= [{:kind "schema", :name (:schema workspace)}] (distinct (grants-to spec user)))))
+           (testing "the GRANT the error names lets grant succeed"
+             (exec! spec [(format "GRANT mb_ws_test_etl TO %s WITH INHERIT TRUE" login)])
+             (is (nil? (provisioning #(driver/grant-workspace-read-access! :postgres database workspace ["sales"])))))
+           (finally
+             (exec! spec [(format "GRANT mb_ws_test_etl TO %s WITH INHERIT TRUE" login)])
+             (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace)))))))))
+
 (deftest destroy-retries-the-lock-out-after-a-lock-timeout-test
   (do-with-warehouse!
    (fn [spec database]
