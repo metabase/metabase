@@ -766,7 +766,7 @@ describe("DataModelV1 > field section (advanced permissions)", () => {
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
       await userEvent.click(
         within(screen.getByRole("dialog")).getByRole("button", {
-          name: "Cancel",
+          name: "Close",
         }),
       );
       await undo("Display values of Quantity updated");
@@ -831,7 +831,7 @@ describe("DataModelV1 > field section (advanced permissions)", () => {
         within(editModal).queryByDisplayValue("XYZ"),
       ).not.toBeInTheDocument();
       await userEvent.click(
-        within(editModal).getByRole("button", { name: "Cancel" }),
+        within(editModal).getByRole("button", { name: "Close" }),
       );
       await waitFor(() =>
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
