@@ -478,10 +478,9 @@
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
+        dashcards                        (:dashcards old-dashboard)
         {:keys [copy discard reference]} (dashboards.write/add-goal-sources-to-copy
-                                          (cards-to-copy deep-copy? (:dashcards old-dashboard))
-                                          deep-copy?
-                                          (:dashcards old-dashboard))]
+                                          (cards-to-copy deep-copy? dashcards) deep-copy? dashcards)]
     {:copied     (into {} (for [[id to-copy] copy]
                             [id (queries/with-copy-source-card to-copy
                                   (queries/create-card!
