@@ -5,7 +5,6 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.cluster-lock :as cluster-lock]
-   [metabase.app-db.core :as mdb]
    [metabase.change-log.db :as change-log.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]))
@@ -23,10 +22,10 @@
 (def ^:private trigger-key (triggers/key "metabase.change-log.task.number-change-log.trigger"))
 
 (defn- statement-size
-  "How many entries one UPDATE numbers: 1,000 on Postgres, one elsewhere. On MariaDB an update of many rows can wait
-  for rows that open transactions inserted (`ids-out-of-order-test`)."
+  "How many entries one UPDATE numbers: 1,000, or one on MariaDB. There an update of many rows can wait for rows that
+  open transactions inserted (`ids-out-of-order-test`)."
   []
-  (if (= :postgres (mdb/db-type)) 1000 1))
+  (if (change-log.db/mariadb?) 1 1000))
 
 (defn- number-entries!
   "Numbers the committed entries that have no position. The first gets the clock in microseconds, or the next free

@@ -33,6 +33,12 @@
    lowest-id :- ms/PositiveInt]
   (t2/query-one {:update :change_log, :set {:position [:+ start [:- :id lowest-id]]}, :where [:in :id ids]}))
 
+(mu/defn mariadb? :- :boolean
+  "Whether the app DB is MariaDB, whose app DB type is `:mysql` too. The driver answers without a query."
+  []
+  (t2/with-connection [^Connection conn]
+    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+
 (mu/defn foreign-keys
   "The foreign keys of the app DB's tables, as JDBC's `DatabaseMetaData.getImportedKeys` reports them."
   []
