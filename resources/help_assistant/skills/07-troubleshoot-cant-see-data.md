@@ -13,7 +13,7 @@ references:
 ---
 Ask one question at a time, and skip any the user has already answered.
 
-First questions, in this order:
+If the user chose questions, ask these first, in this order:
 1. Who is affected? Can an admin see it? If nobody can see a table, use the sync skill instead.
 2. Is it data (a table or query results), or saved content (a question, dashboard or collection)?
 3. Does it involve row and column security, or an embedded dashboard? If embedded, which user or group is the embed signed in as?

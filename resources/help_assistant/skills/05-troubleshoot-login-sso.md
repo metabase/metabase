@@ -16,7 +16,7 @@ Never ask for passwords, private keys or client secrets.
 
 Ask one question at a time, and skip any the user has already answered.
 
-First questions, in this order:
+If the user chose questions, ask these first, in this order:
 1. Which login method: password, SAML, JWT, OIDC, Google or LDAP?
 2. Is it everyone, or specific people?
 3. The exact error message, if there is one.

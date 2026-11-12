@@ -144,6 +144,7 @@ function HelpAssistantChatPage() {
             error={chat.error}
             onRetry={chat.retry}
             onRate={chat.rateAnswer}
+            onFlag={chat.flagsEnabled ? chat.flagAnswer : undefined}
           />
           <Box px="xl" pb="lg">
             <Stack className={cx(S.column, S.composer)} gap="sm">
@@ -535,6 +536,8 @@ interface ConversationHistoryProps {
   error: unknown;
   onRetry: () => void;
   onRate: (answerIndex: number, feedback: HelpAssistantFeedback) => void;
+  /** Only when flagging is set up on the server. */
+  onFlag?: (answerIndex: number, note: string) => Promise<unknown>;
 }
 
 function ConversationHistory({
@@ -543,6 +546,7 @@ function ConversationHistory({
   error,
   onRetry,
   onRate,
+  onFlag,
 }: ConversationHistoryProps) {
   const historyRef = useRef<HTMLDivElement>(null);
   const lastRole = entries[entries.length - 1]?.role;
@@ -592,6 +596,7 @@ function ConversationHistory({
               key={index}
               entry={entry}
               onRate={(feedback) => onRate(index, feedback)}
+              onFlag={onFlag && ((note) => onFlag(index, note))}
             />
           ),
         )}

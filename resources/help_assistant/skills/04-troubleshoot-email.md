@@ -9,7 +9,7 @@ references:
 ---
 Ask one question at a time, and skip any the user has already answered.
 
-First questions, in this order:
+If the user chose questions, ask these first, in this order:
 1. Does the test email on the email settings page work?
 2. Is this Metabase Cloud or self-hosted? Metabase Cloud can use Metabase's own email server.
 3. Is every email affected, or only one subscription or alert, or only some recipients?
@@ -22,7 +22,6 @@ Test email fails
 
 Test email works, but emails don't arrive
 - The mail server accepts the message but it's filtered as spam or rejected along the way.
-- Approved domains for notifications blocks recipients who don't have a Metabase account.
 
 Only subscriptions or alerts fail
 - Long-running queries are stuck and block other notifications. See the notifications troubleshooting page.

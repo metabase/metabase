@@ -14,10 +14,10 @@ references:
   - monitor/application-logs.md
   - configuring-metabase/environment-variables.md
 ---
-This is a decision tree built from recent support tickets. Start at T1. Each node is one question to ask (ASK), one thing for the user to look at (CHECK), or an end point (EXIT). Skip any node the user has already answered.
+This is a decision tree built from recent support tickets. If the user chose questions, start at T1 and follow the tree. If they chose the list, list the likely causes for their symptom from the branches below, most likely first, and let them pick which to check. Each node is one question to ask (ASK), one thing for the user to look at (CHECK), or an end point (EXIT). Skip any node the user has already answered.
 
 Two rules for using it:
-- The triage answers are clues, not gates. A clue moves the matching checks to the front of the branch. It never removes other checks. If the first checks don't find it, keep going down the branch.
+- The triage answers are clues, not gates. A clue moves the matching checks to the front of the branch. It never removes other checks. If the first checks don't find it, keep going down the branch (or, if they chose the list, offer the causes that are left).
 - If the user says "I don't know", tell them in one line where to find the answer (usually Table Metadata, or the filter's settings in dashboard edit mode). If it's hard to find, skip that node and come back to it later.
 - The labels (T1, A1, EXIT-A1 and so on) are only for you. Never show them to the user; describe the check in plain words instead, for example "So the Filtering setting isn't it."
 - When you need to know how a card was built, ask whether it's a query builder question or a SQL question. Don't ask about tables or models.

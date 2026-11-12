@@ -5,6 +5,9 @@ import type {
   HelpAssistantConversation,
   HelpAssistantConversationId,
   HelpAssistantFeedbackRequest,
+  HelpAssistantFlagRequest,
+  HelpAssistantFlagResponse,
+  HelpAssistantSettings,
 } from "metabase-types/api";
 
 // Saved conversations live in the per-user key-value store, one key per conversation.
@@ -39,6 +42,19 @@ const helpAssistantApi = Api.injectEndpoints({
       query: (body) => ({
         method: "POST",
         url: "/api/help-assistant/feedback",
+        body,
+      }),
+    }),
+    getHelpAssistantSettings: builder.query<HelpAssistantSettings, void>({
+      query: () => "/api/help-assistant/settings",
+    }),
+    flagHelpAssistantAnswer: builder.mutation<
+      HelpAssistantFlagResponse,
+      HelpAssistantFlagRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/help-assistant/flag",
         body,
       }),
     }),
@@ -100,6 +116,8 @@ const helpAssistantApi = Api.injectEndpoints({
 export const {
   useSendHelpAssistantMessageMutation,
   useSendHelpAssistantFeedbackMutation,
+  useGetHelpAssistantSettingsQuery,
+  useFlagHelpAssistantAnswerMutation,
   useListHelpAssistantConversationsQuery,
   useSaveHelpAssistantConversationMutation,
   useDeleteHelpAssistantConversationMutation,

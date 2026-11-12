@@ -9,6 +9,12 @@
                                    [:sources {:optional true} [:sequential [:map {:closed true}
                                                                             [:title :string]
                                                                             [:url :string]]]]
+                                   [:steps {:optional true} [:sequential [:map {:closed true}
+                                                                          [:type [:enum "skill" "search" "read" "limit"]]
+                                                                          [:label :string]
+                                                                          [:skill_id {:optional true} :string]
+                                                                          [:url {:optional true} :string]
+                                                                          [:earlier {:optional true} :boolean]]]]
                                    [:feedback {:optional true} [:map {:closed true}
                                                                 [:positive :boolean]
                                                                 [:comment {:optional true} [:maybe :string]]]]]]]]]]

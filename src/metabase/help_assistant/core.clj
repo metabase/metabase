@@ -4,10 +4,15 @@
   It reuses the AI connection Metabot is configured with (Admin > AI), but has its own skills and its own tools:
 
   - Skills are markdown files with YAML frontmatter in `resources/help_assistant/skills/`. They are re-read on every
-    request, so you can edit them while Metabase is running.
+    request, so you can edit them while Metabase is running. Like Metabot's skills, only a list of them goes in the
+    prompt, and the model loads the one it needs with the `load_skill` tool.
   - The Metabase docs (markdown only, no images) are bundled in `resources/help_assistant/docs/` by the `:help-docs`
     build step. The model can search and read them with the `search_docs` and `read_doc` tools. When that folder is
-    missing and you're running from source, the repo's own `docs/` folder is used instead."
+    missing and you're running from source, the repo's own `docs/` folder is used instead.
+  - The general instructions are in `resources/help_assistant/instructions.md`, also re-read on every request.
+  - Each answer comes with the steps behind it (skills loaded, searches, pages read), so you can see how it was made.
+  - When `MB_HELP_ASSISTANT_FLAGS_DIR` is set, admins can flag an answer for review, which saves the chat as a file in
+    that folder, to turn into an eval case. This is for tuning skills on a local instance."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -17,10 +22,13 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml])
   (:import
-   (java.nio.file FileVisitOption Files LinkOption Path)))
+   (java.nio.file FileVisitOption Files LinkOption Path)
+   (java.time LocalDateTime)
+   (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
 
@@ -73,6 +81,13 @@
                (if-let [[fm body] (split-frontmatter text)]
                  (assoc (yaml/parse-string fm) :body (str/trim body))
                  (log/warnf "Help assistant: skipping skill %s, it has no YAML frontmatter" path))))))
+
+(defn- skill-id [skill]
+  (some-> (:id skill) name))
+
+(defn- find-skill [skills id]
+  (let [id (str/trim (str id))]
+    (some #(when (= id (skill-id %)) %) skills)))
 
 ;;; ----------------------------------------------------- Docs ----------------------------------------------------
 
@@ -169,10 +184,32 @@
 
 ;;; ----------------------------------------------------- Tools ---------------------------------------------------
 
+(defn- record-step!
+  "Add `step` to the `steps` atom, unless the same step is already there."
+  [steps step]
+  (let [same? (fn [s] (= (dissoc s :earlier) (dissoc step :earlier)))]
+    (swap! steps (fn [existing] (if (some same? existing) existing (conj existing step))))))
+
+(declare skill->prompt)
+
 (defn- make-tools
-  "The tools the model can call. `sources` is an atom collecting the pages it read, to show under the answer."
-  [sources]
-  {"search_docs"
+  "The tools the model can call. `sources` is an atom collecting the pages it read, to show under the answer, and
+  `steps` an atom collecting what it did, to show how it got the answer."
+  [{:keys [sources steps skills]}]
+  {"load_skill"
+   {:tool-name "load_skill"
+    :doc       (str "Load the full instructions of one skill from the skill list. Pass the skill's id exactly as listed. "
+                    "Load a skill before you answer a question it matches, then follow it.")
+    :schema    [:=> [:cat [:map {:closed true}
+                           [:id [:string {:description "A skill id from the skill list, e.g. troubleshoot-filters"}]]]]
+                :any]
+    :fn        (fn [{:keys [id]}]
+                 (if-let [skill (find-skill skills id)]
+                   (do (record-step! steps {:type "skill", :label (str (:title skill)), :skill_id (skill-id skill)})
+                       {:output (skill->prompt skill)})
+                   {:output (str "No skill with id \"" id "\". Use an id from the skill list.")}))}
+
+   "search_docs"
    {:tool-name "search_docs"
     :doc       (str "Search the Metabase documentation for this Metabase version. Returns page paths, titles and a "
                     "matching line. Use a few specific keywords, e.g. \"ldap group sync\" or \"dashboard slow cache\". "
@@ -181,6 +218,7 @@
                            [:query [:string {:description "A few keywords to search for"}]]]]
                 :any]
     :fn        (fn [{:keys [query]}]
+                 (record-step! steps {:type "search", :label (str query)})
                  (let [results (search-docs query)]
                    {:output (if (empty? results)
                               (if (empty? @docs)
@@ -201,97 +239,64 @@
                  (if-let [{:keys [path title content]} (find-doc path)]
                    (let [url (doc-url path)]
                      (swap! sources assoc path {:title title, :url url})
+                     (record-step! steps {:type "read", :label title, :url url})
                      {:output (str "URL to cite: " url "\n\n" (u/truncate content 40000))})
                    {:output (str "No page at \"" path "\". Use a path returned by search_docs.")}))}})
 
 ;;; ---------------------------------------------------- Prompt ---------------------------------------------------
 
+(def ^:private skill-preamble
+  "Goes at the top of every skill the model reads. A skill's own order (\"Start at T1\") is more specific and more recent
+  than the general instructions, so without this reminder the model follows the skill and skips the user's choice."
+  (str "How to use this skill when troubleshooting: the general troubleshooting steps come first. If the user hasn't "
+       "said how they'd like to work and three or more causes fit, ask them first: questions to narrow it down, or a "
+       "list of common causes to pick from. If they chose questions, follow this skill's order. If they chose the list, "
+       "use this skill only to choose and order the causes; each time a cause is ruled out, show the ones that are left "
+       "and let them pick, instead of moving to the next one yourself."))
+
 (defn- skill->prompt [{:keys [id title description references body]}]
   (str "<skill id=\"" (name id) "\" title=\"" title "\">\n"
        (when description (str "When to use: " description "\n\n"))
+       skill-preamble "\n\n"
        body
        (when (seq references)
          (str "\n\nReference pages (read these with read_doc):\n"
               (str/join "\n" (map #(str "- " %) references))))
        "\n</skill>"))
 
-(defn- system-prompt [diagnostic-info]
+(defn- skill->catalog-line [{:keys [title description] :as skill}]
+  (str "- " (skill-id skill) ": " title (when description (str ". When to use: " description))))
+
+(def ^:private instructions-file "help_assistant/instructions.md")
+
+(defn- instructions
+  "The general instructions, from `resources/help_assistant/instructions.md`. Read on every request, like the skills, so
+  edits take effect without a restart. HTML comments at the top of the file are notes for people, not the model."
+  []
+  (if-let [resource (io/resource instructions-file)]
+    (-> (slurp resource)
+        (str/replace "\r\n" "\n")
+        (str/replace #"\A\s*(?s:<!--.*?-->\s*)+" "")
+        str/trim)
+    (throw (ex-info "The Help assistant's instructions file is missing." {:status-code 500
+                                                                          :file        instructions-file}))))
+
+(defn- system-prompt
+  "`skills` are listed by id, title and when to use them. `loaded-skills`, the ones loaded earlier in this
+  conversation, are included in full, so the model doesn't have to load them again on every turn."
+  [diagnostic-info skills loaded-skills]
   (str
-   "You are the Metabase Help assistant. You live on the Admin > Help page of a Metabase instance, and you help "
-   "Metabase admins troubleshoot problems and answer how-to questions about Metabase.\n\n"
-   "How to work:\n"
-   "- If a skill below matches the question, follow it. Skills may use internal labels for their steps (like T1, A3 "
-   "or EXIT-B2). Never show these to the user.\n"
-   "- Check the documentation with search_docs and read_doc before you explain how something works, name a cause "
-   "or give a fix. The docs match this instance's version. Don't read docs just to ask the user a question, such as "
-   "a skill's triage question.\n"
-   "- When a skill lists reference pages, read the one you need with read_doc directly instead of searching first. "
-   "Search only for what the skill's pages don't cover.\n"
-   "- When you need more than one page, request all of them in the same step instead of one after another.\n"
-   "- Base answers on the docs and the diagnostic info. If you can't find the answer, say so plainly and suggest "
-   "emailing Metabase support at [help@metabase.com](mailto:help@metabase.com). Never guess setting names, menu "
-   "paths or environment variables.\n"
-   "- Link to the pages you used where you mention them, with the exact URL read_doc gave you. Never make up URLs. "
-   "Don't end with a list of links: the Help page already lists the pages you read under your answer.\n"
-   "- For how-to questions, keep it short and practical: the answer first, then numbered steps.\n"
-   "- For troubleshooting, work through it with the user one cause at a time instead of giving every fix at once:\n"
-   "  1. If the symptom is too vague to tell which causes apply, ask one short question to narrow it down first.\n"
-   "  2. List the likely causes, most likely first, one short line each, with no fixes yet. Use the skill's order "
-   "when it gives one.\n"
-   "  3. Ask whether they want to start with the most likely one.\n"
-   "  4. For the cause you're on, ask the user to check whether it's the problem, and wait for their answer. Give "
-   "the fix only after they confirm it. If it isn't the problem, move to the next cause.\n"
-   "  5. Treat what the user tells you as a clue, not a diagnosis. Even when one cause looks very likely, confirm it "
-   "with a check before giving the fix. Don't assume they set something up wrong. Skip causes only when the user "
-   "has already ruled them out.\n"
-   "  6. Don't ask whether the problem started after a Metabase upgrade until the end. Ask it only once you've "
-   "worked through the likely causes without finding the root cause. Either way, suggest emailing Metabase support "
-   "at [help@metabase.com](mailto:help@metabase.com); if it started after an upgrade, say it may be a bug.\n"
-   "  7. When you suggest emailing support, offer to draft the email. If they say yes, write a short email they can "
-   "copy: a one-line summary of the problem, their Metabase version (from this prompt), when it started and "
-   "whether that was after an upgrade, their setup (dashboard or question, query builder or SQL, embedded or not), "
-   "and what they've already checked and ruled out in this conversation. Don't include passwords, keys or other "
-   "secrets.\n"
-   "- Questions that usually narrow a problem down fastest, for any topic: the exact error message; who's affected "
-   "(everyone, one user or group, or does it work for admins?); whether it happens in Metabase itself or only in "
-   "an embed; and whether it works somewhere else, like another environment or data source. Ask only the ones that "
-   "matter and haven't been answered, one at a time. If the skill gives an order, follow it; otherwise start with "
-   "the error message.\n"
-   "- If the user says it's urgent, critical or an emergency, or something big is broken (for example every "
-   "question is failing), don't go one cause at a time. Give a short list of the most common causes, one line "
-   "each, and ask whether they want to work through them or have you draft an email to Metabase support at "
-   "[help@metabase.com](mailto:help@metabase.com) right away.\n"
-   "- When the docs say something works as designed, say so plainly, give the workaround if there is one, and "
-   "stop diagnosing.\n"
-   "- You can't open links the user pastes, such as a dashboard URL. Say so, and ask for what you need instead.\n"
-   "- When you ask the user to collect something, like logs or a setting's value, give the steps from the docs "
-   "for getting it, not just its name.\n"
-   "- Never ask the user to judge logs, errors or settings themselves (\"do you see anything unusual?\"). Ask them to "
-   "copy the relevant lines or values and paste them into the chat, and read them yourself. For logs, they can "
-   "filter by a keyword and copy the lines from when they reproduced the problem. Remind them to remove passwords, "
-   "keys or customer data before pasting.\n"
-   "- Match your confidence to the evidence. Until a check confirms a cause, say \"the most likely cause is\" or "
-   "\"it could be\", never \"this is almost certainly your issue\". Before saying something isn't possible or "
-   "can't work, check the docs for exceptions; if you've only read one page on the topic, search for others.\n"
-   "- Use setting and option names exactly as the docs write them. If you're not sure of a name, point to the doc "
-   "page instead of guessing or offering alternatives.\n"
-   "- Never ask for passwords, API keys or other secrets. If the user pastes one, tell them to rotate it.\n"
-   "- Write plainly, like a helpful colleague. No openers like \"Great question!\", no emoji. Use headers or "
-   "tables only when the content truly needs them, such as comparing options.\n"
-   "- Mention something from the diagnostic info only when it relates to what the user asked.\n"
-   "- When someone asks what you can do or what you can help with, answer in 2-3 sentences of plain prose, with no "
-   "tables, headers or lists. Say you can help troubleshoot problems and walk through setting things up, name 3-5 "
-   "common examples (not every skill), say you can help with more and can give the full list if they want it, and "
-   "end by asking what they're running into. If they then ask for the full list, give short bullets grouped into "
-   "troubleshooting and how-to, one line each.\n"
-   "- You can't see or change this instance's settings, logs or data. You only know the diagnostic info below "
-   "and what the user tells you.\n\n"
+   (instructions)
+   "\n\n"
    "This instance is running Metabase " (:tag config/mb-version-info) ".\n\n"
    "Diagnostic info from this instance:\n<diagnostic_info>\n"
    (if (str/blank? diagnostic-info) "(not provided)" (u/truncate diagnostic-info 8000))
    "\n</diagnostic_info>\n\n"
-   "# Skills\n\n"
-   (str/join "\n\n" (map skill->prompt (load-skills)))))
+   "# Skill list\n\n"
+   (str/join "\n" (map skill->catalog-line skills))
+   (when (seq loaded-skills)
+     (str "\n\n# Skills loaded earlier in this conversation\n\n"
+          (str/join "\n\n" (map skill->prompt loaded-skills))))))
 
 ;;; --------------------------------------------------- Feedback --------------------------------------------------
 
@@ -308,14 +313,70 @@
               (if (str/blank? comment) "(none)" (u/truncate comment 2000))
               (u/truncate answer 2000)))
 
+;;; ---------------------------------------------------- Flags ----------------------------------------------------
+
+(defn flags-dir
+  "The folder flagged chats are saved to, from the `MB_HELP_ASSISTANT_FLAGS_DIR` environment variable. Flagging is off
+  when it isn't set. It's meant for tuning skills on a local instance, not for production."
+  []
+  (config/config-str :mb-help-assistant-flags-dir))
+
+(defn- yaml-block
+  "`s` as a YAML literal block, so any text (quotes, colons, pasted logs) stays as it is. `indent` goes before each line."
+  [indent s]
+  (let [s (str/trim (str/replace (str s) "\r\n" "\n"))]
+    (if (str/blank? s)
+      "\"\""
+      (str "|-\n" (str/join "\n" (for [line (str/split-lines s)]
+                                   (if (str/blank? line) "" (str indent line))))))))
+
+(defn- flag->yaml
+  "A flagged chat in nearly the same shape as an eval case, so it's easy to turn into one."
+  [{:keys [note messages]} flagged-at]
+  (str "# A chat flagged for review on the Admin > Help page. The flagged answer is the last assistant message.\n"
+       "# To turn flags into eval cases, ask Claude Code to follow help-assistant-notes\\evals\\PROCESS-FLAGS.md.\n"
+       "flagged_at: \"" flagged-at "\"\n"
+       "metabase_version: \"" (:tag config/mb-version-info) "\"\n"
+       "note: " (yaml-block "  " note) "\n"
+       "conversation:\n"
+       (str/join (for [{:keys [role content steps]} messages]
+                   (str "  - " (if (= role "user") "user" "assistant") ": " (yaml-block "      " content) "\n"
+                        ;; JSON is valid YAML, and keeps each step on one line
+                        (when (seq steps) (str "    steps: " (json/encode steps) "\n")))))))
+
+(defn- flag-file-name [^LocalDateTime now messages]
+  (let [question (some #(when (= "user" (:role %)) (:content %)) messages)
+        slug     (-> (u/lower-case-en (str question))
+                     (str/replace #"[^a-z0-9]+" "-")
+                     (u/truncate 40)
+                     (str/replace #"^-+|-+$" ""))]
+    (str (.format now (DateTimeFormatter/ofPattern "yyyy-MM-dd_HHmmss")) "_" (if (str/blank? slug) "chat" slug) ".yaml")))
+
+(defn save-flag!
+  "Save a flagged chat, `{:note \"what should have happened\", :messages [...]}` ending with the flagged answer, as a
+  YAML file in [[flags-dir]]. Returns the file name. Throws a 404 when flagging isn't set up."
+  [{:keys [messages] :as flag}]
+  (let [dir  (or (flags-dir)
+                 (throw (ex-info "Flagging isn't set up. Set MB_HELP_ASSISTANT_FLAGS_DIR and restart Metabase."
+                                 {:status-code 404})))
+        now  (.withNano (LocalDateTime/now) 0)
+        file (io/file dir (flag-file-name now messages))]
+    (.mkdirs (io/file dir))
+    (spit file (flag->yaml flag (str now)) :encoding "UTF-8")
+    (log/infof "Help assistant: saved a flagged chat to %s" file)
+    (.getName file)))
+
 ;;; ------------------------------------------------- Agent loop --------------------------------------------------
 
 (def ^:private max-iterations 8)
 
+;; On EE, AI usage is logged to `ai_usage_log`, which only accepts the sources and profile ids listed in
+;; `metabase-enterprise.metabot.usage` and throws on any other. Adding the help assistant there needs a new version of
+;; the AI usage views and a migration, so for now the prototype logs its usage with the source "unknown" and no
+;; profile id.
 (def ^:private tracking-opts
   {:required-permission :permission/metabot-other-tools
-   :profile-id          :help-assistant
-   :source              "help_assistant"
+   :source              "unknown"
    :tag                 "help-assistant"})
 
 (defn- merge-streamed-text
@@ -375,16 +436,40 @@
   (let [cited (filter #(str/includes? reply (:url %)) sources)]
     (vec (if (seq cited) cited sources))))
 
+(defn- log-steps!
+  "One line per answer at INFO: how many steps it took, and which skills and pages it used. What it searched for is
+  logged at DEBUG, because a search can repeat what the user typed."
+  [iterations steps]
+  (let [of-type (fn [t k] (let [xs (keep #(when (= t (:type %)) (k %)) steps)]
+                            (if (seq xs) (str/join ", " xs) "(none)")))]
+    (log/infof "Help assistant: answered in %d of %d steps. Skills: %s. Pages read: %s"
+               iterations max-iterations (of-type "skill" :skill_id) (of-type "read" :url))
+    (log/debugf "Help assistant: searched the docs for: %s" (of-type "search" :label))))
+
 (defn chat
-  "Run one turn of the conversation. Returns `{:reply \"markdown\", :sources [{:title :url}]}`. Throws a 403 or 503
-  when the AI connection can't be used, and a 502 when the AI provider returns an error."
-  [{:keys [messages diagnostic-info]}]
+  "Run one turn of the conversation. Returns `{:reply \"markdown\", :sources [{:title :url}], :steps [...]}`, where
+  `:steps` says how the answer was made: skills loaded (`skill`), searches (`search`), pages read (`read`), and
+  `limit` when it ran out of steps. `loaded-skills` are the ids of skills loaded earlier in the conversation. Throws a
+  403 or 503 when the AI connection can't be used, and a 502 when the AI provider returns an error."
+  [{:keys [messages diagnostic-info loaded-skills]}]
   (when-let [reason (metabot.self/llm-call-unavailable-reason :permission/metabot-other-tools)]
     (throw (unavailable-error reason)))
-  (let [sources (atom {})
-        tools   (make-tools sources)
+  (let [skills  (load-skills)
+        earlier (vec (keep #(find-skill skills %) (distinct loaded-skills)))
+        sources (atom {})
+        steps   (atom (mapv (fn [skill] {:type     "skill"
+                                         :label    (str (:title skill))
+                                         :skill_id (skill-id skill)
+                                         :earlier  true})
+                            earlier))
+        tools   (make-tools {:sources sources, :steps steps, :skills skills})
         model   (metabot.settings/llm-metabot-provider)
-        system  (system-prompt diagnostic-info)]
+        system  (system-prompt diagnostic-info skills earlier)
+        finish  (fn [iteration result]
+                  (when (= iteration max-iterations)
+                    (record-step! steps {:type "limit", :label (str max-iterations)}))
+                  (log-steps! iteration @steps)
+                  (assoc result :steps @steps))]
     (log/infof "Help assistant: calling %s with %d messages" model (count messages))
     (loop [history   (messages->parts messages)
            iteration 1]
@@ -413,8 +498,8 @@
 
           ;; text next to a tool call is a preamble like "Let me check the docs", not an answer
           (or tool-calls? (str/blank? text))
-          {:reply no-answer-reply, :sources []}
+          (finish iteration {:reply no-answer-reply, :sources []})
 
           :else
-          {:reply   text
-           :sources (cited-sources text (vals @sources))})))))
+          (finish iteration {:reply   text
+                             :sources (cited-sources text (vals @sources))}))))))

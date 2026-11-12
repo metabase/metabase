@@ -7,6 +7,8 @@ import {
   setupHelpAssistantChatEndpoint,
   setupHelpAssistantConversationsEndpoints,
   setupHelpAssistantFeedbackEndpoint,
+  setupHelpAssistantFlagEndpoint,
+  setupHelpAssistantSettingsEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
@@ -23,6 +25,7 @@ import { checkNotNull } from "metabase/utils/types";
 import type {
   HelpAssistantChatResponse,
   HelpAssistantConversation,
+  HelpAssistantStep,
 } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -35,9 +38,20 @@ const SOURCE = {
   url: "https://www.metabase.com/docs/latest/troubleshooting-guide/db-connection",
 };
 
+const SKILL_STEP: HelpAssistantStep = {
+  type: "skill",
+  label: "Database connection failures",
+  skill_id: "troubleshoot-db-connection",
+};
+
 const REPLY: HelpAssistantChatResponse = {
   reply: "Check the **connection string**.",
   sources: [SOURCE],
+  steps: [
+    SKILL_STEP,
+    { type: "search", label: "connection string" },
+    { type: "read", label: SOURCE.title, url: SOURCE.url },
+  ],
 };
 
 const SAVED_CONVERSATION: HelpAssistantConversation = {
@@ -56,6 +70,7 @@ const setup = ({
   chatDelay,
   conversations = {},
   initialRoute = "/admin/help",
+  flagsEnabled = false,
 }: {
   isAdmin?: boolean;
   isConfigured?: boolean;
@@ -63,11 +78,14 @@ const setup = ({
   chatDelay?: number;
   conversations?: Record<string, HelpAssistantConversation>;
   initialRoute?: string;
+  flagsEnabled?: boolean;
 } = {}) => {
   setupBugReportingDetailsEndpoint();
   setupUserMetabotPermissionsEndpoint();
   setupHelpAssistantChatEndpoint(chatResponse, { delay: chatDelay });
   setupHelpAssistantFeedbackEndpoint();
+  setupHelpAssistantSettingsEndpoint({ flagsEnabled });
+  setupHelpAssistantFlagEndpoint();
   setupHelpAssistantConversationsEndpoints(conversations);
 
   const { router } = renderWithProviders(
@@ -173,6 +191,96 @@ describe("HelpAssistant", () => {
     expect(await getLastRequestBody(HELP_ASSISTANT_ROUTES.chat)).toEqual({
       messages: [{ role: "user", content: "Why is sync slow?" }],
     });
+  });
+
+  it("shows how it got the answer", async () => {
+    setup();
+
+    await ask("Why is sync slow?");
+    await screen.findByText("connection string");
+    await userEvent.click(
+      screen.getByRole("button", { name: /How I got this/ }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Loaded the skill “Database connection failures”",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Searched the docs for “connection string”"),
+    ).toBeVisible();
+    expect(screen.getAllByRole("link", { name: SOURCE.title })).toHaveLength(2);
+  });
+
+  it("sends back the skills loaded earlier in the conversation", async () => {
+    setup();
+
+    await ask("Why is sync slow?");
+    await screen.findByText("connection string");
+    await ask("Still slow");
+
+    await waitFor(async () =>
+      expect(await getLastRequestBody(HELP_ASSISTANT_ROUTES.chat)).toEqual(
+        expect.objectContaining({
+          loaded_skills: ["troubleshoot-db-connection"],
+        }),
+      ),
+    );
+  });
+
+  it("doesn't show steps for answers saved before they were recorded", async () => {
+    setup({
+      conversations: { saved: SAVED_CONVERSATION },
+      initialRoute: "/admin/help/chat/saved",
+    });
+
+    expect(await screen.findByText("hourly")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /How I got this/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("doesn't offer flagging when it isn't set up", async () => {
+    setup();
+
+    await ask("Why is sync slow?");
+    await screen.findByText("connection string");
+
+    expect(
+      screen.queryByRole("button", { name: "Flag for review" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("flags an answer for review with a note", async () => {
+    setup({ flagsEnabled: true });
+
+    await ask("Why is sync slow?");
+    await screen.findByText("connection string");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Flag for review" }),
+    );
+    const saveButton = await screen.findByRole("button", {
+      name: "Save for review",
+    });
+    expect(saveButton).toBeDisabled();
+    await userEvent.type(
+      screen.getByLabelText("What should it have done?"),
+      "Ask which database first",
+    );
+    await userEvent.click(saveButton);
+
+    expect(await screen.findByText("Saved for review")).toBeInTheDocument();
+    expect(await getLastRequestBody(HELP_ASSISTANT_ROUTES.flag)).toEqual({
+      note: "Ask which database first",
+      messages: [
+        { role: "user", content: "Why is sync slow?" },
+        { role: "assistant", content: REPLY.reply, steps: REPLY.steps },
+      ],
+    });
+    expect(
+      screen.getByRole("button", { name: "Flagged for review" }),
+    ).toBeInTheDocument();
   });
 
   it("sends a typed question with Enter", async () => {
@@ -306,6 +414,7 @@ describe("HelpAssistant", () => {
             role: "assistant",
             content: REPLY.reply,
             sources: REPLY.sources,
+            steps: REPLY.steps,
           },
         ],
       },

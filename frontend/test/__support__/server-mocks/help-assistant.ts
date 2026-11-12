@@ -11,6 +11,7 @@ const CONVERSATIONS_PATH = "/api/user-key-value/namespace/help_assistant";
 export const HELP_ASSISTANT_ROUTES = {
   chat: "help-assistant-chat",
   feedback: "help-assistant-feedback",
+  flag: "help-assistant-flag",
   saveConversation: "help-assistant-save-conversation",
   deleteConversation: "help-assistant-delete-conversation",
 } as const;
@@ -30,6 +31,22 @@ export function setupHelpAssistantFeedbackEndpoint() {
     "path:/api/help-assistant/feedback",
     { status: 204 },
     { name: HELP_ASSISTANT_ROUTES.feedback },
+  );
+}
+
+export function setupHelpAssistantSettingsEndpoint({
+  flagsEnabled = false,
+}: { flagsEnabled?: boolean } = {}) {
+  fetchMock.get("path:/api/help-assistant/settings", {
+    flags_enabled: flagsEnabled,
+  });
+}
+
+export function setupHelpAssistantFlagEndpoint() {
+  fetchMock.post(
+    "path:/api/help-assistant/flag",
+    { file: "2026-11-10_120000_why-is-sync-slow.yaml" },
+    { name: HELP_ASSISTANT_ROUTES.flag },
   );
 }
 

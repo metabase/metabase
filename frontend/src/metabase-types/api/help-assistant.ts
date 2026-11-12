@@ -13,8 +13,22 @@ export type HelpAssistantFeedback = {
   comment?: string | null;
 };
 
+/**
+ * One thing the assistant did to get an answer: load a skill, search the docs,
+ * read a page, or run out of steps. `earlier` marks a skill it loaded earlier
+ * in the conversation.
+ */
+export type HelpAssistantStep = {
+  type: "skill" | "search" | "read" | "limit";
+  label: string;
+  skill_id?: string;
+  url?: string;
+  earlier?: boolean;
+};
+
 export type HelpAssistantChatEntry = HelpAssistantMessage & {
   sources?: HelpAssistantSource[];
+  steps?: HelpAssistantStep[];
   feedback?: HelpAssistantFeedback;
 };
 
@@ -30,11 +44,30 @@ export type HelpAssistantConversation = {
 export type HelpAssistantChatRequest = {
   messages: HelpAssistantMessage[];
   diagnostic_info?: string;
+  /** Ids of the skills loaded earlier in the conversation. */
+  loaded_skills?: string[];
 };
 
 export type HelpAssistantChatResponse = {
   reply: string;
   sources: HelpAssistantSource[];
+  steps: HelpAssistantStep[];
+};
+
+/** Optional features, set on the server. */
+export type HelpAssistantSettings = {
+  /** Whether admins can flag answers for review (`MB_HELP_ASSISTANT_FLAGS_DIR` is set). */
+  flags_enabled: boolean;
+};
+
+/** A chat saved for review. It ends with the flagged answer. */
+export type HelpAssistantFlagRequest = {
+  note: string;
+  messages: (HelpAssistantMessage & { steps?: HelpAssistantStep[] })[];
+};
+
+export type HelpAssistantFlagResponse = {
+  file: string;
 };
 
 export type HelpAssistantFeedbackRequest = HelpAssistantFeedback & {

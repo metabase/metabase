@@ -4,6 +4,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupBugReportingDetailsEndpoint,
   setupHelpAssistantConversationsEndpoints,
+  setupHelpAssistantSettingsEndpoint,
   setupTokenStatusEndpointEmpty,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -51,6 +52,7 @@ const setup = ({
   }
   setupBugReportingDetailsEndpoint();
   setupHelpAssistantConversationsEndpoints(conversations);
+  setupHelpAssistantSettingsEndpoint();
 
   renderWithProviders(
     <Route

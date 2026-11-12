@@ -11,7 +11,7 @@ If the problem is filter dropdown values that are missing or out of date, use th
 
 Ask one question at a time, and skip any the user has already answered.
 
-First questions, in this order:
+If the user chose questions, ask these first, in this order:
 1. Is it missing for everyone, or only for some people? If only some people, it's more likely permissions; use the skill for people who can't see data.
 2. Is it one table or column, or a whole database or schema?
 3. Is it new in the database, or was it in Metabase before?

@@ -1,11 +1,14 @@
 (ns metabase.help-assistant.core-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.help-assistant.core :as help-assistant]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private test-docs
   {"configuring-metabase/timezones.md"
@@ -96,7 +99,9 @@
                                       (tool-call n)))
                                   #(help-assistant/chat {:messages question}))]
       (is (= 8 calls))
-      (is (= "Check the report timezone." (:reply result)))))
+      (is (= "Check the report timezone." (:reply result)))
+      (testing "and the steps say it ran out of steps"
+        (is (= {:type "limit", :label "8"} (last (:steps result)))))))
   (doseq [[description last-step] {"a tool call at the last step" tool-call
                                    "a blank last step"            (constantly [{:type :text, :id "final", :text " "}])}]
     (testing (str description " gives a reply that says what to do next, not the preamble of a tool call")
@@ -125,6 +130,57 @@
                (:sources (chat (str "See [Troubleshooting timezones](" url ")."))))))
       (testing "when the answer links no page, every page read is listed"
         (is (= 2 (count (:sources (chat "Which database do you use?")))))))))
+
+(def ^:private test-skills
+  [{:id "troubleshoot-timezones", :title "Timezones", :description "Dates are off.", :body "Ask which timezone."}
+   {:id "howto-dashboards", :title "Dashboards", :description "Building dashboards.", :body "Add a question."}])
+
+(deftest instructions-test
+  (testing "the instructions come from resources/help_assistant/instructions.md, without the notes for people at the top"
+    (let [text (#'help-assistant/instructions)]
+      (is (str/starts-with? text "You are the Metabase Help assistant."))
+      (is (not (str/includes? text "<!--")))
+      (is (str/starts-with? (#'help-assistant/system-prompt nil [] []) text)))))
+
+(deftest system-prompt-test
+  (let [prompt #(#'help-assistant/system-prompt nil test-skills %)]
+    (testing "every skill is listed, without its instructions"
+      (is (str/includes? (prompt []) "- troubleshoot-timezones: Timezones. When to use: Dates are off."))
+      (is (str/includes? (prompt []) "- howto-dashboards: Dashboards. When to use: Building dashboards."))
+      (is (not (str/includes? (prompt []) "Ask which timezone."))))
+    (testing "skills loaded earlier in the conversation are included in full"
+      (is (str/includes? (prompt [(first test-skills)]) "Ask which timezone."))
+      (is (not (str/includes? (prompt [(first test-skills)]) "Add a question."))))))
+
+(deftest chat-steps-test
+  (with-test-docs
+    (mt/with-dynamic-fn-redefs [help-assistant/load-skills (constantly test-skills)]
+      (let [url     (help-assistant/doc-url "troubleshooting-guide/timezones.md")
+            outputs (atom [])
+            chat    (fn [request]
+                      (:result (do-with-stubbed-llm
+                                (fn [_n _system tools]
+                                  (doseq [[tool args] [["load_skill" {:id "troubleshoot-timezones"}]
+                                                       ["load_skill" {:id "no-such-skill"}]
+                                                       ["search_docs" {:query "timezone"}]
+                                                       ["read_doc" {:path "troubleshooting-guide/timezones.md"}]]]
+                                    (swap! outputs conj (:output ((get-in tools [tool :fn]) args))))
+                                  [{:type :text, :id "final", :text (str "See [Troubleshooting timezones](" url ").")}])
+                                #(help-assistant/chat (merge {:messages question} request)))))]
+        (testing "each answer says which skills it loaded, what it searched for and which pages it read"
+          (is (= [{:type "skill", :label "Timezones", :skill_id "troubleshoot-timezones"}
+                  {:type "search", :label "timezone"}
+                  {:type "read", :label "Troubleshooting timezones", :url url}]
+                 (:steps (chat {})))))
+        (testing "load_skill returns the skill's instructions, or says the id is wrong"
+          (is (str/includes? (first @outputs) "Ask which timezone."))
+          (is (str/includes? (first @outputs) "How to use this skill when troubleshooting"))
+          (is (str/starts-with? (second @outputs) "No skill with id \"no-such-skill\"")))
+        (testing "a skill loaded earlier is marked as earlier, and loading it again isn't a new step"
+          (let [steps (:steps (chat {:loaded-skills ["troubleshoot-timezones" "no-such-skill"]}))]
+            (is (= {:type "skill", :label "Timezones", :skill_id "troubleshoot-timezones", :earlier true}
+                   (first steps)))
+            (is (= 3 (count steps)))))))))
 
 (deftest chat-unavailable-test
   (doseq [[reason status-code] {:no-llm 503, :metabot-disabled 503, :permission-denied 403}]
@@ -160,3 +216,27 @@
                                     :comment  " "
                                     :question "Why are my dates off?"
                                     :answer   "Check the report timezone."})))))
+
+(deftest save-flag-test
+  (testing "flagging is off when no folder is set"
+    (mt/with-dynamic-fn-redefs [help-assistant/flags-dir (constantly nil)]
+      (is (= 404 (try
+                   (help-assistant/save-flag! {:note "x", :messages question})
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (:status-code (ex-data e))))))))
+  (testing "a flagged chat is saved as a YAML file named after the question, with the text as it is"
+    (let [dir (str (java.nio.file.Files/createTempDirectory "help-flags" (make-array java.nio.file.attribute.FileAttribute 0)))]
+      (mt/with-dynamic-fn-redefs [help-assistant/flags-dir (constantly dir)]
+        (let [file (help-assistant/save-flag!
+                    {:note     "Should ask about the recipients first"
+                     :messages [{:role "user", :content "Why are my dates off?"}
+                                {:role    "assistant"
+                                 :content "Check: the \"report timezone\".\r\n\r\n- one\n- two"
+                                 :steps   [{:type "skill", :label "Timezones", :skill_id "troubleshoot-timezones"}]}]})
+              text (slurp (io/file dir file))]
+          (is (re-matches #"\d{4}-\d\d-\d\d_\d{6}_why-are-my-dates-off\.yaml" file))
+          (is (str/includes? text "note: |-\n  Should ask about the recipients first\n"))
+          (is (str/includes? text "  - user: |-\n      Why are my dates off?\n"))
+          (is (str/includes? text "  - assistant: |-\n      Check: the \"report timezone\".\n\n      - one\n      - two\n"))
+          (is (str/includes? text "    steps: [{\"type\":\"skill\",\"label\":\"Timezones\"")))))))

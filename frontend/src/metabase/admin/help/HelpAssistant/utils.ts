@@ -50,6 +50,18 @@ export function withoutUnansweredQuestion(
   return getUnansweredQuestion(entries) ? entries.slice(0, -1) : [...entries];
 }
 
+/** Ids of the skills the assistant loaded earlier in the conversation. */
+export function getLoadedSkillIds(
+  entries: readonly HelpAssistantChatEntry[],
+): string[] {
+  const ids = entries.flatMap((entry) =>
+    (entry.steps ?? []).flatMap((step) =>
+      step.type === "skill" && step.skill_id ? [step.skill_id] : [],
+    ),
+  );
+  return [...new Set(ids)];
+}
+
 export function getAnswerMarkdown({
   content,
   sources = [],

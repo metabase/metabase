@@ -12,7 +12,7 @@ references:
 ---
 Ask one question at a time, and skip any the user has already answered.
 
-First questions, in this order:
+If the user chose questions, ask these first, in this order:
 1. The exact error message, and which database it is. The diagnostic info lists the database engines in use.
 2. Is this a new connection, or one that used to work? If it used to work, ask what changed on the database side, such as a rotated password, a firewall change, a moved host or a renewed certificate.
 3. Is this Metabase Cloud or self-hosted? The network causes differ.

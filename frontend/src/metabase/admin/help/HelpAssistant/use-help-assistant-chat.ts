@@ -14,6 +14,8 @@ import type {
 
 import {
   useDeleteHelpAssistantConversationMutation,
+  useFlagHelpAssistantAnswerMutation,
+  useGetHelpAssistantSettingsQuery,
   useListHelpAssistantConversationsQuery,
   useSaveHelpAssistantConversationMutation,
   useSendHelpAssistantFeedbackMutation,
@@ -21,6 +23,7 @@ import {
 } from "./api";
 import {
   getConversationTitle,
+  getLoadedSkillIds,
   getRecentConversations,
   getUnansweredQuestion,
   withoutUnansweredQuestion,
@@ -59,6 +62,10 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
   const isAdmin = useSelector(getUserIsAdmin);
   const { data: savedConversations, isSuccess: areConversationsLoaded } =
     useListHelpAssistantConversationsQuery(undefined, { skip: !isAdmin });
+  const { data: settings } = useGetHelpAssistantSettingsQuery(undefined, {
+    skip: !isAdmin,
+  });
+  const [sendFlag] = useFlagHelpAssistantAnswerMutation();
 
   // The same for saved chats: they can change while an answer loads.
   const savedConversationsRef = useLatest(savedConversations);
@@ -107,9 +114,13 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       nextEntries: HelpAssistantChatEntry[],
     ) => {
       reset();
+      // Skills loaded earlier are sent back in full, so the assistant doesn't
+      // spend a step loading them again on every turn.
+      const loadedSkills = getLoadedSkillIds(nextEntries);
       const pendingRequest = sendMessage({
         messages: nextEntries.map(({ role, content }) => ({ role, content })),
         diagnostic_info: includeDiagnosticInfo ? diagnosticInfo : undefined,
+        loaded_skills: loadedSkills.length > 0 ? loadedSkills : undefined,
       });
       pendingRequestRef.current = pendingRequest;
 
@@ -125,10 +136,10 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       pendingRequestRef.current = null;
 
       if (result.data) {
-        const { reply, sources } = result.data;
+        const { reply, sources, steps } = result.data;
         const answeredEntries: HelpAssistantChatEntry[] = [
           ...entriesRef.current,
-          { role: "assistant", content: reply, sources },
+          { role: "assistant", content: reply, sources, steps },
         ];
         setEntries(answeredEntries);
         save(id, answeredEntries);
@@ -271,6 +282,21 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
     ],
   );
 
+  /** Saves the chat up to and including the answer, for turning into an eval case. */
+  const flagAnswer = useCallback(
+    (answerIndex: number, note: string) =>
+      sendFlag({
+        note,
+        messages: entries
+          .slice(0, answerIndex + 1)
+          .map(({ role, content, steps }) =>
+            steps ? { role, content, steps } : { role, content },
+          ),
+      }).unwrap(),
+    [entries, sendFlag],
+  );
+  const flagsEnabled = settings?.flags_enabled ?? false;
+
   return useMemo(
     () => ({
       conversationId,
@@ -294,6 +320,8 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       deleteConversation: removeConversation,
       restoreConversation,
       rateAnswer,
+      flagsEnabled,
+      flagAnswer,
     }),
     [
       conversationId,
@@ -315,6 +343,8 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       removeConversation,
       restoreConversation,
       rateAnswer,
+      flagsEnabled,
+      flagAnswer,
     ],
   );
 }

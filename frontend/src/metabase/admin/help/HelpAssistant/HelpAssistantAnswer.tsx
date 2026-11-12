@@ -1,5 +1,5 @@
 import { useClipboard, useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -9,6 +9,7 @@ import {
   ActionIcon,
   Box,
   Button,
+  Collapse,
   Group,
   Icon,
   Popover,
@@ -16,11 +17,13 @@ import {
   Text,
   Textarea,
   Tooltip,
+  UnstyledButton,
 } from "metabase/ui";
 import type {
   HelpAssistantChatEntry,
   HelpAssistantFeedback,
   HelpAssistantSource,
+  HelpAssistantStep,
 } from "metabase-types/api";
 
 import S from "./HelpAssistant.module.css";
@@ -29,11 +32,14 @@ import { getAnswerMarkdown } from "./utils";
 interface HelpAssistantAnswerProps {
   entry: HelpAssistantChatEntry;
   onRate: (feedback: HelpAssistantFeedback) => void;
+  /** Only when flagging is set up on the server. */
+  onFlag?: (note: string) => Promise<unknown>;
 }
 
 export function HelpAssistantAnswer({
   entry,
   onRate,
+  onFlag,
 }: HelpAssistantAnswerProps) {
   return (
     <Box className={S.answer}>
@@ -41,7 +47,9 @@ export function HelpAssistantAnswer({
       {entry.sources && entry.sources.length > 0 && (
         <AnswerSources sources={entry.sources} />
       )}
-      <AnswerActions entry={entry} onRate={onRate} />
+      {/* Saved before steps were recorded, older answers have none to show. */}
+      {entry.steps && <AnswerSteps steps={entry.steps} />}
+      <AnswerActions entry={entry} onRate={onRate} onFlag={onFlag} />
     </Box>
   );
 }
@@ -60,7 +68,90 @@ function AnswerSources({ sources }: { sources: HelpAssistantSource[] }) {
   );
 }
 
-function AnswerActions({ entry, onRate }: HelpAssistantAnswerProps) {
+/** How the answer was made: the skills, searches and pages it used. */
+function AnswerSteps({ steps }: { steps: HelpAssistantStep[] }) {
+  const [isOpen, { toggle }] = useDisclosure(false);
+
+  return (
+    <Box mt="md">
+      <UnstyledButton onClick={toggle} aria-expanded={isOpen}>
+        <Group gap="xs" wrap="nowrap">
+          <Icon
+            name={isOpen ? "chevrondown" : "chevronright"}
+            size={12}
+            c="text-secondary"
+          />
+          <Text size="sm" c="text-secondary">{t`How I got this`}</Text>
+        </Group>
+      </UnstyledButton>
+      <Collapse in={isOpen}>
+        <Stack gap="xxs" mt="xs" pl="lg">
+          {steps.length === 0 ? (
+            <Text size="sm" c="text-secondary">
+              {t`Answered from the conversation, without a skill or the docs.`}
+            </Text>
+          ) : (
+            steps.map((step, index) => <AnswerStep key={index} step={step} />)
+          )}
+        </Stack>
+      </Collapse>
+    </Box>
+  );
+}
+
+function AnswerStep({ step }: { step: HelpAssistantStep }) {
+  const { label } = step;
+  switch (step.type) {
+    case "skill":
+      return (
+        <StepLine icon="lightbulb">
+          {step.earlier
+            ? t`Kept following the skill “${label}”, loaded earlier`
+            : t`Loaded the skill “${label}”`}
+        </StepLine>
+      );
+    case "search":
+      return (
+        <StepLine icon="search">{t`Searched the docs for “${label}”`}</StepLine>
+      );
+    case "read":
+      return (
+        <StepLine icon="document">
+          {t`Read`}{" "}
+          {step.url ? (
+            <ExternalLink href={step.url}>{label}</ExternalLink>
+          ) : (
+            label
+          )}
+        </StepLine>
+      );
+    case "limit":
+      return (
+        <StepLine icon="warning">
+          {t`Used all ${label} steps, so it had to stop looking`}
+        </StepLine>
+      );
+  }
+}
+
+function StepLine({
+  icon,
+  children,
+}: {
+  icon: "lightbulb" | "search" | "document" | "warning";
+  children: ReactNode;
+}) {
+  return (
+    <Group gap="xs" wrap="nowrap" align="flex-start">
+      <Icon name={icon} c="text-secondary" />
+      <Text size="sm" c="text-secondary">
+        {children}
+      </Text>
+    </Group>
+  );
+}
+
+function AnswerActions({ entry, onRate, onFlag }: HelpAssistantAnswerProps) {
   const clipboard = useClipboard({ timeout: 2000 });
   const [sendToast] = useToast();
   const [
@@ -128,7 +219,98 @@ function AnswerActions({ entry, onRate }: HelpAssistantAnswerProps) {
           />
         </Popover.Dropdown>
       </Popover>
+      {onFlag && <FlagForReview onFlag={onFlag} />}
     </Group>
+  );
+}
+
+/** Saves the chat with a note, to turn into an eval case for tuning the skills. */
+function FlagForReview({
+  onFlag,
+}: {
+  onFlag: (note: string) => Promise<unknown>;
+}) {
+  const [sendToast] = useToast();
+  const [isFormOpen, { open: openForm, close: closeForm }] =
+    useDisclosure(false);
+  const [isFlagged, setIsFlagged] = useState(false);
+  const label = isFlagged ? t`Flagged for review` : t`Flag for review`;
+
+  const flag = async (note: string) => {
+    try {
+      await onFlag(note);
+      setIsFlagged(true);
+      closeForm();
+      sendToast({ message: t`Saved for review` });
+    } catch {
+      sendToast({ message: t`Couldn't save it for review. Try again.` });
+    }
+  };
+
+  return (
+    <Popover
+      opened={isFormOpen}
+      onClose={closeForm}
+      position="bottom-start"
+      width={360}
+      trapFocus
+    >
+      <Popover.Target>
+        <Tooltip label={label} disabled={isFormOpen}>
+          <ActionIcon
+            aria-label={label}
+            c={isFlagged ? "brand" : undefined}
+            onClick={openForm}
+          >
+            <Icon name="flag" />
+          </ActionIcon>
+        </Tooltip>
+      </Popover.Target>
+      <Popover.Dropdown p="md">
+        <FlagForm onSubmit={flag} onCancel={closeForm} />
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
+
+interface FlagFormProps {
+  onSubmit: (note: string) => Promise<void>;
+  onCancel: () => void;
+}
+
+function FlagForm({ onSubmit, onCancel }: FlagFormProps) {
+  const [note, setNote] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const submit = async () => {
+    setIsSaving(true);
+    await onSubmit(note.trim());
+    setIsSaving(false);
+  };
+
+  return (
+    <Stack gap="sm">
+      <Textarea
+        label={t`What should it have done?`}
+        description={t`Saves this chat so it can become a test case for the skills.`}
+        placeholder={t`For example, ask who the recipients are before listing causes`}
+        value={note}
+        onChange={(event) => setNote(event.currentTarget.value)}
+        autosize
+        minRows={3}
+        maxRows={8}
+        data-autofocus
+      />
+      <Group justify="flex-end" gap="sm">
+        <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
+        <Button
+          variant="filled"
+          disabled={!note.trim()}
+          loading={isSaving}
+          onClick={submit}
+        >{t`Save for review`}</Button>
+      </Group>
+    </Stack>
   );
 }
 
