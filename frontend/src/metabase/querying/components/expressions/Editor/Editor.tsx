@@ -1,3 +1,4 @@
+import { snippet } from "@codemirror/autocomplete";
 import { unifiedMergeView } from "@codemirror/merge";
 import { EditorSelection, type EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
@@ -25,9 +26,11 @@ import {
 import {
   type ExpressionError,
   diagnoseAndCompile,
+  expressionClauseSnippet,
   format,
   formatIdentifier,
   getClauseDefinition,
+  insertExpressionTemplate,
   tokenAtPos,
 } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
@@ -37,12 +40,9 @@ import type { Database } from "metabase-types/api";
 
 import { useDiffControls } from "../../CodeMirrorEditor/use-diff-controls";
 import { AvailableColumnsBrowser } from "../AvailableColumnsBrowser";
+import { ExpressionSidePanel } from "../ExpressionSidePanel";
 import type { ExpressionSidebarName } from "../ExpressionSidebar";
-import {
-  ExpressionSidebarPanel,
-  useExpressionSidebarHost,
-} from "../ExpressionSidebar";
-import { FunctionBrowser } from "../FunctionBrowser";
+import { ExpressionSidebarPanel } from "../ExpressionSidebar";
 import { useGenerateExpression } from "../GenerateExpressionPrompt";
 import { LayoutMain, LayoutSidebar } from "../Layout";
 
@@ -62,6 +62,7 @@ import { useExtensions } from "./extensions";
 import { closeInlinePrompt, inlinePrompt } from "./inline-prompt";
 import { showErrors as showErrorMarks } from "./language";
 import { useParameterHints } from "./parameter-hints";
+import { useEditorSidebar } from "./use-editor-sidebar";
 import { hasActiveSnippet, useInitialClause } from "./utils";
 
 export type EditorProps = {
@@ -188,14 +189,7 @@ export function Editor(props: EditorProps) {
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
   );
-  const [localSidebar, setLocalSidebar] =
-    useState<ExpressionSidebarName | null>(null);
-
-  const sidebarHost = useExpressionSidebarHost();
-  const host = inline ? sidebarHost : null;
-
-  const openSidebar = host ? host.openSidebar : localSidebar;
-  const setOpenSidebar = host ? host.setOpenSidebar : setLocalSidebar;
+  const { host, openSidebar, setOpenSidebar } = useEditorSidebar({ inline });
 
   const toggleSidebar = useCallback(
     (name: ExpressionSidebarName) =>
@@ -508,26 +502,25 @@ export function Editor(props: EditorProps) {
     [isProposing, onSourceChange],
   );
 
+  // Inserts the function with its argument placeholders, the same way
+  // autocomplete does, and selects the first one.
   const handleFunctionBrowserClauseClick = useCallback((name: string) => {
     const view = ref.current?.view;
-    if (!view) {
-      return;
-    }
     const clause = getClauseDefinition(name);
-    if (!clause) {
+    if (!view || !clause) {
       return;
     }
 
-    const text = `${clause.displayName}()`;
-    const len = clause.displayName.length + 1; // + 1 for the parenthesis
+    const { from, to } = view.state.selection.main;
+    view.focus();
+    snippet(expressionClauseSnippet(clause))(view, null, from, to);
+  }, []);
 
-    view?.focus();
-    view?.dispatch(
-      view.state.changeByRange((range) => ({
-        range: EditorSelection.cursor(range.from + len),
-        changes: [{ from: range.from, to: range.to, insert: text }],
-      })),
-    );
+  const handleTemplateClick = useCallback((code: string) => {
+    const view = ref.current?.view;
+    if (view) {
+      insertExpressionTemplate(view, code);
+    }
   }, []);
 
   const handleColumnClick = useCallback(
@@ -572,25 +565,33 @@ export function Editor(props: EditorProps) {
 
   const canFormat = source.trim() !== "" && error == null && isValidated;
 
-  const sidebarTitle =
-    openSidebar === "columns"
-      ? t`Available columns`
-      : t`Custom expression functions`;
+  const closeSidebar = useCallback(
+    () => setOpenSidebar(null),
+    [setOpenSidebar],
+  );
 
+  // The side panel has its own header. The column list uses the sidebar's.
   const sidebarContent =
     openSidebar === "columns" ? (
-      <AvailableColumnsBrowser
-        query={query}
-        stageIndex={stageIndex}
-        availableColumns={availableColumns}
-        onColumnClick={handleColumnClick}
-      />
+      <ExpressionSidebarPanel
+        title={t`Available columns`}
+        onClose={closeSidebar}
+      >
+        <AvailableColumnsBrowser
+          query={query}
+          stageIndex={stageIndex}
+          availableColumns={availableColumns}
+          onColumnClick={handleColumnClick}
+        />
+      </ExpressionSidebarPanel>
     ) : (
-      <FunctionBrowser
+      <ExpressionSidePanel
         expressionMode={expressionMode}
-        reportTimezone={reportTimezone}
         query={query}
-        onClauseClick={handleFunctionBrowserClauseClick}
+        reportTimezone={reportTimezone}
+        onClose={closeSidebar}
+        onFunctionClick={handleFunctionBrowserClauseClick}
+        onTemplateClick={handleTemplateClick}
       />
     );
 
@@ -734,15 +735,7 @@ export function Editor(props: EditorProps) {
 
       {openSidebar != null &&
         (host?.container ? (
-          createPortal(
-            <ExpressionSidebarPanel
-              title={sidebarTitle}
-              onClose={() => setOpenSidebar(null)}
-            >
-              {sidebarContent}
-            </ExpressionSidebarPanel>,
-            host.container,
-          )
+          createPortal(sidebarContent, host.container)
         ) : (
           <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
             {sidebarContent}

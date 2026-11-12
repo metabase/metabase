@@ -1,4 +1,7 @@
-import { autocompletion } from "@codemirror/autocomplete";
+import {
+  type CompletionSource,
+  autocompletion,
+} from "@codemirror/autocomplete";
 
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
@@ -16,6 +19,8 @@ export type SuggestOptions = {
   /** Display names of the functions to suggest while the expression is empty. */
   popularFunctions?: string[];
 };
+
+import { getTemplateFieldKind } from "../templates";
 
 import { suggestAggregations } from "./aggregations";
 import { suggestFields } from "./fields";
@@ -35,18 +40,30 @@ export function suggestions(options: SuggestOptions) {
     activateOnTyping: true,
     activateOnTypingDelay: 0,
     override: [
-      popular,
-      suggestLiterals(),
-      suggestFunctions(options),
-      suggestAggregations(options),
+      quietOnTemplateBlanks(popular),
+      quietOnTemplateBlanks(suggestLiterals()),
+      quietOnTemplateBlanks(suggestFunctions(options)),
+      quietOnTemplateBlanks(suggestAggregations(options)),
+      // Offers every column on a template's column blank.
       suggestFields(options),
-      suggestMetrics(options),
-      suggestMeasures(options),
-      suggestSegments(options),
+      quietOnTemplateBlanks(suggestMetrics(options)),
+      quietOnTemplateBlanks(suggestMeasures(options)),
+      quietOnTemplateBlanks(suggestSegments(options)),
       // Last, so that their options come after the text matches.
-      suggestRelatedFunctions(options),
-      suggestRelatedColumns(options),
+      quietOnTemplateBlanks(suggestRelatedFunctions(options)),
+      quietOnTemplateBlanks(suggestRelatedColumns(options)),
     ].filter(isNotNull),
   });
   return [completion, placeholders, popular != null ? openWhenEmpty() : []];
+}
+
+/** On a template's blank, only the column list may show. */
+function quietOnTemplateBlanks(
+  source: CompletionSource | null,
+): CompletionSource | null {
+  if (source === null) {
+    return null;
+  }
+  return (context) =>
+    getTemplateFieldKind(context.state) === null ? source(context) : null;
 }

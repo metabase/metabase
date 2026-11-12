@@ -2,7 +2,7 @@ import { useExpressionSidebarHost } from "metabase/querying/components/expressio
 
 import { ViewSidebar } from "../../ViewSidebar";
 
-const SIDEBAR_WIDTH = 420;
+const SIDEBAR_WIDTH = 360;
 
 export function ExpressionSidebarSlot() {
   const host = useExpressionSidebarHost();

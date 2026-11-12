@@ -6,7 +6,10 @@ import {
   EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
   usePrototypeSetting,
 } from "metabase/prototype";
-import { suggestions } from "metabase/querying/expressions";
+import {
+  expressionTemplates,
+  suggestions,
+} from "metabase/querying/expressions";
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
@@ -64,6 +67,7 @@ export function useExtensions(options: Options): Extension[] {
         database,
       }),
       expander(),
+      expressionTemplates({ activeClassName: S.templateActive }),
       suggestions({
         query,
         stageIndex,

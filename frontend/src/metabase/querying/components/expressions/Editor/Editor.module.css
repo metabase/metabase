@@ -162,3 +162,9 @@
 .editor :global(.cm-content .cm-snippetFieldPosition) {
   border-left-color: var(--mb-color-border-brand);
 }
+
+/* While a template from the side panel is being filled in. Its blanks look
+   like other snippet fields; the empty stop at its end is hidden. */
+.templateActive :global(.cm-content .cm-snippetFieldPosition) {
+  display: none;
+}

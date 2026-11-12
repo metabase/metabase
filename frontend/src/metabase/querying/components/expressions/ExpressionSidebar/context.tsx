@@ -6,6 +6,9 @@ export type ExpressionSidebarName = "functions" | "columns";
 export type ExpressionSidebarHost = {
   openSidebar: ExpressionSidebarName | null;
   setOpenSidebar: (name: ExpressionSidebarName | null) => void;
+  /** The editor that opened the sidebar, when several are on the page. */
+  owner: string | null;
+  setOwner: (owner: string | null) => void;
   container: HTMLElement | null;
   setContainer: (element: HTMLElement | null) => void;
 };
@@ -27,11 +30,19 @@ export function ExpressionSidebarProvider({
   const [openSidebar, setOpenSidebar] = useState<ExpressionSidebarName | null>(
     null,
   );
+  const [owner, setOwner] = useState<string | null>(null);
   const [container, setContainer] = useState<HTMLElement | null>(null);
 
   const value = useMemo(
-    () => ({ openSidebar, setOpenSidebar, container, setContainer }),
-    [openSidebar, container],
+    () => ({
+      openSidebar,
+      setOpenSidebar,
+      owner,
+      setOwner,
+      container,
+      setContainer,
+    }),
+    [openSidebar, owner, container],
   );
 
   return (

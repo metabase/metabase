@@ -7,4 +7,5 @@ export * from "./identifier";
 export * from "./mode";
 export * from "./position";
 export * from "./suggestions";
+export * from "./templates";
 export * from "./types";

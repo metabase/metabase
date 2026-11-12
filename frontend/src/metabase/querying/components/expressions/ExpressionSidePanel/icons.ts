@@ -1,5 +1,6 @@
 import ChevronDownIcon from "metabase/ui/components/icons/Icon/new-icons/chevron-down.svg?component";
 import ChevronUpIcon from "metabase/ui/components/icons/Icon/new-icons/chevron-up.svg?component";
+import ConversionIcon from "metabase/ui/components/icons/Icon/new-icons/conversion.svg?component";
 import ConvertIcon from "metabase/ui/components/icons/Icon/new-icons/convert.svg?component";
 import DateIcon from "metabase/ui/components/icons/Icon/new-icons/date.svg?component";
 import FunctionGeneralIcon from "metabase/ui/components/icons/Icon/new-icons/function-general.svg?component";
@@ -15,6 +16,7 @@ import type { SidePanelIconName } from "./content";
 export { ChevronDownIcon, ChevronUpIcon, SearchIcon };
 
 export const SIDE_PANEL_ICONS: Record<SidePanelIconName, typeof ConvertIcon> = {
+  conversion: ConversionIcon,
   convert: ConvertIcon,
   date: DateIcon,
   "function-general": FunctionGeneralIcon,

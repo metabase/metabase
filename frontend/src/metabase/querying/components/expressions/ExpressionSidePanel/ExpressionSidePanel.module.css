@@ -1,0 +1,166 @@
+/* The whole panel. Its 360px width is SIDEBAR_WIDTH in ExpressionSidebarSlot.tsx */
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--mb-color-background_surface-primary);
+}
+
+/* Top row: "Custom expressions" and the close button */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--mantine-spacing-xl);
+}
+
+.title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 20px;
+  letter-spacing: 0.17px;
+  color: var(--mb-color-text-primary);
+}
+
+/* The search and the Templates / Functions switch, which stay put while the
+   list scrolls */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  padding: 0 var(--mantine-spacing-xl);
+}
+
+/* Everything below the switch. The 32px top padding is the gap under it. */
+.scrollArea {
+  flex: 1;
+  min-height: 0;
+  margin-top: var(--mantine-spacing-xxl);
+}
+
+/* The grey band between sections, 32px from the rows on either side */
+.divider {
+  height: 8px;
+  margin: var(--mantine-spacing-xxl) 0;
+  background-color: var(--mb-color-background_page-secondary);
+  box-shadow: inset 0 0.5px 0 var(--mb-color-border-neutral);
+}
+
+/* A section, such as Text or Dates */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-lg);
+
+  &:last-child {
+    padding-bottom: var(--mantine-spacing-xxl);
+  }
+}
+
+.sectionTitle {
+  margin: 0;
+  padding: 0 var(--mantine-spacing-xl);
+  font-size: var(--mantine-font-size-md);
+  font-weight: 700;
+  line-height: 18px;
+  color: var(--mb-color-text-primary);
+}
+
+/* A group of rows. The 16px side padding plus the row's 8px lines up with
+   the 24px section title. Groups after the first get a line and 16px above. */
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 var(--mantine-spacing-lg);
+
+  & + & {
+    padding-top: var(--mantine-spacing-lg);
+    box-shadow: inset 0 0.5px 0 var(--mb-color-border-neutral);
+  }
+}
+
+/* A template or function row */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  width: 100%;
+  height: 32px;
+  padding: 0 var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-xs);
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.22;
+  color: var(--mb-color-text-primary);
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-primary-hover);
+  }
+
+  /* A function this database doesn't support */
+  &.disabled {
+    cursor: default;
+    color: var(--mb-color-text-disabled);
+    background-color: transparent;
+
+    .icon {
+      filter: grayscale(1);
+      opacity: 0.5;
+    }
+
+    .parentheses {
+      color: inherit;
+    }
+  }
+}
+
+.icon {
+  flex: 0 0 auto;
+}
+
+/* A template's name */
+.label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+/* A function's name, such as between() */
+.functionName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 13px;
+  font-weight: 450;
+}
+
+.parentheses {
+  color: var(--mb-color-text-disabled);
+}
+
+/* "Didn't find any results" */
+.empty {
+  padding: 0 var(--mantine-spacing-xl);
+  color: var(--mb-color-text-secondary);
+}
+
+/* The card shown when hovering a function, to the left of the panel */
+.details {
+  width: 280px;
+  padding: var(--mantine-spacing-md);
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.4;
+  color: var(--mb-color-text-primary);
+}
+
+.signature {
+  margin-bottom: var(--mantine-spacing-xs);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mb-color-text-secondary);
+}

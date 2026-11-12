@@ -3,6 +3,7 @@ import { t } from "ttag";
 import type * as Lib from "metabase-lib";
 
 export type SidePanelIconName =
+  | "conversion"
   | "convert"
   | "date"
   | "function-general"
@@ -12,83 +13,31 @@ export type SidePanelIconName =
   | "text"
   | "time";
 
-export type SidePanelGroupId =
-  | "calculate"
-  | "check"
-  | "compare"
-  | "convert"
-  | "count"
-  | "count-some"
-  | "dates"
-  | "label"
-  | "missing"
-  | "pull"
-  | "text";
+/** The two views of the panel: ready-made snippets, and every function. */
+export type SidePanelTab = "templates" | "functions";
 
-export type SidePanelToolAction = "combine" | "extract";
-
-export type SidePanelTool = {
+export type SidePanelTemplateItem = {
+  type: "template";
   name: string;
-  icon: SidePanelIconName;
-  /** Opens a popover that builds the expression for you. */
-  action?: SidePanelToolAction;
-};
-
-export type SidePanelTemplate = {
-  name: string;
-  /** The ready-made snippet. Not inserted anywhere yet. */
+  /** Inserted as a fill-in: its columns and quoted values become blanks. */
   code: string;
-  icon: SidePanelIconName;
-  modes: Lib.ExpressionMode[];
+  /** Only when it differs from the section's icon. */
+  icon?: SidePanelIconName;
 };
 
-export type SidePanelGroup = {
-  id: SidePanelGroupId;
+export type SidePanelFunctionItem = {
+  type: "function";
+  /** The display name, as typed in the editor. */
   name: string;
-  templates: SidePanelTemplate[];
-  /** Display names, as typed in the editor. */
-  functions: string[];
-  functionsLabel: string;
 };
 
-const C: Lib.ExpressionMode = "expression";
-const F: Lib.ExpressionMode = "filter";
-const S: Lib.ExpressionMode = "aggregation";
+export type SidePanelItem = SidePanelTemplateItem | SidePanelFunctionItem;
 
-export const GROUP_ORDER: Record<Lib.ExpressionMode, SidePanelGroupId[]> = {
-  expression: [
-    "label",
-    "dates",
-    "missing",
-    "pull",
-    "convert",
-    "calculate",
-    "text",
-    "check",
-  ],
-  filter: [
-    "check",
-    "dates",
-    "missing",
-    "pull",
-    "text",
-    "calculate",
-    "convert",
-    "label",
-  ],
-  aggregation: [
-    "count-some",
-    "count",
-    "compare",
-    "check",
-    "calculate",
-    "missing",
-    "label",
-    "pull",
-    "dates",
-    "text",
-    "convert",
-  ],
+export type SidePanelSection = {
+  name: string;
+  icon: SidePanelIconName;
+  /** Groups of rows, with a line between them. */
+  blocks: SidePanelItem[][];
 };
 
 export const POPULAR_FUNCTIONS: Record<Lib.ExpressionMode, string[]> = {
@@ -187,520 +136,485 @@ export const FUNCTION_ICONS: Record<string, SidePanelIconName> = {
   second: "time",
 };
 
-export function getSidePanelTools(
-  expressionMode: Lib.ExpressionMode,
-): SidePanelTool[] {
-  const aiTools: SidePanelTool[] = [
-    { name: t`Ask AI`, icon: "convert" },
-    { name: t`Convert from SQL or Excel`, icon: "convert" },
-  ];
+/** Functions shown with a clock rather than their section's icon. */
+export const TIME_FUNCTIONS = new Set(["hour", "minute", "second"]);
 
-  if (expressionMode !== "expression") {
-    return aiTools;
+/** The label of the first tab: what the templates are called in each editor. */
+export function getTemplatesTabLabel(expressionMode: Lib.ExpressionMode) {
+  switch (expressionMode) {
+    case "filter":
+      return t`Conditions`;
+    case "aggregation":
+      return t`Aggregations`;
+    default:
+      return t`Templates`;
   }
+}
 
+export function getSidePanelSections(
+  expressionMode: Lib.ExpressionMode,
+  tab: SidePanelTab,
+): SidePanelSection[] {
+  if (tab === "functions") {
+    return getFunctionSections(expressionMode);
+  }
+  switch (expressionMode) {
+    case "filter":
+      return getConditionSections();
+    case "aggregation":
+      return getAggregationSections();
+    default:
+      return getTemplateSections();
+  }
+}
+
+function template(
+  name: string,
+  code: string,
+  icon?: SidePanelIconName,
+): SidePanelTemplateItem {
+  return { type: "template", name, code, icon };
+}
+
+function functions(...names: string[]): SidePanelFunctionItem[] {
+  return names.map((name) => ({ type: "function", name }));
+}
+
+/** Custom column: Templates */
+function getTemplateSections(): SidePanelSection[] {
   return [
-    ...aiTools,
     {
-      name: t`Combine text column values`,
-      icon: "table-column",
-      action: "combine",
+      name: t`Text`,
+      icon: "text",
+      blocks: [
+        [template(t`Count characters`, `length([Comment])`)],
+        [
+          template(t`Remove or replace text`, `replace([URL], "https://", "")`),
+          template(t`Tidy up spaces and capitals`, `lower(trim([Email]))`),
+        ],
+        [
+          template(t`Domain from an email`, `domain([Email])`),
+          template(t`Number from text`, `regexExtract([Code], "[0-9]+")`),
+          template(t`Year or month of a date`, `year([Created At])`),
+        ],
+        [
+          template(
+            t`Text contains a word`,
+            `contains([Title], "refund", "case-insensitive")`,
+          ),
+          template(
+            t`Text contains any of several words`,
+            `contains([Job Title], "student") OR contains([Job Title], "intern")`,
+          ),
+        ],
+        [
+          template(t`First N characters`, `substring([SKU], 1, 2)`),
+          template(
+            t`Text before a character`,
+            `splitPart([Stock Code], "-", 1)`,
+          ),
+          template(t`Text after a character`, `splitPart([Name], "/", 2)`),
+        ],
+      ],
     },
-    { name: t`Extract date value`, icon: "table-column", action: "extract" },
+    {
+      name: t`Dates`,
+      icon: "date",
+      blocks: [
+        [
+          template(
+            t`Age in years`,
+            `datetimeDiff([Birth Date], today(), "year")`,
+          ),
+          template(
+            t`Start of this month`,
+            `datetimeSubtract(today(), day(today()) - 1, "day")`,
+          ),
+        ],
+        [
+          template(
+            t`Days since a date`,
+            `datetimeDiff([Created At], today(), "day")`,
+          ),
+          template(
+            t`Days between two dates`,
+            `datetimeDiff([Created At], [Closed At], "day")`,
+          ),
+        ],
+        [
+          template(
+            t`Add or subtract time`,
+            `datetimeAdd([Order Date], 7, "day")`,
+          ),
+        ],
+      ],
+    },
+    {
+      name: t`Numbers`,
+      icon: "math",
+      blocks: [
+        [
+          template(t`Calculate with two columns`, `[Price] * [Quantity]`),
+          template(
+            t`Higher of two columns`,
+            `case([Digital] > [Analog], [Digital], [Analog])`,
+          ),
+          template(
+            t`Percent change between two columns`,
+            `([This Year] - [Last Year]) / [Last Year]`,
+          ),
+        ],
+        [
+          template(t`Make a number positive`, `abs([Amount])`),
+          template(t`Round to 2 decimals`, `round([Amount] * 100) / 100`),
+          template(
+            t`Add a leading zero`,
+            `case([Month] < 10, concat("0", text([Month])), text([Month]))`,
+          ),
+        ],
+        [
+          template(
+            t`Sort numbers into ranges`,
+            `case([Days] <= 30, "0–30", [Days] <= 60, "31–60", "60+")`,
+          ),
+        ],
+      ],
+    },
+    {
+      name: t`Conversion and format`,
+      icon: "conversion",
+      blocks: [
+        [
+          template(t`Text to number`, `integer([Amount Text])`),
+          template(t`Text to date`, `date([Date Text])`),
+          template(t`Number or date to text`, `text([Invoice ID])`),
+          template(t`Show a month as a name`, `monthName(month([Created At]))`),
+        ],
+      ],
+    },
+    {
+      name: t`Rows and columns`,
+      icon: "table-column",
+      blocks: [
+        [
+          template(
+            t`Join text columns with a separator`,
+            `concat([First Name], " ", [Last Name])`,
+          ),
+        ],
+        [
+          template(t`Replace empty with a default`, `coalesce([Discount], 0)`),
+          template(
+            t`Show a label when empty`,
+            `case(isNull([Shipped At]), "Not shipped", "Shipped")`,
+          ),
+          template(
+            t`Add columns when one may be empty`,
+            `coalesce([Deposit], 0) + coalesce([Goods], 0)`,
+          ),
+          template(
+            t`Leave a value empty on purpose`,
+            `case([Amount] != 0, [Amount])`,
+          ),
+        ],
+        [
+          template(
+            t`Label rows by a condition`,
+            `case([Status] = "Done", "Closed", "Open")`,
+            "table-row",
+          ),
+          template(
+            t`Flag rows with 1 or 0`,
+            `case(notNull([Signed At]), 1, 0)`,
+            "table-row",
+          ),
+        ],
+        [
+          template(
+            t`Map many values to labels`,
+            `case(in([State], "CA", "OR", "WA"), "West", in([State], "NY", "NJ"), "East", "Other")`,
+          ),
+          template(
+            t`Value is one of a list`,
+            `in([Status], "Paid", "Cleared")`,
+          ),
+        ],
+      ],
+    },
   ];
 }
 
-export function getSidePanelGroups(): Record<SidePanelGroupId, SidePanelGroup> {
-  const functionsLabel = t`Functions`;
-  const aggregationsLabel = t`Aggregations`;
+/** Filter: Conditions. Each one is true or false for a row. */
+function getConditionSections(): SidePanelSection[] {
+  return [
+    {
+      name: t`Text`,
+      icon: "text",
+      blocks: [
+        [
+          template(t`Character count`, `length([Comment]) > 100`),
+          template(t`Year or month of a date`, `year([Created At]) = 2026`),
+          template(
+            t`Text contains a word`,
+            `contains([Title], "refund", "case-insensitive")`,
+          ),
+          template(
+            t`Text contains any of several words`,
+            `contains([Job Title], "student") OR contains([Job Title], "intern")`,
+          ),
+          template(t`First N characters`, `substring([SKU], 1, 2) = "AB"`),
+        ],
+      ],
+    },
+    {
+      name: t`Dates`,
+      icon: "date",
+      blocks: [
+        [
+          template(
+            t`Start of this month`,
+            `[Created At] >= datetimeSubtract(today(), day(today()) - 1, "day")`,
+          ),
+          template(
+            t`Dates in the last N days`,
+            `interval([Created At], -30, "day")`,
+          ),
+          template(
+            t`Dates in the next N days`,
+            `interval([Due Date], 7, "day")`,
+          ),
+          template(
+            t`Dates before or after a fixed date`,
+            `[Created At] < "2026-01-01"`,
+          ),
+        ],
+      ],
+    },
+    {
+      name: t`Rows and columns`,
+      icon: "table-column",
+      blocks: [
+        [
+          template(t`Rows with filled value`, `notNull([Email])`, "table-row"),
+          template(t`Two columns compared`, `[Delivered At] > [Due Date]`),
+          template(
+            t`Value is one of a list`,
+            `in([Status], "Paid", "Cleared")`,
+          ),
+        ],
+      ],
+    },
+  ];
+}
 
-  return {
-    label: {
-      id: "label",
-      name: t`Label or group values`,
-      functionsLabel,
-      templates: [
-        {
-          name: t`Label rows by a condition`,
-          code: `case([Status] = "Done", "Closed", "Open")`,
-          icon: "table-row",
-          modes: [C],
-        },
-        {
-          name: t`Map many values to labels`,
-          code: `case(in([State], "CA", "OR", "WA"), "West", in([State], "NY", "NJ"), "East", "Other")`,
-          icon: "table-row",
-          modes: [C],
-        },
-        {
-          name: t`Sort numbers into ranges`,
-          code: `case([Days] <= 30, "0–30", [Days] <= 60, "31–60", "60+")`,
-          icon: "math",
-          modes: [C],
-        },
-        {
-          name: t`Flag rows with 1 or 0`,
-          code: `case(notNull([Signed At]), 1, 0)`,
-          icon: "table-row",
-          modes: [C, S],
-        },
-      ],
-      functions: ["case"],
-    },
-    missing: {
-      id: "missing",
-      name: t`Deal with missing values`,
-      functionsLabel,
-      templates: [
-        {
-          name: t`Replace empty with a default`,
-          code: `coalesce([Discount], 0)`,
-          icon: "table-column",
-          modes: [C, S],
-        },
-        {
-          name: t`Show a label when empty`,
-          code: `case(isNull([Shipped At]), "Not shipped", "Shipped")`,
-          icon: "table-column",
-          modes: [C],
-        },
-        {
-          name: t`Keep rows where a value is filled`,
-          code: `notNull([Email])`,
-          icon: "table-row",
-          modes: [F],
-        },
-        {
-          name: t`Add columns when one may be empty`,
-          code: `coalesce([Deposit], 0) + coalesce([Goods], 0)`,
-          icon: "table-column",
-          modes: [C],
-        },
-        {
-          name: t`Leave a value empty on purpose`,
-          code: `case([Amount] != 0, [Amount])`,
-          icon: "table-column",
-          modes: [C],
-        },
-      ],
-      functions: ["coalesce", "isNull", "notNull", "isEmpty", "notEmpty"],
-    },
-    dates: {
-      id: "dates",
-      name: t`Work with dates`,
-      functionsLabel,
-      templates: [
-        {
-          name: t`Days between two dates`,
-          code: `datetimeDiff([Created At], [Closed At], "day")`,
-          icon: "date",
-          modes: [C, S],
-        },
-        {
-          name: t`Days since a date`,
-          code: `datetimeDiff([Created At], today(), "day")`,
-          icon: "date",
-          modes: [C],
-        },
-        {
-          name: t`Age in years`,
-          code: `datetimeDiff([Birth Date], today(), "year")`,
-          icon: "date",
-          modes: [C],
-        },
-        {
-          name: t`Add or subtract time`,
-          code: `datetimeAdd([Order Date], 7, "day")`,
-          icon: "math",
-          modes: [C],
-        },
-        {
-          name: t`Start of this month`,
-          code: `datetimeSubtract(today(), day(today()) - 1, "day")`,
-          icon: "date",
-          modes: [C, F],
-        },
-        {
-          name: t`Dates in the last N days`,
-          code: `interval([Created At], -30, "day")`,
-          icon: "date",
-          modes: [F, S],
-        },
-        {
-          name: t`Dates in the next N days`,
-          code: `interval([Due Date], 7, "day")`,
-          icon: "date",
-          modes: [F, S],
-        },
-        {
-          name: t`Dates before or after a fixed date`,
-          code: `[Created At] < "2026-01-01"`,
-          icon: "date",
-          modes: [F],
-        },
-      ],
-      functions: [
-        "today",
-        "now",
-        "datetimeDiff",
-        "datetimeAdd",
-        "datetimeSubtract",
-        "interval",
-        "intervalStartingFrom",
-        "relativeDateTime",
-        "timeSpan",
-        "convertTimezone",
+/** Summarize: Aggregations. Each one combines many rows into one value. */
+function getAggregationSections(): SidePanelSection[] {
+  return [
+    {
+      name: t`Rows and columns`,
+      icon: "table-column",
+      blocks: [
+        [
+          template(t`Count rows`, `Count()`, "table-row"),
+          template(
+            t`Count rows that match`,
+            `CountIf([Status] = "Done")`,
+            "table-row",
+          ),
+          template(
+            t`Count unique values`,
+            `Distinct([Customer ID])`,
+            "table-row",
+          ),
+        ],
+        [
+          template(t`Total a column`, `Sum([Amount])`),
+          template(t`Compare two columns`, `Sum([Revenue]) - Sum([Cost])`),
+        ],
+        [
+          template(
+            t`Total for matching rows`,
+            `SumIf([Amount], [Status] = "Paid")`,
+            "table-row",
+          ),
+          template(
+            t`Unique values in matching rows`,
+            `DistinctIf([Customer ID], [Status] = "Done")`,
+            "table-row",
+          ),
+          template(
+            t`Average for matching rows`,
+            `Average(case([Status] = "Done", [Score]))`,
+            "table-row",
+          ),
+          template(
+            t`Percentage of rows that match`,
+            `Share([Status] = "Done")`,
+            "table-row",
+          ),
+        ],
       ],
     },
-    pull: {
-      id: "pull",
-      name: t`Pull out part of a value`,
-      functionsLabel,
-      templates: [
-        {
-          name: t`Text before a character`,
-          code: `splitPart([Stock Code], "-", 1)`,
-          icon: "text",
-          modes: [C],
-        },
-        {
-          name: t`Text after a character`,
-          code: `splitPart([Name], "/", 2)`,
-          icon: "text",
-          modes: [C],
-        },
-        {
-          name: t`First N characters`,
-          code: `substring([SKU], 1, 2)`,
-          icon: "text",
-          modes: [C, F],
-        },
-        {
-          name: t`Domain from an email`,
-          code: `domain([Email])`,
-          icon: "text",
-          modes: [C],
-        },
-        {
-          name: t`Number from text`,
-          code: `regexExtract([Code], "[0-9]+")`,
-          icon: "text",
-          modes: [C],
-        },
-        {
-          name: t`Year or month of a date`,
-          code: `year([Created At])`,
-          icon: "text",
-          modes: [C, F],
-        },
-      ],
-      functions: [
-        "year",
-        "month",
-        "quarter",
-        "week",
-        "day",
-        "weekday",
-        "hour",
-        "minute",
-        "second",
-        "domain",
-        "host",
-        "subdomain",
-        "path",
-        "substring",
-        "splitPart",
-        "regexExtract",
+    {
+      name: t`Dates`,
+      icon: "date",
+      blocks: [
+        [
+          template(
+            t`Days between two dates`,
+            `Average(datetimeDiff([Created At], [Closed At], "day"))`,
+          ),
+          template(
+            t`Dates in the last N days`,
+            `CountIf(interval([Created At], -30, "day"))`,
+          ),
+          template(
+            t`Dates in the next N days`,
+            `CountIf(interval([Due Date], 7, "day"))`,
+          ),
+        ],
       ],
     },
-    check: {
-      id: "check",
-      name: t`Check if a value matches`,
-      functionsLabel,
-      templates: [
-        {
-          name: t`Text contains a word`,
-          code: `contains([Title], "refund", "case-insensitive")`,
-          icon: "text",
-          modes: [C, F, S],
-        },
-        {
-          name: t`Text contains any of several words`,
-          code: `contains([Job Title], "student") OR contains([Job Title], "intern")`,
-          icon: "text",
-          modes: [C, F, S],
-        },
-        {
-          name: t`Value is one of a list`,
-          code: `in([Status], "Paid", "Cleared")`,
-          icon: "function-general",
-          modes: [C, F, S],
-        },
-        {
-          name: t`Number or date in a range`,
-          code: `between([Score], 7, 10)`,
-          icon: "function-general",
-          modes: [F, S],
-        },
-        {
-          name: t`Compare two columns`,
-          code: `[Delivered At] > [Due Date]`,
-          icon: "table-column",
-          modes: [F, S],
-        },
-        {
-          name: t`Combine conditions`,
-          code: `[Country] = "US" AND ([Plan] = "Pro" OR [Plan] = "Team")`,
-          icon: "function-general",
-          modes: [F, S],
-        },
-      ],
-      functions: [
-        "contains",
-        "doesNotContain",
-        "startsWith",
-        "endsWith",
-        "in",
-        "notIn",
-        "between",
+    {
+      name: t`Numbers`,
+      icon: "math",
+      blocks: [
+        [template(t`Running total`, `CumulativeSum([Amount])`)],
+        [
+          template(t`Previous period's value`, `Offset(Sum([Amount]), -1)`),
+          template(
+            t`Change vs previous period`,
+            `(Sum([Amount]) - Offset(Sum([Amount]), -1)) / Offset(Sum([Amount]), -1)`,
+          ),
+          template(
+            t`Rate between two counts`,
+            `CountIf([Answer] = "Yes") / (CountIf([Answer] = "Yes") + CountIf([Answer] = "No"))`,
+          ),
+        ],
+        functions(
+          "Average",
+          "Count",
+          "CountIf",
+          "CumulativeCount",
+          "CumulativeSum",
+          "Distinct",
+          "DistinctIf",
+          "Max",
+          "Median",
+          "Min",
+          "Offset",
+          "Percentile",
+          "Share",
+          "StandardDeviation",
+          "Sum",
+          "SumIf",
+          "Variance",
+        ),
       ],
     },
-    calculate: {
-      id: "calculate",
-      name: t`Calculate a new value`,
-      functionsLabel,
-      templates: [
-        {
-          name: t`Calculate with two columns`,
-          code: `[Price] * [Quantity]`,
-          icon: "table-column",
-          modes: [C, F],
-        },
-        {
-          name: t`Percent change between two columns`,
-          code: `([This Year] - [Last Year]) / [Last Year]`,
-          icon: "table-column",
-          modes: [C],
-        },
-        {
-          name: t`Higher of two columns`,
-          code: `case([Digital] > [Analog], [Digital], [Analog])`,
-          icon: "table-column",
-          modes: [C],
-        },
-        {
-          name: t`Make a number positive`,
-          code: `abs([Amount])`,
-          icon: "math",
-          modes: [C],
-        },
-      ],
-      functions: ["abs", "power", "sqrt", "log", "exp"],
-    },
-    text: {
-      id: "text",
-      name: t`Combine and clean up text`,
-      functionsLabel,
-      templates: [
-        {
-          name: t`Join columns with a separator`,
-          code: `concat([First Name], " ", [Last Name])`,
-          icon: "table-column",
-          modes: [C],
-        },
-        {
-          name: t`Remove or replace text`,
-          code: `replace([URL], "https://", "")`,
-          icon: "text",
-          modes: [C],
-        },
-        {
-          name: t`Tidy up spaces and capitals`,
-          code: `lower(trim([Email]))`,
-          icon: "text",
-          modes: [C, F],
-        },
-        {
-          name: t`Count characters`,
-          code: `length([Comment])`,
-          icon: "text",
-          modes: [C, F],
-        },
-      ],
-      functions: [
-        "concat",
-        "trim",
-        "lTrim",
-        "rTrim",
-        "lower",
-        "upper",
-        "replace",
-        "length",
-        "collate",
+  ];
+}
+
+/** Functions, the same in every editor except that only custom columns get timeSpan. */
+function getFunctionSections(
+  expressionMode: Lib.ExpressionMode,
+): SidePanelSection[] {
+  const dateFunctions = functions(
+    "convertTimezone",
+    "datetimeAdd",
+    "datetimeDiff",
+    "datetimeSubtract",
+    "interval",
+    "intervalStartingFrom",
+    "relativeDateTime",
+    ...(expressionMode === "expression" ? ["timeSpan"] : []),
+  );
+
+  return [
+    {
+      name: t`Logic`,
+      icon: "function-general",
+      blocks: [
+        functions(
+          "between",
+          "case",
+          "coalesce",
+          "isEmpty",
+          "isNull",
+          "in",
+          "notEmpty",
+          "notIn",
+          "notNull",
+        ),
       ],
     },
-    convert: {
-      id: "convert",
-      name: t`Convert or format a value`,
-      functionsLabel,
-      templates: [
-        {
-          name: t`Text to number`,
-          code: `integer([Amount Text])`,
-          icon: "text",
-          modes: [C, F],
-        },
-        {
-          name: t`Number or date to text`,
-          code: `text([Invoice ID])`,
-          icon: "text",
-          modes: [C],
-        },
-        {
-          name: t`Text to date`,
-          code: `date([Date Text])`,
-          icon: "text",
-          modes: [C, F],
-        },
-        {
-          name: t`Round to 2 decimals`,
-          code: `round([Amount] * 100) / 100`,
-          icon: "math",
-          modes: [C, S],
-        },
-        {
-          name: t`Add a leading zero`,
-          code: `case([Month] < 10, concat("0", text([Month])), text([Month]))`,
-          icon: "math",
-          modes: [C],
-        },
-        {
-          name: t`Show a month as a name`,
-          code: `monthName(month([Created At]))`,
-          icon: "text",
-          modes: [C],
-        },
-      ],
-      functions: [
-        "text",
-        "integer",
-        "float",
-        "date",
-        "datetime",
-        "round",
-        "floor",
-        "ceil",
-        "monthName",
-        "quarterName",
-        "dayName",
+    {
+      name: t`Text`,
+      icon: "text",
+      blocks: [
+        functions(
+          "collate",
+          "concat",
+          "length",
+          "lower",
+          "lTrim",
+          "replace",
+          "rTrim",
+          "trim",
+          "upper",
+        ),
+        functions(
+          "domain",
+          "host",
+          "path",
+          "regexExtract",
+          "subdomain",
+          "substring",
+          "splitPart",
+        ),
+        functions("contains", "doesNotContain", "endsWith", "startsWith"),
       ],
     },
-    count: {
-      id: "count",
-      name: t`Count and total rows`,
-      functionsLabel: aggregationsLabel,
-      templates: [
-        {
-          name: t`Count rows`,
-          code: `Count()`,
-          icon: "table-row",
-          modes: [S],
-        },
-        {
-          name: t`Count unique values`,
-          code: `Distinct([Customer ID])`,
-          icon: "math",
-          modes: [S],
-        },
-        {
-          name: t`Total a column`,
-          code: `Sum([Amount])`,
-          icon: "table-column",
-          modes: [S],
-        },
-      ],
-      functions: [
-        "Count",
-        "Sum",
-        "Average",
-        "Distinct",
-        "Min",
-        "Max",
-        "Median",
-        "Percentile",
-        "StandardDeviation",
-        "Variance",
+    {
+      name: t`Dates`,
+      icon: "date",
+      blocks: [
+        functions(
+          "year",
+          "month",
+          "quarter",
+          "week",
+          "day",
+          "weekday",
+          "hour",
+          "minute",
+          "second",
+        ),
+        functions("now", "today"),
+        dateFunctions,
       ],
     },
-    "count-some": {
-      id: "count-some",
-      name: t`Count and total only some rows`,
-      functionsLabel: aggregationsLabel,
-      templates: [
-        {
-          name: t`Count rows that match`,
-          code: `CountIf([Status] = "Done")`,
-          icon: "table-row",
-          modes: [S],
-        },
-        {
-          name: t`Total for matching rows`,
-          code: `SumIf([Amount], [Status] = "Paid")`,
-          icon: "table-row",
-          modes: [S],
-        },
-        {
-          name: t`Unique values in matching rows`,
-          code: `DistinctIf([Customer ID], [Status] = "Done")`,
-          icon: "table-row",
-          modes: [S],
-        },
-        {
-          name: t`Average for matching rows`,
-          code: `Average(case([Status] = "Done", [Score]))`,
-          icon: "table-row",
-          modes: [S],
-        },
-        {
-          name: t`Percentage of rows that match`,
-          code: `Share([Status] = "Done")`,
-          icon: "table-row",
-          modes: [S],
-        },
-        {
-          name: t`Rate between two counts`,
-          code: `CountIf([Answer] = "Yes") / (CountIf([Answer] = "Yes") + CountIf([Answer] = "No"))`,
-          icon: "math",
-          modes: [S],
-        },
+    {
+      name: t`Numbers`,
+      icon: "math",
+      blocks: [
+        functions("abs", "exp", "log", "power", "sqrt"),
+        functions("ceil", "float", "floor", "integer", "round"),
       ],
-      functions: ["CountIf", "SumIf", "DistinctIf", "Share"],
     },
-    compare: {
-      id: "compare",
-      name: t`Compare to earlier rows`,
-      functionsLabel,
-      templates: [
-        {
-          name: t`Running total`,
-          code: `CumulativeSum([Amount])`,
-          icon: "math",
-          modes: [S],
-        },
-        {
-          name: t`Previous period's value`,
-          code: `Offset(Sum([Amount]), -1)`,
-          icon: "math",
-          modes: [S],
-        },
-        {
-          name: t`Change vs previous period`,
-          code: `(Sum([Amount]) - Offset(Sum([Amount]), -1)) / Offset(Sum([Amount]), -1)`,
-          icon: "math",
-          modes: [S],
-        },
+    {
+      name: t`Conversion and format`,
+      icon: "conversion",
+      blocks: [
+        functions(
+          "date",
+          "datetime",
+          "dayName",
+          "monthName",
+          "text",
+          "quarterName",
+        ),
       ],
-      functions: ["CumulativeSum", "CumulativeCount", "Offset"],
     },
-  };
+  ];
 }
