@@ -10,6 +10,7 @@ jobs:
     steps:
       - name: timeout
         timeout-minutes: 1
-        run: sleep 65
+        run: sleep 100
       - name: run this also
+        if: always()
         run: echo "hello world!"
