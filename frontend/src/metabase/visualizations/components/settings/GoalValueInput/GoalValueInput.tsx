@@ -28,7 +28,6 @@ import { useAnsweredGoalValue } from "metabase/visualizations/hooks/use-answered
 import {
   type ReferencedEntityKind,
   getGoalErrorMessage,
-  getHasParametersMessage,
   resolveGoalValue,
 } from "metabase/viz-core";
 import type {
@@ -133,12 +132,14 @@ export const GoalValueInput = ({
   const sourceInfo = useReferencedEntity(foreignRef);
   const currentSource = useDynamicGoalSource(value);
   const sourceUrl = isEmbedding() ? undefined : sourceInfo.url;
-  const {
-    resolveColumn: resolveEntityColumn,
-    errorReason: entityQueryErrorReason,
-  } = useEntityColumnResults(datasetQuery, data, entity, {
-    enabled: menuLevel === "entity" && entityInfo.columns.length > 0,
-  });
+  const resolveEntityColumn = useEntityColumnResults(
+    datasetQuery,
+    data,
+    entity,
+    {
+      enabled: menuLevel === "entity" && entityInfo.columns.length > 0,
+    },
+  );
 
   const resolved = useAnsweredGoalValue({
     data,
@@ -455,16 +456,21 @@ export const GoalValueInput = ({
                 .with({ columns: [] }, () => (
                   <Menu.Item disabled>{t`No numeric columns`}</Menu.Item>
                 ))
-                .when(
-                  () => entityQueryErrorReason === "has-parameters",
-                  () => (
-                    <Menu.Item disabled maw={COLUMN_MENU_MIN_WIDTH}>
-                      {getHasParametersMessage(entityInfo.kind)}
-                    </Menu.Item>
-                  ),
-                )
-                .otherwise(({ columns }) =>
-                  columns.map((column) => (
+                .otherwise(({ columns, kind }) => {
+                  const [firstColumn] = columns;
+                  const sourceError =
+                    firstColumn && resolveEntityColumn(firstColumn.name).error;
+
+                  // the source can't be a goal at all, so no column is worth offering
+                  if (sourceError?.reason === "has-parameters") {
+                    return (
+                      <Menu.Item disabled maw={COLUMN_MENU_MIN_WIDTH}>
+                        {getGoalErrorMessage(sourceError, kind)}
+                      </Menu.Item>
+                    );
+                  }
+
+                  return columns.map((column) => (
                     <GoalColumnMenuItem
                       key={column.name}
                       formatOptions={formatOptions}
@@ -473,8 +479,8 @@ export const GoalValueInput = ({
                       selected={foreignRef?.column === column.name}
                       onClick={() => selectEntityColumn(column.name)}
                     />
-                  )),
-                )}
+                  ));
+                })}
             </>
           )}
         </Menu.Dropdown>

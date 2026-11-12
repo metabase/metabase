@@ -400,8 +400,8 @@ describe("GoalValueInput", () => {
         name: "Orders",
         type: "question",
         result_metadata: [
-          createMockField({ name: "total", base_type: "type/Integer" }),
-          createMockField({
+          createMockColumn({ name: "total", base_type: "type/Integer" }),
+          createMockColumn({
             name: "avg",
             display_name: "Average",
             base_type: "type/Integer",
@@ -423,7 +423,7 @@ describe("GoalValueInput", () => {
     const explanation = await screen.findByRole("menuitem", {
       name: /This question uses variables/,
     });
-    expect(explanation).toBeDisabled();
+    expect(explanation).toHaveAttribute("data-disabled", "true");
     expect(
       screen.queryByRole("menuitem", { name: /Average/ }),
     ).not.toBeInTheDocument();

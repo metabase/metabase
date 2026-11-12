@@ -153,7 +153,7 @@ function resolveForeignColumnRef(
   return { value };
 }
 
-export function getFailedQueryReason(
+function getFailedQueryReason(
   errorType: ReferencedEntityResult["error_type"],
 ): GoalRefErrorReason {
   return match(errorType)
@@ -237,7 +237,7 @@ const getTooManyRowsMessage = (sourceKind: ReferencedEntityKind | undefined) =>
     .with(undefined, () => t`The result must be a single value or row.`)
     .exhaustive();
 
-export const getHasParametersMessage = (
+const getHasParametersMessage = (
   sourceKind: ReferencedEntityKind | undefined,
 ) =>
   match(sourceKind)
