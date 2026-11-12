@@ -1597,6 +1597,7 @@
               metabot.slackbot
               metabot.toolkit
               metrics
+              model-persistence
               models
               native-query-snippets
               notification
@@ -1642,6 +1643,7 @@
                     :model/Glossary
                     :model/Measure
                     :model/ModerationReview
+                    :model/NativeQuerySnippet
                     :model/QueryTable
                     :model/Segment
                     :model/Table

@@ -38,9 +38,9 @@
   (let [query-id (str query-id)
         query (metabot.tools.sql.common/query-for-sql-edit! queries-state query-id)
         sql (metabot.tools.sql.common/check-nonblank-sql! query-id sql)
-        dialect (metabot.tools.sql.validation/query->dialect query)
         {:keys [valid? transpiled-sql] :as validation-result}
-        (metabot.tools.sql.validation/validate-sql dialect sql)]
+        (metabot.tools.sql.validation/validate-database-sql
+         (:database query) sql (metabot.tools.sql.common/stored-template-tags query))]
     (merge {:validation-result validation-result}
            (when valid?
              (let [updated-query (metabot.tools.sql.common/update-query-sql query transpiled-sql)]
