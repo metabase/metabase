@@ -4561,7 +4561,10 @@
            tracing
            util
            util.config}
-   :model-imports #{:model/Collection :model/Dashboard :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Table}}
 
   enterprise/security-center
   {:team "Gadget"

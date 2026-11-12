@@ -63,11 +63,20 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [:collection :id :location] :id [:in collection-ids]))
 
+(def ^:private read-check-columns
+  "The columns `mi/can-read?` reads, for models whose full rows are expensive to load.
+  A Card's after-select transforms normalize its query, metadata and settings, which costs far more than the read
+  check itself, and the permission filter loads every candidate a semantic search returns."
+  {:model/Card [:id :collection_id :document_id]})
+
 (mu/defn instances
-  "The instances of `model` with `ids`."
+  "The instances of `model` with `ids`, with enough columns for `mi/can-read?`."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
-  (t2/select model :id [:in ids]))
+  (t2/select (if-let [columns (read-check-columns model)]
+               (into [model] columns)
+               model)
+             :id [:in ids]))
 
 (defn- search-doc-select
   [{:keys [id model]}]

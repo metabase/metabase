@@ -17,11 +17,13 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [next.jdbc :as jdbc])
+   [next.jdbc :as jdbc]
+   [toucan2.core :as t2])
   (:import
    (org.postgresql.util PGobject)))
 
@@ -828,6 +830,29 @@
         (testing "handles empty input"
           (is (= [] (#'semantic.index/filter-read-permitted []))))))))
 
+(deftest filter-read-permitted-document-scoped-cards-test
+  (mt/with-premium-features #{:semantic-search}
+    (testing "a card scoped to a document is filtered by that document, though the filter loads only a few columns"
+      (mt/with-temp [:model/Collection {readable-coll :id}   {}
+                     :model/Collection {unreadable-coll :id} {}
+                     :model/Document   {readable-doc :id}    {:name          "Readable"
+                                                              :creator_id    (mt/user->id :rasta)
+                                                              :collection_id readable-coll}
+                     :model/Document   {hidden-doc :id}      {:name          "Hidden"
+                                                              :creator_id    (mt/user->id :rasta)
+                                                              :collection_id unreadable-coll}
+                     :model/Card       {plain :id}           {:collection_id readable-coll}
+                     :model/Card       {in-readable-doc :id} {:collection_id readable-coll :document_id readable-doc}
+                     :model/Card       {in-hidden-doc :id}   {:collection_id readable-coll :document_id hidden-doc}]
+        (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll)})]
+          (let [ids    [plain in-readable-doc in-hidden-doc]
+                result (#'semantic.index/filter-read-permitted
+                        (for [id ids] {:id id :model "card" :collection_id readable-coll}))]
+            (is (= [plain in-readable-doc]
+                   (map :id result)
+                   (filter #(mi/can-read? (t2/select-one :model/Card :id %)) ids))
+                "the verdicts match mi/can-read? on full rows")))))))
+
 (deftest collection-id-only-search-models-derived-correctly-test
   (testing "derived set includes every collection-id-only search-model plus indexed-entity"
     ;; Update the expected set when `define-collection-based-visibility!` is added to or removed from a model.
@@ -835,8 +860,8 @@
     ;; "card"/"dataset"/"metric" are deliberately absent: a Card scoped to a Document is gated by that
     ;; Document rather than by its collection (see `metabase.queries.models.card/parent-document-permits?`),
     ;; so `:model/Card` no longer meets the macro's collection-id-only contract and dropped its
-    ;; registration. Cards take `filter-read-permitted`'s slow path — one batched `t2/select` per result
-    ;; page — which is the price of adjudicating them correctly.
+    ;; registration. Cards take `filter-read-permitted`'s slow path, one batched `t2/select` of the columns
+    ;; their read check uses, which is the price of adjudicating them correctly.
     (is (= #{"dashboard" "indexed-entity"}
            @@#'semantic.index/collection-id-only-search-models))))
 
