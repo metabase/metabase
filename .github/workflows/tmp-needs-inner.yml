@@ -21,5 +21,6 @@ jobs:
     needs: [work]
     if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - run: echo "INNER NOTIFY FIRED ${{ toJSON(needs) }}"
