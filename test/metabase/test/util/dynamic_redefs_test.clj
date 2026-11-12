@@ -105,7 +105,8 @@
 (methodical/defmethod a-methodical-multimethod String [_] :string)
 (p/import-def a-methodical-multimethod reexported-methodical-multimethod)
 
-(deftest ^:parallel with-dynamic-fn-redefs-methodical-multimethod-test
+;; Not ^:parallel: the `with-redefs` case replaces the re-export's root for every thread.
+(deftest ^:synchronized with-dynamic-fn-redefs-methodical-multimethod-test
   (testing "Cannot proxy a methodical multimethod, or a re-export of one"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -117,6 +118,13 @@
          #"Cannot proxy multimethods"
          (mt/with-dynamic-fn-redefs [reexported-methodical-multimethod (constantly :redefined)]
            (reexported-methodical-multimethod "hi")))))
+  (testing "Cannot proxy the re-export either while a with-redefs stub hides the multimethod"
+    (with-redefs [reexported-methodical-multimethod (constantly :stub)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Cannot proxy multimethods"
+           (mt/with-dynamic-fn-redefs [reexported-methodical-multimethod (constantly :redefined)]
+             (reexported-methodical-multimethod "hi"))))))
   (testing "a defmethod through the re-export still compiles afterwards"
     ;; `methodical/defmethod` reads the multimethod from the var when it expands, which a proxy breaks.
     (eval `(methodical/defmethod reexported-methodical-multimethod Long [~'_] :long))

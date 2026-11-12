@@ -249,6 +249,9 @@
         (when-not (proxy-entry a-var)
           (check-proxyable a-var (.getRawRoot a-var))
           (when source
+            ;; A `with-redefs` stub can hide the root of a re-export, and taking over would link it to its source for
+            ;; good, so check what the source holds too.
+            (check-proxyable a-var (proxied-original source))
             (take-over! a-var source))
           ;; Anything else gets a proxy over the root it has: a var that is not a re-export, or a re-export under a
           ;; stub, where the stub is what the proxy has to fall back to.
