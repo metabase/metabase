@@ -186,7 +186,7 @@
      xrays})
 
 (def driver-test-opt-ins
-  "Submodules of [[driver-test-exemptions]] whose changes still trigger driver tests.
+  "Submodules of [[driver-test-exemptions]] that their exemption doesn't cover, so their changes count again.
   An opt-in covers the module's own submodules too."
   '#{users.tenants
      util.graph})
@@ -284,18 +284,7 @@
             filename))
         updated-files))
 
-(defn driver-tests-needed?
-  "Whether a change to `updated-files` needs driver tests beyond H2 and Postgres, by the rules of `-driver-decisions`.
-  PR labels are not considered.
-  The `updated` modules are the ones those files belong to.
-  True when an important file changed, a module in [[modules-triggering-cloud-drivers]] changed itself,
-  or [[driver-deps-affected?]] holds."
-  [deps updated-files updated]
-  (boolean
-   (or (changes-important-file-for-drivers? updated-files)
-       ;; A cloud-driver trigger runs the cloud drivers even when it is exempt, like `enterprise/transforms`.
-       (seq (set/intersection (set updated) modules-triggering-cloud-drivers))
-       (driver-deps-affected? deps updated))))
+(declare driver-tests-needed?)
 
 (defn- print-updated-and-unaffected-modules [deps updated drivers-affected?]
   (let [unaffected (unaffected-modules deps updated)]
@@ -911,6 +900,39 @@
     {:should-run false
      :reason "driver module not affected"}))
 
+(defn- change-analysis
+  "What [[driver-decision]] needs to know about a change to `updated-files`, whose modules are `updated`.
+  Returns a map of `:updated`, `:driver-affected?`, `:important-file-changed?` and `:particular-driver-changed?`."
+  [deps updated-files updated]
+  {:updated                    (into (sorted-set) updated)
+   :driver-affected?           (driver-deps-affected? deps updated)
+   :important-file-changed?    (boolean (changes-important-file-for-drivers? updated-files))
+   :particular-driver-changed? (drivers-with-file-changes updated-files)})
+
+(defn- driver-decisions
+  "One [[driver-decision]] per driver in [[all-drivers]], each with its `:driver`.
+  Takes the `ctx` of [[driver-decision]] without `:particular-driver-changed?`, and a [[change-analysis]] or nil."
+  [ctx {:keys [updated driver-affected? important-file-changed? particular-driver-changed?]}]
+  (let [ctx (assoc ctx :particular-driver-changed? (or particular-driver-changed? #{}))]
+    (mapv (fn [driver]
+            (assoc (driver-decision driver
+                                    ctx
+                                    ;; module dependency check combines both conditions
+                                    (boolean (or driver-affected? important-file-changed?))
+                                    (or updated #{}))
+                   :driver driver))
+          all-drivers)))
+
+(defn driver-tests-needed?
+  "Whether `-driver-decisions` runs any driver beyond H2 and Postgres for a change to `updated-files`.
+  The `updated` modules are the ones those files belong to.
+  PR labels are not considered."
+  [deps updated-files updated]
+  (boolean
+   (some (fn [{:keys [driver should-run]}]
+           (and should-run (not (#{:h2 :postgres} driver))))
+         (driver-decisions {:pr-labels #{}} (change-analysis deps updated-files updated)))))
+
 (defn- cli-driver-decisions
   "Determine which driver tests should run based on PR context.
 
@@ -932,29 +954,15 @@
         ;; force-run and --only-driver each decide every driver on their own, so the change
         ;; analysis is not consulted there.
         analysis (when-not (or force-run only-driver)
-                   (let [updated-files (u/updated-files git-ref)
-                         updated (updated-files->updated-modules updated-files)
-                         driver-affected? (driver-deps-affected? updated)
-                         important-file-changed? (changes-important-file-for-drivers? updated-files)]
-                     {:particular-driver-changed? (drivers-with-file-changes updated-files)
-                      :updated updated
-                      :driver-affected? driver-affected?
-                      :important-file-changed? important-file-changed?}))
+                   (let [updated-files (u/updated-files git-ref)]
+                     (change-analysis (dependencies) updated-files (updated-files->updated-modules updated-files))))
         {:keys [particular-driver-changed? updated driver-affected? important-file-changed?]} analysis
         ctx {:git-ref git-ref
              :force-run force-run
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
-             :particular-driver-changed? (or particular-driver-changed? #{})
              :only-driver only-driver}
-        decisions (mapv (fn [driver]
-                          (assoc (driver-decision driver
-                                                  ctx
-                                                  ;; module dependency check combines both conditions
-                                                  (boolean (or driver-affected? important-file-changed?))
-                                                  (or updated #{}))
-                                 :driver driver))
-                        all-drivers)]
+        decisions (driver-decisions ctx analysis)]
     (if github-output-only?
       ;; In github-output-only mode, print just the key=value lines (no colors)
       (doseq [{:keys [driver should-run]} decisions]

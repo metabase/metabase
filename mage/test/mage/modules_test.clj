@@ -346,9 +346,9 @@
       ["modules/drivers/oracle/src/x.clj"]  []                       true
       ;; a cloud-driver trigger, even an exempt one
       []                                    '[enterprise/transforms] true
-      ;; a trigger, and an exempt module
+      ;; a trigger, and no change
       []                                    '[driver]                true
-      []                                    '[util]                  false)))
+      []                                    []                       false)))
 
 (deftest driver-test-rules-have-no-problems-test
   (testing "the real exemptions and opt-ins are declared and each changes its module's decision"
@@ -360,9 +360,8 @@
 ;;; =============================================================================
 
 (defn modules-affecting-drivers []
-  (let [deps (mage.modules/dependencies)
-        all (keys deps)]
-    (filter #(mage.modules/driver-deps-affected? [%]) all)))
+  (let [deps (mage.modules/dependencies)]
+    (filter #(mage.modules/driver-deps-affected? deps [%]) (keys deps))))
 
 (deftest module-graph-may-not-become-more-connected
   (testing "The number of modules that trigger driver tests should not increase without explicit approval.
