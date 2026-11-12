@@ -15,7 +15,11 @@ registerVisualizations();
 
 const DASHBOARD = createMockDashboard({ id: 1, dashcards: [] });
 
-// The size a question card gets when it is added to a dashboard, by display
+// The size a question card gets when it is added to a dashboard, by display.
+// This table is an independent copy of the sizes in CARD_SIZE_DEFAULTS_JSON
+// (metabase.dashboards.constants) on purpose, so that an accidental change to a
+// default size fails this test. When a default size changes deliberately,
+// update this table too.
 const DEFAULT_SIZES: Array<[VisualizationDisplay, number, number]> = [
   ["table", 12, 9],
   ["bar", 12, 6],
