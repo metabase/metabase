@@ -527,6 +527,18 @@
   (is (thrown-with-msg? Exception #"Git failed:"
                         (#'module-explorer/git-output! "not-a-real-git-subcommand"))))
 
+(deftest modules-tree-refuses-html-and-json-test
+  (let [output (str (fs/path (fs/create-temp-dir) "explorer"))
+        out    (java.io.StringWriter.)
+        error  (binding [*out* out]
+                 (try
+                   (mage.modules/cli-print-module-tree {:options {:html true, :json true, :output output}})
+                   nil
+                   (catch clojure.lang.ExceptionInfo e e)))]
+    (is (= 1 (:babashka/exit (ex-data error))))
+    (is (= "Give only one of --html, --json.\n" (str out)))
+    (is (not (fs/exists? output)))))
+
 (deftest explorer-state-codec-test
   (let [{:keys [exit out err]} (shell/sh "node" "mage/test/mage/module_explorer_state_test.js")]
     (is (zero? exit) (str out err))))
