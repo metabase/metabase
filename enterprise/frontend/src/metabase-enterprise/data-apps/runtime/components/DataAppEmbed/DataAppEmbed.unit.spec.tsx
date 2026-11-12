@@ -94,6 +94,17 @@ describe("DataAppEmbed", () => {
     });
   });
 
+  it("refuses an API key from a production host and says why", () => {
+    setupSettings({ apiKey: "development-key" }, "https://host.example.com");
+    render(<DataAppEmbed />);
+
+    expect(
+      screen.getByText("Using an API key in production is not allowed."),
+    ).toBeInTheDocument();
+    expect(mockComponentProvider).not.toHaveBeenCalled();
+    expect(mockUseDataAppBundle).not.toHaveBeenCalled();
+  });
+
   it("waits for settings to arrive before starting auth", () => {
     mockUseSdkIframeEmbedEventBus.mockReturnValue({
       embedSettings: null,

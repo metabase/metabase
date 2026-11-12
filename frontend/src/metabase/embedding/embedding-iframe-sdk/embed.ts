@@ -11,7 +11,6 @@ import {
   normalizeDataAppPath,
   validateDataAppPath,
 } from "embedding-sdk-shared/lib/embedded-data-app-path";
-import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
@@ -490,10 +489,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   private _getIsLocalhost() {
-    if (this._componentName === "metabase-data-app") {
-      return getIsLocalhost();
-    }
-
     const { hostname } = window.location;
 
     try {
@@ -534,10 +529,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         raiseError(
           "Existing browser sessions are not supported for data apps.",
         );
-      }
-
-      if (settings.apiKey && !settings._isLocalhost) {
-        raiseError("Using an API key in production is not allowed.");
       }
     }
 

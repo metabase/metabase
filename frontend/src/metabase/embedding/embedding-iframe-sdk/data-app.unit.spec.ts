@@ -1,8 +1,4 @@
-import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
-
 import { MetabaseDataAppElement, setupConfigWatcher } from "./embed";
-
-jest.mock("embedding-sdk-shared/lib/get-is-localhost");
 
 const INSTANCE_URL = "https://gizmo.example.com/mb";
 
@@ -10,7 +6,6 @@ describe("metabase-data-app", () => {
   let consoleError: jest.SpyInstance;
 
   beforeEach(() => {
-    jest.mocked(getIsLocalhost).mockReturnValue(true);
     setupConfigWatcher();
     window.metabaseConfig = { instanceUrl: INSTANCE_URL };
     consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
@@ -179,7 +174,6 @@ describe("metabase-data-app", () => {
         type: "metabase.embed.setSettings",
         data: expect.objectContaining({
           apiKey: "development-key",
-          _isLocalhost: true,
         }),
       },
       new URL(INSTANCE_URL).origin,
@@ -187,21 +181,14 @@ describe("metabase-data-app", () => {
     expect(iframe.src).not.toContain("development-key");
   });
 
-  it("rejects production keys even when Metabase shares the host's hostname", () => {
-    jest.mocked(getIsLocalhost).mockReturnValue(false);
-    delete window.metabaseConfig;
+  it("mounts the frame for an API key so the frame can show why it refuses a production host", () => {
     window.metabaseConfig = {
-      instanceUrl: window.location.origin,
+      instanceUrl: INSTANCE_URL,
       apiKey: "development-key",
     };
 
-    expect(setup().querySelector("iframe")).toBeNull();
-    expect(consoleError).toHaveBeenCalledWith(
-      "[metabase.embed.error]",
-      expect.objectContaining({
-        message: "Using an API key in production is not allowed.",
-      }),
-    );
+    expect(setup().querySelector("iframe")).not.toBeNull();
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it.each([
