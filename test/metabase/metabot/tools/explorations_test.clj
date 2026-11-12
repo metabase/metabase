@@ -14,6 +14,7 @@
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.explorations :as tools.explorations]
+   [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
@@ -44,7 +45,8 @@
   plus `:error` when the call failed."
   [tool-name args]
   (binding [scope/*current-user-scope* research-scopes]
-    (let [entries (metabot.tools/->entries (:tools (profiles/get-profile :explorations))
+    (let [entries (metabot.tools/->entries (vals (profiles/profile->tools (profiles/get-profile :explorations) []
+                                                                          {:profile-id :explorations}))
                                            (atom {}) nil :explorations)]
       ((:fn (get entries tool-name)) args))))
 
@@ -61,7 +63,8 @@
         (is (= {:output (str "Pass `metric_ids`, `q`, or both. This tool reports the candidate"
                              " dimensions of metrics that you have already chosen.\n"
                              "Call `list_research_metrics` to choose metric IDs.\n"
-                             "Call `search` with `entity_types` [\"metric\"] to find metrics by topic.")
+                             "Call `" (if (= :fulltext (search.engine/keyword-flavour)) "fulltext_search" "substring_search")
+                             "` with `entity_types` [\"metric\"] to find metrics by topic.")
                 :error  {:class :recoverable :code ::tools.explorations/needs-metric-ids-or-q}}
                (research-call "get_research_candidates" args)))))))
 

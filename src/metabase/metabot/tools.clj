@@ -16,6 +16,7 @@
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
    [metabase.metabot.tools.document :as tools.document]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.metadata :as tools.metadata]
@@ -41,9 +42,16 @@
  [tools.analyze-chart
   analyze-chart-tool
   analyze-chart-sql-tool]
- [tools.search search-tool
-  sql-search-tool
-  nlq-search-tool]
+ [tools.search
+  semantic-search-tool
+  fulltext-search-tool
+  substring-search-tool
+  sql-semantic-search-tool
+  sql-fulltext-search-tool
+  sql-substring-search-tool
+  nlq-semantic-search-tool
+  nlq-fulltext-search-tool
+  nlq-substring-search-tool]
  [tools.entity-retrieval
   retrieve-library-entities-tool]
  [tools.construct
@@ -127,6 +135,11 @@
                 (map :name))
           (vals (ns-publics 'metabase.metabot.tools)))))
 
+(def search-tool-names
+  "Tool names that search Metabase content: one per matcher, plus `search`, the single tool they replaced, which
+  older conversations still record."
+  (into #{"search"} tools.error/agent-loop-search-tool-names))
+
 (defn query-result-tool?
   "Whether the tool named `tool-name` returns query results, which may reach the model only while query execution
   is on."
@@ -141,7 +154,7 @@
 
   An entry keeps the keys the adapters and the system-message builder already read (`:tool-name`,
   `:doc`, `:schema`, `:title-fn`, `:prompt`, `:system-instructions`, `:capabilities`, `:scope`), and
-  `:runs-alone?`, which the tool executor reads. Its `:fn` performs the whole call through
+  `:runs-alone?` and `:replaces`, which the tool executor reads. Its `:fn` performs the whole call through
   `metabase.metabot.tools.runtime/invoke`. So argument coercion, argument validation, the scope
   check, the result check and error rendering all happen in one place, and `:fn` never throws.
 
@@ -171,5 +184,6 @@
           :prompt              (:metabot/prompt declaration)
           :system-instructions (:metabot/system-instructions declaration)
           :runs-alone?         (:metabot/runs-alone? declaration)
+          :replaces            (:metabot/replaces declaration)
           :fn                  (fn [arguments]
                                  (tools.runtime/invoke entries ctx tool-name arguments))})))))

@@ -19,7 +19,7 @@ import {
   REASONING_EXACT_THRESHOLD_MS,
   RESOURCE_TOOL_NAME,
   SAVE_ENTITY_TOOL_NAME,
-  SEARCH_TOOL_NAME,
+  SEARCH_TOOL_NAMES,
 } from "./constants";
 
 export type ToolChainStep = MetabotChainStep & { kind: "tool" };
@@ -105,8 +105,9 @@ export const titledToolLabel = (
     return null;
   }
   return match(step.name)
-    .with(SEARCH_TOOL_NAME, () =>
-      done ? t`Searched for ${title}` : t`Searching for ${title}`,
+    .when(
+      (name) => SEARCH_TOOL_NAMES.has(name),
+      () => (done ? t`Searched for ${title}` : t`Searching for ${title}`),
     )
     .with(RESOURCE_TOOL_NAME, () =>
       done ? t`Read ${title}` : t`Reading ${title}`,

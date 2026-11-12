@@ -11,6 +11,7 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.premium-features.core :as premium-features]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.events :as slackbot.events]
@@ -897,3 +898,8 @@
       (request-flush! true)
       (await slack-writer)
       (is (= 2 (count @append-calls)) "Force flush should bypass throttle"))))
+
+(deftest ^:parallel search-tools-show-searching-test
+  (testing "every Metabot search tool shows a Searching status, not the Thinking default"
+    (doseq [tool-name metabot.tools/search-tool-names]
+      (is (= "Searching" (get @#'slackbot.streaming/tool-friendly-names tool-name)) tool-name))))

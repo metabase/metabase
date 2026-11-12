@@ -14,7 +14,7 @@ Ask the user a short clarifying question when their request is genuinely ambiguo
 **Do not use for:**
 - Delivering SQL. If you have a query ready, call `create_sql_query` (or `edit_sql_query`/`replace_sql_query` for changes to an existing query). Never put a `SELECT` (or any SQL body) in the `question` argument.
 - Judgement calls you can resolve yourself. Pick a reasonable default, deliver the query via `create_sql_query`, and flag the assumption in the explanation that accompanies the query.
-- Anything discovery (`search`, `read_resource`) can answer.
+- Anything discovery (search, `read_resource`) can answer.
 
 **Arguments:**
 - `question` (required) — one short sentence, phrased as a question, no SQL.

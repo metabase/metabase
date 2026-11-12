@@ -929,7 +929,6 @@
         (is (false? (tools.shared/curated-only?)) "unbound outside a session")
         (is (= "true" (probe curated :internal)))
         (is (= "false" (probe curated :nlq)) "the nlq profile is exempt")
-        (is (= "false" (probe curated :nlq-fallback)))
         (is (= "false" (probe curated :sql)) "the SQL editor's profile writes SQL, which is outside the rule")
         (is (= "false" (probe open :internal)))
         (is (= "false" (probe nil :internal)))))))

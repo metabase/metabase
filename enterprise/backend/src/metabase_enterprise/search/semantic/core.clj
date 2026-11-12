@@ -95,6 +95,8 @@
   when semantic search returns too few results and some results were filtered out (e.g. due to permission checks)."
   :feature :semantic-search
   [search-ctx]
+  ;; A vector-only search asked for meaning alone. Supplementing it, or falling back, would rerun its natural-language
+  ;; string through a keyword engine that reads it differently, so it returns what the vector search found, or fails.
   (tracing/with-span :search "search.semantic.execute" {:search/query-length (count (:search-string search-ctx))}
     (try
       (let [{:keys [results raw-count]}
@@ -103,7 +105,8 @@
                                          search-ctx)
             final-count (count results)
             threshold (semantic.settings/semantic-search-min-results-threshold)]
-        (if (or (>= final-count threshold)
+        (if (or (:vector-only? search-ctx)
+                (>= final-count threshold)
                 (and (zero? raw-count)
                      ;; :search-string is nil when using search to populate the list of tables for a given database in
                      ;; the native query editor. Semantic search doesn't support this, so fallback in this case.
@@ -126,6 +129,8 @@
                                        (= :search.engine/in-place fallback)
                                        (into [] (comp (map t2.realize/realize)
                                                       (take total-limit))))
+                                     (catch InterruptedException e
+                                       (throw e))
                                      (catch Throwable t
                                        (log/warnf "Semantic search fallback errored, ignoring: %s" (ex-message t))
                                        []))
@@ -134,10 +139,16 @@
                   combined-results (concat results (with-zero-semantic-distance-score search-ctx fallback-results))
                   deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
               (take total-limit deduped-results)))))
+      ;; a cancelled search ends here, rather than falling back or reporting a search error
+      (catch InterruptedException e
+        (throw e))
       (catch Exception e
-        (log/errorf "Error executing semantic search, falling back to appdb: %s" (ex-message e))
-        (let [fallback (fallback-engine)]
-          (analytics/inc! :metabase-search/semantic-error-fallback {:fallback-engine fallback})
+        (let [fallback (when-not (:vector-only? search-ctx) (fallback-engine))]
+          (if fallback
+            (log/errorf "Error executing semantic search, falling back to %s: %s" fallback (ex-message e))
+            (log/errorf "Error executing semantic search: %s" (ex-message e)))
+          (when-not (:vector-only? search-ctx)
+            (analytics/inc! :metabase-search/semantic-error-fallback {:fallback-engine fallback}))
           (if fallback
             (search.engine/results (assoc search-ctx :search-engine fallback))
             (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e))))))))

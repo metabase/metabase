@@ -11,6 +11,7 @@
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.skills :as skills]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.construct :as construct]))
 
 (deftest ^:parallel load-system-prompt-template-test
@@ -196,6 +197,31 @@
       (is (not (str/includes? content "dashboard 42")))
       (is (not (str/includes? content "recently viewed"))))))
 
+(deftest search-tools-guidance-test
+  (testing "the prompt describes exactly the search tools on offer, and lists the ones that are missing"
+    (let [render (fn [tools context]
+                   (prompts/build-system-message-content {:prompt-template "internal.selmer"} context tools []))]
+      (let [content (render {"substring_search" #'metabot.tools/substring-search-tool}
+                            {:unavailable_tools [{:name       "semantic_search"
+                                                  :purpose    "finds data by what it means"
+                                                  :reason     "semantic search isn't set up on this instance"
+                                                  :workaround "search for the likely words"}]})]
+        (is (str/includes? content "`substring_search`** finds text anywhere inside names"))
+        (is (not (str/includes? content "`fulltext_search`** matches whole words")))
+        (is (not (str/includes? content "`semantic_search`** matches meaning")))
+        (is (str/includes? content "## Unavailable tools"))
+        (is (str/includes? content (str "- **`semantic_search`** finds data by what it means. "
+                                        "Why: semantic search isn't set up on this instance. "
+                                        "Instead: search for the likely words."))))
+      (testing "with nothing missing there is no unavailable section"
+        (is (not (str/includes? (render {"fulltext_search" #'metabot.tools/fulltext-search-tool} {})
+                                "## Unavailable tools"))))
+      (testing "full-text guidance keeps `or` for other words for one idea, and an `and` to one item"
+        (let [content (render {"fulltext_search" #'metabot.tools/fulltext-search-tool} {})]
+          (is (str/includes? content "Use `or` only for other words for the same idea"))
+          (is (str/includes? content "Every arg of an `and` must match the same item"))
+          (is (not (str/includes? content "give its distinctive words as an `or`"))))))))
+
 (deftest ^:parallel inject-context-test
   (testing "prepends the rendered context block to the message"
     (let [injected (prompts/inject-context {:current_time      "2024-01-15 14:30:00"
@@ -353,7 +379,7 @@
           (is (not (str/includes? with-tool "direct the user to the dashboard builder")))
           (is (not (str/includes? without-tool "write_dashboard")))
           (is (str/includes? without-tool "direct the user to the dashboard builder"))))
-      (doseq [template ["natural-language-querying-only.selmer" "natural-language-querying-fallback.selmer"]]
+      (let [template "natural-language-querying-only.selmer"]
         (testing template
           (is (str/includes? (render template {"write_dashboard" nil})
                              (str "\n- Dashboards: create, edit and trash them with `write_dashboard`. Changes save"

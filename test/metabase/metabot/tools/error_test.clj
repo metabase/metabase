@@ -160,6 +160,22 @@
     (is (= (take 2 steps)  (tools.error/recovery-steps-for-tools steps #{"search"})))
     (is (= steps (tools.error/recovery-steps-for-tools steps #{"search" "read_resource" "widget"})))))
 
+(deftest ^:parallel search-steps-test
+  (let [text (fn [tool-name] (str "Call `" tool-name "`."))
+        uses (fn [steps] (mapv :uses steps))]
+    (testing "by default the steps cover the Agent API's `search` and each agent-loop search tool"
+      (is (= [#{"search"} #{"semantic_search"} #{"fulltext_search"} #{"substring_search"}]
+             (uses (tools.error/search-steps text)))))
+    (testing "each step's text names its own tool"
+      (is (= ["Call `search`." "Call `semantic_search`." "Call `fulltext_search`." "Call `substring_search`."]
+             (mapv :text (tools.error/search-steps text)))))
+    (testing "agent-loop-only steps leave out `search`, so the Agent API keeps none of them"
+      (let [steps (tools.error/search-steps text :agent-loop-only? true)]
+        (is (= {:agent-loop [#{"fulltext_search"}]
+                :agent-api  []}
+               {:agent-loop (uses (tools.error/recovery-steps-for-tools steps #{"fulltext_search" "read_resource"}))
+                :agent-api  (uses (tools.error/recovery-steps-for-tools steps #{"search" "read_resource"}))}))))))
+
 (deftest ^:parallel names-a-tool?-test
   (testing "only a backticked name counts, so prose mentioning a word is not a tool reference"
     (is (tools.error/names-a-tool? "Call `search` first." "search"))

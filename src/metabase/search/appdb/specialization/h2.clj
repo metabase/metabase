@@ -5,8 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.db :as search.db]
-   [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.search.query-expr :as query-expr]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,22 +32,23 @@
           (search.db/delete-index-rows! table model ids)))
       (search.db/insert-rows! table entries))))
 
-(defn- wildcard-tokens [search-term]
-  (->> (str/split search-term #"\s+")
-       (map #(u/lower-case-en (str/trim %)))
-       (remove str/blank?)
-       (map h2x/like-substring)))
+(defn- every-word
+  "A structured query that requires every word of the plain string `search-term`."
+  [search-term]
+  {:op "and" :args (remove str/blank? (str/split search-term #"\s+"))})
 
 (defmethod specialization/base-query :h2
   [active-table search-term search-ctx select-items]
   (let [search-column (if (:search-native-query search-ctx)
                         :search_index.native_search_terms
                         :search_index.search_terms)]
+    ;; A blank term matches everything, even with a structured query in the context: diagnostics probe that way for
+    ;; a text-free query, as Postgres does.
     (cond-> {:select select-items
              :from   [[active-table :search_index]]}
       (not (str/blank? search-term))
-      (sql.helpers/where (into [:and] (for [pattern (wildcard-tokens search-term)]
-                                        [:like [:lower search-column] pattern]))))))
+      (sql.helpers/where (query-expr/->like-predicate (or (:search-expr search-ctx) (every-word search-term))
+                                                      search-column)))))
 
 (defmethod specialization/extra-entry-fields :h2 [entity]
   {:search_terms        (:searchable_text entity)

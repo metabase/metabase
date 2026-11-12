@@ -1295,11 +1295,11 @@
 
 (def ^:private run-query-profiles
   "The profiles that offer `run_query`."
-  [:internal :internal-sql :nlq :nlq-fallback])
+  [:internal :internal-sql :nlq])
 
 (defn- run-turn!
   "Run a turn of `profile` as rasta, in a conversation of rasta's own with `query` in state as `q1`. The model calls
-   `run_query` on `q1`, then answers in text. :nlq-fallback runs as :nlq where the library index can't answer.
+   `run_query` on `q1`, then answers in text.
    Return how many times the turn called the model, the result the model read, the text the user saw, and why the
    turn finished."
   [profile query]
@@ -1324,7 +1324,7 @@
                 (let [parts (into [] (agent/run-agent-loop
                                       {:metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
                                        :messages        [{:role :user, :content "How many venues are there?"}]
-                                       :profile-id      (if (= :nlq-fallback profile) :nlq profile)
+                                       :profile-id      profile
                                        :conversation-id conversation-id
                                        :state           {:queries {"q1" query}}}))]
                   {:llm-calls @llm-calls

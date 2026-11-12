@@ -134,7 +134,7 @@
                                        (mut/mock-llm-response
                                         [{:type :start :id "msg-1"}
                                          {:type :tool-input :id "call-1" :function "search"
-                                          :arguments {:keyword_queries ["orders"]}}
+                                          :arguments {:query "orders"}}
                                          {:type :usage :id "msg-1" :model "test-model"
                                           :usage {:promptTokens 10 :completionTokens 5}}])))
                   send-message     (fn [conversation-id]
@@ -150,7 +150,7 @@
                 (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 2}]
                   (ee.metabot.usage/clear-limit-cache!)
                   (mt/with-dynamic-fn-redefs [openrouter/openrouter          mock-llm
-                                              metabot-search/search          (constantly [])
+                                              metabot-search/search-by-query (constantly [])
                                               conversation-title/ensure-title! (constantly {:status :ready
                                                                                             :title  "Orders"})]
                     (mt/with-model-cleanup [:model/MetabotMessage

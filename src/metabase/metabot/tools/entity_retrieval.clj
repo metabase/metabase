@@ -83,9 +83,9 @@
                          (entity-retrieval/entity-class model id)))
         results))
 
-(def ^:private search-instead-step
-  {:uses #{"search"}
-   :text "Use `search` to find data for the user's request."})
+(def ^:private search-instead-steps
+  "One step per search tool, so the runtime keeps exactly the ones this profile offers."
+  (tools/search-steps #(str "Use `" % "` to find data for the user's request.")))
 
 (tools/defrecoverable library-search-busy!
   "The library index is being updated."
@@ -93,8 +93,8 @@
   [fallback-scope]
   {:message  "Library search is busy because the index is being updated."
    :recovery (-> [{:uses #{"retrieve_library_entities"}
-                   :text "Retry `retrieve_library_entities` once later."}
-                  search-instead-step]
+                   :text "Retry `retrieve_library_entities` once later."}]
+                 (into search-instead-steps)
                  (into (tools.search/browse-steps fallback-scope))
                  (conj {:uses #{}
                         :text (str "If you can't find the data another way, tell the user library search is "
@@ -105,7 +105,7 @@
   {:payload ::tools.search/search-scope}
   [fallback-scope]
   {:message  "Library search is unavailable."
-   :recovery (-> [search-instead-step]
+   :recovery (-> (vec search-instead-steps)
                  (into (tools.search/browse-steps fallback-scope))
                  (conj {:uses #{}
                         :text (str "Don't retry this call. If you can't find the data another way, tell the user "
@@ -210,6 +210,31 @@
                  :confidence         (if weak? "weak" "strong")))
         matches))
 
+;; TODO (Chris 2026-09-30) -- Library retrieval can't filter by the collection an embedded or NLQ metabot is confined
+;; to, or by database, so it is withheld wherever those limits apply (see [[confined-discovery?]]; the SQL profile
+;; doesn't list it). Add those filters to offer it there too.
+(defn- confined-discovery?
+  "Whether this request confines discovery to a collection, which library retrieval can't honour yet."
+  [{:keys [metabot profile-id]}]
+  (some? (tools.search/confined-collection-id metabot profile-id)))
+
+(defn- library-available?
+  [ctx]
+  ;; The confined check is free; the availability check probes the vector store.
+  (and (not (confined-discovery? ctx))
+       (entity-retrieval/entity-retrieval-available?)))
+
+(defn- library-unavailable-note
+  "What the prompt says about library retrieval when it isn't offered, as text safe to show any user."
+  [ctx]
+  {:purpose    "finds curated data published to the library, by what it means"
+   :missing    "curator usage instructions, and a signal for how well the library covers a request"
+   ;; inferred from the metabot row rather than a second probe of the index
+   :reason     (if (confined-discovery? ctx)
+                 "library search can't yet be limited to what this metabot may show"
+                 "library search isn't set up on this instance")
+   :workaround "search with the search tools, and prefer results marked as library members"})
+
 (tools/defrecoverable blank-search-prompt!
   "`user_search_prompt` is empty or only whitespace."
   {:payload [:map {:closed true}]}
@@ -233,7 +258,9 @@
                        "low-confidence (a leading <note> / confidence=\"weak\"), nothing in the library clearly "
                        "matches – prefer asking the user to clarify or narrow the request.")
      :scope       scope/agent-search
-     :args        entity-retrieval-schema})
+     :args        entity-retrieval-schema
+     :metabot/available?       library-available?
+     :metabot/unavailable-note library-unavailable-note})
 
   (handle [_ {:keys [user_search_prompt limit]} {:keys [metabot profile-id]}]
     (when (str/blank? user_search_prompt)

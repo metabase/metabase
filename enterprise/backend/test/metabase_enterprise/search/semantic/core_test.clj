@@ -340,3 +340,45 @@
             (is (= fallback-results results))
             (is (= 1 (:metabase-search/semantic-error-fallback @metrics))
                 "Should increment semantic-error-fallback metric on error")))))))
+
+(deftest vector-only-search-never-reaches-a-keyword-engine-test
+  (testing "a vector-only search returns what the vector search found, even below the supplement threshold"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
+        (let [semantic-result (make-card-result 1 "semantic-card" :score 0.9)]
+          (with-search-engine-mocks! [semantic-result] (fn [_] (throw (ex-info "the keyword engine ran" {})))
+            (fn []
+              (is (= [semantic-result]
+                     (semantic.core/results (assoc search-context :vector-only? true))))))))))
+  (testing "a vector-only search that errors fails instead of falling back, and doesn't count a fallback"
+    (mt/with-premium-features #{:semantic-search}
+      (let [metrics (atom {})]
+        (with-redefs [semantic.pgvector-api/query (fn [& _] (throw (ex-info "Semantic search unavailable" {})))
+                      search.engine/results       (fn [ctx]
+                                                    (case (:search-engine ctx)
+                                                      :search.engine/semantic (semantic.core/results ctx)
+                                                      (throw (ex-info "the keyword engine ran" {}))))
+                      analytics/inc!              (fn [metric & _args]
+                                                    (swap! metrics update metric (fnil inc 0)))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error executing semantic search"
+                                (semantic.core/results (assoc search-context :vector-only? true))))
+          (is (nil? (:metabase-search/semantic-error-fallback @metrics))))))))
+
+(deftest interrupted-semantic-search-is-rethrown-test
+  (testing "an interrupted semantic search ends there, without falling back or reporting a search error"
+    (mt/with-premium-features #{:semantic-search}
+      (with-redefs [semantic.pgvector-api/query (fn [& _] (throw (InterruptedException.)))
+                    search.engine/results       (fn [ctx]
+                                                  (case (:search-engine ctx)
+                                                    :search.engine/semantic (semantic.core/results ctx)
+                                                    (throw (ex-info "the keyword engine ran" {}))))]
+        (doseq [ctx [search-context (assoc search-context :vector-only? true)]]
+          (testing (str "vector-only? " (boolean (:vector-only? ctx)))
+            (is (thrown? InterruptedException (semantic.core/results ctx))))))))
+  (testing "an interrupt while topping up too few semantic results ends the search too"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
+        (with-search-engine-mocks! [(make-card-result 1 "semantic-card" :score 0.9)]
+          (fn [_] (throw (InterruptedException.)))
+          (fn []
+            (is (thrown? InterruptedException (semantic.core/results search-context)))))))))

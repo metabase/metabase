@@ -229,8 +229,8 @@
       (doseq [[scenario tool-vars metabot steps]
               [["without other discovery tools" [#'metabot.tools/retrieve-library-entities-tool] nil []]
                [":nlq" nlq-discovery-tools nil [browse-instance-step]]
-               ["with `search`" (conj nlq-discovery-tools #'metabot.tools/search-tool) nil
-                ["Use `search` to find data for the user's request." browse-instance-step]]
+               ["with `fulltext_search`" (conj nlq-discovery-tools #'metabot.tools/fulltext-search-tool) nil
+                ["Use `fulltext_search` to find data for the user's request." browse-instance-step]]
                [":nlq for a Metabot confined to a collection" nlq-discovery-tools {:collection_id 42}
                 ["Find the data with `read_resource` instead: read `metabase://collection/42/items`."]]
                [":nlq for a Metabot limited to verified content" nlq-discovery-tools {:use_verified_content true}

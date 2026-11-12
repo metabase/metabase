@@ -12,6 +12,7 @@
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
@@ -143,6 +144,49 @@
       (is (= [["card" 1 "Sales,  Revenue"]
               ["card" 2 "Sales Revenue Report"]]
              (search-results :exact "sales revenue"))))))
+
+(defn- expr-results
+  [expr & {:as raw-ctx}]
+  (mapv (juxt :model :id :name)
+        (search-results** (search/query-expr-search-string expr) (assoc raw-ctx :search-expr expr))))
+
+(deftest ^:parallel search-expr-matching-test
+  (when (search.engine/supported-engine? :search.engine/appdb)
+    (with-index-contents
+      [{:model "card" :id 1 :name "revenue forecast"}
+       {:model "card" :id 2 :name "income statement"}
+       {:model "card" :id 3 :name "gross margin by region"}
+       {:model "card" :id 4 :name "quarterly totals"}]
+      (testing "a structured query matches the way its tree says, not as a string"
+        (is (= #{1 2} (set (map second (expr-results {:op "or" :args ["revenue" "income"]})))))
+        (is (= [] (expr-results {:op "and" :args ["region" {:op "not" :args [{:op "phrase" :text "gross margin"}]}]})))
+        (is (= [3] (map second (expr-results {:op "and" :args ["region" {:op "phrase" :text "gross margin"}]})))))
+      (testing "a prefix matches the start of a word, not the middle of one"
+        (is (= [4] (map second (expr-results {:op "prefix" :text "quart"}))))
+        (is (= [4] (map second (expr-results {:op "prefix" :text "tot"}))))
+        (is (= [] (expr-results {:op "prefix" :text "arter"})))))))
+
+(deftest ^:parallel search-expr-exact-test
+  (when (= :postgres (mdb/db-type))
+    (with-index-contents
+      [{:model "card" :id 1 :name "revenue income"}
+       {:model "card" :id 2 :name "income"}]
+      (testing "a flat `or` boosts an exact match on one alternative, not a name made of every alternative"
+        (is (= [["card" 2 "income"]
+                ["card" 1 "revenue income"]]
+               (search-results :exact "revenue income" :search-expr {:op "or" :args ["revenue" "income"]})))))))
+
+(deftest ^:parallel search-expr-deep-tree-no-name-boost-test
+  ;; The scorers dispatch on the app DB, which needs an app-db search specialization.
+  (when (search.engine/supported-engine? :search.engine/appdb)
+    (testing "a tree deeper than one flat node gets no exact or prefix name score"
+      (let [deep {:op "and" :args ["revenue" {:op "or" :args ["forecast" "projection"]}]}]
+        (is (= {:exact [:inline 0], :prefix [:inline 0]}
+               (select-keys (scoring/base-scorers {:search-expr     deep
+                                                   :search-string   "revenue forecast projection"
+                                                   :current-user-id 1}
+                                                  {})
+                            [:exact :prefix])))))))
 
 (deftest ^:parallel prefix-test
   (with-index-contents

@@ -39,8 +39,7 @@
                   (if (= :table kind)
                     " is no longer in its database."
                     " is in the trash."))
-   :recovery [{:uses #{"search"}
-               :text "Call `search` to find another source and use an id from the results."}]})
+   :recovery (tools/search-steps #(str "Call `" % "` to find another source and use an id from the results."))})
 
 (tools/defrecoverable incomplete-query!
   "The conversation query is incomplete."
@@ -48,8 +47,7 @@
              [:query-id :string]]}
   [{:keys [query-id]}]
   {:message  (str "Query " query-id " has no data source yet, so X-ray cannot analyze it.")
-   :recovery [{:uses #{"search"}
-               :text "Call `search` to find a table, model or metric to X-ray instead."}]})
+   :recovery (tools/search-steps #(str "Call `" % "` to find a table, model or metric to X-ray instead."))})
 
 (tools/defrecoverable unsupported-native-query!
   "X-ray cannot analyze an unsaved SQL query."
@@ -57,8 +55,8 @@
              [:query-id :string]]}
   [{:keys [query-id]}]
   {:message  (str "Query " query-id " is an unsaved SQL query, which X-ray does not support.")
-   :recovery [{:uses #{"search"}
-               :text "Call `search` to find a table, model, metric or saved question to X-ray instead."}]})
+   :recovery (tools/search-steps #(str "Call `" % "` to find a table, model, metric or saved question to X-ray "
+                                       "instead."))})
 
 (defn- readable-source
   "The `kind` entity with `id` and its X-ray path, if the current user can read it, it is still in use, and it

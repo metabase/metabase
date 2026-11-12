@@ -1,0 +1,6 @@
+{% if unavailable_tools %}## Unavailable tools
+
+These tools aren't available here. If a request needs one, say so plainly rather than quietly working around it.
+
+{% for tool in unavailable_tools %}- **`{{tool.name|safe}}`** {{tool.purpose|safe}}.{% if tool.missing %} Without it: {{tool.missing|safe}}.{% endif %}{% if tool.reason %} Why: {{tool.reason|safe}}.{% endif %}{% if tool.workaround %} Instead: {{tool.workaround|safe}}.{% endif %}
+{% endfor %}{% endif %}

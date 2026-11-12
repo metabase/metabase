@@ -41,12 +41,18 @@
    [metabase.native-query-snippets.core :as snippets]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- keyword-search-tool-name
+  "The keyword search tool this instance advertises: full-text on a Postgres app DB, else substring."
+  []
+  (if (= :fulltext (search.engine/keyword-flavour)) "fulltext_search" "substring_search"))
 
 (def ^:private test-provider "openrouter/anthropic/claude-haiku-4-5")
 
@@ -896,7 +902,7 @@
                                                                               (let [n (swap! call-count inc)]
                                                                                 (mut/mock-llm-response
                                                                                  ((nth responses (dec n)) n))))
-                                                      metabot-search/search (constantly [])]
+                                                      metabot-search/search-by-query (constantly [])]
                             (mt/with-log-level [metabase.metabot.agent.core :warn]
                               (->> (run-agent-loop {:messages [{:role :user :content "Hi"}]
                                                     :profile-id :embedding_next})
@@ -932,8 +938,8 @@
         requests             (atom [])]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
-      (mt/with-dynamic-fn-redefs [profiles/get-profile  (comp #(assoc % :max-iterations 2) get-profile)
-                                  metabot-search/search (constantly [])
+      (mt/with-dynamic-fn-redefs [profiles/get-profile           (comp #(assoc % :max-iterations 2) get-profile)
+                                  metabot-search/search-by-query (constantly [])
                                   snippets/list-native-query-snippets
                                   (constantly [])
                                   openrouter/openrouter (fn [request]
@@ -1308,10 +1314,9 @@
                  [{:type :start :id "msg-1"}
                   {:type      :tool-input
                    :id        "call-search-1"
-                   :function  "search"
-                   :arguments {:semantic_queries ["orders table"]
-                               :keyword_queries  ["orders"]
-                               :entity_types     ["table"]}}
+                   :function  (keyword-search-tool-name)
+                   :arguments {:query        "orders"
+                               :entity_types ["table"]}}
                   {:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "test" :id "msg-1"}]
                  ;; Iteration 2: Construct a simple query via the representations YAML format
                  [{:type :start :id "msg-2"}
@@ -1329,25 +1334,25 @@
                   {:type :text
                    :text "Here are the first 10 orders from the orders table."}
                   {:type :usage :usage {:promptTokens 300 :completionTokens 10} :model "test" :id "msg-3"}]]]
-            ;; Mock only openrouter/openrouter (LLM) and metabot-search/search (search backend)
+            ;; Mock only openrouter/openrouter (LLM) and metabot-search/search-by-query (search backend)
             ;; Everything else runs real code
             (mt/with-dynamic-fn-redefs [openrouter/openrouter           (fn [_opts]
                                                                           (let [n (swap! llm-call-count inc)]
                                                                             (mut/mock-llm-response (get llm-responses (dec n) []))))
-                                        metabot-search/search (fn [_args]
-                                                                [{:id           orders-table-id
-                                                                  :type         "table"
-                                                                  :name         "orders"
-                                                                  :display_name "Orders"
-                                                                  :description  "This is a confirmed order for a product from a user."
-                                                                  :database_id  (mt/id)}])]
+                                        metabot-search/search-by-query (fn [_args]
+                                                                         [{:id           orders-table-id
+                                                                           :type         "table"
+                                                                           :name         "orders"
+                                                                           :display_name "Orders"
+                                                                           :description  "This is a confirmed order for a product from a user."
+                                                                           :database_id  (mt/id)}])]
               (testing "Should successfully go through 3 iterations"
                 (is (=? [{:type :start}
-                         {:type :tool-input :function "search"}
+                         {:type :tool-input :function (keyword-search-tool-name)}
                          ;; Cumulative usage after iteration 1: 100 prompt, 20 completion
                          {:type :usage :usage {:promptTokens 100 :completionTokens 20}}
                          {:type     :tool-output
-                          :function "search"
+                          :function (keyword-search-tool-name)
                           :result   {:structured-output {:total_count 1}}}
                          {:type :data :data-type "search_results"}
                          {:type :start}
@@ -1406,24 +1411,23 @@
               responses [(chat-completions-chunks "chatcmpl-1"
                                                   {:tool-call {:id        "call-search-1"
                                                                :name      "search"
-                                                               :arguments {:semantic_queries ["orders table"]
-                                                                           :keyword_queries  ["orders"]
+                                                               :arguments {:query        "orders table"
                                                                            :entity_types     ["table"]}}})
                          (chat-completions-chunks "chatcmpl-2" {:text "The orders table has what you need."})]]
           (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
                                       http/request            (fn [req]
                                                                 (let [n (count (swap! requests conj req))]
                                                                   {:status 200 :body (get responses (dec n) [])}))
-                                      metabot-search/search   (fn [_args]
-                                                                [{:id               (mt/id :orders)
-                                                                  :type             "table"
-                                                                  :name             "ORDERS"
-                                                                  :display_name     "Orders"
-                                                                  :description      "Confirmed orders."
-                                                                  :database_id      (mt/id)
-                                                                  :database_schema  "PUBLIC"
-                                                                  :moderated_status nil
-                                                                  :collection       {:id nil :name nil}}])]
+                                      metabot-search/search-by-query   (fn [_args]
+                                                                         [{:id               (mt/id :orders)
+                                                                           :type             "table"
+                                                                           :name             "ORDERS"
+                                                                           :display_name     "Orders"
+                                                                           :description      "Confirmed orders."
+                                                                           :database_id      (mt/id)
+                                                                           :database_schema  "PUBLIC"
+                                                                           :moderated_status nil
+                                                                           :collection       {:id nil :name nil}}])]
             (let [result      (mt/with-log-level [metabase.metabot.agent.core :fatal]
                                 (into [] (run-agent-loop
                                           {:messages   [{:role :user :content "Where are the orders?"}]
@@ -1455,10 +1459,10 @@
                                                                 {:type      :tool-input
                                                                  :id        "call-1"
                                                                  :function  "search"
-                                                                 :arguments {:keyword_queries ["orders"]}}])
+                                                                 :arguments {:query "orders"}}])
                                                               (do (reset! next-input input)
                                                                   (mut/mock-llm-response [{:type :text :text "Found it."}]))))
-                                    metabot-search/search (constantly [])]
+                                    metabot-search/search-by-query (constantly [])]
           (run-agent-loop! {:messages   [{:role :user :content "Show me orders"}]
                             :state      {}
                             :profile-id :internal
@@ -1485,11 +1489,11 @@
                                                                {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
                                                                {:type           :tool-input-delta
                                                                 :toolCallId     "call-1"
-                                                                :inputTextDelta (json/encode {:keyword_queries ["orders"]})}
+                                                                :inputTextDelta (json/encode {:query "orders"})}
                                                                {:type :tool-input-available :toolCallId "call-1" :toolName "search"}]
                                                               (do (reset! next-input input)
                                                                   (mut/mock-llm-response [{:type :text :text "Found it."}]))))
-                                    metabot-search/search (constantly [])]
+                                    metabot-search/search-by-query (constantly [])]
           (run-agent-loop! {:messages   [{:role :user :content "Show me orders"}]
                             :state      {}
                             :profile-id :internal
@@ -1497,7 +1501,7 @@
           (is (=? [{:type :text :id "t1" :text "Looking up "}
                    {:type :reasoning :id "r1" :text "Thinking"}
                    {:type :text :id "t2" :text "[Orders](metabase://model/1)"}
-                   {:type :tool-input :id "call-1" :function "search" :arguments {:keyword_queries ["orders"]}}
+                   {:type :tool-input :id "call-1" :function "search" :arguments {:query "orders"}}
                    {:type :tool-output :id "call-1" :function "search"}]
                   (filterv :type @next-input)))
           (is (=? {:type :tool-output :id "call-1"} (last @next-input))))))))
@@ -1532,7 +1536,7 @@
                 (let [[{system-1 :system tools-1 :tools messages-1 :messages}
                        {system-2 :system tools-2 :tools messages-2 :messages}] @requests]
                   (is (str/includes? (pr-str system-1) "Use British spelling."))
-                  (is (str/includes? (pr-str tools-1) "semantic_queries"))
+                  (is (str/includes? (pr-str tools-1) "entity_types"))
                   (is (str/includes? (pr-str messages-1) "Ops original"))
                   (is (= system-1 system-2))
                   (is (= tools-1 tools-2))
@@ -1557,10 +1561,9 @@
                               [{:type :start :id "msg-1"}
                                {:type      :tool-input
                                 :id        "call-search-1"
-                                :function  "search"
-                                :arguments {:semantic_queries ["orders table"]
-                                            :keyword_queries  ["orders"]
-                                            :entity_types     ["table"]}}
+                                :function  (keyword-search-tool-name)
+                                :arguments {:query        "orders"
+                                            :entity_types ["table"]}}
                                {:type :usage :usage {:promptTokens 100 :completionTokens 20}
                                 :model "test" :id "msg-1"}]
                               ;; Iteration 2: final text (no tool)
@@ -1572,13 +1575,13 @@
                                       openrouter/openrouter (fn [_opts]
                                                               (let [n (swap! llm-call-count inc)]
                                                                 (mut/mock-llm-response (get llm-responses (dec n) []))))
-                                      metabot-search/search (fn [_args]
-                                                              [{:id           (mt/id :orders)
-                                                                :type         "table"
-                                                                :name         "orders"
-                                                                :display_name "Orders"
-                                                                :description  "Confirmed orders."
-                                                                :database_id  (mt/id)}])]
+                                      metabot-search/search-by-query (fn [_args]
+                                                                       [{:id           (mt/id :orders)
+                                                                         :type         "table"
+                                                                         :name         "orders"
+                                                                         :display_name "Orders"
+                                                                         :description  "Confirmed orders."
+                                                                         :database_id  (mt/id)}])]
             (let [{:keys [trace result]} (mt/with-log-level [metabase.metabot.agent.core :warn]
                                            (ait/capture-reducible
                                             (run-agent-loop
@@ -1595,7 +1598,7 @@
               (let [turn       (first trace)
                     llms       (:children turn)
                     tool-spans (mapcat :children llms)
-                    search     (first (filter #(= "tool.search" (:name %)) tool-spans))]
+                    search     (first (filter #(= (str "tool." (keyword-search-tool-name)) (:name %)) tool-spans))]
                 (testing "root is the agent turn"
                   (is (= :turn (:type turn)))
                   (is (= "agent.turn" (:name turn)))
@@ -1607,9 +1610,8 @@
                 (testing "the search tool span nests under the llm.call it ran in"
                   (is (= :tool (:type search)))
                   ;; the decoded tool arguments are recorded on the span (metabase.metabot.self.core)
-                  (is (= {:semantic_queries ["orders table"]
-                          :keyword_queries  ["orders"]
-                          :entity_types     ["table"]}
+                  (is (= {:query        "orders"
+                          :entity_types ["table"]}
                          (get-in search [:attributes :ai/tool-args])))
                   (let [parent-llm (first (filter #(= (:parent-id search) (:id %)) llms))]
                     (is (some? parent-llm) "tool's parent-id resolves to an llm.call in the tree")))))))))))
@@ -1977,10 +1979,9 @@
                                            [{:type :start :id "msg-1"}
                                             {:type      :tool-input
                                              :id        "t1"
-                                             :function  "search"
-                                             :arguments {:semantic_queries ["test"]
-                                                         :keyword_queries  ["test"]
-                                                         :entity_types     ["table"]}}
+                                             :function  (keyword-search-tool-name)
+                                             :arguments {:query        "test"
+                                                         :entity_types ["table"]}}
                                             {:type :usage :usage {:promptTokens 100 :completionTokens 20}
                                              :model "test-model" :id "msg-1"}])
                                           (mut/mock-llm-response
@@ -1988,7 +1989,7 @@
                                             {:type :text :text "Done"}
                                             {:type :usage :usage {:promptTokens 150 :completionTokens 30}
                                              :model "test-model" :id "msg-2"}]))))
-                                    metabot-search/search
+                                    metabot-search/search-by-query
                                     (fn [_args] [{:id 1 :type "table" :name "test" :display_name "Test" :database_id 1}])]
           (mt/with-log-level [metabase.metabot.agent.core :warn]
             (mt/with-current-user rasta-id
@@ -2008,7 +2009,7 @@
                                       "session_id"    "00000000-0000-0000-0000-000000000001"
                                       "result"        "success"
                                       "duration_ms"   nat-int?
-                                      "event_details" {"tool_name" "search"
+                                      "event_details" {"tool_name" (keyword-search-tool-name)
                                                        "step"      1}}}]
                           tool-events)))))))))
     (testing "fires 'agent_used_tool' with result=error when tool fails"
@@ -2022,7 +2023,7 @@
                                            [{:type :start :id "msg-1"}
                                             {:type      :tool-input
                                              :id        "t1"
-                                             :function  "search"
+                                             :function  (keyword-search-tool-name)
                                              :arguments {:bad-arg "wrong"}}
                                             {:type :usage :usage {:promptTokens 100 :completionTokens 20}
                                              :model "test-model" :id "msg-1"}])
@@ -2031,7 +2032,7 @@
                                             {:type :text :text "Done"}
                                             {:type :usage :usage {:promptTokens 150 :completionTokens 30}
                                              :model "test-model" :id "msg-2"}]))))
-                                    metabot-search/search
+                                    metabot-search/search-by-query
                                     (fn [_args] (throw (ex-info "should not be called" {})))]
           (mt/with-log-level [metabase.metabot.agent.core :warn]
             (mt/with-current-user rasta-id
@@ -2045,7 +2046,7 @@
                       tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
                   (is (=? [{:data {"event"         "agent_used_tool"
                                    "result"        "error"
-                                   "event_details" {"tool_name"   "search"
+                                   "event_details" {"tool_name"   (keyword-search-tool-name)
                                                     "step"        1
                                                     "error_class" "validation"
                                                     "error_code"  "invalid-arguments"}}}]
@@ -2066,13 +2067,12 @@
                                             {:type      :tool-input
                                              :id        "t1"
                                              :function  "search"
-                                             :arguments {:semantic_queries ["test"]
-                                                         :keyword_queries  ["test"]
+                                             :arguments {:query        "test"
                                                          :entity_types     ["table"]}}])
                                           (mut/mock-llm-response
                                            [{:type :start :id "msg-2"}
                                             {:type :text :text "Done"}]))))
-                                    metabot-search/search
+                                    metabot-search/search-by-query
                                     (fn [_args] [{:id 1 :type "table" :name "test" :display_name "Test" :database_id 1}])]
           (mt/with-log-level [metabase.metabot.agent.core :warn]
             (mt/with-current-user rasta-id
@@ -2129,11 +2129,10 @@
                                           {:type      :tool-input
                                            :id        "t1"
                                            :function  "search"
-                                           :arguments {:semantic_queries ["test"]
-                                                       :keyword_queries  ["test"]
+                                           :arguments {:query        "test"
                                                        :entity_types     ["table"]}}])
                                         (throw (ex-info "boom on step 2" {}))))
-                                    metabot-search/search
+                                    metabot-search/search-by-query
                                     (fn [_args] [{:id 1 :type "table" :name "test" :display_name "Test" :database_id 1}])]
           (mt/with-log-level [metabase.metabot.agent.core :fatal]
             (snowplow-test/with-fake-snowplow-collector

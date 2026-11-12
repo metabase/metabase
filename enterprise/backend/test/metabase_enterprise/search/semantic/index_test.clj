@@ -68,6 +68,26 @@
     (is (= (vector-search-sql (semantic.settings/semantic-search-vector-strategy))
            (vector-search-sql nil)))))
 
+(deftest semantic-search-query-distance-cutoff-test
+  (testing "every strategy cuts off at :max-semantic-distance, or at 0.7 without one"
+    (doseq [strategy [:hnsw :brute-force :hnsw-iterative-relaxed :hnsw-iterative-strict]]
+      (let [cutoffs (fn [ctx]
+                      (re-seq #"\"distance\" <= [0-9.]+"
+                              (first (sql/format (#'semantic.index/semantic-search-query
+                                                  {:table-name "idx_tbl"}
+                                                  [0.1 0.2 0.3]
+                                                  (merge {:search-string          "pasta"
+                                                          :archived?              false
+                                                          :vector-search-strategy strategy}
+                                                         ctx))
+                                                 :quoted true
+                                                 :inline true))))]
+        (is (= {:default ["\"distance\" <= 0.7"]
+                :custom  ["\"distance\" <= 0.85"]}
+               {:default (cutoffs {})
+                :custom  (cutoffs {:max-semantic-distance 0.85})})
+            (str strategy))))))
+
 (defn- flattened-vector-candidates-cte
   "Build the brute-force/hnsw hybrid query, flatten it the way `scored-search-query` does, and return the
   hoisted `:vector_candidates` CTE binding (e.g. `[:vector_candidates <query> :materialized]`)."

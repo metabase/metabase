@@ -715,12 +715,14 @@
             (delete-conversations! [conversation-id])))))))
 
 (defn- search-part
-  [call-id]
-  {:type         "tool-search"
-   :toolCallId   call-id
-   :state        "output-available"
-   :input        {:q "foo"}
-   :output       {:output "<result>...</result>"}})
+  ([call-id]
+   (search-part call-id "search"))
+  ([call-id tool-name]
+   {:type       (str "tool-" tool-name)
+    :toolCallId call-id
+    :state      "output-available"
+    :input      {:q "foo"}
+    :output     {:output "<result>...</result>"}}))
 
 (defn- with-search-count-fixture!
   "Seed conversations with varying numbers of search tool parts so we
@@ -731,12 +733,15 @@
     (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-search-count@metabase.com"
                                                    :first_name "Search"
                                                    :last_name  "Counter"}]
-      (let [convo-none    (str (random-uuid))
-            convo-two     (str (random-uuid))
-            convo-errored (str (random-uuid))
-            jan-1         (offset-date-time "2026-02-01T00:00:00Z")
-            jan-2         (offset-date-time "2026-02-02T00:00:00Z")
-            jan-3         (offset-date-time "2026-02-03T00:00:00Z")]
+      (let [convo-none     (str (random-uuid))
+            convo-two      (str (random-uuid))
+            convo-errored  (str (random-uuid))
+            convo-matchers (str (random-uuid))
+            ;; The oldest, so it sorts last and the pagination test's page is unchanged.
+            jan-0          (offset-date-time "2026-01-31T00:00:00Z")
+            jan-1          (offset-date-time "2026-02-01T00:00:00Z")
+            jan-2          (offset-date-time "2026-02-02T00:00:00Z")
+            jan-3          (offset-date-time "2026-02-03T00:00:00Z")]
         (try
           (insert-conversation! {:conversation-id convo-none
                                  :user-id         test-user-id
@@ -750,6 +755,10 @@
                                  :user-id         test-user-id
                                  :created-at      jan-3
                                  :title           "one errored search still counts"})
+          (insert-conversation! {:conversation-id convo-matchers
+                                 :user-id         test-user-id
+                                 :created-at      jan-0
+                                 :title           "one call to each matcher tool"})
           ;; convo-none: only text, no search calls.
           (insert-message! {:conversation-id convo-none
                             :created-at      jan-1
@@ -783,31 +792,41 @@
                                                :state        "output-error"
                                                :input        {:q "foo"}
                                                :errorText    "boom"}]})
-          (thunk {:test-user-id  test-user-id
-                  :convo-none    convo-none
-                  :convo-two     convo-two
-                  :convo-errored convo-errored})
+          ;; convo-matchers: one call to each of the tools that replaced `search`.
+          (insert-message! {:conversation-id convo-matchers
+                            :created-at      jan-0
+                            :role            "assistant"
+                            :profile-id      "internal"
+                            :total-tokens    6
+                            :data            [(search-part "call-semantic" "semantic_search")
+                                              (search-part "call-fulltext" "fulltext_search")
+                                              (search-part "call-substring" "substring_search")]})
+          (thunk {:test-user-id   test-user-id
+                  :convo-none     convo-none
+                  :convo-two      convo-two
+                  :convo-errored  convo-errored
+                  :convo-matchers convo-matchers})
           (finally
-            (delete-conversations! [convo-none convo-two convo-errored])))))))
+            (delete-conversations! [convo-none convo-two convo-errored convo-matchers])))))))
 
 (deftest search-count-test
   (with-search-count-fixture!
-    (fn [{:keys [test-user-id convo-none convo-two convo-errored]}]
-      (testing "list endpoint surfaces per-conversation search counts (errored calls still count)"
+    (fn [{:keys [test-user-id convo-none convo-two convo-errored convo-matchers]}]
+      (testing "list endpoint counts every search tool's calls, errored ones too"
         (let [response (mt/user-http-request :crowberto :get 200
                                              (format "ee/metabot-analytics/conversations?user_id=%s" test-user-id))
               by-id    (into {} (map (juxt :conversation_id identity)) (:data response))]
-          (is (= {convo-none 0, convo-two 2, convo-errored 1}
+          (is (= {convo-none 0, convo-two 2, convo-errored 1, convo-matchers 3}
                  (update-vals by-id :search_count)))))
       (testing "pagination scopes the hydration batch to the page"
-        ;; Default sort is created_at desc: [convo-errored convo-two convo-none].
+        ;; Default sort is created_at desc: [convo-errored convo-two convo-none convo-matchers].
         (let [response (mt/user-http-request :crowberto :get 200
                                              (format "ee/metabot-analytics/conversations?user_id=%s&limit=1&offset=1"
                                                      test-user-id))]
           (is (= [convo-two] (map :conversation_id (:data response))))
           (is (= 2 (:search_count (first (:data response)))))))
       (testing "detail endpoint surfaces the same counts"
-        (doseq [[convo expected] [[convo-none 0] [convo-two 2] [convo-errored 1]]]
+        (doseq [[convo expected] [[convo-none 0] [convo-two 2] [convo-errored 1] [convo-matchers 3]]]
           (let [response (mt/user-http-request :crowberto :get 200
                                                (format "ee/metabot-analytics/conversations/%s" convo))]
             (is (= expected (:search_count response))

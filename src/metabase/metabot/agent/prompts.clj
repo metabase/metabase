@@ -161,6 +161,12 @@
       (let [sql-dialect          (or (get context :sql_dialect)
                                      (get context :sql-dialect))
             {:keys [always-on catalog]} (skills/build-skill-manifest profile (keys tools) capabilities)
+            ;; Search guidance follows the search tools actually offered this turn, so the prompt never describes a
+            ;; matcher the model wasn't given.
+            has-semantic?        (contains? tools "semantic_search")
+            has-fulltext?        (contains? tools "fulltext_search")
+            has-substring?       (contains? tools "substring_search")
+            has-library?         (contains? tools "retrieve_library_entities")
             perms                (or scope/*current-user-metabot-permissions*
                                      scope/perm-type-defaults)
             ;; The SQL guidance tells the model to load SQL skills and use the SQL tools, so gate it
@@ -182,6 +188,11 @@
                                   ;; true when a SQL-writing tool is active.
                                   :sql_dialect_loaded       (and (sql-generation-tools? tools)
                                                                  (some? (skills/dialect-skill sql-dialect)))
+                                  :has_semantic_search      has-semantic?
+                                  :has_fulltext_search      has-fulltext?
+                                  :has_substring_search     has-substring?
+                                  :has_keyword_search       (or has-fulltext? has-substring?)
+                                  :has_library_retrieval    has-library?
                                   ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats
                                   ;; an empty vector as truthy, which would render the "# Available
                                   ;; skills … load the skill(s) you need" header with nothing to
@@ -203,10 +214,7 @@
                                   :has_sql_execution        has-sql-execution?
                                   :custom_instructions      (not-empty
                                                              (case template-name
-                                                               ;; both nlq templates (curated + general-search
-                                                               ;; fallback) take the nlq custom instructions
-                                                               ("natural-language-querying-only.selmer"
-                                                                "natural-language-querying-fallback.selmer")
+                                                               "natural-language-querying-only.selmer"
                                                                (metabot.settings/metabot-nlq-system-prompt)
                                                                "sql-querying-only.selmer"
                                                                (metabot.settings/metabot-sql-system-prompt)

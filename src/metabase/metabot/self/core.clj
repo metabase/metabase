@@ -88,7 +88,9 @@
    [:system-instructions {:optional true} [:maybe :string]]
    [:capabilities {:optional true} [:maybe [:set :keyword]]]
    [:scope {:optional true} [:maybe :string]]
-   [:runs-alone? {:optional true} [:maybe :boolean]]])
+   [:runs-alone? {:optional true} [:maybe :boolean]]
+   ;; tool names this tool took over; a call to one of them is redirected here rather than rejected as unknown
+   [:replaces {:optional true} [:maybe [:set :string]]]])
 
 (def ^:private DataPart
   "One entry of a tool's `:data-parts`: `metabase.metabot.agent.streaming`'s `{:type :data, ...}`
@@ -1081,8 +1083,8 @@
   check, the call, the result check, and turning any failure into text for the right audience. It
   does not throw, so a `tool_use` always gets a `tool_result`.
 
-  A call to a tool outside `tools` gets an error listing the ones it can call. Its name is model
-  output, so logs and span data record it as \"unknown\".
+  A call to a tool outside `tools` gets an error listing the ones it can call, or naming the tools that
+  replaced it. Its name is model output, so logs and span data record it as \"unknown\".
 
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
   [tool-call-id tool-name tools chunks]
@@ -1108,7 +1110,10 @@
                                       :raw-len      (count raw)}))
                          (if-not tool
                            (do (log/debugf "Tool call %s: unknown tool" tool-call-id)
-                               (tools.runtime/unknown-tool-outcome tool-name (keys tools)))
+                               (tools.runtime/unknown-tool-outcome
+                                tool-name
+                                (keys tools)
+                                (keep (fn [[k {:keys [replaces]}]] (when (contains? replaces tool-name) k)) tools)))
                            ;; Checked before coercion: `coerce-stringified-json` would decode a
                            ;; double-encoded `{::non-object-arguments "{…}"}` into an object and
                            ;; garble the message.

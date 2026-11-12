@@ -410,23 +410,35 @@
   (ex-info message {tools.error/error-key {:class :validation :code code :message message}}))
 
 (defn- unknown-tool-message
-  [tool-name tool-names]
-  (str "Tool `" tool-name "` does not exist. Available tools: "
-       (str/join ", " (sort tool-names)) "."))
+  "The error for a call to `tool-name`, which is not in `tool-names`. `replacements` are the tools that declare they
+  took it over. When there are any, the message names them, so the model rewrites the call for one of them rather
+  than guessing from a list of every tool."
+  [tool-name tool-names replacements]
+  (if (seq replacements)
+    (str "Tool `" tool-name "` has been replaced by " (str/join " and " (map #(str "`" % "`") (sort replacements)))
+         ". They match differently: read each description, then write the call for the one you use.")
+    (str "Tool `" tool-name "` does not exist. Available tools: "
+         (str/join ", " (sort tool-names)) ".")))
 
 (defn- unknown-tool-ex
   ^Throwable [tool-name entries]
-  (validation-ex :unknown-tool (unknown-tool-message tool-name (keys entries))))
+  (validation-ex :unknown-tool (unknown-tool-message tool-name
+                                                     (keys entries)
+                                                     (keep (fn [[k {:keys [declaration]}]]
+                                                             (when (contains? (:metabot/replaces declaration) tool-name)
+                                                               k))
+                                                           entries))))
 
 (defn unknown-tool-outcome
-  "The failure [[::outcome]] for a call to a tool that is not in `tool-names`.
+  "The failure [[::outcome]] for a call to a tool that is not in `tool-names`. `replacements` name the tools that
+  declare they took it over, as `:metabot/replaces` in their declarations.
 
   Public because the agent's `run-tool` resolves the entry before it has anything to invoke, so it
   reaches this directly rather than through [[invoke]]. One definition of the message either way."
-  [tool-name tool-names]
+  [tool-name tool-names replacements]
   (render {:class   :validation
            :code    :unknown-tool
-           :message (unknown-tool-message tool-name tool-names)}
+           :message (unknown-tool-message tool-name tool-names replacements)}
           tool-names))
 
 (defn- check-scope!

@@ -21,7 +21,7 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.db :as metabot.db]
-   [metabase.metabot.tools.error :refer [defrecoverable]]
+   [metabase.metabot.tools.error :refer [defrecoverable search-steps]]
    [metabase.models.interface :as mi]
    [metabase.util.malli.registry :as mr]))
 
@@ -202,9 +202,10 @@
 
 (defpipeline-error uncurated-source!
   "The query reads a table, model, metric, measure, or segment that a curated-only Metabot may not use."
-  [{:uses #{"search"}
-    :text (str "Call `search` to find curated tables, models, or metrics and build the query on those instead. "
-               "A table related to a curated one may be joined, but not used as the query's source.")}])
+  ;; The Agent API renders pipeline errors through its own hints, so these steps name only the agent loop's tools.
+  (search-steps #(str "Call `" % "` to find curated tables, models, or metrics and build the query on those "
+                      "instead. A table related to a curated one may be joined, but not used as the query's source.")
+                :agent-loop-only? true))
 
 ;;; Table resolution
 

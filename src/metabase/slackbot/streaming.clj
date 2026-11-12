@@ -188,6 +188,9 @@
 (def ^:private tool-friendly-names
   "Map of tool names to user-friendly gerund descriptions for slackbot profile tools."
   {"search"                   "Searching"
+   "semantic_search"          "Searching"
+   "fulltext_search"          "Searching"
+   "substring_search"         "Searching"
    "construct_notebook_query" "Building query"
    "list_available_fields"    "Finding available fields"
    "get_field_values"         "Getting field values"

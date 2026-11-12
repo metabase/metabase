@@ -2,6 +2,7 @@
 (ns metabase.search.engine
   (:require
    [clojure.string :as str]
+   [metabase.app-db.core :as mdb]
    [metabase.search.hierarchy :as search.hierarchy]
    [metabase.search.settings :as settings]
    [metabase.util :as u]
@@ -243,6 +244,27 @@
   Prefers engines with a maintained index over merely supported ones."
   [engine]
   (u/seek #(not= engine %) (concat (active-engines) (supported-engines))))
+
+(defn keyword-engine
+  "The engine that matches keyword queries: the default engine, or the one semantic search falls back to when the
+  default is semantic."
+  []
+  (let [engine (default-engine)]
+    (if (= :search.engine/semantic engine)
+      (fallback-engine engine)
+      engine)))
+
+(defn keyword-flavour
+  "How the [[keyword-engine]] matches a query, or nil when there is none:
+
+  - `:fulltext`: app-db on Postgres. Lexemes, with stemming and stopwords from the text-search language, and boolean
+    tsquery operators.
+  - `:substring`: in-place, or app-db on H2. A term matches as a substring of any searched column."
+  []
+  (case (keyword-engine)
+    :search.engine/appdb    (if (= :postgres (mdb/db-type)) :fulltext :substring)
+    :search.engine/in-place :substring
+    nil))
 
 (defmethod disjunction :default [_ terms] terms)
 

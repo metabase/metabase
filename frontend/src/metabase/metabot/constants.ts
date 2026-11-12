@@ -113,6 +113,12 @@ export type ToolMessage = {
   done: (count?: number) => string | undefined;
 };
 
+// Every search tool, one per matcher plus the retired `search`, reads as a search.
+const SEARCH_MESSAGES: ToolMessage = {
+  active: () => t`Searching`,
+  done: () => t`Searched`,
+};
+
 export const TOOL_MESSAGES = {
   analyze_chart: {
     active: () => t`Inspecting the visualization`,
@@ -126,6 +132,7 @@ export const TOOL_MESSAGES = {
     active: () => t`Creating a query`,
     done: () => t`Created a query`,
   },
+  fulltext_search: SEARCH_MESSAGES,
   get_field_values: {
     active: () => t`Retrieving table metadata`,
     done: () => t`Retrieved table metadata`,
@@ -152,7 +159,7 @@ export const TOOL_MESSAGES = {
   },
   run_query: { active: () => t`Running a query`, done: () => t`Ran a query` },
   save_entity: { active: () => t`Saving`, done: () => t`Saved` },
-  search: { active: () => t`Searching`, done: () => t`Searched` },
+  search: SEARCH_MESSAGES,
   search_data_sources: {
     active: () => t`Checking available data sources`,
     done: () => t`Checked available data sources`,
@@ -165,6 +172,8 @@ export const TOOL_MESSAGES = {
     active: () => t`Searching database tables`,
     done: () => t`Searched database tables`,
   },
+  semantic_search: SEARCH_MESSAGES,
+  substring_search: SEARCH_MESSAGES,
   write_transform_python: {
     active: () => t`Writing Python`,
     done: () => t`Wrote Python`,

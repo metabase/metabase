@@ -1172,6 +1172,10 @@
      :min
      :month
      :now
+     :numnode
+     :phraseto_tsquery
+     :plainto_tsquery
+     :querytree
      :rand
      :random
      :regexp_replace
@@ -1186,7 +1190,11 @@
      :to_tsquery
      :to_tsvector
      :trim
+     :ts_match_vq
      :ts_rank
+     :tsquery_and
+     :tsquery_not
+     :tsquery_or
      :upper
      :year)
     (simple-fn! f args context)
