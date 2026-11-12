@@ -842,16 +842,25 @@
                                                               :creator_id    (mt/user->id :rasta)
                                                               :collection_id unreadable-coll}
                      :model/Card       {plain :id}           {:collection_id readable-coll}
+                     :model/Card       {other-plain :id}     {:collection_id readable-coll}
                      :model/Card       {in-readable-doc :id} {:collection_id readable-coll, :document_id readable-doc}
                      :model/Card       {in-hidden-doc :id}   {:collection_id readable-coll, :document_id hidden-doc}]
         (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll)})]
-          (let [ids    [plain in-readable-doc in-hidden-doc]
-                result (#'semantic.index/filter-read-permitted
-                        (for [id ids] {:id id :model "card" :collection_id readable-coll}))]
+          (let [filter-cards (fn [ids]
+                               (#'semantic.index/filter-read-permitted
+                                (for [id ids] {:id id :model "card" :collection_id readable-coll})))
+                query-count  (fn [ids]
+                               (t2/with-call-count [call-count]
+                                 (filter-cards ids)
+                                 (call-count)))
+                ids          [plain in-readable-doc in-hidden-doc]]
             (is (= [plain in-readable-doc]
-                   (map :id result)
+                   (map :id (filter-cards ids))
                    (filter #(mi/can-read? (t2/select-one :model/Card :id %)) ids))
-                "the verdicts match mi/can-read? on full rows")))))))
+                "the verdicts match mi/can-read? on full rows")
+            (is (= (query-count [plain])
+                   (query-count [plain other-plain]))
+                "cards outside a document add no query each, so the load must include document_id")))))))
 
 (deftest collection-id-only-search-models-derived-correctly-test
   (testing "derived set includes every collection-id-only search-model plus indexed-entity"

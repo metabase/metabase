@@ -1002,7 +1002,7 @@
         fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         slow-t2-instances (vec
                            (for [[t2-model ids] (u/group-by doc->t2-model :id slow-docs)
-                                 t2-instance (semantic-search.db/instances t2-model ids)]
+                                 t2-instance (semantic-search.db/read-check-instances t2-model ids)]
                              t2-instance))
         doc->t2 (comp (u/index-by (juxt :id t2/model) slow-t2-instances)
                       (juxt :id doc->t2-model))

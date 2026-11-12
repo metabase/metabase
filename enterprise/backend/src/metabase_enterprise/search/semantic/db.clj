@@ -69,7 +69,7 @@
   "Per model, a select of only the columns its `mi/can-read?` reads, for models too costly to load in full."
   {:model/Card [:model/Card :id :collection_id :document_id]})
 
-(mu/defn instances
+(mu/defn read-check-instances
   "The instances of `model` with `ids`, with enough columns for `mi/can-read?`."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
