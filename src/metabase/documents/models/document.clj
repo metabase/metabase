@@ -48,11 +48,14 @@
    when moving a document. Uses the same permission pattern as check-allowed-to-change-collection.
    Throws 403 exception if permissions are insufficient."
   [old-collection-id new-collection-id]
-  (when old-collection-id
-    (api/write-check :model/Collection old-collection-id))
-  (when new-collection-id
-    (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))
-    (api/write-check :model/Collection new-collection-id)))
+  (if old-collection-id
+    (api/write-check :model/Collection old-collection-id)
+    (api/write-check collection/root-collection))
+  (if new-collection-id
+    (do
+      (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))
+      (api/write-check :model/Collection new-collection-id))
+    (api/write-check collection/root-collection)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :creator]
   "Hydrate the creator (user) of a document based on the creator_id."
