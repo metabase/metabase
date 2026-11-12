@@ -661,27 +661,32 @@
 (defn- isolated-drop-target
   "Resolve `target` to the physical warehouse table to drop.
 
-  On a workspace child the canonical target is backed by an isolation-namespace copy recorded
-  in `table_remapping`; the workspace user can only DROP inside its isolation namespace, so the
-  drop must hit that copy — not the canonical table. Looks the copy up via the general
-  canonical→isolated workspace hook (symmetric with [[canonicalize-target]], which uses the
-  inverse). The isolated namespace lives in `:schema` for schema-based drivers and in `:db` for
-  MySQL; collapse to the single `:schema` slot the driver drop path qualifies on. Off-workspace
-  the hook returns nil and `target` is dropped unchanged."
+  On a workspace instance the canonical target is backed by a copy in the workspace schema. The
+  workspace user can only DROP inside that schema, so the drop must name the copy, never the
+  canonical table. The copy is the one recorded in `table_remapping` for the target. With no row,
+  it is the table the transform would write to, which
+  [[transforms-base.workspace-hooks/workspace-transform-target]] returns. That hook throws a 400
+  on a workspace instance when the database has no workspace schema. The workspace schema is in
+  `:schema` for schema-based drivers and in `:db` for MySQL; collapse to the single `:schema`
+  slot the driver drop path qualifies on. Off a workspace instance with no row, `target` is
+  returned unchanged."
   [db-id target]
-  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
-    (if-let [{:keys [db schema name]} (ws.table-remapping/workspace-remap-schema+name db-id lookup-spec)]
-      (assoc target :schema (or schema db) :name name)
-      target)))
+  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}
+        copy        (or (ws.table-remapping/workspace-remap-schema+name db-id lookup-spec)
+                        (transforms-base.workspace-hooks/workspace-transform-target db-id target))]
+    (if (= copy target)
+      target
+      (assoc target :schema (or (:schema copy) (:db copy)) :name (:name copy)))))
 
 (mu/defn delete-target-table! :- [:maybe :int]
   "Drop a transform's output table and deactivate its app-db Table row.
 
-  In workspace-isolation mode the transform writes to an isolation-namespace copy, so the drop
+  On a workspace instance the transform writes to a copy in the workspace schema, so the drop
   resolves the canonical `:target` to that copy (see [[isolated-drop-target]]); dropping the
-  canonical name would fail (the workspace user is read-only there) or hit the wrong table. The
-  app-db Table row that gets deactivated is always the canonical `:target`, since that is what
-  sync surfaces. Off-workspace the two are identical."
+  canonical name would fail (the workspace user is read-only there) or hit the wrong table.
+  Throws a 400 on a workspace instance when the database has no workspace schema. The app-db
+  Table row that gets deactivated is always the canonical `:target`, since that is what sync
+  surfaces. Off a workspace instance the two are identical."
   [{:keys [id target], :as transform} :- ::transforms-base.schema/transform]
   (when target
     (let [database-id (transforms-base.i/target-db-id transform)]
