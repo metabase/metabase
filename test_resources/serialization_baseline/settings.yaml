@@ -1,4 +1,3 @@
-agent-api-enabled?: null
 aggregated-query-row-limit: null
 ai-features-enabled?: null
 ai-usage-max-retention-days: null
