@@ -6,7 +6,9 @@
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.interface :as sql-tools]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (java.util IdentityHashMap)))
 
 (set! *warn-on-reflection* true)
 
@@ -84,8 +86,9 @@
 
 (defn- normalize-field
   "Normalize identifier strings in a field spec using driver-specific case rules.
-   Only normalizes specific keys (column, table, schema, etc.) to match Macaw's col-fields."
-  [driver field]
+   Only normalizes specific keys (column, table, schema, etc.) to match Macaw's col-fields.
+   `cache` holds the composite fields normalized so far."
+  [driver cache field]
   (let [normalize (fn []
                     (reduce-kv (fn [m k v]
                                  (assoc m k
@@ -94,28 +97,29 @@
                                           (sql.normalize/normalize-name driver v)
 
                                           (map? v)
-                                          (normalize-field driver v)
+                                          (normalize-field driver cache v)
 
                                           (set? v)
-                                          (set (map #(normalize-field driver %) v))
+                                          (set (map #(normalize-field driver cache %) v))
 
                                           (sequential? v)
-                                          (mapv #(normalize-field driver %) v)
+                                          (mapv #(normalize-field driver cache %) v)
 
                                           :else v)))
                                {}
                                field))]
     (cond
       (not (map? field)) field
-      (= :composite-field (:type field)) (sql-tools.common/cached-composite field normalize)
+      (= :composite-field (:type field)) (sql-parsing/cached-by-identity cache field normalize)
       :else (normalize))))
 
 (defmethod sql-tools/field-references-impl :sqlglot
   [_parser driver sql-string]
-  (let [result (sql-parsing/field-references (driver->dialect driver) sql-string)]
+  (let [result (sql-parsing/field-references (driver->dialect driver) sql-string)
+        cache  (IdentityHashMap.)]
     (-> result
-        (update :used-fields #(set (map (partial normalize-field driver) %)))
-        (update :returned-fields #(mapv (partial normalize-field driver) %))
+        (update :used-fields #(set (map (partial normalize-field driver cache) %)))
+        (update :returned-fields #(mapv (partial normalize-field driver cache) %))
         (update :errors #(set (map convert-error %))))))
 
 ;;;; referenced-fields

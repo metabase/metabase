@@ -6,12 +6,15 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.db :as sql-tools.db]
    [metabase.sql-tools.interface :as sql-tools]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu])
   (:import
    (java.util IdentityHashMap)))
+
+(set! *warn-on-reflection* true)
 
 (defn normalize-name
   "Normalize a name by per driver rules."
@@ -176,39 +179,30 @@
       (apply (partial max-key (comp count ancestors)) common-ancestors)
       default-type)))
 
-(def ^:private ^:dynamic *composite-cache*
-  "Identity cache of the composite fields that one outermost [[cached-composite]] call has seen."
-  nil)
-
-(defn cached-composite
-  "The value of `(compute)` for the composite field `col-spec`, computed one time for each `col-spec` object while the
-  outermost call runs. A chain of UNIONs gives the same composite field to more than one member, so without the cache
-  the work doubles at each level. `compute` must not return a lazy sequence."
-  [col-spec compute]
-  (if-let [^IdentityHashMap cache *composite-cache*]
-    (if (.containsKey cache col-spec)
-      (.get cache col-spec)
-      (let [result (compute)]
-        (.put cache col-spec result)
-        result))
-    (binding [*composite-cache* (IdentityHashMap.)]
-      (cached-composite col-spec compute))))
-
 (defmethod resolve-field :composite-field
   [driver metadata-provider col-spec]
-  (cached-composite
-   col-spec
-   (fn []
-     (let [member-fields (into []
-                               (mapcat #(->> (resolve-field driver metadata-provider %)
-                                             (keep :col)))
-                               (:member-fields col-spec))]
-       [{:col {:name (get-name col-spec)
-               :lib/desired-column-alias (get-name col-spec)
-               :display-name (get-display-name col-spec)
-               :base-type (apply lca :type/* (map :base-type member-fields))
-               :effective-type (apply lca :type/* (map :effective-type member-fields))
-               :semantic-type (apply lca :Semantic/* (map :semantic-type member-fields))}}]))))
+  ;; A chain of UNIONs gives the same composite field to more than one member, so resolve each one a single time.
+  (let [cache (IdentityHashMap.)]
+    (letfn [(resolve-member [member]
+              (if (= :composite-field (:type member))
+                (resolve-composite member)
+                (resolve-field driver metadata-provider member)))
+            (resolve-composite [composite]
+              (sql-parsing/cached-by-identity
+               cache
+               composite
+               (fn []
+                 (let [member-fields (into []
+                                           (comp (mapcat resolve-member)
+                                                 (keep :col))
+                                           (:member-fields composite))]
+                   [{:col {:name (get-name composite)
+                           :lib/desired-column-alias (get-name composite)
+                           :display-name (get-display-name composite)
+                           :base-type (apply lca :type/* (map :base-type member-fields))
+                           :effective-type (apply lca :type/* (map :effective-type member-fields))
+                           :semantic-type (apply lca :Semantic/* (map :semantic-type member-fields))}}]))))]
+      (resolve-composite col-spec))))
 
 (defmethod resolve-field :unknown-columns
   [_driver _metadata-provider _col-spec]

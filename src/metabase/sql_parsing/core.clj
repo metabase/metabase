@@ -502,26 +502,20 @@
 
       :else error)))
 
-(def ^:private ^:dynamic *converted-composites*
-  "Identity cache of the composite fields that one [[field-references]] call has converted."
-  nil)
-
-(defn- cached-composite
-  "The value of `(compute)` for the composite field `field`, computed one time for each `field` object. A chain of
-  UNIONs gives the same composite field to more than one member, so without the cache the work doubles at each
-  level."
-  [field compute]
-  (if-let [^IdentityHashMap cache *converted-composites*]
-    (if (.containsKey cache field)
-      (.get cache field)
-      (let [result (compute)]
-        (.put cache field result)
-        result))
-    (compute)))
+(defn cached-by-identity
+  "The value of `(compute)` for `k`, computed one time for each `k` object and kept in `cache`, an `IdentityHashMap`.
+  A chain of UNIONs gives the same composite field to more than one member of a field spec, so a walk without the cache
+  does the same work twice at each level."
+  [^IdentityHashMap cache k compute]
+  (if (.containsKey cache k)
+    (.get cache k)
+    (let [result (compute)]
+      (.put cache k result)
+      result)))
 
 (defn- convert-field
-  "Convert a field spec from Python format to Clojure format."
-  [field]
+  "Convert a field spec from Python format to Clojure format. `cache` holds the composite fields converted so far."
+  [cache field]
   (when field
     (let [field-type (some-> (or (:type field) (get field "type")) convert-field-type)]
       (case field-type
@@ -530,7 +524,7 @@
          :column (or (:column field) (get field "column"))
          :alias (or (:alias field) (get field "alias"))
          :source-columns (mapv (fn [scope]
-                                 (mapv convert-field scope))
+                                 (mapv #(convert-field cache %) scope))
                                (or (:source-columns field)
                                    (:source_columns field)
                                    (get field "source_columns")
@@ -554,12 +548,13 @@
          :alias (or (:alias field) (get field "alias"))}
 
         :composite-field
-        (cached-composite
+        (cached-by-identity
+         cache
          field
          (fn []
            {:type          :composite-field
             :alias         (or (:alias field) (get field "alias"))
-            :member-fields (mapv convert-field
+            :member-fields (mapv #(convert-field cache %)
                                  (or (:member-fields field)
                                      (:member_fields field)
                                      (get field "member_fields")
@@ -595,11 +590,11 @@
     (let [raw (protocol/field-references (parser) dialect (strip-large-literal-lists sql))
           used-fields (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
           returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
-          errors (or (:errors raw) (get raw "errors") [])]
-      (binding [*converted-composites* (IdentityHashMap.)]
-        {:used-fields (set (map convert-field used-fields))
-         :returned-fields (vec (map convert-field returned-fields))
-         :errors (set (map convert-error errors))}))
+          errors (or (:errors raw) (get raw "errors") [])
+          cache (IdentityHashMap.)]
+      {:used-fields (set (map #(convert-field cache %) used-fields))
+       :returned-fields (vec (map #(convert-field cache %) returned-fields))
+       :errors (set (map convert-error errors))})
     (catch TimeoutException e
       {:used-fields #{}
        :returned-fields []
