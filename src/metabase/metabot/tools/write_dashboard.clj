@@ -16,6 +16,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.governing-collection :as governing-collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.curation :as curation]
@@ -455,7 +456,7 @@
   [collection-id creating?]
   (when collection-id
     (let [collection (tools/with-entity {:kind :collection, :id collection-id}
-                       (api/read-check :model/Collection collection-id))]
+                       (governing-collection/check-read-governing-collection nil collection-id))]
       (when (:archived collection)
         (collection-trashed! {:collection-id collection-id}))))
   (try

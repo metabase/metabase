@@ -69,6 +69,7 @@
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.governing-collection :as governing-collection]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -684,8 +685,9 @@
 
 (defn- readable-collection [id-str]
   (if (= id-str "root")
-    (api/read-check (collection/root-collection-with-ui-details nil))
-    (api/read-check :model/Collection (parse-long id-str))))
+    (do (governing-collection/check-read-governing-collection nil nil)
+        (collection/root-collection-with-ui-details nil))
+    (governing-collection/check-read-governing-collection nil (parse-long id-str))))
 
 (defn- fetch-collection [id-str]
   (let [coll (readable-collection id-str)]
