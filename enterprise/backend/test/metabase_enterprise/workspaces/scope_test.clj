@@ -2,8 +2,10 @@
   "`mb:workspace-manager` is the scope of exactly the workspace manager endpoints, and a credential holding only it,
   an API key or an OAuth token, reaches those and nothing else."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.api.workspace-manager]
+   [metabase.api-scope.core :as api-scope]
    [metabase.api-scope.workspace-manager :as api-scope.workspace-manager]
    [metabase.api.macros :as api.macros]
    [metabase.oauth-server.core :as oauth-server]
@@ -92,3 +94,59 @@
             (reaches-only-workspace-routes {:headers {"authorization" (str "Bearer " token)}})
             (finally
               (t2/delete! :model/OAuthAccessToken :client_id client-id))))))))
+
+(deftest workspace-manager-scope-description-names-the-config-download-test
+  (testing "the consent text says the scope can download config files that hold database credentials"
+    (let [description (str (api-scope/scope-description api-scope.workspace-manager/workspace-manager))]
+      (is (str/includes? description "config"))
+      (is (str/includes? description "credentials")))))
+
+(deftest workspace-manager-api-key-cannot-read-parent-tunnel-secrets-test
+  (mt/with-premium-features #{:workspaces}
+    (mt/with-model-cleanup [:model/ApiKey]
+      (mt/with-temp [:model/Database {db-id :id} {:name    "Tunnel DW"
+                                                  :engine  :postgres
+                                                  :details {:host                          "db.example"
+                                                            :port                          5432
+                                                            :tunnel-enabled                true
+                                                            :tunnel-host                   "bastion.example"
+                                                            :tunnel-user                   "tunnel"
+                                                            :tunnel-auth-option            "ssh-key"
+                                                            :tunnel-pass                   "PARENT-TUNNEL-PASS"
+                                                            :tunnel-private-key            "PARENT-TUNNEL-PRIVATE-KEY"
+                                                            :tunnel-private-key-passphrase "PARENT-TUNNEL-PASSPHRASE"}}
+                     :model/Workspace {ws-id :id} {:name       "tunnel"
+                                                   :creator_id (mt/user->id :crowberto)}
+                     :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                                 :database_id      db-id
+                                                 :database_details {:user "ws_user" :password "ws-pass"}
+                                                 :output_namespace "ws_tunnel"
+                                                 :input_schemas    ["public"]
+                                                 :status           :provisioned}]
+        (let [{scoped-key :unmasked_key} (mt/user-http-request :crowberto :post 200 "api-key"
+                                                               {:group_id (:id (perms-group/admin))
+                                                                :name     "CI workspaces"
+                                                                :scope    "workspace-manager"})
+              {full-key :unmasked_key}   (mt/user-http-request :crowberto :post 200 "api-key"
+                                                               {:group_id (:id (perms-group/admin))
+                                                                :name     "full admin"})
+              as-key                     (fn [k] {:request-options {:headers {"x-api-key" k}}})
+              config-body                (fn [k]
+                                           (str (client/client :get 200 (str "ee/workspace-manager/" ws-id "/config")
+                                                               (as-key k))))
+              secrets                    ["PARENT-TUNNEL-PASS" "PARENT-TUNNEL-PRIVATE-KEY" "PARENT-TUNNEL-PASSPHRASE"]]
+          (testing "the scoped key cannot read the database"
+            (is (= "unsupported_scope"
+                   (:error (client/client :get 403 (str "database/" db-id) (as-key scoped-key))))))
+          (testing "the scoped key's config download keeps the tunnel host and drops the parent's tunnel secrets"
+            (let [body (config-body scoped-key)]
+              (is (str/includes? body "bastion.example"))
+              (is (str/includes? body "ws-pass"))
+              (doseq [secret secrets]
+                (testing secret
+                  (is (not (str/includes? body secret)))))))
+          (testing "an unscoped admin key's config download still carries the tunnel secrets the sidecar connects with"
+            (let [body (config-body full-key)]
+              (doseq [secret secrets]
+                (testing secret
+                  (is (str/includes? body secret)))))))))))

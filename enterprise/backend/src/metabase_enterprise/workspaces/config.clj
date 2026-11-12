@@ -150,6 +150,18 @@
                    :workspace {:name      (:name ws)
                                :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
 
+(def ^:private tunnel-secret-keys
+  "The SSH tunnel secrets in a database's `:details`."
+  [:tunnel-pass :tunnel-private-key :tunnel-private-key-passphrase])
+
+(defn drop-tunnel-secrets
+  "`config`, a [[build-workspace-config]] map, without the SSH tunnel secrets in each database's `:details`. The tunnel
+  host and user stay. For a download by an `mb:workspace-manager` credential: the scope does not let it read the
+  parent database, so its config must not carry the parent's tunnel credential either."
+  [config]
+  (update-in config [:config :databases]
+             (fn [dbs] (mapv #(update % :details (fn [details] (apply dissoc details tunnel-secret-keys))) dbs))))
+
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."
   [config]

@@ -11,6 +11,7 @@
    [metabase.api-scope.workspace-manager :as api-scope.workspace-manager]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.macros.scope :as scope]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.malli.schema :as ms]))
@@ -141,11 +142,18 @@
       [:headers [:map-of :string :string]]
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
-  of the workspace's databases is not `:provisioned`."
+  of the workspace's databases is not `:provisioned`. A scoped credential (an
+  `mb:workspace-manager` API key or token) gets the config without the parent
+  databases' SSH tunnel secrets."
   {:scope api-scope.workspace-manager/workspace-manager}
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query-params
+   _body
+   {:keys [token-scopes]}]
   (api/write-check :model/Workspace id)
-  (let [config (api/check-404 (ws.config/build-workspace-config id))]
+  (let [scoped? (and (seq token-scopes) (not (contains? token-scopes ::scope/unrestricted)))
+        config  (cond-> (api/check-404 (ws.config/build-workspace-config id))
+                  scoped? ws.config/drop-tunnel-secrets)]
     {:status  200
      :headers {"Content-Type"        "application/x-yaml"
                "Content-Disposition" "attachment; filename=\"config.yml\""}

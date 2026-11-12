@@ -17,4 +17,4 @@
 (set! *warn-on-reflection* true)
 
 (api-scope/defscope workspace-manager "mb:workspace-manager"
-  (deferred-tru "Create, list, rename and delete workspaces (no access to the rest of Metabase)"))
+  (deferred-tru "Create, list, rename and delete workspaces, and download their config files, which contain database credentials. No access to the rest of Metabase."))
