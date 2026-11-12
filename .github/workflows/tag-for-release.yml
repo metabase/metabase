@@ -176,7 +176,6 @@ jobs:
     secrets: inherit
     with:
       version: ${{ inputs.version }}
-      commit: ${{ inputs.commit }}
 
   tag-uberjar-for-release:
     needs: [check-version, check-commit]
@@ -305,7 +304,6 @@ jobs:
         with:
           title: Tagging
           version: ${{ inputs.version }}
-          commit: ${{ inputs.commit }}
           needs: ${{ toJSON(needs) }}
           slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
           slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

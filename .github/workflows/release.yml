@@ -142,7 +142,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               version: '${{ inputs.version }}',
-              commit: '${{ inputs.commit }}',
               runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
             }).catch(console.error);
@@ -404,7 +403,6 @@ jobs:
     secrets: inherit
     with:
       version: ${{ inputs.version }}
-      commit: ${{ inputs.commit }}
       tag_name: ${{ matrix.tag }}
       # For version tags (v0.x, v1.x), apply to matching edition only
       # For non-version tags like "latest", apply to both editions
@@ -465,7 +463,6 @@ jobs:
         with:
           title: Updating the ${{ matrix.edition }} Docker Hub README for
           version: ${{ inputs.version }}
-          commit: ${{ inputs.commit }}
           level: warning
           slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
           slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -589,7 +586,6 @@ jobs:
         with:
           title: Drafting release notes for
           version: ${{ inputs.version }}
-          commit: ${{ inputs.commit }}
           slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
           slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
 
@@ -678,7 +674,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               version: '${{ inputs.version }}',
-              commit: '${{ inputs.commit }}',
               runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
             }).catch(console.error);
@@ -688,7 +683,6 @@ jobs:
         with:
           title: Sending the publish complete message for
           version: ${{ inputs.version }}
-          commit: ${{ inputs.commit }}
           slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
           slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
 
@@ -720,7 +714,6 @@ jobs:
         with:
           title: Publishing
           version: ${{ inputs.version }}
-          commit: ${{ inputs.commit }}
           needs: ${{ toJSON(needs) }}
           slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
           slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

@@ -318,24 +318,11 @@ export async function sendSlackReply({
   });
 }
 
+const getReleaseTitle = (version: string) =>
+  `:rocket: *${getGenericVersion(version)} Release* :rocket:`;
+
 export function slackLink(text: string, url: string) {
   return `<${url}|${text}>`;
-}
-
-const shortCommit = (commit: string) => commit.slice(0, 7);
-
-export function getReleaseThreadTitle({
-  version,
-  commit,
-}: {
-  version: string;
-  commit: string;
-}) {
-  return `:rocket: *${getGenericVersion(version)} Release | ${shortCommit(commit)}* :rocket:`;
-}
-
-export function getReleaseThreadKey(commit: string) {
-  return `Release | ${shortCommit(commit)}*`;
 }
 
 export function githubRunLink(
@@ -387,7 +374,6 @@ export type ReleaseStatus = "failure" | "success";
 export async function sendReleaseSlackMessage({
   channelName,
   version,
-  commit,
   emoji,
   message,
   startThread = false,
@@ -395,7 +381,6 @@ export async function sendReleaseSlackMessage({
 }: {
   channelName: string;
   version?: string;
-  commit?: string;
   emoji?: string;
   message: string;
   startThread?: boolean;
@@ -406,14 +391,10 @@ export async function sendReleaseSlackMessage({
     throw new Error(`Could not find channel ${channelName}`);
   }
 
-  const title =
-    version && commit ? getReleaseThreadTitle({ version, commit }) : null;
+  const title = version ? getReleaseTitle(version) : null;
   const thread =
-    commit && !startThread
-      ? await findMessageInChannel({
-          channelId,
-          text: getReleaseThreadKey(commit),
-        }).catch(() => null)
+    title && !startThread
+      ? await findMessageInChannel({ channelId, text: title }).catch(() => null)
       : null;
   const text = emoji ? `:${emoji}: ${message}` : message;
 
@@ -542,7 +523,6 @@ export async function sendPreReleaseMessage({
   await sendReleaseSlackMessage({
     channelName,
     version,
-    commit: releaseSha,
     message,
     startThread: true,
   });
@@ -551,14 +531,12 @@ export async function sendPreReleaseMessage({
 export async function sendTestsCompleteMessage({
   channelName,
   version,
-  commit,
   runId,
   owner,
   repo,
 }: {
   channelName: string;
   version: string;
-  commit: string;
   runId: number;
   owner: string;
   repo: string;
@@ -566,7 +544,6 @@ export async function sendTestsCompleteMessage({
   await sendReleaseSlackMessage({
     channelName,
     version,
-    commit,
     emoji: "very-green-check",
     message: `${getGenericVersion(version)} ${githubRunLink("Pre-release Tests Passed", runId.toString(), owner, repo)}`,
   });
@@ -575,14 +552,12 @@ export async function sendTestsCompleteMessage({
 export async function sendPublishStartMessage({
   channelName,
   version,
-  commit,
   runId,
   owner,
   repo,
 }: {
   channelName: string;
   version: string;
-  commit: string;
   runId: number;
   owner: string;
   repo: string;
@@ -590,7 +565,6 @@ export async function sendPublishStartMessage({
   await sendReleaseSlackMessage({
     channelName,
     version,
-    commit,
     emoji: "loading",
     message: githubRunLink(
       `Publishing ${getGenericVersion(version)}`,
@@ -604,14 +578,12 @@ export async function sendPublishStartMessage({
 export async function sendPublishCompleteMessage({
   channelName,
   version,
-  commit,
   runId,
   owner,
   repo,
 }: {
   channelName: string;
   version: string;
-  commit: string;
   runId: number;
   owner: string;
   repo: string;
@@ -627,7 +599,6 @@ export async function sendPublishCompleteMessage({
   await sendReleaseSlackMessage({
     channelName,
     version,
-    commit,
     emoji: "partydeploy",
     message: `${baseMessage}${isPatch ? "" : fullMessage}`,
     status: "success",

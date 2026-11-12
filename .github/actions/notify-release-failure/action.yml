@@ -6,11 +6,7 @@ inputs:
     description: What failed (e.g. "Publishing"). The generic version is added when a version is set.
     required: true
   version:
-    description: Release version for the message.
-    required: false
-    default: ""
-  commit:
-    description: Release commit SHA. It finds the release thread. Empty posts to the channel.
+    description: Release version to find the release thread. Empty posts to the channel.
     required: false
     default: ""
   level:
@@ -38,7 +34,6 @@ runs:
       env:
         TITLE: ${{ inputs.title }}
         VERSION: ${{ inputs.version }}
-        COMMIT: ${{ inputs.commit }}
         LEVEL: ${{ inputs.level }}
         NEEDS: ${{ inputs.needs }}
         SLACK_RELEASE_CHANNEL: ${{ inputs.slack-channel }}
@@ -48,7 +43,7 @@ runs:
           const { sendReleaseSlackMessage, githubRunLink, getGenericVersion, formatJobResults } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const { owner, repo } = context.repo;
-          const { TITLE: title, VERSION: version, COMMIT: commit, LEVEL: level } = process.env;
+          const { TITLE: title, VERSION: version, LEVEL: level } = process.env;
           const label = version ? `${title} ${getGenericVersion(version)} failed` : `${title} failed`;
           const runLink = githubRunLink(label, context.runId.toString(), owner, repo);
           const jobResults = formatJobResults(process.env.NEEDS);
@@ -59,7 +54,6 @@ runs:
           await sendReleaseSlackMessage({
             channelName: process.env.SLACK_RELEASE_CHANNEL,
             version: version || undefined,
-            commit: commit || undefined,
             ...(level === 'warning'
               ? { emoji: 'warning', message: `${summary}. The release is not blocked.` }
               : { emoji: 'x', message: summary, status: 'failure' }),

@@ -1,9 +1,4 @@
-import {
-  buildAutoReleaseSkipMessage,
-  formatJobResults,
-  getReleaseThreadKey,
-  getReleaseThreadTitle,
-} from "./slack";
+import { buildAutoReleaseSkipMessage, formatJobResults } from "./slack";
 
 describe("buildAutoReleaseSkipMessage", () => {
   const baseArgs = {
@@ -150,38 +145,5 @@ describe("formatJobResults", () => {
     expect(formatJobResults("")).toBe("");
     expect(formatJobResults("not json")).toBe("");
     expect(formatJobResults("null")).toBe("");
-  });
-});
-
-describe("release thread", () => {
-  const commit = "0123456789abcdef0123456789abcdef01234567";
-
-  it("puts the version and the short commit in a bold title", () => {
-    expect(getReleaseThreadTitle({ version: "v1.64.5.5", commit })).toBe(
-      ":rocket: *64.5.5 Release | 0123456* :rocket:",
-    );
-  });
-
-  it("finds the thread by commit, not by version", () => {
-    const key = getReleaseThreadKey(commit);
-
-    expect(getReleaseThreadTitle({ version: "v1.64.5.5", commit })).toContain(
-      key,
-    );
-    expect(getReleaseThreadTitle({ version: "v1.64.5.6", commit })).toContain(
-      key,
-    );
-    expect(
-      getReleaseThreadTitle({
-        version: "v1.64.5.5",
-        commit: "fedcba9876543210fedcba9876543210fedcba98",
-      }),
-    ).not.toContain(key);
-  });
-
-  it("does not match the release commit link in the thread body", () => {
-    expect(
-      `<https://github.com/metabase/metabase/commit/${commit}|_:merged: Release Commit_>`,
-    ).not.toContain(getReleaseThreadKey(commit));
   });
 });
