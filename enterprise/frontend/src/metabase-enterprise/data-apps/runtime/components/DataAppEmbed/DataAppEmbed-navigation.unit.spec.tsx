@@ -67,6 +67,55 @@ describe("DataAppEmbed - router navigation", () => {
     );
   });
 
+  it("reports in-app navigation to the host", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/embed/embedded-apps/sales/orders?active=true",
+    );
+
+    function App() {
+      const { navigate } = useDataAppLocation();
+
+      return (
+        <button onClick={() => navigate("/orders/42?tab=items#notes")}>
+          Order 42
+        </button>
+      );
+    }
+
+    mockUseDataAppBundle.mockReturnValue({
+      failed: false,
+      data: { component: App, providerProps: {} },
+    });
+
+    const { sendMessage } = setupSettings();
+    render(<DataAppEmbed />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Order 42" }));
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: "metabase.embed.dataAppPathChange",
+      data: { path: "sales/orders/42?tab=items#notes" },
+    });
+  });
+
+  it("does not report navigation to the host's own path", () => {
+    const onPathChange = jest.fn<void, [string]>();
+
+    const { rerender } = renderHook(
+      ({ path }) =>
+        useDataAppPathNavigation({ slug: "sales", path, onPathChange }),
+      { initialProps: { path: "sales" } },
+    );
+
+    rerender({ path: "sales/orders?active=true" });
+
+    expect(window.location.pathname).toBe("/embed/embedded-apps/sales/orders");
+    expect(onPathChange).not.toHaveBeenCalled();
+  });
+
   it("does not do client-side navigation again if path already matches", () => {
     window.MetabaseRoot = "/mb/";
 

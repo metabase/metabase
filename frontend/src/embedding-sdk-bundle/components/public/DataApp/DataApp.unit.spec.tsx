@@ -4,7 +4,8 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ReactNode } from "react";
+import userEvent from "@testing-library/user-event";
+import { type ReactNode, useState } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
@@ -76,6 +77,23 @@ const message = (
       }),
     ),
   );
+
+const pathChangeMessage = (iframe: HTMLIFrameElement, path: string) =>
+  message(iframe, "metabase.embed.dataAppPathChange", {
+    data: { type: "metabase.embed.dataAppPathChange", data: { path } },
+  });
+
+function HostWithPathState() {
+  const [path, setPath] = useState("boba-hq");
+
+  return (
+    <>
+      <p data-testid="host-path">{path}</p>
+      <button onClick={() => setPath("boba-hq")}>Home</button>
+      <DataApp path={path} onPathChange={setPath} />
+    </>
+  );
+}
 
 function setup(props: DataAppProps = { path: "boba-hq" }) {
   const view = render(<DataApp {...props} />);
@@ -271,6 +289,57 @@ describe("DataApp", () => {
       settingsMessage("boba-hq/orders"),
       ORIGIN,
     );
+  });
+
+  it("lets the host navigate back after the user navigates inside the app", async () => {
+    render(<HostWithPathState />);
+
+    const iframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+
+    message(iframe, "metabase.embed.iframeReady");
+    pathChangeMessage(iframe, "boba-hq/orders/42?tab=items");
+
+    expect(screen.getByTestId("host-path")).toHaveTextContent(
+      "boba-hq/orders/42?tab=items",
+    );
+
+    postMessage.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Home" }));
+
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage).toHaveBeenLastCalledWith(
+      settingsMessage("boba-hq"),
+      ORIGIN,
+    );
+  });
+
+  it("ignores path changes from another origin", () => {
+    render(<HostWithPathState />);
+
+    const iframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+
+    message(iframe, "metabase.embed.dataAppPathChange", {
+      origin: "https://other.example.com",
+      data: {
+        type: "metabase.embed.dataAppPathChange",
+        data: { path: "boba-hq/orders" },
+      },
+    });
+
+    expect(screen.getByTestId("host-path")).toHaveTextContent(/^boba-hq$/);
+  });
+
+  it("keeps working without onPathChange when the user navigates inside the app", () => {
+    const { iframe, postMessage } = setup();
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
+    pathChangeMessage(iframe, "boba-hq/orders");
+
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage).not.toHaveBeenCalled();
   });
 
   it("keeps the same iframe when a leading slash is added", () => {

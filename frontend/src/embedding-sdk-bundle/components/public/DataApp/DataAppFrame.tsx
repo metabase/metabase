@@ -40,6 +40,7 @@ export function DataAppFrame({
   path,
   origin,
   initialSrc,
+  onPathChange,
   locale,
   store,
   authConfig,
@@ -53,6 +54,9 @@ export function DataAppFrame({
   const srcRef = useRef(initialSrc);
   const currentAuthRef = useRef({ authConfig, store });
   const pathRef = useRef(path);
+
+  // A ref so an inline callback does not re-send the settings on every render.
+  const onPathChangeRef = useRef(onPathChange);
 
   // An error belongs to the path it happened on, so a route change loads the iframe again.
   const [failure, setFailure] = useState<{
@@ -70,6 +74,10 @@ export function DataAppFrame({
   useLayoutEffect(() => {
     pathRef.current = path;
   }, [path]);
+
+  useLayoutEffect(() => {
+    onPathChangeRef.current = onPathChange;
+  }, [onPathChange]);
 
   useLayoutEffect(() => {
     const iframe = iframeRef.current;
@@ -150,6 +158,9 @@ export function DataAppFrame({
           })
           .with({ type: "metabase.embed.requestSessionToken" }, () => {
             authenticate();
+          })
+          .with({ type: "metabase.embed.dataAppPathChange" }, ({ data }) => {
+            onPathChangeRef.current?.(data.path);
           })
           .with({ type: "metabase.embed.handleLink" }, ({ data }) => {
             send({
