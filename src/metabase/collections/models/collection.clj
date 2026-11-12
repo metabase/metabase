@@ -15,6 +15,7 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config :refer [*request-id*]]
    [metabase.events.core :as events]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -142,15 +143,6 @@
       (and (:location collection)
            (str/starts-with? (:location collection) (trash-path)))))
 
-(defn remote-synced-collection?
-  "Is this a remote-synced collection?
-   Returns true if the collection has is_remote_synced=true in the database."
-  [collection-or-id]
-  (cond
-    (nil? collection-or-id) false ;; the root collection is never remote-synced
-    (map? collection-or-id) (boolean (get collection-or-id :is_remote_synced))
-    :else (collections.db/collection-remote-synced? (u/the-id collection-or-id))))
-
 (defn- is-library?
   "Is this the Library collection?"
   [collection]
@@ -170,11 +162,6 @@
   "Is this the Dashboards collection?"
   [collection]
   (= (:type collection) library-dashboards-collection-type))
-
-(defn remote-synced-collection
-  "Get the remote-synced collection if it exists."
-  []
-  (collections.db/root-remote-synced-collection))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)
@@ -369,8 +356,8 @@
        (mi/can-read? (collections.db/collection pk)))))
 
 (def AuthorityLevel
-  "Malli Schema for valid collection authority levels."
-  [:enum "official"])
+  "Malli Schema for valid collection authority levels, normalized from their names."
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :official])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Slug Validation                                                   |
@@ -428,7 +415,7 @@
 (def ^:private CollectionInstance
   "Schema for a Collection as it flows through this namespace: a raw `:model/Collection` Toucan instance, one
   hydrated with any of the computed keys this namespace or [[metabase.collections.children]] adds, or a
-  null-padded row from the collection-items union query. Every key is optional because different call sites
+  null-padded row from the synced-collection-items union query. Every key is optional because different call sites
   select or hydrate different subsets."
   [:map {:closed true}
    [:id                    {:optional true} ms/PositiveInt]
@@ -2303,6 +2290,6 @@
 
 (defmethod remote-sync/spec :model/Collection
   [_model]
-  {:collection-id        :id
+  {:synced-items         collections.db/synced-collection-items
    :synced-filter-clause (partial collections.db/synced-collections-clause
                                   [data-apps-ns transforms-ns snippets-ns data-actions-ns])})

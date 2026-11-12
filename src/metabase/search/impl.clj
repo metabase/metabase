@@ -131,9 +131,8 @@
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."
   [results]
-  (let [user-ids             (set (flatten (for [result results]
-                                             (remove nil? ((juxt :last_editor_id :creator_id) result)))))
-        user-id->common-name (if (pos? (count user-ids))
+  (let [user-ids             (into #{} (comp (mapcat (juxt :last_editor_id :creator_id)) (remove nil?)) results)
+        user-id->common-name (if (seq user-ids)
                                (search.db/user-common-names user-ids)
                                {})]
     (mapv (fn [{:keys [creator_id last_editor_id] :as result}]
@@ -166,7 +165,7 @@
   [search-results]
   (let [collections    (filter #(mi/instance-of? :model/Collection %) search-results)
         hydrated-colls (t2/hydrate collections :effective_parent)
-        idx->coll      (into {} (map (juxt :id identity) hydrated-colls))]
+        idx->coll      (u/index-by :id hydrated-colls)]
     (map (fn [search-result]
            (if (mi/instance-of? :model/Collection search-result)
              (idx->coll (:id search-result))
@@ -228,7 +227,8 @@
          :collection_type
          :archived_directly
          :display_name
-         :effective_parent)
+         :effective_parent
+         :slug)
         (cond-> (= model "transform")
           (dissoc :source :target)))))
 

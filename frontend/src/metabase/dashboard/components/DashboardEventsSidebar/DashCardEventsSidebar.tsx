@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useCallback, useEffect, useMemo } from "react";
 
 import { Sidebar } from "metabase/common/components/Sidebar";

@@ -85,7 +85,7 @@ describe("scenarios > data apps", { tags: ["@external", "@actions"] }, () => {
       .should("be.visible");
 
     cy.log("open the app's question");
-    H.main().findByRole("link", { name: "Questions" }).click();
+    H.main().findByRole("tab", { name: "Questions" }).click();
     H.main().findByText("teamList").click();
     cy.location("pathname").should(
       "match",
@@ -94,7 +94,7 @@ describe("scenarios > data apps", { tags: ["@external", "@actions"] }, () => {
 
     cy.log("open the app's action");
     cy.visit(`/data-studio/apps/${APP_SLUG}`);
-    H.main().findByRole("link", { name: "Actions" }).click();
+    H.main().findByRole("tab", { name: "Actions" }).click();
     H.main().findByText("addTeam").click();
     cy.location("pathname").should(
       "match",

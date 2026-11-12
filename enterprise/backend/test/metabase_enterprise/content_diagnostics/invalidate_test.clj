@@ -125,7 +125,7 @@
       (fn [card other-card _]
         (let [a      (cd.tu/insert-finding! "scan" card nil)
               b      (cd.tu/insert-finding! "scan" other-card nil)
-              stamp! cd.db/invalidate-findings-where!]
+              stamp! (mt/original-fn #'cd.db/invalidate-findings-where!)]
           ;; stamp for real, then fail, so the assertions prove a rollback rather than a write never made
           (mt/with-dynamic-fn-redefs [cd.db/invalidate-findings-where! (fn [where]
                                                                          (stamp! where)

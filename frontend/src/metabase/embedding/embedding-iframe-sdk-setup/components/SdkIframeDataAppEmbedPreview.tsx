@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { getEmbeddedAppNameFromPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
+import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
 import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
 import { DATA_APP_EMBED_PREFIX } from "metabase/urls/data-apps";
 
@@ -11,16 +11,16 @@ export const SdkIframeDataAppEmbedPreview = ({
   path: string;
   onLoad: () => void;
 }) => {
-  const name = getEmbeddedAppNameFromPath(path);
+  const slug = getEmbeddedAppSlugFromPath(path);
 
-  if (!name) {
+  if (!slug) {
     return null;
   }
 
   // We can't use embed.js as it only allows SSO auth, not current user session.
   // We force the iframe to load the data app directly for embed wizard preview.
   const instanceUrl = getCurrentMetabaseInstanceUrl();
-  const src = `${instanceUrl}${DATA_APP_EMBED_PREFIX}/${encodeURIComponent(name)}`;
+  const src = `${instanceUrl}${DATA_APP_EMBED_PREFIX}/${encodeURIComponent(slug)}`;
 
   return (
     <iframe

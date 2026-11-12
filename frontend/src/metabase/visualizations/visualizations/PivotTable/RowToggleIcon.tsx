@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
-import { updateIn } from "icepick";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
@@ -63,7 +61,7 @@ export function RowToggleIcon({
       ? (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
           settingValue
             .filter((v) => {
-              const parsed = JSON.parse(v);
+              const parsed: unknown = JSON.parse(v);
               return !(Array.isArray(parsed) && parsed.length === value);
             }) // remove any already collapsed items in this column
             .concat(ref) // add column to list
@@ -111,7 +109,10 @@ export function RowToggleIcon({
       onClick={(e) => {
         e.stopPropagation();
         updateSettings({
-          [COLLAPSED_ROWS_SETTING]: updateIn(setting, ["value"], toggle),
+          [COLLAPSED_ROWS_SETTING]: {
+            ...setting,
+            value: toggle(settingValue),
+          },
         });
       }}
     >

@@ -12,8 +12,12 @@
    [metabase.content-verification.core :as moderation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.agent.core :as agent]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.autogen-dashboard :as autogen]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.core :as tools]
@@ -215,6 +219,70 @@
         (is (denied? (first (read-uris metabot :internal (str "metabase://dashboard/" plain-dash "/items"))))))
       (testing "a curated dashboard reads"
         (is (not (denied? (first (read-uris metabot :internal (str "metabase://dashboard/" curated-dash))))))))))
+
+(deftest read-resource-curated-only-dashboard-filters-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mapping (fn [card-id] {:parameter_id "date", :card_id card-id, :target [:dimension [:field 1 nil]]})]
+      (mt/with-temp [:model/Collection    {official :id}    {:authority_level "official"}
+                     :model/Card          {curated-id :id}  {:collection_id official}
+                     :model/Card          {plain-id :id}    {}
+                     :model/Dashboard     {dash-id :id}     {:collection_id official
+                                                             :parameters    [{:id "date", :name "Date", :slug "date"
+                                                                              :type :date/all-options}]}
+                     :model/DashboardCard {curated-dc :id}  {:dashboard_id       dash-id
+                                                             :card_id            curated-id
+                                                             :parameter_mappings [(mapping curated-id)]}
+                     :model/DashboardCard _                 {:dashboard_id       dash-id
+                                                             :card_id            plain-id
+                                                             :parameter_mappings [(mapping plain-id)]}
+                     :model/Metabot       metabot           {:name "curated metabot", :use_verified_content true}]
+        (testing "a filter lists only the dashcards of curated questions, as the dashboard's items do"
+          (is (=? [{:id "date", :connected_dashcards [curated-dc]}]
+                  (-> (read-uris metabot :internal (str "metabase://dashboard/" dash-id))
+                      first
+                      (get-in [:content :structured-output :parameters])))))))))
+
+(defn- first-request-text!
+  "The text of the first LLM request a turn of the agent loop makes for `opts`, with the LLM mocked to answer at once."
+  [opts]
+  (let [requests (atom [])]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider "anthropic/claude-opus-5-5"]
+      (mt/with-dynamic-fn-redefs [claude/claude (fn [llm-opts]
+                                                  (swap! requests conj (claude/claude-request-body llm-opts))
+                                                  (mut/mock-llm-response [{:type :text :text "Done."}]))]
+        (reduce (fn [_ _]) nil (agent/run-agent-loop opts))))
+    (str/join "\n" (filter string? (tree-seq coll? seq (first @requests))))))
+
+(deftest viewing-context-dashboard-filters-curated-only-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mapping (fn [card-id] {:parameter_id "date", :card_id card-id, :target [:dimension [:field 1 nil]]})]
+      (mt/with-temp [:model/Collection    {official :id}   {:authority_level "official"}
+                     :model/Card          {curated-id :id} {:collection_id official}
+                     :model/Card          {plain-id :id}   {}
+                     :model/Dashboard     {dash-id :id}    {:collection_id official
+                                                            :parameters    [{:id "date", :name "Date", :slug "date"
+                                                                             :type :date/all-options}]}
+                     :model/DashboardCard {curated-dc :id} {:dashboard_id       dash-id
+                                                            :card_id            curated-id
+                                                            :parameter_mappings [(mapping curated-id)]}
+                     :model/DashboardCard {plain-dc :id}   {:dashboard_id       dash-id
+                                                            :card_id            plain-id
+                                                            :parameter_mappings [(mapping plain-id)]}
+                     :model/Metabot       curated          {:name "curated metabot", :use_verified_content true}
+                     :model/Metabot       open             {:name "open metabot", :use_verified_content false}]
+        (let [connected (fn [metabot]
+                          (second (re-find #"connected_dashcards=\"([^\"]*)\""
+                                           (first-request-text!
+                                            {:messages   [{:role :user :content "What does this dashboard show?"}]
+                                             :state      {}
+                                             :profile-id :internal
+                                             :metabot    metabot
+                                             :context    {:user_is_viewing [{:type "dashboard" :id dash-id}]}}))))]
+          (testing "the dashboard in view lists only the dashcards of curated questions under a filter"
+            (is (= (str curated-dc) (connected curated))))
+          (testing "without use_verified_content it lists every dashcard"
+            (is (= (str curated-dc ", " plain-dc) (connected open)))))))))
 
 (deftest excluded-signals-test
   (testing "search never returns these, so they aren't curated whatever their signals"
@@ -918,6 +986,38 @@
             (testing "each uncurated entity is listed once"
               (is (= [["table" (mt/id :orders)]]
                      (:uncurated (error-of (query {:breakout [bad-field]}))))))))))))
+
+(deftest null-schema-fill-in-prefers-curated-tables-test
+  (testing "under curated-only, a null schema resolves among the curated tables by that name when there are any"
+    (mt/with-temp [:model/Database db {:name           (str "Analytics " (random-uuid))
+                                       :engine         :h2
+                                       :default_schema "raw"}
+                   :model/Table    _  {:name "orders" :schema "raw" :db_id (:id db)}
+                   :model/Table    _  {:name "orders" :schema "clean" :db_id (:id db)
+                                       :data_authority :authoritative}
+                   :model/Table    _  {:name "events" :schema "raw" :db_id (:id db)}
+                   :model/Table    _  {:name "events" :schema "staging" :db_id (:id db)}]
+      (let [db-name   (:name db)
+            construct (fn [metabot table-name]
+                        (try
+                          (-> (as-metabot metabot :internal
+                                          #(construct/execute-representations-query
+                                            {:lib/type "mbql/query"
+                                             :stages   [{:lib/type     "mbql.stage/mbql"
+                                                         :source-table [db-name nil table-name]
+                                                         :aggregation  [["count" {}]]}]}))
+                              (get-in [:structured-output :query-json "stages" 0 "source-table"]))
+                          (catch clojure.lang.ExceptionInfo e
+                            (:error (ex-data e)))))
+            curated   {:use_verified_content true}]
+        (is (= {:curated-only [db-name "clean" "orders"]
+                :unrestricted [db-name "raw" "orders"]
+                ;; Neither events table is curated, so the default schema is picked and the gate refuses it.
+                :none-curated :uncurated-source}
+               (mt/with-current-user (mt/user->id :crowberto)
+                 {:curated-only (construct curated "orders")
+                  :unrestricted (construct nil "orders")
+                  :none-curated (construct curated "events")})))))))
 
 (deftest construct-coarse-gate-agrees-with-the-full-rule-test
   (testing "the gate before repair and the rule after resolve share one coverage computation: a table the full rule

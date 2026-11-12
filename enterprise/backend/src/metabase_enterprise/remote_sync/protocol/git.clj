@@ -87,14 +87,31 @@
   (io/make-parents dir)
   (call-remote (-> (Git/cloneRepository) (.setDirectory dir) (.setURI url) (.setBare true)) url token))
 
+(defn- open-clone
+  "The repository cloned into `dir`, or nil when `dir` isn't a clone with an `origin` remote, as when a clone stopped
+  part way."
+  ^Git [^File dir]
+  (try
+    (let [git (Git/open dir)]
+      (if (str/blank? (.getString (.getConfig (.getRepository git)) "remote" "origin" "url"))
+        (do (.close git) nil)
+        git))
+    (catch Exception e
+      (log/warnf "Couldn't open the clone in %s: %s" dir (ex-message e))
+      nil)))
+
 (defn- open
-  "The repository of the remote at `url`, cloned into a directory of its own."
+  "The repository of the remote at `url`, cloned into a directory of its own, cloned again when that directory isn't
+  a clone with an `origin` remote."
   ^Git [url token]
   (let [dir (io/file (System/getProperty "java.io.tmpdir") "metabase-git-2"
                      (codecs/bytes->hex (buddy-hash/sha1 (str url ":" token))))]
-    (if (.exists dir)
-      (Git/open dir)
-      (clone! dir url token))))
+    (or (when (.exists dir)
+          (or (open-clone dir)
+              (do (log/warn "Cloning the repository again, since its clone is damaged" {:url url})
+                  (run! io/delete-file (reverse (file-seq dir)))
+                  nil)))
+        (clone! dir url token))))
 
 (defn- object-id
   "The id of the commit `version`, or nil when the repository lacks it."

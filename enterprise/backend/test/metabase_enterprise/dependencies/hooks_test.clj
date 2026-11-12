@@ -283,8 +283,8 @@
            without looking the app up first"
     (mt/with-premium-features #{:dependencies}
       (data-apps.tu/with-published-tables! [(mt/id :products)]
-        (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id} {:name         "birds"
-                                                                                          :display_name "Birds"
+        (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id} {:slug         "birds"
+                                                                                          :name         "Birds"
                                                                                           :bundle_path  "birds.js"}
                        :model/Collection {other-collection-id :id} {}
                        :model/Card card {:dataset_query (table-query :products) :collection_id collection-id}]

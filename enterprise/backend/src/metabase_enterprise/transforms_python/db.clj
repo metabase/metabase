@@ -2,8 +2,10 @@
   "Application database queries for the transforms-python module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
+   [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -11,7 +13,8 @@
 
 (mu/defn synced-python-libraries-clause :- [:fn vector?]
   "The clause over the PythonLibrary table aliased `alias` selecting the libraries remote sync syncs."
-  [alias :- :keyword]
+  [alias :- :keyword
+   _opts :- ::remote-sync.schema/synced-filter-opts]
   [:= (u/qualified-key alias :is_default) false])
 
 (mu/defn table-database-ids
@@ -74,3 +77,8 @@
              :parent_id nil
              :nfc_path nil
              {:order-by [[:database_position :asc]]}))
+
+(mu/defn synced-python-library-items :- [:sequential ::transforms-python.schema/python-library]
+  "The PythonLibraries with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (t2/select [:model/PythonLibrary :id :path] :id [:in ids]))
