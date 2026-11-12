@@ -1109,27 +1109,47 @@
 
 (defn- run-with-fake-jdbc
   "Calls `(f)` with JDBC replaced, so that no Redshift is needed. A query returns `(answer sql)`. Returns
-  `{:log [...], :error ex-info-or-nil}`: `:log` holds every query, as `[:query sql params]`, and every statement run,
-  as `[:execute sql]`, in order."
-  [answer f]
-  (let [log  (atom [])
-        stmt (reify java.sql.Statement
-               (addBatch [_ sql] (swap! log conj [:execute sql]))
-               (executeBatch [_] (int-array 0))
-               (close [_]))
-        conn (reify java.sql.Connection
-               (createStatement [_] stmt))]
-    (mt/with-dynamic-fn-redefs [jdbc/db-transaction*                     (fn [_db func & _] (func {:connection conn}))
-                                jdbc/query                               (fn [_conn [sql & params]]
-                                                                           (swap! log conj [:query sql (vec params)])
-                                                                           (answer sql))
-                                jdbc/execute!                            (fn [_conn [sql]]
-                                                                           (swap! log conj [:execute sql])
-                                                                           [0])
-                                sql-jdbc.conn/db->pooled-connection-spec (constantly {})
-                                driver.u/lib-database                    identity]
-      (let [error (try (f) nil (catch clojure.lang.ExceptionInfo e e))]
-        {:log @log, :error error}))))
+  `{:log [...], :error throwable-or-nil}`: `:log` holds every query, as `[:query sql params]`, every statement run,
+  as `[:execute sql]`, and every rollback, as `[:rollback]`, in order.
+
+  Options: `:batch-error`, thrown by `executeBatch`; `:real-transaction?`, to run the real `jdbc/db-transaction*` on
+  the fake connection; `:rollback-error`, thrown by that connection's `rollback`."
+  ([answer f]
+   (run-with-fake-jdbc answer f {}))
+  ([answer f {:keys [batch-error real-transaction? rollback-error]}]
+   (let [log        (atom [])
+         autocommit (atom true)
+         stmt       (reify java.sql.Statement
+                      (addBatch [_ sql] (swap! log conj [:execute sql]))
+                      (executeBatch [_] (if batch-error (throw batch-error) (int-array 0)))
+                      (close [_]))
+         conn       (reify java.sql.Connection
+                      (createStatement [_] stmt)
+                      (getAutoCommit [_] @autocommit)
+                      (setAutoCommit [_ v] (reset! autocommit v))
+                      (getTransactionIsolation [_] java.sql.Connection/TRANSACTION_READ_COMMITTED)
+                      (isReadOnly [_] false)
+                      (setReadOnly [_ _])
+                      (commit [_])
+                      (rollback [_]
+                        (swap! log conj [:rollback])
+                        (when rollback-error (throw rollback-error)))
+                      (close [_]))
+         run        (fn []
+                      (mt/with-dynamic-fn-redefs [jdbc/query                               (fn [_conn [sql & params]]
+                                                                                             (swap! log conj [:query sql (vec params)])
+                                                                                             (answer sql))
+                                                  jdbc/execute!                            (fn [_conn [sql]]
+                                                                                             (swap! log conj [:execute sql])
+                                                                                             [0])
+                                                  sql-jdbc.conn/db->pooled-connection-spec (constantly (if real-transaction? {:connection conn} {}))
+                                                  driver.u/lib-database                    identity]
+                        (try (f) nil (catch Throwable e e))))
+         error      (if real-transaction?
+                      (run)
+                      (mt/with-dynamic-fn-redefs [jdbc/db-transaction* (fn [_db func & _] (func {:connection conn}))]
+                        (run)))]
+     {:log @log, :error error})))
 
 (defn- answer-with
   "An `answer` for [[run-with-fake-jdbc]]: rows for the queries whose SQL contains one of the keys of `rows-by-table`,
@@ -1239,3 +1259,42 @@
                          (answer-with {})
                          #(driver/destroy-workspace-isolation! :redshift {:id 1} unit-workspace))]
       (is (not-any? (fn [[_ sql]] (str/includes? sql "pg_terminate_backend")) log)))))
+
+(deftest workspace-init-refuses-late-collision-test
+  (testing "control: a schema that the check finds gives the 409 refusal"
+    (let [{:keys [error]} (run-with-fake-jdbc
+                           (answer-with {"FROM pg_namespace WHERE" [{:?column? 1}]})
+                           #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace))]
+      (is (= {:status-code 409, :workspace/cleanup? false}
+             (select-keys (ex-data error) [:status-code :workspace/cleanup?])))))
+  (doseq [[what sqlstate message] [["schema" "42P06" "ERROR: schema \"mb__isolation_ws_1\" already exists"]
+                                   ["user" "42710" "ERROR: user \"mb__isolation_user_1\" already exists"]]]
+    (testing (str "a " what " created after the check fails CREATE with " sqlstate ", and init refuses: provisioning must not tear down")
+      (let [batch-error         (doto (java.sql.BatchUpdateException. "Batch entry 0 was aborted" ^String sqlstate 0 (int-array 0))
+                                  (.setNextException (java.sql.SQLException. ^String message ^String sqlstate)))
+            {:keys [log error]} (run-with-fake-jdbc
+                                 (answer-with {})
+                                 #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace)
+                                 {:batch-error batch-error})]
+        (is (some #{"CREATE SCHEMA \"mb__isolation_ws_1\""} (executed log)))
+        (is (str/includes? (str (ex-message error)) "already exists"))
+        (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data error)))))))
+
+(deftest workspace-init-refusal-survives-failed-rollback-test
+  (let [answer (answer-with {"FROM pg_namespace WHERE" [{:?column? 1}]})]
+    (testing "control: after a successful rollback, init's error is the 409 refusal"
+      (let [{:keys [log error]} (run-with-fake-jdbc
+                                 answer
+                                 #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace)
+                                 {:real-transaction? true})]
+        (is (some #{[:rollback]} log))
+        (is (= {:status-code 409, :workspace/cleanup? false}
+               (select-keys (ex-data error) [:status-code :workspace/cleanup?])))))
+    (testing "after a failed rollback, init's error still says that provisioning must not tear down"
+      (let [{:keys [log error]} (run-with-fake-jdbc
+                                 answer
+                                 #(driver/init-workspace-isolation! :redshift {:id 1} unit-workspace)
+                                 {:real-transaction? true
+                                  :rollback-error    (java.sql.SQLException. "An I/O error occurred while sending to the backend." "08006")})]
+        (is (some #{[:rollback]} log))
+        (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data error)))))))

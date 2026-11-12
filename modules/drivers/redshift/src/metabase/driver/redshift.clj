@@ -1177,23 +1177,51 @@
                          :schema      schema-name
                          :owners      (vec owners)}))))))
 
+(defn- sql-states
+  "The SQLStates of `t` and of every cause of it."
+  [t]
+  (keep #(when (instance? java.sql.SQLException %) (.getSQLState ^java.sql.SQLException %))
+        (take-while some? (iterate ex-cause t))))
+
+(defn- init-error
+  "`t`, from a failed init, marked so the caller does not tear the workspace down: init runs in one transaction, so
+  it leaves nothing behind, and a user or schema of the workspace's name may be one that another session has just
+  committed (SQLState 42P06 or 42710, a 409). A connection failure once the transaction is `committing?` stays
+  unmarked: the transaction may have committed, and its objects then need the teardown. When the rollback fails too,
+  clojure.java.jdbc throws its own error with the original under `:handling`; that original is the one to judge."
+  [t committing?]
+  (let [t (or (when (contains? (ex-data t) :rollback) (:handling (ex-data t))) t)]
+    (if (or (contains? (ex-data t) :workspace/cleanup?)
+            (and committing? (perf/some #(str/starts-with? % "08") (sql-states t))))
+      t
+      (ex-info (ex-message t)
+               (cond-> (assoc (ex-data t) :workspace/cleanup? false)
+                 (perf/some #{"42P06" "42710"} (sql-states t)) (assoc :status-code 409))
+               t))))
+
 (defmethod driver/init-workspace-isolation! :redshift
   [_driver database workspace]
   (let [schema-name      (:schema workspace)
         read-user        (:database_details workspace)
-        escaped-password (sql.u/escape-sql (:password read-user) :ansi)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))]
-      (start-workspace-transaction! t-conn)
-      ;; a user or schema of this name may be another workspace's: taking it over would hand that workspace's grants to
-      ;; this one, and cleaning up after this init would drop it
-      (check-init-preconditions! t-conn (:user read-user) schema-name)
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql (init-workspace-sqls (:user read-user) escaped-password schema-name)]
-          (.addBatch ^Statement stmt ^String sql))
-        (try
-          (.executeBatch ^Statement stmt)
-          (catch Throwable t
-            (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password]))))))
+        escaped-password (sql.u/escape-sql (:password read-user) :ansi)
+        ;; set once the transaction's last statement has run, so that the only step left is COMMIT
+        committing?      (volatile! false)]
+    (try
+      (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))]
+        (start-workspace-transaction! t-conn)
+        ;; a user or schema of this name may be another workspace's: taking it over would hand that workspace's grants
+        ;; to this one, and cleaning up after this init would drop it
+        (check-init-preconditions! t-conn (:user read-user) schema-name)
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql (init-workspace-sqls (:user read-user) escaped-password schema-name)]
+            (.addBatch ^Statement stmt ^String sql))
+          (try
+            (.executeBatch ^Statement stmt)
+            (catch Throwable t
+              (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [(:password read-user) escaped-password])))))
+        (vreset! committing? true))
+      (catch Throwable t
+        (throw (init-error t @committing?))))
     nil))
 
 (defmethod driver/grant-workspace-read-access! :redshift
