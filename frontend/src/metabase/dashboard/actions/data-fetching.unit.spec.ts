@@ -527,15 +527,18 @@ describe("fetchDashboardCardData", () => {
       }),
     );
 
+    // Only the first request succeeds, so only the card fetched first has data
     const requestedCardIds: number[] = [];
     fetchMock.post("path:/api/dataset", ({ options }) => {
       const match = String(options.body).match(/card-(\d+)/);
       requestedCardIds.push(Number(match?.[1]));
-      return { data: { rows: [], cols: [] } };
+      return requestedCardIds.length === 1
+        ? { data: { rows: [[1]], cols: [] } }
+        : { status: 500, body: { message: "Query failed" } };
     });
 
     const DASHBOARD = createMockDashboard({ id: dashboardId, dashcards });
-    const state: Partial<StoreSeedState> = {
+    const store = setup({
       dashboard: createMockDashboardState({
         dashboardId: DASHBOARD.id,
         dashboards: {
@@ -546,17 +549,18 @@ describe("fetchDashboardCardData", () => {
         },
         dashcards: Object.fromEntries(dashcards.map((dc) => [dc.id, dc])),
       }),
-      entities: createMockEntitiesState({
-        databases: [createSampleDatabase()],
-      }),
-      settings: createMockSettingsState(),
-    };
-    const { dispatch, getState } = createMockDispatch(() => state);
+    });
 
-    // Unjustified type cast. FIXME
-    await fetchDashboardCardData()(dispatch as never, getState as never);
+    await store.dispatch(fetchDashboardCardData());
 
     expect(requestedCardIds).toEqual([4, 2, 8, 6, 3, 1, 7, 5]);
+
+    const { dashcardData } = store.getState().dashboard;
+    expect(dashcardData[4][4]).not.toHaveProperty("error");
+    expect(dashcardData[4][4]).toHaveProperty("data.rows", [[1]]);
+    [1, 2, 3, 5, 6, 7, 8].forEach((id) => {
+      expect(dashcardData[id][id]).toHaveProperty("error");
+    });
   });
 
   it("should make at most 5 api calls simultaneously", async () => {
