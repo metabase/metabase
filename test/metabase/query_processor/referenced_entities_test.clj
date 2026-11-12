@@ -1134,4 +1134,3 @@
             (testing "refreshing the chart refreshes its goal too"
               (view! true)
               (is (= 2 (count (filter (comp false? :cache_hit) (goal-executions! :card_id goal-id))))))))))))
-
