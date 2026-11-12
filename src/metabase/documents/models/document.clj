@@ -496,9 +496,16 @@
                                       (t2.instance/instance :model/Document instance))}))
   instance)
 
+(defn exploration-content-key
+  "The [[mi/batched-lookup]] key of the content verdicts, for the current user, of the explorations that own loaded
+  Summary documents."
+  []
+  [::exploration-content (mi/current-user-id) (boolean (mi/superuser?))])
+
 (t2/define-after-select :model/Document
   [document]
   (remote-sync/register-loaded! :model/Collection (:collection_id document))
+  (mi/register-pending! (exploration-content-key) (:exploration_id document))
   (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------

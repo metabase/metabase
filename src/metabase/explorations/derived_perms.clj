@@ -20,8 +20,10 @@
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
+   [metabase.documents.core :as documents]
    [metabase.explorations.db :as explorations.db]
    [metabase.lib-be.core :as lib-be]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
@@ -179,15 +181,25 @@
                         (blocked-thread-ids (concat (finalized-queries thread-ids)
                                                     (lens-stamped-threads thread-ids))))))))
 
+(defn- explorations-content-visible
+  "The gate's verdict for each of the Explorations with `exploration-ids`, by id: whether every thread of it carries
+  derived data the current user may see."
+  [exploration-ids]
+  (let [threads (group-by :exploration_id (explorations.db/exploration-thread-ids exploration-ids))
+        visible (thread-ids-with-visible-derived-data (into #{} (comp cat (map :id)) (vals threads)))]
+    (into {}
+          (map (fn [exploration-id]
+                 [exploration-id (every? (comp visible :id) (get threads exploration-id))]))
+          exploration-ids)))
+
 (defn- exploration-content-visible?
-  "The gate's verdict for a document owned by `exploration-id` (nil => not a Summary, unaffected)."
+  "The gate's verdict for a document owned by `exploration-id` (nil => not a Summary, unaffected), reached with those of
+  the other Summary documents the request loaded."
   [exploration-id]
   ;; The superuser check only skips the thread-id read; the gate would pass them anyway.
   (if (or (nil? exploration-id) api/*is-superuser?*)
     true
-    (let [thread-ids (explorations.db/thread-ids-for-exploration exploration-id)]
-      (or (empty? thread-ids)
-          (= thread-ids (thread-ids-with-visible-derived-data thread-ids))))))
+    (boolean (mi/batched-lookup (documents/exploration-content-key) exploration-id explorations-content-visible))))
 
 (defn doc-content-visible-to-current-user?
   "Content-visibility gate installed via

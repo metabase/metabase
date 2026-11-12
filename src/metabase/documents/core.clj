@@ -29,6 +29,7 @@
   clone-cards-in-document!
   create-document!
   DocumentName
+  exploration-content-key
   get-document
   register-doc-content-visibility-fn!
   update-document!

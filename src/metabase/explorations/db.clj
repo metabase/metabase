@@ -172,6 +172,11 @@
   [exploration-id :- ms/PositiveInt]
   (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id))
 
+(mu/defn exploration-thread-ids
+  "The id and Exploration id of each ExplorationThread of the Explorations with `exploration-ids`."
+  [exploration-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/ExplorationThread :id :exploration_id] :exploration_id [:in exploration-ids]))
+
 (mu/defn lens-stamped-threads
   "The ExplorationThreads among `thread-ids` that carry a data-access token, with what the content gate reads."
   [thread-ids :- [:set ms/PositiveInt]]
