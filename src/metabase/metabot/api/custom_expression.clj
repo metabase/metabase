@@ -1,9 +1,13 @@
-(ns metabase.metabot.summary-formula
-  "Draft Metabase custom expressions from natural-language requests in the summary sidebar.
-  The client is responsible for compiling and validating the generated expressions."
+(ns metabase.metabot.api.custom-expression
+  "`/api/metabot/custom-expression` routes.
+
+  Drafts Metabase custom expressions from natural-language requests in the summary sidebar. The client is responsible
+  for compiling and validating the generated expressions."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :refer [+auth]]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -37,27 +41,27 @@
   "Limit the length of a drafted formula's name, in characters."
   60)
 
-(mr/def ::capped-non-blank-string
+(def ^:private capped-non-blank-string-schema
   [:and ms/NonBlankString [:string {:max max-string-input-chars}]])
 
-(mr/def ::column-type
+(def ^:private column-type-schema
   [:and
-   ::capped-non-blank-string
+   capped-non-blank-string-schema
    (mu/with-api-error-message
     [:re #"\A[A-Za-z0-9 _./-]+\z"]
     (deferred-tru "Column types can only have letters, digits, spaces and _ . / -"))])
 
-(mr/def ::escaped-reference
+(def ^:private escaped-reference-schema
   [:and
-   ::capped-non-blank-string
+   capped-non-blank-string-schema
    (mu/with-api-error-message
     ;; Match a bracketed reference with no unescaped brackets, backslashes or control characters that
     ;; `formatIdentifier` escapes.
     [:re #"\A\[(?:[^\[\]\\\x08\t\n\f\r\x0B]|\\[^\n\r])+\]\z"]
     (deferred-tru "Column, metric and measure names must be references like [Total], with any [ or ] escaped."))])
 
-(mr/def ::escaped-references
-  [:maybe [:sequential {:max max-seq-items} ::escaped-reference]])
+(def ^:private escaped-references-schema
+  [:maybe [:sequential {:max max-seq-items} escaped-reference-schema]])
 
 (mr/def ::request-schema
   ;; The rules on which inputs each mode needs are in [[check-inputs!]], so that their errors have a message.
@@ -66,11 +70,11 @@
    [:prompt      [:and ms/NonBlankString [:string {:max max-prompt-chars}]]]
    [:columns     [:sequential {:max max-seq-items}
                   [:map {:closed true}
-                   [:name ::escaped-reference]
-                   [:type {:optional true} [:maybe ::column-type]]]]]
-   [:metrics     {:optional true} ::escaped-references]
-   [:measures    {:optional true} ::escaped-references]
-   [:table_name  {:optional true} [:maybe ::capped-non-blank-string]]
+                   [:name escaped-reference-schema]
+                   [:type {:optional true} [:maybe column-type-schema]]]]]
+   [:metrics     {:optional true} escaped-references-schema]
+   [:measures    {:optional true} escaped-references-schema]
+   [:table_name  {:optional true} [:maybe capped-non-blank-string-schema]]
    [:database_id ms/PositiveInt]])
 
 (mr/def ::response-schema
@@ -176,7 +180,7 @@
   [{column-name :name column-type :type}]
   (str column-name
        (when column-type
-         ;; The [[::column-type]] schema rejects < and >, but escape anyway just in case.
+         ;; The [[column-type-schema]] rejects < and >, but escape anyway just in case.
          (str " (" (llm-shape/escape-xml-content column-type) ")"))))
 
 (defn- user-message
@@ -291,7 +295,7 @@
                aggregation-system-prompt)}
    {:role "user" :content (user-message request)}])
 
-(mu/defn suggest-formula :- ::response-schema
+(mu/defn- summary-formula :- ::response-schema
   "Draft a custom expression and result-column name for `request`.
 
   The request map follows `::request-schema`:
@@ -329,3 +333,14 @@
       (when-not (and expression name)
         (throw (ex-info (tru "Nothing in this data matches that.") {:status-code 422})))
       {:expression expression :name name})))
+
+(api.macros/defendpoint :post "/summary-formula" :- ::response-schema
+  "Draft a custom expression from the summary sidebar's natural-language request in `body`."
+  [_route-params
+   _query-params
+   body :- ::request-schema]
+  (summary-formula body))
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/metabot/custom-expression` routes."
+  (api.macros/ns-handler *ns* +auth))
