@@ -1,4 +1,5 @@
 import { DataApp, InteractiveQuestion } from "@metabase/embedding-sdk-react";
+import { useState } from "react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { EmbeddedDataApp } from "e2e/support/helpers";
@@ -132,6 +133,50 @@ describe("scenarios > embedding-sdk > data app component", () => {
     cy.get("@ssoSession.all").should("have.length", 2);
   });
 
+  it("navigates within the app when the host changes the path", () => {
+    mockAuthProviderAndJwtSignIn();
+
+    cy.get<EmbeddedDataApp>("@app").then(({ slug }) =>
+      mountSdkContent(<HostWithNavigation slug={slug} />),
+    );
+
+    appIframe()
+      .findByLabelText("Order count", { timeout: 30_000 })
+      .should("have.text", "18760");
+
+    appIframe().findByTestId("current-pathname").should("have.text", "/orders");
+    appIframe().findByLabelText("Notes").type("Keep this note");
+
+    cy.get<HTMLIFrameElement>(APP_FRAME).its("0.src").as("initialSrc");
+
+    cy.log("host navigates to another route of the same app");
+    cy.findByRole("button", { name: "Host: order details" }).click();
+
+    appIframe()
+      .findByTestId("current-pathname")
+      .should("have.text", "/orders/details");
+
+    cy.get<HTMLIFrameElement>(APP_FRAME)
+      .its("0.contentWindow.location.search")
+      .should("eq", "?tab=summary");
+
+    cy.log("iframe is not reloaded");
+    appIframe().findByLabelText("Notes").should("have.value", "Keep this note");
+
+    cy.get<string>("@initialSrc").then((initialSrc) =>
+      cy
+        .get<HTMLIFrameElement>(APP_FRAME)
+        .its("0.src")
+        .should("eq", initialSrc),
+    );
+
+    cy.log("host navigates back");
+    cy.findByRole("button", { name: "Host: orders" }).click();
+
+    appIframe().findByTestId("current-pathname").should("have.text", "/orders");
+    appIframe().findByLabelText("Notes").should("have.value", "Keep this note");
+  });
+
   function trackFrameSessionRequests() {
     const requests = new Set<MessageEventSource>();
 
@@ -163,6 +208,35 @@ describe("scenarios > embedding-sdk > data app component", () => {
     return requests;
   }
 });
+
+function HostWithNavigation({ slug }: { slug: string }) {
+  const [path, setPath] = useState(`${slug}/orders`);
+
+  return (
+    <>
+      <button type="button" onClick={() => setPath(`${slug}/orders`)}>
+        Host: orders
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setPath(`${slug}/orders/details?tab=summary`)}
+      >
+        Host: order details
+      </button>
+
+      <DataApp path={path} height={300} />
+    </>
+  );
+}
+
+const appIframe = () =>
+  cy
+    .get<HTMLIFrameElement>(APP_FRAME)
+    .should("have.length", 1)
+    .its("0.contentDocument.body")
+    .should("not.be.empty")
+    .then(cy.wrap);
 
 const expireProviderAndFrameSessions = (sessionAlias: string) =>
   cy.get<MetabaseEmbeddingSessionToken>(sessionAlias).then(({ exp }) => {
