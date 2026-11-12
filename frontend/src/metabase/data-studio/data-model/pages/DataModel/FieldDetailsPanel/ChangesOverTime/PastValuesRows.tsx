@@ -76,6 +76,27 @@ export function getHistorySettingsUrl(table: Table) {
       });
 }
 
+export function getTableUrl(table: Table) {
+  return table.is_published
+    ? Urls.dataStudioTable(table.id)
+    : Urls.dataStudioData({
+        databaseId: table.db_id,
+        schemaName: table.schema,
+        tableId: table.id,
+      });
+}
+
+export function getHistoryMetadataUrl(table: Table) {
+  return table.is_published
+    ? Urls.dataStudioTableMetadata(table.id)
+    : Urls.dataStudioData({
+        databaseId: table.db_id,
+        schemaName: table.schema,
+        tableId: table.id,
+        tab: "details",
+      });
+}
+
 export function HistorySettingsLink({ table }: { table: Table }) {
   return (
     <Text size="sm">

@@ -6,13 +6,12 @@ import {
   useSchemaTables,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Card, Group, SegmentedControl, Stack, Text } from "metabase/ui";
+import { Card, SegmentedControl, Stack, Text } from "metabase/ui";
 import { isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, Measure, Table } from "metabase-types/api";
 
 import { joinFieldNames } from "./ChangingFieldsGroup";
 import { DimensionChangePreview } from "./EndUserPreview";
-import { HistoryKeyAndDates } from "./HistoryKeyAndDates";
 import { singularName } from "./names";
 import { useDimensionHistory } from "./use-dimension-history";
 
@@ -92,19 +91,12 @@ function MeasureDimensionCard({
   return (
     <Card withBorder p="xxl">
       <Stack gap="lg">
-        <Group justify="space-between" align="flex-start" wrap="nowrap">
-          <Stack gap="xs">
-            <Text fw="bold">{t`When ${measure.name} is grouped by ${dimension.toLowerCase()} ${attributes}`}</Text>
-            <Text size="sm" c="text-secondary">
-              {t`A ${dimension.toLowerCase()}'s ${attributes} change over time. Pick which one each ${fact} counts under.`}
-            </Text>
-          </Stack>
-          <HistoryKeyAndDates
-            dimensionTable={dimensionTable}
-            historyTable={historyTable}
-            readOnly={readOnly}
-          />
-        </Group>
+        <Stack gap="xs">
+          <Text fw="bold">{t`When ${measure.name} is grouped by ${dimension.toLowerCase()} ${attributes}`}</Text>
+          <Text size="sm" c="text-secondary">
+            {t`A ${dimension.toLowerCase()}'s ${attributes} change over time. Pick which one each ${fact} counts under.`}
+          </Text>
+        </Stack>
         <SegmentedControl
           w="fit-content"
           disabled={readOnly}

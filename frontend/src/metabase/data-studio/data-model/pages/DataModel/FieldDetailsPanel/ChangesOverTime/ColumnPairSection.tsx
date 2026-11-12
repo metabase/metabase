@@ -29,7 +29,6 @@ import type { Field, Table } from "metabase-types/api";
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
 
 import { getPreviewNames } from "./EndUserPreview";
-import { HistoryKeyAndDates } from "./HistoryKeyAndDates";
 import {
   type DimensionHistory,
   useDimensionHistory,
@@ -126,14 +125,7 @@ export function ColumnPairSection({
           <DetailsRow
             label={t`Old values`}
             value={
-              <Group justify="space-between" wrap="nowrap" w="100%">
-                <Text>{t`Kept in ${history.historyTable.display_name}`}</Text>
-                <HistoryKeyAndDates
-                  dimensionTable={table}
-                  historyTable={history.historyTable}
-                  readOnly={disabled}
-                />
-              </Group>
+              <Text>{t`Kept in ${history.historyTable.display_name}`}</Text>
             }
           />
         </DetailsTable>

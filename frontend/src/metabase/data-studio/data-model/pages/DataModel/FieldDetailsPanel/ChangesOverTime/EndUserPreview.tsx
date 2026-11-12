@@ -1,4 +1,4 @@
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import {
   type VersionChoice,
@@ -106,23 +106,16 @@ function ExampleSentences({ names, version, example }: EndUserPreviewProps) {
   if (example.status === "loading") {
     return <Loader size="xs" />;
   }
-  if (example.status === "unavailable" || example.events.length === 0) {
+  if (example.status === "unavailable") {
     return null;
   }
+  const { entityLabel, before, after, changedOn } = example;
+  const facts = lower(names.facts);
   return (
-    <Stack gap="xxs" pl="lg">
-      <Text size="sm" c="text-secondary">
-        {t`For example, ${example.entityLabel}'s ${lower(names.attribute)} changed from ${example.before} to ${example.after} on ${example.changedOn}.`}
-      </Text>
-      {example.events.map((event) => (
-        <Text key={event.id} size="sm" c="text-secondary">
-          {jt`${names.fact} #${event.id} from ${event.date} shows ${(
-            <strong key="value">
-              {version === "at-event" ? event.valueThen : event.valueNow}
-            </strong>
-          )}.`}
-        </Text>
-      ))}
-    </Stack>
+    <Text size="sm" c="text-secondary" pl="lg">
+      {version === "at-event"
+        ? t`For example, ${entityLabel}'s ${facts} show ${before} before ${changedOn} and ${after} after.`
+        : t`For example, all of ${entityLabel}'s ${facts} show ${after}.`}
+    </Text>
   );
 }

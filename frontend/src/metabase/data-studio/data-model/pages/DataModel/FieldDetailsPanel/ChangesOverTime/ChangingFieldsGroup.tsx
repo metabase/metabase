@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import {
   type VersionChoice,
   getVersionChoiceOptions,
@@ -9,7 +10,7 @@ import {
 import { Button, Group, Icon, Menu, Stack, Text } from "metabase/ui";
 import type { Field, Table } from "metabase-types/api";
 
-import { HistoryKeyAndDates } from "./HistoryKeyAndDates";
+import { getHistoryMetadataUrl, getTableUrl } from "./PastValuesRows";
 import { singularName } from "./names";
 import type { DimensionHistory } from "./use-dimension-history";
 
@@ -90,8 +91,24 @@ export function ChangingFieldsGroup({
             </Button>
           </Menu.Target>
           <Menu.Dropdown>
+            <Menu.Label>{t`Old values are kept in`}</Menu.Label>
+            <Menu.Item
+              component={Link}
+              to={getTableUrl(historyTable)}
+              leftSection={<Icon name="table2" />}
+            >
+              {historyTable.display_name}
+            </Menu.Item>
+            <Menu.Item
+              component={Link}
+              to={getHistoryMetadataUrl(historyTable)}
+              leftSection={<Icon name="gear" />}
+            >
+              {t`Settings`}
+            </Menu.Item>
             {reference != null && (
               <>
+                <Menu.Divider />
                 <Menu.Label>{t`${reference.table.display_name} show`}</Menu.Label>
                 {options.map((option) => (
                   <Menu.Item
@@ -112,11 +129,6 @@ export function ChangingFieldsGroup({
             )}
           </Menu.Dropdown>
         </Menu>
-        <HistoryKeyAndDates
-          dimensionTable={table}
-          historyTable={historyTable}
-          readOnly={readOnly}
-        />
       </Group>
       {summary != null && (
         <Text size="sm" c="text-secondary">

@@ -48,7 +48,10 @@ import {
   DETAILS_CELL_INPUT_CLASS_NAMES,
   DetailsEditableText,
 } from "../../DetailPanel";
-import { HistorySentence } from "../../FieldDetailsPanel/ChangesOverTime";
+import {
+  ColumnSelect,
+  HistorySentence,
+} from "../../FieldDetailsPanel/ChangesOverTime";
 import { CustomPropertiesSection } from "../CustomProperties/CustomPropertiesSection";
 import { EntityCustomPropertiesSection } from "../CustomProperties/EntityCustomPropertiesSection";
 import { InferredValue } from "../InferenceReview";
@@ -96,11 +99,18 @@ export function TableStructure({
     setPeriodGranularity,
     setEavBinding,
     setMainDate,
+    setHistoryBinding,
   } = useTableStructures();
   const structure = getTableStructure(table);
   const fields = table.fields ?? [];
   const { role } = structure;
   const { variant } = useChangingAttributes();
+  const showsHistoryTab = useShowsHistoryTab(table);
+  const hasHistoryRows =
+    role != null &&
+    isRoleA(role, "role/HistoryDimension") &&
+    !showsHistoryTab &&
+    variant !== "sentence";
   const { getTableDataLayer } = useDataLayers();
   const hiddenReason = getTableHiddenReason({
     table,
@@ -133,6 +143,56 @@ export function TableStructure({
           />
         }
       />
+      {hasHistoryRows && (
+        <>
+          <DetailsRow
+            label={t`Matched on`}
+            fillValue
+            value={
+              <ColumnSelect
+                label={t`Matched on`}
+                fields={fields}
+                value={structure.history.durableKeyFieldId}
+                disabled={readOnly}
+                onChange={(durableKeyFieldId) =>
+                  setHistoryBinding(table, { durableKeyFieldId })
+                }
+              />
+            }
+          />
+          <DetailsRow
+            label={t`True from`}
+            fillValue
+            value={
+              <ColumnSelect
+                label={t`True from`}
+                fields={fields}
+                value={structure.history.validFromFieldId}
+                disabled={readOnly}
+                onChange={(validFromFieldId) =>
+                  setHistoryBinding(table, { validFromFieldId })
+                }
+              />
+            }
+          />
+          <DetailsRow
+            label={t`True until`}
+            fillValue
+            value={
+              <ColumnSelect
+                label={t`True until`}
+                fields={fields}
+                value={structure.history.validToFieldId}
+                placeholder={t`The next change`}
+                disabled={readOnly}
+                onChange={(validToFieldId) =>
+                  setHistoryBinding(table, { validToFieldId })
+                }
+              />
+            }
+          />
+        </>
+      )}
       <DetailsRow
         label={t`Each row is`}
         fillValue

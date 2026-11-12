@@ -13,7 +13,7 @@ import type { Field, FieldId, Table } from "metabase-types/api";
 
 import {
   ChangingFieldsGroup,
-  useGroupMembers,
+  useFieldGroups,
 } from "../../FieldDetailsPanel/ChangesOverTime";
 import {
   ListSearchBar,
@@ -53,11 +53,12 @@ export function TableFieldsTab({
   );
   const hasMatches = fields.some(filterField);
   const { variant } = useChangingAttributes();
-  const { history, memberIds } = useGroupMembers(table);
-  const isTracked = (field: Field) =>
+  const { history, groups } = useFieldGroups(table);
+  const isGrouped = variant === "group" && groups.length > 0;
+  const isInGroup = (field: Field, memberIds: FieldId[]) =>
     memberIds.includes(getRawTableFieldId(field));
-  const groupHistoryTable =
-    variant === "group" ? history.historyTable : undefined;
+  const isTracked = (field: Field) =>
+    groups.some(({ memberIds }) => isInGroup(field, memberIds));
 
   if (fields.length === 0) {
     return (
@@ -115,7 +116,7 @@ export function TableFieldsTab({
         style={{ display: isSorting ? "none" : "block" }}
         aria-hidden={isSorting}
       >
-        {hasMatches && groupHistoryTable != null && (
+        {hasMatches && isGrouped && (
           <Stack gap="xl">
             <TableFieldList
               table={table}
@@ -123,23 +124,30 @@ export function TableFieldsTab({
               filterField={(field) => filterField(field) && !isTracked(field)}
               getFieldHref={getFieldHref}
             />
-            <ChangingFieldsGroup
-              table={table}
-              history={history}
-              historyTable={groupHistoryTable}
-              memberFields={fields.filter(isTracked)}
-              readOnly={readOnly}
-            >
-              <TableFieldList
+            {groups.map(({ historyTable, memberIds }) => (
+              <ChangingFieldsGroup
+                key={historyTable.id}
                 table={table}
-                activeFieldId={activeFieldId}
-                filterField={(field) => filterField(field) && isTracked(field)}
-                getFieldHref={getFieldHref}
-              />
-            </ChangingFieldsGroup>
+                history={history}
+                historyTable={historyTable}
+                memberFields={fields.filter((field) =>
+                  isInGroup(field, memberIds),
+                )}
+                readOnly={readOnly}
+              >
+                <TableFieldList
+                  table={table}
+                  activeFieldId={activeFieldId}
+                  filterField={(field) =>
+                    filterField(field) && isInGroup(field, memberIds)
+                  }
+                  getFieldHref={getFieldHref}
+                />
+              </ChangingFieldsGroup>
+            ))}
           </Stack>
         )}
-        {hasMatches && groupHistoryTable == null && (
+        {hasMatches && !isGrouped && (
           <TableFieldList
             table={table}
             activeFieldId={activeFieldId}
