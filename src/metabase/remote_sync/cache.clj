@@ -9,7 +9,7 @@
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *cache*
-  "An atom `{model {:checked #{pk} :read-only #{pk}}}` bound per request, or nil."
+  "An atom `{model {pk read-only?}}` bound per request, or nil."
   nil)
 
 (defn do-with-cache
@@ -27,14 +27,12 @@
   `model` it loaded, which in dev must include `pk`."
   [model pk]
   (if-let [cache *cache*]
-    (let [{:keys [checked read-only]} (get @cache model)]
-      (models.cache/check-loaded! model pk)
-      (if (contains? checked pk)
-        (contains? read-only pk)
-        (let [pks   (into #{pk} (remove #(contains? checked %)) (models.cache/loaded-ids model))
+    (let [answers (get @cache model)]
+      (models.cache/check-loaded model pk)
+      (if (contains? answers pk)
+        (get answers pk)
+        (let [pks   (into [pk] (remove #(or (= % pk) (contains? answers %))) (models.cache/loaded-ids model))
               found (into #{} (mapcat #(remote-sync.db/read-only-pks-among model (vec %))) (partition-all max-batch-size pks))]
-          (swap! cache update model #(-> %
-                                         (update :checked (fnil into #{}) pks)
-                                         (update :read-only (fnil into #{}) found)))
+          (swap! cache update model (fnil into {}) (map (fn [p] [p (contains? found p)])) pks)
           (contains? found pk))))
     (contains? (remote-sync.db/read-only-pks-among model [pk]) pk)))
