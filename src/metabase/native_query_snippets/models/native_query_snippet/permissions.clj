@@ -9,7 +9,7 @@
 (defn has-any-native-permissions?
   "Checks whether the current user has native query permissions for any database."
   []
-  (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/create-queries))
+  (perms/user-has-highest-permission-anywhere? api/*current-user-id* :perms/create-queries))
 
 (defenterprise can-read?
   "Can the current User read this `snippet`?"

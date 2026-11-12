@@ -39,15 +39,15 @@
 
 (defmethod mi/can-read? :model/PythonLibrary
   ([_instance]
-   (perms/has-any-transforms-permission? api/*current-user-id*))
+   (perms/user-has-transforms-permission-anywhere? api/*current-user-id*))
   ([_model _pk]
-   (perms/has-any-transforms-permission? api/*current-user-id*)))
+   (perms/user-has-transforms-permission-anywhere? api/*current-user-id*)))
 
 (defmethod mi/can-write? :model/PythonLibrary
   ([_instance]
-   (perms/has-any-transforms-permission? api/*current-user-id*))
+   (perms/user-has-transforms-permission-anywhere? api/*current-user-id*))
   ([_model _pk]
-   (perms/has-any-transforms-permission? api/*current-user-id*)))
+   (perms/user-has-transforms-permission-anywhere? api/*current-user-id*)))
 
 (def ^:private allowed-paths
   "Set of allowed library paths. Currently only 'common' is supported."

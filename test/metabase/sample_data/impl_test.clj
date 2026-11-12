@@ -172,7 +172,7 @@
                               {:orders-view   (perms/table-permission-for-user (:id user) :perms/view-data db-id orders-id)
                                :people-view   (perms/table-permission-for-user (:id user) :perms/view-data db-id people-id)
                                ;; what GET /api/database/:id/schemas visibility keys on
-                               :schema-create (perms/schema-permission-for-user (:id user) :perms/create-queries db-id schema)})
+                               :schema-create (perms/some-table-in-schema-permission-for-user (:id user) :perms/create-queries db-id schema)})
                   before    (effective "PUBLIC")]
               (is (= {:orders-view   :blocked
                       :people-view   :unrestricted

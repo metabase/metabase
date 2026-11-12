@@ -110,7 +110,7 @@
     (assoc db
            :native_permissions
            (if (= :query-builder-and-native
-                  (perms/full-database-permission-for-user
+                  (perms/every-table-in-database-permission-for-user
                    api/*current-user-id*
                    :perms/create-queries
                    (u/the-id db)))
@@ -1124,7 +1124,7 @@
                     [:id ms/PositiveInt]]]
   (let [db (warehouses/get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
-                       (perms/has-db-transforms-permission? api/*current-user-id* (:id db))
+                       (perms/user-has-transforms-permission-for-database? api/*current-user-id* (:id db))
                        (and (mi/can-write? db)
                             (mi/can-read? db))))
     (->> (driver.u/lib-database (:id db))

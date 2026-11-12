@@ -27,7 +27,7 @@
   :feature :none
   [{database-id :database :as query}]
   (or
-   (not= :blocked (perms/full-database-permission-for-user api/*current-user-id* :perms/view-data database-id))
+   (not= :blocked (perms/every-table-in-database-permission-for-user api/*current-user-id* :perms/view-data database-id))
    (let [{:keys [table-ids]} (query-perms/query->source-ids query)]
      (run! #(models.cache/register-loaded! :model/Table %) table-ids)
      (= #{:unrestricted}

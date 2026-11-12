@@ -514,15 +514,15 @@
                  {:status-code 422})
         (not
          (and
-          (= :unrestricted (perms/full-schema-permission-for-user api/*current-user-id*
-                                                                  :perms/view-data
-                                                                  (u/the-id db)
-                                                                  schema-name))
+          (= :unrestricted (perms/every-table-in-schema-permission-for-user api/*current-user-id*
+                                                                            :perms/view-data
+                                                                            (u/the-id db)
+                                                                            schema-name))
           (contains? #{:query-builder :query-builder-and-native}
-                     (perms/full-schema-permission-for-user api/*current-user-id*
-                                                            :perms/create-queries
-                                                            (u/the-id db)
-                                                            schema-name))))
+                     (perms/every-table-in-schema-permission-for-user api/*current-user-id*
+                                                                      :perms/create-queries
+                                                                      (u/the-id db)
+                                                                      schema-name))))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403})
         (and (some? schema-name)

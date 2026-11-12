@@ -166,10 +166,10 @@
   [database-id schema-name]
   (or
    (contains? #{:query-builder :query-builder-and-native}
-              (perms/schema-permission-for-user api/*current-user-id*
-                                                :perms/create-queries
-                                                database-id
-                                                schema-name))
+              (perms/some-table-in-schema-permission-for-user api/*current-user-id*
+                                                              :perms/create-queries
+                                                              database-id
+                                                              schema-name))
    (current-user-can-manage-schema-metadata? database-id schema-name)))
 
 (defn browsable-databases-honeysql-filter

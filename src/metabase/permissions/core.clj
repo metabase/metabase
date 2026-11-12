@@ -49,30 +49,31 @@
   data-app-collection?
   disable-perms-cache
   download-perms-level
-  full-database-permission-for-user
-  full-schema-permission-for-user
+  every-table-in-database-permission-for-user
+  every-table-in-schema-permission-for-user
   groups-have-permission-for-table?
   index-database-permissions
   is-superuser?
   is-data-analyst?
-  most-permissive-database-permission-for-user
   native-download-permission-for-user
   permissions-for-user
   sandboxes-for-user
-  schema-permission-for-user
+  some-table-in-database-permission-for-user
+  some-table-in-schema-permission-for-user
+  some-table-permission-for-user
   set-database-permission!
   set-table-permission!
   set-table-permissions!
   table-permission-for-user
   table-permission-for-groups
-  user-has-any-perms-of-type?
+  user-has-highest-permission-anywhere?
   user-has-permission-for-database?
-  user-has-permission-for-schema?
+  user-has-permission-for-some-table-in-schema?
   user-has-permission-for-table?
   with-additional-table-permission
   with-relevant-permissions-for-user
-  has-any-transforms-permission?
-  has-db-transforms-permission?
+  user-has-transforms-permission-anywhere?
+  user-has-transforms-permission-for-database?
   set-default-group-permissions!
   set-default-database-permissions!
   set-default-table-permissions!

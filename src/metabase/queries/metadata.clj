@@ -32,7 +32,7 @@
   [db :- :metabase.warehouses.schema/database]
   (if (and (not (:is_audit db))
            (= :query-builder-and-native
-              (perms/full-database-permission-for-user
+              (perms/every-table-in-database-permission-for-user
                api/*current-user-id*
                :perms/create-queries
                (u/the-id db))))

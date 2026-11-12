@@ -1045,7 +1045,7 @@
                          "uploaded table in the granted schema must stay :unrestricted")
                      (testing "so the user's effective schema permission stays :unrestricted and they can upload again"
                        (is (= :unrestricted
-                              (data-perms/full-schema-permission-for-user
+                              (data-perms/every-table-in-schema-permission-for-user
                                (mt/user->id :rasta) :perms/view-data db-id uploaded-schema)))))))))))))))
 
 (deftest update-csv-data-perms-test

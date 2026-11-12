@@ -33,7 +33,7 @@
     ;; The permissions API refuses SQL access to a sandboxed group now, but instances can still hold it from before.
     (perms/set-database-permission! &group (mt/id) :perms/create-queries :query-builder-and-native)
     (is (= :query-builder-and-native
-           (perms/full-database-permission-for-user (mt/user->id :rasta) :perms/create-queries (mt/id))))
+           (perms/every-table-in-database-permission-for-user (mt/user->id :rasta) :perms/create-queries (mt/id))))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You do not have permissions to run this query"
                           (qp/process-query (lib/native-query (mt/metadata-provider) "SELECT 1"))))
     (is (false? (sql.common/native-query-access? (mt/id))))))
