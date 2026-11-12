@@ -69,6 +69,13 @@ const setup = async ({
   await waitForLoaderToBeRemoved();
 };
 
+const XRAY_TABLE_CANDIDATES = [
+  createMockTableCandidate({ title: "Orders", url: "/a" }),
+  createMockTableCandidate({ title: "People", url: "/b" }),
+  createMockTableCandidate({ title: "Products", url: "/c" }),
+  createMockTableCandidate({ title: "Reviews", url: "/d" }),
+];
+
 describe("HomeContent", () => {
   beforeEach(() => {
     jest.useFakeTimers({
@@ -176,13 +183,20 @@ describe("HomeContent", () => {
   });
 
   it("should not render x-rays for the installer when there is no question and dashboard if the x-rays feature is disabled", async () => {
+    const database = createMockDatabase({ tables: [createMockTable()] });
+
     await setup({
       user: createMockUser({
         is_installer: true,
         has_question_and_dashboard: false,
         first_login: "2020-01-10T00:00:00Z",
       }),
-      databases: [createMockDatabase()],
+      databases: [database],
+      candidates: {
+        [database.id]: [
+          createMockDatabaseCandidate({ tables: XRAY_TABLE_CANDIDATES }),
+        ],
+      },
       recentItems: [createMockRecentTableItem()],
       isXrayEnabled: false,
     });
@@ -217,12 +231,7 @@ describe("HomeContent", () => {
         candidates: {
           [database.id]: [
             createMockDatabaseCandidate({
-              tables: [
-                createMockTableCandidate({ title: "Orders", url: "/a" }),
-                createMockTableCandidate({ title: "People", url: "/b" }),
-                createMockTableCandidate({ title: "Products", url: "/c" }),
-                createMockTableCandidate({ title: "Reviews", url: "/d" }),
-              ],
+              tables: XRAY_TABLE_CANDIDATES,
             }),
           ],
         },
