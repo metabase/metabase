@@ -1,6 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  fireEvent,
+  mockTextOverflow,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
@@ -174,5 +180,42 @@ describe("SummaryFieldList", () => {
     expect(
       screen.queryByTestId("summary-field-section"),
     ).not.toBeInTheDocument();
+  });
+
+  describe("names that don't fit", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("shows a cut-off field name in full on hover", async () => {
+      mockTextOverflow();
+      setup();
+
+      await userEvent.hover(within(getSection("Orders")).getByText("Subtotal"));
+
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Subtotal");
+    });
+
+    it("shows the name in full without the search highlight", async () => {
+      mockTextOverflow();
+      setup();
+      await userEvent.type(screen.getByLabelText("Search fields"), "subt");
+
+      await userEvent.hover(within(getSection("Orders")).getByText("Subt"));
+
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent("Subtotal");
+      expect(within(tooltip).queryByText("Subt")).not.toBeInTheDocument();
+    });
+
+    it("shows no tooltip for a name that fits", async () => {
+      setup();
+
+      await userEvent.hover(within(getSection("Orders")).getByText("Subtotal"));
+
+      await expect(
+        screen.findByRole("tooltip", {}, { timeout: 500 }),
+      ).rejects.toThrow();
+    });
   });
 });

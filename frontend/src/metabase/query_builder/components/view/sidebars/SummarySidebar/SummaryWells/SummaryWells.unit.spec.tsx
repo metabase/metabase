@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  mockTextOverflow,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TestQuerySpec } from "metabase-types/api";
@@ -128,6 +133,165 @@ describe("SummaryWells", () => {
     expect(getLastChange().values).toEqual(["Count", "Average of Total"]);
   });
 
+  describe("grouping buckets", () => {
+    const openBucketMenu = (label: string) =>
+      userEvent.click(
+        screen.getByRole("button", { name: `Change how ${label} is grouped` }),
+      );
+
+    it("switches a date grouping's unit from its menu", async () => {
+      const { onChange, getLastChange } = setup();
+
+      await openBucketMenu("Created At: Month");
+      expect(
+        await screen.findByRole("menuitem", { name: "Month" }),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("menuitem", { name: "Year" }));
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(getLastChange().dimensions).toEqual(["Created At: Year"]);
+    });
+
+    it("keeps the less common units behind More", async () => {
+      const { getLastChange } = setup();
+
+      await openBucketMenu("Created At: Month");
+      await screen.findByRole("menuitem", { name: "Month" });
+      expect(
+        screen.queryByRole("menuitem", { name: "Don't bin" }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("menuitem", { name: "More…" }));
+      expect(
+        screen.getByRole("menuitem", { name: "Day of week" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: "More…" }),
+      ).not.toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: "Don't bin" }),
+      );
+
+      expect(getLastChange().dimensions).toEqual(["Created At"]);
+    });
+
+    it("opens with every unit when the one in use is a less common one", async () => {
+      setup({
+        spec: {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "day-of-week" },
+              ],
+            },
+          ],
+        },
+      });
+
+      await openBucketMenu("Created At: Day of week");
+
+      expect(
+        await screen.findByRole("menuitem", { name: "Day of week" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: "More…" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("doesn't rerun when the unit in use is picked again", async () => {
+      const { onChange } = setup();
+
+      await openBucketMenu("Created At: Month");
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Month" }),
+      );
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("doesn't rerun when another grouping of the column already has the unit", async () => {
+      const { onChange } = setup({
+        spec: {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "year" },
+                { type: "column", name: "CREATED_AT", unit: "month" },
+              ],
+            },
+          ],
+        },
+      });
+
+      await openBucketMenu("Created At: Year");
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Month" }),
+      );
+
+      expect(onChange).not.toHaveBeenCalled();
+      expect(getChipLabels("columns")).toEqual([
+        "Created At: Year",
+        "Created At: Month",
+      ]);
+    });
+
+    it("changes a number grouping's bins from its menu", async () => {
+      const { getLastChange } = setup({
+        spec: {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts: [
+                {
+                  type: "column",
+                  name: "TOTAL",
+                  binning: { strategy: "default" },
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      await openBucketMenu("Total: Auto binned");
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "50 bins" }),
+      );
+
+      expect(getLastChange().dimensions).toEqual(["Total: 50 bins"]);
+    });
+
+    it("gives no menu to a grouping without units or bins", () => {
+      setup({
+        spec: {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts: [
+                {
+                  type: "column",
+                  sourceFieldId: ORDERS.PRODUCT_ID,
+                  name: "CATEGORY",
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(getChipLabels("columns")).toEqual(["Product → Category"]);
+      expect(
+        screen.queryByRole("button", { name: /Change how/ }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("picks a grouping from the Group by typeahead", async () => {
     const { onPick, onChange } = setup();
 
@@ -215,5 +379,59 @@ describe("SummaryWells", () => {
     });
 
     expect(getChipLabels("columns")).toEqual(["Product → Category"]);
+  });
+
+  describe("labels that don't fit", () => {
+    const spec: TestQuerySpec = {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            { type: "operator", operator: "count" },
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "TOTAL" }],
+            },
+          ],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit: "month" },
+            {
+              type: "column",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+              name: "CATEGORY",
+            },
+          ],
+        },
+      ],
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it.each([
+      "Count",
+      "Sum of Total",
+      "Created At: Month",
+      "Product → Category",
+    ])("shows the cut-off %s chip label in full on hover", async (label) => {
+      mockTextOverflow();
+      setup({ spec });
+
+      await userEvent.hover(screen.getByText(label));
+
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(label);
+    });
+
+    it("shows no tooltip for a label that fits", async () => {
+      setup({ spec });
+
+      await userEvent.hover(screen.getByText("Sum of Total"));
+
+      await expect(
+        screen.findByRole("tooltip", {}, { timeout: 500 }),
+      ).rejects.toThrow();
+    });
   });
 });

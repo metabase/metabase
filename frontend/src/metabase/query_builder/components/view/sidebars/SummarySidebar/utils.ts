@@ -6,6 +6,7 @@ import * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
 import type {
+  SummaryBucketOption,
   SummaryDimensionItem,
   SummaryDragItem,
   SummaryField,
@@ -17,7 +18,18 @@ import type {
 } from "./types";
 
 const DEFAULT_OPERATOR_SHORT_NAMES = ["sum", "distinct"];
+type DimensionBucketOptions = Pick<
+  SummaryDimensionItem,
+  "bucketOptions" | "initialBucketOptionCount"
+>;
+
 const VALUE_SECTION_KEYS = ["measures", "metrics"];
+const INITIAL_TEMPORAL_OPTION_COUNT = 7;
+const INITIAL_BINNING_OPTION_COUNT = 5;
+const NO_BUCKET_OPTIONS: DimensionBucketOptions = {
+  bucketOptions: [],
+  initialBucketOptionCount: 0,
+};
 
 function toFieldItem(
   { name, displayName }: { name: string; displayName: string },
@@ -278,6 +290,79 @@ export function getValueItems(
   );
 }
 
+function getBucketOption(
+  query: Lib.Query,
+  stageIndex: number,
+  bucket: Lib.Bucket,
+  column: Lib.ColumnMetadata,
+): SummaryBucketOption {
+  const info = Lib.displayInfo(query, stageIndex, bucket);
+  return {
+    displayName: info.displayName,
+    isSelected: info.selected === true,
+    column,
+  };
+}
+
+function getBucketOptions(
+  query: Lib.Query,
+  stageIndex: number,
+  clause: Lib.BreakoutClause,
+): DimensionBucketOptions {
+  const column = Lib.breakoutColumn(query, stageIndex, clause);
+  if (column == null) {
+    return NO_BUCKET_OPTIONS;
+  }
+  const strategies = Lib.availableBinningStrategies(query, stageIndex, column);
+  if (strategies.length > 0) {
+    return {
+      bucketOptions: [
+        ...strategies.map((strategy) =>
+          getBucketOption(
+            query,
+            stageIndex,
+            strategy,
+            Lib.withBinning(column, strategy),
+          ),
+        ),
+        {
+          displayName: t`Don't bin`,
+          isSelected: Lib.binning(column) == null,
+          column: Lib.withBinning(column, null),
+        },
+      ],
+      initialBucketOptionCount: INITIAL_BINNING_OPTION_COUNT,
+    };
+  }
+  const units = Lib.availableTemporalBuckets(query, stageIndex, column);
+  if (units.length > 0) {
+    const selectedUnit = Lib.temporalBucket(column);
+    return {
+      bucketOptions: [
+        ...units.map((unit) =>
+          getBucketOption(
+            query,
+            stageIndex,
+            unit,
+            Lib.withTemporalBucket(column, unit),
+          ),
+        ),
+        {
+          displayName: t`Don't bin`,
+          isSelected:
+            selectedUnit == null ||
+            Lib.displayInfo(query, stageIndex, selectedUnit).shortName ===
+              "default",
+          // an explicit default keeps the column from getting its default unit back
+          column: Lib.withTemporalBucket(column, "default"),
+        },
+      ],
+      initialBucketOptionCount: INITIAL_TEMPORAL_OPTION_COUNT,
+    };
+  }
+  return NO_BUCKET_OPTIONS;
+}
+
 export function getDimensionItems(
   query: Lib.Query,
   stageIndex: number,
@@ -300,6 +385,7 @@ export function getDimensionItems(
       expression,
       key: breakoutNames[index],
       label: info.longDisplayName,
+      ...getBucketOptions(query, stageIndex, clause),
     };
   });
 }
@@ -378,6 +464,61 @@ function hasValue(
   }
 }
 
+/** The default first, then coarser, then finer, then the parts of a date. */
+function sortBucketsForRegrouping(
+  query: Lib.Query,
+  stageIndex: number,
+  buckets: Lib.Bucket[],
+): Lib.Bucket[] {
+  const [extractions, ranges] = _.partition(
+    buckets,
+    (bucket) =>
+      Lib.displayInfo(query, stageIndex, bucket).isTemporalExtraction === true,
+  );
+  const defaultIndex = Math.max(
+    ranges.findIndex(
+      (bucket) => Lib.displayInfo(query, stageIndex, bucket).default === true,
+    ),
+    0,
+  );
+  return [
+    ...ranges.slice(defaultIndex),
+    ...ranges.slice(0, defaultIndex).reverse(),
+    ...extractions,
+  ];
+}
+
+function getRegroupingColumns(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): Lib.ColumnMetadata[] {
+  const strategies = Lib.availableBinningStrategies(query, stageIndex, column);
+  if (strategies.length > 0) {
+    return sortBucketsForRegrouping(query, stageIndex, strategies).map(
+      (strategy) => Lib.withBinning(column, strategy),
+    );
+  }
+  const units = Lib.availableTemporalBuckets(query, stageIndex, column);
+  return sortBucketsForRegrouping(query, stageIndex, units).map((unit) =>
+    Lib.withTemporalBucket(column, unit),
+  );
+}
+
+function breakoutAgain(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): Lib.Query {
+  const breakoutCount = Lib.breakouts(query, stageIndex).length;
+  const nextColumn = getRegroupingColumns(query, stageIndex, column).find(
+    (bucketedColumn) =>
+      Lib.breakouts(Lib.breakout(query, stageIndex, bucketedColumn), stageIndex)
+        .length > breakoutCount,
+  );
+  return nextColumn ? Lib.breakout(query, stageIndex, nextColumn) : query;
+}
+
 export function areQueriesEqual(query: Lib.Query, other: Lib.Query): boolean {
   return (
     query === other ||
@@ -399,8 +540,11 @@ export function addField(
       field.kind === "column"
         ? findBreakoutableColumn(query, stageIndex, field.column)
         : null;
-    if (column == null || hasBreakout(query, stageIndex, column)) {
+    if (column == null) {
       return query;
+    }
+    if (hasBreakout(query, stageIndex, column)) {
+      return breakoutAgain(query, stageIndex, column);
     }
     return Lib.breakout(
       query,
@@ -544,4 +688,23 @@ export function changeValueOperator(
   return clause
     ? Lib.replaceClause(query, stageIndex, item.clause, clause)
     : query;
+}
+
+/**
+ * Returns `query` itself when the bucket changes nothing: it's the one in use, or another
+ * grouping of the column already has it and the change is dropped.
+ */
+export function changeDimensionBucket(
+  query: Lib.Query,
+  stageIndex: number,
+  item: SummaryDimensionItem,
+  option: SummaryBucketOption,
+): Lib.Query {
+  const nextQuery = Lib.replaceClause(
+    query,
+    stageIndex,
+    item.clause,
+    option.column,
+  );
+  return areQueriesEqual(query, nextQuery) ? query : nextQuery;
 }

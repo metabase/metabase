@@ -50,11 +50,19 @@ export type SummaryValueItem = {
   | { kind: "expression" }
 );
 
+export type SummaryBucketOption = {
+  displayName: string;
+  isSelected: boolean;
+  column: Lib.ColumnMetadata;
+};
+
 export type SummaryDimensionItem = {
   clause: Lib.BreakoutClause;
   expression?: Lib.ExpressionClause;
   key: string;
   label: string;
+  bucketOptions: SummaryBucketOption[];
+  initialBucketOptionCount: number;
 };
 
 export type SummaryDragItem =

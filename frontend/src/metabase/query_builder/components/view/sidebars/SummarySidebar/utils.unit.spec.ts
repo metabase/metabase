@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
@@ -15,6 +17,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import type {
+  SummaryDimensionItem,
   SummaryDragItem,
   SummaryField,
   SummaryFieldSection,
@@ -23,6 +26,7 @@ import {
   addField,
   areQueriesEqual,
   canDropOnWell,
+  changeDimensionBucket,
   changeValueOperator,
   clearWell,
   dropOnWell,
@@ -403,21 +407,244 @@ describe("getDimensionItems", () => {
   });
 });
 
+describe("grouping buckets", () => {
+  const query = createOrdersQuery({
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+        breakouts: [
+          { type: "column", name: "CREATED_AT", unit: "month" },
+          { type: "column", name: "TOTAL", binning: { strategy: "default" } },
+          {
+            type: "column",
+            sourceFieldId: ORDERS.PRODUCT_ID,
+            name: "CATEGORY",
+          },
+        ],
+      },
+    ],
+  });
+
+  function getBucketNames({ bucketOptions }: SummaryDimensionItem) {
+    return bucketOptions.map((option) => option.displayName);
+  }
+
+  function getSelectedBucketNames({ bucketOptions }: SummaryDimensionItem) {
+    return bucketOptions
+      .filter((option) => option.isSelected)
+      .map((option) => option.displayName);
+  }
+
+  function changeBucket(
+    query: Lib.Query,
+    itemIndex: number,
+    bucketName: string,
+  ) {
+    const item = getDimensionItems(query, STAGE_INDEX)[itemIndex];
+    const option = item.bucketOptions.find(
+      (option) => option.displayName === bucketName,
+    );
+    if (option == null) {
+      throw new Error(`No bucket named ${bucketName}`);
+    }
+    return changeDimensionBucket(query, STAGE_INDEX, item, option);
+  }
+
+  it("offers a date grouping its units, the common seven up front, then no bucket", () => {
+    const [createdAt] = getDimensionItems(query, STAGE_INDEX);
+    const names = getBucketNames(createdAt);
+
+    expect(names.slice(0, createdAt.initialBucketOptionCount)).toEqual([
+      "Minute",
+      "Hour",
+      "Day",
+      "Week",
+      "Month",
+      "Quarter",
+      "Year",
+    ]);
+    expect(names).toContain("Day of week");
+    expect(names.at(-1)).toBe("Don't bin");
+    expect(getSelectedBucketNames(createdAt)).toEqual(["Month"]);
+  });
+
+  it("offers a number grouping its binning strategies, then no binning", () => {
+    const [, total] = getDimensionItems(query, STAGE_INDEX);
+
+    expect(getBucketNames(total)).toEqual([
+      "Auto bin",
+      "10 bins",
+      "50 bins",
+      "100 bins",
+      "Don't bin",
+    ]);
+    expect(total.initialBucketOptionCount).toBe(5);
+    expect(getSelectedBucketNames(total)).toEqual(["Auto bin"]);
+  });
+
+  it("offers nothing to a grouping that has no units or bins", () => {
+    const [, , category] = getDimensionItems(query, STAGE_INDEX);
+
+    expect(category.bucketOptions).toEqual([]);
+  });
+
+  it("changes a date grouping's unit in place", () => {
+    const yearly = changeBucket(query, 0, "Year");
+
+    expect(getDimensionLabels(yearly)).toEqual([
+      "Created At: Year",
+      "Total: Auto binned",
+      "Product → Category",
+    ]);
+    const [createdAt] = getDimensionItems(yearly, STAGE_INDEX);
+    expect(getSelectedBucketNames(createdAt)).toEqual(["Year"]);
+  });
+
+  it("changes a number grouping's bins in place", () => {
+    const binned = changeBucket(query, 1, "50 bins");
+
+    expect(getDimensionLabels(binned)).toEqual([
+      "Created At: Month",
+      "Total: 50 bins",
+      "Product → Category",
+    ]);
+    const [, total] = getDimensionItems(binned, STAGE_INDEX);
+    expect(getSelectedBucketNames(total)).toEqual(["50 bins"]);
+  });
+
+  it("hands the query back when the change would leave it as it is", () => {
+    const groupedTwice = createOrdersQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count" }],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit: "year" },
+            { type: "column", name: "CREATED_AT", unit: "month" },
+          ],
+        },
+      ],
+    });
+
+    expect(
+      isSameQuery(changeBucket(groupedTwice, 0, "Year"), groupedTwice),
+    ).toBe(true);
+    // another grouping of the column already has the unit, so the change is dropped
+    expect(
+      isSameQuery(changeBucket(groupedTwice, 0, "Month"), groupedTwice),
+    ).toBe(true);
+    expect(
+      getDimensionLabels(changeBucket(groupedTwice, 0, "Quarter")),
+    ).toEqual(["Created At: Quarter", "Created At: Month"]);
+  });
+
+  it("takes the unit and the bins off", () => {
+    const unbinned = changeBucket(
+      changeBucket(query, 0, "Don't bin"),
+      1,
+      "Don't bin",
+    );
+
+    expect(getDimensionLabels(unbinned)).toEqual([
+      "Created At",
+      "Total",
+      "Product → Category",
+    ]);
+    const [createdAt, total] = getDimensionItems(unbinned, STAGE_INDEX);
+    expect(getSelectedBucketNames(createdAt)).toEqual(["Don't bin"]);
+    expect(getSelectedBucketNames(total)).toEqual(["Don't bin"]);
+  });
+});
+
 describe("addField", () => {
   const query = createOrdersQueryWithMetricsAndMeasures();
   const sections = getFieldSections(query, STAGE_INDEX);
 
-  it("groups by a column with its default bucket, once", () => {
-    const createdAt = findField(sections, "Created At");
-    const grouped = addField(query, STAGE_INDEX, "columns", createdAt);
+  function addTimes(query: Lib.Query, fieldName: string, times: number) {
+    return _.range(times).reduce(
+      (query) =>
+        addField(
+          query,
+          STAGE_INDEX,
+          "columns",
+          findField(getFieldSections(query, STAGE_INDEX), fieldName),
+        ),
+      query,
+    );
+  }
 
-    expect(getDimensionLabels(grouped)).toEqual(["Created At: Month"]);
+  it("groups by a column with its default bucket", () => {
+    expect(getDimensionLabels(addTimes(query, "Created At", 1))).toEqual([
+      "Created At: Month",
+    ]);
+    expect(getDimensionLabels(addTimes(query, "Total", 1))).toEqual([
+      "Total: Auto binned",
+    ]);
+  });
+
+  it("groups by a date again with the next unused unit: coarser, then finer, then the parts of a date", () => {
+    const labels = getDimensionLabels(addTimes(query, "Created At", 15));
+    expect(labels).toEqual([
+      "Created At: Month",
+      "Created At: Quarter",
+      "Created At: Year",
+      "Created At: Week",
+      "Created At: Day",
+      "Created At: Hour",
+      "Created At: Minute",
+      "Created At: Minute of hour",
+      "Created At: Hour of day",
+      "Created At: Day of week",
+      "Created At: Day of month",
+      "Created At: Day of year",
+      "Created At: Week of year",
+      "Created At: Month of year",
+      "Created At: Quarter of year",
+    ]);
+  });
+
+  it("starts from the default unit when another one is in use", () => {
+    const groupedByYear = createOrdersQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count" }],
+          breakouts: [{ type: "column", name: "CREATED_AT", unit: "year" }],
+        },
+      ],
+    });
+
     expect(
-      isSameQuery(
-        addField(grouped, STAGE_INDEX, "columns", createdAt),
-        grouped,
-      ),
-    ).toBe(true);
+      getDimensionLabels(addTimes(groupedByYear, "Created At", 3)),
+    ).toEqual([
+      "Created At: Year",
+      "Created At: Month",
+      "Created At: Quarter",
+      "Created At: Week",
+    ]);
+  });
+
+  it("groups by a number again with the next unused bins, never unbinned", () => {
+    const binned = addTimes(query, "Total", 4);
+
+    expect(getDimensionLabels(binned)).toEqual([
+      "Total: Auto binned",
+      "Total: 10 bins",
+      "Total: 50 bins",
+      "Total: 100 bins",
+    ]);
+    expect(isSameQuery(addTimes(binned, "Total", 1), binned)).toBe(true);
+  });
+
+  it("leaves the query alone once every unit is in use, or the column has none", () => {
+    const everyUnit = addTimes(query, "Created At", 15);
+    const category = addTimes(query, "Category", 1);
+
+    expect(isSameQuery(addTimes(everyUnit, "Created At", 1), everyUnit)).toBe(
+      true,
+    );
+    expect(isSameQuery(addTimes(category, "Category", 1), category)).toBe(true);
   });
 
   it("sums a number dropped on Summarize by, and counts the distinct values of a text", () => {
@@ -628,6 +855,17 @@ describe("drag and drop", () => {
     expect(getDimensionLabels(grouped)).toEqual([
       "Created At: Month",
       "Quantity: Auto binned",
+    ]);
+
+    const regrouped = dropOnWell(
+      query,
+      STAGE_INDEX,
+      fieldDrag("Created At"),
+      "columns",
+    );
+    expect(getDimensionLabels(regrouped)).toEqual([
+      "Created At: Month",
+      "Created At: Quarter",
     ]);
 
     const summed = dropOnWell(

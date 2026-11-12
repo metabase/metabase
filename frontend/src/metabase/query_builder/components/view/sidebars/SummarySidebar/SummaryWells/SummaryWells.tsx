@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Box } from "metabase/ui";
+import { Box, Ellipsified } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { SummaryFormulaInput } from "../SummaryFormulaBar";
@@ -14,11 +14,13 @@ import type {
 } from "../types";
 import {
   canDropOnWell,
+  changeDimensionBucket,
   getDimensionItems,
   getValueItems,
   getWellFieldSections,
 } from "../utils";
 
+import { DimensionBucketMenu } from "./DimensionBucketMenu";
 import {
   DraftFormulaChip,
   type DraftFormulaChipProps,
@@ -140,7 +142,24 @@ export function SummaryWells({
               drag={{ kind: "dimension", item }}
               onRemove={() => handleRemove(item.clause)}
             >
-              <span className={S.chipLabel}>{item.label}</span>
+              {item.bucketOptions.length > 0 ? (
+                <DimensionBucketMenu
+                  item={item}
+                  onSelect={(option) => {
+                    const nextQuery = changeDimensionBucket(
+                      query,
+                      stageIndex,
+                      item,
+                      option,
+                    );
+                    if (nextQuery !== query) {
+                      onChange(nextQuery);
+                    }
+                  }}
+                />
+              ) : (
+                <Ellipsified fw="inherit">{item.label}</Ellipsified>
+              )}
             </WellChip>
           ))}
           {draftFormula?.wellId === "columns" && (
