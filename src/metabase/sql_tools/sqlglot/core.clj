@@ -110,7 +110,7 @@
                                field))]
     (cond
       (not (map? field)) field
-      (= :composite-field (:type field)) (sql-parsing/cached-by-identity cache field normalize)
+      (= :composite-field (:type field)) (sql-parsing/cached-by-identity! cache field normalize)
       :else (normalize))))
 
 (defmethod sql-tools/field-references-impl :sqlglot

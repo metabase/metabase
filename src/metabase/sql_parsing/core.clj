@@ -502,7 +502,7 @@
 
       :else error)))
 
-(defn cached-by-identity
+(defn cached-by-identity!
   "The value of `(compute)` for `k`, computed one time for each `k` object and kept in `cache`, an `IdentityHashMap`."
   [^IdentityHashMap cache k compute]
   (if (.containsKey cache k)
@@ -546,7 +546,7 @@
          :alias (or (:alias field) (get field "alias"))}
 
         :composite-field
-        (cached-by-identity
+        (cached-by-identity!
          cache
          field
          (fn []

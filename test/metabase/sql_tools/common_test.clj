@@ -63,16 +63,16 @@
 
 (deftest resolve-shared-composite-field-test
   (testing "a composite field that more than one member shares is resolved one time"
-    (let [leaf      {:type :custom-field, :alias "v"}
-          composite (reduce (fn [member _]
-                              {:type :composite-field, :alias "v", :member-fields [member member]})
-                            leaf
-                            (range 16))
-          resolve   sql-tools.common/resolve-field
-          calls     (atom 0)]
+    (let [leaf                   {:type :custom-field, :alias "v"}
+          composite              (reduce (fn [member _]
+                                           {:type :composite-field, :alias "v", :member-fields [member member]})
+                                         leaf
+                                         (range 16))
+          original-resolve-field sql-tools.common/resolve-field
+          calls                  (atom 0)]
       (with-redefs [sql-tools.common/resolve-field (fn [& args]
                                                      (swap! calls inc)
-                                                     (apply resolve args))]
+                                                     (apply original-resolve-field args))]
         (is (= [{:col {:name                     "v"
                        :lib/desired-column-alias "v"
                        :display-name             "V"

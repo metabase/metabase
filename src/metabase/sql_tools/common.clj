@@ -188,7 +188,7 @@
                 (resolve-composite member)
                 (resolve-field driver metadata-provider member)))
             (resolve-composite [composite]
-              (sql-parsing/cached-by-identity
+              (sql-parsing/cached-by-identity!
                cache
                composite
                (fn []
