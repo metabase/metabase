@@ -3380,6 +3380,28 @@
           (finally
             (ws/clear-instance-workspace!)))))))
 
+(deftest import-does-not-set-workspaces-enabled-test
+  (testing "an import does not set workspaces-enabled, a setting that is not exported"
+    (mt/with-premium-features #{:workspaces :serialization}
+      (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
+        (let [import! (fn [value]
+                        (serdes.load/load-metabase!
+                         (ts/ingestion-in-memory [{:serdes/meta [{:model "Setting"}] :key "workspaces-enabled" :value value}])))]
+          (try
+            (testing "false over a stored true leaves workspace mode on and keeps the remap rows"
+              (ws.settings/workspaces-enabled! true)
+              (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "public" :from_table_name "t"
+                                                 :to_db "" :to_schema "ws" :to_table_name "public__t"})
+              (import! "false")
+              (is (true? (ws/workspace-mode?)))
+              (is (t2/exists? :model/TableRemapping :database_id db-id)))
+            (testing "true over a stored false leaves workspace mode off"
+              (ws/clear-instance-workspace!)
+              (import! "true")
+              (is (false? (ws/workspace-mode?))))
+            (finally
+              (ws/clear-instance-workspace!))))))))
+
 (deftest import-changing-workspace-schema-leaves-no-remap-row-to-another-schema-test
   (testing "an import does not change a database's database-workspace-schema, so no remap row points at another schema"
     (mt/with-premium-features #{:workspaces :serialization}
