@@ -474,6 +474,9 @@
                         {:status-code   400
                          :error-details "Token should be 64 hexadecimal characters."
                          :response/keys #{:error-details}})))
+      ;; validate against the store, not a cached verdict — the token may be the same string with a
+      ;; renewed subscription behind it
+      (clear-cache!)
       (let [decoded (check-token new-value)]
         (when-not (:valid decoded)
           (throw (ex-info "Invalid token" {:token (u.str/mask new-value)}))))
