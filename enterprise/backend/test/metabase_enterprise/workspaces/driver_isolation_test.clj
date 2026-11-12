@@ -25,6 +25,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.postgres :as postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
@@ -36,14 +37,15 @@
 (set! *warn-on-reflection* true)
 
 (defn- init!
-  "[[driver/init-workspace-isolation!]]. Redshift init refuses a cluster where PUBLIC can create in any schema, the
-  default for `public`, and the shared test cluster is not these tests' to change: metabase.driver.redshift-test covers
-  that check."
+  "[[driver/init-workspace-isolation!]]. Postgres and Redshift init refuse a cluster where PUBLIC can create objects
+  in any database or schema, the default on both, and the shared test clusters are not these tests' to change:
+  metabase.driver.postgres.workspace-test and metabase.driver.redshift-test cover those checks."
   [driver database workspace]
-  (if (= :redshift driver)
-    (with-redefs-fn {(requiring-resolve 'metabase.driver.redshift/check-no-public-create-anywhere!) (constantly nil)}
-      #(driver/init-workspace-isolation! driver database workspace))
-    (driver/init-workspace-isolation! driver database workspace)))
+  (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+    (if (= :redshift driver)
+      (with-redefs-fn {(requiring-resolve 'metabase.driver.redshift/check-no-public-create-anywhere!) (constantly nil)}
+        #(driver/init-workspace-isolation! driver database workspace))
+      (driver/init-workspace-isolation! driver database workspace))))
 
 (defn- find-sql-exception
   "Find a `java.sql.SQLException` reachable from `t`, or nil. Walks the cause
@@ -658,7 +660,7 @@
           ;; Pre-create the output namespace at exactly the name init will target,
           ;; before init runs.
           (maybe-create-input-namespace! admin-spec driver database out-schema)
-          (driver/init-workspace-isolation! driver database workspace)
+          (init! driver database workspace)
           (let [user-spec       (workspace-user-spec driver details workspace)
                 out             (qualify driver out-schema out-name)]
             (driver/grant-workspace-read-access! driver database workspace
@@ -1057,9 +1059,11 @@
                                                          (swap! generated conj pw)
                                                          pw))]
                            (try
-                             (init!
-                              driver low-priv-db
-                              (with-isolation-details driver low-priv-db ws-b))
+                             ;; past Postgres's CREATEROLE precondition, so that CREATE USER itself runs and fails
+                             (mt/with-dynamic-fn-redefs [postgres/check-admin-login-privileges! (constantly nil)]
+                               (init!
+                                driver low-priv-db
+                                (with-isolation-details driver low-priv-db ws-b)))
                              nil
                              (catch Throwable t t)))]
               (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id low-priv-db))
@@ -1129,8 +1133,8 @@
             first-ws  (with-isolation-details driver database workspace)
             second-ws (with-isolation-details driver database workspace)]
         (try
-          (driver/init-workspace-isolation! driver database first-ws)
-          (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! driver database second-ws)))]
+          (init! driver database first-ws)
+          (let [e (is (thrown? clojure.lang.ExceptionInfo (init! driver database second-ws)))]
             (is (= {:status-code 409, :workspace/cleanup? false}
                    (select-keys (ex-data e) [:status-code :workspace/cleanup?]))))
           (testing "the credentials persisted by the first init still authenticate"

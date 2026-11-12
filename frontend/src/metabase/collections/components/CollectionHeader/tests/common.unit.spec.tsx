@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, within } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { CollectionId } from "metabase-types/api";
 
 import { setup } from "./setup";
@@ -226,6 +227,25 @@ describe("CollectionHeader", () => {
       await userEvent.click(screen.getByLabelText("bookmark_filled icon"));
 
       expect(onDeleteBookmark).toHaveBeenCalledWith(myCollection);
+    });
+
+    it("should not offer to bookmark the root collection", () => {
+      setup({
+        collection: {
+          id: ROOT_COLLECTION.id,
+          name: ROOT_COLLECTION.name,
+          can_write: true,
+        },
+        isBookmarked: false,
+      });
+
+      expect(
+        screen.getByDisplayValue(ROOT_COLLECTION.name),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Bookmark" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("bookmark icon")).not.toBeInTheDocument();
     });
   });
 

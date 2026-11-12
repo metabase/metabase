@@ -11,7 +11,7 @@
   "The name of the entity of `key` for people, from whichever of `docs` has it."
   [key & docs]
   (let [[model ref] key]
-    (or (some #(some->> (:entity %) (remote-sync/synced-label model)) docs)
+    (or (some #(some->> (:entity %) (remote-sync/synced-name model)) docs)
         (if (sequential? ref) (str (last ref)) (str (name model) " " ref)))))
 
 (defn merge-documents

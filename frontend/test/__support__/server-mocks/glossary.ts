@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
-import type { GlossaryItem, ListGlossaryResponse } from "metabase/api";
+import type { ListGlossaryResponse } from "metabase/api";
+import type { GlossaryItem } from "metabase-types/api";
 
 import type { MockResponse } from "./types";
 

@@ -33,6 +33,7 @@
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
+   [metabase.driver.postgres :as postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
@@ -42,6 +43,7 @@
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
@@ -105,12 +107,14 @@
                                            :input_schemas    input-schemas
                                            :database_details {}
                                            :output_namespace ""})]
-      (if (= :redshift driver/*driver*)
-        ;; Redshift init refuses a cluster where PUBLIC can create in any schema, the default for `public`, and the
-        ;; shared test cluster is not this test's to change: metabase.driver.redshift-test covers that check
-        (with-redefs-fn {(requiring-resolve 'metabase.driver.redshift/check-no-public-create-anywhere!) (constantly nil)}
-          #(provisioning/provision-single! wsd-id))
-        (provisioning/provision-single! wsd-id)))))
+      ;; Postgres and Redshift init refuse a cluster where PUBLIC can create objects in any database or schema, the
+      ;; default on both, and the shared test clusters are not this test's to change: metabase.driver.postgres.workspace-test
+      ;; and metabase.driver.redshift-test cover those checks
+      (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+        (if (= :redshift driver/*driver*)
+          (with-redefs-fn {(requiring-resolve 'metabase.driver.redshift/check-no-public-create-anywhere!) (constantly nil)}
+            #(provisioning/provision-single! wsd-id))
+          (provisioning/provision-single! wsd-id))))))
 
 ;;; -------------------- driver-branched helpers --------------------
 ;;;
@@ -830,6 +834,42 @@
               (try (jdbc/execute! admin-spec
                                   [(format "DROP TABLE IF EXISTS %s"
                                            (qualified-table-sql admin-driver admin-details main-schema tgt-b-name))])
+                   (catch Throwable _ nil)))))))))
+
+(deftest input-schemas-sync-literally-test
+  (mt/test-driver :postgres
+    (testing "the child syncs an input schema whose name contains pattern syntax, and no schema it only resembles"
+      (let [admin-details (:details (mt/db))
+            admin-spec    (admin-warehouse :postgres admin-details)
+            run-id        (random-suffix)
+            plus-schema   (str "a+b_" run-id)
+            dot-schema    (str "sales.v2_" run-id)
+            ;; what `a+b_…` and `sales.v2_…` match when read as regex source
+            near-misses   [(str "ab_" run-id) (str "salesXv2_" run-id)]
+            all-schemas   (into [plus-schema dot-schema] near-misses)]
+        (try
+          (doseq [schema all-schemas]
+            (create-canonical-schema! :postgres admin-spec admin-details schema)
+            (jdbc/execute! admin-spec [(format "CREATE TABLE %s (id INT)" (sql.u/quote-name :postgres :table schema "t"))]))
+          (mt/with-temp [:model/Workspace {ws-id :id} {:name       (str "ws-literal-" run-id)
+                                                       :creator_id (mt/user->id :crowberto)}
+                         :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                                     :database_id      (mt/id)
+                                                     :database_details {}
+                                                     :output_namespace (str "mb__isolation_" run-id)
+                                                     :input_schemas    [plus-schema dot-schema]
+                                                     :status           :provisioned}]
+            (let [child-details (->> (ws.config/build-workspace-config ws-id) :config :databases
+                                     (u/seek #(= (:name (mt/db)) (:name %)))
+                                     :details)]
+              (mt/with-temp [:model/Database child-db {:engine :postgres :details child-details}]
+                (sync/sync-database! (:id child-db) {:scan :schema})
+                (is (= #{plus-schema dot-schema}
+                       (t2/select-fn-set :schema :model/Table :db_id (:id child-db) :active true))))))
+          (finally
+            (doseq [schema all-schemas]
+              (try (jdbc/execute! admin-spec [(format "DROP SCHEMA IF EXISTS %s CASCADE"
+                                                      (sql.u/quote-name :postgres :schema schema))])
                    (catch Throwable _ nil)))))))))
 
 (comment
