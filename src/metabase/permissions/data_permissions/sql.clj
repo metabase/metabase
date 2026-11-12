@@ -42,7 +42,8 @@
   "The index of `value` among the values of `perm-type`, 0 being the most permissive."
   [perm-type :- ::permissions.schema/data-permission-type
    value     :- ::permissions.schema/data-permission-value]
-  (.indexOf ^PersistentVector (-> permissions.schema/data-permissions perm-type :values) value))
+  (let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)]
+    (.indexOf values value)))
 
 (mu/defn- rank-case
   "A CASE giving the rank (see [[value-rank]]) of the `perm-type` value in `column`."
