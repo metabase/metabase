@@ -1,14 +1,14 @@
 import type {
+  DataTestEmptyExpectation,
+  DataTestEqualsExpectation,
+  DataTestRowsData,
+  DataTestSqlData,
   TransformTest,
-  TransformTestEmptyExpectation,
-  TransformTestEqualsExpectation,
-  TransformTestRowsData,
-  TransformTestSqlData,
 } from "metabase-types/api";
 
-export function createMockTransformTestRowsData(
-  opts?: Partial<TransformTestRowsData>,
-): TransformTestRowsData {
+export function createMockDataTestRowsData(
+  opts?: Partial<DataTestRowsData>,
+): DataTestRowsData {
   return {
     format: "rows",
     columns: [{ name: "id", cast_type: "int" }],
@@ -17,9 +17,9 @@ export function createMockTransformTestRowsData(
   };
 }
 
-export function createMockTransformTestSqlData(
-  opts?: Partial<TransformTestSqlData>,
-): TransformTestSqlData {
+export function createMockDataTestSqlData(
+  opts?: Partial<DataTestSqlData>,
+): DataTestSqlData {
   return {
     format: "sql",
     sql: "SELECT 1 AS id",
@@ -27,25 +27,25 @@ export function createMockTransformTestSqlData(
   };
 }
 
-type TransformTestEqualsRowsExpectation = Extract<
-  TransformTestEqualsExpectation,
+type DataTestEqualsRowsExpectation = Extract<
+  DataTestEqualsExpectation,
   { format: "rows" }
 >;
 
-export function createMockTransformTestEqualsExpectation(
-  opts?: Partial<TransformTestEqualsRowsExpectation>,
-): TransformTestEqualsRowsExpectation {
+export function createMockDataTestEqualsExpectation(
+  opts?: Partial<DataTestEqualsRowsExpectation>,
+): DataTestEqualsRowsExpectation {
   return {
     type: "equals",
     name: "output rows",
-    ...createMockTransformTestRowsData(),
+    ...createMockDataTestRowsData(),
     ...opts,
   };
 }
 
-export function createMockTransformTestEmptyExpectation(
-  opts?: Partial<TransformTestEmptyExpectation>,
-): TransformTestEmptyExpectation {
+export function createMockDataTestEmptyExpectation(
+  opts?: Partial<DataTestEmptyExpectation>,
+): DataTestEmptyExpectation {
   return {
     type: "empty",
     name: "no rows",
@@ -67,10 +67,10 @@ export function createMockTransformTest(
     inputs: [
       {
         table: { schema: "public", name: "orders" },
-        ...createMockTransformTestRowsData(),
+        ...createMockDataTestRowsData(),
       },
     ],
-    expectations: [createMockTransformTestEqualsExpectation()],
+    expectations: [createMockDataTestEqualsExpectation()],
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
     last_run: null,

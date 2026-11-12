@@ -673,9 +673,13 @@
      (select-non-nil-keys {:a 100, :b nil} #{:a :b :c})
      ;; -> {:a 100}"
   [m ks]
-  (into {} (for [k     ks
-                 :when (some? (get m k))]
-             {k (get m k)})))
+  (persistent!
+   (reduce (fn [acc k]
+             (let [v (get m k)]
+               (cond-> acc
+                 (some? v) (assoc! k v))))
+           (transient {})
+           ks)))
 
 (defn select-keys-when
   "Returns a map that only contains keys that are either `:present` or `:non-nil`. Combines behavior of `select-keys`

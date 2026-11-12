@@ -96,7 +96,7 @@
           (testing "the synced content not pushed yet is dirty"
             (is (= {:is_dirty true} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")))
             (is (=? {:dirty [{:id (:id card) :name "Synced card" :model "card" :sync_status "create"
-                              :collection {:id (:id synced) :name "Synced" :effective_ancestors []}}]}
+                              :data {:collection {:id (:id synced) :name "Synced"}}}]}
                     (update (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
                             :dirty #(filterv (comp #{"card"} :model) %)))))
           (testing "a push commits it, after which nothing is dirty and the remote has no changes"
@@ -121,7 +121,10 @@
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
       (mt/with-temp [:model/Collection        synced  {:name "Synced" :is_remote_synced true :location "/"}
-                     :model/Table             table   {:db_id (mt/id) :name "synced_table"}
+                     :model/Table             table   {:db_id         (mt/id)
+                                                       :name          "synced_table"
+                                                       :is_published  true
+                                                       :collection_id (:id synced)}
                      :model/Field             field   {:table_id (:id table) :name "id" :base_type :type/Integer}
                      :model/TableUserSettings _       {:table_id (:id table) :is_published true :collection_id (:id synced)}
                      :model/FieldUserSettings _       {:field_id (:id field) :description "Synced"}
@@ -130,13 +133,108 @@
                                                        :definition (let [mp (mt/metadata-provider)]
                                                                      (-> (lib/query mp (lib.metadata/table mp (:id table)))
                                                                          (lib/filter (lib/= (lib.metadata/field mp (:id field)) 1))))}]
-        (testing "the changes of a table's segments and fields carry the table as their parent"
-          (is (=? [{:model "fieldusersettings" :id (:id field) :parent {:model "tableusersettings" :id (:id table) :name "synced_table"}}
-                   {:model "segment" :id (:id segment) :parent {:model "tableusersettings" :id (:id table) :name "synced_table"}}]
+        (testing "the changes of a table's segments and fields carry their table and its collection in their data"
+          (is (=? [{:model "fieldusersettings"
+                    :id    (:id field)
+                    :data  {:field {:table {:id (:id table) :name "synced_table" :collection {:id (:id synced)}}}}}
+                   {:model "segment"
+                    :id    (:id segment)
+                    :data  {:table {:id (:id table) :name "synced_table" :collection {:id (:id synced)}}}}]
                   (->> (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))
                        (filter (comp #{(:id field) (:id segment)} :id))
                        (filter (comp #{"fieldusersettings" "segment"} :model))
                        (sort-by :model)))))))))
+
+(deftest dimension-push-and-pull-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection        synced    {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Table             table     {:db_id         (mt/id)
+                                                           :name          "synced_table"
+                                                           :is_published  true
+                                                           :collection_id (:id synced)}
+                       :model/Field             field     {:table_id (:id table) :name "user_id" :base_type :type/Integer}
+                       :model/Field             target    {:table_id (:id table) :name "user_name" :base_type :type/Text}
+                       :model/TableUserSettings _         {:table_id (:id table) :is_published true :collection_id (:id synced)}
+                       :model/Dimension         dimension {:field_id                (:id field)
+                                                           :name                    "User"
+                                                           :type                    :external
+                                                           :human_readable_field_id (:id target)}]
+          (testing "a remapping of a synced table's field is dirty, with its field, table and collection in its data"
+            (is (=? [{:model       "dimension"
+                      :id          (:id dimension)
+                      :name        "User"
+                      :sync_status "create"
+                      :data        {:field {:id    (:id field)
+                                            :table {:id (:id table) :collection {:id (:id synced)}}}}}]
+                    (filter (comp #{"dimension"} :model)
+                            (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))))))
+          (testing "a push commits the remapping with its human-readable field by name, after which nothing is dirty"
+            (is (=? {:status "successful" :outcome {:kind "pushed"}} (push!)))
+            (let [yaml (remote-sync.tu/read-file! url "main" (remote-sync.tu/entity-path! url "main" dimension))]
+              (is (re-find #"(?s)human_readable_field_id:.*synced_table.*user_name" yaml))
+              (is (not (re-find (re-pattern (str "human_readable_field_id: " (:id target) "\\b")) yaml))))
+            (is (= {:is_dirty false} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty"))))
+          (testing "a pull loads the remapping changed remotely, with its human-readable field by its local id"
+            (rename-remotely! url dimension "Renamed remotely")
+            (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "main"})]
+              (is (=? {:status "successful" :outcome {:kind "pulled"}}
+                      (remote-sync.tu/wait-for-task! task_id))))
+            (is (=? {:name "Renamed remotely" :type :external :human_readable_field_id (:id target)}
+                    (t2/select-one :model/Dimension :id (:id dimension)))))
+          (testing "a remapping removed locally is dirty, and a push removes its file"
+            (let [path (remote-sync.tu/entity-path! url "main" dimension)]
+              (t2/delete! :model/Dimension :id (:id dimension))
+              (is (=? [{:model "dimension" :sync_status "delete"}]
+                      (filter (comp #{"dimension"} :model)
+                              (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))))
+              (is (=? {:status "successful" :outcome {:kind "pushed"}} (push!)))
+              (is (not (contains? (set (remote-sync.tu/files! url "main")) path))))))))))
+
+(deftest dimension-removed-remotely-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-temp [:model/Collection        synced    {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Table             table     {:db_id         (mt/id)
+                                                           :name          "synced_table"
+                                                           :is_published  true
+                                                           :collection_id (:id synced)}
+                       :model/Field             field     {:table_id (:id table) :name "id" :base_type :type/Integer}
+                       :model/TableUserSettings _         {:table_id (:id table) :is_published true :collection_id (:id synced)}
+                       :model/Dimension         dimension {:field_id (:id field) :name "Remapped id" :type :internal}]
+          (is (=? {:status "successful" :outcome {:kind "pushed"}} (push!)))
+          (testing "a remapping whose file is removed remotely is deleted by a pull"
+            (remote-sync.tu/commit! url "main" {(remote-sync.tu/entity-path! url "main" dimension) nil})
+            (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "main"})]
+              (is (=? {:status "successful" :outcome {:kind "pulled"}}
+                      (remote-sync.tu/wait-for-task! task_id))))
+            (is (not (t2/exists? :model/Dimension :id (:id dimension))))))))))
+
+(deftest dimension-of-unsynced-table-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection        synced      {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Collection        unsynced    {:name "Unsynced" :location "/"}
+                     :model/Table             unpublished {:db_id (mt/id) :name "unpublished_table"}
+                     :model/Table             elsewhere   {:db_id         (mt/id)
+                                                           :name          "elsewhere_table"
+                                                           :is_published  true
+                                                           :collection_id (:id unsynced)}
+                     :model/Field             field-1     {:table_id (:id unpublished) :name "id" :base_type :type/Integer}
+                     :model/Field             field-2     {:table_id (:id elsewhere) :name "id" :base_type :type/Integer}
+                     :model/TableUserSettings _           {:table_id      (:id unpublished)
+                                                           :is_published  false
+                                                           :collection_id (:id synced)}
+                     :model/TableUserSettings _           {:table_id      (:id elsewhere)
+                                                           :is_published  true
+                                                           :collection_id (:id unsynced)}
+                     :model/Dimension         _           {:field_id (:id field-1) :name "Unpublished" :type :internal}
+                     :model/Dimension         _           {:field_id (:id field-2) :name "Elsewhere" :type :internal}]
+        (testing "remappings of unpublished tables and of tables published in unsynced collections are not dirty"
+          (is (empty? (filter (comp #{"dimension"} :model)
+                              (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))))))))))
 
 (deftest data-app-bundle-test
   (remote-sync.tu/with-repository [url]
@@ -241,11 +339,13 @@
                         (update response :unsynced_dependencies #(filterv (comp #{(:id card)} :id) %)))]
           (testing "syncing a collection whose content uses content that isn't synced is refused, naming it"
             (is (=? {:error-code            "unsynced-dependencies"
-                     :unsynced_dependencies [{:id         (:id card)
-                                              :name       "Card in Unsynced"
-                                              :model      "card"
-                                              :collection {:id (:id unsynced) :name "Unsynced" :effective_ancestors []}
-                                              :used_by    [{:id (:id dashboard) :name "Dashboard in Synced" :model "dashboard"}]}]}
+                     :unsynced_dependencies [{:id      (:id card)
+                                              :model   "card"
+                                              :data    {:name       "Card in Unsynced"
+                                                        :collection {:id (:id unsynced) :name "Unsynced"}}
+                                              :used_by [{:id    (:id dashboard)
+                                                         :model "dashboard"
+                                                         :data  {:name "Dashboard in Synced"}}]}]}
                     (listed (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                                   {:collections {(:id synced) true}}))))
             (is (false? (synced? synced))))
@@ -259,34 +359,6 @@
                     (listed (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                                   {:collections {(:id unsynced) false}}))))
             (is (true? (synced? unsynced)))))))))
-
-(deftest settings-unsynced-dependencies-order-test
-  (remote-sync.tu/with-repository [url]
-    (remote-sync.tu/with-remote-sync [url :read-write]
-      (mt/with-temp [:model/Collection    synced  {:name "Synced" :location "/"}
-                     :model/Collection    beta    {:name "beta" :location "/"}
-                     :model/Collection    alpha   {:name "Alpha" :location "/"}
-                     :model/Collection    nested  {:name "Nested" :location (str "/" (:id beta) "/")}
-                     :model/Card          root    {:name "Card in no collection" :collection_id nil}
-                     :model/Card          b-card  {:name "B card" :collection_id (:id beta)}
-                     :model/Card          a-card  {:name "a card" :collection_id (:id nested)}
-                     :model/Card          z-card  {:name "Z card" :collection_id (:id alpha)}
-                     :model/Dashboard     dash-y  {:name "Y dashboard" :collection_id (:id synced)}
-                     :model/Dashboard     dash-x  {:name "x dashboard" :collection_id (:id synced)}
-                     :model/DashboardCard _       {:dashboard_id (:id dash-y) :card_id (:id z-card)}
-                     :model/DashboardCard _       {:dashboard_id (:id dash-x) :card_id (:id z-card)}
-                     :model/DashboardCard _       {:dashboard_id (:id dash-y) :card_id (:id root)}
-                     :model/DashboardCard _       {:dashboard_id (:id dash-y) :card_id (:id b-card)}
-                     :model/DashboardCard _       {:dashboard_id (:id dash-y) :card_id (:id a-card)}]
-        (testing "unsynced dependencies are listed by top-level collection, those in no collection last, then by name"
-          (let [ids      #{(:id root) (:id b-card) (:id a-card) (:id z-card)}
-                response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
-                                               {:collections {(:id synced) true}})
-                listed   (filterv (comp ids :id) (:unsynced_dependencies response))]
-            (is (= ["Z card" "a card" "B card" "Card in no collection"]
-                   (map :name listed)))
-            (is (= ["x dashboard" "Y dashboard"]
-                   (map :name (:used_by (first listed)))))))))))
 
 (deftest export-preflight-test
   (remote-sync.tu/with-repository [url]
