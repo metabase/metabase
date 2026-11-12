@@ -20,8 +20,8 @@ If you want Metabase to support a provider or model that isn't listed here, let 
 ## Anthropic
 
 - Provider key: `anthropic`
-- Default model: `claude-haiku-5-5`
-- Model for short tasks like naming a conversation: `claude-haiku-5-5`
+- Default model: `claude-sonnet-4-6`
+- Model for short tasks like naming a conversation: `claude-haiku-4-5-20251001`
 
 Supported models:
 
@@ -274,7 +274,7 @@ Credentials:
 
 - Provider key: `bedrock`
 - Default model: `anthropic.claude-opus-4-8`
-- Model for short tasks like naming a conversation: `anthropic.claude-haiku-5-5`
+- Model for short tasks like naming a conversation: `anthropic.claude-haiku-4-5`
 
 Supported models:
 
