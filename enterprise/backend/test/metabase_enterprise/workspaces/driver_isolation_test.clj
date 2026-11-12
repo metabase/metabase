@@ -1035,10 +1035,13 @@
           ;; Elsewhere, pre-create ws-b's namespace so the leading
           ;; `CREATE ... IF NOT EXISTS` can skip instead of failing. That only
           ;; helps engines that check existence before privileges (SQL Server's
-          ;; guarded EXEC); MySQL and ClickHouse check privileges regardless,
-          ;; so on those the batch dies on the namespace statement and never
-          ;; reaches CREATE USER — the leak assertion still covers whatever
-          ;; exception surfaces, it just can't prove the echo path there.
+          ;; guarded EXEC); ClickHouse checks privileges regardless, so there
+          ;; the batch dies on the namespace statement and never reaches
+          ;; CREATE USER. MySQL runs no `IF NOT EXISTS`: its init first reads
+          ;; `mysql.user` to refuse an existing user, and the low-privilege
+          ;; login cannot read it, so init fails before any DDL. On both, the
+          ;; leak assertion still covers whatever exception surfaces, it just
+          ;; can't prove the echo path there.
           (when (#{:postgres :redshift} driver)
             (jdbc/execute! admin-spec [(format "GRANT CREATE ON DATABASE \"%s\" TO \"%s\""
                                                (or (:dbname details) (:db details))

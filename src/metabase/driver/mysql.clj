@@ -1442,6 +1442,29 @@
      (format "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER ON %s.* TO %s@'%%'"
              (quote-grant-db wildcards? db-name) quoted-user)]))
 
+(defn- execute-init-sql!
+  "Runs the init statement `sql`. A server error whose code is a key of `refusals` means that another session created
+  the object after the existence check: the error becomes the refusal that the code's function returns. Any other
+  error is rethrown with `secrets` scrubbed from it."
+  [^Statement stmt ^String sql secrets refusals]
+  (try
+    (.execute stmt sql)
+    (catch java.sql.SQLException e
+      (if-let [refusal (get refusals (.getErrorCode e))]
+        (throw (refusal))
+        (throw (driver.u/scrub-exceptions e secrets))))))
+
+(defn- drop-created-database!
+  "Drops the database `db-name` that this init has just created, before it refuses a user that another session
+  created. When the drop fails, the refusal still stands, so that provisioning does not run teardown on the other
+  session's user: the database is left behind, with a warning."
+  [^Statement stmt db-name]
+  (try
+    (.execute stmt (format "DROP DATABASE %s" (quote-schema db-name)))
+    (catch java.sql.SQLException e
+      (log/warnf "Cannot drop workspace database %s after a user of the same workspace appeared: %s"
+                 db-name (ex-message e)))))
+
 (defmethod driver/init-workspace-isolation! :mysql
   [driver database workspace]
   ;; MySQL doesn't have schemas in the PostgreSQL sense - each database is its own namespace.
@@ -1460,14 +1483,20 @@
          (throw (workspace-object-exists-error "user" (quote-field user))))
        (when (database-exists? {:connection conn} db-name)
          (throw (workspace-object-exists-error "database" (quote-schema db-name))))
+       ;; One statement at a time, not a batch: the connector runs the rest of a batch after a failed statement, so
+       ;; a CREATE that fails on another session's object would still reach the GRANT.
        (with-open [^Statement stmt (.createStatement conn)]
-         (doseq [sql (init-workspace-isolation-sqls (grant-db-wildcards? {:connection conn})
-                                                    db-name user escaped-password)]
-           (.addBatch ^Statement stmt ^String sql))
-         (try
-           (.executeBatch ^Statement stmt)
-           (catch Throwable t
-             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password])))))))
+         (let [[create-database create-user grant] (init-workspace-isolation-sqls (grant-db-wildcards? {:connection conn})
+                                                                                  db-name user escaped-password)
+               secrets [password escaped-password]]
+           ;; 1007 ER_DB_CREATE_EXISTS and 1396 ER_CANNOT_USER: another session created the object after the check
+           (execute-init-sql! stmt create-database secrets
+                              {1007 #(workspace-object-exists-error "database" (quote-schema db-name))})
+           (execute-init-sql! stmt create-user secrets
+                              {1396 (fn []
+                                      (drop-created-database! stmt db-name)
+                                      (workspace-object-exists-error "user" (quote-field user)))})
+           (execute-init-sql! stmt grant secrets {})))))
     nil))
 
 (defn- lock-workspace-user-sql
@@ -1512,16 +1541,14 @@
      (fn [^Connection conn]
        (let [user-exists? (boolean (mysql-user-exists? {:connection conn} username))]
          (with-open [^Statement stmt (.createStatement conn)]
-           (when user-exists?
-             (when (account-lock-supported? (.getMetaData conn))
-               (.execute stmt (lock-workspace-user-sql username)))
-             (kill-user-sessions! {:connection conn} stmt username))
+           (when (and user-exists? (account-lock-supported? (.getMetaData conn)))
+             (.execute stmt (lock-workspace-user-sql username)))
+           ;; also when the user is gone: its sessions outlive DROP USER, and hold the locks DROP DATABASE waits for
+           (kill-user-sessions! {:connection conn} stmt username)
+           ;; One statement at a time, not a batch: the connector runs DROP USER after a failed DROP DATABASE, and a
+           ;; retry would then find no user while the database stays.
            (doseq [sql (drop-workspace-isolation-sqls db-name username user-exists?)]
-             (.addBatch ^Statement stmt ^String sql))
-           (try
-             (.executeBatch ^Statement stmt)
-             (catch Throwable t
-               (throw (driver.u/batch-exception t))))))))))
+             (.execute stmt ^String sql))))))))
 
 (defn- grant-workspace-read-access-sqls
   "Build SQL statements that grant `username` SELECT on all tables in `bound-db`, the database the Metabase `Database`

@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]))
@@ -221,3 +222,132 @@
         (finally
           (driver/destroy-workspace-isolation! :mysql database workspace)
           (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" admin)]))))))
+
+(defn- init-error
+  "Runs `init`; returns the exception it throws, or nil."
+  [init]
+  (try
+    (init)
+    nil
+    (catch Exception e
+      e)))
+
+(defn- cleanup-unless-refused!
+  "What provisioning does after a failed init: a teardown, unless the error says `:workspace/cleanup? false`."
+  [database workspace e]
+  (when (and e (not (false? (:workspace/cleanup? (ex-data e)))))
+    (try
+      (driver/destroy-workspace-isolation! :mysql database workspace)
+      (catch Exception _))))
+
+(defn- grants [database user]
+  (mapv (comp first vals) (jdbc/query (admin-spec database) [(format "SHOW GRANTS FOR `%s`@'%%'" user)])))
+
+(deftest ^:synchronized init-refuses-a-user-created-after-the-check-test
+  (mt/test-driver :mysql
+    (let [database  (mt/db)
+          workspace (new-workspace database)
+          user      (-> workspace :database_details :user)
+          other     {:database_details {:user user :password "OtherPassw0rd"}}]
+      (try
+        (jdbc/execute! (admin-spec database) [(format "CREATE USER `%s`@'%%' IDENTIFIED BY 'OtherPassw0rd'" user)])
+        (jdbc/execute! (admin-spec database) [(format "GRANT SELECT ON `%s`.* TO `%s`@'%%'"
+                                                      (-> database :details :db) user)])
+        (testing "control: init refuses a user that exists at the check"
+          (is (=? {:status-code 409, :workspace/cleanup? false}
+                  (ex-data (init-error #(driver/init-workspace-isolation! :mysql database workspace))))))
+        ;; the user appears between the check and CREATE USER
+        (let [e (mt/with-dynamic-fn-redefs [mysql/mysql-user-exists? (constantly nil)]
+                  (init-error #(driver/init-workspace-isolation! :mysql database workspace)))]
+          (testing "init refuses a user created after the check, with the 409 that forbids teardown"
+            (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e))
+                (ex-message e)))
+          (testing "init grants the other owner's user nothing on this init's database"
+            (is (not-any? #(str/includes? % "INSERT") (grants database user))))
+          (cleanup-unless-refused! database workspace e))
+        (testing "the other owner's user survives provisioning, with its password"
+          (is (= [{:one 1}] (as-user database other "SELECT 1 AS one"))))
+        (finally
+          (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" user)])
+          (jdbc/execute! (admin-spec database) [(format "DROP DATABASE IF EXISTS `%s`" (:schema workspace))]))))))
+
+(deftest ^:synchronized init-refuses-a-database-created-after-the-check-test
+  (mt/test-driver :mysql
+    (let [database  (mt/db)
+          workspace (new-workspace database)
+          user      (-> workspace :database_details :user)
+          db-name   (:schema workspace)]
+      (try
+        (jdbc/execute! (admin-spec database) [(format "CREATE DATABASE `%s`" db-name)])
+        (jdbc/execute! (admin-spec database) [(format "CREATE TABLE `%s`.kept (id INT)" db-name)])
+        (jdbc/execute! (admin-spec database) [(format "INSERT INTO `%s`.kept VALUES (42)" db-name)])
+        (testing "control: init refuses a database that exists at the check"
+          (is (=? {:status-code 409, :workspace/cleanup? false}
+                  (ex-data (init-error #(driver/init-workspace-isolation! :mysql database workspace))))))
+        ;; the database appears between the check and CREATE DATABASE
+        (let [e (mt/with-dynamic-fn-redefs [mysql/database-exists? (constantly nil)]
+                  (init-error #(driver/init-workspace-isolation! :mysql database workspace)))]
+          (testing "init refuses a database created after the check, with the 409 that forbids teardown"
+            (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e))
+                (ex-message e)))
+          (testing "init gives its workspace user no grant on the other owner's database"
+            (is (not (user-exists? database user))
+                (pr-str (when (user-exists? database user) (grants database user)))))
+          (cleanup-unless-refused! database workspace e))
+        (testing "the other owner's database survives provisioning, with its table"
+          (is (= [{:id 42}] (try
+                              (jdbc/query (admin-spec database) [(format "SELECT id FROM `%s`.kept" db-name)])
+                              (catch java.sql.SQLException e
+                                (ex-message e))))))
+        (finally
+          (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" user)])
+          (jdbc/execute! (admin-spec database) [(format "DROP DATABASE IF EXISTS `%s`" db-name)]))))))
+
+(deftest ^:synchronized retried-destroy-still-finds-the-sessions-test
+  (mt/test-driver :mysql
+    (let [database  (mt/db)
+          workspace (new-workspace database)
+          user      (-> workspace :database_details :user)
+          db-name   (:schema workspace)
+          ;; can run teardown, but cannot end another user's session (no CONNECTION ADMIN or SUPER)
+          no-kill   {:user (str "ws_nokill_" (rand-int 1000000)) :password "NoKillAdm1n!"}
+          timeout   (-> (jdbc/query (admin-spec database) ["SELECT @@GLOBAL.lock_wait_timeout AS t"]) first :t)
+          destroy!  #(try
+                       (driver.conn/with-swapped-connection-details (mt/id) no-kill
+                         (driver/destroy-workspace-isolation! :mysql database workspace))
+                       :ok
+                       (catch Exception e
+                         (ex-message e)))]
+      (try
+        (jdbc/execute! (admin-spec database) [(format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'" (:user no-kill) (:password no-kill))])
+        (jdbc/execute! (admin-spec database) [(format "GRANT SELECT, CREATE, DROP, PROCESS, CREATE USER ON *.* TO `%s`@'%%'" (:user no-kill))])
+        (jdbc/execute! (admin-spec database) ["SET GLOBAL lock_wait_timeout = 5"])
+        (driver/init-workspace-isolation! :mysql database workspace)
+        (driver/grant-workspace-read-access! :mysql database workspace [])
+        (jdbc/execute! (user-spec database workspace) [(format "CREATE TABLE `%s`.t (id INT)" db-name)])
+        (with-open [session (open-session database workspace)]
+          (.setAutoCommit session false)
+          (with-open [stmt (.createStatement session)]
+            ;; the open transaction holds a metadata lock on `t`, which DROP DATABASE waits for
+            (.execute stmt (format "SELECT * FROM `%s`.t" db-name)))
+          (let [first-try (destroy!)
+                after-1   {:user? (boolean (user-exists? database user))
+                           :database? (boolean (database-exists? database db-name))
+                           :session-open? (.isValid session 2)}
+                retry     (destroy!)
+                after-2   {:user? (boolean (user-exists? database user))
+                           :database? (boolean (database-exists? database db-name))
+                           :session-open? (.isValid session 2)}]
+            (testing "precondition: teardown cannot end the session, so DROP DATABASE times out on its lock"
+              (is (re-find #"Lock wait timeout" (str first-try))))
+            (testing "a failed teardown ends the session or keeps the user, so a retry can find its sessions"
+              (is (or (not (:session-open? after-1)) (:user? after-1))
+                  (pr-str after-1)))
+            (testing "a retried teardown does not leave the database with its user gone"
+              (is (not (and (:database? after-2) (not (:user? after-2))))
+                  (pr-str [first-try after-1 retry after-2])))
+            (.rollback session)))
+        (finally
+          (jdbc/execute! (admin-spec database) [(format "SET GLOBAL lock_wait_timeout = %d" (long timeout))])
+          (driver/destroy-workspace-isolation! :mysql database workspace)
+          (jdbc/execute! (admin-spec database) [(format "DROP USER IF EXISTS `%s`@'%%'" (:user no-kill))]))))))
