@@ -137,7 +137,8 @@ function AgentApiSettingsSection({ disabled }: { disabled: boolean }) {
           {t`Learn more`}
         </ExternalLink>
       )}`}
-      disabled={disabled || isSetByEnv || isBusy}
+      busy={isBusy}
+      disabled={disabled || isSetByEnv}
       id={AGENT_API_SECTION_ID}
       onChange={onChange}
       title={t`Agent API (deprecated)`}
@@ -209,6 +210,7 @@ function MetabotSettingsSection({
 }
 
 function ToggleSettingsSection({
+  busy = false,
   checked,
   children,
   description,
@@ -217,6 +219,7 @@ function ToggleSettingsSection({
   onChange,
   title,
 }: {
+  busy?: boolean;
   checked: boolean;
   children?: ReactNode;
   description: ReactNode;
@@ -235,7 +238,13 @@ function ToggleSettingsSection({
             aria-label={title}
             checked={checked}
             disabled={disabled}
-            onChange={(event) => onChange(event.target.checked)}
+            // aria-disabled, not disabled, so focus stays on the switch during a write
+            aria-disabled={busy || undefined}
+            onChange={(event) => {
+              if (!busy) {
+                onChange(event.target.checked);
+              }
+            }}
             w="auto"
           />
         </Flex>

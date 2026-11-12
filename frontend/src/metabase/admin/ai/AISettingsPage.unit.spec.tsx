@@ -265,6 +265,40 @@ describe("AISettingsPage", () => {
     expect(call?.options?.body).toBe(JSON.stringify({ value: true }));
   });
 
+  it("keeps keyboard focus on the deprecated Agent API opt-in while the write is pending", async () => {
+    await setup({ page: "mcp" });
+    let finishWrite: () => void = () => {};
+    fetchMock.removeRoute("update-setting");
+    fetchMock.put(
+      new RegExp("/api/setting/"),
+      new Promise((resolve) => {
+        finishWrite = () => resolve({ status: 204 });
+      }),
+      { name: "update-setting" },
+    );
+
+    const toggle = await deprecatedAgentApiSwitch();
+    toggle.focus();
+    await userEvent.keyboard(" ");
+
+    await waitFor(() =>
+      expect(toggle).toHaveAttribute("aria-disabled", "true"),
+    );
+    expect(toggle).toBeEnabled();
+    expect(toggle).toHaveFocus();
+
+    await userEvent.keyboard(" ");
+    expect(
+      fetchMock.callHistory.calls(
+        `path:/api/setting/${encodeURIComponent("deprecated-agent-api-enabled?")}`,
+      ),
+    ).toHaveLength(1);
+
+    finishWrite();
+    await waitFor(() => expect(toggle).not.toHaveAttribute("aria-disabled"));
+    expect(toggle).toHaveFocus();
+  });
+
   it("locks the deprecated Agent API opt-in to the value an env var sets", async () => {
     await setup({
       page: "mcp",
