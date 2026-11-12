@@ -9,8 +9,15 @@ export function setupSearchEndpoints(
   delay?: number,
   {
     nativeQueryContents,
+    filterByScope = false,
   }: {
     nativeQueryContents?: ReadonlyMap<SearchResult["id"], string>;
+    /**
+     * Answer like the backend for the `collection` and
+     * `include_dashboard_questions` params: only items directly in the
+     * requested collection, and dashboard questions only on request.
+     */
+    filterByScope?: boolean;
   } = {},
 ) {
   const name = "search";
@@ -34,6 +41,20 @@ export function setupSearchEndpoints(
           (searchNativeQuery &&
             nativeQueryContents?.get(id)?.toLowerCase().includes(queryText)),
       );
+
+      if (filterByScope) {
+        const collectionId = url.searchParams.get("collection");
+        const includeDashboardQuestions =
+          url.searchParams.get("include_dashboard_questions") === "true";
+        matchedItems = matchedItems.filter(
+          (item) =>
+            (collectionId == null ||
+              String(item.collection?.id) === collectionId) &&
+            (includeDashboardQuestions ||
+              !("dashboard" in item) ||
+              item.dashboard == null),
+        );
+      }
 
       const availableModels = [
         ...new Set(matchedItems.map(({ model }) => model)),

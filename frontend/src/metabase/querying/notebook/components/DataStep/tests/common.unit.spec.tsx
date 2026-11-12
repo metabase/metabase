@@ -5,9 +5,11 @@ import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupRootCollectionItemsEndpoint,
 } from "__support__/server-mocks";
-import { fireEvent, getIcon, screen, waitFor } from "__support__/ui";
+import { fireEvent, getIcon, screen, waitFor, within } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { METAKEY, isTouchDevice } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -17,10 +19,12 @@ import {
   columnFinder,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { CardType, IconName } from "metabase-types/api";
+import type { Card, CardType, IconName } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockCollection,
+  createMockCollectionItem,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
 import {
@@ -225,6 +229,179 @@ describe("DataStep", () => {
     await waitFor(() => {
       expect(Lib.allSourceCardIds(getNextQuery())).toEqual([card.id]);
     });
+  });
+
+  describe("picking a card from the data picker modal search", () => {
+    const ORDERS_COUNT_QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
+    });
+    const ROOT_QUESTION = createMockCard({
+      id: 11,
+      name: "Root question 1",
+      type: "question",
+      dataset_query: ORDERS_COUNT_QUERY,
+    });
+    const ROOT_MODEL = createMockCard({
+      id: 12,
+      name: "Root model 2",
+      type: "model",
+      dataset_query: ORDERS_COUNT_QUERY,
+    });
+    const ROOT_METRIC = createMockCard({
+      id: 13,
+      name: "Root metric 1",
+      type: "metric",
+      dataset_query: ORDERS_COUNT_QUERY,
+    });
+    const DASHBOARD_QUESTION = createMockCard({
+      id: 14,
+      name: "Orders Dashboard question 1",
+      type: "question",
+      dashboard_id: 1,
+      dataset_query: ORDERS_COUNT_QUERY,
+    });
+    const CARDS = [ROOT_QUESTION, ROOT_MODEL, ROOT_METRIC, DASHBOARD_QUESTION];
+    const SEARCH_MODELS: Record<CardType, "card" | "dataset" | "metric"> = {
+      question: "card",
+      model: "dataset",
+      metric: "metric",
+    };
+    const SEARCH_ITEMS = CARDS.map((card) =>
+      createMockSearchResult({
+        id: card.id,
+        name: card.name,
+        model: SEARCH_MODELS[card.type],
+        database_id: SAMPLE_DB_ID,
+        collection: createMockCollection(ROOT_COLLECTION),
+        dashboard:
+          card.dashboard_id != null
+            ? { id: card.dashboard_id, name: "Orders in a dashboard" }
+            : null,
+      }),
+    );
+
+    const setupCardPicking = async () => {
+      CARDS.forEach((card) => {
+        setupCardEndpoints(card);
+        const database = createSampleDatabase();
+        setupCardQueryMetadataEndpoint(
+          card,
+          createMockCardQueryMetadata({
+            databases: [database],
+            tables: database.tables,
+          }),
+        );
+      });
+      setupRootCollectionItemsEndpoint({
+        rootCollectionItems: CARDS.filter(
+          (card) => card.dashboard_id == null,
+        ).map((card) =>
+          createMockCollectionItem({
+            id: card.id,
+            name: card.name,
+            model: SEARCH_MODELS[card.type],
+          }),
+        ),
+      });
+      const emptyQuery = Question.create({
+        metadata: createMockMetadata(),
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+      }).query();
+      const result = await setup({
+        step: createMockNotebookStep({ query: emptyQuery }),
+        searchItems: SEARCH_ITEMS,
+        filterSearchByScope: true,
+        applyQueryUpdates: true,
+      });
+      await userEvent.click(await screen.findByText("Browse all"));
+      expect(
+        await screen.findByRole("dialog", { name: "Pick your starting data" }),
+      ).toBeInTheDocument();
+      return result;
+    };
+
+    const searchInModal = async (text: string) => {
+      await userEvent.type(await screen.findByPlaceholderText("Search…"), text);
+      await screen.findByText(`Search results for "${text}"`);
+    };
+
+    const pickSearchResult = async (name: string) => {
+      const results = await screen.findAllByTestId("result-item");
+      const result = results.find((item) => within(item).queryByText(name));
+      await userEvent.click(within(checkNotNull(result)).getByText(name));
+    };
+
+    const expectPickedSource = async (
+      card: Card,
+      getNextQuery: () => Lib.Query,
+    ) => {
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("dialog", { name: "Pick your starting data" }),
+        ).not.toBeInTheDocument(),
+      );
+      if (card.type === "metric") {
+        // a metric is picked as its source table, aggregated by the metric
+        await waitFor(() =>
+          expect(Lib.toJsQuery(getNextQuery())).toMatchObject({
+            stages: [
+              {
+                "source-table": ORDERS_ID,
+                aggregation: [["metric", expect.anything(), card.id]],
+              },
+            ],
+          }),
+        );
+      } else {
+        expect(
+          await within(await screen.findByTestId("data-step-cell")).findByText(
+            card.name,
+          ),
+        ).toBeInTheDocument();
+        expect(Lib.allSourceCardIds(getNextQuery())).toEqual([card.id]);
+      }
+    };
+
+    it.each([ROOT_QUESTION, ROOT_MODEL, ROOT_METRIC])(
+      "should use the $type picked from the search of Our analytics as the source",
+      async (card) => {
+        const { getNextQuery } = await setupCardPicking();
+
+        await userEvent.click(await screen.findByText("Our analytics"));
+        await searchInModal(card.name);
+        await pickSearchResult(card.name);
+
+        await expectPickedSource(card, getNextQuery);
+      },
+    );
+
+    it.each([ROOT_QUESTION, ROOT_MODEL, ROOT_METRIC, DASHBOARD_QUESTION])(
+      "should use the $name picked from the search everywhere as the source",
+      async (card) => {
+        const { getNextQuery } = await setupCardPicking();
+
+        await searchInModal(card.name);
+        await userEvent.click(
+          within(screen.getByTestId("search-scope-selector")).getByRole(
+            "radio",
+            { name: "Everywhere" },
+          ),
+        );
+        await pickSearchResult(card.name);
+
+        await expectPickedSource(card, getNextQuery);
+        const searchCall = fetchMock.callHistory.lastCall("path:/api/search");
+        const searchParams = new URL(checkNotNull(searchCall?.request?.url))
+          .searchParams;
+        expect(searchParams.get("collection")).toBeNull();
+        expect(searchParams.get("include_dashboard_questions")).toBe("true");
+      },
+    );
   });
 
   it("should remove joins when changing a table", async () => {
