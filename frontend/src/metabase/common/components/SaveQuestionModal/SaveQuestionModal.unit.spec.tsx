@@ -38,12 +38,14 @@ import type {
   CollectionId,
   CollectionItem,
   DashboardId,
+  RecentItem,
 } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
   createMockDashboardTab,
+  createMockRecentCollectionItem,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -99,10 +101,12 @@ const setup = async (
     collectionEndpoints,
     createError,
     personalCollectionItems = [],
+    recentSelections = [],
   }: {
     collectionEndpoints?: CollectionEndpoints;
     createError?: unknown;
     personalCollectionItems?: CollectionItem[];
+    recentSelections?: RecentItem[];
   } = {},
 ) => {
   const onCreateMock = jest.fn<
@@ -139,7 +143,7 @@ const setup = async (
   setupDatabasesEndpoints([]);
   setupCustomVizPluginListEndpoint();
 
-  setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  setupRecentViewsAndSelectionsEndpoints(recentSelections, ["selections"]);
   setupRecentViewsAndSelectionsEndpoints(
     [],
     ["selections", "views"],
@@ -679,6 +683,79 @@ describe("SaveQuestionModal", () => {
       ]);
     });
 
+    it("should show a dashboard in a personal collection without sub-collections, next to the suggested dashboard", async () => {
+      mockGetBoundingClientRect();
+      const ROOT_DASH = createMockDashboard({
+        id: 3,
+        collection_id: null,
+        name: "Orders in a dashboard",
+        tabs: [],
+      });
+      setupDashboardEndpoints(ROOT_DASH);
+      const rootCollection = createMockCollection({
+        ...ROOT_COLLECTION,
+        can_write: true,
+      });
+      setupCollectionItemsEndpoint({
+        collection: rootCollection,
+        collectionItems: [
+          createMockCollectionItem({
+            id: ROOT_DASH.id,
+            model: "dashboard",
+            name: ROOT_DASH.name,
+            collection_id: null,
+            can_write: true,
+          }),
+        ],
+      });
+      await setup(getQuestion(), null, {
+        collectionEndpoints: {
+          collections: [rootCollection, BOBBY_TEST_COLLECTION],
+          rootCollection,
+        },
+        recentSelections: [
+          createMockRecentCollectionItem({
+            id: ROOT_DASH.id,
+            model: "dashboard",
+            name: ROOT_DASH.name,
+            can_write: true,
+          }),
+        ],
+        personalCollectionItems: [
+          createMockCollectionItem({
+            id: FOO_DASH_ID,
+            model: "dashboard",
+            name: FOO_DASH.name,
+            collection_id: BOBBY_TEST_COLLECTION.id,
+            can_write: true,
+          }),
+        ],
+      });
+
+      await waitFor(() =>
+        expect(saveLocDropdown()).toHaveTextContent(ROOT_DASH.name),
+      );
+      await userEvent.click(saveLocDropdown());
+      const personalCollectionLink = await screen.findByRole("link", {
+        name: new RegExp(BOBBY_TEST_COLLECTION.name),
+      });
+      await waitFor(() =>
+        expect(
+          screen.getByRole("link", { name: new RegExp(ROOT_DASH.name) }),
+        ).toHaveAttribute("data-active", "true"),
+      );
+
+      await userEvent.click(personalCollectionLink);
+      await userEvent.click(await screen.findByText(FOO_DASH.name));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Select this dashboard" }),
+      );
+
+      await waitFor(() =>
+        expect(saveLocDropdown()).toHaveTextContent(FOO_DASH.name),
+      );
+    });
+
     it("should now show tab input if selected dashboard has no tabs", async () => {
       await setup(
         getQuestion({
@@ -1032,6 +1109,40 @@ describe("SaveQuestionModal", () => {
         await userEvent.click(newCollCancelButton());
         await userEvent.click(selectCollCancelButton());
         await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
+      });
+
+      it("should close the open dialogs one by one with the Escape key", async () => {
+        const { onCloseMock } = await setup(getQuestion());
+        await userEvent.click(saveLocDropdown());
+        await waitFor(() => expect(newCollBtn()).toBeEnabled());
+        await userEvent.click(newCollBtn());
+        expect(
+          await screen.findByRole("dialog", {
+            name: "Create a new collection",
+          }),
+        ).toBeInTheDocument();
+
+        await userEvent.keyboard("{Escape}");
+        await waitFor(() =>
+          expect(
+            screen.queryByRole("dialog", { name: "Create a new collection" }),
+          ).not.toBeInTheDocument(),
+        );
+        expect(
+          screen.getByRole("dialog", { name: /Select a collection/ }),
+        ).toBeInTheDocument();
+
+        await userEvent.keyboard("{Escape}");
+        await waitFor(() =>
+          expect(
+            screen.queryByRole("dialog", { name: /Select a collection/ }),
+          ).not.toBeInTheDocument(),
+        );
+        expect(questionModalTitle()).toBeInTheDocument();
+        expect(onCloseMock).not.toHaveBeenCalled();
+
+        await userEvent.keyboard("{Escape}");
+        await waitFor(() => expect(onCloseMock).toHaveBeenCalledTimes(1));
       });
 
       describe("new collection location", () => {

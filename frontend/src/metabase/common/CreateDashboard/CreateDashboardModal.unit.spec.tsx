@@ -18,9 +18,11 @@ import {
   within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import type { User } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItemFromCollection,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { CreateDashboardModal } from "./CreateDashboardModal";
@@ -50,7 +52,40 @@ const COLLECTION = {
 };
 COLLECTION.CHILD.location = `/${COLLECTION.PARENT.id}/`;
 
-function setup({ mockCreateDashboardResponse = true } = {}) {
+const OTHER_USER_COLLECTION = {
+  PERSONAL: createMockCollection({
+    id: 20,
+    name: "Robert Tableton's Personal Collection",
+    location: "/",
+    is_personal: true,
+    personal_owner_id: 2,
+    can_write: true,
+  }),
+  FIRST_CHILD: createMockCollection({
+    id: 21,
+    name: "Normal personal collection 1",
+    location: "/20/",
+    is_personal: true,
+    can_write: true,
+  }),
+  SECOND_CHILD: createMockCollection({
+    id: 22,
+    name: "Normal personal collection 2",
+    location: "/20/",
+    is_personal: true,
+    can_write: true,
+  }),
+};
+
+type SetupOpts = {
+  mockCreateDashboardResponse?: boolean;
+  currentUser?: User;
+};
+
+function setup({
+  mockCreateDashboardResponse = true,
+  currentUser = createMockUser(),
+}: SetupOpts = {}) {
   mockGetBoundingClientRect();
   setupRecentViewsAndSelectionsEndpoints([]);
   setupLibraryEndpoints();
@@ -63,7 +98,10 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
   if (mockCreateDashboardResponse) {
     fetchMock.post(`path:/api/dashboard`, (call) => call?.options.body);
   }
-  const collections = Object.values(COLLECTION);
+  const collections = [
+    ...Object.values(COLLECTION),
+    ...Object.values(OTHER_USER_COLLECTION),
+  ];
   setupCollectionsEndpoints({
     collections,
     rootCollection: COLLECTION.ROOT,
@@ -86,6 +124,22 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
     collectionItems: [],
   });
 
+  setupCollectionItemsEndpoint({
+    collection: OTHER_USER_COLLECTION.PERSONAL,
+    collectionItems: [
+      createMockCollectionItemFromCollection(OTHER_USER_COLLECTION.FIRST_CHILD),
+      createMockCollectionItemFromCollection(
+        OTHER_USER_COLLECTION.SECOND_CHILD,
+      ),
+    ],
+  });
+  [
+    OTHER_USER_COLLECTION.FIRST_CHILD,
+    OTHER_USER_COLLECTION.SECOND_CHILD,
+  ].forEach((collection) =>
+    setupCollectionItemsEndpoint({ collection, collectionItems: [] }),
+  );
+
   collections
     .filter((c) => c.id !== "root")
     .forEach((c) => fetchMock.get(`path:/api/collection/${c.id}`, c));
@@ -93,6 +147,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
   renderWithProviders(<CreateDashboardModal opened onClose={onClose} />, {
     storeInitialState: {
       settings,
+      currentUser,
     },
   });
 
@@ -128,6 +183,95 @@ describe("CreateDashboardModal", () => {
     await waitFor(() => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("should show the path to a collection in another user's personal collection when the picker is opened again", async () => {
+    setup({
+      currentUser: createMockUser({
+        is_superuser: true,
+        personal_collection_id: Number(COLLECTION.PERSONAL.id),
+      }),
+    });
+    const collectionPicker = () =>
+      screen.getByLabelText("Which collection should this go in?");
+    const expectActiveItems = async (names: string[]) => {
+      for (const name of names) {
+        await waitFor(() =>
+          expect(
+            screen.getByRole("link", { name: new RegExp(name) }),
+          ).toHaveAttribute("data-active", "true"),
+        );
+      }
+    };
+
+    await userEvent.click(collectionPicker());
+    await userEvent.click(await screen.findByText("All personal collections"));
+    await userEvent.click(
+      await screen.findByText(OTHER_USER_COLLECTION.PERSONAL.name),
+    );
+    await userEvent.click(
+      await screen.findByText(OTHER_USER_COLLECTION.SECOND_CHILD.name),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Select" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: /Select a collection/ }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(collectionPicker()).toHaveTextContent(
+      OTHER_USER_COLLECTION.SECOND_CHILD.name,
+    );
+
+    await userEvent.click(collectionPicker());
+    await expectActiveItems([
+      "All personal collections",
+      OTHER_USER_COLLECTION.PERSONAL.name,
+      OTHER_USER_COLLECTION.SECOND_CHILD.name,
+    ]);
+    expect(
+      screen.getByRole("link", {
+        name: new RegExp(OTHER_USER_COLLECTION.FIRST_CHILD.name),
+      }),
+    ).not.toHaveAttribute("data-active", "true");
+  });
+
+  it("should close the open dialogs one by one with the Escape key", async () => {
+    const { onClose } = setup();
+    await screen.findByRole("heading", { name: /new dashboard/i });
+
+    await userEvent.click(screen.getByLabelText(/Which collection/));
+    const newCollectionButton = await screen.findByRole("button", {
+      name: /new collection/i,
+    });
+    await waitFor(() => expect(newCollectionButton).toBeEnabled());
+    await userEvent.click(newCollectionButton);
+    expect(
+      await screen.findByRole("dialog", { name: "Create a new collection" }),
+    ).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Create a new collection" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("dialog", { name: /Select a collection/ }),
+    ).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: /Select a collection/ }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("heading", { name: /new dashboard/i }),
+    ).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
   describe("new collection modal", () => {
