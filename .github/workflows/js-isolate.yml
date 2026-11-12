@@ -1,0 +1,147 @@
+name: JS Isolate (musl)
+
+# Builds and publishes bin/docker/js-isolate (see the README there). PRs check it matches deps.edn and is pinned.
+
+on:
+  pull_request:
+    paths:
+      - "deps.edn"
+      - "Dockerfile"
+      - "bin/docker/Dockerfile"
+      - "bin/docker/js-isolate/**"
+      - ".github/workflows/js-isolate.yml"
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Push the image to Docker Hub (otherwise only build and test it)"
+        type: boolean
+        default: false
+
+concurrency:
+  # all dispatches share one group so two publishes of the same version can't interleave their per-arch tags
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && 'dispatch' || github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: metabase/graaljs-isolate-musl
+
+jobs:
+  version:
+    name: Check the isolate's GraalVM version
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Compare deps.edn with bin/docker/js-isolate/Dockerfile
+        id: check
+        run: |
+          versions=$(grep -oE 'org\.graalvm\.polyglot/[a-z0-9-]+ +\{:mvn/version "[^"]+"' deps.edn | sed -E 's/.*"([^"]+)"$/\1/' | sort -u)
+          if [ "$(printf '%s\n' "$versions" | wc -l)" -ne 1 ] || ! printf '%s\n' "$versions" | grep -qxE '[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "::error file=deps.edn::Expected every org.graalvm.polyglot/* dependency on one GraalVM version, found: $(printf '%s\n' "$versions" | tr '\n' ' ')"
+            exit 1
+          fi
+          isolate=$(sed -nE 's#^ARG GRAAL_VERSION=(.+)$#\1#p' bin/docker/js-isolate/Dockerfile)
+          if [ "$isolate" != "$versions" ]; then
+            echo "::error file=bin/docker/js-isolate/Dockerfile::GRAAL_VERSION is '$isolate' but deps.edn uses GraalVM $versions. See bin/docker/js-isolate/README.md"
+            exit 1
+          fi
+          echo "version=$versions" >> "$GITHUB_OUTPUT"
+
+  image-refs:
+    name: Check the Dockerfiles pin the published isolate
+    needs: version
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Compare JS_ISOLATE_IMAGE with deps.edn
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          status=0
+          for dockerfile in bin/docker/Dockerfile Dockerfile; do
+            ref=$(sed -nE 's#^ARG JS_ISOLATE_IMAGE=(.+)$#\1#p' "$dockerfile")
+            if ! echo "$ref" | grep -qxE "${IMAGE}:${VERSION//./\\.}@sha256:[0-9a-f]{64}"; then
+              echo "::error file=$dockerfile::JS_ISOLATE_IMAGE is '$ref', expected $IMAGE:$VERSION@sha256:<digest>. Publish the isolate and pin it: see bin/docker/js-isolate/README.md"
+              status=1
+            fi
+          done
+          exit $status
+
+  changes:
+    name: Check whether the recipe changed
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      recipe: ${{ steps.filter.outputs.recipe }}
+    steps:
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        with:
+          filters: |
+            recipe:
+              - "bin/docker/js-isolate/**"
+              - ".github/workflows/js-isolate.yml"
+
+  build:
+    name: Build (${{ matrix.arch }})
+    needs: [version, changes]
+    if: >-
+      !cancelled() && needs.version.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' || needs.changes.outputs.recipe == 'true')
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    # native-image needs ~8 GB of memory
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - name: Login to Docker Hub
+        if: inputs.push
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+      - name: Build and push the isolate
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: bin/docker/js-isolate
+          platforms: linux/${{ matrix.arch }}
+          tags: ${{ env.IMAGE }}:${{ needs.version.outputs.version }}-${{ matrix.arch }}
+          push: ${{ inputs.push == true }}
+
+  publish:
+    name: Publish multi-arch image
+    needs: [version, build]
+    if: github.event_name == 'workflow_dispatch' && inputs.push
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+      - name: Combine the per-architecture images
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          docker buildx imagetools create -t "$IMAGE:$VERSION" "$IMAGE:$VERSION-amd64" "$IMAGE:$VERSION-arm64"
+          digest=$(docker buildx imagetools inspect "$IMAGE:$VERSION" --format '{{.Manifest.Digest}}')
+          echo "Published \`$IMAGE:$VERSION@$digest\`. Set \`JS_ISOLATE_IMAGE\` in \`bin/docker/Dockerfile\` and \`Dockerfile\` to it." >> "$GITHUB_STEP_SUMMARY"

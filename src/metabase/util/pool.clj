@@ -18,7 +18,14 @@
         sample-period-ms    (.toMillis TimeUnit/MILLISECONDS 25)
         control-period-ms   (.toMillis TimeUnit/MINUTES idle-minutes)]
     (Pool. (reify IPool$Generator
-             (generate [_ _] (generate))
+             (generate [_ _]
+               ;; Dirigiste only rolls back its count on Exceptions; a leaked Error would block every later acquire
+               (try
+                 (generate)
+                 (catch Exception e
+                   (throw e))
+                 (catch Throwable t
+                   (throw (ex-info (str "Failed to create a pooled object: " t) {} t)))))
              (destroy [_ _ worker] (destroy worker)))
            (Pools/utilizationController 1.0 max-size max-size)
            max-queued-acquires
