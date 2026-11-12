@@ -220,18 +220,20 @@
   The type is `:undeclared` for a listed module missing from `deps`.
   It is `:redundant-exemption` or `:redundant-opt-in` for an entry that its module's decision doesn't need."
   [deps {:keys [exemptions opt-ins] :as rules}]
-  ;; Judging each entry by [[driver-exempt?]] without it covers a module listed twice, such as a trigger that is
-  ;; also an exemption.
-  (let [exempt-without? (fn [k module] (driver-exempt? deps (update rules k disj module) module))]
+  ;; Comparing [[driver-exempt?]] with and without the entry covers a module listed more than once, such as a trigger
+  ;; that is also an exemption.
+  (let [redundant? (fn [k module]
+                     (= (driver-exempt? deps rules module)
+                        (driver-exempt? deps (update rules k disj module) module)))]
     (concat
      (for [module (sort-by str (concat exemptions opt-ins))
            :when  (not (contains? deps module))]
        {:type :undeclared, :module module})
      (for [module (sort-by str exemptions)
-           :when  (exempt-without? :exemptions module)]
+           :when  (redundant? :exemptions module)]
        {:type :redundant-exemption, :module module})
      (for [module (sort-by str opt-ins)
-           :when  (not (exempt-without? :opt-ins module))]
+           :when  (redundant? :opt-ins module)]
        {:type :redundant-opt-in, :module module}))))
 
 (defn- affected-modules
