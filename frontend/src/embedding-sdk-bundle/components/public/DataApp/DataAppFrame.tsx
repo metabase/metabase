@@ -21,7 +21,8 @@ const DEFAULT_HEIGHT = 600;
 interface DataAppFrameProps extends Omit<DataAppProps, "path"> {
   path: string;
 
-  src: string;
+  /** Later changes are ignored. The iframe routes path changes client-side. */
+  initialSrc: string;
   origin: string;
 
   locale?: string;
@@ -31,7 +32,7 @@ interface DataAppFrameProps extends Omit<DataAppProps, "path"> {
 
 export function DataAppFrame({
   path,
-  src,
+  initialSrc,
   origin,
   locale,
   store,
@@ -46,6 +47,7 @@ export function DataAppFrame({
   const currentAuthRef = useRef({ authConfig, store });
 
   const [error, setError] = useState<string | null>(null);
+  const [src] = useState(initialSrc);
 
   // make sure auth replies cannot use stale credentials
   useLayoutEffect(() => {

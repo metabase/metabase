@@ -50,6 +50,17 @@ const sessionMessage = (sessionToken = SESSION) => ({
   data: { authMethod: "provider-managed", sessionToken },
 });
 
+const settingsMessage = (path: string) => ({
+  type: "metabase.embed.setSettings",
+  data: {
+    componentName: "metabase-data-app",
+    path,
+    instanceUrl: CONFIG.metabaseInstanceUrl,
+    locale: "fr",
+    _embedReferrer: window.location.href,
+  },
+});
+
 const message = (
   iframe: HTMLIFrameElement,
   type: string,
@@ -115,16 +126,7 @@ describe("DataApp", () => {
     message(iframe, "metabase.embed.iframeReady");
 
     expect(postMessage).toHaveBeenCalledWith(
-      {
-        type: "metabase.embed.setSettings",
-        data: {
-          componentName: "metabase-data-app",
-          path: "boba-hq/orders?active=true",
-          instanceUrl: CONFIG.metabaseInstanceUrl,
-          locale: "fr",
-          _embedReferrer: window.location.href,
-        },
-      },
+      settingsMessage("boba-hq/orders?active=true"),
       ORIGIN,
     );
   });
@@ -215,18 +217,51 @@ describe("DataApp", () => {
     );
   });
 
-  it("reloads the iframe when the path changes and ignores its old session reply", async () => {
+  it("reloads the iframe when the app slug changes and ignores its old session reply", async () => {
     const pending = defer<typeof SESSION>();
     requestSession.mockReturnValueOnce(pending.promise);
     const { iframe, postMessage, rerender } = setup();
 
     message(iframe, "metabase.embed.requestSessionToken");
-    rerender(<DataApp path="/boba-hq/orders?active=true" />);
+    rerender(<DataApp path="/milk-tea-hq/orders" />);
     expect(screen.queryByTestId("data-app-frame")).not.toBe(iframe);
 
     // ignores old session replies
     await act(async () => pending.resolve(SESSION));
     expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("keeps the iframe and sends the new path when only the route changes", () => {
+    const { iframe, postMessage, rerender } = setup();
+    const initialSrc = iframe.src;
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
+    rerender(<DataApp path="boba-hq/orders?active=true" />);
+
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(iframe.src).toBe(initialSrc);
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith(
+      settingsMessage("boba-hq/orders?active=true"),
+      ORIGIN,
+    );
+  });
+
+  it("sends the latest path once the iframe is ready after a route change", () => {
+    const { iframe, postMessage, rerender } = setup();
+
+    rerender(<DataApp path="boba-hq/orders" />);
+    expect(postMessage).not.toHaveBeenCalled();
+
+    message(iframe, "metabase.embed.iframeReady");
+
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith(
+      settingsMessage("boba-hq/orders"),
+      ORIGIN,
+    );
   });
 
   it("keeps the same iframe when a leading slash is added", () => {
