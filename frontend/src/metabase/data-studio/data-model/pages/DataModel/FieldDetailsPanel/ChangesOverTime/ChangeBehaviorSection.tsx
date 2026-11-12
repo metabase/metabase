@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   DetailsRow,
@@ -10,11 +9,10 @@ import {
   type VersionChoice,
   findColumnByName,
   getHistoryTableCandidates,
-  getReferencingFields,
   useChangingAttributes,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Select, Stack, Text } from "metabase/ui";
+import { Select, Stack } from "metabase/ui";
 import type { Field, Table } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
@@ -43,7 +41,7 @@ type ChangeBehaviorSectionProps = {
 /**
  * PROTOTYPE: mocked. How an attribute behaves when it changes: overwritten,
  * or kept, and then which value other tables use and where old values are
- * kept. Their column is only asked for when it can't be matched by name.
+ * kept.
  */
 export function ChangeBehaviorSection({
   field,
@@ -66,15 +64,6 @@ export function ChangeBehaviorSection({
   const storageTable = isKept
     ? history.tables.find((other) => other.id === attribute.historyTableId)
     : undefined;
-  const isColumnMatched =
-    storageTable != null &&
-    attribute.valueFieldId != null &&
-    findColumnByName(storageTable, field) != null;
-  const usedBy = _.uniq(
-    getReferencingFields(table, history.tables).map(
-      ({ table: referencing }) => referencing.display_name,
-    ),
-  );
 
   const keepOldValues = () => {
     const inferredTable = candidates.find(
@@ -122,7 +111,7 @@ export function ChangeBehaviorSection({
               />
             }
           />
-          {isKept && usedBy.length > 0 && (
+          {isKept && (
             <DetailsRow
               label={t`Value used in other tables`}
               fillValue
@@ -179,7 +168,7 @@ export function ChangeBehaviorSection({
                   />
                 }
               />
-              {storageTable != null && !isColumnMatched && (
+              {storageTable != null && (
                 <DetailsRow
                   label={t`Stored as`}
                   fillValue
@@ -200,11 +189,6 @@ export function ChangeBehaviorSection({
             </>
           )}
         </DetailsTable>
-        {isKept && usedBy.length > 0 && (
-          <Text size="sm" c="text-secondary">
-            {t`Used by ${usedBy.join(", ")}.`}
-          </Text>
-        )}
       </Stack>
     </SidebarSection>
   );
