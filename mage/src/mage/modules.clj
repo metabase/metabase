@@ -609,6 +609,8 @@
   Marks modules whose namespace prefix differs from their name.
   With `--html`, writes the interactive explorer instead, and with `--json` the data it shows."
   [{:keys [options] :as _parsed}]
+  (when (and (:html options) (:json options))
+    (u/exit "Give only one of --html, --json." 1))
   (when (or (:html options) (:json options))
     (write-explorer! (read-modules-config) options))
   (let [modules-config (read-modules-config)
