@@ -42,10 +42,10 @@ databaseChangeLog:
   - changeSet:
       id: kbq7xz
       author: escherize
+      dbms: mysql,mariadb
       comment: Compare workspace.idempotency_key byte by byte on MySQL and MariaDB
       changes:
         - sql:
-            dbms: mysql,mariadb
             sql: ALTER TABLE workspace MODIFY idempotency_key VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT 'Idempotency-Key header of the request that created this workspace, unique per creator';
       # No rollback of the collation: keys that differ only in letter case would collide in the unique index under
       # utf8mb4_unicode_ci. The rollbacks of pagsu9 and wk6itt, which ship in this file, drop the index and the column.

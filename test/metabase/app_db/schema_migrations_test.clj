@@ -4888,7 +4888,8 @@
 
 (deftest workspace-idempotency-key-test
   (testing "wk6itt..kbq7xz: workspace.idempotency_key is unique per creator, and the rollback drops it"
-    (impl/test-migrations ["wk6itt" "kbq7xz"] [migrate!]
+    ;; No end id: kbq7xz is in the changelog on MySQL and MariaDB only, so it cannot end the range on every app DB.
+    (impl/test-migrations ["wk6itt"] [migrate!]
       (let [new-user! (fn [email]
                         (t2/insert-returning-pk! :core_user {:first_name    "Workspace"
                                                              :last_name     "Creator"
