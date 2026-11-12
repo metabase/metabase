@@ -1,3 +1,7 @@
+# musl build of the static-viz JS isolate, see bin/docker/js-isolate/README.md
+ARG JS_ISOLATE_IMAGE=metabase/graaljs-musl:25.1.3
+FROM ${JS_ISOLATE_IMAGE} AS js-isolate
+
 FROM eclipse-temurin:25-jre-alpine
 
 ENV FC_LANG=en-US LC_CTYPE=en_US.UTF-8
@@ -26,6 +30,22 @@ RUN cat /app/certs/blocked.certs >> /opt/java/openjdk/lib/security/blocked.certs
 
 # add Metabase jar & add our run script to the image
 COPY ./metabase.jar ./run_metabase.sh /app/
+
+# the isolate must match the GraalVM version in metabase.jar
+COPY --from=js-isolate / /app/js-isolate/
+RUN jar_version="$(unzip -p /app/metabase.jar META-INF/graalvm/org.graalvm.truffle/version)" && \
+    isolate_version="$(cat /app/js-isolate/VERSION)" && \
+    if [ -z "$jar_version" ] || [ "$jar_version" != "$isolate_version" ]; then \
+      echo "metabase.jar uses Truffle '${jar_version:-<unknown>}' but the JS isolate was built for '$isolate_version'; rebuild it (bin/docker/js-isolate)" >&2; \
+      exit 1; \
+    fi
+
+# pre-extract libtruffleattach so isolates work without a writable $HOME
+RUN case "$(uname -m)" in x86_64) arch=amd64 ;; aarch64) arch=aarch64 ;; *) echo "unsupported architecture: $(uname -m)" >&2; exit 1 ;; esac && \
+    mkdir -p /app/truffle-attach/bin && \
+    unzip -q -j /app/metabase.jar "META-INF/resources/engine/libtruffleattach/linux/$arch/bin/libtruffleattach.so" -d /app/truffle-attach/bin && \
+    test -s /app/truffle-attach/bin/libtruffleattach.so && \
+    unzip -p /app/metabase.jar META-INF/graalvm/org.graalvm.truffle/version > /app/truffle-attach/VERSION
 
 # expose our default runtime port
 EXPOSE 3000
