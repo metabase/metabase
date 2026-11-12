@@ -211,7 +211,7 @@
 ;; this method starts reading another one.
 (defmethod mi/can-read? :model/Card
   ([instance]
-   (and (perms/can-read-via-parent-collection? (:collection_id instance))
+   (and (perms/can-read-via-parent-collection? nil (:collection_id instance))
         (parent-document-permits? instance :read)))
   ([_ pk]
    (mi/can-read? (queries.db/card pk))))
