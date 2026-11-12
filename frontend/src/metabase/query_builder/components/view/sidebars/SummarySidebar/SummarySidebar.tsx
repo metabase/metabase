@@ -143,6 +143,7 @@ export function SummarySidebar({
           <SummaryWells
             query={query}
             stageIndex={stageIndex}
+            onAdd={handleWellAdd}
             sections={sections}
             draggedItem={draggedItem}
             onPick={handleAdd}

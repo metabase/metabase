@@ -1,15 +1,32 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import {
+  setupDatabaseEndpoints,
+  setupSuggestSummaryFormulaEndpoint,
+  setupUserMetabotPermissionsEndpoint,
+} from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   mockTextOverflow,
   renderWithProviders,
   screen,
+  waitFor,
   within,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { TestQuerySpec } from "metabase-types/api";
-import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
+import type {
+  SuggestSummaryFormulaResponse,
+  TestQuerySpec,
+} from "metabase-types/api";
+import { createMockUserMetabotPermissions } from "metabase-types/api/mocks";
+import {
+  ORDERS,
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import type { SummaryField, SummaryWellId } from "../types";
 import { getDimensionItems, getFieldSections, getValueItems } from "../utils";
@@ -35,14 +52,33 @@ const SUMMARIZED_QUERY: TestQuerySpec = {
   ],
 };
 
+const SUMMARY_FORMULA_PATH =
+  "path:/api/metabot/custom-expression/summary-formula";
+
 type SetupOpts = {
   spec?: TestQuerySpec;
+  hasNlqAccess?: boolean;
+  formulaResponse?:
+    | SuggestSummaryFormulaResponse
+    | { status: number; body: string | object };
 };
 
-function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
+function setup({
+  spec = SUMMARIZED_QUERY,
+  hasNlqAccess = false,
+  formulaResponse = { expression: "Average([Total])", name: "Average total" },
+}: SetupOpts = {}) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, spec);
   const onPick = jest.fn<void, [SummaryWellId, SummaryField]>();
   const onChange = jest.fn<void, [Lib.Query]>();
+  const onAdd = jest.fn<void, [Lib.Query, SummaryWellId]>();
+  setupDatabaseEndpoints(createSampleDatabase());
+  setupUserMetabotPermissionsEndpoint(
+    createMockUserMetabotPermissions({
+      "metabot-nlq": hasNlqAccess ? "yes" : "no",
+    }),
+  );
+  setupSuggestSummaryFormulaEndpoint(formulaResponse);
   renderWithProviders(
     <SummaryWells
       query={query}
@@ -51,7 +87,16 @@ function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
       draggedItem={null}
       onPick={onPick}
       onChange={onChange}
+      onAdd={onAdd}
     />,
+    {
+      storeInitialState: createMockState({
+        settings: mockSettings({
+          "metabot-enabled?": true,
+          "llm-metabot-configured?": true,
+        }),
+      }),
+    },
   );
 
   function getLastChange() {
@@ -65,8 +110,29 @@ function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
     };
   }
 
-  return { onPick, onChange, getLastChange };
+  function getLastAdd() {
+    const [lastCall] = onAdd.mock.calls.slice(-1);
+    const [nextQuery, wellId] = lastCall;
+    return {
+      wellId,
+      values: getValueItems(nextQuery, STAGE_INDEX).map(({ label }) => label),
+      dimensions: getDimensionItems(nextQuery, STAGE_INDEX).map(
+        ({ label }) => label,
+      ),
+    };
+  }
+
+  return { onPick, onChange, onAdd, getLastChange, getLastAdd };
 }
+
+function getLastFormulaRequest(): unknown {
+  const body =
+    fetchMock.callHistory.lastCall(SUMMARY_FORMULA_PATH)?.options.body;
+  return typeof body === "string" ? JSON.parse(body) : undefined;
+}
+
+const findGenerateOption = (prompt: string) =>
+  screen.findByRole("option", { name: new RegExp(`Generate “${prompt}”`) });
 
 function getChipLabels(wellId: SummaryWellId) {
   return within(screen.getByTestId(`summary-well-${wellId}`))
@@ -432,6 +498,135 @@ describe("SummaryWells", () => {
       await expect(
         screen.findByRole("tooltip", {}, { timeout: 500 }),
       ).rejects.toThrow();
+    });
+  });
+
+  describe("generating a formula with AI", () => {
+    it("adds a generated aggregation to Summarize by", async () => {
+      const { onAdd, getLastAdd } = setup({ hasNlqAccess: true });
+
+      await userEvent.type(getValuesField(), "average order total");
+      await userEvent.click(await findGenerateOption("average order total"));
+
+      await waitFor(() => expect(onAdd).toHaveBeenCalledTimes(1));
+      expect(getLastAdd()).toEqual({
+        wellId: "values",
+        values: ["Count", "Sum of Total", "Average total"],
+        dimensions: ["Created At: Month"],
+      });
+      expect(getValuesField()).toHaveValue("");
+      expect(getLastFormulaRequest()).toEqual({
+        mode: "aggregation",
+        prompt: "average order total",
+        columns: expect.arrayContaining([{ name: "[Total]", type: "number" }]),
+        metrics: [],
+        measures: [],
+        table_name: "Orders",
+        database_id: createSampleDatabase().id,
+      });
+    });
+
+    it("groups by a generated custom column in Group by", async () => {
+      const { getLastAdd } = setup({
+        hasNlqAccess: true,
+        formulaResponse: {
+          expression: "year([Created At])",
+          name: "Year created",
+        },
+      });
+
+      await userEvent.type(getGroupingField(), "year created");
+      await findGenerateOption("year created");
+      await userEvent.keyboard("{Enter}");
+
+      await waitFor(() =>
+        expect(getLastAdd()).toEqual({
+          wellId: "columns",
+          values: ["Count", "Sum of Total"],
+          dimensions: ["Created At: Month", "Year created"],
+        }),
+      );
+      expect(getLastFormulaRequest()).toMatchObject({
+        mode: "expression",
+        prompt: "year created",
+        metrics: [],
+        measures: [],
+      });
+    });
+
+    it("checks AI permissions only once the typed text matches nothing", async () => {
+      setup({ hasNlqAccess: true });
+
+      await userEvent.type(getValuesField(), "quant");
+      expect(await findOption("Quantity")).toBeInTheDocument();
+      expect(
+        fetchMock.callHistory.called(
+          "path:/api/metabot/permissions/user-permissions",
+        ),
+      ).toBe(false);
+
+      await userEvent.type(getValuesField(), "zzz");
+      expect(await findGenerateOption("quantzzz")).toBeInTheDocument();
+    });
+
+    it("offers no Generate option without access to AI queries", async () => {
+      setup({ hasNlqAccess: false });
+
+      await userEvent.type(getValuesField(), "zzz");
+
+      expect(
+        await screen.findByText("No matching metrics or columns"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: /Generate/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("offers no Generate option when a column matches", async () => {
+      setup({ hasNlqAccess: true });
+
+      await userEvent.type(getValuesField(), "quant");
+
+      expect(await findOption("Quantity")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: /Generate/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the error from the endpoint under the Generate option", async () => {
+      const { onAdd } = setup({
+        hasNlqAccess: true,
+        formulaResponse: {
+          status: 422,
+          body: "Nothing in this data matches that.",
+        },
+      });
+
+      await userEvent.type(getValuesField(), "weather");
+      await userEvent.click(await findGenerateOption("weather"));
+
+      expect(
+        await screen.findByText("Nothing in this data matches that."),
+      ).toBeInTheDocument();
+      expect(onAdd).not.toHaveBeenCalled();
+      expect(getValuesField()).toHaveValue("weather");
+    });
+
+    it("shows a generated formula that doesn't compile as an error", async () => {
+      const { onAdd } = setup({
+        hasNlqAccess: true,
+        formulaResponse: { expression: "Sum([Nope])", name: "Nope" },
+      });
+
+      await userEvent.type(getValuesField(), "sum nope");
+      await userEvent.click(await findGenerateOption("sum nope"));
+
+      expect(
+        await screen.findByText(
+          "The generated formula isn't valid: Unknown column, Aggregation, Measure or Metric: Nope",
+        ),
+      ).toBeInTheDocument();
+      expect(onAdd).not.toHaveBeenCalled();
     });
   });
 });
