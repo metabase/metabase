@@ -36,7 +36,7 @@
     (get @loaded model #{})
     #{}))
 
-(defn check-loaded!
+(defn check-loaded
   "Throws in dev when a per-row check asks about the row of `model` with primary key `id` inside a request that didn't
   load it, since such a check can't be batched with the other loaded rows."
   [model id]

@@ -29,11 +29,11 @@
     (testing "a loaded row passes and a row the request did not load throws"
       (models.cache/with-loaded-rows
         (models.cache/register-loaded! :model/Table 1)
-        (is (nil? (models.cache/check-loaded! :model/Table 1)))
+        (is (nil? (models.cache/check-loaded :model/Table 1)))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"did not load"
-                              (models.cache/check-loaded! :model/Table 2)))))
+                              (models.cache/check-loaded :model/Table 2)))))
     (testing "nothing is checked outside a request"
-      (is (nil? (models.cache/check-loaded! :model/Table 2))))))
+      (is (nil? (models.cache/check-loaded :model/Table 2))))))
 
 (deftest after-select-registers-loaded-rows-test
   (mt/with-temp [:model/Collection {coll-id :id}  {}
