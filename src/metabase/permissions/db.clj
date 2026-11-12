@@ -118,6 +118,37 @@
                                                :where  [:= :pgm.user_id user-id]}
                              :i]]})))
 
+(defn- user-group-ids-query
+  "The ids of the groups of the User with `user-id`."
+  [user-id]
+  ^:allow-subquery {:select [:group_id]
+                    :from   [(t2/table-name :model/PermissionsGroupMembership)]
+                    :where  [:= :user_id user-id]})
+
+(mu/defn user-database-level-values :- [:sequential [:map [:db_id :int] [:perm_type :string] [:perm_value :string]]]
+  "The distinct Database, type, and value of the database-level rows of the User with `user-id`'s groups on the
+  Databases with `db-ids`."
+  [user-id :- ::lib.schema.id/user
+   db-ids  :- [:sequential ::lib.schema.id/database]]
+  (t2/query {:select-distinct [:p.db_id :p.perm_type :p.perm_value]
+             :from            [[(t2/table-name :model/DataPermissions) :p]]
+             :where           [:and
+                               [:in :p.db_id db-ids]
+                               [:= :p.table_id nil]
+                               [:in :p.group_id (user-group-ids-query user-id)]]}))
+
+(mu/defn user-table-level-values :- [:sequential [:map [:table_id :int] [:perm_type :string] [:perm_value :string]]]
+  "The distinct Table, type, and value of the rows of the User with `user-id`'s groups on the active Tables among
+  `table-ids`."
+  [user-id   :- ::lib.schema.id/user
+   table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/query {:select-distinct [:p.table_id :p.perm_type :p.perm_value]
+             :from            [[(t2/table-name :model/DataPermissions) :p]]
+             :join            [[(t2/table-name :model/Table) :mt] [:and [:= :mt.id :p.table_id] [:= :mt.active true]]]
+             :where           [:and
+                               [:in :p.table_id table-ids]
+                               [:in :p.group_id (user-group-ids-query user-id)]]}))
+
 (mu/defn table-permission-values-for-groups
   "The set of `perm-type` values `group-ids` hold for the Table with `table-id` or for its whole Database."
   [group-ids   :- [:set ms/PositiveInt]

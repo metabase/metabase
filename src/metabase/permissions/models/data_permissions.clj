@@ -226,6 +226,12 @@
   "Request cache of the current user's permission answers, `{[question-key user-id & args] answer}`."
   (atom {}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *loaded-table-ids*
+  "The ids of the Tables loaded in this request, `{:pending #{…} :loaded #{…}}` by whether their permissions are in
+  [[*permission-cache*]] yet, or nil outside a request."
+  nil)
+
 (defn- cached
   "The answer to `question` for `user-id`, computed by `f` once per request for the current user and every time otherwise."
   [user-id question f]
@@ -253,6 +259,63 @@
     api/*is-data-analyst?*
     (permissions.db/user-data-analyst? user-id)))
 
+(defn- chunked
+  "The concatenated results of `f` on chunks of `ids` small enough for one query."
+  [f ids]
+  (into [] (mapcat #(f (vec %))) (partition-all 1000 ids)))
+
+(defn- prefetch-table-permissions!
+  "Loads into the request cache the table-level permissions of `user-id` on the Tables with `table-ids`, so that
+  checking each of them costs no query."
+  [user-id table-ids]
+  (when-let [tables (and (use-cache? user-id)
+                         (not (is-superuser? user-id))
+                         (seq (chunked #(permissions.db/table-database-ids (set %)) (distinct (remove nil? table-ids)))))]
+    (let [values-of (fn [rows k]
+                      (update-vals (group-by (juxt k (comp keyword :perm_type)) rows)
+                                   #(map (comp keyword :perm_value) %)))
+          db-values (values-of (permissions.db/user-database-level-values user-id (vec (distinct (map :db_id tables))))
+                               :db_id)
+          t-values  (values-of (chunked #(permissions.db/user-table-level-values user-id %) (map :id tables))
+                               :table_id)
+          types     (for [[perm-type {:keys [model]}] permissions.schema/data-permissions
+                          :when (= model :model/Table)]
+                      perm-type)]
+      (swap! *permission-cache* #(merge %2 %1)
+             (into {}
+                   (for [{:keys [id db_id]} tables
+                         perm-type          types
+                         :let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)
+                               ranks                    (map #(.indexOf values %)
+                                                             (concat (db-values [db_id perm-type]) (t-values [id perm-type])))]]
+                     [[user-id ::rank-pair perm-type {:db-id db_id :table-id id}]
+                      (when (seq ranks)
+                        (ranks->most-permissive-value perm-type [(apply min ranks) (apply max ranks)]))]))))))
+
+(def ^:private max-loaded-tables
+  "How many loaded Tables one permission load covers at most."
+  10000)
+
+(defn register-loaded-table!
+  "Remembers the Table with `table-id` as loaded in this request, so that the first permission check on any loaded
+  Table loads the permissions of all of them at once."
+  [table-id]
+  (when-let [tracked *loaded-table-ids*]
+    (when (and table-id (not (contains? (:loaded @tracked) table-id)))
+      (swap! tracked update :pending conj table-id))))
+
+(defn- load-pending-tables!
+  "Loads into the request cache the permissions of `user-id` on the Tables loaded in this request but not yet checked,
+  when the Table with `table-id` is one of them."
+  [user-id table-id]
+  (when-let [tracked *loaded-table-ids*]
+    (when (contains? (:pending @tracked) table-id)
+      (let [ids (into [table-id] (take (dec max-loaded-tables)) (disj (:pending @tracked) table-id))]
+        (swap! tracked #(-> %
+                            (update :pending (fn [pending] (reduce disj pending ids)))
+                            (update :loaded into ids)))
+        (prefetch-table-permissions! user-id ids)))))
+
 (defn- has-perm-value?
   "Whether `user-id` holds `perm-type` with exactly `perm-value` on a row in `scope`, see `permissions.db/scope`."
   [user-id perm-type perm-value scope]
@@ -262,6 +325,10 @@
 (defn- rank-pair-value
   "The coalesced `perm-type` value of `user-id`'s rows in `scope`, or nil when there are none."
   [user-id perm-type scope]
+  (when (and (:table-id scope)
+             (use-cache? user-id)
+             (not (contains? @*permission-cache* [user-id ::rank-pair perm-type scope])))
+    (load-pending-tables! user-id (:table-id scope)))
   (cached user-id [::rank-pair perm-type scope]
           #(let [{:keys [mn mx]} (permissions.db/permission-rank-pair user-id perm-type scope)]
              (ranks->most-permissive-value perm-type (when mn [mn mx])))))
@@ -543,6 +610,7 @@
   functions in this namespace."
   [user-id & body]
   `(binding [*permission-cache*   (atom {})
+             *loaded-table-ids*   (atom {:pending #{} :loaded #{}})
              *sandboxes-for-user* (delay (enforced-sandboxes-for-user ~user-id))]
      ~@body))
 

@@ -1,0 +1,57 @@
+## Data permission checks load the rows of many Tables at once by table_id, reading their type, value and group: an
+## index over those four columns answers them without reading the table. It leads with table_id, so it also backs the
+## table_id foreign key, and the unique index leads with group_id, so the single-column indexes on both go away. H2
+## ties each foreign key to the index it was created with and refuses to drop it, so H2 keeps them.
+
+databaseChangeLog:
+  - changeSet:
+      id: snig8s
+      author: ranquild
+      comment: Add index on data_permissions(table_id, perm_type, perm_value, group_id)
+      changes:
+        - createIndex:
+            tableName: data_permissions
+            indexName: idx_data_permissions_table_id_perm_type_perm_value_group_id
+            columns:
+              - column:
+                  name: table_id
+              - column:
+                  name: perm_type
+              - column:
+                  name: perm_value
+              - column:
+                  name: group_id
+
+  - changeSet:
+      id: k7dpqv
+      author: ranquild
+      dbms: postgresql,mysql,mariadb
+      comment: Drop index on data_permissions(table_id), covered by the index leading with table_id
+      changes:
+        - dropIndex:
+            tableName: data_permissions
+            indexName: idx_data_permissions_table_id
+      rollback:
+        - createIndex:
+            tableName: data_permissions
+            indexName: idx_data_permissions_table_id
+            columns:
+              - column:
+                  name: table_id
+
+  - changeSet:
+      id: w3fmzn
+      author: ranquild
+      dbms: postgresql,mysql,mariadb
+      comment: Drop index on data_permissions(group_id), covered by the unique index leading with group_id
+      changes:
+        - dropIndex:
+            tableName: data_permissions
+            indexName: idx_data_permissions_group_id
+      rollback:
+        - createIndex:
+            tableName: data_permissions
+            indexName: idx_data_permissions_group_id
+            columns:
+              - column:
+                  name: group_id

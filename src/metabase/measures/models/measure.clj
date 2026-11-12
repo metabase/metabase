@@ -176,6 +176,7 @@
   [measure]
   (models.cache/register-loaded! :model/Measure (:id measure))
   (models.cache/register-loaded! :model/Table (:table_id measure))
+  (perms/register-loaded-table! (:table_id measure))
   (normalize-definition-from-db measure))
 
 (mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]
