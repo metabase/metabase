@@ -64,6 +64,25 @@
                                   :limit  [:inline 1])
                            (update :where conj [:= :p.perm_value (u/qualified-name perm-value)])))))
 
+(mu/defn databases-with-perm-value :- [:set ::lib.schema.id/database]
+  "The ids among `db-ids` of the Databases on which a `perm-type` row of the User with `user-id`'s groups has exactly
+  `perm-value`, found with the probe of [[user-has-perm-value?]] for each."
+  [user-id    :- [:maybe ::lib.schema.id/user]
+   perm-type  :- ::permissions.schema/data-permission-type
+   perm-value :- ::permissions.schema/data-permission-value
+   db-ids     :- [:sequential ::lib.schema.id/database]]
+  (into #{}
+        (map :id)
+        (t2/query {:select [:d.id]
+                   :from   [[(t2/table-name :model/Database) :d]]
+                   :where  [:and
+                            [:in :d.id db-ids]
+                            [:exists (-> (user-rows-query user-id perm-type {})
+                                         (assoc :select [[[:inline 1] :one]])
+                                         (update :where conj
+                                                 [:= :p.db_id :d.id]
+                                                 [:= :p.perm_value (u/qualified-name perm-value)]))]]})))
+
 (mu/defn most-restrictive-rank-pair :- [:map [:mn [:maybe :int]] [:mx [:maybe :int]]]
   "The lowest and highest, across the User with `user-id`'s groups, of each group's most restrictive value rank among
   its `perm-type` rows in `scope`, found with one indexed probe per value and group."
