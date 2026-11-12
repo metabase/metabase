@@ -652,6 +652,29 @@
     (is (=? [[:expression {} "b"]]
             (lib/breakouts edited)))))
 
+(deftest ^:parallel replace-expression-keeps-bucketing-of-references-test
+  (let [bucketed-breakout (fn [query expression-name unit]
+                            (lib/breakout query (-> (m/find-first (comp #{expression-name} :name)
+                                                                  (lib/breakoutable-columns query))
+                                                    (lib/with-temporal-bucket unit))))
+        query             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                              (lib/expression "Next day" (lib/datetime-add (meta/field-metadata :orders :created-at) 1 :day))
+                              (bucketed-breakout "Next day" :month)
+                              lib/append-stage
+                              (bucketed-breakout "Next day" :year))
+        [expr]            (lib/expressions query 0)
+        renamed           (lib/replace-clause query 0 expr (lib/with-expression-name expr "Tomorrow"))
+        retyped           (lib/replace-clause query 0 expr (lib/with-expression-name
+                                                             (lib/+ (meta/field-metadata :orders :total) 1)
+                                                             "Tomorrow"))
+        unbucketed?       #(not (contains? % :temporal-unit))]
+    (testing "a replacement of the same type keeps the bucketing of its references in this and later stages"
+      (is (=? [[:expression {:temporal-unit :month} "Tomorrow"]] (lib/breakouts renamed 0)))
+      (is (=? [[:field {:temporal-unit :year} "Tomorrow"]] (lib/breakouts renamed 1))))
+    (testing "a replacement of another type drops the bucketing"
+      (is (=? [[:expression unbucketed? "Tomorrow"]] (lib/breakouts retyped 0)))
+      (is (=? [[:field unbucketed? "Tomorrow"]] (lib/breakouts retyped 1))))))
+
 (deftest ^:parallel replace-order-by-breakout-col-test
   (testing "issue #30980"
     (testing "Bucketing should keep order-by in sync"
