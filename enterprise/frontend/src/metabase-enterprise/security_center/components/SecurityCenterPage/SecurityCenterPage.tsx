@@ -191,10 +191,21 @@ export function SecurityCenterPage() {
             <Text c="text-secondary" data-testid="current-version">
               {t`Current version`}: {currentVersion}
             </Text>
-            <LastSyncStatus
-              lastCheckedAt={lastCheckedAt}
-              lastSyncError={lastSyncError}
-            />
+            <Stack gap="xs">
+              <Text c="text-secondary" data-testid="last-checked-at">
+                {t`Last successful check`}:{" "}
+                {lastCheckedAt ? (
+                  <DateTime value={lastCheckedAt} unit="minute" />
+                ) : (
+                  t`Never`
+                )}
+              </Text>
+              {lastSyncError !== null && (
+                <Text c="feedback-negative" data-testid="last-sync-error">
+                  {t`The last check for security advisories failed. Advisories may be out of date.`}
+                </Text>
+              )}
+            </Stack>
             <UpgradeBanner targetVersion={targetVersion} />
           </Stack>
           <Stack gap="xxl" className={S.content}>
@@ -219,29 +230,3 @@ export function SecurityCenterPage() {
     </NotificationConfigProvider>
   );
 }
-
-type LastSyncStatusProps = {
-  lastCheckedAt: string | null;
-  lastSyncError: string | null;
-};
-
-const LastSyncStatus = ({
-  lastCheckedAt,
-  lastSyncError,
-}: LastSyncStatusProps) => (
-  <Stack gap="xs">
-    <Text c="text-secondary" data-testid="last-checked-at">
-      {t`Last successful check`}:{" "}
-      {lastCheckedAt ? (
-        <DateTime value={lastCheckedAt} unit="minute" />
-      ) : (
-        t`Never`
-      )}
-    </Text>
-    {lastSyncError !== null && (
-      <Text c="feedback-negative" data-testid="last-sync-error">
-        {t`The last check for security advisories failed. Advisories may be out of date.`}
-      </Text>
-    )}
-  </Stack>
-);
