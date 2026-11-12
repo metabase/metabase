@@ -13,6 +13,7 @@ const VARIANT_LABELS: Record<ScdPrototypeVariant, string> = {
   form: "C · Form on the attribute",
   group: "D · Group in the field list",
   "group-flat": "D2 · Same, one more row instead of groups",
+  behavior: "D3 · How the attribute changes",
   sentence: "E · One sentence on the history table",
   columns: "F · Two columns, people pick",
   measure: "G · On the measure",

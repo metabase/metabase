@@ -34,6 +34,7 @@ import { DetailsEditableText } from "../DetailPanel";
 import {
   AttributeHistoryForm,
   AttributeHistorySection,
+  ChangeBehaviorSection,
   ColumnPairSection,
   GroupMembershipSection,
   RelationshipVersionSection,
@@ -259,6 +260,13 @@ export function FieldDetails({ field, table, header }: FieldDetailsProps) {
                 disabled={readOnly}
               />
             )}
+          {variant === "behavior" && isDimensionAttribute && (
+            <ChangeBehaviorSection
+              field={field}
+              table={table}
+              disabled={readOnly}
+            />
+          )}
           {variant === "columns" && isDimensionAttribute && (
             <ColumnPairSection
               field={field}

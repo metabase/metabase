@@ -3,6 +3,7 @@ export {
   useIsDimensionAttribute,
 } from "./AttributeHistorySection";
 export { AttributeHistoryForm } from "./AttributeHistoryForm";
+export { ChangeBehaviorSection } from "./ChangeBehaviorSection";
 export { ChangingFieldsGroup } from "./ChangingFieldsGroup";
 export { ColumnPairSection } from "./ColumnPairSection";
 export {
