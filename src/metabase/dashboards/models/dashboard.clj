@@ -67,7 +67,7 @@
   ([{id :id, collection-id :collection_id :as dashboard}]
    (check-write-keys dashboard)
    (and (not (perms/audit-content? collection-id))
-        (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id)
+        (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id {:root-namespace nil})
         (remote-sync/can-write? :model/Dashboard id)))
   ([_ pk]
    (mi/can-write? (dashboards.db/dashboard pk))))
@@ -77,10 +77,10 @@
   [dashboard changes]
   (and (mi/can-write? dashboard)
        (or (not (contains? changes :collection_id))
-           (and (collection/can-write-collection-or-root? (:collection_id dashboard) nil)
-                (collection/can-write-collection-or-root? (:collection_id changes) nil)))))
+           (and (collection/can-write-collection-or-root? (:collection_id dashboard) {:root-namespace nil})
+                (collection/can-write-collection-or-root? (:collection_id changes) {:root-namespace nil})))))
 
-(perms/define-collection-based-visibility! :model/Dashboard)
+(perms/define-collection-based-visibility! :model/Dashboard :root-namespace nil)
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})

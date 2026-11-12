@@ -8,6 +8,7 @@
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.path :as permissions.path]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.permissions.settings :as permissions.settings]
    [metabase.permissions.user :as permissions.user]
    [metabase.util.malli :as mu]
@@ -49,12 +50,6 @@
                 (map (fn [{:keys [id rank]}] [id (rank->permission rank)])))
           (partition-all 1000 collection-ids))))
 
-(def ^:private Options
-  "Options of the Collection getters: `:root-namespace` names the namespace of the root Collection that a nil collection
-  id stands for, the default namespace when missing."
-  [:map {:closed true}
-   [:root-namespace {:optional true} [:maybe [:or :keyword :string]]]])
-
 (defn- root-collection-permission
   "The permission of the User with `user-id` on the root Collection of `root-namespace`: a superuser writes every
   root, and a data analyst the transforms one."
@@ -90,39 +85,32 @@
   "The permission of the User with `user-id` on the Collection with `collection-id`, batched for the current user with
   the Collections the request loaded, or, for a nil `collection-id`, on the root Collection of the
   `:root-namespace` option."
-  ([user-id       :- [:maybe ms/PositiveInt]
-    collection-id :- [:maybe ms/PositiveInt]]
-   (collection-permission-for-user user-id collection-id {}))
-  ([user-id                              :- [:maybe ms/PositiveInt]
-    collection-id                        :- [:maybe ms/PositiveInt]
-    {root-namespace :root-namespace} :- Options]
-   (cond
-     ;; without a user only a superuser context, such as `request/as-admin`, has permissions
-     (and (nil? user-id) (not (data-perms/is-superuser? user-id)))
-     :none
+  [user-id                          :- [:maybe ms/PositiveInt]
+   collection-id                    :- [:maybe ms/PositiveInt]
+   {root-namespace :root-namespace} :- ::permissions.schema/collection-options]
+  (cond
+    ;; without a user only a superuser context, such as `request/as-admin`, has permissions
+    (and (nil? user-id) (not (data-perms/is-superuser? user-id)))
+    :none
 
-     (nil? collection-id)
-     (root-collection-permission user-id root-namespace)
+    (nil? collection-id)
+    (root-collection-permission user-id root-namespace)
 
-     :else
-     (let [compute #(collection-permissions user-id %)]
-       (or (if (use-cache? user-id)
-             (perms.cache/cached-batch [::collection] :model/Collection collection-id compute)
-             (get (compute [collection-id]) collection-id))
-           :none)))))
+    :else
+    (let [compute #(collection-permissions user-id %)]
+      (or (if (use-cache? user-id)
+            (perms.cache/cached-batch [::collection] :model/Collection collection-id compute)
+            (get (compute [collection-id]) collection-id))
+          :none))))
 
 (mu/defn user-has-permission-for-collection? :- :boolean
   "Whether [[collection-permission-for-user]] is `permission` or more."
-  ([user-id       :- [:maybe ms/PositiveInt]
-    permission    :- [:enum :read-and-write :read]
-    collection-id :- [:maybe ms/PositiveInt]]
-   (user-has-permission-for-collection? user-id permission collection-id {}))
-  ([user-id       :- [:maybe ms/PositiveInt]
-    permission    :- [:enum :read-and-write :read]
-    collection-id :- [:maybe ms/PositiveInt]
-    options       :- Options]
-   (>= (permission->rank (collection-permission-for-user user-id collection-id options))
-       (permission->rank permission))))
+  [user-id       :- [:maybe ms/PositiveInt]
+   permission    :- [:enum :read-and-write :read]
+   collection-id :- [:maybe ms/PositiveInt]
+   options       :- ::permissions.schema/collection-options]
+  (>= (permission->rank (collection-permission-for-user user-id collection-id options))
+      (permission->rank permission)))
 
 (mu/defn some-collection-permission-for-user :- [:enum :read-and-write :read :none]
   "The best permission the User with `user-id` has on a Collection listed to them: not archived, not the trash and not a
@@ -139,17 +127,13 @@
   User with `user-id` on which they have `permission`, or nil when they have it on the root Collection of the
   `:root-namespace` option. It checks each row's Collection on its own, so a query asking whether some such row exists
   stops at the first one."
-  ([user-id             :- ms/PositiveInt
-    collection-id-field :- :keyword
-    permission          :- [:enum :read-and-write :read]]
-   (collection-permission-filter-clause user-id collection-id-field permission {}))
-  ([user-id             :- ms/PositiveInt
-    collection-id-field :- :keyword
-    permission          :- [:enum :read-and-write :read]
-    options             :- Options]
-   (permissions.db/visible-collection-filter-clause
-    (grants user-id)
-    (boolean (permissions.settings/use-tenants))
-    collection-id-field
-    permission
-    (user-has-permission-for-collection? user-id permission nil options))))
+  [user-id             :- ms/PositiveInt
+   collection-id-field :- :keyword
+   permission          :- [:enum :read-and-write :read]
+   options             :- ::permissions.schema/collection-options]
+  (permissions.db/visible-collection-filter-clause
+   (grants user-id)
+   (boolean (permissions.settings/use-tenants))
+   collection-id-field
+   permission
+   (user-has-permission-for-collection? user-id permission nil options)))

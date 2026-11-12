@@ -142,7 +142,7 @@
 (defmethod mi/can-read? :model/Document
   ([instance]
    (check-read-keys instance)
-   (and (perms/user-has-permission-for-collection? api/*current-user-id* :read (:collection_id instance))
+   (and (perms/user-has-permission-for-collection? api/*current-user-id* :read (:collection_id instance) {:root-namespace nil})
         (content-visible? instance)))
   ([_model pk]
    (mi/can-read? (documents.db/document pk))))
@@ -150,7 +150,7 @@
 (defmethod mi/can-write? :model/Document
   ([{id :id, collection-id :collection_id :as instance}]
    (check-write-keys instance)
-   (and (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id)
+   (and (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id {:root-namespace nil})
         (remote-sync/can-write? :model/Document id)
         (content-visible? instance)))
   ([_model pk]
@@ -161,8 +161,8 @@
   [document changes]
   (and (mi/can-write? document)
        (or (not (contains? changes :collection_id))
-           (and (collection/can-write-collection-or-root? (:collection_id document) nil)
-                (collection/can-write-collection-or-root? (:collection_id changes) nil)))))
+           (and (collection/can-write-collection-or-root? (:collection_id document) {:root-namespace nil})
+                (collection/can-write-collection-or-root? (:collection_id changes) {:root-namespace nil})))))
 
 (def DocumentName
   "Validations for the name of a document"

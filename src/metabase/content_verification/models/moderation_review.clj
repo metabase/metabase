@@ -42,13 +42,13 @@
 ;; to derive did for a nil `:collection_id`.
 (defmethod mi/can-read? :model/ModerationReview
   ([_review]
-   (perms/user-has-permission-for-collection? api/*current-user-id* :read nil))
+   (perms/user-has-permission-for-collection? api/*current-user-id* :read nil {:root-namespace nil}))
   ([_model pk]
    (mi/can-read? (content-verification.db/moderation-review pk))))
 
 (defmethod mi/can-write? :model/ModerationReview
   ([_review]
-   (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write nil))
+   (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write nil {:root-namespace nil}))
   ([_model pk]
    (mi/can-write? (content-verification.db/moderation-review pk))))
 

@@ -327,8 +327,8 @@
   [{model-id :model_id, :as action}]
   (let [collection-id (effective-collection-id action)]
     (if (or model-id collection-id)
-      (collection/can-write-collection-or-root? collection-id nil)
-      (and (collection/can-write-collection-or-root? nil collection/data-actions-ns)
+      (collection/can-write-collection-or-root? collection-id {:root-namespace nil})
+      (and (collection/can-write-collection-or-root? nil {:root-namespace collection/data-actions-ns})
            (not (remote-sync/read-only?))))))
 
 (defn- check-read-keys

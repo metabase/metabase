@@ -36,14 +36,14 @@
 (defmethod mi/can-read? :model/Timeline
   ([{collection-id :collection_id :as timeline}]
    (check-read-keys timeline)
-   (perms/user-has-permission-for-collection? api/*current-user-id* :read collection-id))
+   (perms/user-has-permission-for-collection? api/*current-user-id* :read collection-id {:root-namespace nil}))
   ([_model pk]
    (mi/can-read? (timeline.db/timeline pk))))
 
 (defmethod mi/can-write? :model/Timeline
   ([{id :id, collection-id :collection_id :as timeline}]
    (check-write-keys timeline)
-   (and (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id)
+   (and (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id {:root-namespace nil})
         (remote-sync/can-write? :model/Timeline id)))
   ([_model pk]
    (mi/can-write? (timeline.db/timeline pk))))
@@ -53,8 +53,8 @@
   [timeline changes]
   (and (mi/can-write? timeline)
        (or (not (contains? changes :collection_id))
-           (and (collection/can-write-collection-or-root? (:collection_id timeline) nil)
-                (collection/can-write-collection-or-root? (:collection_id changes) nil)))))
+           (and (collection/can-write-collection-or-root? (:collection_id timeline) {:root-namespace nil})
+                (collection/can-write-collection-or-root? (:collection_id changes) {:root-namespace nil})))))
 
 ;;;; transforms
 

@@ -226,7 +226,7 @@
                   :model       [:model/Card [:= :model.id :model_index.model_id]]
                   :collection  [:model/Collection [:= :collection.id :model.collection_id]]}})
 
-(perms/define-collection-based-visibility! "indexed-entity" :denormalized-from :model/Card)
+(perms/define-collection-based-visibility! "indexed-entity" :denormalized-from :model/Card :root-namespace nil)
 
 ;; TODO resolve the toucan2 issue preventing us from using this hook
 (underive :model/ModelIndexValue :hook/search-index)

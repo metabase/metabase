@@ -314,7 +314,7 @@
         pulse-updates       (cond->> pulse-updates
                               (:dashboard_id pulse-before-update) (drop-unchanged-collection-keys pulse-before-update))]
     (check-card-read-permissions cards)
-    (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
+    (collection/check-allowed-to-change-collection pulse-before-update pulse-updates {:root-namespace nil})
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
     ;; update pulse's recipients
     (when (premium-features/enable-advanced-permissions?)

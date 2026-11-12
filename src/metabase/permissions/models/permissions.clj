@@ -445,10 +445,11 @@
 (defn can-read-via-parent-collection?
   "Read permission for rows whose read policy is a pure function of `:collection_id` and the current user: they read
   the Collection, which is not the audit Collection with the audit app off. Used by models that opt into the
-  collection-id-only contract via [[define-collection-based-visibility!]], and by semantic search's fast path."
-  [coll-id]
+  collection-id-only contract via [[define-collection-based-visibility!]], and by semantic search's fast path. The
+  `:root-namespace` option names the root Collection a nil `coll-id` stands for."
+  [coll-id options]
   (and (not (audit-content-hidden? coll-id))
-       (collection-permissions/user-has-permission-for-collection? api/*current-user-id* :read coll-id)))
+       (collection-permissions/user-has-permission-for-collection? api/*current-user-id* :read coll-id options)))
 
 ;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
 (mu/defn can-read-audit-helper
@@ -474,7 +475,9 @@
   ;; `:search-models` maps search-model-string → claimed parent t2-model the `:collection_id` is denormalized
   ;; from at index time. The claim is verified against the spec's joins by a contract test; see
   ;; `metabase-enterprise.search.semantic.index-test`.
-  (atom {:t2-methods {} :search-models {}}))
+  ;; `:root-namespaces` maps each target, t2-model or search-model, to the namespace of the root Collection its nil
+  ;; `:collection_id` stands for.
+  (atom {:t2-methods {} :search-models {} :root-namespaces {}}))
 
 (defn collection-id-only-read-models
   "Set of t2 model keywords whose `mi/can-read?` was installed via [[define-collection-based-visibility!]]."
@@ -493,15 +496,25 @@
   []
   (:search-models @collection-based-visibility-registry))
 
+(defn collection-based-visibility-root-namespaces
+  "Map of each target of [[define-collection-based-visibility!]], t2-model or search-model, to the namespace of the
+  root Collection its nil `:collection_id` stands for."
+  []
+  (:root-namespaces @collection-based-visibility-registry))
+
 (defn register-collection-id-only-read-method!
   "Implementation detail of [[define-collection-based-visibility!]]. Do not call directly."
-  [t2-model method]
-  (swap! collection-based-visibility-registry assoc-in [:t2-methods t2-model] method))
+  [t2-model method root-namespace]
+  (swap! collection-based-visibility-registry #(-> %
+                                                   (assoc-in [:t2-methods t2-model] method)
+                                                   (assoc-in [:root-namespaces t2-model] root-namespace))))
 
 (defn register-collection-based-visibility-search-model!
   "Implementation detail of [[define-collection-based-visibility!]]. Do not call directly."
-  [search-model denormalized-from]
-  (swap! collection-based-visibility-registry assoc-in [:search-models search-model] denormalized-from))
+  [search-model denormalized-from root-namespace]
+  (swap! collection-based-visibility-registry #(-> %
+                                                   (assoc-in [:search-models search-model] denormalized-from)
+                                                   (assoc-in [:root-namespaces search-model] root-namespace))))
 
 (defmacro define-collection-based-visibility!
   "Register read perms as determined fully by `:collection_id`.
@@ -514,23 +527,28 @@
   Alternate form — `target` is a search-model string whose index-row `:collection_id` is denormalized
   from a parent model at index time (e.g. `\"indexed-entity\"` from its parent Card).
   No `mi/can-read?` is installed; the registration only flags the search-model for the semantic-search
-  fast path. `:denormalized-from` is required and names the parent t2-model for documentation."
-  [target & {:keys [denormalized-from]}]
+  fast path. `:denormalized-from` is required and names the parent t2-model for documentation.
+
+  Both forms require `:root-namespace`, the namespace of the root Collection a nil `:collection_id` stands for, nil
+  for the default namespace."
+  [target & {:keys [denormalized-from root-namespace] :as options}]
+  (when-not (contains? options :root-namespace)
+    (throw (IllegalArgumentException. "define-collection-based-visibility! requires :root-namespace")))
   (cond
     (keyword? target)
     `(do
        (defmethod mi/can-read? ~target
          ([instance#]
           (api/check-500 (contains? instance# :collection_id) "No :collection_id is set.")
-          (can-read-via-parent-collection? (:collection_id instance#)))
+          (can-read-via-parent-collection? (:collection_id instance#) {:root-namespace ~root-namespace}))
          ([_# pk#]    (mi/can-read? (permissions.db/instance-by-id ~target pk#))))
-       (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
+       (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target) ~root-namespace))
 
     (string? target)
     ;; Throw unconditionally rather than `assert` — assertions are elided when `*assert*` is false (AOT
     ;; release builds), and a nil `:denormalized-from` would silently break fast-path derivation.
     (if denormalized-from
-      `(register-collection-based-visibility-search-model! ~target ~denormalized-from)
+      `(register-collection-based-visibility-search-model! ~target ~denormalized-from ~root-namespace)
       (throw (IllegalArgumentException.
               "string form of define-collection-based-visibility! requires :denormalized-from")))
 

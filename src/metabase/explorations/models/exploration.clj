@@ -59,14 +59,14 @@
 (defmethod mi/can-read? :model/Exploration
   ([{collection-id :collection_id :as exploration}]
    (check-read-keys exploration)
-   (perms/user-has-permission-for-collection? api/*current-user-id* :read collection-id))
+   (perms/user-has-permission-for-collection? api/*current-user-id* :read collection-id {:root-namespace nil}))
   ([_model pk]
    (mi/can-read? (explorations.db/exploration pk))))
 
 (defmethod mi/can-write? :model/Exploration
   ([{collection-id :collection_id :as exploration}]
    (check-read-keys exploration)
-   (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id))
+   (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id {:root-namespace nil}))
   ([_model pk]
    (mi/can-write? (explorations.db/exploration pk))))
 
@@ -75,8 +75,8 @@
   [exploration changes]
   (and (mi/can-write? exploration)
        (or (not (contains? changes :collection_id))
-           (and (collection/can-write-collection-or-root? (:collection_id exploration) nil)
-                (collection/can-write-collection-or-root? (:collection_id changes) nil)))))
+           (and (collection/can-write-collection-or-root? (:collection_id exploration) {:root-namespace nil})
+                (collection/can-write-collection-or-root? (:collection_id changes) {:root-namespace nil})))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
   [_model k explorations]

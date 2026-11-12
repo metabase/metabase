@@ -187,7 +187,7 @@
         (case read-or-write
           :read  (if-let [snapshots (summary-card-snapshots card document)]
                    (and (perms/user-has-permission-for-collection? api/*current-user-id* :read
-                                                                   (:collection_id document))
+                                                                   (:collection_id document) {:root-namespace nil})
                         (every? cached-result/viewer-can-view-cached-result? snapshots))
                    (mi/can-read? document))
           :write (and (nil? (:exploration_id document))
@@ -217,7 +217,7 @@
 (defmethod mi/can-read? :model/Card
   ([instance]
    (check-read-keys instance)
-   (and (perms/can-read-via-parent-collection? (:collection_id instance))
+   (and (perms/can-read-via-parent-collection? (:collection_id instance) {:root-namespace nil})
         (parent-document-permits? instance :read)))
   ([_ pk]
    (mi/can-read? (queries.db/card pk))))
@@ -226,7 +226,7 @@
   ([{id :id, collection-id :collection_id :as instance}]
    (check-write-keys instance)
    (and (not (perms/audit-content? collection-id))
-        (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id)
+        (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id {:root-namespace nil})
         (remote-sync/can-write? :model/Card id)
         (parent-document-permits? instance :write)))
   ([_ pk]
@@ -237,8 +237,8 @@
   [card changes]
   (and (mi/can-write? card)
        (or (not (contains? changes :collection_id))
-           (and (collection/can-write-collection-or-root? (:collection_id card) nil)
-                (collection/can-write-collection-or-root? (:collection_id changes) nil)))))
+           (and (collection/can-write-collection-or-root? (:collection_id card) {:root-namespace nil})
+                (collection/can-write-collection-or-root? (:collection_id changes) {:root-namespace nil})))))
 
 (defn model?
   "Returns true if `card` is a model."

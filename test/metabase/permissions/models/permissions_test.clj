@@ -327,12 +327,12 @@
                      :model/Collection {hidden :id}   {}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
         (mt/with-test-user :crowberto
-          (is (true? (perms/can-read-via-parent-collection? hidden)))
-          (is (true? (perms/can-read-via-parent-collection? nil))))
+          (is (true? (perms/can-read-via-parent-collection? hidden {:root-namespace nil})))
+          (is (true? (perms/can-read-via-parent-collection? nil {:root-namespace nil}))))
         (mt/with-test-user :rasta
-          (is (true? (perms/can-read-via-parent-collection? readable)))
-          (is (false? (perms/can-read-via-parent-collection? hidden)))
-          (is (false? (perms/can-read-via-parent-collection? nil))))))))
+          (is (true? (perms/can-read-via-parent-collection? readable {:root-namespace nil})))
+          (is (false? (perms/can-read-via-parent-collection? hidden {:root-namespace nil})))
+          (is (false? (perms/can-read-via-parent-collection? nil {:root-namespace nil}))))))))
 
 (deftest collection-id-only-read-methods-not-overridden-test
   (testing "no one has redefmethod'd mi/can-read? for a model registered as collection-id-only"

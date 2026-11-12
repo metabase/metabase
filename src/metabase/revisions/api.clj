@@ -150,7 +150,7 @@
         (api/check-403 (mi/can-write? (cond-> (merge instance (:object revision))
                                         table-id (assoc :table_id table-id))))))
     (when (contains? #{:model/Dashboard :model/Card} model)
-      (collection/check-allowed-to-change-collection instance (:object revision))
+      (collection/check-allowed-to-change-collection instance (:object revision) {:root-namespace nil})
       (when (api/column-will-change? (:dashboard_id instance) (get (:object revision) :dashboard_id ::api/not-provided))
         (doseq [dashboard-id (keep identity [(:dashboard_id instance)
                                              (:dashboard_id (:object revision))])]

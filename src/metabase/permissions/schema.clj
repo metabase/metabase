@@ -253,3 +253,10 @@
 (mr/def ::permission-mapping
   "Map of permission type to the permission value the user needs, or a more permissive one."
   [:map-of ::data-permission-type ::data-permission-value])
+
+(mr/def ::collection-options
+  "Options of the Collection permission checks taking a nil collection id: `:root-namespace` names the namespace of the
+  root Collection a nil collection id stands for, nil for the default namespace. It is per entity, so the caller
+  checking the entity sets it."
+  [:map {:closed true}
+   [:root-namespace [:maybe [:or :keyword :string]]]])

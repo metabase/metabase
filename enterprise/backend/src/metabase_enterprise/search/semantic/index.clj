@@ -991,15 +991,21 @@
         fast-set @collection-id-only-search-models
         {fast-docs true slow-docs false} (group-by #(contains? fast-set (:model %)) docs)
         ;; Fast path: for models registered via `perms/define-collection-based-visibility!`, `mi/can-read?` is
-        ;; definitionally `(perms/can-read-via-parent-collection? (:collection_id instance))`, so we skip the
+        ;; definitionally `can-read-via-parent-collection?` on `:collection_id` with the registered root namespace, so we skip the
         ;; t2/select and check perms straight from the denormalized `:collection_id` on the index row.
         ;; Calling the shared helper means fast and slow paths run the same code for these models.
         ;; Memoizing dedupes the perm check across docs that share a collection.
         ;;
         ;; Trade-off: the indexed `:collection_id` is eventually-consistent, so a moved/deleted row may appear
         ;; in results until the next reindex. Click-through still enforces live perms.
+        root-namespaces (perms/collection-based-visibility-root-namespaces)
+        doc->root-namespace (fn [doc]
+                              (let [search-model (:model doc)]
+                                (if (contains? root-namespaces search-model)
+                                  (get root-namespaces search-model)
+                                  (get root-namespaces (doc->t2-model doc)))))
         coll-readable? (memoize perms/can-read-via-parent-collection?)
-        fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
+        fast-filtered (filterv #(coll-readable? (:collection_id %) {:root-namespace (doc->root-namespace %)}) fast-docs)
         slow-t2-instances (vec
                            (for [[t2-model ids] (u/group-by doc->t2-model :id slow-docs)
                                  t2-instance (semantic-search.db/instances t2-model ids)]

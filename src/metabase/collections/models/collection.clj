@@ -1980,11 +1980,11 @@
 (defn check-allowed-to-change-collection
   "Throws a 403 unless the current user can write both the old and the new Collection when `object-updates` change the
   `collection_id` of `object-before-update`, and a 400 when the new one is archived. For models without their own
-  `mi/can-update?`."
-  [object-before-update object-updates]
+  `mi/can-update?`; the `:root-namespace` option names the root Collection a nil `collection_id` stands for."
+  [object-before-update object-updates options]
   (when (api/column-will-change? (:collection_id object-before-update) (get object-updates :collection_id ::api/not-provided))
-    (api/check-403 (can-write-collection-or-root? (:collection_id object-before-update) nil))
-    (api/check-403 (can-write-collection-or-root? (:collection_id object-updates) nil))
+    (api/check-403 (can-write-collection-or-root? (:collection_id object-before-update) options))
+    (api/check-403 (can-write-collection-or-root? (:collection_id object-updates) options))
     (when-let [collection-id (:collection_id object-updates)]
       (api/check-400 (collections.db/unarchived-collection-exists? collection-id)))))
 

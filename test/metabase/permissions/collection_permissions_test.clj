@@ -29,13 +29,13 @@
       (testing "the getter grants what the legacy clause selects without its listing filters, the trash aside"
         (let [ids (disj ids (collection/trash-collection-id))]
           (is (= (legacy-visible-ids ids level {:include-archived-items :all})
-                 (set (filter #(perms/user-has-permission-for-collection? user-id permission %) ids))))))
+                 (set (filter #(perms/user-has-permission-for-collection? user-id permission % {:root-namespace nil}) ids))))))
       (testing "the filter clause selects what the legacy clause selects"
         (is (= (legacy-visible-ids ids level {})
                (set/intersection ids (into #{} (map :id) (t2/query {:select [:row.id]
                                                                     :from   [[:collection :row]]
                                                                     :where  (perms/collection-permission-filter-clause
-                                                                             user-id :row.id permission)}))))))
+                                                                             user-id :row.id permission {:root-namespace nil})}))))))
       (doseq [root-namespace [nil :data-actions]]
         (testing (str "the root Collection of namespace " root-namespace)
           (is (= (collection/should-display-root-collection? {:permission-level       level
@@ -87,7 +87,7 @@
       (testing (str permission)
         (doseq [id ids]
           (is (= (perms/set-has-full-permissions? perm-set (path-fn id))
-                 (perms/user-has-permission-for-collection? user-id permission id))
+                 (perms/user-has-permission-for-collection? user-id permission id {:root-namespace nil}))
               (str "Collection " id)))
         (doseq [root-namespace [nil :data-actions :snippets :transforms]]
           (is (= (perms/set-has-full-permissions? perm-set (path-fn (assoc collection/root-collection
@@ -142,5 +142,5 @@
           (t2/select :model/Collection :id [:in [read-id write-id none-id]])
           (t2/with-call-count [call-count]
             (is (= [:read :read-and-write :none]
-                   (mapv #(perms/collection-permission-for-user (mt/user->id :rasta) %) [read-id write-id none-id])))
+                   (mapv #(perms/collection-permission-for-user (mt/user->id :rasta) % {:root-namespace nil}) [read-id write-id none-id])))
             (is (= 1 (call-count)))))))))
