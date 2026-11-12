@@ -58,7 +58,7 @@
         ;; the :name stays :nlq even when redirected to the fallback, so telemetry/recents are unaffected
         (is (= :nlq (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 20 (:max-iterations profile)))
         ;; library retrieval sits beside the search tools; which are offered each turn is covered by
         ;; nlq-data-discovery-test
         (is (contains? (tool-names profile) "fulltext_search"))
@@ -154,11 +154,11 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing "nlq discovers data the way embedding_next does, library retrieval beside the search tools, plus run_query"
+  (testing "nlq discovers data the way embedding_next does, and adds run_query and write_dashboard"
     (let [tool-names (fn [profile] (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))]
-      ;; embedding_next doesn't offer run_query yet
+      ;; embedding_next doesn't offer run_query or write_dashboard yet
       (is (= (tool-names (profiles/get-profile :nlq))
-             (conj (tool-names (profiles/get-profile :embedding_next)) "run_query")))))
+             (conj (tool-names (profiles/get-profile :embedding_next)) "run_query" "write_dashboard")))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "ungated tools are available with empty capabilities"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]

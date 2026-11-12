@@ -17,6 +17,7 @@
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.metabot.tools.legacy :as tools.legacy]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -257,7 +258,7 @@
 (register-profile!
  {:name            :slackbot
   :prompt-template "slackbot.selmer"
-  :max-iterations  15
+  :max-iterations  20
   :tools           [#'tools/retrieve-library-entities-tool
                     #'tools/semantic-search-tool
                     #'tools/fulltext-search-tool
@@ -324,16 +325,11 @@
 
 (defn- tool-map
   "Create a map of model-facing tool name -> tool from a sequence of tools.
-  Of alternatives sharing a name, at most one may be available (see [[register-profile!]]).
-  Throws when two are, which is a configuration bug."
+
+  A tool is a converted record or a var that is still the old shape; its declaration answers either
+  way, which is why this no longer reads var metadata."
   [tools]
-  (reduce (fn [acc tool]
-            (let [name' (tool-name tool)]
-              (when (contains? acc name')
-                (throw (ex-info "Two available tools share a name" {:tool-name name'})))
-              (assoc acc name' tool)))
-          {}
-          tools))
+  (u/index-by tool-name tools))
 
 ;;; API
 

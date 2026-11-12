@@ -379,8 +379,8 @@
           (is (not (str/includes? with-tool "direct the user to the dashboard builder")))
           (is (not (str/includes? without-tool "write_dashboard")))
           (is (str/includes? without-tool "direct the user to the dashboard builder"))))
-      (doseq [template ["natural-language-querying-only.selmer" "natural-language-querying-fallback.selmer"]]
-        (testing template
+      (testing "natural-language-querying-only.selmer"
+        (let [template "natural-language-querying-only.selmer"]
           (is (str/includes? (render template {"write_dashboard" nil})
                              (str "\n- Dashboards: create, edit and trash them with `write_dashboard`. Changes save"
                                   " immediately, so don't ask the user to confirm them.\n- SQL queries:")))

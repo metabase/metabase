@@ -16,6 +16,7 @@
   Runs in the enterprise pgvector store via [[metabase.search.entity-retrieval.core]]."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
