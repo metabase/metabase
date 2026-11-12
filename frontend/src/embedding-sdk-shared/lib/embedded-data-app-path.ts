@@ -49,15 +49,11 @@ const hasUnsafeCharacters = (value: string): boolean =>
 export const normalizeDataAppPath = (path: string): string =>
   path.replace(/^\/+/, "");
 
-/** Reject invalid app names and unsafe routes. Returns the app slug. */
-export function validateDataAppPath(path: string): string {
-  const slug = getEmbeddedAppSlugFromPath(path);
-
-  if (!slug) {
+/** Reject invalid app names and unsafe routes. */
+export function validateDataAppPath(path: string): void {
+  if (!getEmbeddedAppSlugFromPath(path)) {
     throw new Error("A valid data app path must be provided.");
   }
-
-  return slug;
 }
 
 /** Build the runtime URL from a validated path. */

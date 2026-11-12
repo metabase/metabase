@@ -6,8 +6,8 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider
 import { useSdkStore } from "embedding-sdk-bundle/store";
 import {
   getDataAppEmbedUrl,
+  getEmbeddedAppSlugFromPath,
   normalizeDataAppPath,
-  validateDataAppPath,
 } from "embedding-sdk-shared/lib/embedded-data-app-path";
 import { getErrorMessage } from "metabase/api/utils/errors";
 
@@ -17,8 +17,9 @@ import { DataAppFrame } from "./DataAppFrame";
 export interface DataAppProps {
   /**
    * App slug and optional route/query, such as `my-store/orders?active=true`.
-   * Changing the app slug remounts the iframe.
+   *
    * Changing only the route or query navigates within the app.
+   * Changing the app slug remounts the iframe.
    **/
   path: string;
 
@@ -53,7 +54,11 @@ function DataAppInner({ path, ...props }: DataAppProps) {
     }
 
     try {
-      const slug = validateDataAppPath(path);
+      const slug = getEmbeddedAppSlugFromPath(path);
+
+      if (!slug) {
+        return { error: "A valid data app path must be provided." };
+      }
 
       const url = getDataAppEmbedUrl(instanceUrl, path);
 
@@ -61,7 +66,10 @@ function DataAppInner({ path, ...props }: DataAppProps) {
       url.searchParams.set("embed-js-identifier", `react-data-app-${id}`);
 
       return {
-        appUrl: getDataAppEmbedUrl(instanceUrl, slug).href,
+        // Remount the iframe only when the app slug changes.
+        // Subpath changes triggers client-side routing instead.
+        frameKey: getDataAppEmbedUrl(instanceUrl, slug).href,
+
         initialSrc: url.href,
         origin: url.origin,
         path: normalizeDataAppPath(path),
@@ -88,7 +96,7 @@ function DataAppInner({ path, ...props }: DataAppProps) {
 
   return (
     <DataAppFrame
-      key={route.appUrl}
+      key={route.frameKey}
       {...props}
       path={route.path}
       origin={route.origin}

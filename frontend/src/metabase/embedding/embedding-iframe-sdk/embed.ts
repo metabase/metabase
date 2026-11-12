@@ -515,7 +515,13 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     if (settings.componentName === "metabase-data-app") {
-      validateDataAppPath(settings.path);
+      try {
+        validateDataAppPath(settings.path);
+      } catch {
+        raiseError(
+          `path must be a data app slug with an optional subpath, such as "my-store/orders". Received "${settings.path}".`,
+        );
+      }
 
       if (
         settings.isGuest ||
