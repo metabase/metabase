@@ -14,14 +14,14 @@
   {:request_type mi/transform-keyword})
 
 (defn record-tokens
-  "Record semantic search token usage.
-
-  Best effort: a failed insert is logged and dropped. The row is accounting for an embedding call that already
-  succeeded, so it must not fail the search or indexing batch that made the call."
+  "Records `total-tokens` used by `model` for `request-type`.
+  Logs a failed insert instead of throwing."
   [model request-type total-tokens]
   (try
     (semantic-search.db/insert-token-tracking! {:model_name   model
                                                 :request_type request-type
                                                 :total_tokens total-tokens})
+    ;; The row only accounts for an embedding call that already succeeded, so a failed insert must not fail the
+    ;; search or indexing batch that made the call.
     (catch Exception e
-      (log/warnf e "Failed to record %d %s tokens for embedding model %s" total-tokens request-type model))))
+      (log/warnf e "Failed to record %s tokens for embedding model %s" total-tokens model))))

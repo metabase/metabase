@@ -196,29 +196,29 @@
         (is (= :ok (call-through (constantly :ok))))
         (is (= :closed (circuit-state)))))))
 
-(deftest ^:synchronized local-bookkeeping-failure-does-not-trip-breaker-test
+(deftest ^:synchronized token-tracking-failure-does-not-fail-embedding-test
   (testing "a token-tracking failure neither fails the embedding call nor is attributed to the embedding service"
-    (with-redefs [semantic.embedding/embedder-circuit-breakers
-                  (atom {"https://example.test/v1/embeddings"
-                         (dh.cb/circuit-breaker
-                          {:failure-threshold 1, :success-threshold 1, :delay-ms 60000})})]
-      (mt/with-dynamic-fn-redefs
-        [http/post                                 (constantly {:body (str "{\"usage\":{\"total_tokens\":0},"
-                                                                           "\"data\":[{\"embedding\":\"AAAAAA==\"}]}")})
-         analytics/inc!                            (constantly nil)
-         semantic-search.db/insert-token-tracking! (fn [& _] (throw (ex-info "appdb unavailable" {})))]
-        (is (= 1
-               (count
-                (#'semantic.embedding/openai-compatible-get-embeddings-batch
-                 {:provider          "openai"
-                  :endpoint          "https://example.test/v1/embeddings"
-                  :api-key           "test-key"
-                  :model-name        "test-model"
-                  :vector-dimensions 1
-                  :texts             ["bird"]
-                  :record-tokens?    true
-                  :snowplow?         false}))))
-        (is (= :closed (circuit-state "https://example.test/v1/embeddings")))))))
+    (let [endpoint "https://example.test/v1/embeddings"
+          body     "{\"usage\":{\"total_tokens\":0},\"data\":[{\"embedding\":\"AAAAAA==\"}]}"]
+      (with-redefs [semantic.embedding/embedder-circuit-breakers
+                    (atom {endpoint (dh.cb/circuit-breaker
+                                     {:failure-threshold 1, :success-threshold 1, :delay-ms 60000})})]
+        (mt/with-dynamic-fn-redefs
+          [http/post                                 (constantly {:body body})
+           analytics/inc!                            (constantly nil)
+           semantic-search.db/insert-token-tracking! (fn [& _] (throw (ex-info "appdb unavailable" {})))]
+          (is (= 1
+                 (count
+                  (#'semantic.embedding/openai-compatible-get-embeddings-batch
+                   {:provider          "openai"
+                    :endpoint          endpoint
+                    :api-key           "test-key"
+                    :model-name        "test-model"
+                    :vector-dimensions 1
+                    :texts             ["bird"]
+                    :record-tokens?    true
+                    :snowplow?         false}))))
+          (is (= :closed (circuit-state endpoint))))))))
 
 (deftest ^:synchronized malformed-response-trips-breaker-test
   (testing "a successful HTTP response is not a circuit success until its vectors are validated"
