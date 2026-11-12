@@ -3,6 +3,7 @@
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
    [babashka.fs :as fs]
+   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
@@ -538,18 +539,28 @@
                   (catch clojure.lang.ExceptionInfo e e)))]
     [(:babashka/exit (ex-data error)) (str out)]))
 
+(deftest modules-tree-writes-json-test
+  (fs/with-temp-dir [dir {}]
+    (let [output (str (fs/path dir "modules.json"))]
+      (is (= 0 (first (modules-tree-exit {:json true, :no-stats true, :output output}))))
+      (let [data (json/parse-string (slurp output) true)]
+        (is (seq (:modules data)))
+        (is (vector? (:cycles data)))
+        (is (true? (:any-uses-resolved data)))))))
+
 (deftest modules-tree-refuses-conflicting-options-test
-  (let [output (str (fs/path (fs/create-temp-dir) "explorer"))]
-    (testing "--html with --json"
-      (is (= [1 "Give only one of --html, --json.\n"]
-             (modules-tree-exit {:html true, :json true, :output output})))
-      (is (not (fs/exists? output))))
-    (testing "--output or --no-stats without --html or --json"
-      (are [options] (= [1 "Give --output and --no-stats only with --html or --json.\n"]
-                        (modules-tree-exit options))
-        {:output output}
-        {:no-stats true})
-      (is (not (fs/exists? output))))))
+  (fs/with-temp-dir [dir {}]
+    (let [output (str (fs/path dir "explorer"))]
+      (testing "--html with --json"
+        (is (= [1 "Give only one of --html, --json.\n"]
+               (modules-tree-exit {:html true, :json true, :output output})))
+        (is (not (fs/exists? output))))
+      (testing "--output or --no-stats without --html or --json"
+        (are [options] (= [1 "Give --output and --no-stats only with --html or --json.\n"]
+                          (modules-tree-exit options))
+          {:output output}
+          {:no-stats true})
+        (is (not (fs/exists? output)))))))
 
 (deftest explorer-state-codec-test
   (let [{:keys [exit out err]} (shell/sh "node" "mage/test/mage/module_explorer_state_test.js")]
