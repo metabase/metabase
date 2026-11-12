@@ -7,7 +7,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -141,11 +140,6 @@
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
-
-(mu/defn card-query-columns
-  "The query-relevant columns of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (queries/card-query-info card-id))
 
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."

@@ -78,21 +78,28 @@
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard
   [dashcard]
+  (mi/register-parent! :model/Card (:card_id dashcard))
+  (mi/register-pending! ::series-cards (:id dashcard))
   (if (contains? dashcard :visualization_settings)
     (update dashcard :visualization_settings
             #(first (serialization/import-visualizer-settings serialization/app-db-store [%] {:lenient? true})))
     dashcard))
 
-(declare series)
+(defn- series-cards
+  "The series Cards of each of the DashboardCards with `dashcard-ids`, by DashboardCard id."
+  [dashcard-ids]
+  (update-vals (group-by :dashboardcard_id (dashboards.db/series-cards-for-dashcards dashcard-ids))
+               (fn [cards] (mapv #(dissoc % :dashboardcard_id) cards))))
 
 ;;; Return the set of permissions required to `read-or-write` this DashboardCard. If `:card` and `:series` are already
-;;; hydrated this method doesn't need to make any DB calls.
+;;; hydrated this method doesn't need to make any DB calls; otherwise it reads them with those of the other
+;;; DashboardCards the request loaded.
 (defmethod mi/perms-objects-set :model/DashboardCard
   [dashcard read-or-write]
   (let [card   (or (:card dashcard)
-                   (dashboards.db/card-query-columns (u/the-id (:card_id dashcard))))
+                   (mi/parent-row :model/Card (u/the-id (:card_id dashcard))))
         series (or (:series dashcard)
-                   (series dashcard))]
+                   (mi/batched-lookup ::series-cards (:id dashcard) series-cards))]
     (apply set/union (mi/perms-objects-set card read-or-write) (for [series-card series]
                                                                  (mi/perms-objects-set series-card read-or-write)))))
 
