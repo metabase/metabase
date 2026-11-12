@@ -434,7 +434,7 @@
            (set @recorded-deletes)))))
 
 (deftest ^:parallel message-runs-test
-  (testing "re-index messages and tombstones coalesce with their neighbours, while each reconcile runs alone"
+  (testing "re-index messages and tombstones coalesce with their neighbors, while each reconcile runs alone"
     (let [reindex-1 ["card" [:= 1 :this.id]]
           reindex-2 ["card" [:= 2 :this.id]]
           tombstone (search.ingestion/tombstone "card" [3])

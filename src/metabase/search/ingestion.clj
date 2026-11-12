@@ -337,7 +337,7 @@
   {:op :reconcile, :search-model search-model, :ids (set ids)})
 
 (defn- message-kind
-  "Whether a queued `message` is a re-index selector, a [[tombstone]] or a [[reconcile]]."
+  "The kind of a queued `message`: `:reindex` for a selector, `:delete` for a [[tombstone]], or `:reconcile`."
   [message]
   (if (map? message)
     (:op message)
@@ -400,8 +400,8 @@
 
 (defn- message-runs
   "Split queued `messages` into runs to apply in order.
-  Contiguous re-index messages and contiguous tombstones share a run, while each [[reconcile]] is a run of its own,
-  so one search-model's failure does not cost another's."
+  Contiguous re-index messages share a run, as do contiguous tombstones.
+  Each [[reconcile]] is a run of its own, so one search-model's failure does not cost another's."
   [messages]
   (into []
         (mapcat (fn [run]
