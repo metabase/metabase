@@ -39,6 +39,7 @@ export type SummaryValueItem = {
   clause: Lib.AggregationClause;
   key: string;
   label: string;
+  isNamed: boolean;
 } & (
   | { kind: "count" }
   | {

@@ -1,4 +1,10 @@
-import { type KeyboardEvent, useRef, useState } from "react";
+import {
+  type FocusEvent,
+  type KeyboardEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import S from "./ChipNameInput.module.css";
@@ -6,7 +12,8 @@ import S from "./ChipNameInput.module.css";
 type ChipNameInputProps = {
   name: string;
   onRename: (name: string) => void;
-  onClose: () => void;
+  /** `moveFocus` is true when no element outside the chip took the focus. */
+  onClose: (moveFocus: boolean) => void;
 };
 
 /**
@@ -15,10 +22,16 @@ type ChipNameInputProps = {
  */
 export function ChipNameInput({ name, onRename, onClose }: ChipNameInputProps) {
   const [value, setValue] = useState(name);
-  // Enter and Escape unmount the field, which can blur it a second time
   const isDoneRef = useRef(false);
+  // The removal of the chip blurs this field. That blur must not rename the removed chip.
+  useLayoutEffect(() => {
+    isDoneRef.current = false;
+    return () => {
+      isDoneRef.current = true;
+    };
+  }, []);
 
-  const finish = (keepChanges: boolean) => {
+  const finish = (keepChanges: boolean, moveFocus: boolean) => {
     if (isDoneRef.current) {
       return;
     }
@@ -27,16 +40,27 @@ export function ChipNameInput({ name, onRename, onClose }: ChipNameInputProps) {
     if (keepChanges && nextName.length > 0 && nextName !== name) {
       onRename(nextName);
     }
-    onClose();
+    onClose(moveFocus);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     event.stopPropagation();
-    if (event.key === "Enter") {
-      finish(true);
-    } else if (event.key === "Escape") {
-      finish(false);
+    if (event.nativeEvent.isComposing) {
+      return;
     }
+    if (event.key === "Enter") {
+      finish(true, true);
+    } else if (event.key === "Escape") {
+      finish(false, true);
+    }
+  };
+
+  const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
+    const chip = event.currentTarget.parentElement;
+    const isFocusInChip =
+      event.relatedTarget instanceof Node &&
+      chip?.contains(event.relatedTarget);
+    finish(true, isFocusInChip === true);
   };
 
   return (
@@ -49,8 +73,9 @@ export function ChipNameInput({ name, onRename, onClose }: ChipNameInputProps) {
       onFocus={(event) => event.currentTarget.select()}
       onChange={(event) => setValue(event.currentTarget.value)}
       onKeyDown={handleKeyDown}
-      onBlur={() => finish(true)}
+      onBlur={handleBlur}
       onMouseDown={(event) => event.stopPropagation()}
+      onTouchStart={(event) => event.stopPropagation()}
     />
   );
 }
