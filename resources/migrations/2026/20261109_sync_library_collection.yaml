@@ -1,0 +1,33 @@
+## Remote sync always syncs the Library, so read-write instances that sync content start syncing it too
+
+databaseChangeLog:
+  - changeSet:
+      id: tlmp7c
+      author: ranquild
+      comment: Sync the Library and its descendants on instances that remote sync read-write
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE collection SET is_remote_synced = TRUE
+              WHERE (entity_id = 'librarylibrarylibrary'
+                     OR location LIKE CONCAT('/', (SELECT id FROM collection WHERE entity_id = 'librarylibrarylibrary'), '/%'))
+                AND EXISTS (SELECT 1 FROM setting WHERE "key" = 'remote-sync-url')
+                AND EXISTS (SELECT 1 FROM setting WHERE "key" = 'remote-sync-type' AND value = 'read-write')
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE collection SET is_remote_synced = TRUE
+              WHERE (entity_id = 'librarylibrarylibrary'
+                     OR location LIKE CONCAT('/', (SELECT id FROM (SELECT id FROM collection WHERE entity_id = 'librarylibrarylibrary') library_collection), '/%'))
+                AND EXISTS (SELECT 1 FROM setting WHERE `key` = 'remote-sync-url')
+                AND EXISTS (SELECT 1 FROM setting WHERE `key` = 'remote-sync-type' AND value = 'read-write')
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE collection SET is_remote_synced = TRUE
+              WHERE (entity_id = 'librarylibrarylibrary'
+                     OR location LIKE CONCAT('/', (SELECT id FROM collection WHERE entity_id = 'librarylibrarylibrary'), '/%'))
+                AND EXISTS (SELECT 1 FROM setting WHERE "KEY" = 'remote-sync-url')
+                AND EXISTS (SELECT 1 FROM setting WHERE "KEY" = 'remote-sync-type' AND "VALUE" = 'read-write')
+      rollback:

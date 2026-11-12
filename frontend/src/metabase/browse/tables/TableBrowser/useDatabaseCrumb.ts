@@ -1,12 +1,5 @@
-import { t } from "ttag";
-
-import {
-  skipToken,
-  useGetDatabaseQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { useGetDatabaseQuery, useListDatabasesQuery } from "metabase/api";
 import * as Urls from "metabase/urls";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { DatabaseId } from "metabase-types/api";
 
 export const useDatabaseCrumb = (id: DatabaseId) => {
@@ -19,16 +12,7 @@ export const useDatabaseCrumb = (id: DatabaseId) => {
     (database) => database.id === id,
   );
 
-  const { data: fetchedDatabase } = useGetDatabaseQuery(
-    id === SAVED_QUESTIONS_VIRTUAL_DB_ID ? skipToken : { id },
-  );
-
-  if (id === SAVED_QUESTIONS_VIRTUAL_DB_ID) {
-    return {
-      title: t`Saved Questions`,
-      to: Urls.browseDatabase({ id: SAVED_QUESTIONS_VIRTUAL_DB_ID }),
-    };
-  }
+  const { data: fetchedDatabase } = useGetDatabaseQuery({ id });
 
   const database = fetchedDatabase ?? cachedDatabase;
 

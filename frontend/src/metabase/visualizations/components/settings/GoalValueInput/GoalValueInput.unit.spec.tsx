@@ -24,6 +24,8 @@ import { isEmbedding } from "metabase/embedding/config";
 import { METAKEY } from "metabase/utils/browser";
 import { type Deferred, defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Card,
   ColumnSettings,
@@ -40,11 +42,9 @@ import {
   createMockColumn,
   createMockDatasetData,
   createMockFailedReferencedEntitiesResults,
-  createMockField,
   createMockMeasure,
   createMockReferencedEntitiesResults,
   createMockSearchResult,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
 import { GoalValueInput } from "./GoalValueInput";
@@ -73,7 +73,10 @@ const DATA = createMockDatasetData({
   rows: [[10, 42]],
 });
 
-const DATASET_QUERY = createMockStructuredDatasetQuery();
+const DATASET_QUERY = Lib.createTestJsQuery(
+  SAMPLE_PROVIDER,
+  DEFAULT_TEST_QUERY,
+);
 
 const GOAL_SOURCES = [
   createMockSearchResult({ id: 4, model: "measure", name: "Goal measure" }),
@@ -234,8 +237,8 @@ describe("GoalValueInput", () => {
         id: 9,
         name: "Orders",
         result_metadata: [
-          createMockField({ name: "total", base_type: "type/Integer" }),
-          createMockField({
+          createMockColumn({ name: "total", base_type: "type/Integer" }),
+          createMockColumn({
             name: "avg",
             display_name: "Average",
             base_type: "type/Integer",
@@ -275,8 +278,8 @@ describe("GoalValueInput", () => {
         id: 9,
         name: "Orders",
         result_metadata: [
-          createMockField({ name: "total", base_type: "type/Integer" }),
-          createMockField({
+          createMockColumn({ name: "total", base_type: "type/Integer" }),
+          createMockColumn({
             name: "avg",
             display_name: "Average",
             base_type: "type/Integer",
@@ -358,8 +361,8 @@ describe("GoalValueInput", () => {
         id: 9,
         name: "Orders",
         result_metadata: [
-          createMockField({ name: "total", base_type: "type/Integer" }),
-          createMockField({
+          createMockColumn({ name: "total", base_type: "type/Integer" }),
+          createMockColumn({
             name: "avg",
             display_name: "Average",
             base_type: "type/Integer",
@@ -558,7 +561,7 @@ describe("GoalValueInput", () => {
       id: 9,
       name: "Orders",
       result_metadata: [
-        createMockField({
+        createMockColumn({
           name: "avg",
           display_name: "Average",
           base_type: "type/Integer",
@@ -779,12 +782,12 @@ describe("GoalValueInput", () => {
         name: "Low and high",
         archived: true,
         result_metadata: [
-          createMockField({
+          createMockColumn({
             name: "LOW",
             display_name: "Minimum",
             base_type: "type/Integer",
           }),
-          createMockField({
+          createMockColumn({
             name: "HIGH",
             display_name: "Maximum",
             base_type: "type/Integer",
@@ -920,7 +923,7 @@ describe("GoalValueInput", () => {
         id: 9,
         name: "Orders",
         result_metadata: [
-          createMockField({
+          createMockColumn({
             name: "total",
             display_name: "Total",
             base_type: "type/Integer",
@@ -1049,12 +1052,12 @@ describe("GoalValueInput", () => {
       id: 15,
       name: "Other question",
       result_metadata: [
-        createMockField({
+        createMockColumn({
           name: "revenue",
           display_name: "Revenue",
           base_type: "type/Integer",
         }),
-        createMockField({
+        createMockColumn({
           name: "target",
           display_name: "Target",
           base_type: "type/Integer",
@@ -1218,9 +1221,9 @@ describe("GoalValueInput", () => {
         id: 9,
         name: "Orders",
         result_metadata: [
-          createMockField({ name: "name", base_type: "type/Text" }),
-          createMockField({ name: "total", base_type: "type/Integer" }),
-          createMockField({ name: "created_at", base_type: "type/DateTime" }),
+          createMockColumn({ name: "name", base_type: "type/Text" }),
+          createMockColumn({ name: "total", base_type: "type/Integer" }),
+          createMockColumn({ name: "created_at", base_type: "type/DateTime" }),
         ],
       }),
     );
@@ -1248,7 +1251,7 @@ describe("GoalValueInput", () => {
         id: 15,
         name: "Slow question",
         result_metadata: [
-          createMockField({ name: "revenue", base_type: "type/Integer" }),
+          createMockColumn({ name: "revenue", base_type: "type/Integer" }),
         ],
       }),
     );
@@ -1257,7 +1260,7 @@ describe("GoalValueInput", () => {
         id: 16,
         name: "Fast question",
         result_metadata: [
-          createMockField({ name: "total", base_type: "type/Integer" }),
+          createMockColumn({ name: "total", base_type: "type/Integer" }),
         ],
       }),
     );
@@ -1289,7 +1292,7 @@ describe("GoalValueInput", () => {
         id: 15,
         name: "Slow question",
         result_metadata: [
-          createMockField({ name: "revenue", base_type: "type/Integer" }),
+          createMockColumn({ name: "revenue", base_type: "type/Integer" }),
         ],
       }),
     );
@@ -1314,12 +1317,12 @@ describe("GoalValueInput", () => {
       id: 9,
       name: "Orders",
       result_metadata: [
-        createMockField({
+        createMockColumn({
           name: "total",
           display_name: "Total",
           base_type: "type/Integer",
         }),
-        createMockField({
+        createMockColumn({
           name: "avg",
           display_name: "Average",
           base_type: "type/Integer",
@@ -1393,12 +1396,12 @@ describe("GoalValueInput", () => {
           id: 9,
           name: "Orders",
           result_metadata: [
-            createMockField({
+            createMockColumn({
               name: "total",
               display_name: "Total",
               base_type: "type/Integer",
             }),
-            createMockField({
+            createMockColumn({
               name: "avg",
               display_name: "Average",
               base_type: "type/Integer",
@@ -1623,8 +1626,8 @@ describe("GoalValueInput", () => {
         id: 15,
         name: "No numbers",
         result_metadata: [
-          createMockField({ name: "name", base_type: "type/Text" }),
-          createMockField({ name: "created_at", base_type: "type/DateTime" }),
+          createMockColumn({ name: "name", base_type: "type/Text" }),
+          createMockColumn({ name: "created_at", base_type: "type/DateTime" }),
         ],
       }),
     );
@@ -1878,7 +1881,7 @@ describe("GoalValueInput", () => {
           name: "Orders",
           type: "model",
           result_metadata: [
-            createMockField({ name: "total", base_type: "type/Integer" }),
+            createMockColumn({ name: "total", base_type: "type/Integer" }),
           ],
         }),
       );
@@ -1912,8 +1915,8 @@ describe("GoalValueInput", () => {
           name: "Orders",
           type: "model",
           result_metadata: [
-            createMockField({ name: "total", base_type: "type/Integer" }),
-            createMockField({
+            createMockColumn({ name: "total", base_type: "type/Integer" }),
+            createMockColumn({
               name: "avg",
               display_name: "Average",
               base_type: "type/Integer",
@@ -1954,8 +1957,8 @@ describe("GoalValueInput", () => {
           name: "Orders",
           type: "question",
           result_metadata: [
-            createMockField({ name: "total", base_type: "type/Integer" }),
-            createMockField({
+            createMockColumn({ name: "total", base_type: "type/Integer" }),
+            createMockColumn({
               name: "avg",
               display_name: "Average",
               base_type: "type/Integer",
@@ -2011,8 +2014,8 @@ describe("GoalValueInput", () => {
           name: "Orders",
           type: "model",
           result_metadata: [
-            createMockField({ name: "total", base_type: "type/Integer" }),
-            createMockField({
+            createMockColumn({ name: "total", base_type: "type/Integer" }),
+            createMockColumn({
               name: "avg",
               display_name: "Average",
               base_type: "type/Integer",
@@ -2219,8 +2222,8 @@ function setupMultiColumnSourceCard() {
       id: 9,
       name: "Low and high",
       result_metadata: [
-        createMockField({ name: "LOW", base_type: "type/Integer" }),
-        createMockField({ name: "HIGH", base_type: "type/Integer" }),
+        createMockColumn({ name: "LOW", base_type: "type/Integer" }),
+        createMockColumn({ name: "HIGH", base_type: "type/Integer" }),
       ],
     }),
   );
@@ -2233,13 +2236,13 @@ function setupMetricWithNumericBreakout() {
       name: "Revenue",
       type: "metric",
       result_metadata: [
-        createMockField({
+        createMockColumn({
           name: "rating",
           display_name: "Rating",
           base_type: "type/Integer",
           field_ref: ["field", 1, null],
         }),
-        createMockField({
+        createMockColumn({
           name: "sum",
           display_name: "Sum of Total",
           base_type: "type/Integer",

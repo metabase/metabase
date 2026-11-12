@@ -28,7 +28,7 @@ export function getDefaultOperator(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
 ): Lib.StringFilterOperator {
-  const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
+  const fieldValuesInfo = Lib.fieldSearchInfo(query, column);
 
   if (
     Lib.isPrimaryKey(column) ||

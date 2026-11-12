@@ -21,14 +21,18 @@ export function DataAppGroupMenu({ app, group }: DataAppGroupMenuProps) {
   const { show: showConfirmation, modalContent } = useConfirmation();
   const groupName = getGroupNameLocalized(group);
 
+  const groupUrl = group.is_tenant_group
+    ? Urls.adminTenantGroup(group.id)
+    : Urls.adminGroup(group.id);
+
   const handleRemove = () => {
     showConfirmation({
-      title: t`Remove ${groupName} from ${app.display_name}?`,
+      title: t`Remove ${groupName} from ${app.name}?`,
       message: t`People in this group will no longer be able to open the app, unless another of their groups has access.`,
       confirmButtonText: t`Remove access`,
       onConfirm: async () => {
         const { error } = await removeGroup({
-          name: app.name,
+          slug: app.slug,
           group_id: group.id,
         });
         if (error) {
@@ -52,7 +56,7 @@ export function DataAppGroupMenu({ app, group }: DataAppGroupMenuProps) {
         <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
           <Menu.Item
             component="a"
-            href={Urls.getSubpathSafeUrl(Urls.adminGroup(group.id))}
+            href={Urls.getSubpathSafeUrl(groupUrl)}
             target="_blank"
             rel="noreferrer"
             leftSection={<Icon name="external" />}

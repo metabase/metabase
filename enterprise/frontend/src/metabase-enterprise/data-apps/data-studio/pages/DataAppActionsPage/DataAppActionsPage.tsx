@@ -28,7 +28,7 @@ export function DataAppActionsPage() {
         model="action"
         emptyMessage={t`No actions yet`}
         getItemUrl={(actionId) =>
-          Urls.dataStudioDataAppAction(app.name, actionId)
+          Urls.dataStudioDataAppAction(app.slug, actionId)
         }
       />
     </PageContainer>

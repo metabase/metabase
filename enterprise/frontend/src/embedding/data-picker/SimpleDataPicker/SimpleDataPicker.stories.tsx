@@ -1,6 +1,7 @@
 import { action } from "@storybook/addon-actions";
 import type { Meta, StoryObj } from "@storybook/react";
 
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { Popover } from "metabase/ui";
 
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
@@ -56,13 +57,15 @@ const SUPER_LONG_OPTIONS = createOptions([
 
 function createOptions(optionNames: string[]): Option[] {
   return optionNames.map((name, index) => ({
-    id: index + 1,
+    source: { type: "table", id: index + 1 },
     name,
+    model: "table",
   }));
 }
 interface Option {
-  id: number;
+  source: DataSource;
   name: string;
+  model: "table";
 }
 
 const meta: Meta<typeof SimpleDataPickerView> = {
@@ -101,7 +104,7 @@ export const ShortOptions: Story = {};
 
 export const SelectedOption: Story = {
   args: {
-    selectedEntity: 3,
+    selectedSource: { type: "table", id: 3 },
   },
 };
 

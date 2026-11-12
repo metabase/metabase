@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting memory and JVM issues
+summary: Fix memory and JVM problems, including heap space errors and crashes, and learn how to give Metabase more memory.
 ---
 
 # Troubleshooting memory and JVM issues

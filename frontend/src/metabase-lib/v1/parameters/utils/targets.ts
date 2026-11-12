@@ -2,12 +2,11 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
-import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
   ConcreteFieldReference,
+  FieldId,
   FieldReference,
   NativeParameterDimensionTarget,
   Parameter,
@@ -15,6 +14,7 @@ import type {
   ParameterTextTarget,
   ParameterVariableTarget,
   StructuredParameterDimensionTarget,
+  TemplateTag,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 
@@ -79,16 +79,14 @@ export function getParameterTargetField(
     }
 
     const tagName = targetRef[1];
-    const tag = Lib.templateTags(query)[tagName];
-    if (tag == null || tag.dimension == null) {
+    const fieldId = Lib.templateTags(query).find(
+      (tag) => tag.name === tagName,
+    )?.["field-id"];
+    if (fieldId == null) {
       return null;
     }
 
-    return getParameterTargetFieldFromFieldRef(
-      question,
-      parameter,
-      tag.dimension,
-    );
+    return findField(query, fieldId);
   }
 
   // mbql queries
@@ -99,19 +97,24 @@ export function getParameterTargetField(
   return null;
 }
 
+function findField(
+  query: Lib.Query,
+  fieldId: FieldId,
+): Lib.ParameterFieldInfo | undefined {
+  const column = Lib.fieldMetadata(query, fieldId);
+  return (column != null && Lib.parameterFieldInfo(query, column)) || undefined;
+}
+
 function getParameterTargetFieldFromFieldRef(
   question: Question,
   parameter: Parameter,
   fieldRef: ConcreteFieldReference,
 ) {
-  const metadata = question.metadata();
-
   const [_type, fieldIdOrName] = fieldRef;
-  const fields = metadata.fieldsList();
   if (typeof fieldIdOrName === "number") {
     // performance optimization:
     // we can match by id directly without finding this column via query
-    return fields.find((field) => field.id === fieldIdOrName);
+    return findField(question.query(), fieldIdOrName);
   }
 
   const { query, columns } = getParameterColumns(question, parameter);
@@ -130,28 +133,23 @@ function getParameterTargetFieldFromFieldRef(
     );
 
     if (columnIndex >= 0) {
-      const column = stageColumns[columnIndex];
-      const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
-
-      if (fieldValuesInfo.fieldId == null) {
-        // the column does not represent to a database field, e.g. coming from an aggregation clause
-        return null;
-      }
-
-      // do not use `metadata.field(id)` because it only works for fields loaded
-      // with the original table, not coming from model metadata
-      return fields.find((field) => field.id === fieldValuesInfo.fieldId);
+      const { id: fieldId } = Lib.pickerInfo(query, stageColumns[columnIndex]);
+      return fieldId != null ? findField(query, fieldId) : null;
     }
   }
 
   return null;
 }
 
-export function buildDimensionTarget(
-  dimension: TemplateTagDimension,
+export function buildTemplateTagDimensionTarget(
+  tag: TemplateTag,
   stageIndex: number,
 ): NativeParameterDimensionTarget {
-  return ["dimension", dimension.mbql(), { "stage-number": stageIndex }];
+  return [
+    "dimension",
+    ["template-tag", tag.name],
+    { "stage-number": stageIndex },
+  ];
 }
 
 export function buildColumnTarget(
@@ -169,13 +167,12 @@ export function buildColumnTarget(
 }
 
 export function buildTemplateTagVariableTarget(
-  variable: TemplateTagVariable,
+  tag: TemplateTag,
 ): ParameterVariableTarget | NativeParameterDimensionTarget {
-  const tag = variable.tag();
-  if (tag?.type === "temporal-unit") {
-    return ["dimension", variable.mbql(), { "stage-number": 0 }];
+  if (tag.type === "temporal-unit") {
+    return ["dimension", ["template-tag", tag.name], { "stage-number": 0 }];
   } else {
-    return ["variable", variable.mbql()];
+    return ["variable", ["template-tag", tag.name]];
   }
 }
 

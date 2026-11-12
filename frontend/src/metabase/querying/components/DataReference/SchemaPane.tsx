@@ -3,7 +3,6 @@ import { msgid, ngettext } from "ttag";
 import { useListDatabaseSchemaTablesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { isConcreteTableId } from "metabase-types/api";
 
 import {
   NodeListContainer,
@@ -55,19 +54,16 @@ export const SchemaPane = ({
             </NodeListTitleText>
           </NodeListTitle>
           <ul>
-            {tables.map(
-              ({ id, name }) =>
-                isConcreteTableId(id) && (
-                  <li key={id}>
-                    <NodeListItemLink
-                      onClick={() => onItemClick({ type: "table", id })}
-                    >
-                      <NodeListItemIcon name="table" />
-                      <NodeListItemName>{name}</NodeListItemName>
-                    </NodeListItemLink>
-                  </li>
-                ),
-            )}
+            {tables.map(({ id, name }) => (
+              <li key={id}>
+                <NodeListItemLink
+                  onClick={() => onItemClick({ type: "table", id })}
+                >
+                  <NodeListItemIcon name="table" />
+                  <NodeListItemName>{name}</NodeListItemName>
+                </NodeListItemLink>
+              </li>
+            ))}
           </ul>
         </NodeListContainer>
       </SidebarContent.Pane>

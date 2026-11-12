@@ -1,5 +1,6 @@
 ---
 title: Working with Vertica in Metabase
+summary: Add the Vertica JDBC driver to your self-hosted Metabase, which Metabase can't bundle itself because of licensing restrictions.
 redirect_from:
   - /docs/latest/administration-guide/databases/vertica
 ---

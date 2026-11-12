@@ -232,6 +232,35 @@ describe("parseConnectionUriRegex - Druid", () => {
   });
 });
 
+describe("parseConnectionUriRegex - MotherDuck", () => {
+  it("should parse the connection string MotherDuck's UI copies", () => {
+    const connectionString = enginesConfig["motherduck"];
+    const result = parseConnectionUriRegex(connectionString, "motherduck");
+    expect(result).toEqual({
+      protocol: "md",
+      database: "my_db",
+      hasJdbcPrefix: true,
+    });
+  });
+
+  it("should parse a bare md: string with a token", () => {
+    const connectionString = "md:my_db?motherduck_token=eyJ%2Babc";
+    const result = parseConnectionUriRegex(connectionString, "motherduck");
+    expect(result).toEqual({
+      protocol: "md",
+      database: "my_db",
+      params: { motherduck_token: "eyJ+abc" },
+      hasJdbcPrefix: false,
+    });
+  });
+
+  it("should not parse a Postgres connection string", () => {
+    const connectionString =
+      "postgresql://postgres:token@pg.us-east-1-aws.motherduck.com:5432/my_db";
+    expect(parseConnectionUriRegex(connectionString, "motherduck")).toBeNull();
+  });
+});
+
 describe("parseConnectionUriRegex - MySQL", () => {
   it("should parse a MySQL connection string", () => {
     const connectionString = enginesConfig["mysql"];

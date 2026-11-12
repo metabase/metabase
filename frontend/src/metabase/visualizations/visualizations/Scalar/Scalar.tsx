@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { useRef } from "react";
 import _ from "underscore";
 
@@ -16,6 +17,7 @@ import {
 import { ScalarDescription } from "metabase/visualizations/components/ScalarValue/ScalarDescription";
 import { ScalarLabel } from "metabase/visualizations/components/ScalarValue/ScalarLabel";
 import { ScalarValue } from "metabase/visualizations/components/ScalarValue/ScalarValue";
+import { getScalarValueFontSize } from "metabase/visualizations/components/ScalarValue/sizing";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import {
@@ -34,6 +36,7 @@ import {
   getGoalSegmentBounds,
   resolveOpenEndedGoalSegments,
 } from "metabase/viz-core";
+import { isString } from "metabase-lib/v1/types/utils/isa";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
 import {
@@ -164,6 +167,9 @@ function ScalarComponent(
     tier.valueFontSize,
     formatOptions,
   );
+  const fontSize = isString(column)
+    ? getScalarValueFontSize(displayValue, availableWidth, tier.valueFontSize)
+    : tier.valueFontSize;
 
   const isClickable = onVisualizationClick != null && !isMetricsViewer;
 
@@ -214,7 +220,7 @@ function ScalarComponent(
                 ref={valueRef}
                 color={color}
                 disableHover={isMetricsViewer}
-                fontSize={tier.valueFontSize}
+                fontSize={fontSize}
                 // Unjustified type cast. FIXME
                 value={displayValue as string}
               />

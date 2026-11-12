@@ -1,5 +1,6 @@
 ---
 title: Reporting a bug
+summary: What to include in a bug report, and how to check whether your issue is already reported.
 ---
 
 # Reporting a bug

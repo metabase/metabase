@@ -7,11 +7,7 @@ import {
 } from "react";
 import { useLatest } from "react-use";
 
-import type {
-  ConcreteTableId,
-  DatabaseId,
-  SchemaName,
-} from "metabase-types/api";
+import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
 import { applyLayout, getNodeId } from "../utils";
@@ -30,7 +26,7 @@ type UseGraphSyncArgs = {
   contextKey: `${DatabaseId}__${SchemaName}` | null;
   setNodes: (nodes: SchemaViewerFlowNode[]) => void;
   setEdges: (edges: SchemaViewerFlowEdge[]) => void;
-  setExpandingTableIds: Dispatch<SetStateAction<Set<ConcreteTableId>>>;
+  setExpandingTableIds: Dispatch<SetStateAction<Set<TableId>>>;
   zoomToNode: (nodeId: string) => void;
   zoomToCanvas: () => void;
 };
@@ -42,8 +38,8 @@ type PendingExpansion = {
   candidateEdgeIds: readonly string[];
 };
 
-const clearExpandingTableIds = (prev: Set<ConcreteTableId>) =>
-  prev.size === 0 ? prev : new Set<ConcreteTableId>();
+const clearExpandingTableIds = (prev: Set<TableId>) =>
+  prev.size === 0 ? prev : new Set<TableId>();
 
 function markPendingEdgeSelected(
   edges: SchemaViewerFlowEdge[],
@@ -67,7 +63,7 @@ function markPendingEdgeSelected(
 }
 
 function getExpandingTableIds(
-  currentExpandingTableIds: Set<ConcreteTableId>,
+  currentExpandingTableIds: Set<TableId>,
   visibleNodes: SchemaViewerFlowNode[],
 ) {
   if (currentExpandingTableIds.size === 0) {
@@ -76,7 +72,7 @@ function getExpandingTableIds(
 
   const visibleIds = new Set(visibleNodes.map((node) => node.data.table_id));
   let hasChanges = false;
-  const newExpandingTableIds = new Set<ConcreteTableId>();
+  const newExpandingTableIds = new Set<TableId>();
 
   for (const id of currentExpandingTableIds) {
     if (visibleIds.has(id)) {
@@ -167,7 +163,7 @@ export function useGraphSync({
    */
   const pendingExpansionRef = useRef<PendingExpansion | null>(null);
   const registerPendingExpansion = useCallback(
-    (targetTableId: ConcreteTableId, candidateEdgeIds?: readonly string[]) => {
+    (targetTableId: TableId, candidateEdgeIds?: readonly string[]) => {
       pendingExpansionRef.current = {
         targetNodeId: getNodeId({ table_id: targetTableId }),
         candidateEdgeIds: candidateEdgeIds ?? [],

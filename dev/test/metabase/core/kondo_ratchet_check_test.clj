@@ -19,7 +19,7 @@
 (defn- report-lines
   "Return [[kondo-ratchet/check-report]] output for `ratchets`. Supply the defaults that
   [[kondo-ratchet/read-ratchets]] adds to a partial file. `ratchets` may also carry the module ratchets as
-  `:module-counts` and the `:attribute` result as `:attribution`."
+  `:module-counts`, the `:attribute` result as `:attribution`, and the `:aliases` as `:aliases`."
   ([ratchets occurrences text]
    (report-lines ratchets occurrences {} text))
   ([ratchets occurrences config-actual text]
@@ -29,9 +29,10 @@
          attribution     (merge {:actual {}, :unresolved []} (:attribution ratchets))]
      (vec (kondo-ratchet/check-report (-> {:config-counts {}, :comment-exempt #{}}
                                           (merge ratchets)
-                                          (dissoc :module-counts :attribution))
+                                          (dissoc :module-counts :attribution :aliases))
                                       module-ratchets occurrences attribution config-actual module-actual text
-                                      (kondo-ratchet/render-module-ratchets module-ratchets))))))
+                                      (kondo-ratchet/render-module-ratchets module-ratchets)
+                                      (:aliases ratchets {}))))))
 
 (deftest ^:parallel clean-test
   (let [ratchets {:ignore-counts {:a 2, :b 1}}]
@@ -99,6 +100,16 @@
             "  :discouraged-var/a/x: 1 recorded, 2 actual"]
            (report-lines ratchets [] (kondo-ratchet/render ratchets)))
         "each field reports its over-budget symbols by their own seed name")))
+
+(deftest ^:parallel discouraged-counts-over-budget-aliases-test
+  (testing "an over-budget key names the alias keys that count under it"
+    (let [ratchets {:ignore-counts          {}
+                    :discouraged-var-counts {:a/x 1}
+                    :attribution            {:actual {:discouraged-var {:a/x 2}}}
+                    :aliases                {:b/x :a/x, :c/x :a/x, :d/y :d/z}}]
+      (is (= ["discouraged-var symbols over budget -- remove an ignore, or seed the symbol's budget with `./bin/mage kondo-ratchets-shrink --seed <name below>` and explain the increase in the PR:"
+              "  :discouraged-var/a/x: 1 recorded, 2 actual (also counts :discouraged-var/b/x, :discouraged-var/c/x)"]
+             (report-lines ratchets [] (kondo-ratchet/render ratchets)))))))
 
 (deftest ^:parallel unresolved-discouraged-finding-test
   (let [ratchets {:ignore-counts {}
@@ -242,6 +253,18 @@
                :thrown? true}
               (check-with! ratchets occurrences
                            (with-attribution {:unresolved (finding-at 2)})))))))
+
+(deftest check-test-ratchets-alias-note-test
+  (testing "an over-budget key in the test ratchets file names the alias keys that count under it"
+    (let [none   {:actual {}, :unattributed [], :unresolved []}
+          over   {:actual {:discouraged-var {:a/x 2}}, :unattributed [], :unresolved []}
+          result (check-with! {:ignore-counts {}
+                               :test-counts   {:ignore-counts {}, :discouraged-var-counts {:a/x 1}}}
+                              [{:file "test/g.clj", :line 1, :linters [:discouraged-var], :justified? true}]
+                              {:attribute (constantly [none over])
+                               :aliases   (constantly {:b/x :a/x})})]
+      (is (:thrown? result))
+      (is (some #{"  :discouraged-var/a/x: 1 recorded, 2 actual (also counts :discouraged-var/b/x)"} (:lines result))))))
 
 (deftest check-unconfigured-budget-test
   (let [ratchets {:ignore-counts {:a 1}, :discouraged-var-counts {:a/gone 2, :a/x 1}}]

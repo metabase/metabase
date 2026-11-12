@@ -17,6 +17,8 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   DatabaseFeature,
   GroupTableAccessPolicy,
@@ -31,7 +33,6 @@ import {
 import {
   PEOPLE,
   PEOPLE_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -53,13 +54,11 @@ const TEST_CARD = createMockCard({
   name: "sandbox question",
   can_write: true,
   collection_id: null,
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": PEOPLE_ID,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: PEOPLE_ID } }],
+    }),
+  ),
 });
 
 const setup = async ({

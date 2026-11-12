@@ -4,6 +4,7 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Dataset, ReferencedEntitiesResults } from "metabase-types/api";
 import {
@@ -11,11 +12,9 @@ import {
   createMockDataset,
   createMockDatasetData,
   createMockReferencedEntitiesResults,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
-import {
-  createAdHocCard,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { updateQuestion } from "../../../../actions";
 
@@ -123,8 +122,9 @@ describe("ChartTypeSidebar with a goal that references another question", () => 
 });
 
 function createGoalQuestion() {
-  const card = createAdHocCard({
+  const card = createMockUnsavedCard({
     display: "scalar",
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     visualization_settings: {
       "progress.goal": { type: "card", id: 9, column: "goal" },
     },

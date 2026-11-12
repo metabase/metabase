@@ -9,7 +9,6 @@ import type {
   ColumnSettings,
   DatasetColumn,
   RowValues,
-  Table,
 } from "metabase-types/api";
 
 import S from "./DetailsGroup.module.css";
@@ -20,7 +19,6 @@ interface Props {
   columnsSettings?: (ColumnSettings | undefined)[];
   responsive?: boolean;
   row: RowValues;
-  table: Table | undefined;
 }
 
 export const DetailsGroup = ({
@@ -28,14 +26,12 @@ export const DetailsGroup = ({
   columnsSettings,
   responsive,
   row,
-  table,
 }: Props) => {
   const tc = useTranslateContent();
 
   return (
     <Stack data-testid="object-details" gap="xl">
       {columns.map((column, index) => {
-        const field = table?.fields?.find((field) => field.id === column.id);
         const value = getRowValue(columns, column, row);
         const columnSettings = columnsSettings?.[index] ?? {};
 
@@ -58,7 +54,7 @@ export const DetailsGroup = ({
             </Text>
 
             <Flex data-testid="value" flex={responsive ? "0 1 50%" : "1"}>
-              <Value column={column} field={field} value={value}>
+              <Value column={column} value={value}>
                 {renderValue(tc, value, column, columnSettings)}
               </Value>
             </Flex>

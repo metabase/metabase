@@ -1,5 +1,6 @@
 ---
 title: Filtering
+summary: Narrow your results down to the rows you care about, with filter types for every column, date shortcuts, custom expressions, and segments.
 ---
 
 # Filtering

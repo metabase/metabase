@@ -7,7 +7,7 @@ import {
   type QueryInput,
   isTableInput,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
-import type { NativeDatasetQuery } from "metabase-types/api";
+import type { LegacyDatasetQuery } from "metabase-types/api";
 
 import { TEST_PROVIDER_NAME } from "./constants";
 
@@ -67,11 +67,12 @@ export function createQueryHandlers(
   queries: readonly MetabaseQueryMock[],
 ): QueryHandlers {
   const entries = queries.map((mock) => {
-    const datasetQuery: NativeDatasetQuery = {
+    // A per-mock identity token that queryDataset matches by reference and never reads
+    const datasetQuery = {
       type: "native",
       native: { query: "" },
       database: null,
-    };
+    } as unknown as LegacyDatasetQuery;
 
     return { mock, datasetQuery };
   });

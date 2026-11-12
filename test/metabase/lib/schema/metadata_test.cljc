@@ -188,3 +188,25 @@
       :NOT_A_MEMBER
       "PII"
       nil)))
+
+(deftest ^:parallel normalize-column-remapping-test
+  (is (= {:lib/type :metadata.column.remapping/external
+          :id       72
+          :name     "Category ID"
+          :field-id 67}
+         (lib/normalize ::lib.schema.metadata/column.remapping.external
+                        {"lib/type" "metadata.column.remapping/external"
+                         "id"       72
+                         "name"     "Category ID"
+                         "field-id" 67})))
+  (is (= {:lib/type              :metadata.column.remapping/internal
+          :id                    66
+          :name                  "ID"
+          :values                [1 2]
+          :human-readable-values ["One" "Two"]}
+         (lib/normalize ::lib.schema.metadata/column.remapping.internal
+                        {"lib/type"              "metadata.column.remapping/internal"
+                         "id"                    66
+                         "name"                  "ID"
+                         "values"                [1 2]
+                         "human_readable_values" ["One" "Two"]}))))

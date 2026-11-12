@@ -1,5 +1,6 @@
 ---
 title: SAML with Auth0
+summary: Step-by-step setup for SAML single sign-on between Auth0 and Metabase.
 redirect_from:
   - /docs/latest/enterprise-guide/saml-auth0
 ---

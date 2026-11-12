@@ -5,7 +5,7 @@ import {
   useCreateSnippetMutation,
   useUpdateSnippetMutation,
 } from "metabase/api";
-import { Flex, Modal } from "metabase/ui";
+import { Modal } from "metabase/ui";
 import type {
   CreateSnippetRequest,
   NativeQuerySnippet,
@@ -83,26 +83,15 @@ export function SnippetFormModal({
   );
 
   return (
-    <Modal.Root opened onClose={onClose}>
-      <Modal.Overlay />
-      <Modal.Content>
-        <Modal.Header px="xxl">
-          <Modal.Title>{modalTitle}</Modal.Title>
-          <Flex justify="flex-end">
-            <Modal.CloseButton />
-          </Flex>
-        </Modal.Header>
-        <Modal.Body px="xxl">
-          <SnippetForm
-            snippet={snippet}
-            isEditing={isEditing}
-            onSubmit={handleSubmit}
-            onArchive={handleArchive}
-            onCancel={onClose}
-          />
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
+    <Modal opened title={modalTitle} density="relaxed" onClose={onClose}>
+      <SnippetForm
+        snippet={snippet}
+        isEditing={isEditing}
+        onSubmit={handleSubmit}
+        onArchive={handleArchive}
+        onCancel={onClose}
+      />
+    </Modal>
   );
 }
 

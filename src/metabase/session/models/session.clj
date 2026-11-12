@@ -90,9 +90,9 @@
 
 (t2/define-before-insert :model/Session
   [{session-key :session_key :as session}]
-  (when (or (uuid? (:id session)) (string/valid-uuid? (:id session)))
+  (when (or (uuid? (:id session)) (u/uuid-string? (:id session)))
     (throw (ex-info "Session id should not be stored plaintext in the session table." {})))
-  (when (or (uuid? (:key_hashed session)) (string/valid-uuid? (:key_hashed session)))
+  (when (or (uuid? (:key_hashed session)) (u/uuid-string? (:key_hashed session)))
     (throw (ex-info "Session key should not be stored plaintext in the session table." {})))
   ;; Check auth identity provider if provided
   (when-let [auth-identity-id (:auth_identity_id session)]

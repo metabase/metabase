@@ -3,12 +3,16 @@ import fetchMock from "fetch-mock";
 import { setupCardDataset } from "__support__/server-mocks";
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { ReferencedEntity } from "metabase-types/api";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 
 import { useReferencedEntitiesQuery } from "./use-referenced-entities-query";
 
-const DATASET_QUERY = createMockStructuredDatasetQuery();
+const DATASET_QUERY = Lib.createTestJsQuery(
+  SAMPLE_PROVIDER,
+  DEFAULT_TEST_QUERY,
+);
 
 const MEASURE: ReferencedEntity = { type: "measure", id: 4 };
 const FIRST_CARD: ReferencedEntity = { type: "card", id: 9 };

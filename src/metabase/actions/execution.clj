@@ -27,7 +27,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]))
 
 (def ^:private RequestParameters
   "Parameters as passed in from an endpoint, of shape `{<parameter-id> <value>}`."
@@ -242,6 +243,7 @@
   ([action              :- ::actions.schema/action.executable
     request-parameters  :- RequestParameters
     opts                :- [:maybe ExecuteActionOpts]]
+   (workspaces/check-not-in-workspace-mode! "Actions")
    (let [;; if a value is supplied for a hidden parameter, it should raise an error
          field-settings         (get-in action [:visualization_settings :fields])
          hidden-param-ids       (->> (vals field-settings)

@@ -13,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.measures.schema]
    [metabase.native-query-snippets.schema]
    [metabase.queries.schema :as queries.schema]
@@ -22,7 +23,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (def ^:private Entity
@@ -91,7 +91,7 @@
 
 (mu/defn- upstream-deps:dynamic-goals :- ::deps.schema/upstream-deps
   "Entities whose value a dynamic goal in `viz-settings` reads, including goals nested in a visualizer dashcard."
-  [viz-settings :- [:maybe ms/VisualizationSettings]]
+  [viz-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]]
   (->> (dynamic-goals/goal-references viz-settings)
        (filter (fn [[entity-type id _column]]
                  (and (pos-int? id) (dynamic-goals/goal-entity-types entity-type))))
