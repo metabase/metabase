@@ -52,8 +52,8 @@ export const ConfirmModal = ({
   return (
     <Modal title={title} onClose={onClose} size="lg" {...props}>
       <Stack gap="xl">
-        {content ? <Text>{content}</Text> : null}
-        <Text>{message}</Text>
+        {content ? <Text c={getBodyColor(content)}>{content}</Text> : null}
+        <Text c={getBodyColor(message)}>{message}</Text>
       </Stack>
       <Modal.Footer>
         {errorMessage && (
@@ -80,3 +80,8 @@ export const ConfirmModal = ({
     </Modal>
   );
 };
+
+// Plain-string copy is a short confirmation, which uses secondary text. JSX
+// keeps the default colour, as it may hold forms or mixed content.
+const getBodyColor = (node: ReactNode) =>
+  typeof node === "string" ? "text-secondary" : undefined;

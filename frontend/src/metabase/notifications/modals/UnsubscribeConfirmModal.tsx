@@ -18,7 +18,7 @@ export const UnsubscribeConfirmModal = ({
     size="lg"
     onClose={onClose}
   >
-    <Text>{t`You’ll stop receiving this alert from now on. Depending on your organization’s permissions you might need to ask a moderator to be re-added in the future.`}</Text>
+    <Text c="text-secondary">{t`You’ll stop receiving this alert from now on. Depending on your organization’s permissions you might need to ask a moderator to be re-added in the future.`}</Text>
     <Modal.Footer>
       <Button onClick={onClose}>{t`Cancel`}</Button>
       <Button
