@@ -690,12 +690,20 @@
 
 (defn- check-workspace-names-free!
   "Throws a 409 when the warehouse already has a user or a database with the workspace's name. Either may belong to
-  another workspace, so init leaves it as it is and the caller must not tear it down. Runs before any DDL."
+  another workspace, so init leaves it as it is and the caller must not tear it down. Runs before any DDL, so when
+  the check itself fails (the admin login may lack the grant to read `system.users`), its error also says
+  `:workspace/cleanup? false`: init created nothing, and a teardown would drop a user of that name that may exist."
   [conn user db-name]
   (doseq [[table kind object-name] [["system.users" :user user]
                                     ["system.databases" :database db-name]]
-          :when (seq (jdbc/query {:connection conn}
-                                 [(format "SELECT 1 FROM %s WHERE name = ?" table) object-name]))]
+          :when (seq (try
+                       (jdbc/query {:connection conn}
+                                   [(format "SELECT 1 FROM %s WHERE name = ?" table) object-name])
+                       (catch SQLException e
+                         (throw (ex-info (format "Could not check whether the warehouse already has a %s named %s, so init created nothing: %s"
+                                                 (name kind) (quote-field object-name) (ex-message e))
+                                         {:workspace/cleanup? false, kind object-name}
+                                         e)))))]
     (throw (workspace-object-exists-exception kind object-name nil))))
 
 (def ^:private already-exists-error-codes
@@ -720,7 +728,7 @@
         (doseq [^String undo undo-sqls]
           (try (.execute stmt undo)
                (catch Throwable undo-error
-                 (log/warnf undo-error "Refused the existing %s %s, but could not undo this init: %s. Drop it by hand."
+                 (log/warnf undo-error "Refused the existing %s %s and left it unchanged. Could not undo what this init created: run %s by hand."
                             (name kind) (quote-field object-name) undo))))
         (throw refusal)))))
 
@@ -743,26 +751,31 @@
       (not (str/blank? canonical-db))
       (conj (format "GRANT SHOW DATABASES ON %s.* TO %s" (quote-schema canonical-db) quoted-user)))))
 
-(defn- check-system-db-requires-grant!
-  "Throws a 412 when the workspace user can read the `system` database without a grant. Then it could read
-  `system.query_log` and `system.processes`, which hold the queries of every user. The server setting
+(defn- system-db-readable?
+  "Whether the user of `details` can read the `system` database without a grant. The server setting
   `access_control_improvements.select_from_system_db_requires_grant` decides this; ClickHouse does not report it in
-  `system.server_settings`, so this asks the server as the workspace user."
+  `system.server_settings`, so this asks the server as that user."
   [driver details]
-  (let [readable? (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
-                    (sql-jdbc.execute/do-with-connection-with-options
-                     driver spec nil
-                     (fn [^Connection conn]
-                       ;; any failure here is not about the system database, so it propagates
-                       (jdbc/query {:connection conn} ["SELECT 1"])
-                       (try
-                         (jdbc/query {:connection conn} ["SELECT 1 FROM system.processes LIMIT 0"])
-                         true
-                         (catch SQLException e
-                           ;; 497 is ACCESS_DENIED
-                           (if (= 497 (.getErrorCode e))
-                             false
-                             (throw e)))))))]
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver spec nil
+     (fn [^Connection conn]
+       ;; any failure here is not about the system database, so it propagates
+       (jdbc/query {:connection conn} ["SELECT 1"])
+       (try
+         (jdbc/query {:connection conn} ["SELECT 1 FROM system.processes LIMIT 0"])
+         true
+         (catch SQLException e
+           ;; 497 is ACCESS_DENIED
+           (if (= 497 (.getErrorCode e))
+             false
+             (throw e))))))))
+
+(defn- check-system-db-requires-grant!
+  "Throws a 412 when the workspace user can read the `system` database without a grant: see [[system-db-readable?]].
+  Then it could read `system.query_log` and `system.processes`, which hold the queries of every user."
+  [driver details]
+  (let [readable? (system-db-readable? driver details)]
     (when readable?
       (throw (ex-info (str "This ClickHouse server lets every user read the system database, which holds the queries "
                            "of all users. A ClickHouse server administrator must set "

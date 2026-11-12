@@ -1027,7 +1027,7 @@
         (let [e (is (thrown? clojure.lang.ExceptionInfo
                              (#'clickhouse/create-workspace-object! stmt "CREATE USER u" :user "u" ["DROP DATABASE d"])))]
           (is (=? {:status-code 409 :workspace/cleanup? false} (ex-data e))))
-        (is (=? [{:level :warn :message "Refused the existing user `u`, but could not undo this init: DROP DATABASE d. Drop it by hand."}]
+        (is (=? [{:level :warn :message "Refused the existing user `u` and left it unchanged. Could not undo what this init created: run DROP DATABASE d by hand."}]
                 (messages)))
         (is (= "undo failed" (some-> (messages) first :e ex-message)))))))
 
@@ -1107,6 +1107,22 @@
                       (try (jdbc/query (workspace-user-spec workspace) ["SELECT 1 FROM system.query_log LIMIT 0"])
                            nil
                            (catch SQLException e (.getErrorCode e)))))))
+           (finally
+             (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace))))))))
+
+(deftest ^:synchronized init-workspace-isolation-system-db-412-test
+  (mt/test-driver :clickhouse
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:workspaces}
+       ;; the CI image already requires the grant, so [[init-workspace-isolation-system-db-precondition-test]] runs only
+       ;; its success branch there; this fakes the server's answer to reach the 412
+       (let [workspace (workspace-for-test "ws-system-db-412")]
+         (try
+           (mt/with-dynamic-fn-redefs [clickhouse/system-db-readable? (constantly true)]
+             (testing "init throws a 412 when the workspace user can read the system database"
+               (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"select_from_system_db_requires_grant"
+                                             (driver/init-workspace-isolation! :clickhouse (mt/db) workspace)))]
+                 (is (= {:status-code 412} (ex-data e))))))
            (finally
              (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace))))))))
 
@@ -1207,3 +1223,65 @@
            (finally
              (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace)
              (jdbc/execute! admin [(format "DROP USER IF EXISTS `%s`" (:user no-kill))]))))))))
+
+(defn- workspace-init-error
+  "Runs `init`; returns the exception it throws, or nil."
+  [init]
+  (try
+    (init)
+    nil
+    (catch Exception e
+      e)))
+
+(defn- cleanup-unless-refused!
+  "What provisioning does after a failed init: a teardown, unless the error says `:workspace/cleanup? false`."
+  [workspace e]
+  (when (and e (not (false? (:workspace/cleanup? (ex-data e)))))
+    (try
+      (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace)
+      (catch Exception _))))
+
+(defn- authenticates? [details]
+  (try
+    (= [{:one 1}] (jdbc/query (workspace-user-spec {:database_details details}) ["SELECT 1 AS one"]))
+    (catch SQLException _
+      false)))
+
+(deftest ^:synchronized init-without-read-access-to-system-users-keeps-an-existing-user-test
+  (mt/test-driver :clickhouse
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:workspaces}
+       (let [workspace (workspace-for-test "ws-hidden-users")
+             user      (-> workspace :database_details :user)
+             other     {:user user :password "other-owner-pw"}
+             ;; can create and drop users and databases, but cannot read system.users
+             admin2    {:user (str "mb_test_no_users_" (rand-int 100000000)) :password "no-users-pw"}
+             admin     (sql-jdbc.conn/connection-details->spec :clickhouse (:details (mt/db)))
+             exists?   #(boolean (seq (jdbc/query admin ["SELECT 1 FROM system.users WHERE name = ?" user])))]
+         (try
+           (jdbc/execute! admin [(format "CREATE USER `%s` IDENTIFIED BY '%s'" (:user admin2) (:password admin2))])
+           (jdbc/execute! admin [(format "GRANT CURRENT GRANTS ON *.* TO `%s` WITH GRANT OPTION" (:user admin2))])
+           (jdbc/execute! admin [(format "REVOKE SELECT ON system.users FROM `%s`" (:user admin2))])
+           (jdbc/execute! admin [(format "REVOKE SHOW USERS ON *.* FROM `%s`" (:user admin2))])
+           (testing "precondition: the second admin cannot read system.users"
+             (is (thrown? SQLException
+                          (jdbc/query (workspace-user-spec {:database_details admin2}) ["SELECT 1 FROM system.users"]))))
+           (jdbc/execute! admin [(format "CREATE USER `%s` IDENTIFIED BY '%s'" user (:password other))])
+           (testing "control: with the full admin, init refuses the existing user with the 409 that forbids teardown"
+             (is (=? {:status-code 409, :workspace/cleanup? false}
+                     (ex-data (workspace-init-error #(driver/init-workspace-isolation! :clickhouse (mt/db) workspace))))))
+           (let [e (driver.conn/with-swapped-connection-details (mt/id) admin2
+                     (workspace-init-error #(driver/init-workspace-isolation! :clickhouse (mt/db) workspace)))]
+             (testing "an admin that cannot read system.users gets an init error that forbids teardown"
+               (is (some? e))
+               (is (false? (:workspace/cleanup? (ex-data e)))
+                   (ex-message e)))
+             (driver.conn/with-swapped-connection-details (mt/id) admin2
+               (cleanup-unless-refused! workspace e)))
+           (testing "the other owner's user survives provisioning, with its password"
+             (is (true? (exists?)))
+             (is (true? (authenticates? other))))
+           (finally
+             (jdbc/execute! admin [(format "DROP USER IF EXISTS `%s`" user)])
+             (jdbc/execute! admin [(format "DROP USER IF EXISTS `%s`" (:user admin2))])
+             (jdbc/execute! admin [(format "DROP DATABASE IF EXISTS `%s`" (:schema workspace))]))))))))
