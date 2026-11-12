@@ -119,7 +119,6 @@ describe("AccountHeader", () => {
           user: getUser({
             sso_source: ssoSource,
             has_used_password: false,
-            slack_account_status: null,
           }),
           isMfaEnabled: false,
         });

@@ -33,7 +33,6 @@ describe("UserPasswordApp (OSS)", () => {
         user: createMockUser({
           sso_source: ssoSource,
           has_used_password: false,
-          slack_account_status: null,
         }),
         mfaStatus: createMockMfaStatus({ mfa_enabled: false }),
       });
