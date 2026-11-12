@@ -396,6 +396,13 @@ describe("MoveModal search", () => {
       await screen.findByText("Robert Tableton's Personal Collection"),
     ).toBeInTheDocument();
     await typeSearchText("personal collection");
+    expect(getScopeRadio("Everywhere")).toBeChecked();
+    expect(
+      getSearchScopeSelector().queryByRole("radio", {
+        name: "All personal collections",
+      }),
+    ).not.toBeInTheDocument();
+    expect(getSearchScopeSelector().getAllByRole("radio")).toHaveLength(1);
 
     await expectSearchResults([
       "Admin personal collection 1",
@@ -406,12 +413,5 @@ describe("MoveModal search", () => {
       "No collection personal collection 2",
     ]);
     expect(getLastSearchParams().get("collection")).toBeNull();
-    expect(getScopeRadio("Everywhere")).toBeChecked();
-    expect(
-      getSearchScopeSelector().queryByRole("radio", {
-        name: "All personal collections",
-      }),
-    ).not.toBeInTheDocument();
-    expect(getSearchScopeSelector().getAllByRole("radio")).toHaveLength(1);
   });
 });

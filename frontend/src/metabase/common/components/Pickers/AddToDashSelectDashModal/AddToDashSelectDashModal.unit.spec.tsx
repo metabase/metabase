@@ -890,6 +890,13 @@ describe("AddToDashSelectDashModal search", () => {
       await screen.findByText("Robert Tableton's Personal Collection"),
     ).toBeInTheDocument();
     await typeSearchText("personal dashboard");
+    expect(getScopeRadio("Everywhere")).toBeChecked();
+    expect(
+      getSearchScopeSelector().queryByRole("radio", {
+        name: "All personal collections",
+      }),
+    ).not.toBeInTheDocument();
+    expect(getSearchScopeSelector().getAllByRole("radio")).toHaveLength(1);
 
     await expectSearchResults([
       "Admin personal dashboard 1",
@@ -900,13 +907,6 @@ describe("AddToDashSelectDashModal search", () => {
       "No collection personal dashboard 2",
     ]);
     expect(getLastSearchParams().get("collection")).toBeNull();
-    expect(getScopeRadio("Everywhere")).toBeChecked();
-    expect(
-      getSearchScopeSelector().queryByRole("radio", {
-        name: "All personal collections",
-      }),
-    ).not.toBeInTheDocument();
-    expect(getSearchScopeSelector().getAllByRole("radio")).toHaveLength(1);
   });
 });
 

@@ -272,6 +272,13 @@ describe("DashCardPlaceholder question picker", () => {
       await screen.findByText("Robert Tableton's Personal Collection"),
     ).toBeInTheDocument();
     await typeSearchText("root");
+    expect(getScopeRadio("Everywhere")).toBeChecked();
+    expect(
+      getSearchScopeSelector().queryByRole("radio", {
+        name: "All personal collections",
+      }),
+    ).not.toBeInTheDocument();
+    expect(getSearchScopeSelector().getAllByRole("radio")).toHaveLength(1);
 
     await expectSearchResults([
       "Root question 1",
@@ -282,12 +289,5 @@ describe("DashCardPlaceholder question picker", () => {
       "Root metric 2",
     ]);
     expect(getLastSearchParams().get("collection")).toBeNull();
-    expect(getScopeRadio("Everywhere")).toBeChecked();
-    expect(
-      getSearchScopeSelector().queryByRole("radio", {
-        name: "All personal collections",
-      }),
-    ).not.toBeInTheDocument();
-    expect(getSearchScopeSelector().getAllByRole("radio")).toHaveLength(1);
   });
 });
