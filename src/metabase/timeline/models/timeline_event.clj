@@ -1,5 +1,6 @@
 (ns metabase.timeline.models.timeline-event
   (:require
+   [metabase.collections.governing-collection :as governing-collection]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -16,6 +17,8 @@
   (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
+
+(defmethod governing-collection/root-namespace :model/TimelineEvent [_model] nil)
 
 ;;;; schemas
 

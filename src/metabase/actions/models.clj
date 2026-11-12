@@ -5,6 +5,7 @@
    [metabase.actions.db :as actions.db]
    [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
+   [metabase.collections.governing-collection :as governing-collection]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -41,6 +42,8 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
   (derive :hook/dependencies))
+
+(defmethod governing-collection/root-namespace :model/Action [_model] nil)
 
 (doseq [model action-sub-models]
   (derive model :metabase/model))
