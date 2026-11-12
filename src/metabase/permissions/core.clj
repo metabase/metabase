@@ -1,7 +1,6 @@
 (ns metabase.permissions.core
   "`permissions` module API namespace."
   (:require
-   [metabase.permissions.cache]
    [metabase.permissions.data-access-token]
    [metabase.permissions.db]
    [metabase.permissions.models.application-permissions-revision]
@@ -39,8 +38,6 @@
   metabase.permissions.validation/keep-me)
 
 (p/import-vars
- [metabase.permissions.cache
-  register-loaded!]
  [metabase.permissions.db
   group-tenant-flags
   groups-by-ids]

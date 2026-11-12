@@ -8,6 +8,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.cache :as models.cache]
    [metabase.permissions.core :as perms]
    [metabase.permissions.db :as permissions.db]
    [metabase.premium-features.core :refer [defenterprise]]))
@@ -139,7 +140,7 @@
           field-info     (batch-field-info all-field-ids)
           table-ids      (into #{} (keep :table_id) (vals field-info))
           table->db      (batch-table-db-ids table-ids)
-          _              (run! #(perms/register-loaded! :model/Table %) table-ids)
+          _              (run! #(models.cache/register-loaded! :model/Table %) table-ids)
           sandbox-map    (sandbox-restricted-fields table-ids)
           can-access?    (memoize (fn [db-id table-id]
                                     (user-can-access-table? api/*current-user-id* db-id table-id)))

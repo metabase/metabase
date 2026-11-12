@@ -5,9 +5,9 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.config.core :as config]
+   [metabase.models.cache :as models.cache]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.cache :as perms.cache]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -1545,7 +1545,7 @@
                     (is (= (binding [data-perms/*use-perms-cache?* false]
                              (answers))
                            (data-perms/with-relevant-permissions-for-user user-id
-                             (run! #(perms/register-loaded! :model/Table %) table-ids)
+                             (run! #(models.cache/register-loaded! :model/Table %) table-ids)
                              (t2/with-call-count [call-count]
                                (u/prog1 (answers)
                                  (is (<= (call-count) (* 3 (count random-values))) "one load per permission type answers every check"))))))))))))))))
@@ -1570,7 +1570,7 @@
             (doseq [order [[db-a db-b] [db-b db-a]]]
               (testing (str "checking databases " order)
                 (data-perms/with-relevant-permissions-for-user user-id
-                  (perms/register-loaded! :model/Table table-b)
+                  (models.cache/register-loaded! :model/Table table-b)
                   (is (= {db-a [:blocked :no]
                           db-b [:unrestricted :query-builder]}
                          (into {} (for [db-id order]

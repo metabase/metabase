@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -424,7 +425,7 @@
   "Remembers the Tables of the table results among `results`, so that checking one of them answers them all, and
   returns the results."
   [results]
-  (run! #(when (= "table" (:model %)) (perms/register-loaded! :model/Table (:id %))) results)
+  (run! #(when (= "table" (:model %)) (models.cache/register-loaded! :model/Table (:id %))) results)
   results)
 
 (defn check-result-permissions

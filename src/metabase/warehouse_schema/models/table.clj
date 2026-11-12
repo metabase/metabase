@@ -161,7 +161,6 @@
   (models.cache/register-loaded! :model/Table (:id table))
   (models.cache/register-loaded! :model/TableUserSettings (:id table))
   (models.cache/register-loaded! :model/Database (:db_id table))
-  (perms/register-loaded! :model/Table (:id table))
   (dissoc table :is_defective_duplicate :unique_table_helper))
 
 (defn validate-user-changes!

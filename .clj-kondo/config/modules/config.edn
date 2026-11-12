@@ -4336,6 +4336,7 @@
            audit-app
            lib
            lib.schema
+           models
            permissions
            premium-features
            query-permissions

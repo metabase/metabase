@@ -3,6 +3,7 @@
    [metabase-enterprise.database-routing.db :as database-routing.db]
    [metabase.api.common :as api]
    [metabase.driver.util :as driver.u]
+   [metabase.models.cache :as models.cache]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]))
@@ -110,7 +111,7 @@
                                         (when (routes-user? attribute-name)
                                           db-id)))
                                 (database-routing.db/all-router-user-attributes))]
-       (run! #(perms/register-loaded! :model/Database %) routing-db-ids)
+       (run! #(models.cache/register-loaded! :model/Database %) routing-db-ids)
        (some (fn [db-id]
                (not= :blocked
                      (perms/most-permissive-database-permission-for-user

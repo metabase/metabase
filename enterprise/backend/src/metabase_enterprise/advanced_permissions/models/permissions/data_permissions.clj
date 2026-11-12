@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.models.cache :as models.cache]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
@@ -20,7 +21,7 @@
 (mu/defmethod download-perms-level* :mbql.stage/mbql
   [{db-id :database, :as query} :- ::lib.schema/query user-id]
   (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)
-        _     (run! #(perms/register-loaded! :model/Table %) table-ids)
+        _     (run! #(models.cache/register-loaded! :model/Table %) table-ids)
         perms (if (or native? (lib/any-native-stage-not-introduced-by-sandbox? query))
                 ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
                 ;; download perms
