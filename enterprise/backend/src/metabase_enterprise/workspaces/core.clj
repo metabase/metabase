@@ -132,26 +132,34 @@
    transaction, and the flag is written last. If the flag write throws, no schema is
    stored. Other nodes see the flag only after the commit, so they see every schema no
    later than the flag. On this node, other threads see the flag before the commit.
+   When the transaction rolls back, reloads this process's settings cache, so that
+   [[workspace-mode?]] matches the stored flag.
    Throws a 400 for an unknown database id, on a parent, or when
    `MB_WORKSPACES_ENABLED=false`.
    Trims each schema, so a repeat call with `\" ws \"` matches the stored `\"ws\"`
    and keeps the remap rows."
   [schemas :- [:map-of ::lib.schema.id/database ms/NonBlankString]]
-  (t2/with-transaction [_conn]
-    (let [schemas   (update-vals schemas str/trim)
-          databases (ws.db/all-databases)]
-      (when-let [unknown (seq (remove (set (map :id databases)) (keys schemas)))]
-        (throw (ex-info (str "Unknown database ids: " (pr-str (vec unknown)))
-                        {:status-code 400 :database_ids (vec unknown)})))
-      (doseq [{:keys [id settings] :as database} databases
-              :let [schema (get schemas id)]
-              :when (not= schema (database-workspace-schema database))]
-        (ws.db/update-database-settings! id (if schema
-                                              (assoc settings :database-workspace-schema schema)
-                                              (dissoc settings :database-workspace-schema)))
-        ;; Rows pointing at the old schema would keep redirecting reads there.
-        (ws.db/delete-table-remappings-of-database! id))
-      (ws.settings/workspaces-enabled! true)))
+  (try
+    (t2/with-transaction [_conn]
+      (let [schemas   (update-vals schemas str/trim)
+            databases (ws.db/all-databases)]
+        (when-let [unknown (seq (remove (set (map :id databases)) (keys schemas)))]
+          (throw (ex-info (str "Unknown database ids: " (pr-str (vec unknown)))
+                          {:status-code 400 :database_ids (vec unknown)})))
+        (doseq [{:keys [id settings] :as database} databases
+                :let [schema (get schemas id)]
+                :when (not= schema (database-workspace-schema database))]
+          (ws.db/update-database-settings! id (if schema
+                                                (assoc settings :database-workspace-schema schema)
+                                                (dissoc settings :database-workspace-schema)))
+          ;; Rows pointing at the old schema would keep redirecting reads there.
+          (ws.db/delete-table-remappings-of-database! id))
+        (ws.settings/workspaces-enabled! true)))
+    (catch Throwable e
+      ;; The setter puts the flag in this process's settings cache before the commit, and a rollback does not
+      ;; undo that. Reload the cache from the app DB.
+      (setting/restore-cache!)
+      (throw e)))
   nil)
 
 (defn delete-stale-table-remappings!

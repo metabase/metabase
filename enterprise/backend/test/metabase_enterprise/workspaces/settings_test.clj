@@ -95,6 +95,19 @@
       (is (thrown? clojure.lang.ExceptionInfo (ws/set-instance-workspace! {db-id "ws_x"})))
       (is (nil? (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema]))))))
 
+(deftest failed-set-instance-workspace-leaves-workspace-mode-off-test
+  (testing "set-instance-workspace! that fails after turning the flag on leaves this process out of workspace mode"
+    (ws.settings/workspaces-enabled! false)
+    (let [set-flag ws.settings/workspaces-enabled!]
+      (with-redefs [ws.settings/workspaces-enabled! (fn [v]
+                                                      (set-flag v)
+                                                      (throw (ex-info "failure before commit" {})))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"failure before commit"
+                              (ws/set-instance-workspace! {})))))
+    (testing "the stored flag rolled back"
+      (is (= "false" (t2/select-one-fn :value :setting :key "workspaces-enabled"))))
+    (is (false? (ws/workspace-mode?)))))
+
 (deftest clearing-a-database-schema-deletes-its-remappings-test
   (testing "a database dropped from the workspace loses its remap rows, so its reads stop going to the old schema"
     (mt/with-temp [:model/Database {db-a :id} {:engine :postgres}
