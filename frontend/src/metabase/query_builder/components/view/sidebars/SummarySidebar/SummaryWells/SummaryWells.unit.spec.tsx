@@ -6,12 +6,18 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TestQuerySpec } from "metabase-types/api";
 import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import type { SummaryField, SummaryWellId } from "../types";
+import { makeSummaryFormula } from "../../../../../utils/summary-formulas";
+import type {
+  SummaryField,
+  SummaryQueryChangeOptions,
+  SummaryWellId,
+} from "../types";
 import { getDimensionItems, getFieldSections, getValueItems } from "../utils";
 
 import { SummaryWells } from "./SummaryWells";
@@ -37,17 +43,22 @@ const SUMMARIZED_QUERY: TestQuerySpec = {
 
 type SetupOpts = {
   spec?: TestQuerySpec;
+  /** Custom columns the wells created. */
+  formulaNames?: string[];
 };
 
-function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
+function setup({ spec = SUMMARIZED_QUERY, formulaNames = [] }: SetupOpts = {}) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, spec);
   const onPick = jest.fn<void, [SummaryWellId, SummaryField]>();
-  const onChange = jest.fn<void, [Lib.Query]>();
+  const onChange = jest.fn<void, [Lib.Query, SummaryQueryChangeOptions?]>();
   renderWithProviders(
     <SummaryWells
       query={query}
       stageIndex={STAGE_INDEX}
       sections={getFieldSections(query, STAGE_INDEX)}
+      generatedExpressions={formulaNames
+        .map((name) => makeSummaryFormula(query, STAGE_INDEX, name))
+        .filter(isNotNull)}
       draggedItem={null}
       onPick={onPick}
       onChange={onChange}
@@ -379,6 +390,80 @@ describe("SummaryWells", () => {
     });
 
     expect(getChipLabels("columns")).toEqual(["Product → Category"]);
+  });
+
+  describe("renaming", () => {
+    const spec: TestQuerySpec = {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          expressions: [
+            { name: "Next day", value: { type: "column", name: "CREATED_AT" } },
+          ],
+          aggregations: [
+            { type: "operator", operator: "count" },
+            {
+              name: "Revenue",
+              value: {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL" }],
+              },
+            },
+          ],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit: "month" },
+            { type: "column", name: "Next day", unit: "month" },
+          ],
+        },
+      ],
+    };
+
+    async function renameChip(label: string, name: string, key: string) {
+      await userEvent.dblClick(screen.getByText(label));
+      const input = screen.getByRole("textbox", { name: `Rename ${name}` });
+      await userEvent.clear(input);
+      await userEvent.type(input, `New ${name}{${key}}`);
+    }
+
+    it("renames a named value on double-click, unless Escape drops the new name", async () => {
+      const { onChange, getLastChange } = setup({ spec });
+
+      await renameChip("Revenue", "Revenue", "Escape");
+      expect(onChange).not.toHaveBeenCalled();
+      expect(screen.getByText("Revenue")).toBeInTheDocument();
+
+      await renameChip("Revenue", "Revenue", "Enter");
+      expect(getLastChange().values).toEqual(["Count", "New Revenue"]);
+    });
+
+    it("renames a grouping formula with its unit and hands the new name over", async () => {
+      const { onChange, getLastChange } = setup({
+        spec,
+        formulaNames: ["Next day"],
+      });
+
+      await renameChip("Next day: Month", "Next day", "Enter");
+
+      expect(getLastChange().dimensions).toEqual([
+        "Created At: Month",
+        "New Next day: Month",
+      ]);
+      expect(onChange.mock.calls[0][1]).toEqual({
+        renamedFormula: { name: "Next day", nextName: "New Next day" },
+      });
+    });
+
+    it("offers no renaming to columns or to custom columns made elsewhere", async () => {
+      setup({ spec });
+
+      await userEvent.dblClick(screen.getByText("Created At: Month"));
+      await userEvent.dblClick(screen.getByText("Next day: Month"));
+
+      expect(
+        screen.queryByRole("textbox", { name: /^Rename/ }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("labels that don't fit", () => {

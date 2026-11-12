@@ -24,10 +24,16 @@ export function updateSummaryFormula({
   stageIndex,
   generatedExpressions,
   createdFormula,
+  renamedFormula,
 }: Options) {
   const index =
     stageIndex < 0 ? Lib.stageCount(query) + stageIndex : stageIndex;
-  const owned = reconcileSummaryFormulas(query, generatedExpressions);
+  const owned = reconcileSummaryFormulas(query, generatedExpressions).map(
+    (formula) =>
+      formula.stageIndex === index && formula.name === renamedFormula?.name
+        ? { ...formula, name: renamedFormula.nextName }
+        : formula,
+  );
   let formulas = owned;
 
   if (createdFormula) {

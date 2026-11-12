@@ -1,5 +1,5 @@
 import { Ellipsified, Icon } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
 import type { SummaryValueItem } from "../types";
@@ -32,8 +32,26 @@ export function ValueChip({
   onChange,
   onRemove,
 }: ValueChipProps) {
+  const handleRename = (name: string) =>
+    onChange(
+      Lib.replaceClause(
+        query,
+        stageIndex,
+        item.clause,
+        Lib.withExpressionName(item.clause, name),
+      ),
+    );
+
   return (
-    <WellChip drag={{ kind: "value", item }} onRemove={onRemove}>
+    <WellChip
+      drag={{ kind: "value", item }}
+      rename={
+        item.kind === "expression"
+          ? { name: item.label, onRename: handleRename }
+          : undefined
+      }
+      onRemove={onRemove}
+    >
       {item.kind === "column" ? (
         <ColumnValueMenu
           query={query}

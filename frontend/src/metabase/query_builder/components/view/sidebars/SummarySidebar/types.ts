@@ -6,6 +6,7 @@ export type SummaryWellId = "values" | "columns";
 
 export type SummaryQueryChangeOptions = {
   createdFormula?: boolean;
+  renamedFormula?: { name: string; nextName: string };
 };
 
 export type SummaryField =

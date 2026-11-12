@@ -191,6 +191,28 @@ describe("summary formula handoff", () => {
     expect(Lib.breakouts(afterClear, -1)).toHaveLength(0);
     expect(Lib.expressions(afterClear, -1)).toHaveLength(1);
   });
+  it("keeps owning a grouping formula after it is renamed", async () => {
+    const { onQueryChange } = await setup();
+    fireEvent.change(getInput("columns"), {
+      target: { value: "=[Total] + 10" },
+    });
+    await screen.findByRole("textbox", { name: "Formula" });
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await expectClosed();
+    await userEvent.dblClick(
+      within(screen.getByTestId("summary-well-columns")).getByText(
+        "Total + 10",
+      ),
+    );
+    const input = screen.getByRole("textbox", { name: "Rename Total + 10" });
+    await userEvent.clear(input);
+    await userEvent.type(input, "Bonus{Enter}");
+    await userEvent.click(screen.getByRole("button", { name: "Remove Bonus" }));
+    expect(onQueryChange).toHaveBeenCalledTimes(3);
+    const [query] = onQueryChange.mock.calls[2];
+    expect(Lib.breakouts(query, -1)).toHaveLength(0);
+    expect(Lib.expressions(query, -1)).toHaveLength(0);
+  });
   it("keeps a formula regrouped after its grouping was removed outside the sidebar", async () => {
     const { onQueryChange } = await setup();
     fireEvent.change(getInput("columns"), {

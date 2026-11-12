@@ -225,13 +225,13 @@ function getValueItem(
   operators: Lib.AggregationOperator[],
   entityKind: "metric" | "measure" | null,
 ): SummaryValueItem {
-  const { displayName } = Lib.displayInfo(query, stageIndex, clause);
+  const { displayName, isNamed } = Lib.displayInfo(query, stageIndex, clause);
   const base = { clause, key, label: displayName };
   const clauseOperators = Lib.selectedAggregationOperators(operators, clause);
   const selectedOperator = clauseOperators.find(
     (operator) => Lib.displayInfo(query, stageIndex, operator).selected,
   );
-  if (selectedOperator == null) {
+  if (selectedOperator == null || isNamed) {
     return { ...base, kind: entityKind ?? "expression" };
   }
   // the operator's columns carry the selection; `Lib.aggregationColumn` is the result column

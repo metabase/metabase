@@ -332,16 +332,22 @@
   [reference]
   (lib.options/update-options reference assoc :lib/uuid (str (random-uuid))))
 
-(defn- local-replace-expression-references [stage target-ref-id replacement-ref]
+(defn- with-bucketing-of
+  "Return `a-ref` with the temporal unit and binning of `source-ref`."
+  [a-ref source-ref]
+  (lib.options/update-options a-ref merge (perf/select-keys (lib.options/options source-ref) [:temporal-unit :binning])))
+
+(defn- local-replace-expression-references [stage target-ref-id replacement-ref keep-bucketing?]
   (let [replace-embedded-refs (fn replace-refs [stage]
                                 (match/replace stage
                                   [:expression _ (id :guard (= id target-ref-id))]
                                   (-> replacement-ref
+                                      (cond-> keep-bucketing? (with-bucketing-of &match))
                                       fresh-ref)))]
     (replace-embedded-refs stage)))
 
 (defn- local-replace-expression
-  [stage target replacement]
+  [stage target replacement keep-bucketing?]
   (let [replacement-name (or (lib.util/expression-name replacement)
                              (-> replacement lib.options/options :name))
         top-level-replacement (-> replacement
@@ -351,14 +357,18 @@
         target-name (lib.util/expression-name target)
         replacement-type (-> replacement lib.options/options :effective-type)
         replacement-ref [:expression {:effective-type replacement-type} replacement-name]]
-    (local-replace-expression-references replaced target-name replacement-ref)))
+    (local-replace-expression-references replaced target-name replacement-ref keep-bucketing?)))
 
 (defn- local-replace
-  [stage target replacement]
-  (->> (if (lib.util/expression-name target)
-         (local-replace-expression stage target replacement)
-         (perf/postwalk #(if (= % target) replacement %) stage))
-       (perf/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %))))
+  "Replace `target` with `replacement` in `stage`. References to a replaced expression keep their bucketing when
+  `keep-bucketing?` is true, which is the case when the expression keeps its type."
+  ([stage target replacement]
+   (local-replace stage target replacement false))
+  ([stage target replacement keep-bucketing?]
+   (->> (if (lib.util/expression-name target)
+          (local-replace-expression stage target replacement keep-bucketing?)
+          (perf/postwalk #(if (= % target) replacement %) stage))
+        (perf/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %)))))
 
 (defn- returned-columns-at-stage
   [query stage-number]
@@ -375,8 +385,12 @@
 (defn- next-stage-replacement
   [query next-stage-number [col replaced-col]]
   (let [target-ref-id (:lib/desired-column-alias col)
-        replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))]
-    (mapv (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
+        replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))
+        keep-bucketing? (= (:effective-type col) (:effective-type replaced-col))]
+    (mapv (fn [target-ref]
+            [target-ref (-> replaced-ref
+                            (cond-> keep-bucketing? (with-bucketing-of target-ref))
+                            fresh-ref)])
           (match/match-many (lib.util/query-stage query next-stage-number)
             [:field _ (id :guard (= id target-ref-id))] &match))))
 
@@ -416,8 +430,10 @@
   (let [unmodified-query query
         replacement (->> replacement
                          (with-default-name target)
-                         (typed-expression query stage-number))]
-    (loop [query (lib.util/update-query-stage query stage-number local-replace target replacement)
+                         (typed-expression query stage-number))
+        keep-bucketing? (= (lib.metadata.calculation/type-of query stage-number target)
+                           (-> replacement lib.options/options :effective-type))]
+    (loop [query (lib.util/update-query-stage query stage-number local-replace target replacement keep-bucketing?)
            stage-number stage-number]
       (if-let [next-stage-number (lib.util/next-stage-number query stage-number)]
         (let [next-replacements (->> (replaced-columns unmodified-query stage-number query)
