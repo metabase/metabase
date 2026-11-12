@@ -63,8 +63,8 @@
   (str "Each match element is a library entity (already hydrated with the ids, names and portable "
        "references you need), the matched_on text that triggered it, and any usage_instructions for that "
        "entity. similarity is the raw cosine match strength; a match flagged confidence=\"weak\" (or a "
-       "leading note element) means nothing in the library clearly matches — don't build on it; search for "
-       "the data with the search tools instead."))
+       "leading note element) means nothing in the library clearly matches — don't build on it blindly; "
+       "prefer asking the user to clarify or narrow the request."))
 
 (defn- similarity
   "Raw cosine similarity (1 - distance) for a match, from its score breakdown."
@@ -186,10 +186,10 @@
   (if (empty? matches)
     (str "<search_results>No matching library entities.</search_results>\n"
          "<instructions>Rephrase `user_search_prompt` and call `retrieve_library_entities` once more. If there are "
-         "still no matches, search for the data with the search tools instead.</instructions>")
+         "still no matches, ask the user to clarify or narrow the request.</instructions>")
     (str (when (:weak? (first matches))
            (str "<note>No strong library match for this request — treat the results below as weak "
-                "guesses, and search for the data with the search tools instead.</note>\n"))
+                "guesses; consider asking the user to clarify or narrow the request.</note>\n"))
          "<search_results>\n"
          (str/join "\n" (map match->xml matches))
          "\n</search_results>\n"
@@ -255,7 +255,7 @@
                        "fully-qualified name). Use it to pick the right entity, then `read_resource` that entity to "
                        "confirm its fields and sample values before building. If the top match is flagged "
                        "low-confidence (a leading <note> / confidence=\"weak\"), nothing in the library clearly "
-                       "matches – search for the data with the search tools instead.")
+                       "matches – prefer asking the user to clarify or narrow the request.")
      :scope       scope/agent-search
      :args        entity-retrieval-schema
      :metabot/available?       library-available?

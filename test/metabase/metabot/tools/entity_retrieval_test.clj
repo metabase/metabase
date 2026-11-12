@@ -259,12 +259,12 @@
                (invoke {:user_search_prompt "revenue per region"} nlq-discovery-tools)))))))
 
 (deftest ^:parallel library-miss-test
-  (testing "a miss is a successful call that tells the model to rephrase once, then search instead"
+  (testing "a miss is a successful call that tells the model to rephrase once, then ask the user"
     (with-unfiltered-search (constantly [])
       (is (= {:output            (str "<search_results>No matching library entities.</search_results>\n"
                                       "<instructions>Rephrase `user_search_prompt` and call "
-                                      "`retrieve_library_entities` once more. If there are still no matches, search "
-                                      "for the data with the search tools instead.</instructions>")
+                                      "`retrieve_library_entities` once more. If there are still no matches, ask the "
+                                      "user to clarify or narrow the request.</instructions>")
               :structured-output {:result-type :search
                                   :data        []
                                   :total_count 0
