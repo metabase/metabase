@@ -2241,7 +2241,6 @@
                     :model/PulseChannelRecipient}
    :model-imports #{:model/Card
                     :model/Channel
-                    :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Notification
@@ -2346,7 +2345,6 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/CardBookmark
-                    :model/Collection
                     :model/Dashboard
                     :model/Database
                     :model/StoredResult
