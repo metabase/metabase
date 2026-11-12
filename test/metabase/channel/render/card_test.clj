@@ -12,11 +12,14 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.pulse.render.test-util :as render.tu]
+   [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -686,6 +689,48 @@
                                                     {:type :svg :content "<svg></svg>"})]
         (channel.render/render-pulse-card-for-display nil card {:data data}))
       (is (= 80 (:progress.goal @captured))))))
+
+(defn- run-and-render
+  "Run saved `card` with its goals through `qp.card`, the entry point notifications use, and render it with the JS
+  renderer stubbed. Returns the goal source's referenced-entity result and the viz settings the renderer got."
+  [card source-id]
+  (let [captured (atom nil)
+        result   (mt/as-admin
+                   (qp.card/process-query-for-card
+                    card :api
+                    :make-run (fn [qp _export-format]
+                                (fn [query info]
+                                  (qp (update query :info merge info) qp.reducible/default-rff)))))]
+    (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
+                                                  (reset! captured viz-settings)
+                                                  {:type :svg :content "<svg></svg>"})]
+      (channel.render/render-pulse-card-for-display nil card result))
+    {:goal         (get-in result [:data :referenced_entities "card" (str source-id)])
+     :viz-settings @captured}))
+
+(deftest render-failed-goal-error-types-test
+  (testing "a goal that fails with an error type reaches the renderer as a failed goal, and the chart still renders"
+    (mt/with-temp [:model/Card {deleted-id :id} {:dataset_query (mt/native-query {:query "SELECT 1 AS \"count\""})}
+                   :model/Card {variable-id :id} {:dataset_query (mt/native-query
+                                                                  {:query         "SELECT {{n}} AS \"count\""
+                                                                   :template-tags {"n" {:id           "n"
+                                                                                        :name         "n"
+                                                                                        :display-name "N"
+                                                                                        :type         :number
+                                                                                        :default      2}}})}]
+      (t2/delete! :model/Card :id deleted-id)
+      (doseq [[error-type source-id] {"not-found"      deleted-id
+                                      "has-parameters" variable-id}]
+        (testing error-type
+          (mt/with-temp [:model/Card card {:display                :progress
+                                           :dataset_query          (mt/mbql-query checkins {:aggregation [[:count]]})
+                                           :visualization_settings {:progress.goal {:id     source-id
+                                                                                    :type   "card"
+                                                                                    :column "count"}}}]
+            (let [{:keys [goal viz-settings]} (run-and-render card source-id)]
+              (is (=? {:status "failed" :error_type error-type} goal))
+              ;; a progress goal that can't resolve falls back to 0
+              (is (= 0 (:progress.goal viz-settings))))))))))
 
 (deftest render-resolves-dynamic-gauge-segments-test
   (testing "gauge segment entity refs are substituted before the card reaches the JS renderer"
