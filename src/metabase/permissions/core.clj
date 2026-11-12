@@ -90,11 +90,9 @@
  [metabase.permissions.data-permissions.sql
   UserInfo
   PermissionMapping
-  visible-database-filter-select
-  visible-table-filter-select
-  visible-table-filter-with-cte
-  visible-table-filter-subquery-clause
-  select-tables-and-groups-granting-perm]
+  select-tables-and-groups-granting-perm
+  visible-databases-filter-clause
+  visible-tables-filter-clause]
  [metabase.permissions.models.permissions
   namespace-clause
   can-read-audit-helper

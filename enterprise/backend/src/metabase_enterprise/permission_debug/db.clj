@@ -27,18 +27,17 @@
             [:metabase_database :db] [:= :blocked.db_id :db.id]
             [:permissions_group :pg] [:= :perm_grant.group_id :pg.id]]
    :where  [:and tables-expr
-            [:not
-             [:in :blocked.id (perms/visible-table-filter-select
-                               :id
-                               {:user-id user-id :is-superuser? false}
-                               permissions-granting)]]]})
+            [:not (perms/visible-tables-filter-clause
+                   :blocked.id
+                   {:user-id user-id :is-superuser? false}
+                   permissions-granting)]]})
 
 (mu/defn blocked-tables-in-database
   "The `[db-name schema table-name group-name]` rows of every Table in the Database with `database-id` blocked (per
   `permissions-blocking`) for the User with `user-id`, excluding those granted (per `permissions-granting`).
 
-  `permissions-blocking`/`permissions-granting` are plain permission-type -> permission-value (or
-  `[value :most|:least]`) mappings, per `perms/PermissionMapping`; db.clj builds the Honey SQL from them."
+  `permissions-blocking`/`permissions-granting` are permission-type -> permission-value mappings, per
+  `perms/PermissionMapping`; db.clj builds the Honey SQL from them."
   [user-id              :- ::lib.schema.id/user
    database-id          :- ::lib.schema.id/database
    permissions-blocking :- perms/PermissionMapping
@@ -49,8 +48,8 @@
   "The `[db-name schema table-name group-name]` rows of the Tables with `table-ids` blocked (per
   `permissions-blocking`) for the User with `user-id`, excluding those granted (per `permissions-granting`).
 
-  `permissions-blocking`/`permissions-granting` are plain permission-type -> permission-value (or
-  `[value :most|:least]`) mappings, per `perms/PermissionMapping`; db.clj builds the Honey SQL from them."
+  `permissions-blocking`/`permissions-granting` are permission-type -> permission-value mappings, per
+  `perms/PermissionMapping`; db.clj builds the Honey SQL from them."
   [user-id              :- ::lib.schema.id/user
    table-ids            :- [:set ::lib.schema.id/table]
    permissions-blocking :- perms/PermissionMapping

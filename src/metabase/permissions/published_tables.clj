@@ -41,7 +41,7 @@
 (defenterprise published-table-perm-grant-rows
   "Returns a HoneySQL SELECT producing (id, perm_type, perm_value) rows representing the permission
   grants that published+visible-collection tables provide. Used as a UNION ALL branch in the
-  table_permissions CTE built by `visible-table-filter-with-cte`.
+  subquery built by `visible-tables-filter-clause`.
 
   OSS implementation returns nil — published tables only grant access in EE."
   metabase-enterprise.data-studio.permissions.published-tables

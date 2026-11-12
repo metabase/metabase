@@ -82,12 +82,12 @@
                         ^:allow-subquery
                         {:select [:id]
                          :from   [table-name]
-                         :where  [:in :source_database_id
-                                  (perms/visible-database-filter-select
-                                   {:user-id          user-id
-                                    :is-superuser?    is-superuser?
-                                    :is-data-analyst? is-data-analyst?}
-                                   {:perms/create-queries :query-builder})]}]])
+                         :where  (perms/visible-databases-filter-clause
+                                  :source_database_id
+                                  {:user-id          user-id
+                                   :is-superuser?    is-superuser?
+                                   :is-data-analyst? is-data-analyst?}
+                                  {:perms/create-queries :query-builder})}]])
 
                     (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet :model/Action)
                     (let [archived-column (u/qualified-key table-name :archived)
@@ -130,11 +130,10 @@
                       ^:allow-subquery
                       {:select [:id]
                        :from   [table-name]
-                       :where  [:in id-column
-                                (perms/visible-table-filter-select
-                                 :id
-                                 {:user-id user-id :is-superuser? is-superuser?}
-                                 {:perms/view-data :unrestricted :perms/create-queries :query-builder})]}]]
+                       :where  (perms/visible-tables-filter-clause
+                                id-column
+                                {:user-id user-id :is-superuser? is-superuser?}
+                                {:perms/view-data :unrestricted :perms/create-queries :query-builder})}]]
 
                     (:model/Segment :model/Measure)
                     (let [archived-column (u/qualified-key table-name :archived)
@@ -150,11 +149,10 @@
                                    ^:allow-subquery
                                    {:select [:metabase_table.id]
                                     :from   [:metabase_table]
-                                    :where  [:in :metabase_table.id
-                                             (perms/visible-table-filter-select
-                                              :id
-                                              {:user-id user-id :is-superuser? is-superuser?}
-                                              {:perms/view-data :unrestricted :perms/create-queries :query-builder})]}]
+                                    :where  (perms/visible-tables-filter-clause
+                                             :metabase_table.id
+                                             {:user-id user-id :is-superuser? is-superuser?}
+                                             {:perms/view-data :unrestricted :perms/create-queries :query-builder})}]
                                   (case include-archived-items
                                     :exclude [:= archived-column false]
                                     :only    [:= archived-column true]

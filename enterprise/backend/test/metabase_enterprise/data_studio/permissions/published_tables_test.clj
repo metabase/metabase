@@ -2,7 +2,6 @@
   "Tests for the can-access-via-collection? function in the published-tables namespace."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.test :as mt]
@@ -115,8 +114,8 @@
               (is (= #{[visible-pub-id "perms/create-queries" "query-builder"]}
                      (run-grant-rows true))))))))))
 
-(deftest visible-filter-clause-include-published-via-collection-test
-  (testing "visible-filter-clause :model/Table extends visibility via published+collection grants when requested"
+(deftest visible-tables-filter-clause-published-via-collection-test
+  (testing "visible-tables-filter-clause extends visibility via published+collection grants"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection {allowed-coll-id :id} {:type "library-data"}
                      :model/Collection {blocked-coll-id :id} {:type "library-data"}
@@ -146,32 +145,16 @@
           (perms/set-table-permission! group-id plain-allowed :perms/create-queries :query-builder)
           ;; ...and pub-blocked-by-view-data, where view-data is :blocked overriding the db default
           (perms/set-table-permission! group-id pub-blocked-by-view-data :perms/view-data :blocked)
-          (let [user-info {:user-id user-id :is-superuser? false}
-                run (fn [opts]
-                      (let [{:keys [clause with]}
-                            (mi/visible-filter-clause :model/Table :id user-info
-                                                      {:perms/view-data :unrestricted
-                                                       :perms/create-queries :query-builder}
-                                                      opts)]
-                        (t2/select-pks-set :model/Table
-                                           (cond-> {:where [:and [:= :db_id db-id] clause]}
-                                             with (assoc :with with)))))]
-            (testing "without :include-published-via-collection? only the data-perms grant lets a table through"
-              (is (= #{plain-allowed} (run nil))))
-            (testing "with :include-published-via-collection? the published+visible-collection table also passes"
-              (is (= #{plain-allowed pub-allowed}
-                     (run {:include-published-via-collection? true}))))
+          (let [visible (t2/select-pks-set :model/Table
+                                           {:where [:and [:= :db_id db-id]
+                                                    (perms/visible-tables-filter-clause
+                                                     :id {:user-id user-id :is-superuser? false}
+                                                     {:perms/view-data      :unrestricted
+                                                      :perms/create-queries :query-builder})]})]
+            (testing "the data-perms grant and the published+visible-collection table pass"
+              (is (= #{plain-allowed pub-allowed} visible)))
             (testing "unpublished or non-visible-collection tables do not pass via the published path"
-              (let [visible (run {:include-published-via-collection? true})]
-                (is (not (contains? visible pub-blocked)))
-                (is (not (contains? visible unpub-allowed)))))
+              (is (not (contains? visible pub-blocked)))
+              (is (not (contains? visible unpub-allowed))))
             (testing "view-data :blocked at the table level still excludes the table even when published+visible"
-              (let [visible (run {:include-published-via-collection? true})]
-                (is (not (contains? visible pub-blocked-by-view-data)))))
-            (testing "the returned :clause is a single IN — no top-level :or"
-              (let [{:keys [clause]} (mi/visible-filter-clause
-                                      :model/Table :id user-info
-                                      {:perms/view-data :unrestricted
-                                       :perms/create-queries :query-builder}
-                                      {:include-published-via-collection? true})]
-                (is (= :in (first clause)))))))))))
+              (is (not (contains? visible pub-blocked-by-view-data))))))))))

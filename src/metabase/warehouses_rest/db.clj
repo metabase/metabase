@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -56,9 +56,9 @@
         where      (if filter-by-data-access?
                      [:and base-where
                       [:or
-                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
-                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))
-                       (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
+                       (perms/visible-databases-filter-clause :id user-info {:perms/create-queries :query-builder})
+                       (perms/visible-databases-filter-clause :id user-info {:perms/manage-database :yes})
+                       (perms/visible-databases-filter-clause :id user-info {:perms/manage-table-metadata :yes})]]
                      base-where)]
     (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                 :where where})))
