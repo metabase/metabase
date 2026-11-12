@@ -380,18 +380,20 @@
   "Settle one [[reconcile]] message: re-derive its documents that still resolve, and remove the rest.
   Documents whose survival cannot be enumerated are left alone."
   [{:keys [search-model ids]}]
-  (let [checked (for [chunk (partition-all reconcile-batch-size ids)
-                      :let  [alive (existing-doc-ids search-model chunk)]
-                      ;; Nil means the survivors could not be enumerated, and reading it as "none survived" would
-                      ;; purge live documents.
-                      :when (some? alive)]
-                  {:alive alive, :gone (set/difference (set chunk) alive)})]
-    ;; Every tombstone applies before any re-index.
-    ;; A failing re-index then leaves survivors stale, instead of leaving deleted documents searchable.
-    ;; The gone and alive ids never overlap, so the order matters for nothing else.
-    (when-let [gone (not-empty (into #{} (mapcat :gone) checked))]
-      (apply-tombstones! [(tombstone search-model gone)]))
-    (doseq [{:keys [alive]} checked
+  ;; Each chunk's tombstone applies as soon as the chunk is checked, and the re-index waits until every check is done.
+  ;; A failing check or re-index then costs no tombstone already known, so it leaves survivors stale rather than
+  ;; deleted documents searchable.
+  ;; The gone and alive ids never overlap, so the order matters for nothing else.
+  (let [survivors (into []
+                        (keep (fn [chunk]
+                                ;; Nil means the survivors could not be enumerated, and reading it as "none
+                                ;; survived" would purge live documents.
+                                (when-some [alive (existing-doc-ids search-model chunk)]
+                                  (when-let [gone (not-empty (set/difference (set chunk) alive))]
+                                    (apply-tombstones! [(tombstone search-model gone)]))
+                                  alive)))
+                        (partition-all reconcile-batch-size ids))]
+    (doseq [alive survivors
             :when (seq alive)]
       (ingest-updates! [[search-model (doc-id-selector search-model alive)]]))))
 

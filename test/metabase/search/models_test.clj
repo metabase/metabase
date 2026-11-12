@@ -436,6 +436,27 @@
                  {:alive (indexed-count "action" alive-id)
                   :gone  (indexed-count "action" gone-id)})))))))
 
+(deftest reconcile-check-failure-keeps-earlier-tombstones-test
+  (testing "a survivor check that throws for a later chunk keeps the tombstones of the chunks before it"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id} {:name "Failing Check Model", :type :model}
+                     :model/Action {gone-id :id} {:name "Deleted Action", :model_id card-id, :type :query}]
+        (let [unchecked-id     Long/MAX_VALUE
+              existing-doc-ids (mt/original-fn #'search.ingestion/existing-doc-ids)]
+          ;; A raw delete, so the action's document is left for the reconcile to purge.
+          (t2/query {:delete-from :action, :where [:= :id gone-id]})
+          (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids (fn [search-model ids]
+                                                                          (if (some #{unchecked-id} ids)
+                                                                            (throw (ex-info "check failed" {}))
+                                                                            (existing-doc-ids search-model ids)))]
+            ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+            ;; One id per chunk, and a sorted set so the deleted action's chunk is checked first.
+            (with-redefs-fn {#'search.ingestion/reconcile-batch-size 1}
+              #(is (thrown-with-msg? clojure.lang.ExceptionInfo #"check failed"
+                                     (#'search.ingestion/apply-reconcile!
+                                      {:search-model "action", :ids (sorted-set gone-id unchecked-id)})))))
+          (is (= 0 (indexed-count "action" gone-id))))))))
+
 (deftest cascade-enumeration-ceiling-test
   (testing "a fan-out past the ceiling is skipped rather than materialized"
     (search.tu/with-appdb-search-if-available-without-fallback
