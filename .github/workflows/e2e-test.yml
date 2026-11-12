@@ -98,6 +98,25 @@ jobs:
         with:
           metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
+      # Metabase takes a minute or two to start, so start it first and let the steps below prepare the rest of the
+      # job in the meantime. `Wait for Metabase` waits for it before anything needs it.
+      - name: Prepare JDK
+        uses: actions/setup-java@v5.2.0
+        with:
+          java-version: "25"
+          distribution: "temurin"
+
+      - name: Retrieve uberjar artifact for ${{ inputs.edition }}
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ${{ inputs.edition }}
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
+
+      - name: Start Metabase
+        run: node e2e/runner/run_backend_ci.js start
+
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
         with:
@@ -112,14 +131,6 @@ jobs:
           mysql: true
           mongo: true
           mocksaml: true
-
-      - name: Retrieve uberjar artifact for ${{ inputs.edition }}
-        uses: ./.github/actions/fetch-artifact
-        with:
-          commit: ${{ github.event.pull_request.head.sha || github.sha }}
-          edition: ${{ inputs.edition }}
-          extract-path: "target/uberjar"
-          output-name: "metabase.jar"
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -178,8 +189,8 @@ jobs:
         if: steps.prebuilt-cljs.outcome != 'success'
         run: bun run build-pure:cljs
 
-      - name: Run Metabase
-        run: node e2e/runner/run_cypress_ci.js start
+      - name: Wait for Metabase
+        run: node e2e/runner/run_backend_ci.js wait
 
       # Export this job's numeric GitHub job id as $JOB_ID for the Cypress runs
       # below (ci-conductor failed-tests reporting reads it in after:spec).
