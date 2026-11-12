@@ -111,7 +111,7 @@
                                                       :status       :active
                                                       :bundle       (bundle "old")}]
         (let [hashed   (atom 0)
-              original cache/bytes-hash]
+              original (mt/original-fn #'cache/bytes-hash)]
           (mt/with-dynamic-fn-redefs [cache/bytes-hash (fn [b] (swap! hashed inc) (original b))]
             (t2/update! :model/CustomVizPlugin :id id {:enabled false})
             (is (zero? @hashed))

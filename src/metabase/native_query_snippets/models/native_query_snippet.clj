@@ -282,4 +282,5 @@
 
 (defmethod remote-sync/spec :model/NativeQuerySnippet
   [_model]
-  {:synced-filter-clause native-query-snippets.db/synced-snippets-clause})
+  {:synced-items         native-query-snippets.db/synced-snippet-items
+   :synced-filter-clause native-query-snippets.db/synced-snippets-clause})

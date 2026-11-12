@@ -1958,4 +1958,5 @@
 
 (defmethod remote-sync/spec :model/Card
   [_model]
-  {:synced-filter-clause queries.db/synced-cards-clause})
+  {:synced-items         queries.db/synced-card-items
+   :synced-filter-clause queries.db/synced-cards-clause})

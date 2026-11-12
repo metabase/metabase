@@ -1,12 +1,7 @@
-import type { ConfigEnv } from "vite";
-
 /**
- * `DATA_APP_*` vars are exposed to the bundle in the dev preview ONLY. A
- * production build gets `undefined`, so dev secrets can never be inlined into the
- * shipped `dist/index.js` — even if app code reads `import.meta.env.DATA_APP_*`.
+ * The only env vars `import.meta.env` exposes, in the dev preview and in a production build alike. `DATA_APP_MB_URL`
+ * and `DATA_APP_MB_API_KEY` stay in the dev server, which relays the instance itself. Vite's default prefix, `VITE_`,
+ * would expose other secrets from the repo-root `.env.local` or the shell, and a build inlines every exposed var the
+ * bundle reads into `dist/index.js`, which every viewer of the app downloads.
  */
-export function dataAppEnvPrefix(
-  command: ConfigEnv["command"],
-): string[] | undefined {
-  return command === "serve" ? ["DATA_APP_"] : undefined;
-}
+export const DATA_APP_PUBLIC_ENV_PREFIX = "DATA_APP_PUBLIC_";

@@ -24,6 +24,7 @@
    [metabase.driver :as driver]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.scope :as scope]
+   [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -157,8 +158,8 @@
   ;; The reset! also means re-initializing drops removed or renamed skills.
   ;; `vec` realizes the (lazy) skill seq once so resources aren't slurped+parsed once per index.
   (let [skills (vec (concat (markdown-skills) (dialect-skills)))]
-    (reset! *skills {:by-id     (into {} (map (juxt :id identity)) skills)
-                     :by-id-str (into {} (map (juxt (comp name :id) identity)) skills)})))
+    (reset! *skills {:by-id     (u/index-by :id skills)
+                     :by-id-str (u/index-by (comp name :id) skills)})))
 
 (load-skills!)
 
