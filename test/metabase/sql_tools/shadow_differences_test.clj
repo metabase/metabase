@@ -107,14 +107,6 @@
       (is (= [:truncated] (keys shadow-result)))
       (is (= 16384 (count (:truncated shadow-result)))))))
 
-(deftest record-keeps-at-most-max-rows-test
-  (mt/with-empty-h2-app-db!
-    (with-redefs [shadow-differences/max-rows 3]
-      (doseq [i (range 5)]
-        (shadow-differences/record! (difference (str "SELECT " i))))
-      (is (= ["SELECT 2" "SELECT 3" "SELECT 4"]
-             (map :sql (rows)))))))
-
 (deftest record-truncates-sql-test
   (mt/with-empty-h2-app-db!
     (shadow-differences/record! (difference (apply str "SELECT " (repeat 100000 "x"))))

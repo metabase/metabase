@@ -56,12 +56,7 @@
                      :seen_count   [:+ :seen_count 1]
                      :last_seen_at :%now)))
 
-(mu/defn insert-shadow-difference! :- pos-int?
-  "Insert a shadow difference `row`. Returns its id."
+(mu/defn insert-shadow-difference! :- :int
+  "Insert a shadow difference `row`. Returns the number of rows inserted."
   [row :- ShadowDifferenceRow]
-  (t2/insert-returning-pk! :model/SqlParsingShadowDifference row))
-
-(mu/defn delete-shadow-differences-up-to! :- :int
-  "Delete the shadow differences whose id is at most `id`. Returns the number of rows deleted."
-  [id :- :int]
-  (t2/delete! :model/SqlParsingShadowDifference :id [:<= [:auto/param id]]))
+  (t2/insert! :model/SqlParsingShadowDifference row))
