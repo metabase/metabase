@@ -174,6 +174,39 @@ jobs:
           docker pull ${{ steps.image.outputs.full_image }}
           ```
 
+  verify-static-viz:
+    needs: containerize
+    if: inputs.registry != 'ecr'
+    name: verify-static-viz (${{ inputs.edition }}, ${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ${{ vars.DEFAULT_RUNNER_KEY }}
+          - platform: linux/arm64
+            runner: arm-ubuntu-24-2core
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v7
+      if: contains(inputs.platforms, matrix.platform)
+      with:
+        fetch-depth: 1
+        sparse-checkout: .github/scripts
+    - name: Login to Docker Hub
+      if: contains(inputs.platforms, matrix.platform)
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      with:
+        username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
+        password: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
+    - name: Pull the container image
+      if: contains(inputs.platforms, matrix.platform)
+      run: docker pull --platform ${{ matrix.platform }} ${{ needs.containerize.outputs.full_image }}
+    - name: Render a chart inside the image
+      if: contains(inputs.platforms, matrix.platform)
+      run: .github/scripts/verify-docker-static-viz.sh ${{ needs.containerize.outputs.full_image }}
+
   verify-docker-pull-amd64:
     needs: containerize
     if: >-
