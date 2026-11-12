@@ -218,20 +218,21 @@
   "Mistakes in `rules`, shaped like [[driver-test-rules]], against the module graph `deps`.
   Returns one map per mistake, with the `:module` and a `:type`.
   The type is `:undeclared` for a listed module missing from `deps`.
-  It is `:redundant-exemption` for an exemption whose nearest listed ancestor is already exempt.
-  It is `:stray-opt-in` for an opt-in whose nearest listed ancestor is not an exemption."
+  It is `:redundant-exemption` or `:redundant-opt-in` for an entry that its module's decision doesn't need."
   [deps {:keys [exemptions opt-ins] :as rules}]
-  (let [inherited (fn [module] (some #(listed-decision rules %) (rest (modules/lineage deps module))))]
+  ;; Judging each entry by [[driver-exempt?]] without it covers a module listed twice, such as a trigger that is
+  ;; also an exemption.
+  (let [exempt-without? (fn [k module] (driver-exempt? deps (update rules k disj module) module))]
     (concat
      (for [module (sort-by str (concat exemptions opt-ins))
            :when  (not (contains? deps module))]
        {:type :undeclared, :module module})
      (for [module (sort-by str exemptions)
-           :when  (= :exempt (inherited module))]
+           :when  (exempt-without? :exemptions module)]
        {:type :redundant-exemption, :module module})
      (for [module (sort-by str opt-ins)
-           :when  (not= :exempt (inherited module))]
-       {:type :stray-opt-in, :module module}))))
+           :when  (not (exempt-without? :opt-ins module))]
+       {:type :redundant-opt-in, :module module}))))
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.

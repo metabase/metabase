@@ -303,17 +303,20 @@
                 x             #{}
                 x.t           #{}
                 x.t.e         #{}
-                x.t.o         #{}}
-        rules '{:triggers   #{x.t}
-                :exemptions #{a a.sub nope x x.t.e}
-                :opt-ins    #{a.sub.in a.sub.in.deep b.sub x.t.o}}]
-    ;; A trigger keeps its submodules in, like an opt-in: so the exemption `x.t.e` under the trigger `x.t` is
-    ;; needed, and the opt-in `x.t.o` there changes nothing.
+                x.t.o         #{}
+                x.te          #{}
+                x.to          #{}}
+        rules '{:triggers   #{x.t x.te x.to}
+                :exemptions #{a a.sub nope x x.t.e x.te}
+                :opt-ins    #{a.sub.in a.sub.in.deep b.sub x.t.o x.to}}]
+    ;; A trigger keeps itself and its submodules in, like an opt-in. So the exemptions `x.t.e` and `x.te` are needed,
+    ;; while the opt-ins `x.t.o` and `x.to` change nothing.
     (is (= '#{{:type :undeclared,          :module nope}
               {:type :redundant-exemption, :module a.sub}
-              {:type :stray-opt-in,        :module a.sub.in.deep}
-              {:type :stray-opt-in,        :module b.sub}
-              {:type :stray-opt-in,        :module x.t.o}}
+              {:type :redundant-opt-in,    :module a.sub.in.deep}
+              {:type :redundant-opt-in,    :module b.sub}
+              {:type :redundant-opt-in,    :module x.t.o}
+              {:type :redundant-opt-in,    :module x.to}}
            (set (mage.modules/driver-test-rule-problems deps rules))))))
 
 (deftest exemption-rules-test
