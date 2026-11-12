@@ -5,6 +5,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupDashboardEndpoints,
   setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -32,6 +33,7 @@ import {
   createMockCollectionItem,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDashboardTab,
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -82,6 +84,7 @@ interface SetupOpts {
   dashboard: Dashboard;
   searchResults?: SearchResult[];
   collectionItems?: CollectionItem[];
+  targetDashboard?: Dashboard;
 }
 
 function setup({
@@ -89,8 +92,13 @@ function setup({
   dashboard,
   searchResults = [],
   collectionItems = [],
+  targetDashboard,
 }: SetupOpts) {
+  const updateSettings = jest.fn();
   mockGetBoundingClientRect();
+  if (targetDashboard) {
+    setupDashboardEndpoints(targetDashboard);
+  }
   setupCollectionsEndpoints({ collections: COLLECTIONS });
   setupCollectionByIdEndpoint({ collections: COLLECTIONS });
   setupSearchEndpoints(searchResults);
@@ -128,7 +136,7 @@ function setup({
     <LinkedEntityPicker
       clickBehavior={clickBehavior}
       dashcard={createMockDashboardCard()}
-      updateSettings={jest.fn()}
+      updateSettings={updateSettings}
     />,
     {
       storeInitialState: {
@@ -142,6 +150,8 @@ function setup({
       },
     },
   );
+
+  return { updateSettings };
 }
 
 function createDashboardState(dashboard: Dashboard): StoreDashboard {
@@ -286,6 +296,47 @@ describe("LinkedEntityPicker", () => {
           expect(params).toContain("q");
           expect(params).not.toContain("filter_items_in_personal_collection");
         });
+      });
+    });
+  });
+
+  describe("link to a dashboard with tabs", () => {
+    const FIRST_TAB = createMockDashboardTab({ id: 1, name: "first-tab" });
+    const SECOND_TAB = createMockDashboardTab({ id: 2, name: "second-tab" });
+    const targetDashboard = createMockDashboard({
+      id: getNextId(),
+      name: "Target dashboard",
+      tabs: [FIRST_TAB, SECOND_TAB],
+    });
+
+    it("defaults to the first tab and lets the user pick another tab (metabase#39319)", async () => {
+      const clickBehavior: DashboardCustomDestinationClickBehavior = {
+        type: "link",
+        linkType: "dashboard",
+        targetId: targetDashboard.id,
+        parameterMapping: {},
+      };
+      const { updateSettings } = setup({
+        clickBehavior,
+        dashboard: createMockDashboard(),
+        targetDashboard,
+      });
+
+      const tabSelect = await screen.findByLabelText("Select a dashboard tab");
+      expect(tabSelect).toHaveValue(FIRST_TAB.name);
+      expect(updateSettings).toHaveBeenLastCalledWith({
+        ...clickBehavior,
+        tabId: FIRST_TAB.id,
+      });
+
+      await userEvent.click(tabSelect);
+      await userEvent.click(
+        await screen.findByRole("option", { name: SECOND_TAB.name }),
+      );
+
+      expect(updateSettings).toHaveBeenLastCalledWith({
+        ...clickBehavior,
+        tabId: SECOND_TAB.id,
       });
     });
   });

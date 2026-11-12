@@ -177,6 +177,20 @@ describe("useDashboardUrlQuery", () => {
     expect(navigateMock).toHaveBeenCalledWith(...pushedWith("?tab=2-tab-2"));
   });
 
+  it("replaces the entry when the first sync on mount rewrites a tab id from the URL into its slug (metabase#44106)", () => {
+    setup({
+      tabs: [
+        { id: 1, name: "Tab 1" },
+        { id: 2, name: "Tab 2" },
+      ],
+      selectedTabId: 2,
+      search: "?tab=2",
+    });
+
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    expect(navigateMock).toHaveBeenCalledWith(...replacedWith("?tab=2-tab-2"));
+  });
+
   it("does not sync when isEmbedPreview() is true", () => {
     // Unjustified type cast. FIXME
     (isEmbedPreview as jest.Mock).mockReturnValue(true);

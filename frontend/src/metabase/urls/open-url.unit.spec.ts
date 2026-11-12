@@ -177,3 +177,82 @@ describe("openUrl()", () => {
     expect(handleLink).not.toHaveBeenCalled();
   });
 });
+
+describe("openUrl() with a URL on the Metabase origin", () => {
+  const { origin } = window.location;
+
+  function setup({ siteUrl }: { siteUrl: string }) {
+    mockSettings({ "site-url": siteUrl });
+    const clickedLinks: { href: string; target: string }[] = [];
+    jest
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        clickedLinks.push({ href: this.href, target: this.target });
+      });
+    const openInSameOrigin = jest.fn();
+    const openInSameWindow = jest.fn();
+
+    return { clickedLinks, openInSameOrigin, openInSameWindow };
+  }
+
+  beforeEach(async () => {
+    await mockIsEmbeddingSdk(false);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("navigates in the app to an in-app URL under the site URL path", async () => {
+    const { clickedLinks, openInSameOrigin, openInSameWindow } = setup({
+      siteUrl: `${origin}/subpath`,
+    });
+
+    await openUrl(`${origin}/subpath/dashboard/1?a=1`, {
+      openInSameOrigin,
+      openInSameWindow,
+      ignoreSiteUrl: true,
+    });
+
+    expect(openInSameOrigin).toHaveBeenCalledTimes(1);
+    expect(openInSameOrigin).toHaveBeenCalledWith(
+      expect.objectContaining({ pathname: "/dashboard/1", search: "?a=1" }),
+    );
+    expect(openInSameWindow).not.toHaveBeenCalled();
+    expect(clickedLinks).toEqual([]);
+  });
+
+  it("loads a URL outside the site URL path as a full page instead of an in-app route (metabase#33379)", async () => {
+    const { clickedLinks, openInSameOrigin, openInSameWindow } = setup({
+      siteUrl: `${origin}/subpath`,
+    });
+    const url = `${origin}/404`;
+
+    await openUrl(url, {
+      openInSameOrigin,
+      openInSameWindow,
+      ignoreSiteUrl: true,
+    });
+
+    expect(openInSameOrigin).not.toHaveBeenCalled();
+    expect(openInSameWindow).not.toHaveBeenCalled();
+    expect(clickedLinks).toEqual([{ href: url, target: "" }]);
+  });
+
+  it("loads a public link as a full page instead of an in-app route (metabase#38640)", async () => {
+    const { clickedLinks, openInSameOrigin, openInSameWindow } = setup({
+      siteUrl: origin,
+    });
+    const url = `${origin}/public/dashboard/a-public-uuid`;
+
+    await openUrl(url, {
+      openInSameOrigin,
+      openInSameWindow,
+      ignoreSiteUrl: true,
+    });
+
+    expect(openInSameOrigin).not.toHaveBeenCalled();
+    expect(openInSameWindow).not.toHaveBeenCalled();
+    expect(clickedLinks).toEqual([{ href: url, target: "" }]);
+  });
+});
