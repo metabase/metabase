@@ -580,7 +580,7 @@ export const tabsReducer = createReducer<DashboardState>(
       state.selectedTabId = tabId;
     });
 
-    // Seperate handler to avoid TS2589 error when the global API type graph grows
+    // Separate handler to avoid TS2589 error when the global API type graph grows
     const updateDashboardFulfilled: (action: {
       type: string;
     }) => action is { type: string; payload: Dashboard } =
