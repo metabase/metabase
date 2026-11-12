@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.core :as mdb]
    [metabase.change-log.db :as change-log.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]))
@@ -21,12 +22,23 @@
 
 (def ^:private trigger-key (triggers/key "metabase.change-log.task.number-change-log.trigger"))
 
-(defn- number-entries! []
+(defn- statement-size
+  "How many entries one UPDATE numbers: 1,000 on Postgres, one elsewhere. On MariaDB an update of many rows can wait
+  for rows that open transactions inserted (`ids-out-of-order-test`)."
+  []
+  (if (= :postgres (mdb/db-type)) 1000 1))
+
+(defn- number-entries!
+  "Numbers the committed entries that have no position. The first gets the clock in microseconds, or the next free
+  position if that is higher, and the rest rise with their ids."
+  []
   (when (seq (change-log.db/unnumbered-ids 1))
     (cluster-lock/with-cluster-lock ::number-entries
       (when-let [ids (seq (change-log.db/unnumbered-ids batch-size))]
-        (change-log.db/set-positions! ids (max (* 1000 (System/currentTimeMillis))
-                                               (inc (or (change-log.db/highest-position) 0))))))))
+        (let [start (max (* 1000 (System/currentTimeMillis))
+                         (inc (or (change-log.db/highest-position) 0)))]
+          (doseq [statement-ids (partition-all (statement-size) ids)]
+            (change-log.db/set-positions! statement-ids start (first ids))))))))
 
 (defn- number-change-log! [rounds interval-ms]
   (when (premium-features/enable-change-log?)

@@ -5,7 +5,10 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.change-log.db :as change-log.db]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]
+   [toucan2.core :as t2])
+  (:import
+   (java.sql DatabaseMetaData)))
 
 (set! *warn-on-reflection* true)
 
@@ -17,6 +20,25 @@
               ;; other keywords derive from models too, such as `:metadata/card`
               :when (= "model" (namespace model))]
           [(name (t2/table-name model)) model])))
+
+(defn- cascades
+  "The `ON DELETE CASCADE` and `SET NULL` keys among `fks`, the rows JDBC reports, as:
+
+      {:parent \"metabase_table\", :parent-column :id, :child \"metabase_field\", :column :table_id, :rule :cascade}
+
+  Names are lower-cased, since H2 reports them in upper case."
+  [fks]
+  (for [fk    fks
+        :let  [rule (condp = (some-> (:delete_rule fk) int)
+                      DatabaseMetaData/importedKeyCascade :cascade
+                      DatabaseMetaData/importedKeySetNull :set-null
+                      nil)]
+        :when rule]
+    {:parent        (u/lower-case-en (:pktable_name fk))
+     :parent-column (keyword (u/lower-case-en (:pkcolumn_name fk)))
+     :child         (u/lower-case-en (:fktable_name fk))
+     :column        (keyword (u/lower-case-en (:fkcolumn_name fk)))
+     :rule          rule}))
 
 (defn- to-logged-tables
   "The foreign keys of `fks` that a delete follows to a logged table, by the table they reference. One is kept when
@@ -36,10 +58,11 @@
 (def ^:private foreign-keys*
   (mdb/memoize-for-application-db
    (fn [table->pk]
-     (to-logged-tables (change-log.db/foreign-keys) table->pk))))
+     (to-logged-tables (cascades (change-log.db/foreign-keys)) table->pk))))
 
 (defn foreign-keys
-  "The [[change-log.db/foreign-keys]] that lead to the tables of the [[logged-models]], by the table they reference:
+  "The cascade and set-null foreign keys that lead to the tables of the [[logged-models]], by the table they
+  reference:
 
       {\"metabase_table\" [{:parent \"metabase_table\", :parent-column :id, :rule :cascade,
                           :child \"metabase_field\", :child-pk :id, :column :table_id}]}
@@ -66,11 +89,11 @@
                            :let  [values (distinct (keep parent-column rows))
                                   k      [child child-pk (if (= :cascade rule) "delete" "update")]]
                            :when (seq values)
-                           :let  [rows (remove (get found k #{})
-                                               (change-log.db/rows-where
-                                                child column values
-                                                (cond->> (referenced-columns fks child)
-                                                  child-pk (cons child-pk))))]
+                           :let  [columns (cond->> (referenced-columns fks child)
+                                            child-pk (cons child-pk))
+                                  rows    (remove (get found k #{})
+                                                  (mapcat #(change-log.db/rows-where child column % columns)
+                                                          (partition-all 1000 values)))]
                            :when (seq rows)]
                        [k rows])]
         (recur (into (vec queue) (for [[[child _ action] rows] children :when (= "delete" action)] [child rows]))

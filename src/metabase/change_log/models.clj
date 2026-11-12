@@ -33,8 +33,11 @@
           :when (pos? n)]
     (log/warnf "Not logging %d %s on %s to the change log: row key missing or not an integer. See %s."
                n action table-name "metabase.change-log.core"))
-  (change-log.db/log-changes! (for [[table-name row-ids action] changes]
-                                [table-name (filter integer? row-ids) action])))
+  (run! change-log.db/insert-entries!
+        (partition-all 1000 (for [[table-name row-ids action] changes
+                                  id                          row-ids
+                                  :when                       (integer? id)]
+                              {:table_name table-name, :row_id id, :action action}))))
 
 (mu/defn log-rows!
   "Logs `action` on the rows of `model` that match `conditions`, for a write that skips the model. `conditions` are

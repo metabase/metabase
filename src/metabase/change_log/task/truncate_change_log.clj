@@ -1,11 +1,12 @@
 (ns metabase.change-log.task.truncate-change-log
   "Deletes `change_log` entries older than 30 days. Like `metabase.audit-app.task.truncate-audit-tables`, it runs
-  every 12 hours and deletes in batches of 50,000."
+  every 12 hours and deletes in batches of 50,000, with the same statements."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
    [metabase.change-log.db :as change-log.db]
    [metabase.task.core :as task]))
 
@@ -22,7 +23,9 @@
 (defn- truncate-change-log! [batch-size]
   (let [cutoff (t/minus (t/offset-date-time) (t/days retention-days))]
     (loop []
-      (when (= batch-size (change-log.db/delete-before! cutoff batch-size))
+      (when (= batch-size (case (mdb/db-type)
+                            (:postgres :h2) (change-log.db/delete-before-by-id-subquery! cutoff batch-size)
+                            :mysql          (change-log.db/delete-before-with-limit! cutoff batch-size)))
         (recur)))))
 
 (task/defjob TruncateChangeLog
