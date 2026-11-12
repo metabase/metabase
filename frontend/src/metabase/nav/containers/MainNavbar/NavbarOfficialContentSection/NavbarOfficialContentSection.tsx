@@ -1,0 +1,189 @@
+import { useMemo } from "react";
+import { t } from "ttag";
+
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
+import {
+  buildCollectionTree,
+  getCollectionIcon,
+  isLibraryCollection,
+} from "metabase/common/collections/utils";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
+import { Tree } from "metabase/common/components/tree";
+import {
+  SidebarHeading,
+  SidebarSection,
+} from "metabase/nav/containers/MainNavbar/Sidebar";
+import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useUserSetting } from "metabase/settings";
+import type { Collection, CollectionType } from "metabase-types/api";
+
+type NavbarOfficialContentSectionProps = {
+  collections: Collection[];
+  selectedId?: string | number;
+  onItemSelect: () => void;
+};
+
+/** Build the tree for a single library section (Data, Metrics, or Dashboards).
+ *  If the user has access to the root collection, use it directly.
+ *  If not, create a synthetic container for any promoted children. */
+function buildSectionTree(
+  libraryCollection: Collection,
+  allCollections: Collection[],
+  sectionType: CollectionType,
+  sectionName: string,
+): CollectionTreeItem | null {
+  // Look for the real root collection (has is_library_root)
+  const rootCollection = libraryCollection.children?.find(
+    (c) => c.type === sectionType && c.is_library_root,
+  );
+
+  if (rootCollection) {
+    // User has access to the root — build its subtree normally
+    const [tree] = buildCollectionTree([rootCollection]);
+    return tree ?? null;
+  }
+
+  // User doesn't have access to the root collection. Find any promoted
+  // children of that type that were pulled up into the library collection.
+  const promotedChildren = allCollections.filter(
+    (c) => c.type === sectionType && !c.is_library_root,
+  );
+
+  // Also check direct children of the library collection that match the type
+  const libraryChildren = (libraryCollection.children ?? []).filter(
+    (c) => c.type === sectionType && !c.is_library_root,
+  );
+
+  const allOrphans = [...libraryChildren, ...promotedChildren];
+  if (allOrphans.length === 0) {
+    return null;
+  }
+
+  // Build subtrees for the orphaned children
+  const children = buildCollectionTree(allOrphans);
+
+  // Create a synthetic container node
+  return {
+    id: `synthetic-${sectionType}`,
+    name: sectionName,
+    description: null,
+    icon: getCollectionIcon({
+      type: sectionType,
+      is_library_root: true,
+    }),
+    children,
+    nonNavigable: true,
+    type: sectionType,
+    is_library_root: true,
+    namespace: null,
+    location: null,
+    can_write: false,
+    can_restore: false,
+    can_delete: false,
+  };
+}
+
+function buildSemanticLayerTree(
+  libraryCollection: Collection,
+  allCollections: Collection[],
+): CollectionTreeItem {
+  const sectionTrees = [
+    buildSectionTree(
+      libraryCollection,
+      allCollections,
+      "library-data",
+      t`Data`,
+    ),
+    buildSectionTree(
+      libraryCollection,
+      allCollections,
+      "library-metrics",
+      t`Metrics`,
+    ),
+    buildSectionTree(
+      libraryCollection,
+      allCollections,
+      "library-dashboards",
+      t`Dashboards`,
+    ),
+  ];
+
+  return {
+    ...libraryCollection,
+    icon: getCollectionIcon(libraryCollection),
+    children: sectionTrees.filter(
+      (node): node is CollectionTreeItem => node != null,
+    ),
+  };
+}
+
+export function isTopLevelOfficialCollection(collection: Collection) {
+  return collection.is_remote_synced === true && collection.location === "/";
+}
+
+export function NavbarOfficialContentSection({
+  collections,
+  selectedId,
+  onItemSelect,
+}: NavbarOfficialContentSectionProps) {
+  const [expandOfficialContent = true, setExpandOfficialContent] =
+    useUserSetting("expand-library-in-nav");
+
+  const libraryCollection = collections.find(isLibraryCollection);
+
+  const officialTree = useMemo(() => {
+    const officialCollections = buildCollectionTree(
+      collections.filter(
+        (collection) =>
+          isTopLevelOfficialCollection(collection) &&
+          !isLibraryCollection(collection),
+      ),
+    );
+
+    return libraryCollection
+      ? [
+          buildSemanticLayerTree(libraryCollection, collections),
+          ...officialCollections,
+        ]
+      : officialCollections;
+  }, [collections, libraryCollection]);
+
+  if (officialTree.length === 0) {
+    return null;
+  }
+
+  return (
+    <SidebarSection>
+      <ErrorBoundary>
+        <CollapseSection
+          header={<SidebarHeading>{t`Official content`}</SidebarHeading>}
+          initialState={expandOfficialContent ? "expanded" : "collapsed"}
+          iconPosition="right"
+          iconSize={8}
+          role="section"
+          aria-label={t`Official content`}
+          onToggle={setExpandOfficialContent}
+        >
+          <Tree
+            data={officialTree}
+            selectedId={selectedId}
+            initialExpandedIds={libraryCollection ? [libraryCollection.id] : []}
+            onSelect={onItemSelect}
+            TreeNode={SidebarCollectionLink}
+            role="tree"
+            aria-label="official-collection-tree"
+            rightSection={(item) =>
+              typeof item.id === "number" && (
+                <PLUGIN_REMOTE_SYNC.ChangesBadge
+                  target={{ type: "collection", id: item.id }}
+                />
+              )
+            }
+          />
+        </CollapseSection>
+      </ErrorBoundary>
+    </SidebarSection>
+  );
+}

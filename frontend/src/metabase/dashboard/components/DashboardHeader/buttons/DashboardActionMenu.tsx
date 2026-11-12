@@ -1,17 +1,15 @@
-import { type MouseEvent, forwardRef, useMemo, useState } from "react";
+import { type MouseEvent, forwardRef, useState } from "react";
 import { c, t } from "ttag";
 
 import { Link, type LinkProps } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { openEventsSidebar } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context/context";
-import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { useLocation } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
-import { parseSearchQuery } from "metabase/utils/browser";
 
 import {
   AutoRefreshMenuItem,
@@ -59,21 +57,6 @@ const DashboardActionMenuInner = ({
       setShowAutoRefreshOptions(false);
     }
   };
-
-  const parameterQueryParams = useMemo(
-    () => parseSearchQuery(location?.search ?? ""),
-    [location?.search],
-  );
-
-  const { refreshDashboard } = useRefreshDashboard({
-    dashboardId: dashboard?.id ?? null,
-    parameterQueryParams,
-  });
-
-  const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
-    dashboard ?? undefined,
-    refreshDashboard,
-  );
 
   // The trash shortcut opens `<pathname>/archive`. Without a location, it does nothing.
   const pathname = location?.pathname ?? "";
@@ -153,8 +136,6 @@ const DashboardActionMenuInner = ({
                 {t`Edit settings`}
               </Menu.Item>
             )}
-
-            {canEdit && moderationItems}
 
             {canEdit && (
               <>

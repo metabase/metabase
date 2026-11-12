@@ -212,14 +212,6 @@
   "Should we enable translation of user-generated content, like question names?"
   :content-translation)
 
-(define-premium-feature ^{:added "0.41.0"} enable-content-verification?
-  "Should we enable verified content, like verified questions and models (and more in the future, like actions)?"
-  :content-verification)
-
-(define-premium-feature ^{:added "0.41.0"} enable-official-collections?
-  "Should we enable Official Collections?"
-  :official-collections)
-
 (define-premium-feature ^{:added "0.41.0"} enable-snippet-collections?
   "Should we enable SQL snippet folders?"
   :snippet-collections)
@@ -409,7 +401,6 @@
    :config_text_file               (enable-config-text-file?)
    :content_diagnostics            (enable-content-diagnostics?)
    :content_translation            (enable-content-translation?)
-   :content_verification           (enable-content-verification?)
    :custom-viz                     (enable-custom-viz?)
    :custom-viz-available           (has-feature? :custom-viz)
    :data-apps                      (enable-data-apps?)
@@ -435,7 +426,6 @@
    :metabase-ai-managed            (enable-metabase-ai-managed?)
    :multi-factor-auth              (enable-multi-factor-auth?)
    :offer-metabase-ai-managed      (enable-offer-metabase-ai-managed?)
-   :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
    :remote_sync                    (enable-remote-sync?)
    :sandboxes                      (enable-sandboxes?)

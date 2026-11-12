@@ -2,7 +2,6 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.search.scoring-test]}}}}}}
   (:require
    [clojure.math.combinatorics :as math.combo]
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -23,31 +22,22 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:parallel verified-score-test
-  (let [score #'ee-scoring/verified-score
-        item  (fn [id status] {:moderated_status status
-                               :id               id
-                               :model            "card"})
+(deftest ^:parallel official-score-test
+  (let [score #'ee-scoring/official-score
+        item  (fn [id synced?] {:collection_is_remote_synced synced?
+                                :id                          id
+                                :model                       "card"})
         score (fn [items] (into [] (map :id) (reverse (sort-by score items))))]
-    (testing "verification bumps result"
-      ;; stable sort all with score 0 and then reverse to get descending rather than ascending
-      (is (= [3 2 1] (score [(item 1 nil) (item 2 nil) (item 3 nil)])))
-      ;; verified item is promoted
-      (is (= [1 3 2] (score [(item 1 "verified") (item 2 nil) (item 3 nil)]))))))
+    (testing "remote-synced collection bumps result"
+      (is (= [3 2 1] (score [(item 1 false) (item 2 nil) (item 3 nil)])))
+      (is (= [1 3 2] (score [(item 1 true) (item 2 nil) (item 3 nil)]))))))
 
 (defn- ee-score
   [search-string item]
-  (mt/with-premium-features #{:official-collections :content-verification}
-    (-> (scoring/score-and-result item {:search-string search-string}) :score)))
+  (-> (scoring/score-and-result item {:search-string search-string}) :score))
 
-(defn- oss-score
-  [search-string item]
-  (mt/with-premium-features #{}
-    (-> (scoring/score-and-result item {:search-string search-string}) :score)))
-
-(deftest official-collection-bumps-value-test
-  (testing "it should bump up the value of items in official collections"
-    ;; using the ee implementation that isn't wrapped by premium features token check
+(deftest official-bumps-value-test
+  (testing "it should bump up the value of items in remote-synced collections"
     (let [search-string "custom expression examples"
           a             {:id "a" :name "custom expression examples" :model "dashboard"}
           b             {:id "b" :name "examples of custom expressions" :model "dashboard"}
@@ -59,58 +49,16 @@
                          :model               "dashboard"}
           d             {:id "d" :name "customer examples of bad sorting" :model "dashboard"}]
       (doseq [item [a b c d]]
-        (is (> (ee-score search-string (assoc item :collection_authority_level "official"))
+        (is (> (ee-score search-string (assoc item :collection_is_remote_synced true))
                (ee-score search-string item))
-            (str "On EE, should be greater for item: " item " vs " (assoc item :collection_authority_level "official")))
-        (is (= (oss-score search-string (assoc item :collection_authority_level "official"))
-               (oss-score search-string item))
-            (str "On OSS, should be the same for item: " item " vs " (assoc item :collection_authority_level "official"))))
-      (is (= ["customer examples of bad sorting"
-              "customer success stories"
-              "examples of custom expressions"
-              "custom expression examples"]
-             (mapv :name (sort-by #(oss-score search-string %)
-                                  (shuffle [a b c d])))))
-      ;; With :official-collection at 1 in :default, the official bump is only a tie-breaker —
-      ;; it can't overcome the text scorers, so `d` stays ranked by its (weakest) text match
-      ;; and the ordering matches OSS.
-      (is (= ["customer examples of bad sorting"
-              "customer success stories"
-              "examples of custom expressions"
-              "custom expression examples"]
-             (mapv :name (sort-by #(ee-score search-string %)
-                                  (shuffle [a b c (assoc d :collection_authority_level "official")]))))))))
-
-(deftest verified-items-bump-value-test
-  (testing "It should bump up the value of verified items"
-    (let [ss "foo"
-          a  {:name                "foobar"
-              :model               "card"
-              :id                  :a
-              :dashboardcard_count 0}
-          b  {:name                "foo foo"
-              :model               "card"
-              :id                  :b
-              :dashboardcard_count 0}
-          c  {:name                "foo foo foo"
-              :model               "card"
-              :id                  :c
-              :dashboardcard_count 0}]
-      (doseq [item [a b c]]
-        (is (> (ee-score ss (assoc item :moderated_status "verified"))
-               (ee-score ss item))
-            (str "Item not greater for model: " (:model item))))
-      (let [items (shuffle [a b c])]
-        (is (= (sort-by #(oss-score ss %) items)
-               (sort-by #(ee-score ss %) items))))
-      (is (= [:c :b :a] (map :id (sort-by #(ee-score ss %) [a b c]))))
-      ;; c is verified and is now last or highest score
-      (is (= [:b :a :c]
-             (map :id
-                  (sort-by #(ee-score ss %)
-                           [a
-                            b
-                            (assoc c :moderated_status "verified")])))))))
+            (str "Should be greater for item: " item)))
+      (testing "official bump is only a tie-breaker, so it can't overcome text scorers"
+        (is (= ["customer examples of bad sorting"
+                "customer success stories"
+                "examples of custom expressions"
+                "custom expression examples"]
+               (mapv :name (sort-by #(ee-score search-string %)
+                                    (shuffle [a b c (assoc d :collection_is_remote_synced true)])))))))))
 
 (defn- all-permutations-all-orders
   "(all-permutations-all-orders [1]) ;; => [[] [1]]
@@ -149,51 +97,17 @@
   (test-corpus ["foo" "bar" "baz" "quux"]))
 
 (deftest score-result-test
-  (let [score-result-names (fn [] (set (map :name (scoring/score-result {}))))]
-    (testing "does not include scores for official collection or verified if features are disabled"
-      (mt/with-premium-features #{}
-        (is (= #{}
-               (set/intersection #{"official collection score" "verified"}
-                                 (score-result-names))))))
-    (testing "includes official collection score if :official-collections is enabled"
-      (mt/with-premium-features #{:official-collections}
-        (is (set/subset? #{"official collection score"} (score-result-names)))))
-    (testing "includes verified if :content-verification is enabled"
-      (mt/with-premium-features #{:content-verification}
-        (is (set/subset? #{"verified"} (score-result-names)))))
-    (testing "includes both if has both features"
-      (mt/with-premium-features #{:official-collections :content-verification}
-        (is (set/subset? #{"official collection score" "verified"} (score-result-names)))))))
+  (testing "includes official score"
+    (is (contains? (set (map :name (scoring/score-result {}))) "official"))))
 
-(deftest appdb-official-collection-test
+(deftest appdb-official-test
   (appdb.scoring-test/with-index-contents
-    [{:model "collection" :id 1 :name "collection normal" :official_collection false}
-     {:model "collection" :id 2 :name "collection official" :official_collection true}]
-    (testing "official collections has higher rank"
-      (mt/with-premium-features #{:official-collections}
-        (is (= [["collection" 2 "collection official"]
-                ["collection" 1 "collection normal"]]
-               (appdb.scoring-test/search-results :official-collection "collection")))))
-    (testing "only if feature is enabled"
-      (mt/with-premium-features #{}
-        (is (= [["collection" 1 "collection normal"]
-                ["collection" 2 "collection official"]]
-               (appdb.scoring-test/search-results* "collection")))))))
-
-(deftest appdb-verified-test
-  (appdb.scoring-test/with-index-contents
-    [{:model "card" :id 1 :name "card normal" :verified false}
-     {:model "card" :id 2 :name "card verified" :verified true}]
-    (testing "verified items have higher rank"
-      (mt/with-premium-features #{:content-verification}
-        (is (= [["card" 2 "card verified"]
-                ["card" 1 "card normal"]]
-               (appdb.scoring-test/search-results :verified "card")))))
-    (testing "only if feature is enabled"
-      (mt/with-premium-features #{}
-        (is (= [["card" 1 "card normal"]
-                ["card" 2 "card verified"]]
-               (appdb.scoring-test/search-results* "card")))))))
+    [{:model "collection" :id 1 :name "collection normal" :official false}
+     {:model "collection" :id 2 :name "collection official" :official true}]
+    (testing "official items have higher rank"
+      (is (= [["collection" 2 "collection official"]
+              ["collection" 1 "collection normal"]]
+             (appdb.scoring-test/search-results :official "collection"))))))
 
 (deftest transforms-user-recency-test
   ;; Create the temporary index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the

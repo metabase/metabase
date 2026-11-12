@@ -214,7 +214,8 @@ export const useCommandPalette = ({
               });
             },
             extra: {
-              moderatedStatus: result.moderated_status,
+              collection:
+                result.model !== "collection" ? result.collection : null,
               href: modelToUrl(result),
               iconColor: icon.color,
               subtext: getSearchResultSubtext(result),
@@ -265,9 +266,10 @@ export const useCommandPalette = ({
           section: "recent",
           perform: () => {},
           extra: {
-            moderatedStatus: isRecentCollectionItem(item)
-              ? item.moderated_status
-              : null,
+            collection:
+              isRecentCollectionItem(item) && item.model !== "collection"
+                ? item.parent_collection
+                : null,
             href: Urls.modelToUrl(item),
             iconColor: icon.color,
             subtext: getRecentItemSubtext(item),
@@ -424,4 +426,6 @@ const SubtitleText = ({ children }: PropsWithChildren) => (
 const isRecentCollectionItem = (
   item: OmniPickerItem,
 ): item is RecentCollectionItem =>
-  ["collection", "dashboard", "card", "dataset", "metric"].includes(item.model);
+  ["collection", "dashboard", "card", "dataset", "metric", "document"].includes(
+    item.model,
+  );

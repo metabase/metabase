@@ -3,7 +3,6 @@ import type {
   CardQueryMetadata,
   ColumnRangeFormattingSetting,
   ColumnSingleFormattingSetting,
-  ModerationReview,
   PieRow,
   PublicCard,
   ScalarSegment,
@@ -15,7 +14,6 @@ import type {
 
 import { createMockEntityId } from "./entity-id";
 import { EMPTY_STRUCTURED_QUERY } from "./query";
-import { createMockUser } from "./user";
 
 const MOCK_CARD_ENTITY_ID = createMockEntityId();
 export const createMockCard = (opts?: Partial<Card>): Card => ({
@@ -99,17 +97,6 @@ export const createMockSeriesOrderSetting = ({
   name,
   key: key || name,
   enabled,
-  ...opts,
-});
-
-export const createMockModerationReview = (
-  opts?: Partial<ModerationReview>,
-): ModerationReview => ({
-  moderator_id: 1,
-  status: "verified",
-  created_at: "2015-01-01T20:10:30.200",
-  most_recent: true,
-  user: createMockUser({ id: 1 }),
   ...opts,
 });
 

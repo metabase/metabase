@@ -95,7 +95,7 @@
    :collection_name     :text
    :collection_type     :text
    :collection_location :text
-   :collection_authority_level :text
+   :collection_is_remote_synced :boolean
    :archived_directly   :boolean
    ;; returned for Card and Dashboard
    :collection_position :integer
@@ -110,7 +110,6 @@
    :dashboardcard_count :integer
    :last_edited_at      :timestamp
    :last_editor_id      :integer
-   :moderated_status    :text
    :display             :text
    :dashboard_id        :integer
    :display_type        :text
@@ -275,17 +274,6 @@
                               [:= :r.most_recent true]
                               [:= :r.model (search-model/search-model->revision-model model)]])))
 
-(mu/defn- with-moderated-status :- :map
-  [query :- HoneySQLQuery
-   model :- [:enum "card" "dataset" "dashboard"]]
-  (-> query
-      (replace-select :moderated_status :mr.status)
-      (sql.helpers/left-join [:moderation_review :mr]
-                             [:and
-                              [:= :mr.moderated_item_type (if (= model "dashboard") model "card")]
-                              [:= :mr.moderated_item_id (search.config/column-with-model-alias model :id)]
-                              [:= :mr.most_recent true]])))
-
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
   [query]
@@ -296,8 +284,7 @@
                                ;; data_authority/data_layer are curation signals, not name/text fields —
                                ;; exclude them from exact-match ranking (and to keep in-place ordering stable).
                                ;; data_app_slug repeats a data app's slug.
-                               (remove #{:collection_authority_level :moderated_status
-                                         :initial_sync_status :pk_ref :location
+                               (remove #{:initial_sync_status :pk_ref :location
                                          :collection_location :data_authority
                                          :data_layer :document :data_app_slug}))
         case-clauses      (as-> columns-to-search <>
@@ -358,7 +345,7 @@
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.location :collection_location]
-        [:collection.authority_level :collection_authority_level]
+        [:collection.is_remote_synced :collection_is_remote_synced]
         [:card.database_id :database_id]
         :dashboard_id
         bookmark-col dashboardcard-count-col
@@ -393,7 +380,7 @@
   (conj default-columns :archived_directly :collection_id :collection_position :creator_id bookmark-col
         [:collection.name :collection_name]
         [:collection.type :collection_type]
-        [:collection.authority_level :collection_authority_level]))
+        [:collection.is_remote_synced :collection_is_remote_synced]))
 
 (defmethod columns-for-model "database"
   [_]
@@ -405,7 +392,7 @@
         [:collection.id :collection_id]
         [:name :collection_name]
         [:type :collection_type]
-        [:authority_level :collection_authority_level]
+        [:is_remote_synced :collection_is_remote_synced]
         :archived_directly
         :location
         bookmark-col))
@@ -448,7 +435,7 @@
      "Our analytics"
      :else
      :collection.name] :collection_name]
-   [:collection.authority_level :collection_authority_level]
+   [:collection.is_remote_synced :collection_is_remote_synced]
    [:collection.type :collection_type]
    [:table.data_authority :data_authority]
    [:table.data_layer :data_layer]
@@ -512,8 +499,7 @@
                                                :where [:= :card_id :card.id]}])])
       (add-collection-join-and-where-clauses "card" search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
-      (with-last-editing-info "card")
-      (with-moderated-status "card")))
+      (with-last-editing-info "card")))
 
 (defmethod search-query-for-model "action"
   [model search-ctx]
@@ -593,7 +579,6 @@
                              [:and
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
-      (with-moderated-status "dashboard")
       (add-collection-join-and-where-clauses model search-ctx)
       (with-last-editing-info "dashboard")))
 

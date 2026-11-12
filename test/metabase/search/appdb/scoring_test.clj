@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.test-utils :as collections.tu]
    [metabase.search.appdb.core :as search.appdb.core]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as scoring]
@@ -385,9 +384,9 @@
 (deftest measure-segment-library-test
   ;; Index table first, before `with-temp` opens its transaction; see [[library-test]].
   (search.tu/with-temp-index-table
-    (testing "measures and segments on a published Library table inherit its library boost and curated status"
-      (collections.tu/with-library [{data :data}]
-        (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl" :is_published true :collection_id (:id data)}
+    (testing "measures and segments on a published table in a remote-synced collection are curated"
+      (mt/with-temp [:model/Collection synced {:is_remote_synced true}]
+        (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl" :is_published true :collection_id (:id synced)}
                        :model/Table   plain-tbl {:name "plain_tbl"}
                        :model/Measure _ {:name "foo measure lib"   :table_id (:id lib-tbl)}
                        :model/Measure _ {:name "foo measure plain" :table_id (:id plain-tbl)}
@@ -401,7 +400,7 @@
                     results))
             (testing "the ingestion-only table collection columns stay out of the response"
               (is (not-any? #(contains? % :table_collection_id) results)))
-            (testing "the curated filter keeps the library ones"
+            (testing "the curated filter keeps the synced ones"
               (is (= [true true]
                      (map #(str/ends-with? (:name %) " lib")
                           (search-results** "foo" {:context :metabot :models #{"measure" "segment"} :curated true})))))))))))
@@ -409,8 +408,8 @@
 (deftest measure-segment-library-user-settings-test
   ;; Index table first, before `with-temp` opens its transaction; see [[library-test]].
   (search.tu/with-temp-index-table
-    (testing "measures and segments follow a table published and unpublished through its user settings"
-      (collections.tu/with-library [{data :data}]
+    (testing "measures and segments follow a table published into and out of a remote-synced collection"
+      (mt/with-temp [:model/Collection data {:is_remote_synced true}]
         (mt/with-temp [:model/Table   {table-id :id :as table} {:name "tbl"}
                        :model/Measure _ {:name "foo measure" :table_id table-id}
                        :model/Segment _ {:name "foo segment" :table_id table-id}]

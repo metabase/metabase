@@ -9,7 +9,6 @@
    [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.config.core :as config]
-   [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
    [metabase.util :as u]
@@ -114,26 +113,11 @@
      :library    (search.scoring/library-score-expr)
      :data-layer (search.scoring/data-layer-score-expr search-ctx)}))
 
-(def ^:private enterprise-scorers
-  {:official-collection {:expr (search.scoring/truthy :official_collection)
-                         :pred #(premium-features/has-feature? :official-collections)}
-   :verified            {:expr (search.scoring/truthy :verified)
-                         :pred #(premium-features/has-feature? :content-verification)}})
-
-(defn- additional-scorers
-  "Which additional scorers are active?"
-  []
-  (into {}
-        (keep (fn [[k {:keys [expr pred]}]]
-                (when (pred)
-                  [k expr])))
-        enterprise-scorers))
-
 (defn semantic-scorers
   "Return the select-item expressions used to calculate the score for semantic search results."
   [index-table search-ctx]
-  (merge (base-scorers index-table search-ctx)
-         (additional-scorers)))
+  (assoc (base-scorers index-table search-ctx)
+         :official (search.scoring/truthy :official)))
 
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."

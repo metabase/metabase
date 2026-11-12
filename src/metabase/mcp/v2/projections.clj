@@ -131,7 +131,7 @@
 
 (def ^:private collection-detailed-keys
   (into collection-concise-keys
-        [:authority_level :personal_owner_id :namespace :entity_id :slug :created_at]))
+        [:is_remote_synced :personal_owner_id :namespace :entity_id :slug :created_at]))
 
 (register-key-projection! :collection collection-concise-keys
                           :detailed-keys collection-detailed-keys :compact? false)

@@ -9,7 +9,6 @@ import {
   useUserAcknowledgement,
 } from "metabase/current-user";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_MODERATION } from "metabase/plugins";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import type {
@@ -23,7 +22,6 @@ import type Question from "metabase-lib/v1/Question";
 import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
 
 import {
-  softReloadCard,
   turnModelIntoQuestion,
   turnQuestionIntoModel,
 } from "../../../../../../actions";
@@ -84,8 +82,6 @@ export const QuestionMoreActionsMenu = ({
     underlyingQuestion != null &&
     Lib.queryDisplayInfo(underlyingQuestion.query()).isEditable;
 
-  const reload = () => dispatch(softReloadCard());
-
   const handleEditQuery = () =>
     onSetQueryBuilderMode("dataset", {
       datasetEditorTab: "query",
@@ -135,7 +131,6 @@ export const QuestionMoreActionsMenu = ({
         onClick={() => onOpenModal(MODAL_TYPES.CREATE_ALERT)}
       />
     ),
-    ...PLUGIN_MODERATION.useCardMenuItems(question.card(), reload),
     hasCollectionPermissions && isModelOrMetric && hasDataPermissions && (
       <Menu.Item
         key="edit_definition"

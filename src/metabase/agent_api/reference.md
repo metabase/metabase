@@ -207,13 +207,13 @@ Response:
       "description": "All customer orders",
       "database_id": 1,
       "database_schema": null,
-      "verified": false
+      "official": false
     },
     {
       "type": "metric",
       "id": 10,
       "name": "Total Revenue",
-      "verified": true
+      "official": true
     }
   ],
   "total_count": 2

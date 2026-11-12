@@ -48,7 +48,7 @@ export const setup = ({
       features: [],
     },
     "token-features": createMockTokenFeatures(
-      isEnterprise ? { official_collections: true } : {},
+      isEnterprise ? { audit_app: true } : {},
     ),
   };
 

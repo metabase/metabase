@@ -30,6 +30,7 @@ import * as iframeUtils from "metabase/utils/iframe";
 import type {
   Bookmark,
   Card,
+  Collection,
   Dashboard,
   DashboardId,
   ModelResult,
@@ -73,6 +74,7 @@ export type SetupOpts = {
   hasEmbeddingFeature?: boolean;
   applicationName?: string;
   activeUsersCount?: number;
+  extraCollections?: Collection[];
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -114,6 +116,7 @@ export async function setup({
   hasWhitelabelToken,
   hasEmbeddingFeature,
   applicationName = "Metabase",
+  extraCollections = [],
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
     jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
@@ -146,7 +149,7 @@ export async function setup({
     can_write: user?.is_superuser || canCurateRootCollection,
   });
 
-  const collections = [TEST_COLLECTION];
+  const collections = [TEST_COLLECTION, ...extraCollections];
 
   const personalCollection = user
     ? createMockCollection({

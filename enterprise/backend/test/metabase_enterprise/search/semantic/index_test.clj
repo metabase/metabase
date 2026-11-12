@@ -942,32 +942,27 @@
       (testing "MySQL-style integer booleans are converted to real booleans"
         (let [doc-with-mysql-booleans (assoc base-doc
                                              :archived 0
-                                             :official_collection 1
-                                             :pinned 0
-                                             :verified 1)
+                                             :official 1
+                                             :pinned 0)
               result (#'semantic.index/doc->db-record nil doc-with-mysql-booleans)]
           (is (false? (:archived result)))
-          (is (true? (:official_collection result)))
-          (is (false? (:pinned result)))
-          (is (true? (:verified result)))))
+          (is (true? (:official result)))
+          (is (false? (:pinned result)))))
       (testing "real boolean values are preserved"
         (let [doc-with-real-booleans (assoc base-doc
                                             :archived true
-                                            :official_collection false
-                                            :pinned true
-                                            :verified false)
+                                            :official false
+                                            :pinned true)
               result (#'semantic.index/doc->db-record nil doc-with-real-booleans)]
           (is (true? (:archived result)))
-          (is (false? (:official_collection result)))
-          (is (true? (:pinned result)))
-          (is (false? (:verified result)))))
+          (is (false? (:official result)))
+          (is (true? (:pinned result)))))
       (testing "nil boolean fields are handled correctly"
         (let [doc-with-nil-booleans base-doc
               result (#'semantic.index/doc->db-record nil doc-with-nil-booleans)]
           (is (nil? (:archived result)))
-          (is (nil? (:official_collection result)))
-          (is (nil? (:pinned result)))
-          (is (nil? (:verified result))))))))
+          (is (nil? (:official result)))
+          (is (nil? (:pinned result))))))))
 
 (deftest indexed-entity-collapse-id-test
   (mt/with-premium-features #{:semantic-search}

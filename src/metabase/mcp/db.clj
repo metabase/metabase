@@ -231,11 +231,6 @@
                                                                              [:= :key_hashed key-hashed]
                                                                              [:= :user_id user-id]]}]]]}))
 
-(defn hydrate-moderation-reviews
-  "`card` with `:moderation_reviews` hydrated, each review carrying its `:moderator_details`."
-  [card]
-  (t2/hydrate card [:moderation_reviews :moderator_details]))
-
 (defn notification-by-payload-type
   "The Notification with `id` whose `payload_type` is `payload-type`, or nil."
   [id payload-type]

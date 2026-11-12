@@ -12,8 +12,6 @@ import type {
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
-import { getIsTenantUser } from "metabase/current-user";
-import { useSelector } from "metabase/redux";
 import { Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
@@ -52,7 +50,6 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
   ) {
     const wasHovered = usePrevious(isHovered);
     const timeoutId = useRef<number>(undefined);
-    const isTenantUser = useSelector(getIsTenantUser);
 
     useEffect(() => {
       const justHovered = !wasHovered && isHovered;
@@ -91,7 +88,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
       [isExpanded, hasChildren, onToggleExpand],
     );
 
-    const icon = getCollectionIcon(collection, { isTenantUser });
+    const icon = getCollectionIcon(collection);
 
     const content = (
       <>

@@ -23,9 +23,7 @@ import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import CS from "metabase/css/core/index.css";
-import { getIsTenantUser } from "metabase/current-user";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { useSelector } from "metabase/redux";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isFocusVisible } from "metabase/utils/dom";
@@ -99,17 +97,12 @@ const BookmarkItem = ({
   const getIcon = useGetIcon();
   const isSelected = isBookmarkSelected(bookmark, selectedItem);
   const url = Urls.bookmark(bookmark);
-  const isTenantUser = useSelector(getIsTenantUser);
 
-  const icon = getIcon(
-    {
-      model: getBookmarkModel(bookmark),
-      display: bookmark.display,
-      authority_level: bookmark.authority_level,
-      is_remote_synced: bookmark.is_remote_synced,
-    },
-    { isTenantUser },
-  );
+  const icon = getIcon({
+    model: getBookmarkModel(bookmark),
+    display: bookmark.display,
+    is_remote_synced: bookmark.is_remote_synced,
+  });
   const onRemove = (event: MouseEvent<HTMLButtonElement>) =>
     onDeleteBookmark(bookmark, index, event.currentTarget);
 

@@ -18,13 +18,10 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useLocation, useParams } from "metabase/router";
 import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
-
-import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelField";
 
 const COLLECTION_SCHEMA = Yup.object({
   name: Yup.string()
@@ -33,7 +30,6 @@ const COLLECTION_SCHEMA = Yup.object({
     .default(""),
   description: Yup.string().nullable().max(255, Errors.maxLength).default(null),
 
-  authority_level: Yup.mixed().oneOf(["official", null]).default(null),
   parent_id: Yup.number().nullable(),
 });
 
@@ -53,7 +49,6 @@ export interface CreateCollectionFormOwnProps {
   showCollectionPicker?: boolean;
   pickerOptions?: EntityPickerOptions;
   namespaces?: CollectionNamespace[];
-  showAuthorityLevelPicker?: boolean;
 }
 
 type Props = CreateCollectionFormOwnProps;
@@ -67,7 +62,6 @@ function CreateCollectionForm({
   showCollectionPicker = true,
   pickerOptions,
   namespaces,
-  showAuthorityLevelPicker = true,
 }: Props) {
   const location = useLocation();
   const params = useParams();
@@ -120,62 +114,49 @@ function CreateCollectionForm({
       validationSchema={COLLECTION_SCHEMA}
       onSubmit={handleSubmit}
     >
-      {({ dirty }) => {
-        const parentCollection = selectedParentCollection ?? initialCollection;
-
-        // Hide the authority level picker if the parent is a tenant collection.
-        const isParentTenantCollection =
-          parentCollection && "namespace" in parentCollection
-            ? PLUGIN_TENANTS.isTenantCollection(parentCollection)
-            : false;
-
-        return (
-          <Form>
-            <Stack gap="xl">
-              <FormTextInput
-                name="name"
-                label={t`Name`}
-                placeholder={t`My new fantastic collection`}
-                data-autofocus
+      {({ dirty }) => (
+        <Form>
+          <Stack gap="xl">
+            <FormTextInput
+              name="name"
+              label={t`Name`}
+              placeholder={t`My new fantastic collection`}
+              data-autofocus
+            />
+            <FormTextarea
+              name="description"
+              label={t`Description`}
+              placeholder={t`It's optional but oh, so helpful`}
+              minRows={5}
+              nullable
+            />
+            {showCollectionPicker && (
+              <FormCollectionPicker
+                collectionPickerModalProps={{
+                  options: pickerOptions,
+                  namespaces,
+                }}
+                entityType="collection"
+                filterPersonalCollections={filterPersonalCollections}
+                name="parent_id"
+                onCollectionSelect={setSelectedParentCollection}
+                title={t`Collection it's saved in`}
               />
-              <FormTextarea
-                name="description"
-                label={t`Description`}
-                placeholder={t`It's optional but oh, so helpful`}
-                minRows={5}
-                nullable
-              />
-              {showCollectionPicker && (
-                <FormCollectionPicker
-                  collectionPickerModalProps={{
-                    options: pickerOptions,
-                    namespaces,
-                  }}
-                  entityType="collection"
-                  filterPersonalCollections={filterPersonalCollections}
-                  name="parent_id"
-                  onCollectionSelect={setSelectedParentCollection}
-                  title={t`Collection it's saved in`}
-                />
-              )}
-              {showAuthorityLevelPicker && !isParentTenantCollection && (
-                <FormAuthorityLevelField />
-              )}
-            </Stack>
-            <Modal.Footer>
-              <FormErrorMessage flex={1} />
-              {!!onCancel && (
-                <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
-              )}
-              <FormSubmitButton
-                label={t`Create`}
-                disabled={!dirty}
-                variant="filled"
-              />
-            </Modal.Footer>
-          </Form>
-        );
-      }}
+            )}
+          </Stack>
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
+            {!!onCancel && (
+              <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+            )}
+            <FormSubmitButton
+              label={t`Create`}
+              disabled={!dirty}
+              variant="filled"
+            />
+          </Modal.Footer>
+        </Form>
+      )}
     </FormProvider>
   );
 }

@@ -20,7 +20,7 @@ export const setupLibraryEndpoints = ({
       "path:/api/ee/library",
       createMockCollectionItem({
         id: 6464,
-        name: "Library",
+        name: "Semantic layer",
         type: "library",
         model: "collection",
         location: "/",

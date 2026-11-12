@@ -7,7 +7,6 @@ import {
   FIRST_COLLECTION_ID,
   NORMAL_PERSONAL_COLLECTION_ID,
   NORMAL_USER_ID,
-  ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 
@@ -538,40 +537,6 @@ describe("scenarios > search", () => {
               REVIEWS_TABLE_NAME,
               LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
             ],
-          });
-        });
-      });
-    });
-
-    describe("verified filter", () => {
-      beforeEach(() => {
-        H.activateToken("pro-self-hosted");
-        H.createModerationReview({
-          status: "verified",
-          moderated_item_type: "card",
-          moderated_item_id: ORDERS_COUNT_QUESTION_ID,
-        });
-      });
-
-      it("should filter results by verified items", () => {
-        cy.visit("/");
-
-        H.commandPaletteSearch("e");
-        cy.wait("@search");
-
-        cy.intercept("GET", "/api/search?q=*verified=true*").as(
-          "verifiedSearch",
-        );
-        cy.findByTestId("verified-search-filter")
-          .findByLabelText("Verified items only")
-          .click();
-
-        cy.url().should("include", "verified=true");
-        cy.wait("@verifiedSearch");
-
-        cy.findAllByTestId("search-result-item").each((result) => {
-          cy.wrap(result).within(() => {
-            cy.findByLabelText("verified_filled icon").should("exist");
           });
         });
       });

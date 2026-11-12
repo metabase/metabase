@@ -466,13 +466,13 @@
 (defn- present-collection
   "Trim a collection row to an item map. `path-name` may be supplied if the caller pre-computed it."
   ([coll] (present-collection coll nil))
-  ([{:keys [id name location authority_level description personal_owner_id] :as coll} path-name]
+  ([{:keys [id name location is_remote_synced description personal_owner_id] :as coll} path-name]
    {:type              "collection"
     :id                id
     :name              name
     :path              (or path-name name)
     :location          location
-    :authority_level   authority_level
+    :is_official       (boolean is_remote_synced)
     :is_personal       (boolean personal_owner_id)
     :can_write         (boolean (mi/can-write? coll))
     :description       description

@@ -23,6 +23,7 @@ import type { ResponsiveProps } from "metabase/common/components/ItemsTable/util
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import CS from "metabase/css/core/index.css";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useNavigate } from "metabase/router";
 import {
   ActionIcon,
@@ -229,6 +230,7 @@ function NameCell({ metric }: { metric?: MetricResult }) {
         ) : (
           <SkeletonText />
         )}
+        <PLUGIN_REMOTE_SYNC.OfficialBadge collection={metric?.collection} />
       </Flex>
     </ItemNameCell>
   );

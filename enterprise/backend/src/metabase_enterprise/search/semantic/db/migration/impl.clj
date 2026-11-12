@@ -152,7 +152,7 @@
 (def dynamic-schema-version
   "Code version of dynamic schema (the index_<provider>_<model>_<dims> index tables). If higher than what's found in
   db dynamic schema migration will be attempted."
-  6)
+  7)
 
 (defn- alter-index-tables!
   "Run `alter-fn` against each existing index table whose `index_version` is below `target-version`, then bump those
@@ -280,24 +280,6 @@
       (log/warnf "Skipping semantic table curation backfill — appdb unavailable (test): %s" (ex-message e))
       nil)))
 
-(defn- official-collection-dashboard-ids
-  "Ids (as strings) of non-archived dashboards in an official collection.
-  official_collection is new on the dashboard search spec, so existing index dashboard rows have it unset
-  and curated-honeysql would miss official-only dashboards; this backfills them from the appdb.
-  Throws outside tests if the appdb lookup fails."
-  []
-  (try
-    (let [official-coll-ids (semantic-search.db/official-collection-ids)]
-      (if (empty? official-coll-ids)
-        []
-        (into [] (map (comp str :id))
-              (semantic-search.db/unarchived-dashboard-ids-in-collections-reducible (vec official-coll-ids)))))
-    (catch Exception e
-      (when-not config/is-test?
-        (throw e))
-      (log/warnf "Skipping semantic dashboard curation backfill — appdb unavailable (test): %s" (ex-message e))
-      nil)))
-
 (defn- index-empty?
   "True when the index table has no rows yet.
   A fresh index migrated up before its first population has nothing to backfill (ingestion computes
@@ -316,13 +298,13 @@
 
 (defn- add-data-authority-and-curated-columns!
   "Migration 5: add `data_authority` and the precomputed `curated` flag to index tables.
-  `curated` backs Metabot's \"verified or curated content\" filter.
+  `curated` backs Metabot's \"official or curated content\" filter.
   Non-table rows compute `curated` from index columns via [[metabase.collections.curation/curated-honeysql]]
-  (is_published forced false — the index lacks it), covering verified cards, official cards, and library
-  content via `root_collection_type`. Two bounded appdb sweeps fix what the index columns can't express for
-  existing rows: tables are curated only when published-final or authoritative (the index's
-  `root_collection_type` isn't is_published-gated for tables, so it's never used for table curation), and
-  official-only dashboards (whose official_collection column is new and unset on existing rows).
+  (is_published and official forced false — the index lacks them, and Migration 7 recomputes `curated` with
+  `official`), covering library content via `root_collection_type`. A bounded appdb sweep
+  fixes what the index columns can't express for existing rows: tables are curated only when published-final or
+  authoritative (the index's `root_collection_type` isn't is_published-gated for tables, so it's never used for
+  table curation).
   Empty (freshly migrated, not-yet-populated) index tables are skipped, since ingestion populates them.
   Known limitation: the backfill writes the `curated`/`data_authority` columns (used for filtering) but not
   `legacy_input`, from which results are reconstructed — so migrated rows surface the new is_curated/
@@ -330,10 +312,9 @@
   immediately. Changing the rule needs a new migration to recompute this."
   [tx index-metadata]
   (let [curated-expr (collections.curation/curated-honeysql
-                      (fn [signal] (if (= signal :is_published) [:inline false] signal)))
-        ;; resolved lazily so the appdb sweeps only run once a non-empty index table is found
-        tables       (delay (candidate-table-ids))
-        dashboards   (delay (official-collection-dashboard-ids))]
+                      (fn [signal] (if (#{:is_published :official} signal) [:inline false] signal)))
+        ;; resolved lazily so the appdb sweep only runs once a non-empty index table is found
+        tables       (delay (candidate-table-ids))]
     (alter-index-tables!
      tx index-metadata 5
      (fn [execute! table-name]
@@ -342,18 +323,14 @@
          (execute! {:alter-table [kw-tbl] :add-column [[:curated :boolean :if-not-exists]]})
          (when-not (index-empty? execute! kw-tbl)
            (let [{:keys [authoritative published]} @tables]
-             ;; Non-table rows from index columns (cards accurate; official-only dashboards fixed below).
+             ;; Non-table rows from index columns.
              (execute! {:update kw-tbl
                         :set   {:curated curated-expr}
                         :where [:and [:= :curated nil] [:!= :model ^:allow-raw-sql [:inline "table"]]]})
              ;; Tables: curated only from the appdb sweep. Authoritative rows also get data_authority.
              (update-model-rows-in-batches! execute! kw-tbl "table" authoritative
                                             {:data_authority ^:allow-raw-sql [:inline "authoritative"] :curated true})
-             (update-model-rows-in-batches! execute! kw-tbl "table" published {:curated true})
-             ;; Dashboards: official_collection is new on the spec, so backfill both it and curated for
-             ;; official dashboards (curated alone would leave them scoring as non-official until reindex).
-             (update-model-rows-in-batches! execute! kw-tbl "dashboard" @dashboards
-                                            {:curated true :official_collection true}))))))))
+             (update-model-rows-in-batches! execute! kw-tbl "table" published {:curated true}))))))))
 
 (defn- content-btree-index-names
   "Names of the B-tree indexes on `content` of index table `table-name`, read from the catalog."
@@ -397,6 +374,45 @@
                                   (qualified temp-name)
                                   (semantic.util/quote-ident final-name))])))))
 
+(defn- remote-synced-collection-ids
+  "The ids of the remote-synced collections, which Migration 7 marks official.
+  Throws outside tests if the appdb lookup fails."
+  []
+  (try
+    (vec (semantic-search.db/remote-synced-collection-ids))
+    (catch Exception e
+      (when-not config/is-test?
+        (throw e))
+      (log/warnf "Skipping semantic official backfill — appdb unavailable (test): %s" (ex-message e))
+      [])))
+
+(defn- replace-verified-and-official-collection-with-official!
+  "Migration 7: replace the `verified` and `official_collection` columns with `official`, which is true for rows in a
+  remote-synced collection, recompute `curated` as `official`, and patch `legacy_input` to the new result keys."
+  [tx index-metadata]
+  (let [curated-expr (collections.curation/curated-honeysql identity)
+        synced-ids   (delay (remote-synced-collection-ids))]
+    (alter-index-tables!
+     tx index-metadata 7
+     (fn [execute! table-name]
+       (let [kw-tbl (keyword table-name)]
+         (execute! {:alter-table [kw-tbl] :add-column [[:official :boolean :if-not-exists]]})
+         (when-not (index-empty? execute! kw-tbl)
+           (execute! {:update kw-tbl
+                      :set    {:official (if (seq @synced-ids)
+                                           [:coalesce [:in :collection_id @synced-ids] false]
+                                           false)}})
+           (execute! {:update kw-tbl
+                      :set    {:curated curated-expr}})
+           (execute! {:update kw-tbl
+                      :set    {:legacy_input ^:allow-raw-sql [:raw (str "(legacy_input - 'collection_authority_level' - 'moderated_status' - 'verified'"
+                                                                        " - 'official_collection')"
+                                                                        " || jsonb_build_object('collection_is_remote_synced', official,"
+                                                                        " 'curated', curated)")]}
+                      :where  [:!= :legacy_input nil]}))
+         (execute! {:alter-table [kw-tbl] :drop-column [:if-exists :verified]})
+         (execute! {:alter-table [kw-tbl] :drop-column [:if-exists :official_collection]}))))))
+
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, i.e. the schema of the `index_...` index tables. Migration author is responsible for
   removing leftovers if necessary."
@@ -407,8 +423,10 @@
   ;; migration 4: add root_collection_type column to index tables
   ;; migration 5: add data_authority and precomputed curated columns to index tables
   ;; migration 6: replace the B-tree index on content with a hash index
+  ;; migration 7: replace verified and official_collection with official
   (add-personal-owner-id-column! tx index-metadata)
   (add-collection-type-and-data-layer-columns! tx index-metadata)
   (add-root-collection-type-column! tx index-metadata)
   (add-data-authority-and-curated-columns! tx index-metadata)
-  (replace-content-btree-with-hash-index! tx index-metadata))
+  (replace-content-btree-with-hash-index! tx index-metadata)
+  (replace-verified-and-official-collection-with-official! tx index-metadata))

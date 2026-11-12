@@ -35,8 +35,8 @@
                        (mt/user-http-request :get 200 (str "collection/" (u/the-id a) "/items")
                                              :models "dashboard" :models "card")
                        (dissoc :models)
-                       (update :data (fn [results] (map (fn [result] (dissoc result :moderated_status :is_remote_synced :namespace :collection_namespace)) results))))
-                   (update result :data (fn [results] (map (fn [result] (dissoc result :collection :moderated_status :card_schema)) results))))))
+                       (update :data (fn [results] (map (fn [result] (dissoc result :is_remote_synced :namespace :collection_namespace)) results))))
+                   (update result :data (fn [results] (map (fn [result] (dissoc result :collection :card_schema)) results))))))
           (testing "The card and dashboard are in there"
             (is (= #{["card" (u/the-id card)] ["dashboard" (u/the-id dashboard)]}
                    (->> result
@@ -192,22 +192,22 @@
                                       :model/Dashboard dashboard-in-child-coll {:name "F Dashboard in coll"
                                                                                 :collection_id child-coll-id}]
           (is (= [;; the first two items are in the root collection
-                  {:id nil :name nil :type nil :authority_level nil :effective_ancestors []}
-                  {:id nil :name nil :type nil :authority_level nil :effective_ancestors []}
+                  {:id nil :name nil :type nil :is_remote_synced false :effective_ancestors []}
+                  {:id nil :name nil :type nil :is_remote_synced false :effective_ancestors []}
                   ;; next we have two items in our top-level collection
-                  {:id top-coll-id :name top-coll-name :type nil :authority_level nil :effective_ancestors []}
-                  {:id top-coll-id :name top-coll-name :type nil :authority_level nil :effective_ancestors []}
+                  {:id top-coll-id :name top-coll-name :type nil :is_remote_synced false :effective_ancestors []}
+                  {:id top-coll-id :name top-coll-name :type nil :is_remote_synced false :effective_ancestors []}
                   ;; finally we have 2 items in our child collection
                   {:id child-coll-id
                    :name child-coll-name
                    :type nil
-                   :authority_level nil
-                   :effective_ancestors [{:id top-coll-id :name (:name top-coll) :type nil :authority_level nil}]}
+                   :is_remote_synced false
+                   :effective_ancestors [{:id top-coll-id :name (:name top-coll) :type nil :is_remote_synced false}]}
                   {:id child-coll-id
                    :name child-coll-name
                    :type nil
-                   :authority_level nil
-                   :effective_ancestors [{:id top-coll-id :name (:name top-coll) :type nil :authority_level nil}]}]
+                   :is_remote_synced false
+                   :effective_ancestors [{:id top-coll-id :name (:name top-coll) :type nil :is_remote_synced false}]}]
                  (->> (mt/user-http-request :crowberto :get 200 "ee/stale/root"
                                             :is_recursive true :sort_column "name")
                       :data

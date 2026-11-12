@@ -2,7 +2,7 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Box, Flex, Group, Stack, Text } from "metabase/ui";
 
 import type { PaletteActionImpl } from "../types";
@@ -57,17 +57,10 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               {item.name}
             </Text>
 
-            {item.extra?.moderatedStatus && (
-              <PLUGIN_MODERATION.ModerationStatusIcon
-                status={item.extra.moderatedStatus}
-                filled
-                size={14}
-                color="core-brand"
-                style={{
-                  verticalAlign: "text-bottom",
-                }}
-              />
-            )}
+            <PLUGIN_REMOTE_SYNC.OfficialBadge
+              collection={item.extra?.collection}
+              size={14}
+            />
           </Group>
 
           {subtext && (

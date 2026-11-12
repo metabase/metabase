@@ -176,17 +176,10 @@
           (when-let [root (data-complexity-score.db/collection collection-id)]
             (collections/descendant-ids root)))))
 
-(defn- verified-card-id-set
-  "Set of Card ids whose most-recent moderation review is `verified`."
-  []
-  ;; Called only when `metabot-scope` requests curated-only filtering — avoids a `moderation_review`
-  ;; join on the universe Card select by pushing the check into a small auxiliary lookup.
-  (data-complexity-score.db/verified-card-ids))
-
 (defn- official-collection-id-set
-  "Set of collection ids with `official` authority level."
+  "Set of remote-synced collection ids, whose content is official."
   []
-  (data-complexity-score.db/official-collection-ids))
+  (data-complexity-score.db/remote-synced-collection-ids))
 
 (defn- routed-child-database-id-set
   "Set of database ids whose `router_database_id` is non-nil — the routed child databases whose
@@ -226,12 +219,10 @@
   ;; + 2 auxiliaries into 4 + up-to-2 and lets the aggregates run once each.
   (let [library-cids      (library-collection-ids)
         metabot-cids      (metabot-collection-scope-ids collection-id)
-        verified-ids      (when curated-only? (verified-card-id-set))
         official-cids     (when curated-only? (official-collection-id-set))
         routed-db-ids     (routed-child-database-id-set)
-        ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`,
-        ;; `:data_layer`, `:data_authority`) are selected purely to drive the in-memory
-        ;; library/metabot derivations below — they're ignored by `->card-entity` /
+        ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`) are selected
+        ;; purely to drive the in-memory library/metabot derivations below — they're ignored by `->card-entity` /
         ;; `->table-entity`.
         universe-cards    (data-complexity-score.db/universe-cards audit/audit-db-id)
         universe-tables   (data-complexity-score.db/universe-tables audit/audit-db-id)
@@ -246,32 +237,27 @@
                             (fn [{:keys [collection_id is_published]}]
                               (and is_published
                                    (contains? library-cids collection_id))))
-        ;; Set-membership mirror of [[curation/curated?]] for Cards (same shape as
-        ;; `metabase.metabot.tools.util/metabot-metrics-and-models-query`): verified, in an
-        ;; official collection, or in the Library tree (≡ `root_collection_type` is a library
-        ;; type, since library-typed collections only exist inside the Library root's tree).
-        curated-card?     (fn [{:keys [id collection_id]}]
-                            (or (contains? verified-ids id)
-                                (contains? official-cids collection_id)
-                                (contains? library-cids collection_id)))
+        ;; Set-membership mirror of [[curation/curated?]]: a Card or Table is curated when its collection is
+        ;; official (remote-synced).
+        curated?          (fn [{:keys [collection_id]}]
+                            (curation/curated? {:official (contains? official-cids collection_id)}))
         ;; A nil pred makes `pick-by-row` return [] without walking the universe; used here when the
         ;; card filter is statically empty (curated-only, but nothing anywhere is curated).
         ;; The `(not curated-only?)` disjunct must stay in both the guard and the pred — dropping it
         ;; from the guard would collapse an unfiltered scope into an empty catalog.
         in-metabot-card?  (when (and (or (nil? metabot-cids) (seq metabot-cids))
                                      (or (not curated-only?)
-                                         (some seq [verified-ids official-cids library-cids])))
+                                         (seq official-cids)))
                             (fn [{:keys [collection_id] :as card-row}]
                               (and (or (nil? metabot-cids)
                                        (contains? metabot-cids collection_id))
                                    (or (not curated-only?)
-                                       (curated-card? card-row)))))
+                                       (curated? card-row)))))
         in-metabot-table? (fn [{:keys [visibility_type db_id] :as table-row}]
                             (and (nil? visibility_type)
                                  (not (contains? routed-db-ids db_id))
                                  (or (not curated-only?)
-                                     (curation/curated? (assoc (select-keys table-row [:is_published :data_layer :data_authority])
-                                                               :model "table")))))]
+                                     (curated? table-row))))]
     {:universe (into card-entities table-entities)
      :library  (into (pick-by-row in-library-card?  universe-cards  card-entities)
                      (pick-by-row in-library-table? universe-tables table-entities))

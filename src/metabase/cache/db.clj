@@ -86,7 +86,7 @@
                  [[:coalesce :report_card.name :report_dashboard.name] :item_name]
                  [[:coalesce :report_card.collection_id :report_dashboard.collection_id] :collection_id]
                  [:collection.name :collection_name]
-                 [:collection.authority_level :collection_authority_level]
+                 [:collection.is_remote_synced :collection_is_remote_synced]
                  [:collection.type :collection_type]]
      :from      [:cache_config]
      :left-join [:report_card      [:and

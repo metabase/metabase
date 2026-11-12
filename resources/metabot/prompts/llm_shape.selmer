@@ -20,7 +20,7 @@
 {{field_description}}{% endif %}</field>
 {% endif %}
 {% if is_collection %}
-<collection{% if collection_id %} id="{{collection_id}}"{% endif %} name="{{collection_name}}"{% if collection_path %} path="{{collection_path}}"{% endif %}{% if collection_authority_level %} authority_level="{{collection_authority_level}}"{% endif %}{% if collection_archived %} archived="true"{% endif %}>{% if collection_description %}
+<collection{% if collection_id %} id="{{collection_id}}"{% endif %} name="{{collection_name}}"{% if collection_path %} path="{{collection_path}}"{% endif %}{% if collection_official %} is_official="true"{% endif %}{% if collection_archived %} archived="true"{% endif %}>{% if collection_description %}
 <description>{{collection_description}}</description>{% endif %}</collection>
 {% endif %}
 {% if is_related_table %}
@@ -37,7 +37,7 @@ The related tables below are listed without their fields. Look them up separatel
 This entity has more FK-related tables than the {{related_tables_surfaced}} shown here.
 </related-tables-truncated>{% endif %}{% endif %}
 {% if is_metric %}
-<metric id="{{metric_id}}", name="{{metric_name}}" is_verified="{{metric_verified}}"{% if metric_database_name %} database_name="{{metric_database_name}}"{% endif %}{% if metric_base_table_fqn %} base_table_fully_qualified_name="{{metric_base_table_fqn}}"{% endif %}{% if metric_source_card_entity_id %} source_card_portable_entity_id="{{metric_source_card_entity_id}}"{% if metric_source_card_name %} source_card_name="{{metric_source_card_name}}"{% endif %}{% endif %}{% if metric_source_unavailable %} source_unavailable="true"{% endif %}{% if metric_portable_entity_id %} portable_entity_id="{{metric_portable_entity_id}}"{% endif %}>
+<metric id="{{metric_id}}", name="{{metric_name}}" is_official="{{metric_official}}"{% if metric_database_name %} database_name="{{metric_database_name}}"{% endif %}{% if metric_base_table_fqn %} base_table_fully_qualified_name="{{metric_base_table_fqn}}"{% endif %}{% if metric_source_card_entity_id %} source_card_portable_entity_id="{{metric_source_card_entity_id}}"{% if metric_source_card_name %} source_card_name="{{metric_source_card_name}}"{% endif %}{% endif %}{% if metric_source_unavailable %} source_unavailable="true"{% endif %}{% if metric_portable_entity_id %} portable_entity_id="{{metric_portable_entity_id}}"{% endif %}>
 {% if metric_collection_xml %}
 The metric is stored in the following collection:
 {{metric_collection_xml|safe}}
@@ -108,7 +108,7 @@ This will help avoid errors due to unexpected data types or formats.
 </table>
 {% endif %}
 {% if is_model %}
-<metabase-model id="{{model_id}}" name="{{model_name}}" is_verified="{{model_verified}}" database_id="{{model_database_id}}"{% if model_database_name %} database_name="{{model_database_name}}"{% endif %} database_engine="{{model_database_engine}}"{% if model_sql_unavailable %} sql_unavailable="true"{% endif %} fully_qualified_name="{{model_fqn}}"{% if model_portable_entity_id %} portable_entity_id="{{model_portable_entity_id}}"{% endif %}>
+<metabase-model id="{{model_id}}" name="{{model_name}}" is_official="{{model_official}}" database_id="{{model_database_id}}"{% if model_database_name %} database_name="{{model_database_name}}"{% endif %} database_engine="{{model_database_engine}}"{% if model_sql_unavailable %} sql_unavailable="true"{% endif %} fully_qualified_name="{{model_fqn}}"{% if model_portable_entity_id %} portable_entity_id="{{model_portable_entity_id}}"{% endif %}>
 
 ### Description
 {{model_description}}
@@ -199,7 +199,7 @@ Chart link: metabase://chart/{{chart_id}}
 </chart>
 {% endif %}
 {% if is_question %}
-<metabase_question id="{{question_id}}" is_verified="{{question_verified}}"{% if question_display_type %} display_type="{{question_display_type}}"{% endif %}{% if question_portable_entity_id %} portable_entity_id="{{question_portable_entity_id}}"{% endif %}>
+<metabase_question id="{{question_id}}" is_official="{{question_official}}"{% if question_display_type %} display_type="{{question_display_type}}"{% endif %}{% if question_portable_entity_id %} portable_entity_id="{{question_portable_entity_id}}"{% endif %}>
 <name>{{question_name}}</name>
 {% if question_description %}
 <description>{{question_description}}</description>
@@ -246,7 +246,7 @@ The following fields are returned by this question.
 </viz_card>
 {% endif %}
 {% if is_dashboard %}
-<dashboard id="{{dashboard_id}}" is_verified="{{dashboard_verified}}"{% if dashboard_archived %} archived="true"{% endif %}>
+<dashboard id="{{dashboard_id}}" is_official="{{dashboard_official}}"{% if dashboard_archived %} archived="true"{% endif %}>
   <name>{{dashboard_name}}</name>
 {% if dashboard_description %}
   <description>{{dashboard_description}}</description>
@@ -299,7 +299,7 @@ or jargon that may be relevant to the user's questions.
 </user>
 {% endif %}
 {% if is_search_result %}
-<{{search_tag_name}} id="{{search_id}}"{% if search_uri %} uri="{{search_uri}}"{% endif %} name="{{search_name}}"{% if search_has_curated %} is_curated="{{search_curated}}"{% endif %}{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}{% if search_has_official %} is_official="{{search_official}}"{% endif %}{% if search_has_can_write %} can_write="{{search_can_write}}"{% endif %}{% if search_data_layer %} data_layer="{{search_data_layer}}"{% endif %}{% if search_data_authority %} data_authority="{{search_data_authority}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_name %} database_name="{{search_database_name}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_sql_unavailable %} sql_unavailable="true"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}{% if search_base_table_fqn %} base_table_fully_qualified_name="{{search_base_table_fqn}}"{% endif %}{% if search_source_card_entity_id %} source_card_portable_entity_id="{{search_source_card_entity_id}}"{% if search_source_card_name %} source_card_name="{{search_source_card_name}}"{% endif %}{% endif %}{% if search_source_unavailable %} source_unavailable="true"{% endif %}{% if search_portable_entity_id %} portable_entity_id="{{search_portable_entity_id}}"{% endif %}>
+<{{search_tag_name}} id="{{search_id}}"{% if search_uri %} uri="{{search_uri}}"{% endif %} name="{{search_name}}"{% if search_has_curated %} is_curated="{{search_curated}}"{% endif %}{% if search_has_official %} is_official="{{search_official}}"{% endif %}{% if search_has_can_write %} can_write="{{search_can_write}}"{% endif %}{% if search_data_layer %} data_layer="{{search_data_layer}}"{% endif %}{% if search_data_authority %} data_authority="{{search_data_authority}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_name %} database_name="{{search_database_name}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_sql_unavailable %} sql_unavailable="true"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}{% if search_base_table_fqn %} base_table_fully_qualified_name="{{search_base_table_fqn}}"{% endif %}{% if search_source_card_entity_id %} source_card_portable_entity_id="{{search_source_card_entity_id}}"{% if search_source_card_name %} source_card_name="{{search_source_card_name}}"{% endif %}{% endif %}{% if search_source_unavailable %} source_unavailable="true"{% endif %}{% if search_portable_entity_id %} portable_entity_id="{{search_portable_entity_id}}"{% endif %}>
 {% if search_description %}
 {{search_description}}
 {% endif %}

@@ -292,7 +292,7 @@
   publish a read event, so it is safe to use on write paths (PUT/POST) where recording a view would be
   both semantically wrong and an extra, avoidable round-trip."
   [id]
-  (t2/hydrate (documents.db/document id) :creator :can_write :can_delete :can_restore :is_remote_synced))
+  (t2/hydrate (documents.db/document id) :creator :collection :can_write :can_delete :can_restore :is_remote_synced))
 
 (defn get-document
   "Get document by id checking if the current user has permission to access and if the document exists.
@@ -537,7 +537,8 @@
            :created-at :created_at
            :updated-at :updated_at
            :last-viewed-at :last_viewed_at
-           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
+           :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+           :official [:coalesce :collection.is_remote_synced false]}
    :search-terms {:name true
                   :document document->search-text}
    ;; Document bodies are full-text searchable (via `document->search-text` above) but are
@@ -546,7 +547,7 @@
    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
    :render-terms {:document-name :name
                   :document-id :id
-                  :collection-authority_level :collection.authority_level
+                  :collection-is_remote_synced :collection.is_remote_synced
                   :collection-location        :collection.location
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned

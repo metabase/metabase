@@ -1,16 +1,16 @@
 import type { Action, ActionImpl } from "kbar";
 import type React from "react";
 
+import type { OfficialCollection } from "metabase/plugins";
 import type { To } from "metabase/router";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { IconName, ModerationReviewStatus } from "metabase-types/api";
+import type { IconName } from "metabase-types/api";
 
 import type { GROUP_LABELS } from "./constants";
 
 interface PaletteActionExtras {
   extra?: {
-    /** isVerified: If true, will show a verified badge next to the item name */
-    moderatedStatus?: ModerationReviewStatus;
+    collection?: OfficialCollection | null;
     /**
      * href: If defined, the palette item will be wrapped in a link. This allows for
      * browser interactions to open items in new tabs/windows

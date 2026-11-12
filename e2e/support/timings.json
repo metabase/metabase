@@ -1085,10 +1085,6 @@
       "duration": 11575
     },
     {
-      "spec": "../test/scenarios/organization/content-verification.cy.spec.js",
-      "duration": 5834
-    },
-    {
       "spec": "../test/scenarios/organization/edit-history-metadata.cy.spec.js",
       "duration": 16633
     },
@@ -1099,10 +1095,6 @@
     {
       "spec": "../test/scenarios/organization/entity-picker.cy.spec.ts",
       "duration": 148206
-    },
-    {
-      "spec": "../test/scenarios/organization/official-collections.cy.spec.js",
-      "duration": 21554
     },
     {
       "spec": "../test/scenarios/organization/timelines-collection.cy.spec.js",

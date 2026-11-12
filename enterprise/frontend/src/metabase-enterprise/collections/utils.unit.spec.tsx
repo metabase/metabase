@@ -13,46 +13,14 @@ import {
 import {
   filterOutItemsFromInstanceAnalytics,
   getCollectionType,
-  isRegularCollection,
   useGetIcon,
 } from "./utils";
 
 describe("Collections plugin utils", () => {
-  const COLLECTION = {
-    NO_AUTHORITY_LEVEL: createMockCollection({
-      id: "root",
-      name: "Our analytics",
-    }),
-    REGULAR: createMockCollection({ authority_level: null }),
-    OFFICIAL: createMockCollection({ authority_level: "official" }),
-  };
-
-  describe("isRegularCollection", () => {
-    it("returns 'true' if collection is missing an authority level", () => {
-      const collection = COLLECTION.NO_AUTHORITY_LEVEL;
-      expect(isRegularCollection(collection)).toBe(true);
-    });
-
-    it("returns 'true' for regular collections", () => {
-      const collection = COLLECTION.REGULAR;
-      expect(isRegularCollection(collection)).toBe(true);
-    });
-
-    it("returns 'false' for official collections", () => {
-      const collection = COLLECTION.OFFICIAL;
-      expect(isRegularCollection(collection)).toBe(false);
-    });
-  });
-
   describe("getCollectionType", () => {
     it("regular collection", () => {
       const collection = createMockCollection();
       expect(getCollectionType(collection).icon).toBe("folder");
-    });
-
-    it("official collection", () => {
-      const collection = createMockCollection({ authority_level: "official" });
-      expect(getCollectionType(collection).icon).toBe("official_collection");
     });
 
     it("instance analytics collection", () => {
@@ -98,10 +66,10 @@ describe("Collections plugin utils", () => {
         ).toEqual({ name: "audit" });
       });
 
-      it("should return the correct icon for an official collection", () => {
+      it("returns official icon for remote synced collection", () => {
         const getIcon = createGetIcon();
         expect(
-          getIcon({ model: "collection", authority_level: "official" }),
+          getIcon({ model: "collection", is_remote_synced: true }),
         ).toEqual({
           name: "official_collection",
           color: "core-yellow-saturated",
@@ -109,35 +77,11 @@ describe("Collections plugin utils", () => {
         });
       });
 
-      it("should return the correct icon for a remote synced collection", () => {
-        const getIcon = createGetIcon();
-        expect(
-          getIcon({ model: "collection", is_remote_synced: true }),
-        ).toEqual({ name: "synced_collection" });
-      });
-
       it("should return the correct icon for a remote synced entity", () => {
         const getIcon = createGetIcon();
         expect(getIcon({ model: "dashboard", is_remote_synced: true })).toEqual(
           { name: "dashboard" },
         );
-      });
-
-      it("official collection in search", () => {
-        const collection = {
-          id: 101,
-          collection_authority_level: "official",
-          model: "collection" as const,
-        };
-        const getIcon = createGetIcon();
-        expect(getIcon(collection).name).toBe("official_collection");
-      });
-
-      it("should return the correct icon for an official model", () => {
-        const getIcon = createGetIcon();
-        expect(
-          getIcon({ model: "dataset", moderated_status: "verified" }),
-        ).toEqual({ name: "model_with_badge" });
       });
     });
   });

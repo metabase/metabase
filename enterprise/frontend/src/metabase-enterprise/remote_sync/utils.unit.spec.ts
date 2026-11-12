@@ -16,6 +16,7 @@ import {
   getItemTable,
   getItemUrl,
   getModelIcon,
+  isOfficial,
 } from "./utils";
 
 describe("getModelIcon", () => {
@@ -137,5 +138,17 @@ describe("getItemCollections and getItemTable", () => {
     });
 
     expect(getItemCollections(card)).toEqual([]);
+  });
+});
+
+describe("isOfficial", () => {
+  it.each([
+    [{ is_remote_synced: true }, true],
+    [{ is_remote_synced: false }, false],
+    [{}, false],
+    [null, false],
+    [undefined, false],
+  ])("returns expected value for %p", (collection, expected) => {
+    expect(isOfficial(collection)).toBe(expected);
   });
 });

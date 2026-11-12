@@ -27,9 +27,6 @@ export type IconModel =
 export type ObjectWithModel = {
   id?: unknown;
   model: IconModel;
-  authority_level?: "official" | string | null;
-  collection_authority_level?: "official" | string | null;
-  moderated_status?: "verified" | string | null;
   display?: VisualizationDisplay | null;
   type?: CollectionType | CardType;
   collection_type?: CollectionType;

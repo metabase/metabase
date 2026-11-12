@@ -12,7 +12,6 @@ import {
   createMockCard,
   createMockCollection,
   createMockDashboard,
-  createMockModerationReview,
   createMockSettings,
   createMockTokenFeatures,
   createMockUserInfo,
@@ -336,15 +335,13 @@ describe("QuestionInfoSidebar", () => {
     });
   });
 
-  describe("moderation reviews", () => {
-    it("should not show the verification badge", async () => {
+  describe("official badge", () => {
+    it("should not show official badge", async () => {
       const card = createMockCard({
-        moderation_reviews: [
-          createMockModerationReview({ status: "verified" }),
-        ],
+        collection: createMockCollection({ is_remote_synced: true }),
       });
       await setup({ card });
-      expect(screen.queryByText(/verified this/)).not.toBeInTheDocument();
+      expect(screen.queryByTestId("official-badge")).not.toBeInTheDocument();
     });
   });
 

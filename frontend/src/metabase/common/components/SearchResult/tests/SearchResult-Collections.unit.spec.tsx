@@ -28,13 +28,12 @@ import { createWrappedSearchResult } from "./util";
 const TEST_REGULAR_COLLECTION = createMockCollection({
   id: 1,
   name: "Regular Collection",
-  authority_level: null,
 });
 
 const TEST_OFFICIAL_COLLECTION = createMockCollection({
   id: 2,
   name: "Official Collection",
-  authority_level: "official",
+  is_remote_synced: true,
 });
 
 const regularCollectionResult = createWrappedSearchResult({
@@ -46,8 +45,13 @@ const regularCollectionResult = createWrappedSearchResult({
 const officialCollectionResult = createWrappedSearchResult({
   name: "My Official Collection",
   model: "collection",
-  collection_authority_level: "official",
-  collection: TEST_REGULAR_COLLECTION,
+  collection: TEST_OFFICIAL_COLLECTION,
+});
+
+const officialCardResult = createWrappedSearchResult({
+  name: "My Official Question",
+  model: "card",
+  collection: TEST_OFFICIAL_COLLECTION,
 });
 
 interface SetupOpts {
@@ -88,8 +92,8 @@ describe("SearchResult > Collections", () => {
     it("renders regular collection correctly", async () => {
       setup({
         result: regularCollectionResult,
-        enterprisePlugins: ["collections", "advanced_permissions"],
-        tokenFeatures: { official_collections: true },
+        enterprisePlugins: ["collections", "remote_sync"],
+        tokenFeatures: { remote_sync: true },
       });
       expect(
         await screen.findByText(regularCollectionResult.name),
@@ -101,8 +105,8 @@ describe("SearchResult > Collections", () => {
     it("renders official collections correctly", async () => {
       setup({
         result: officialCollectionResult,
-        enterprisePlugins: ["collections", "advanced_permissions"],
-        tokenFeatures: { official_collections: true },
+        enterprisePlugins: ["collections", "remote_sync"],
+        tokenFeatures: { remote_sync: true },
       });
 
       expect(
@@ -111,6 +115,19 @@ describe("SearchResult > Collections", () => {
 
       expect(getIcon("official_collection")).toBeInTheDocument();
       expect(queryIcon("folder")).not.toBeInTheDocument();
+    });
+
+    it("renders official badge for card in official collection", async () => {
+      setup({
+        result: officialCardResult,
+        enterprisePlugins: ["collections", "remote_sync"],
+        tokenFeatures: { remote_sync: true },
+      });
+
+      expect(
+        await screen.findByText(officialCardResult.name),
+      ).toBeInTheDocument();
+      expect(screen.getAllByTestId("official-badge")).toHaveLength(2);
     });
   });
 

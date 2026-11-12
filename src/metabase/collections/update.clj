@@ -14,9 +14,7 @@
    ;; and toucan.
    [metabase.notification.card :as notification.card]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -35,8 +33,7 @@
    [:name            {:optional true} [:maybe ms/NonBlankString]]
    [:description     {:optional true} [:maybe ms/NonBlankString]]
    [:archived        {:optional true} [:maybe :boolean]]
-   [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]])
+   [:parent_id       {:optional true} [:maybe ms/PositiveInt]]])
 
 (defn- maybe-send-archived-notifications!
   "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer
@@ -98,8 +95,7 @@
 
 (mu/defn update-collection!
   "Modify the collection with `id`, including archiving or unarchiving it, or moving it. Write-checks the collection,
-  gates `authority_level` behind superuser plus the Official Collections feature, applies the plain column updates,
-  then moves or archives as `collection-updates` asks, and publishes the update and touch events. Returns the updated
+  applies the plain column updates, then moves or archives as `collection-updates` asks, and publishes the update and touch events. Returns the updated
   collection. The single source of truth for collection updates; REST and agent callers both go through here."
   [id                 :- ms/PositiveInt
    collection-updates :- UpdateCollectionArguments]
@@ -108,15 +104,9 @@
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
      (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
-    ;; if authority_level is changing, make sure we're allowed to do that
-    (when (and (contains? collection-updates :authority_level)
-               (not= (keyword (:authority_level collection-updates))
-                     (:authority_level collection-before-update)))
-      (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-      (api/check-403 api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the request. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :description])]
       (when (seq updates)
         (collections.db/update-collection! id updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that

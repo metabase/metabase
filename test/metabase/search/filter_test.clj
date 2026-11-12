@@ -2,7 +2,6 @@
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.test :refer :all]
-   [metabase.collections.test-utils :as collections.tu]
    [metabase.config.core :as config]
    [metabase.models.resolution]
    [metabase.search.config :as search.config]
@@ -50,7 +49,7 @@
   [filter-key]
   (case filter-key
     ;; Boolean filters
-    (:archived? :search-native-query :verified) true
+    (:archived? :search-native-query) true
     ;; Collection filters (sets/sequences)
     (:created-by :last-edited-by :ids) #{1}
     :display-type #{"table"}
@@ -99,7 +98,6 @@
    :last-edited-by                 [321]
    :last-edited-at                 "2024-10-02"
    :search-native-query            true
-   :verified                       true
    :curated?                       true
    :ids                            [1 2 3 4]
    :display-type                   ["line"]
@@ -185,37 +183,24 @@
       (is (=? [:or any? [:exists any?]]
               clause)))))
 
-(deftest in-place-curated-measure-segment-filter-test
-  (testing "the in-place curated filter for measures and segments follows the parent table's published state"
-    (mt/with-premium-features #{:library}
-      (doseq [model ["measure" "segment"]]
-        (is (= [:= :table.is_published true]
-               (:where (#'search.in-place.filter/build-optional-filter-query :curated model {} true))))))
-    (testing "and matches nothing without the :library feature"
-      (mt/with-premium-features #{}
-        (doseq [model ["measure" "segment"]]
-          (is (= [:= [:inline 0] [:inline 1]]
-                 (:where (#'search.in-place.filter/build-optional-filter-query :curated model {} true)))))))))
-
-(deftest in-place-curated-table-filter-counts-authoritative-test
-  (testing "the in-place curated table filter counts authoritative tables regardless of publish state,
-            mirroring collections.curation/curated? (BOT-1570)"
-    (let [where (:where (#'search.in-place.filter/build-optional-filter-query :curated "table" {} true))]
-      (is (some #{"authoritative"} (tree-seq coll? seq where))))))
+(deftest in-place-curated-table-measure-segment-filter-test
+  (testing "the in-place curated filter for tables, measures and segments keeps those whose table's collection is remote-synced"
+    (doseq [model ["table" "measure" "segment"]]
+      (is (= [:in :table.collection_id {:select [:id] :from [:collection] :where [:= :is_remote_synced true]}]
+             (:where (#'search.in-place.filter/build-optional-filter-query :curated model {} true)))))))
 
 (deftest in-place-curated-measure-segment-search-test
-  (testing "the in-place curated search keeps only measures and segments whose parent table is in the Library"
+  (testing "the in-place curated search keeps only measures and segments whose parent table is in a remote-synced collection"
     (search.tu/with-legacy-search
-      (mt/with-premium-features #{:library}
-        (collections.tu/with-library [{data :data}]
-          (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl" :is_published true :collection_id (:id data)}
-                         :model/Table   plain-tbl {:name "plain_tbl"}
-                         :model/Measure _ {:name "inplace measure lib"   :table_id (:id lib-tbl)}
-                         :model/Measure _ {:name "inplace measure plain" :table_id (:id plain-tbl)}
-                         :model/Segment _ {:name "inplace segment lib"   :table_id (:id lib-tbl)}
-                         :model/Segment _ {:name "inplace segment plain" :table_id (:id plain-tbl)}]
-            (is (= #{"inplace measure lib" "inplace segment lib"}
-                   (into #{} (map :name)
-                         (search.tu/search-results "inplace" {:search-engine "in-place"
-                                                              :models        #{"measure" "segment"}
-                                                              :curated       true}))))))))))
+      (mt/with-temp [:model/Collection synced    {:is_remote_synced true}
+                     :model/Table      lib-tbl   {:name "lib_tbl" :collection_id (:id synced)}
+                     :model/Table      plain-tbl {:name "plain_tbl"}
+                     :model/Measure    _ {:name "inplace measure lib"   :table_id (:id lib-tbl)}
+                     :model/Measure    _ {:name "inplace measure plain" :table_id (:id plain-tbl)}
+                     :model/Segment    _ {:name "inplace segment lib"   :table_id (:id lib-tbl)}
+                     :model/Segment    _ {:name "inplace segment plain" :table_id (:id plain-tbl)}]
+        (is (= #{"inplace measure lib" "inplace segment lib"}
+               (into #{} (map :name)
+                     (search.tu/search-results "inplace" {:search-engine "in-place"
+                                                          :models        #{"measure" "segment"}
+                                                          :curated       true}))))))))

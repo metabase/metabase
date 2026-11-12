@@ -1,13 +1,6 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import {
-  createMockModerationReview,
-  createMockRevision,
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockRevision, createMockUser } from "metabase-types/api/mocks";
 
-import { getActivityTimelineEvents } from "./utils";
+import { getTimelineEvents } from "./utils";
 
 const CURRENT_USER = createMockUser({ id: 1 });
 
@@ -31,38 +24,16 @@ const RENAMED = createMockRevision({
   },
 });
 
-const VERIFIED = createMockModerationReview({
-  created_at: "2026-05-15T10:00:00Z",
-});
-
-describe("getActivityTimelineEvents", () => {
-  beforeEach(() => {
-    mockSettings({
-      "token-features": createMockTokenFeatures({ content_verification: true }),
-    });
-    setupEnterpriseOnlyPlugin("moderation");
-  });
-
-  it("merges revisions and moderation reviews newest first", () => {
-    const events = getActivityTimelineEvents({
-      revisions: [CREATED, RENAMED],
-      moderationReviews: [VERIFIED],
+describe("getTimelineEvents", () => {
+  it("names current user as You", () => {
+    const events = getTimelineEvents({
+      revisions: [RENAMED, CREATED],
       currentUser: CURRENT_USER,
     });
 
     expect(events.map((event) => event.title)).toEqual([
       "Bobby Tables renamed it",
-      expect.stringContaining("verified this"),
       "You created this",
     ]);
-  });
-
-  it("lists revisions alone when there are no reviews", () => {
-    const events = getActivityTimelineEvents({
-      revisions: [CREATED],
-      currentUser: CURRENT_USER,
-    });
-
-    expect(events.map((event) => event.title)).toEqual(["You created this"]);
   });
 });

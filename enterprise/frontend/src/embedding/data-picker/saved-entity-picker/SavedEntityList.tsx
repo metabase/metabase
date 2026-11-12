@@ -8,7 +8,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { SelectList } from "metabase/common/components/SelectList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
-import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
 import type { CollectionId, DatabaseId } from "metabase-types/api";
 
@@ -67,7 +66,7 @@ export const SavedEntityList = ({
         >
           <Fragment>
             {filteredList.map((collectionItem) => {
-              const { id, name, moderated_status } = collectionItem;
+              const { id, name } = collectionItem;
               const source: DataSource =
                 type === "table" ? { type: "table", id } : { type: "card", id };
 
@@ -90,9 +89,6 @@ export const SavedEntityList = ({
                     size: 16,
                   }}
                   onSelect={() => onSelect(source)}
-                  rightIcon={PLUGIN_MODERATION.getStatusIcon(
-                    moderated_status ?? undefined,
-                  )}
                 />
               );
             })}

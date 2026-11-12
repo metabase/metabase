@@ -29,13 +29,12 @@ function setup({
   const storeInitialState = createMockState({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
-        content_verification: true,
+        remote_sync: true,
       }),
     }),
   });
 
-  setupEnterpriseOnlyPlugin("content_verification");
-  setupEnterpriseOnlyPlugin("moderation");
+  setupEnterpriseOnlyPlugin("remote_sync");
 
   return renderWithProviders(
     <Route
@@ -59,14 +58,21 @@ describe("CompactPinnedItemCard enterprise", () => {
       id: 1,
       name: "Order",
       model: "dataset",
-      moderated_status: "verified",
     });
 
-    it("should show a verified badge next to the model name", () => {
+    it("should show official badge next to model name in official collection", () => {
+      setup({
+        item: {
+          ...model,
+          collection: createMockCollection({ is_remote_synced: true }),
+        },
+      });
+      expect(screen.getByTestId("official-badge")).toBeInTheDocument();
+    });
+
+    it("should not show official badge for model in regular collection", () => {
       setup({ item: model });
-      expect(
-        screen.getByRole("img", { name: /verified_filled/ }),
-      ).toBeInTheDocument();
+      expect(screen.queryByTestId("official-badge")).not.toBeInTheDocument();
     });
   });
 });

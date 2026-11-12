@@ -78,11 +78,10 @@
                                {:id (:id metadata) :key definition-key :error (ex-message e)})
                      nil)))))))
 
-(defn verified-review?
-  "Return true if the most recent ModerationReview for the given item id/type is verified."
-  [id item-type]
-  (let [review (metabot.db/latest-review-status-row id item-type)]
-    (= (:status review) "verified")))
+(defn official?
+  "Whether the Card or Dashboard (per `model`) with `id` is official, i.e. in a remote-synced Collection."
+  [model id]
+  (metabot.db/in-remote-synced-collection? model id))
 
 (def ^:private max-glossary-items
   "Maximal number of items from glossary to include in Metabot's context."
@@ -124,7 +123,7 @@
   (or (not-empty (str/trim (str first_name " " last_name))) (not-empty email)))
 
 (defn- dashboard-collection
-  "The collection with `collection-id`, nil for the root collection, with its authority level, whether it is in the
+  "The collection with `collection-id`, nil for the root collection, with whether it is remote-synced, whether it is in the
   trash, and the path to it the current user can see. A collection trashed directly has its path through the Trash;
   one trashed with its parent keeps its own location, as core's breadcrumbs do, so only `:archived` says it is in the
   trash."
@@ -143,7 +142,7 @@
         {:id              collection-id
          :name            (:name (last chain))
          :path            (str/join " / " (map :name chain))
-         :authority_level (:authority_level collection)
+         :is_remote_synced (boolean (:is_remote_synced collection))
          :archived        (boolean (:archived collection))}))))
 
 (defn- visible-dashcards
@@ -184,7 +183,7 @@
            (-> dashboard
                (dissoc :collection_id :creator_id)
                (assoc :type           :dashboard
-                      :verified       (verified-review? dashboard-id "dashboard")
+                      :official       (official? :model/Dashboard dashboard-id)
                       :created_by     (person-name (metabot.db/user-summary (:creator_id dashboard)))
                       :last_edited_by (person-name last-edit)
                       :last_edited_at (:timestamp last-edit)
@@ -476,7 +475,7 @@
               ;; Portable entity id — the string the LLM must copy verbatim into a
               ;; `[metric, {}, <entity_id>]` aggregation clause to reference this metric.
               :portable_entity_id (metabot.tools.u/metric-card-shape-get card :entity-id :entity_id)
-              :verified (verified-review? id "card")}
+              :official (official? :model/Card id)}
        true
        (merge (metabot.tools.u/metric-source-fields
                {:source-card   (when source-card
@@ -725,7 +724,7 @@
           ;; Portable entity id matching the representations-format expectation: LLM uses this
           ;; string as the value of `source-card:` in a representations query stage.
           :portable_entity_id (:entity_id base)
-          :verified (verified-review? id "card")}
+          :official (official? :model/Card id)}
          (m/assoc-some
           :description (:description base)
           ;; Portable representations JSON for the card's **own** saved query body.
@@ -985,7 +984,7 @@
                               ;; it's what `question->xml` renders inside `<metabase_question>`
                               ;; so the LLM sees the saved card's body in the same portable
                               ;; representations JSON form `construct_notebook_query` consumes.
-                              (select-keys [:id :type :description :name :verified :query_json])
+                              (select-keys [:id :type :description :name :official :query_json])
                               (assoc :result-columns (:fields details))
                               (m/assoc-some :average_query_time (:average_query_time card)
                                             :display (:display card))))

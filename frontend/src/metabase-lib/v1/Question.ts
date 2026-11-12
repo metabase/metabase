@@ -666,10 +666,6 @@ class Question {
     return Lib.suggestedName(query);
   }
 
-  getModerationReviews() {
-    return this._card?.moderation_reviews || [];
-  }
-
   getCreator(): UserInfo | undefined {
     return this._card?.creator;
   }

@@ -36,20 +36,11 @@ export {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
   type ItemWithCollection,
-  type CollectionAuthorityLevelDisplayProps,
-  type CollectionAuthorityLevelIcon,
 } from "./oss/collections";
 export {
   type LoadCustomVizPluginForDisplayResult,
   PLUGIN_CUSTOM_VIZ,
 } from "./oss/custom-viz";
-export {
-  PLUGIN_CONTENT_VERIFICATION,
-  type ModelFilterControlsProps,
-  type ModelFilterSettings,
-  type MetricFilterControlsProps,
-  type MetricFilterSettings,
-} from "./oss/content-verification";
 export {
   PLUGIN_APP_INIT_FUNCTIONS,
   PLUGIN_LANDING_PAGE,
@@ -99,10 +90,6 @@ export {
   type AuthEnrollmentFormProps,
 } from "./oss/multi-factor-auth";
 export {
-  PLUGIN_MODERATION,
-  type RevisionOrModerationEvent,
-} from "./oss/moderation";
-export {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
@@ -129,6 +116,8 @@ export {
 } from "./oss/permissions";
 export {
   PLUGIN_REMOTE_SYNC,
+  type OfficialBadgeProps,
+  type OfficialCollection,
   type RemoteSyncChangesArea,
   type RemoteSyncChangesBadgeProps,
   type RemoteSyncChangesTarget,

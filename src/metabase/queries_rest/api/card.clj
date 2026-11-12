@@ -191,7 +191,7 @@
     {:name       "hydrate-card-details"
      :attributes {:queries/id card-id}}
     (-> card
-        (t2/hydrate :based_on_upload :creator :can_write :dashboard_count [:dashboard :moderation_status] :average_query_time :last_query_start :parameter_usage_count :can_restore :can_delete :can_manage_db [:collection :is_personal] [:moderation_reviews :moderator_details] :param_fields :is_remote_synced)
+        (t2/hydrate :based_on_upload :creator :can_write :dashboard_count :dashboard :average_query_time :last_query_start :parameter_usage_count :can_restore :can_delete :can_manage_db [:collection :is_personal] :param_fields :is_remote_synced)
         (update :creator select-keys [:id :first_name :last_name :email :common_name])
         (update :param_fields (fn [param-fields]
                                 (perms/prime-table-perms-cache
@@ -204,7 +204,7 @@
                                   (update-vals param-fields
                                                (fn [fields]
                                                  (filterv #(viewable? (:table_id %)) fields))))))
-        (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
+        (update :dashboard #(some-> % (select-keys [:name :id])))
         (cond->
          ;; can_manage_db determines whether we should enable model persistence settings
          (queries/model? card) (t2/hydrate :persisted :can_manage_db)))))
@@ -582,8 +582,7 @@
                                  (or query (queries-rest.db/card-query id)))
     (when-some [query (:dataset_query card-updates)]
       (queries/check-no-save-cycle! id query))
-    (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
-                                             [:moderation_reviews :moderator_details])
+    (let [card-before-update     (api/write-check :model/Card id)
           card-updates           (maybe-populate-collection-id
                                   card-before-update
                                   (api/updates-with-archived-directly card-before-update card-updates))

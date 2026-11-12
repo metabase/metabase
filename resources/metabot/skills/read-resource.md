@@ -154,11 +154,11 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - Treat dashboards as containers — when search returns a `<dashboard>` hit, use `/items` to list its cards instead of re-searching for the same concept.
 - Every dashcard entry carries a `dashcard_id`. Headings and text cards show as `virtual_heading`/`virtual_text` with their text as the description; action buttons show as `action` (with a `uri` to their backing model when readable). On multi-tab dashboards the list opens with a `<tabs>` block naming every tab — empty ones included — and dashcard entries carry their tab's `tab_id`, grouped in tab order. A dashcard with no tab shows on every tab, so it comes first with `all_tabs="true"` instead of a `tab_id`. Every entry also gives its `row`, `col`, `size_x` and `size_y`.
 - Fetch dashboard details to confirm it contains the information the user is looking for before recommending it.
-- Prefer verified dashboards when they match the user's request.
+- Prefer official dashboards when they match the user's request.
 
 # General Best Practices
 
 - **Drill, don't re-search.** If a `search` result is a container or you need more detail on a specific item, feed its `uri` back into `read_resource` — don't issue another search for the same concept.
 - **Batch read URIs** (up to 5 at a time) when you need parallel context, e.g. fetching `/sources` for several candidate models at once.
 - **Honor truncation.** If a list response carries `truncated="true"`, the most-relevant items are not guaranteed to be in the first 25. You have two ways forward: page through the remainder by fetching the URI given in the `<truncation-note>` (the `pages` attribute tells you how many there are), or narrow the request — scope it (`metabase://database/{id}/...`) or refine your `search` query (narrower `entity_types` or topic terms). Narrow when you are hunting for one specific item; page when you genuinely need the whole list, and remember `truncated="false"` on a later page doesn't mean you've seen the earlier ones too.
-- **Curation matters.** Search results carry `is_verified`, `is_official`, and `is_curated` flags (plus `data_authority` where configured) — when you have a choice, drill into the curated item rather than the raw one.
+- **Curation matters.** Search results carry `is_official` and `is_curated` flags (plus `data_authority` where configured) — when you have a choice, drill into the curated item rather than the raw one.

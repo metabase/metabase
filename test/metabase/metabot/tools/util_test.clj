@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
-   [metabase.content-verification.core :as moderation]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -203,57 +202,43 @@
                     (lib/visible-columns orders-query)))))))
 
 (deftest metabot-verified-content-test
-  (testing "metabot-scope-query with verified content filtering"
+  (testing "metabot-scope-query with official content filtering"
     (mt/dataset test-data
-      (mt/with-premium-features #{:content-verification}
-        (mt/with-temp [:model/Collection metabot-coll {:name "mb coll"}
-                       :model/Card verified-model {:type :model, :collection_id (:id metabot-coll)}
-                       :model/Card unverified-model {:type :model, :collection_id (:id metabot-coll)}
-                       :model/Card verified-metric {:type :metric, :collection_id (:id metabot-coll)}
-                       :model/Card unverified-metric {:type :metric, :collection_id (:id metabot-coll)}
-                       :model/Metabot verified-metabot {:name "verified metabot"
-                                                        :collection_id (:id metabot-coll)
-                                                        :use_verified_content true}
-                       :model/Metabot unverified-metabot {:name "unverified metabot"
-                                                          :collection_id (:id metabot-coll)
-                                                          :use_verified_content false}]
-          ;; Mark some content as verified
-          (moderation/create-review! {:moderated_item_id (:id verified-model)
-                                      :moderated_item_type "card"
-                                      :moderator_id (mt/user->id :crowberto)
-                                      :status "verified"
-                                      :text "This is verified"})
-          (moderation/create-review! {:moderated_item_id (:id verified-metric)
-                                      :moderated_item_type "card"
-                                      :moderator_id (mt/user->id :crowberto)
-                                      :status "verified"
-                                      :text "This is verified"})
-          (testing "metabot with use_verified_content=true sees only verified content"
+      (mt/with-premium-features #{}
+        (mt/with-temp [:model/Collection official-coll {:name "official coll" :is_remote_synced true}
+                       :model/Collection plain-coll {:name "plain coll"}
+                       :model/Card official-model {:type :model, :collection_id (:id official-coll)}
+                       :model/Card plain-model {:type :model, :collection_id (:id plain-coll)}
+                       :model/Card official-metric {:type :metric, :collection_id (:id official-coll)}
+                       :model/Card plain-metric {:type :metric, :collection_id (:id plain-coll)}
+                       :model/Metabot curated-metabot {:name "curated metabot"
+                                                       :use_verified_content true}
+                       :model/Metabot open-metabot {:name "open metabot"
+                                                    :use_verified_content false}]
+          (testing "metabot with use_verified_content=true sees only official content"
             (let [result (mt/with-test-user :crowberto
-                           (metabot.tools.util/get-metrics-and-models (:id verified-metabot)))
+                           (metabot.tools.util/get-metrics-and-models (:id curated-metabot)))
                   card-ids (set (map :id result))]
-              (is (contains? card-ids (:id verified-model)))
-              (is (contains? card-ids (:id verified-metric)))
-              (is (not (contains? card-ids (:id unverified-model))))
-              (is (not (contains? card-ids (:id unverified-metric))))))
+              (is (contains? card-ids (:id official-model)))
+              (is (contains? card-ids (:id official-metric)))
+              (is (not (contains? card-ids (:id plain-model))))
+              (is (not (contains? card-ids (:id plain-metric))))))
           (testing "metabot with use_verified_content=false sees all content"
             (let [result (mt/with-test-user :crowberto
-                           (metabot.tools.util/get-metrics-and-models (:id unverified-metabot)))
+                           (metabot.tools.util/get-metrics-and-models (:id open-metabot)))
                   card-ids (set (map :id result))]
-              (is (contains? card-ids (:id verified-model)))
-              (is (contains? card-ids (:id verified-metric)))
-              (is (contains? card-ids (:id unverified-model)))
-              (is (contains? card-ids (:id unverified-metric)))
-              (testing "Verified content comes first"
-                (let [ordered-ids (map :id result)
-                      verified-ids #{(:id verified-model) (:id verified-metric)}
-                      unverified-ids #{(:id unverified-model) (:id unverified-metric)}]
-                  (is (every? verified-ids (take 2 ordered-ids)))
-                  (is (every? unverified-ids (drop 2 ordered-ids))))))))))))
+              (is (contains? card-ids (:id official-model)))
+              (is (contains? card-ids (:id official-metric)))
+              (is (contains? card-ids (:id plain-model)))
+              (is (contains? card-ids (:id plain-metric)))
+              (testing "official content comes first"
+                (let [position (into {} (map-indexed (fn [i {:keys [id]}] [id i])) result)]
+                  (is (< (max (position (:id official-model)) (position (:id official-metric)))
+                         (min (position (:id plain-model)) (position (:id plain-metric))))))))))))))
 
-(deftest metabot-verified-content-library-test
-  (testing "with the :library feature, use_verified_content=true includes library-published metrics/models
-            (BOT-1570), matching collections.curation/curated?"
+(deftest metabot-verified-content-excludes-library-test
+  (testing "use_verified_content=true leaves out library metrics and models outside a remote-synced collection, matching
+            collections.curation/curated?"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection lib  {:type "library-metrics" :name "libcoll"}
                      :model/Collection norm {:name "normcoll"}
@@ -262,12 +247,12 @@
                      :model/Metabot metabot {:name "mb" :use_verified_content true}]
         (let [ids (set (map :id (mt/with-test-user :crowberto
                                   (metabot.tools.util/get-metrics-and-models (:id metabot)))))]
-          (is (contains? ids (:id lib-metric))       "library-published metric is curated")
+          (is (not (contains? ids (:id lib-metric))) "library metric is not curated")
           (is (not (contains? ids (:id plain-metric))) "plain metric is not curated"))))))
 
 (deftest metabot-verified-content-no-feature-test
-  (testing "use_verified_content=true with no curation features active returns nothing, rather than falling
-            through unfiltered to uncurated content"
+  (testing "use_verified_content=true with no curated content returns nothing, rather than falling through
+            unfiltered to uncurated content"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection metabot-coll {:name "mb coll"}
                      :model/Card _model  {:type :model  :collection_id (:id metabot-coll)}

@@ -9,13 +9,4 @@ export interface RecentMetric extends RecentCollectionItem {
   model: "metric";
 }
 
-export type MetricFilterSettings = {
-  verified?: boolean;
-};
-
-export type MetricFilterControlsProps = {
-  metricFilters: MetricFilterSettings;
-  setMetricFilters: (settings: MetricFilterSettings) => void;
-};
-
 export type SortColumn = "name" | "collection" | "description";

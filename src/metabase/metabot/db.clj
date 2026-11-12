@@ -13,14 +13,13 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(declare collection metabot-metrics-and-models-query root-collections-of-types)
+(declare collection metabot-metrics-and-models-query)
 
 ;;; ------------------------------------------------- Metabot -------------------------------------------------
 
@@ -524,10 +523,10 @@
   (t2/select [:model/Table :id :name :schema :db_id :is_published :collection_id] :id [:in table-ids]))
 
 (mu/defn table-curation-rows
-  "The ID, Database ID, active flag, visibility type, published flag, data layer, and data authority of the Tables with
-  `table-ids`."
+  "The ID, Database ID, Collection ID, active flag, visibility type, published flag, data layer, and data authority of
+  the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :active :visibility_type :is_published :data_layer :data_authority]
+  (t2/select [:model/Table :id :db_id :collection_id :active :visibility_type :is_published :data_layer :data_authority]
              :id [:in table-ids]))
 
 (mu/defn visible-table-summaries
@@ -749,65 +748,33 @@
 
 (defn- metabot-metrics-and-models-query
   "Honey SQL query selecting the metric and model Cards in scope of the Metabot with `metabot-id` that are visible to
-  the current user, ignoring analytics content. If the Metabot has `:use_verified_content` enabled, restricts to
-  verified-or-curated content (verified, official-collection, or library-published). `limit`, if given, caps the
-  number of rows."
+  the current user, ignoring analytics content, restricted to official content when the Metabot has
+  `:use_verified_content` enabled, and capped at `limit` rows when given."
   [metabot-id limit]
   (let [metabot-instance       (metabot metabot-id)
         metabot-collection-id  (:collection_id metabot-instance)
         use-verified-content?  (:use_verified_content metabot-instance)
-        verified?              (premium-features/has-feature? :content-verification)
-        official?              (premium-features/has-feature? :official-collections)
-        library?               (premium-features/has-feature? :library)
-        ;; ids of collections under a Library-type root; their metrics/models are library-published content
-        library-coll-ids (when library?
-                           (let [roots (root-collections-of-types (mapv name collection.model/library-collection-types))]
-                             (into (set (map :id roots)) (mapcat collection.model/descendant-ids roots))))
-        ;; Mirror collections.curation/curated? for card scope: verified, official-collection, or
-        ;; library-published (under a Library root). Each disjunct is gated on its feature.
-        curated-conds (cond-> []
-                        verified? (conj [:= :mr.status "verified"])
-                        official? (conj [:= :collection.authority_level "official"])
-                        (seq library-coll-ids) (conj [:in :report_card.collection_id (vec library-coll-ids)]))
-        ;; Columns are qualified with report_card because the official-collections branch joins
-        ;; `collection`, which shares column names (type, archived, id) — unqualified refs would be ambiguous.
+        official               [:= :collection.is_remote_synced true]
         collection-filter (if metabot-collection-id
                             (let [metabot-collection (collection metabot-collection-id)
                                   collection-ids (conj (collection.model/descendant-ids metabot-collection) metabot-collection-id)]
                               [:in :report_card.collection_id collection-ids])
                             [:and true])
-        base-query ^:allow-subquery {:select [:report_card.*]
-                                     :from   [[:report_card]]
+        base-query ^:allow-subquery {:select    [:report_card.*]
+                                     :from      [[:report_card]]
+                                     :left-join [[:collection :collection]
+                                                 [:= :collection.id :report_card.collection_id]]
                                      :where [:and
                                              [:!= :report_card.database_id audit-app/audit-db-id]
                                              collection-filter
                                              [:in :report_card.type ["metric" "model"]]
                                              [:= :report_card.archived false]
                                              (when api/*current-user-id*
-                                               (collection.model/visible-collection-filter-clause :report_card.collection_id))]}]
+                                               (collection.model/visible-collection-filter-clause :report_card.collection_id))]
+                                     :order-by [[[:case official [:inline 0] :else [:inline 1]] :asc]]}]
     (cond-> base-query
-      verified?
-      (update :left-join (fnil into []) [[:moderation_review :mr] [:and
-                                                                   [:= :mr.moderated_item_id :report_card.id]
-                                                                   [:= :mr.moderated_item_type "card"]
-                                                                   [:= :mr.most_recent true]]])
-
-      official?
-      (update :left-join (fnil into []) [[:collection :collection]
-                                         [:= :collection.id :report_card.collection_id]])
-
-      ;; Prioritize curated content.
-      (seq curated-conds)
-      (assoc :order-by [[[:case (into [:or] curated-conds) [:inline 0] :else [:inline 1]] :asc]])
-
-      ;; Restrict to curated content only when that's desired.
-      (and use-verified-content? (seq curated-conds))
-      (update :where conj (into [:or] curated-conds))
-
-      ;; Setting on but no curation features active → nothing is curated, so return nothing rather than
-      ;; falling through unfiltered to uncurated cards.
-      (and use-verified-content? (empty? curated-conds))
-      (update :where conj [:= [:inline 1] [:inline 0]])
+      use-verified-content?
+      (update :where conj official)
 
       (integer? limit)
       (assoc :limit limit))))
@@ -932,7 +899,7 @@
   [collection-id :- ::lib.schema.id/collection]
   (some-> (t2/select-one [:model/Collection
                           :id :name :location :namespace :personal_owner_id :type :archived :archived_directly
-                          :authority_level]
+                          :is_remote_synced]
                          :id [:auto/param collection-id])
           (t2/hydrate :effective_ancestors)))
 
@@ -947,20 +914,20 @@
   (t2/select-pk->fn :description :model/Collection :id [:in collection-ids]))
 
 (mu/defn collection-summaries
-  "The ID, name, and authority level of the Collections with `collection-ids`."
+  "The ID, name, and remote-synced flag of the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :name :authority_level] :id [:in collection-ids]))
+  (t2/select [:model/Collection :id :name :is_remote_synced] :id [:in collection-ids]))
 
 (mu/defn collection-curation-info-by-id
-  "A map of ID to the ID, authority level, location, and type of the Collections with `collection-ids`."
+  "A map of ID to the ID, remote-synced flag, location, and type of the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity [:model/Collection :id :authority_level :location :type] :id [:in collection-ids]))
+  (t2/select-pk->fn identity [:model/Collection :id :is_remote_synced :location :type] :id [:in collection-ids]))
 
 (mu/defn navigable-collections
   "The presentable columns of the non-trash Collections in the default namespace, ordered by location and name.
   Restricted to top-level Collections unless `include-nested?`."
   [include-nested? :- :boolean]
-  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
+  (t2/select [:model/Collection :id :name :location :is_remote_synced :description :personal_owner_id]
              {:where    (cond-> [:and
                                  [:= :archived false]
                                  [:= :namespace nil]
@@ -971,15 +938,10 @@
 (mu/defn unarchived-collections-at-location
   "The presentable columns of the unarchived Collections directly at `location`, ordered by name."
   [location :- :string]
-  (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
+  (t2/select [:model/Collection :id :name :location :is_remote_synced :description :personal_owner_id]
              :location location
              :archived false
              {:order-by [[:%lower.name :asc]]}))
-
-(mu/defn root-collections-of-types
-  "The top-level Collections whose type is one of `types`."
-  [types :- [:sequential :string]]
-  (t2/select :model/Collection :type [:in types] :location "/"))
 
 ;;; ---------------------------------------------- Other models ----------------------------------------------
 
@@ -1058,25 +1020,13 @@
              :source_database_id database-id
              {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn verified-item-ids
-  "The subset of `item-ids` of `item-type` whose most recent moderation review is verified."
-  [item-ids :- [:sequential ms/PositiveInt]
-   item-type :- :string]
-  (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                    :moderated_item_id   [:in item-ids]
-                    :moderated_item_type item-type
-                    :most_recent         true
-                    :status              "verified"))
-
-(mu/defn latest-review-status-row
-  "The `:status` row of the most recent moderation review of the item with `item-id` of `item-type`, or nil."
-  [item-id :- ms/PositiveInt
-   item-type :- :string]
-  (t2/select-one [:model/ModerationReview :status]
-                 :moderated_item_id item-id
-                 :moderated_item_type item-type
-                 :most_recent true
-                 {:order-by [[:id :desc]]}))
+(mu/defn in-remote-synced-collection?
+  "Whether the Card or Dashboard (per `model`) with `id` is in a remote-synced Collection."
+  [model :- [:enum :model/Card :model/Dashboard]
+   id    :- ms/PositiveInt]
+  (boolean
+   (when-let [collection-id (t2/select-one-fn :collection_id model :id [:auto/param id])]
+     (t2/select-one-fn :is_remote_synced :model/Collection :id [:auto/param collection-id]))))
 
 (mu/defn glossary-count
   "The number of Glossary entries."

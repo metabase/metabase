@@ -1434,7 +1434,6 @@
                                                                   :description      "Confirmed orders."
                                                                   :database_id      (mt/id)
                                                                   :database_schema  "PUBLIC"
-                                                                  :moderated_status nil
                                                                   :collection       {:id nil :name nil}}])]
             (let [result      (mt/with-log-level [metabase.metabot.agent.core :fatal]
                                 (into [] (run-agent-loop

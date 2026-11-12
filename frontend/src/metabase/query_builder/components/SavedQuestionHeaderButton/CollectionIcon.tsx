@@ -1,6 +1,6 @@
 import {
   PLUGIN_COLLECTION_COMPONENTS,
-  PLUGIN_MODERATION,
+  PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection } from "metabase-types/api";
@@ -15,11 +15,7 @@ export const CollectionIcon = ({
   question: Question;
 }) => {
   if (!collection?.type) {
-    return (
-      <PLUGIN_MODERATION.EntityModerationIcon
-        moderationReviews={question.getModerationReviews()}
-      />
-    );
+    return <PLUGIN_REMOTE_SYNC.OfficialBadge collection={collection} />;
   }
 
   return (

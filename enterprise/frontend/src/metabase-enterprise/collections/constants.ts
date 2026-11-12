@@ -1,39 +1,14 @@
 import { t } from "ttag";
 
-import type {
-  CollectionAuthorityLevelConfig,
-  CollectionInstanceAnaltyicsConfig,
-} from "metabase/common/collections/types";
+import type { CollectionInstanceAnaltyicsConfig } from "metabase/common/collections/types";
 import type { BaseEntityId } from "metabase-types/api";
 
-export const REGULAR_COLLECTION: CollectionAuthorityLevelConfig = {
+export const REGULAR_COLLECTION: CollectionInstanceAnaltyicsConfig = {
   type: null,
   get name() {
     return t`Regular`;
   },
   icon: "folder",
-};
-
-export const REMOTE_SYNC_COLLECTION: CollectionInstanceAnaltyicsConfig = {
-  type: null,
-  icon: "synced_collection",
-};
-
-export const OFFICIAL_COLLECTION: CollectionAuthorityLevelConfig = {
-  type: "official",
-  get name() {
-    return t`Official`;
-  },
-  icon: "official_collection",
-  color: "core-yellow-saturated" as const,
-  tooltips: {
-    get default() {
-      return t`Official collection`;
-    },
-    get belonging() {
-      return t`Belongs to an Official collection`;
-    },
-  },
 };
 
 export const INSTANCE_ANALYTICS_COLLECTION: CollectionInstanceAnaltyicsConfig =
@@ -45,17 +20,10 @@ export const INSTANCE_ANALYTICS_COLLECTION: CollectionInstanceAnaltyicsConfig =
     icon: "audit",
   };
 
-export const AUTHORITY_LEVELS: Record<string, CollectionAuthorityLevelConfig> =
-  {
-    [String(OFFICIAL_COLLECTION.type)]: OFFICIAL_COLLECTION,
-    [String(REGULAR_COLLECTION.type)]: REGULAR_COLLECTION,
-  };
-
 export const COLLECTION_TYPES: Record<
   string,
-  CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig
+  CollectionInstanceAnaltyicsConfig
 > = {
-  [String(OFFICIAL_COLLECTION.type)]: OFFICIAL_COLLECTION,
   [String(REGULAR_COLLECTION.type)]: REGULAR_COLLECTION,
   [String(INSTANCE_ANALYTICS_COLLECTION.type)]: INSTANCE_ANALYTICS_COLLECTION,
 };

@@ -690,13 +690,13 @@
         (testing "a creator without a first or last name goes by their email"
           (is (str/includes? output "<created by=\"sso@example.com\"")))))))
 
-(deftest read-dashboard-collection-trash-and-authority-test
+(deftest read-dashboard-collection-trash-and-official-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Collection {sales-id :id}    {:name "Sales"}
                    :model/Collection emea              {:name "EMEA", :location (str "/" sales-id "/")}
                    :model/Collection ops               {:name "Ops"}
                    :model/Collection {nordics-id :id}  {:name "Nordics", :location (str "/" (:id ops) "/")}
-                   :model/Collection {official-id :id} {:name "Finance", :authority_level "official"}
+                   :model/Collection {official-id :id} {:name "Finance", :is_remote_synced true}
                    :model/Dashboard  {trashed-id :id}  {:name "EMEA overview", :collection_id (:id emea)}
                    :model/Dashboard  {nested-id :id}   {:name "Nordics overview", :collection_id nordics-id}
                    :model/Dashboard  {direct-id :id}   {:name              "Old sales"
@@ -711,22 +711,23 @@
           (let [output (read-dashboard trashed-id)]
             (is (str/includes? output (str "<collection id=\"" (:id emea) "\" name=\"EMEA\""
                                            " path=\"Our analytics / Trash / EMEA\" archived=\"true\">")))
-            (is (str/includes? output (str "<dashboard id=\"" trashed-id "\" is_verified=\"false\" archived=\"true\">")))))
+            (is (str/includes? output (str "<dashboard id=\"" trashed-id "\" is_official=\"false\" archived=\"true\">")))))
         (testing (str "a dashboard in a collection trashed with its parent keeps the collection's location, and both are"
                       " archived")
           (let [output (read-dashboard nested-id)]
             (is (str/includes? output (str "<collection id=\"" nordics-id "\" name=\"Nordics\""
                                            " path=\"Our analytics / Ops / Nordics\" archived=\"true\">")))
-            (is (str/includes? output (str "<dashboard id=\"" nested-id "\" is_verified=\"false\" archived=\"true\">")))))
+            (is (str/includes? output (str "<dashboard id=\"" nested-id "\" is_official=\"false\" archived=\"true\">")))))
         (testing "a dashboard trashed directly from a live collection is archived, with that collection's path"
           (let [output (read-dashboard direct-id)]
             (is (str/includes? output (str "<collection id=\"" sales-id "\" name=\"Sales\""
                                            " path=\"Our analytics / Sales\">")))
             (is (str/includes? output " archived=\"true\">"))))
-        (testing "a dashboard in an official collection shows the collection's authority level, and is not archived"
+        (testing "a dashboard in a synced collection is official, shows that its collection is, and is not archived"
           (let [output (read-dashboard official)]
+            (is (str/includes? output (str "<dashboard id=\"" official "\" is_official=\"true\">")))
             (is (str/includes? output (str "<collection id=\"" official-id "\" name=\"Finance\""
-                                           " path=\"Our analytics / Finance\" authority_level=\"official\">")))
+                                           " path=\"Our analytics / Finance\" is_official=\"true\">")))
             (is (not (str/includes? output "archived=")))))))))
 
 (deftest read-document-resource-test

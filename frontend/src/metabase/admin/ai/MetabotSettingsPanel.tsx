@@ -12,7 +12,7 @@ import { useToast } from "metabase/common/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useUpdateMetabotMutation } from "metabase/metabot";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useAdminSetting, useSettingSwitch } from "metabase/settings";
 import { SettingHeader } from "metabase/settings-components";
 import {
@@ -58,9 +58,9 @@ export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
       <MetabotSettingsBody settingKey={enabledSettingKey}>
         {!isEmbedMetabot && <MetabotQueryExecutionToggle />}
 
-        <PLUGIN_MODERATION.MetabotVerifiedContentConfigurationPane
-          metabot={metabot}
-        />
+        {PLUGIN_REMOTE_SYNC.isEnabled && (
+          <MetabotOfficialContentPane metabot={metabot} />
+        )}
 
         <MetabotCollectionConfigurationPane
           metabot={metabot}
@@ -73,6 +73,42 @@ export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
 
         <MetabotPromptSuggestionPane metabot={metabot} />
       </MetabotSettingsBody>
+    </Stack>
+  );
+}
+
+function MetabotOfficialContentPane({ metabot }: { metabot: MetabotInfo }) {
+  const [updateMetabot, { isLoading: isUpdating }] = useUpdateMetabotMutation();
+  const [sendToast] = useToast();
+
+  const handleOfficialContentToggle = async (checked: boolean) => {
+    const result = await updateMetabot({
+      id: metabot.id,
+      use_verified_content: checked,
+    });
+
+    if (result.error) {
+      sendToast({
+        message: t`Error updating Metabot`,
+        variant: "negative",
+      });
+    }
+  };
+
+  return (
+    <Stack gap="sm">
+      <SettingHeader
+        id="official-content"
+        title={t`Official content`}
+        description={t`When enabled, Metabot will only use official content.`}
+      />
+      <Switch
+        label={t`Only use official content`}
+        checked={!!metabot.use_verified_content}
+        disabled={isUpdating}
+        w="auto"
+        onChange={(e) => handleOfficialContentToggle(e.target.checked)}
+      />
     </Stack>
   );
 }

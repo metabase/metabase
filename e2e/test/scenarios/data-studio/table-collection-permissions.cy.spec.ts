@@ -270,7 +270,7 @@ describe("scenarios > data studio > table collection permissions", () => {
 
       cy.signIn("nodata");
       cy.visit("/");
-      librarySidebarSection().findByText("Data").click();
+      officialContentSidebarSection().findByText("Data").click();
       H.collectionTable().within(() => {
         cy.findByText("Products").should("be.visible");
         cy.findByText("Reviews").should("be.visible");
@@ -296,7 +296,7 @@ describe("scenarios > data studio > table collection permissions", () => {
 
       cy.signIn("nodata");
       cy.visit("/");
-      librarySidebarSection().findByText("Data").click();
+      officialContentSidebarSection().findByText("Data").click();
       H.collectionTable().within(() => {
         cy.findByText("People").should("be.visible");
         cy.findByText("Products").should("not.exist");
@@ -487,8 +487,10 @@ function popoverByIndex(index: number) {
   return H.popover().should("have.length", 2).eq(index);
 }
 
-function librarySidebarSection() {
-  return H.navigationSidebar().findByRole("section", { name: "Library" });
+function officialContentSidebarSection() {
+  return H.navigationSidebar().findByRole("section", {
+    name: "Official content",
+  });
 }
 
 function assertQueryPermissionError() {

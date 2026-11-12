@@ -45,7 +45,7 @@ function setup({
 }
 
 function libraryTab() {
-  return screen.getByRole("tab", { name: /Library/ });
+  return screen.getByRole("tab", { name: /Semantic layer/ });
 }
 
 function allTab() {

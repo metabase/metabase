@@ -45,9 +45,7 @@ describe("EntityPicker utils", () => {
         c: "text-dark",
         color: undefined,
       });
-      expect(mockGetIcon).toHaveBeenCalledWith(item, {
-        isTenantUser: undefined,
-      });
+      expect(mockGetIcon).toHaveBeenCalledWith(item);
     });
 
     it("should set color to text-primary-inverse if selected and no color present", () => {

@@ -17,12 +17,7 @@ import {
   useQuestionFromCard,
 } from "metabase/metadata-store";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
-import {
-  PLUGIN_AUDIT,
-  PLUGIN_CACHING,
-  PLUGIN_LIBRARY,
-  PLUGIN_MODERATION,
-} from "metabase/plugins";
+import { PLUGIN_AUDIT, PLUGIN_CACHING, PLUGIN_LIBRARY } from "metabase/plugins";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { CardCopyModal } from "metabase/questions/components/CardCopyModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
@@ -96,7 +91,6 @@ function MetricToolbarButtons({
     });
   const [createBookmark] = useCreateBookmarkMutation();
   const [deleteBookmark] = useDeleteBookmarkMutation();
-  const moderationMenuItems = PLUGIN_MODERATION.useCardMenuItems(card);
   const query = Lib.fromJsQuery(metadataProvider, card.dataset_query);
   const queryInfo = Lib.queryDisplayInfo(query);
 
@@ -136,7 +130,6 @@ function MetricToolbarButtons({
         >
           {isBookmarked ? t`Remove from bookmarks` : t`Bookmark`}
         </Menu.Item>
-        {moderationMenuItems}
         {card.can_write && (
           <Menu.Item
             leftSection={<Icon name="move" />}

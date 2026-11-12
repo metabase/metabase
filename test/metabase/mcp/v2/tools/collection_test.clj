@@ -74,14 +74,13 @@
         (is (= (str "/" (:id (collection/user->personal-collection (mt/user->id :crowberto))) "/")
                (:location coll)))
         (is (false? (:archived coll))))
-      (testing "the echo is the concise read projection plus entity_id, url, and the two write args
-                the concise projection omits"
-        (is (= #{:id :name :description :location :archived :entity_id :url :authority_level :namespace}
+      (testing "the echo is the concise read projection plus entity_id, url, and the write arg the concise
+                projection omits"
+        (is (= #{:id :name :description :location :archived :entity_id :url :namespace}
                (set (keys payload))))
         (is (= (:entity_id coll) (:entity_id payload)))
         (is (str/ends-with? (:url payload) (str "/collection/" (:id coll)))))
-      (testing "a plain collection echoes both as null rather than omitting them"
-        (is (nil? (:authority_level payload)))
+      (testing "a plain collection echoes namespace as null rather than omitting it"
         (is (nil? (:namespace payload)))))))
 
 ;; `echo-matches-concise-read-test` (the write echo vs a concise `get_content` read, plus its
@@ -356,50 +355,12 @@
     (is (str/starts-with? (tool-error (call-tool! :crowberto {:method "delete" :id 1}))
                           "Invalid arguments"))))
 
-;;; --------------------------------------------- authority_level --------------------------------------------------
-
-(deftest authority-level-create-test
-  (mt/with-model-cleanup [:model/Collection]
-    (testing "an admin on an instance with the feature can create an official collection"
-      (mt/with-premium-features #{:official-collections}
-        (let [payload (create! :crowberto {:name "Official" :authority_level "official"})]
-          (is (= :official (t2/select-one-fn :authority_level :model/Collection :id (:id payload))))
-          (testing "and the echo confirms it"
-            (is (= "official" (:authority_level payload)))))))
-    (testing "without the feature it is refused"
-      (mt/with-premium-features #{}
-        (is (re-find #"paid feature"
-                     (tool-error (call-tool! :crowberto {:method "create" :name "Not official"
-                                                         :authority_level "official"}))))))
-    (testing "a non-admin is refused even with the feature"
-      (mt/with-premium-features #{:official-collections}
-        (let [personal-id (t2/select-one-fn :id :model/Collection :personal_owner_id (mt/user->id :rasta))]
-          (is (re-find #"don't have permissions"
-                       (tool-error (call-tool! :rasta {:method "create" :name "Rasta official"
-                                                       :parent_id personal-id
-                                                       :authority_level "official"})))))))))
-
-(deftest authority-level-update-test
-  (testing "an admin on an instance with the feature can mark an existing collection official"
-    (mt/with-temp [:model/Collection coll {:name "To be blessed"}]
-      (mt/with-premium-features #{:official-collections}
-        (let [payload (tool-result (call-tool! :crowberto {:method "update" :id (:id coll)
-                                                           :authority_level "official"}))]
-          (is (= :official (t2/select-one-fn :authority_level :model/Collection :id (:id coll))))
-          (testing "and the echo confirms it"
-            (is (= "official" (:authority_level payload))))))))
-  (testing "without the feature the change is refused"
+(deftest authority-level-arg-rejected-test
+  (testing "authority_level is no longer an argument, so the args schema rejects it"
     (mt/with-temp [:model/Collection coll {:name "Stays plain"}]
-      (mt/with-premium-features #{}
-        (is (re-find #"paid feature"
-                     (tool-error (call-tool! :crowberto {:method "update" :id (:id coll)
-                                                         :authority_level "official"}))))
-        (is (nil? (t2/select-one-fn :authority_level :model/Collection :id (:id coll)))))))
-  (testing "re-sending the level a collection already has is a no-op, not a feature check"
-    (mt/with-temp [:model/Collection coll {:name "Already official" :authority_level "official"}]
-      (mt/with-premium-features #{}
-        (tool-result (call-tool! :crowberto {:method "update" :id (:id coll) :authority_level "official"}))
-        (is (= :official (t2/select-one-fn :authority_level :model/Collection :id (:id coll))))))))
+      (is (str/starts-with? (tool-error (call-tool! :crowberto {:method "update" :id (:id coll)
+                                                                :authority_level "official"}))
+                            "Invalid arguments")))))
 
 ;;; --------------------------------------------------- Scopes -----------------------------------------------------
 
@@ -449,10 +410,10 @@
       (mt/with-model-cleanup [:model/Collection]
         (let [payload (tool-result (call-tool! :crowberto #{"agent:content:read" "agent:content:write"}
                                                {:method "create" :name "Read-and-write create"}))]
-          (is (= #{:id :name :description :location :archived :entity_id :url :authority_level :namespace}
+          (is (= #{:id :name :description :location :archived :entity_id :url :namespace}
                  (set (keys payload)))))))))
 
-(deftest clear-unsets-description-and-authority-level-test
+(deftest clear-unsets-description-test
   (testing "GHY-4191: `clear` unsets the properties `collection-write-entry` lists as `:clearable`.
             A null cannot say \"clear this\" — strict clients fill every unset property with null and
             the registry boundary strips them — so the explicit array is the only way to
@@ -467,17 +428,6 @@
               "and it is unset in the database")))
       (testing "a cleared property does not disturb the rest of the row"
         (is (= "Q3 Planning" (t2/select-one-fn :name :model/Collection :id coll-id)))))))
-
-(deftest clear-unsets-authority-level-test
-  (testing "GHY-4191: authority_level is `:clearable` too — an Official collection can be made
-            unofficial again through the same array."
-    (mt/with-premium-features #{:official-collections}
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Official Docs" :authority_level "official"}]
-        (let [result (tool-result (call-tool! :crowberto {:method "update" :id coll-id
-                                                          :clear  ["authority_level"]}))]
-          (is (nil? (:authority_level result)) "the echo reports it unset")
-          (is (nil? (t2/select-one-fn :authority_level :model/Collection :id coll-id))
-              "and it is unset in the database"))))))
 
 (deftest numeric-string-ids-test
   (testing "GHY-4498: clients that serialize an int-or-string param as a JSON string must still be

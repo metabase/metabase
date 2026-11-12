@@ -596,7 +596,8 @@
                   :collection-location :collection.location
                   :root-collection-type {:fn collection/root-collection-type}
                   :data-layer          :data_layer
-                  :data-authority      :data_authority}
+                  :data-authority      :data_authority
+                  :official            [:coalesce :collection.is_remote_synced false]}
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
                   :description  true}
@@ -606,7 +607,7 @@
                   :table-name                 :name
                   :table-schema               :schema
                   :database-name              :db.name
-                  :collection-authority_level :collection.authority_level
+                  :collection-is_remote_synced :collection.is_remote_synced
                   ;; For published tables with no collection, show "Our analytics" as the collection name
                   :collection-name            [:coalesce :collection.name
                                                [:case

@@ -112,7 +112,6 @@
    [:description {:optional true} [:maybe :string]]
    [:database_id {:optional true} [:maybe :int]]
    [:database_schema {:optional true} [:maybe :string]]
-   [:verified {:optional true} [:maybe :boolean]]
    [:official {:optional true} [:maybe :boolean]]
    ;; Present on questions, dashboards, metrics, and models — the collection the entity lives in.
    [:collection {:optional true} [:maybe :map]]
@@ -1681,7 +1680,7 @@
    :- ::create-collection-request]
   ;; Delegate to collections/create-collection! so MCP-created collections behave the same as
   ;; UI/REST-created ones: namespace/type/is_remote_synced inheritance from parent, the
-  ;; authority-level check, the tenant-collection validation, and both :event/collection-create
+  ;; tenant-collection validation, and both :event/collection-create
   ;; and :event/collection-touch firings all live in one place.
   (let [coll (collections/create-collection!
               (cond-> {:name collection-name}

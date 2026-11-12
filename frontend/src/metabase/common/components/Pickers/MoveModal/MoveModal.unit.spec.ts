@@ -20,7 +20,7 @@ describe("isSameDestination", () => {
   it("should return true when moving to same dashboard", () => {
     const movingItem = makeItem({
       dashboard_id: 10,
-      collection: { id: 7, name: "Collection 1", authority_level: null },
+      collection: { id: 7, name: "Collection 1" },
     });
     const movingTarget = makeItem({ model: "dashboard", id: 10 });
     expect(isSameDestination(movingItem, movingTarget)).toBe(true);
@@ -28,7 +28,7 @@ describe("isSameDestination", () => {
 
   it("should return true when moving a regular item to its own collection", () => {
     const movingItem = makeItem({
-      collection: { id: 7, name: "Collection 1", authority_level: null },
+      collection: { id: 7, name: "Collection 1" },
     });
     const movingTarget = makeItem({
       model: "collection",
@@ -39,7 +39,7 @@ describe("isSameDestination", () => {
 
   it("should return false when moving to a different collection", () => {
     const movingItem = makeItem({
-      collection: { id: 7, name: "Collection 1", authority_level: null },
+      collection: { id: 7, name: "Collection 1" },
     });
     const movingTarget = makeItem({
       model: "collection",
@@ -51,7 +51,7 @@ describe("isSameDestination", () => {
   it("should allow moving a dashboard question to the collection where the dashboard lives", () => {
     const movingItem = makeItem({
       dashboard_id: 10,
-      collection: { id: 7, name: "Collection 1", authority_level: null },
+      collection: { id: 7, name: "Collection 1" },
     });
     const movingTarget = makeItem({
       model: "collection",
@@ -63,7 +63,7 @@ describe("isSameDestination", () => {
   it("should return false when moving to a different dashboard", () => {
     const movingItem = makeItem({
       dashboard_id: 10,
-      collection: { id: 7, name: "Collection 1", authority_level: null },
+      collection: { id: 7, name: "Collection 1" },
     });
     const movingTarget = makeItem({ model: "dashboard", id: 20 });
     expect(isSameDestination(movingItem, movingTarget)).toBe(false);

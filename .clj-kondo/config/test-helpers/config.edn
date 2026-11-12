@@ -66,7 +66,6 @@
      metabase.channel.email/send-email!
      metabase.cmd.dump-to-h2/dump-to-h2!
      metabase.cmd.load-from-h2/load-from-h2!
-     metabase.content-verification.models.moderation-review/create-review!
      metabase.core.core/ensure-audit-db-installed!
      metabase.driver.mongo-test/create-database-from-row-maps!
      metabase.driver.postgres-test/create-enums-db!

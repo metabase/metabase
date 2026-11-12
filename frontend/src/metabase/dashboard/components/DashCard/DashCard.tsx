@@ -1,8 +1,13 @@
 import cx from "classnames";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
+import { t } from "ttag";
 
 import { isActionCard } from "metabase/actions/utils";
+import {
+  OFFICIAL_ICON_COLOR,
+  OFFICIAL_ICON_NAME,
+} from "metabase/common/collections/constants";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -22,7 +27,7 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { StoreDashcard } from "metabase/redux/store";
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
@@ -258,28 +263,18 @@ function DashCardInner({
   }, [isEditing, isAction, mainCard]);
 
   const headerIcon = useMemo(() => {
-    const { isRegularCollection } = PLUGIN_COLLECTIONS;
-    const isRegularQuestion = isRegularCollection({
-      authority_level: dashcard.collection_authority_level,
-    });
-    const isRegularDashboard = isRegularCollection({
-      authority_level: dashboard?.collection_authority_level,
-    });
-    const authorityLevel = dashcard.collection_authority_level;
-    if (isRegularDashboard && !isRegularQuestion && authorityLevel) {
-      const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
-      const iconSize = 16;
-      return {
-        name: opts.icon,
-        color: opts.color,
-        tooltip: opts.tooltips?.belonging,
-        size: iconSize,
-
-        // Workaround: headerIcon on cards in a first column have incorrect offset out of the box
-        targetOffsetX: dashcard.col === 0 ? iconSize : 0,
-      };
+    if (!PLUGIN_REMOTE_SYNC.isOfficial(dashboard?.collection)) {
+      return undefined;
     }
-  }, [dashcard, dashboard?.collection_authority_level]);
+    const iconSize = 16;
+    return {
+      name: OFFICIAL_ICON_NAME,
+      color: OFFICIAL_ICON_COLOR,
+      tooltip: t`Belongs to an Official collection`,
+      size: iconSize,
+      targetOffsetX: dashcard.col === 0 ? iconSize : 0,
+    };
+  }, [dashcard.col, dashboard?.collection]);
 
   const { supportPreviewing } = getVisualizationRaw(series) ?? {};
   const isEditingCardContent = supportPreviewing && !isPreviewingCard;

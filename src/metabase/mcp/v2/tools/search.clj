@@ -83,7 +83,7 @@
              :description            "x"
              :created_at             "x"
              :updated_at             "x"
-             :collection             {:id 1 :name "x" :authority_level "official" :description "x"}
+             :collection             {:id 1 :name "x" :is_remote_synced true :description "x"}
              :collection_path        "x"
              :location               "x"
              :database_id            1
@@ -91,7 +91,6 @@
              :database_name          "x"
              :database_schema        "x"
              :display_name           "x"
-             :verified               true
              :official               true
              :curated                true
              :data_authority         "x"

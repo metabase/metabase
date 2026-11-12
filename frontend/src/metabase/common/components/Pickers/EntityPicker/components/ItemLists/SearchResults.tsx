@@ -7,7 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import {
   Box,
   Ellipsified,
@@ -30,6 +30,7 @@ import {
   useGetLastCollection,
 } from "../../hooks/use-current-search-scope";
 import { getDataAppsRootItem } from "../../hooks/utils";
+import { isInCollectionTree } from "../../types";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 
 export const SearchResults = ({
@@ -102,14 +103,14 @@ export const SearchResults = ({
               }
               mb={0}
               label={
-                <Flex align="center">
-                  <Ellipsified maw="21rem">{item.name} </Ellipsified>
-                  <PLUGIN_MODERATION.ModerationStatusIcon
-                    status={"moderated_status" in item && item.moderated_status}
-                    filled
-                    size={14}
-                    ml="0.5rem"
-                  />
+                <Flex align="center" gap="sm">
+                  <Ellipsified maw="21rem">{item.name}</Ellipsified>
+                  {isInCollectionTree(item) && item.model !== "collection" && (
+                    <PLUGIN_REMOTE_SYNC.OfficialBadge
+                      collection={item.collection}
+                      size={14}
+                    />
+                  )}
                 </Flex>
               }
               active={isSelected}
@@ -240,7 +241,7 @@ export function SearchScopeSelector() {
   const options = [
     { label: t`Everywhere`, value: "all" },
     libraryCollection?.id
-      ? { label: t`Library`, value: String(libraryCollection.id) }
+      ? { label: t`Semantic layer`, value: String(libraryCollection.id) }
       : null,
     lastCollection
       ? {

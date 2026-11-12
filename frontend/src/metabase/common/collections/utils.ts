@@ -5,7 +5,11 @@ import {
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
 } from "metabase/common/data-studio/collection-utils";
 import { getUserPersonalCollectionId } from "metabase/current-user";
-import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTIONS,
+  PLUGIN_LIBRARY,
+  PLUGIN_REMOTE_SYNC,
+} from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import type { IconProps } from "metabase/ui";
 import { color } from "metabase/ui/colors";
@@ -26,7 +30,12 @@ import {
   isBaseEntityID,
 } from "metabase-types/api";
 
-import { PERSONAL_COLLECTIONS, ROOT_COLLECTION } from "./constants";
+import {
+  OFFICIAL_ICON_COLOR,
+  OFFICIAL_ICON_NAME,
+  PERSONAL_COLLECTIONS,
+  ROOT_COLLECTION,
+} from "./constants";
 
 export type EntityType = CollectionItemModel;
 
@@ -135,10 +144,6 @@ export function isDataAppCollection(
   collection: Pick<Collection, "namespace">,
 ): boolean {
   return collection.namespace === "data-apps";
-}
-
-export function isSyncedCollection(collection: Partial<Collection>): boolean {
-  return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
 }
 
 export function isLibraryCollection(
@@ -411,7 +416,7 @@ export const getCollectionPathAsArray = (collection: Collection): string[] => {
 
 export function getCollectionIcon(
   collection: Partial<Collection>,
-  { tooltip = "default", isTenantUser = false } = {},
+  { tooltip = "default" } = {},
 ): {
   name: IconName;
   color?: ColorName;
@@ -429,11 +434,6 @@ export function getCollectionIcon(
     return { name: "person" };
   }
 
-  if (isSyncedCollection(collection) && !isTenantUser) {
-    // tenant users see the normal icon, they don't know what a synced collection is
-    return { name: "synced_collection" };
-  }
-
   if (collection.is_library_root) {
     switch (collection.type) {
       case "library":
@@ -445,6 +445,17 @@ export function getCollectionIcon(
       case "library-dashboards":
         return { name: "dashboard" };
     }
+  }
+
+  if (PLUGIN_REMOTE_SYNC.isOfficial(collection)) {
+    return {
+      name: OFFICIAL_ICON_NAME,
+      color: color(OFFICIAL_ICON_COLOR),
+      tooltip:
+        tooltip === "belonging"
+          ? t`Belongs to an Official collection`
+          : t`Official collection`,
+    };
   }
 
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
@@ -481,10 +492,8 @@ export function buildCollectionTree(
   collections: Collection[] = [],
   {
     modelFilter,
-    isTenantUser = false,
   }: {
     modelFilter?: (model: CollectionContentModel) => boolean;
-    isTenantUser?: boolean;
   } = {},
 ): CollectionTreeItem[] {
   return collections.flatMap((collection) => {
@@ -502,7 +511,7 @@ export function buildCollectionTree(
     const children = !isRootTrashCollection(collection)
       ? buildCollectionTree(
           collection.children?.filter((child) => !child.archived) || [],
-          { modelFilter, isTenantUser },
+          { modelFilter },
         )
       : [];
 
@@ -513,7 +522,7 @@ export function buildCollectionTree(
     return {
       ...collection,
       schemaName: collection.originalName || collection.name,
-      icon: getCollectionIcon(collection, { isTenantUser }),
+      icon: getCollectionIcon(collection),
       children,
     };
   });

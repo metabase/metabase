@@ -524,8 +524,12 @@
   (testing "Ensure that a feature cannot be reported as enabled if it is not also available"
     ;; Clear premium features so (most of) the features are considered unavailable
     (mt/with-premium-features #{}
-      ;; Temporarily create an official collection so that the stats code detects at least one feature as "enabled"
-      (mt/with-temp [:model/Collection {} {:name "Temp Official Collection" :authority_level "official"}]
+      ;; Temporarily create a cache config so that the stats code detects at least one feature as "enabled"
+      (mt/with-temp [:model/Database    {db-id :id} {}
+                     :model/CacheConfig _           {:model    "database"
+                                                     :model_id db-id
+                                                     :strategy :ttl
+                                                     :config   {:multiplier 10 :min_duration_ms 10}}]
         (let [features (@#'stats/snowplow-features)
               enabled-not-available (filter
                                      (fn [feature]

@@ -108,13 +108,12 @@
    :text                5
    :mine                1
    ;; An exact (case-insensitive) name match is the strongest single intent signal: :exact (100) overpowers
-   ;; any one curation tier (the :data-picker boosts: :library 80, :official-collection / :verified 35 each).
+   ;; any one curation tier (the :data-picker boosts: :library 80, :official 35).
    ;; Base text/recency scorers (0–5) only break ties within a tier.
    :exact               100
    :prefix              0
-   ;; Curation badges act as tie-breakers by default; the :data-picker context boosts them (to 35 each).
-   :official-collection 1
-   :verified            1
+   ;; Curation badges act as tie-breakers by default; the :data-picker context boosts them (to 35).
+   :official            1
    ;; Library membership is a curation signal for choosing data sources, so :library is off by default.
    ;; The :data-picker and :metabot contexts turn it on, at a level an exact match can override.
    :library             0
@@ -143,11 +142,10 @@
     :model/question 0}
    :data-picker
    ;; Boost curated items when picking a data source, but keep them curation-tier signals that an exact
-   ;; name match (:exact 100) can overpower. :library outweighs :official-collection and :verified even
-   ;; combined (70), so library membership trumps those badges here.
+   ;; name match (:exact 100) can overpower. :library outweighs :official, so library membership trumps
+   ;; that badge here.
    {:library             80
-    :official-collection 35
-    :verified            35}
+    :official            35}
    ;; TODO: lift :data-layer up to :default. It's a structural signal (every visible warehouse
    ;; table gets `data_layer "final"`), so the +33 boost flips orderings across every search
    ;; surface and breaks e2e specs that pin specific top results. To make progress:
@@ -276,7 +274,6 @@
    [:last-edited-at {:optional true} FilterDefNoKey]
    [:last-editor-id {:optional true} FilterDefNoKey]
    [:native-query   {:optional true} FilterDefNoKey]
-   [:verified       {:optional true} FilterDefNoKey]
    [:curated        {:optional true} FilterDefNoKey]
    [:display-type   {:optional true} FilterDefNoKey]])
 
@@ -309,11 +306,7 @@
     :last-edited-at          {:type :date-range}
     :last-editor-id          {:type :list, :context-key :last-edited-by}
     :native-query            {:type :native-query, :context-key :search-native-query}
-    :verified                {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
-    ;; "Verified or curated content" (Metabot). Backed by the precomputed `curated` index column
-    ;; (an OR over verified + official + library/published + authoritative, computed at ingestion),
-    ;; so the filter is a single indexed boolean. No :required-feature: a signal can only be set while
-    ;; its feature is present, so the precomputed flag is already feature-correct.
+    ;; Official content (Metabot), backed by the precomputed `curated` index column.
     :curated                 {:type :single-value, :context-key :curated?, :supported-value? #{true}}
     :display-type            {:type :list, :field "display_type"}}))
 
@@ -549,9 +542,7 @@
    [:offset-int                          {:optional true} ms/Int]
    [:search-native-query                 {:optional true} :boolean]
    [:table-db-id                         {:optional true} ms/PositiveInt]
-   ;; true to search for verified items only, nil will return all items
-   [:verified                            {:optional true} true?]
-   ;; true to restrict to verified-or-curated content (precomputed `curated` index column)
+   ;; true to restrict to official-or-curated content (precomputed `curated` index column)
    [:curated?                            {:optional true} true?]
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:include-dashboard-questions?        {:optional true} :boolean]

@@ -245,20 +245,6 @@ describe("scenarios > search > snowplow", () => {
         },
       },
       {
-        name: "verified",
-        urlParam: "verified=true",
-        eventKey: "verified_items",
-        onValue: true,
-        hydratedValue: true,
-        offValue: false,
-        toggleLabel: "Verified items only",
-        apply: () => {
-          cy.findByTestId("verified-search-filter")
-            .findByLabelText("Verified items only")
-            .click();
-        },
-      },
-      {
         name: "search_native_query",
         urlParam: "search_native_query=true",
         eventKey: "search_native_queries",
@@ -298,12 +284,6 @@ describe("scenarios > search > snowplow", () => {
         apply,
       }) => {
         describe(`${name} filter`, () => {
-          beforeEach(() => {
-            if (name === "verified") {
-              H.activateToken("pro-self-hosted");
-            }
-          });
-
           it("should send snowplow events when a filter is applied, hydrated from the URL, and removed", () => {
             cy.visit("/search?q=orders");
             cy.wait("@search");

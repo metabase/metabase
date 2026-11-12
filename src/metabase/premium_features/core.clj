@@ -59,7 +59,6 @@
   enable-collection-cleanup?
   enable-config-text-file?
   enable-content-translation?
-  enable-content-verification?
   enable-custom-viz?
   enable-data-complexity-score?
   enable-dashboard-subscription-filters?
@@ -77,7 +76,6 @@
   enable-embedding-sdk-origins?
   enable-embedding-simple-feature?
   enable-multi-factor-auth?
-  enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?
   enable-remote-sync?

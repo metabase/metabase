@@ -335,11 +335,6 @@
   []
   (t2/exists? :model/Database :uploads_enabled true))
 
-(mu/defn official-collection-exists?
-  "Whether an official Collection exists."
-  []
-  (t2/exists? :model/Collection :authority_level "official"))
-
 (mu/defn cache-config-exists?
   "Whether any CacheConfig exists."
   []
@@ -354,11 +349,6 @@
   "Whether a DatabaseRouter exists."
   []
   (t2/exists? :model/DatabaseRouter))
-
-(mu/defn moderation-review-exists?
-  "Whether a ModerationReview exists."
-  []
-  (t2/exists? :model/ModerationReview))
 
 (mu/defn filtered-pulse-exists?
   "Whether a Pulse with parameters exists."

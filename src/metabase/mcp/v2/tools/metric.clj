@@ -180,11 +180,7 @@
   [id {:keys [name description display collection_position archived] :as args} session-id]
   (let [card-before  (v2.resolve/resolve-and-read-with
                       :model/Card id
-                      ;; Hydrated like PUT /api/card/:id hydrates it: `update-card!` un-verifies a
-                      ;; verified card whose query changes by reading `:moderation_reviews` off the
-                      ;; card-before, and a bare row would leave the Verified badge on a swapped
-                      ;; definition.
-                      (fn [cid] (mcp.db/hydrate-moderation-reviews (api/write-check :model/Card cid))))
+                      #(api/write-check :model/Card %))
         _            (check-is-metric! card-before)
         card-id      (:id card-before)
         new-query    (resolve-definition args session-id)

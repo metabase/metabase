@@ -1,10 +1,10 @@
 import { action } from "@storybook/addon-actions";
 import type { Meta } from "@storybook/react";
 
-import type { RevisionOrModerationEvent } from "metabase/plugins";
 import { createMockRevision } from "metabase-types/api/mocks";
 
 import { RevisionHistoryTimeline } from "./RevisionHistoryTimeline";
+import type { RevisionTimelineEvent } from "./utils";
 
 const revert = action("revert");
 
@@ -66,33 +66,19 @@ const cardRevisionLatest = createMockRevision({
   is_creation: false,
 });
 
-const cardModerationVerified: RevisionOrModerationEvent = {
-  title: "Alice Smith verified this.",
-  timestamp: "2026-03-15T08:00:00.000Z",
-  icon: { name: "verified", color: "core-brand" },
-};
-
-const cardModerationRemoved: RevisionOrModerationEvent = {
-  title: "Bob Jones removed verification.",
-  timestamp: "2026-03-17T13:00:00.000Z",
-  icon: { name: "close", color: "text-secondary" },
-};
-
-const cardEvents: RevisionOrModerationEvent[] = [
+const cardEvents: RevisionTimelineEvent[] = [
   {
     title: "Alice Smith added a filter.",
     timestamp: cardRevisionLatest.timestamp,
     icon: "pencil",
     revision: cardRevisionLatest,
   },
-  cardModerationRemoved,
   {
     title: "Bob Jones reverted to an earlier version.",
     timestamp: cardRevisionReversion.timestamp,
     icon: "pencil",
     revision: cardRevisionReversion,
   },
-  cardModerationVerified,
   {
     title: "Alice Smith edited this.",
     description: cardRevisionMultipleChanges.description,
@@ -173,20 +159,13 @@ const dashboardRevisionLatest = createMockRevision({
   is_creation: false,
 });
 
-const dashboardModerationVerified: RevisionOrModerationEvent = {
-  title: "Carol Williams verified this.",
-  timestamp: "2026-03-14T11:00:00.000Z",
-  icon: { name: "verified", color: "core-brand" },
-};
-
-const dashboardEvents: RevisionOrModerationEvent[] = [
+const dashboardEvents: RevisionTimelineEvent[] = [
   {
     title: "Alice Smith moved a card.",
     timestamp: dashboardRevisionLatest.timestamp,
     icon: "pencil",
     revision: dashboardRevisionLatest,
   },
-  dashboardModerationVerified,
   {
     title: "Dave Brown edited this.",
     description: dashboardRevisionMultipleChanges.description,
@@ -218,7 +197,7 @@ export const DashboardTimeline = {
   },
 };
 
-// --- Document Timeline (no moderation) ---
+// --- Document Timeline ---
 
 const documentRevisionCreation = createMockRevision({
   id: 20,
@@ -261,7 +240,7 @@ const documentRevisionLatest = createMockRevision({
   is_creation: false,
 });
 
-const documentEvents: RevisionOrModerationEvent[] = [
+const documentEvents: RevisionTimelineEvent[] = [
   {
     title: "Alice Smith changed the title.",
     timestamp: documentRevisionLatest.timestamp,
@@ -299,7 +278,7 @@ export const DocumentTimeline = {
   },
 };
 
-// --- Transform Timeline (no moderation) ---
+// --- Transform Timeline ---
 
 const transformRevisionCreation = createMockRevision({
   id: 30,
@@ -342,7 +321,7 @@ const transformRevisionLatest = createMockRevision({
   is_creation: false,
 });
 
-const transformEvents: RevisionOrModerationEvent[] = [
+const transformEvents: RevisionTimelineEvent[] = [
   {
     title: "Alice Smith changed the name.",
     timestamp: transformRevisionLatest.timestamp,

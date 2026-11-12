@@ -35,8 +35,6 @@ export type CollectionId =
 
 export type CollectionContentModel = CollectionItemModel;
 
-export type CollectionAuthorityLevel = "official" | null;
-
 export type CollectionType =
   | "instance-analytics"
   | "trash"
@@ -68,7 +66,6 @@ export interface Collection {
   can_delete: boolean;
   archived?: boolean;
   children?: Collection[];
-  authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
   namespace: CollectionNamespace | null;
@@ -130,7 +127,6 @@ export interface CollectionItem {
   display?: VisualizationDisplay;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
-  moderated_status?: string | null;
   type?: CollectionType | CardType;
   here?: CollectionItemModel[];
   below?: CollectionItemModel[];
@@ -141,7 +137,6 @@ export interface CollectionItem {
   "last-edit-info"?: LastEditInfo;
   location?: string | null;
   effective_location?: string;
-  authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
   is_shared_tenant_collection?: boolean;
   is_tenant_dashboard?: boolean;
@@ -214,7 +209,6 @@ export interface UpdateCollectionRequest {
   description?: string;
   archived?: boolean;
   parent_id?: RegularCollectionId | null;
-  authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
 }
@@ -224,7 +218,6 @@ export interface CreateCollectionRequest {
   description?: string | null;
   parent_id?: CollectionId | null;
   namespace?: CollectionNamespace;
-  authority_level?: CollectionAuthorityLevel;
   is_shared_tenant_collection?: boolean;
 }
 

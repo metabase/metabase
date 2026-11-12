@@ -49,7 +49,6 @@
    [:can_delete :boolean]
    [:archived :boolean]
    [:children {:optional true} [:sequential [:ref ::Collection]]]
-   [:authority_level {:optional true} [:maybe :string]]
    [:type {:optional true} ::CollectionType]
    [:is_remote_synced {:optional true} :boolean]
    [:parent_id {:optional true} [:maybe [:or :string ms/PositiveInt]]]
@@ -88,7 +87,6 @@
    [:display {:optional true} :string]
    [:personal_owner_id {:optional true} [:maybe ms/PositiveInt]]
    [:database_id {:optional true} [:maybe ms/PositiveInt]]
-   [:moderated_status {:optional true} :string]
    [:type {:optional true} [:or ::CollectionType ::CardType]]
    [:here {:optional true} [:set ::CollectionItemModel]]
    [:below {:optional true} [:sequential ::CollectionItemModel]]
@@ -98,7 +96,7 @@
    [:last-edit-info {:optional true} ::LastEditInfo]
    [:location {:optional true} :string]
    [:effective_location {:optional true} :string]
-   [:authority_level {:optional true} [:maybe :string]]
+   [:is_remote_synced {:optional true} :boolean]
    [:dashboard_count {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::collection
@@ -116,7 +114,6 @@
   "The placeholder for the Root Collection, which has no row, as `metabase.collections.models.collection.root` builds it."
   [:map {:closed true}
    [:metabase.collections.models.collection.root/is-root? [:= true]]
-   [:authority_level     {:optional true} [:maybe [:or :keyword :string]]]
    [:id                  {:optional true} [:= "root"]]
    [:name                {:optional true} :string]
    [:namespace           {:optional true} [:maybe [:or :keyword :string]]]
@@ -153,7 +150,6 @@
    [:personal_owner_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:slug                 {:optional true} [:maybe :string]]
    [:namespace            {:optional true} [:maybe ::lib.schema.common/keyword]]
-   [:authority_level      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:entity_id            {:optional true} [:maybe :string]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:type                 {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
@@ -166,9 +162,8 @@
   "A Collection as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
-    [:select-keys ::collection [:archive_operation_id :archived :archived_directly :authority_level :description
-                                :entity_id :is_remote_synced :is_sample :name :namespace :slug :type
-                                :personal_owner_id]]
+    [:select-keys ::collection [:archive_operation_id :archived :archived_directly :description :entity_id
+                                :is_remote_synced :is_sample :name :namespace :slug :type :personal_owner_id]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]
      [:parent_id {:optional true} [:maybe ::lib.schema.id/collection]]]]])

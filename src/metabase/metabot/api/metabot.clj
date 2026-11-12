@@ -9,9 +9,7 @@
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.metabot.task.suggested-prompts-refresh :as metabot.suggested-prompts-refresh]
    [metabase.metabot.usage :as metabot.usage]
-   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
-   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 ;; TODO: Eventually this should be paged but since we are just going to hardcode two models for now
@@ -50,17 +48,13 @@
                        [:collection_id {:optional true} [:maybe pos-int?]]]]
   (api/check-superuser)
   (api/check-404 (metabot.db/metabot-exists? id))
-  (let [old-metabot (metabot.db/metabot id)]
-    ;; Prevent enabling verified content without the premium feature
-    (when (:use_verified_content metabot-updates)
-      (premium-features/assert-has-feature :content-verification (tru "Content verification")))
-    (let [old-vals (select-keys old-metabot (keys metabot-updates))]
-      (when (not= old-vals metabot-updates)
-        (metabot.db/update-metabot! id metabot-updates)
-        ;; Content scope changed, so the suggested prompts are stale. Regenerate in the background so
-        ;; the toggle returns instantly; the job re-reads the saved scope and debounces rapid toggles.
-        (metabot.suggested-prompts-refresh/schedule-refresh! id))
-      (metabot.db/metabot id))))
+  (let [old-vals (select-keys (metabot.db/metabot id) (keys metabot-updates))]
+    (when (not= old-vals metabot-updates)
+      (metabot.db/update-metabot! id metabot-updates)
+      ;; Content scope changed, so the suggested prompts are stale. Regenerate in the background so
+      ;; the toggle returns instantly; the job re-reads the saved scope and debounces rapid toggles.
+      (metabot.suggested-prompts-refresh/schedule-refresh! id))
+    (metabot.db/metabot id)))
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
   :- [:multi {:dispatch :status}

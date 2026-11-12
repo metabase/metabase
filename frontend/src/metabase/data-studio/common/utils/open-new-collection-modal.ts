@@ -8,7 +8,7 @@ type NewCollectionModalOptions = {
   pickerOptions: EntityPickerOptions;
 };
 
-/** The action that opens the New collection modal without the official-collection picker. */
+/** The action that opens the New collection modal. */
 export const openNewCollectionModal = ({
   initialCollectionId,
   namespaces,
@@ -20,6 +20,5 @@ export const openNewCollectionModal = ({
       initialCollectionId,
       namespaces,
       pickerOptions,
-      showAuthorityLevelPicker: false,
     },
   });

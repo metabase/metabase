@@ -414,8 +414,8 @@ describe("CollectionBrowser", () => {
 
       it("should pass the whole item to onClick", async () => {
         // `onClick` is a public prop, so the host page receives this item. An
-        // item rebuilt from a few fields drops `namespace`, `authority_level`
-        // and `entity_id` without anything going red.
+        // item rebuilt from a few fields drops `namespace` and `entity_id`
+        // without anything going red.
         const onClick = jest.fn();
 
         await setupAll({

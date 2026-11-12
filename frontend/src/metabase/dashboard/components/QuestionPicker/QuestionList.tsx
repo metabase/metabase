@@ -7,6 +7,10 @@ import {
   useListCollectionItemsQuery,
   useSearchQuery,
 } from "metabase/api";
+import {
+  OFFICIAL_ICON_COLOR,
+  OFFICIAL_ICON_NAME,
+} from "metabase/common/collections/constants";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
@@ -17,7 +21,7 @@ import { addCardWithVisualization } from "metabase/dashboard/actions";
 import { getDashboardId, getSelectedTabId } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/utils/constants";
@@ -153,9 +157,11 @@ export function QuestionList({
                 className: S.QuestionListItemIcon,
               }}
               onSelect={onSelect}
-              rightIcon={PLUGIN_MODERATION.getStatusIcon(
-                item.moderated_status ?? undefined,
-              )}
+              rightIcon={
+                PLUGIN_REMOTE_SYNC.isOfficial(item.collection)
+                  ? { name: OFFICIAL_ICON_NAME, color: OFFICIAL_ICON_COLOR }
+                  : undefined
+              }
             />
             <Tooltip label={t`Visualize another way`}>
               <ActionIcon

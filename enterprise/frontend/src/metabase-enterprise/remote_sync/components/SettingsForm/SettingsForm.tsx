@@ -249,7 +249,7 @@ function SettingsFormBody({
           <>
             <CollectionsField
               title={t`Collections to sync`}
-              description={t`Library and transforms always sync.`}
+              description={t`Semantic layer and transforms always sync.`}
               emptyMessage={t`There are no top-level collections yet.`}
               collections={regularCollections}
             />

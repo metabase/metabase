@@ -49,6 +49,7 @@ import {
   createMockActionDashboardCard,
   createMockCard,
   createMockCategoryColumn,
+  createMockCollection,
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
@@ -263,6 +264,37 @@ describe("DashCard", () => {
       }),
     });
     expect(queryIcon("info")).not.toBeInTheDocument();
+  });
+
+  describe("official icon", () => {
+    afterEach(() => {
+      reinitialize();
+    });
+
+    const setupOfficial = (isRemoteSynced: boolean) => {
+      mockSettings({
+        "token-features": createMockTokenFeatures({ remote_sync: true }),
+      });
+      setupEnterpriseOnlyPlugin("remote_sync");
+      setup({
+        dashboard: {
+          ...testDashboard,
+          collection: createMockCollection({
+            is_remote_synced: isRemoteSynced,
+          }),
+        },
+      });
+    };
+
+    it("should show official icon on dashcard in official dashboard", () => {
+      setupOfficial(true);
+      expect(getIcon("official_collection")).toBeInTheDocument();
+    });
+
+    it("should not show official icon on dashcard in regular dashboard", () => {
+      setupOfficial(false);
+      expect(queryIcon("official_collection")).not.toBeInTheDocument();
+    });
   });
 
   it("should show a table card", () => {

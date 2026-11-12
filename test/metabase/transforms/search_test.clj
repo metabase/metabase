@@ -39,7 +39,6 @@
   {:model               nil
    :model_id            nil
    :name                nil
-   :official_collection nil
    :database_id         nil
    :pinned              nil
    :view_count          nil
@@ -49,8 +48,7 @@
    :model_updated_at    nil
    :dashboardcard_count nil
    :last_edited_at      nil
-   :last_editor_id      nil
-   :verified            nil})
+   :last_editor_id      nil})
 
 (defn index-entity
   [entity]

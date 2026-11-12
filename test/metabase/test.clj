@@ -287,7 +287,6 @@
   with-temporary-setting-values
   with-temporary-raw-setting-values
   with-user-in-groups
-  with-verified!
   works-after]
  [tu.async
   wait-for-result

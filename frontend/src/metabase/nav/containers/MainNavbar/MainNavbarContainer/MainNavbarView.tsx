@@ -20,7 +20,10 @@ import {
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/current-user";
-import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
+import {
+  NavbarOfficialContentSection,
+  isTopLevelOfficialCollection,
+} from "metabase/nav/containers/MainNavbar/NavbarOfficialContentSection";
 import {
   PLUGIN_DATA_APPS,
   PLUGIN_REMOTE_SYNC,
@@ -137,7 +140,11 @@ export function MainNavbarView({
       const regularCollections = collections.filter((c) => {
         const isNormalCollection =
           !isRootTrashCollection(c) && !isExamplesCollection(c);
-        return isNormalCollection && !isLibraryCollection(c);
+        return (
+          isNormalCollection &&
+          !isLibraryCollection(c) &&
+          !isTopLevelOfficialCollection(c)
+        );
       });
 
       const collectionsByCategory = {
@@ -240,7 +247,7 @@ export function MainNavbarView({
             />
           )}
 
-          <NavbarLibrarySection
+          <NavbarOfficialContentSection
             collections={collections}
             selectedId={collectionItem?.id}
             onItemSelect={onItemSelect}

@@ -5,7 +5,6 @@
    [metabase-enterprise.stale.impl :as stale]
    [metabase-enterprise.test :as met]
    [metabase.collections.models.collection :as collection]
-   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.stale-test :refer [with-stale-items
                                 stale-dashboard
                                 stale-card
@@ -359,39 +358,22 @@
         ;; at midnight the morning of 2-14, no items are included
         0 "2024-02-14"))))
 
-(deftest verified-cards-are-excluded
+(deftest remote-synced-content-is-excluded
   (mt/with-temp [:model/Collection {col-id :id} {}
-                 :model/User {user-id :id} {}
+                 :model/Collection {synced-id :id} {:is_remote_synced true}
                  :model/Card {id1 :id} (stale-card {:name "A" :collection_id col-id})
-                 :model/Card {id2 :id} (stale-card {:name "B" :collection_id col-id})]
-    ;; card 1 is verified, then unverified - it should be included
-    (moderation-review/create-review! {:moderated_item_id   id1
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              "verified"})
-    (moderation-review/create-review! {:moderated_item_id   id1
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              nil})
-    ;; card 2 is unverified, then verified - it should NOT be included.
-    (moderation-review/create-review! {:moderated_item_id   id2
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              nil})
-    (moderation-review/create-review! {:moderated_item_id   id2
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              "verified"})
+                 :model/Card _ (stale-card {:name "B" :collection_id synced-id})
+                 :model/Dashboard _ (stale-dashboard {:name "C" :collection_id synced-id})]
     (is (= {:rows  [{:id id1 :model :model/Card}]
             :total 1}
            (stale/find-candidates
-            {:collection-ids #{col-id}
+            {:collection-ids #{col-id synced-id}
              :cutoff-date    (date-months-ago 6)
              :limit          10
              :offset         0
              :sort-column    :name
              :sort-direction :asc}))
-        "should not include verified dashboards or cards")))
+        "should not include official dashboards or cards")))
 
 (deftest cards-in-non-standard-collection-types-are-excluded
   (mt/with-temp [:model/Collection {col-id :id} {:type "instance-analytics"}

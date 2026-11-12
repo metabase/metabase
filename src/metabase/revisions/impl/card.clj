@@ -1,9 +1,7 @@
 (ns metabase.revisions.impl.card
   (:require
    [metabase.queries.core :as queries]
-   [metabase.revisions.db :as revisions.db]
-   [metabase.revisions.models.revision :as revision]
-   [toucan2.core :as t2]))
+   [metabase.revisions.models.revision :as revision]))
 
 (def ^:private excluded-columns-for-card-revision
   #{:cache_invalidated_at
@@ -42,9 +40,6 @@
                           (not (:card_schema serialized-card)) (assoc :card_schema queries/starting-card-schema-version))
         restored        (apply dissoc serialized-card excluded-columns-for-card-revision)]
     (queries/check-new-parameter-source-card-permissions "card" id (:parameters restored))
-    (queries/maybe-unverify! (t2/hydrate (revisions.db/card id) [:moderation_reviews :moderator_details])
-                             restored
-                             {:id user-id})
     ((get-method revision/revert-to-revision! :default) model id user-id restored)))
 
 (defn- model?

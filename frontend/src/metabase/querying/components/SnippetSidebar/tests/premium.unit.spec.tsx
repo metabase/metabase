@@ -204,7 +204,6 @@ describe("SnippetSidebar (EE with token feature)", () => {
       props: {
         initialCollectionId: null,
         namespaces: ["snippets"],
-        showAuthorityLevelPicker: false,
         shouldNavigateOnCreate: false,
       },
     });

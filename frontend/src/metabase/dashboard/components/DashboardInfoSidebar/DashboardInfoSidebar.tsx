@@ -15,7 +15,7 @@ import {
 } from "metabase/common/components/EntityIdFooter";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
-import { getActivityTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
+import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import { InsightsAction } from "metabase/common/components/upsells/components/InsightsAction";
@@ -26,15 +26,10 @@ import {
   type DashboardContextReturned,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Stack, Text } from "metabase/ui";
-import type {
-  Dashboard,
-  ModerationReview,
-  Revision,
-  User,
-} from "metabase-types/api";
+import type { Dashboard, Revision, User } from "metabase-types/api";
 
 import { DashboardContentsSection } from "./DashboardContentsSection";
 import { DashboardDetails } from "./DashboardDetails";
@@ -143,8 +138,9 @@ export function DashboardInfoSidebarInner({
                     {descriptionError}
                   </Text>
                 )}
-                <PLUGIN_MODERATION.ModerationReviewTextForDashboard
-                  dashboard={dashboard}
+                <PLUGIN_REMOTE_SYNC.OfficialBadge
+                  collection={dashboard.collection}
+                  showLabel
                 />
               </Stack>
             </SidebarSection>
@@ -157,7 +153,6 @@ export function DashboardInfoSidebarInner({
                   canWrite={canWrite}
                   revisions={revisions}
                   currentUser={currentUser}
-                  moderationReviews={dashboard.moderation_reviews}
                 />
               </SidebarSection>
             )}
@@ -180,20 +175,17 @@ const History = ({
   canWrite,
   revisions,
   currentUser,
-  moderationReviews,
 }: {
   dashboard: Dashboard;
   canWrite: boolean;
   revisions?: Revision[];
   currentUser: User | null;
-  moderationReviews: ModerationReview[];
 }) => {
   const dispatch = useDispatch();
 
   const events = useMemo(
-    () =>
-      getActivityTimelineEvents({ revisions, moderationReviews, currentUser }),
-    [moderationReviews, revisions, currentUser],
+    () => getTimelineEvents({ revisions, currentUser }),
+    [revisions, currentUser],
   );
 
   return (

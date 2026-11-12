@@ -54,8 +54,6 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   "embedding-sdk": "metabase-enterprise/embedding-sdk",
   entities: "metabase-enterprise/entities",
   google_drive: "metabase-enterprise/google_drive",
-  content_verification: "metabase-enterprise/content_verification",
-  moderation: "metabase-enterprise/moderation",
   multi_factor_auth: "metabase-enterprise/multi_factor_auth",
   tenants: "metabase-enterprise/tenants",
 

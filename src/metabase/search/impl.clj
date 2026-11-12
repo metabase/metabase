@@ -6,7 +6,6 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
@@ -16,7 +15,7 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -182,7 +181,7 @@
 (defn serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
   [{:as result :keys [all-scores relevant-scores name display_name collection_id collection_name
-                      collection_authority_level collection_type collection_effective_ancestors effective_parent
+                      collection_is_remote_synced collection_type collection_effective_ancestors effective_parent
                       archived_directly model]}]
   (let [matching-columns    (into #{} (keep :column relevant-scores))
         match-context-thunk (some :match-context-thunk relevant-scores)
@@ -202,18 +201,20 @@
                            (match-context-thunk))
          :collection     (if (and archived_directly (not= "collection" model))
                            (select-keys (collection/trash-collection)
-                                        [:id :name :authority_level :type])
-                           (merge {:id              (if (and (nil? collection_id) (some? collection_name))
-                                                      "root"
-                                                      collection_id)
-                                   :name            collection_name
-                                   :authority_level collection_authority_level
-                                   :type            collection_type}
+                                        [:id :name :is_remote_synced :type])
+                           (merge {:id               (if (and (nil? collection_id) (some? collection_name))
+                                                       "root"
+                                                       collection_id)
+                                   :name             collection_name
+                                   :is_remote_synced (contains? #{true 1} collection_is_remote_synced)
+                                   :type             collection_type}
                                   ;; for non-root collections, override :collection with the values for its effective parent
                                   effective_parent
                                   (when collection_effective_ancestors
                                     {:effective_ancestors collection_effective_ancestors})))
          :scores          (remove-thunks all-scores))
+        (cond-> (= "collection" model)
+          (assoc :is_remote_synced (contains? #{true 1} collection_is_remote_synced)))
         (dissoc
          :all-scores
          :dataset_query
@@ -224,6 +225,7 @@
          :collection_id
          :collection_location
          :collection_name
+         :collection_is_remote_synced
          :collection_type
          :archived_directly
          :display_name
@@ -301,7 +303,6 @@
    [:vector-search-force-index?          {:optional true} [:maybe boolean?]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
-   [:verified                            {:optional true} [:maybe true?]]
    [:curated                             {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
@@ -345,15 +346,10 @@
            search-native-query
            search-string
            table-db-id
-           verified
            curated
            weights]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
-  (when (some? verified)
-    (premium-features/assert-has-any-features
-     [:content-verification :official-collections]
-     (deferred-tru "Content Management or Official Collections")))
   (let [context (some-> context search.config/normalized-context)
         models (if (seq models) models search.config/all-models)
         engine (parse-engine search-engine)
@@ -391,7 +387,6 @@
                  (some? vector-search-explain?)              (assoc :vector-search-explain? vector-search-explain?)
                  (some? vector-search-force-index?)          (assoc :vector-search-force-index? vector-search-force-index?)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
-                 (some? verified)                            (assoc :verified verified)
                  (some? curated)                             (assoc :curated? curated)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
@@ -459,8 +454,8 @@
   (update result :pk_ref json/decode))
 
 (defn- hydrate-dashboards [results]
-  (->> (t2/hydrate results [:dashboard :moderation_status])
-       (map #(u/update-some % :dashboard select-keys [:id :name :moderation_status]))
+  (->> (t2/hydrate results :dashboard)
+       (map #(u/update-some % :dashboard select-keys [:id :name]))
        (map #(dissoc % :dashboard_id))))
 
 (defn- add-metadata [search-results]

@@ -561,8 +561,8 @@
 
 (def ^:private collection-item-detailed-keys
   (into collection-item-concise-keys
-        [:entity_id :collection_id :database_id :display :archived :authority_level
-         :moderated_status :last_used_at :location :here :below :last-edit-info]))
+        [:entity_id :collection_id :database_id :display :archived :is_remote_synced
+         :last_used_at :location :here :below :last-edit-info]))
 
 (projections/register-key-projection!
  :collection-item collection-item-concise-keys

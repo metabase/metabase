@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupEntityRevisionsEndpoint,
   setupRevertRevisionEndpoint,
@@ -9,13 +8,8 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { ModerationReview, Revision } from "metabase-types/api";
-import {
-  createMockModerationReview,
-  createMockRevision,
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import type { Revision } from "metabase-types/api";
+import { createMockRevision, createMockUser } from "metabase-types/api/mocks";
 
 import { ActivityTimelineCard } from "./ActivityTimelineCard";
 
@@ -41,26 +35,16 @@ const RENAMED = createMockRevision({
   },
 });
 
-const VERIFIED = createMockModerationReview({
-  created_at: "2026-05-15T10:00:00Z",
-  user: createMockUser({ id: 2, common_name: "Bobby Tables" }),
-});
-
 type SetupOpts = {
   revisions?: Revision[];
-  moderationReviews?: ModerationReview[];
   canWrite?: boolean;
 };
 
 function setup({
   revisions = [RENAMED, CREATED],
-  moderationReviews = [],
   canWrite = true,
 }: SetupOpts = {}) {
-  const settings = mockSettings({
-    "token-features": createMockTokenFeatures({ content_verification: true }),
-  });
-  setupEnterpriseOnlyPlugin("moderation");
+  const settings = mockSettings();
   setupEntityRevisionsEndpoint("card", CARD_ID, revisions);
   setupRevertRevisionEndpoint(CREATED);
 
@@ -68,7 +52,6 @@ function setup({
     <ActivityTimelineCard
       entity="card"
       id={CARD_ID}
-      moderationReviews={moderationReviews}
       canWrite={canWrite}
       data-testid="history-list"
     />,
@@ -87,14 +70,13 @@ async function findEvents() {
 }
 
 describe("ActivityTimelineCard", () => {
-  it("lists revisions and moderation events newest first", async () => {
-    setup({ moderationReviews: [VERIFIED] });
+  it("lists revisions newest first", async () => {
+    setup();
 
     const events = await findEvents();
-    expect(events).toHaveLength(3);
+    expect(events).toHaveLength(2);
     expect(events[0]).toHaveTextContent("Bobby Tables renamed it");
-    expect(events[1]).toHaveTextContent("verified this");
-    expect(events[2]).toHaveTextContent("You created this");
+    expect(events[1]).toHaveTextContent("You created this");
   });
 
   it("reverts to an older revision of the entity", async () => {

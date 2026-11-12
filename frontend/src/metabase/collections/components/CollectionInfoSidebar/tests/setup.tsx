@@ -18,7 +18,7 @@ export type SetupOpts = {
   collection: Collection;
   collectionItems?: CollectionItem[];
   enableEnterprisePlugins?: boolean;
-  enableOfficialCollections: boolean;
+  enableRemoteSync: boolean;
   enableSerialization?: boolean;
   withFilterByType?: boolean;
 };
@@ -27,7 +27,7 @@ export const setup = ({
   collection,
   collectionItems = defaultCollectionItems,
   enableEnterprisePlugins,
-  enableOfficialCollections = false,
+  enableRemoteSync = false,
   enableSerialization = false,
   withFilterByType = true,
 }: SetupOpts) => {
@@ -35,7 +35,7 @@ export const setup = ({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
         serialization: enableSerialization,
-        official_collections: enableOfficialCollections,
+        remote_sync: enableRemoteSync,
       }),
     }),
   });
@@ -71,14 +71,13 @@ export const regularCollection = createMockCollection({
   name: "Normal collection",
   description: "Description of a normal collection",
   entity_id: createMockEntityId("entity_id_of_normal_collection"),
-  authority_level: null,
 });
 
 export const officialCollection = createMockCollection({
   name: "Trusted collection",
   description: "Description of a trusted collection",
   entity_id: createMockEntityId("entity_id_of_trusted_collection"),
-  authority_level: "official",
+  is_remote_synced: true,
 });
 
 export const defaultCollectionItems: CollectionItem[] = [

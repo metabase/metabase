@@ -204,8 +204,8 @@
   {:payload [:map {:closed true} [:card-ids [:sequential {:min 1} :int]]]}
   [{:keys [card-ids]}]
   {:message  (str (if (next card-ids) "Questions " "Question ") (ids-text card-ids)
-                  " can't be added: this Metabot only uses curated content (verified, official, or Library"
-                  " content). Nothing was saved.")
+                  " can't be added: this Metabot only uses curated content (content in synced"
+                  " collections). Nothing was saved.")
    :recovery [{:uses #{"search"}
                :text "Call `search` to find curated questions, models, or metrics and add one of those instead."}]})
 

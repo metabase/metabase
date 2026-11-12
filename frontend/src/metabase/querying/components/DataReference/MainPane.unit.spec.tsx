@@ -71,7 +71,7 @@ describe("MainPane", () => {
   it("renders a Library option that opens the library pane when the feature is enabled", async () => {
     const { onItemClick } = setup({ hasLibrary: true });
 
-    await userEvent.click(await screen.findByText("Library"));
+    await userEvent.click(await screen.findByText("Semantic layer"));
 
     expect(onItemClick).toHaveBeenCalledWith({ type: "library" });
   });

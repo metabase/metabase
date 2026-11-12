@@ -11,7 +11,7 @@ const setup = ({ collection }: { collection: Collection }) =>
   baseSetup({
     collection,
     enableEnterprisePlugins: true,
-    enableOfficialCollections: false,
+    enableRemoteSync: false,
   });
 
 describe("CollectionInfoSidebar (EE without tokens)", () => {
@@ -24,8 +24,7 @@ describe("CollectionInfoSidebar (EE without tokens)", () => {
       await screen.findByText("Description of a normal collection"),
     ).toBeInTheDocument();
 
-    // Official collections are hidden without the official_collections feature
-    expect(screen.queryByText("Official collection")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("official-badge")).not.toBeInTheDocument();
 
     // Entity ids are hidden without the serialization feature
     expect(
@@ -42,8 +41,7 @@ describe("CollectionInfoSidebar (EE without tokens)", () => {
       await screen.findByText("Description of a trusted collection"),
     ).toBeInTheDocument();
 
-    // Official collections are hidden without the official_collections feature
-    expect(screen.queryByText("Official collection")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("official-badge")).not.toBeInTheDocument();
 
     // Entity ids are hidden without the serialization feature
     expect(

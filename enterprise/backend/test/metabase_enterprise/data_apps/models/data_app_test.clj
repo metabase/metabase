@@ -163,7 +163,6 @@
         (mt/with-temp [:model/Collection {default-id :id}  {:name "Finance"}
                        :model/Collection {root-id :id}     {:name "Root" :namespace :data-apps}
                        :model/Collection {archived-id :id} {:name "Archived" :namespace :data-apps :archived true}
-                       :model/Collection {official-id :id} {:name "Official" :namespace :data-apps :authority_level "official"}
                        :model/Collection {synced-id :id}   {:name "Synced" :namespace :data-apps :is_remote_synced true}]
           (let [app! (fn [slug collection-id]
                        (t2/insert-returning-pk! :model/DataApp {:slug                   slug
@@ -171,8 +170,7 @@
                                                                 :bundle_path            "index.js"
                                                                 :resource_collection_id collection-id}))]
             (doseq [[label collection-id] [["a default-namespace collection" default-id]
-                                           ["an archived collection" archived-id]
-                                           ["an official collection" official-id]]]
+                                           ["an archived collection" archived-id]]]
               (testing label
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a top-level collection of data apps"
                                       (app! "refused" collection-id)))))

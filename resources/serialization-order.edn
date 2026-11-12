@@ -37,7 +37,6 @@
                                   :parent_id
                                   :personal_owner_id
                                   :namespace
-                                  :authority_level
                                   :serdes/meta]
  :Dashboard                      [:name
                                   :description

@@ -1,10 +1,14 @@
 import { t } from "ttag";
 
-import {
-  PLUGIN_MODERATION,
-  type RevisionOrModerationEvent,
-} from "metabase/plugins";
-import type { ModerationReview, Revision, User } from "metabase-types/api";
+import type { IconName, Revision, User } from "metabase-types/api";
+
+export type RevisionTimelineEvent = {
+  title: string;
+  description?: string;
+  timestamp: string;
+  icon: IconName;
+  revision?: Revision;
+};
 
 export function getTimelineEvents({
   revisions = [],
@@ -12,7 +16,7 @@ export function getTimelineEvents({
 }: {
   revisions: Revision[] | undefined;
   currentUser: User | null;
-}) {
+}): RevisionTimelineEvent[] {
   return revisions.map((r) => {
     // If > 1 item's fields are changed in a single revision,
     // the changes are batched into a single string like:
@@ -28,28 +32,8 @@ export function getTimelineEvents({
       } ${titleText}`,
       description: r.description,
       timestamp: r.timestamp,
-      icon: "pencil" as const,
+      icon: "pencil",
       revision: r,
     };
   });
-}
-
-export function getActivityTimelineEvents({
-  revisions,
-  moderationReviews = [],
-  currentUser,
-}: {
-  revisions: Revision[] | undefined;
-  moderationReviews?: ModerationReview[];
-  currentUser: User | null;
-}): RevisionOrModerationEvent[] {
-  return [
-    ...getTimelineEvents({ revisions, currentUser }),
-    ...PLUGIN_MODERATION.getModerationTimelineEvents(
-      moderationReviews,
-      currentUser,
-    ),
-  ].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-  );
 }

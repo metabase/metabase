@@ -39,7 +39,6 @@
                :report_dashboard.archived    false
                :collection.description       "Collection description"
                :collection.archived          true
-               :collection.authority_level   nil
                :collection.is_remote_synced  nil
                :report_card.card_type        nil
                :created_at                   #t "2022-09-14T17:45:13.444716Z"

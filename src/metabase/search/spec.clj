@@ -99,6 +99,7 @@
     :exploration_id
     :last_viewed_at
     :native_query
+    :official
     :pinned
     :table_collection_id
     :table_collection_location
@@ -122,10 +123,9 @@
    :last-viewed-at          :timestamp
    :name                    :text
    :native-query            nil
-   :official-collection     :boolean
+   :official                :boolean
    :pinned                  :boolean
    :updated-at              :timestamp
-   :verified                :boolean
    :view-count              :int
    :display-type            :text
    :is-published            :boolean
@@ -136,7 +136,7 @@
    :data-layer              :text
    :data-authority          :text
    ;; Precomputed at ingestion (see metabase.search.ingestion) from the curation signals above, so the
-   ;; "verified or curated content" filter is a single indexed boolean rather than a composite OR.
+   ;; "official or curated content" filter is a single indexed boolean rather than a composite OR.
    :curated                 :boolean})
 
 (def ^:private explicit-attrs
@@ -151,13 +151,12 @@
        (into
         [:id                                                ;;  in addition to being a filter, this is a key property
          :name
-         :official-collection
+         :official
          :dashboard-id
          :dashboardcard-count
          :exploration-id
          :last-viewed-at
          :pinned
-         :verified                                          ;;  in addition to being a filter, this is also a ranker
          :view-count
          :updated-at
          :is-published

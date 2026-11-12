@@ -32,18 +32,10 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
 
-(mu/defn verified-card-ids
-  "The IDs of the Cards whose most recent moderation review is verified."
+(mu/defn remote-synced-collection-ids
+  "The IDs of the remote-synced Collections."
   []
-  (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                    :moderated_item_type "card"
-                    :most_recent         true
-                    :status              "verified"))
-
-(mu/defn official-collection-ids
-  "The IDs of the official Collections."
-  []
-  (t2/select-fn-set :id :model/Collection :authority_level "official"))
+  (t2/select-fn-set :id :model/Collection :is_remote_synced true))
 
 (mu/defn routed-child-database-ids
   "The IDs of the Databases that are routing destinations."
@@ -62,7 +54,7 @@
 (mu/defn universe-tables
   "The scoring columns of the active Tables outside the Database with `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
+  (t2/select [:model/Table :id :name :collection_id :is_published :visibility_type :db_id]
              :active true
              :db_id  [:not= audit-database-id]))
 

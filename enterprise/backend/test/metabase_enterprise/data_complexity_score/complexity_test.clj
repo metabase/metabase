@@ -369,14 +369,9 @@
     (collections.tu/with-library [{:keys [metrics]}]
       (mt/with-temp
         [:model/Database   {db-id :id}    {:name "Curated Scope DB"}
-         :model/Collection {official :id} {:name "Curated Scope Official" :authority_level "official"}
-         :model/Card {verified-card :id}  {:database_id db-id :type :model :archived false
-                                           :name "curated_scope_verified_card"}
-         :model/ModerationReview _        {:moderated_item_id   verified-card
-                                           :moderated_item_type "card"
-                                           :moderator_id        (mt/user->id :crowberto)
-                                           :status              "verified"
-                                           :most_recent         true}
+         :model/Collection {official :id} {:name "Curated Scope Official" :is_remote_synced true}
+         :model/Collection {official-data :id} {:name "Curated Scope Official Data" :type "library-data"
+                                                :is_remote_synced true}
          :model/Card {official-card :id}  {:database_id db-id :type :model :archived false
                                            :collection_id official
                                            :name "curated_scope_official_card"}
@@ -392,30 +387,32 @@
          :model/Table {pub-internal :id}  {:db_id db-id :active true :name "curated_scope_published_internal"
                                            :is_published true :data_layer :internal}
          :model/Table {plain-table :id}   {:db_id db-id :active true :name "curated_scope_plain_table"}
+         :model/Table {official-table :id} {:db_id db-id :active true :name "curated_scope_official_table"
+                                            :is_published true :collection_id official-data}
          :model/Table {hidden-auth :id}   {:db_id db-id :active true :name "curated_scope_hidden_authoritative"
                                            :visibility_type "hidden" :data_authority :authoritative}]
         (let [metabot (:metabot (#'complexity/enumerate-catalogs {:curated-only? true :collection-id nil}))
               in?     (comp boolean (into #{} (map (juxt :kind :id)) metabot) vector)]
-          (is (= {:verified-card       true
-                  :official-card       true
-                  :library-card        true
+          (is (= {:official-card       true
+                  :library-card        false
                   :plain-card          false
-                  :authoritative-table true
-                  :published-final     true
+                  :official-table      true
+                  :authoritative-table false
+                  :published-final     false
                   :published-internal  false
                   :plain-table         false
                   :hidden-authoritative false}
-                 {:verified-card        (in? :model  verified-card)
-                  :official-card        (in? :model  official-card)
+                 {:official-card        (in? :model  official-card)
                   :library-card         (in? :metric library-card)
                   :plain-card           (in? :model  plain-card)
+                  :official-table       (in? :table  official-table)
                   :authoritative-table  (in? :table  authoritative)
                   :published-final      (in? :table  pub-final)
                   :published-internal   (in? :table  pub-internal)
                   :plain-table          (in? :table  plain-table)
                   :hidden-authoritative (in? :table  hidden-auth)})
-              "curated Cards (verified / official / library) and curated Tables (authoritative /
-               published-final) are in; uncurated entities and hidden tables stay out"))))))
+              "Cards and Tables in remote-synced collections are in; everything else, including library,
+               authoritative, and published tables outside one, and hidden tables stay out"))))))
 
 (deftest ^:synchronized metabot-collection-scope-ids-test
   (testing "nil collection-id returns nil (no Metabot collection scope configured)"

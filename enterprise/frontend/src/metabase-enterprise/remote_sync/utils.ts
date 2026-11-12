@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { isRootCollection } from "metabase/common/collections/utils";
-import type { RemoteSyncChangesArea } from "metabase/plugins";
+import type {
+  OfficialCollection,
+  RemoteSyncChangesArea,
+} from "metabase/plugins";
 import * as Urls from "metabase/urls";
 import type {
   Collection,
@@ -15,6 +18,12 @@ import type {
 } from "metabase-types/api";
 
 type RemoteSyncItemOrDirtyItem = RemoteSyncItem | RemoteSyncDirtyItem;
+
+export function isOfficial(
+  collection: OfficialCollection | null | undefined,
+): boolean {
+  return collection?.is_remote_synced === true;
+}
 
 type RemoteSyncItemCollection = Pick<
   Collection,

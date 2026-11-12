@@ -63,8 +63,7 @@
              :dashboard nil
              :can_write true,
              :name "name",
-             :parent_collection {:id coll-id, :name "my coll", :authority_level nil}
-             :moderated_status nil,
+             :parent_collection {:id coll-id, :name "my coll", :is_remote_synced false}
              :id card-id,
              :display "display",
              :timestamp String
@@ -85,8 +84,7 @@
     (is (= [{:description nil,
              :can_write true,
              :name "name",
-             :parent_collection {:id coll-id, :name "my coll", :authority_level nil}
-             :moderated_status nil,
+             :parent_collection {:id coll-id, :name "my coll", :is_remote_synced false}
              :id card-id,
              :timestamp String
              :model :dataset
@@ -104,8 +102,7 @@
     (is (= [{:description nil,
              :can_write true,
              :name "name",
-             :parent_collection {:id coll-id, :name "my coll", :authority_level nil},
-             :moderated_status nil,
+             :parent_collection {:id coll-id, :name "my coll", :is_remote_synced false},
              :id card-id,
              :display "display",
              :timestamp java.lang.String,
@@ -122,9 +119,8 @@
     (is (= [{:description nil,
              :can_write true,
              :name "name",
-             :parent_collection {:id coll-id, :name "my coll", :authority_level nil}
+             :parent_collection {:id coll-id, :name "my coll", :is_remote_synced false}
              :id dash-id,
-             :moderated_status nil
              :timestamp String
              :model :dashboard}]
            (mt/with-test-user :rasta
@@ -145,10 +141,10 @@
              :can_write true
              :name "name"
              :effective_location (->location coll-id)
-             :parent_collection {:id coll-id, :name "parent coll", :authority_level nil}
+             :parent_collection {:id coll-id, :name "parent coll", :is_remote_synced false}
              :id my-coll-id
              :timestamp String
-             :authority_level nil
+             :is_remote_synced false
              :collection_type nil
              :model :collection}]
            (mt/with-test-user :rasta
@@ -157,19 +153,19 @@
 
 (deftest nested-collections-get-list-collection-test
   (mt/with-temp
-    [:model/Collection {coll-id-a :id} {:name "great grandparent coll"}
-     :model/Collection {coll-id-b :id} {:name "grandparent coll" :location (->location coll-id-a)}
-     :model/Collection {coll-id-c :id} {:name "parent coll" :location (->location coll-id-a coll-id-b) :authority_level :official}
-     :model/Collection {coll-id-d :id} {:name "record scratch, yep that's me coll" :location (->location coll-id-a coll-id-b coll-id-c)}]
+    [:model/Collection {coll-id-a :id} {:name "great grandparent coll" :is_remote_synced true}
+     :model/Collection {coll-id-b :id} {:name "grandparent coll" :location (->location coll-id-a) :is_remote_synced true}
+     :model/Collection {coll-id-c :id} {:name "parent coll" :location (->location coll-id-a coll-id-b) :is_remote_synced true}
+     :model/Collection {coll-id-d :id} {:name "record scratch, yep that's me coll" :location (->location coll-id-a coll-id-b coll-id-c) :is_remote_synced true}]
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection coll-id-d :view)
     (is (= [{:id coll-id-d
              :description nil
              :can_write true
              :name "record scratch, yep that's me coll"
              :effective_location (->location coll-id-a coll-id-b coll-id-c)
-             :parent_collection {:id coll-id-c, :name "parent coll", :authority_level :official}
+             :parent_collection {:id coll-id-c, :name "parent coll", :is_remote_synced true}
              :timestamp String
-             :authority_level nil
+             :is_remote_synced true
              :collection_type nil
              :model :collection}]
            (mt/with-test-user :rasta
@@ -263,21 +259,19 @@
                    :effective_location (->location parent-coll-id)
                    :model :collection,
                    :can_write true,
-                   :authority_level nil,
+                   :is_remote_synced false,
                    :collection_type nil,
-                   :parent_collection {:id "ID", :name "parent", :authority_level nil}}
+                   :parent_collection {:id "ID", :name "parent", :is_remote_synced false}}
                   {:id "ID",
                    :name "my dash",
                    :description "this is my dash",
                    :model :dashboard,
-                   :moderated_status nil
                    :can_write true,
-                   :parent_collection {:id "ID", :name "parent", :authority_level nil}}
+                   :parent_collection {:id "ID", :name "parent", :is_remote_synced false}}
                   {:description nil,
                    :can_write true,
                    :name "my metric",
-                   :parent_collection {:id "ID", :name "parent", :authority_level nil},
-                   :moderated_status nil,
+                   :parent_collection {:id "ID", :name "parent", :is_remote_synced false},
                    :id "ID",
                    :display "Metric",
                    :model :metric}
@@ -286,15 +280,13 @@
                    :description "this is my model",
                    :model :dataset,
                    :can_write true,
-                   :moderated_status nil,
-                   :parent_collection {:id "ID", :name "parent", :authority_level nil}
+                   :parent_collection {:id "ID", :name "parent", :is_remote_synced false}
                    :database_id db-id}
                   {:description "this is my card",
                    :dashboard nil
                    :can_write true,
                    :name "my card",
-                   :parent_collection {:id "ID", :name "parent", :authority_level nil},
-                   :moderated_status nil,
+                   :parent_collection {:id "ID", :name "parent", :is_remote_synced false},
                    :id "ID",
                    :display "table",
                    :model :card

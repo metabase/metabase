@@ -1,9 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
-import type { RevisionOrModerationEvent } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -20,6 +18,7 @@ import type { Revision } from "metabase-types/api";
 
 import S from "./RevisionHistoryTimeline.module.css";
 import { trackVersionRevertClicked } from "./analytics";
+import type { RevisionTimelineEvent } from "./utils";
 
 export type RevisionHistoryEntity =
   | "card"
@@ -29,7 +28,7 @@ export type RevisionHistoryEntity =
 
 interface RevisionHistoryTimelineProps {
   entity: RevisionHistoryEntity;
-  events: RevisionOrModerationEvent[];
+  events: RevisionTimelineEvent[];
   // Must reject on failure so the timeline can surface a toast. RTK Query
   // callers should pipe the trigger result through `.unwrap()`.
   revert: (revision: Revision) => Promise<unknown>;
@@ -126,31 +125,19 @@ export function RevisionHistoryTimeline({
 }
 
 interface EventIconCircleProps {
-  icon: RevisionOrModerationEvent["icon"];
+  icon: RevisionTimelineEvent["icon"];
 }
 
 function EventIconCircle({ icon }: EventIconCircleProps) {
-  if (typeof icon === "string") {
-    return (
-      <Center
-        w={24}
-        h={24}
-        className={S.iconCircle}
-        bd="1px solid var(--mb-color-border-neutral)"
-        bg="background_page-primary"
-      >
-        <Icon name={icon} c="text-secondary" size={12} />
-      </Center>
-    );
-  }
-
-  if (!icon.name || !icon.color) {
-    return null;
-  }
-
   return (
-    <Center w={24} h={24} className={S.iconCircle} bg="core-brand">
-      <Icon name={icon.name} c="core-white" size={12} />
+    <Center
+      w={24}
+      h={24}
+      className={S.iconCircle}
+      bd="1px solid var(--mb-color-border-neutral)"
+      bg="background_page-primary"
+    >
+      <Icon name={icon} c="text-secondary" size={12} />
     </Center>
   );
 }

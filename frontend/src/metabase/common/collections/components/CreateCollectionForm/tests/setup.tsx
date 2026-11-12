@@ -25,7 +25,6 @@ import CreateCollectionForm from "../CreateCollectionForm";
 export interface SetupOpts {
   user?: User;
   tokenFeatures?: TokenFeatures;
-  showAuthorityLevelPicker?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   parentCollectionNamespace?: CollectionNamespace | null;
   initialCollectionId?: CollectionId;
@@ -37,7 +36,6 @@ export interface SetupOpts {
 export const setup = ({
   user = createMockUser({ is_superuser: true }),
   tokenFeatures = createMockTokenFeatures(),
-  showAuthorityLevelPicker,
   enterprisePlugins,
   parentCollectionNamespace,
   initialCollectionId,
@@ -101,7 +99,6 @@ export const setup = ({
         <CreateCollectionForm
           onCancel={onCancel}
           onSubmit={onSubmit}
-          showAuthorityLevelPicker={showAuthorityLevelPicker}
           collectionId={parentCollectionNamespace !== undefined ? 1 : undefined}
           initialCollectionId={initialCollectionId}
           namespaces={namespaces}

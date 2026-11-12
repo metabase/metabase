@@ -66,16 +66,6 @@
               (merge default-search-ctx
                      {:models #{"dashboard" "dataset" "table"}
                       :created-at "past3days"})))))
-    (testing "verified"
-      (is (= #{"dashboard" "dataset" "card" "metric"}
-             (search.filter/search-context->applicable-models
-              (merge default-search-ctx
-                     {:verified true}))))
-      (is (= #{"dashboard" "dataset"}
-             (search.filter/search-context->applicable-models
-              (merge default-search-ctx
-                     {:models   #{"dashboard" "dataset" "table"}
-                      :verified true})))))
     (testing "last edited by"
       (is (= #{"dashboard" "dataset" "card" "metric"}
              (search.filter/search-context->applicable-models
@@ -320,63 +310,17 @@
             (merge default-search-ctx
                    {:last-edited-by #{1 2}}))))))
 
-(deftest ^:parallel build-verified-filter-test
-  (testing "verified filter"
-    (mt/with-premium-features #{:content-verification}
-      (testing "for cards"
-        (is (= (merge
-                base-search-query
-                {:where  [:and
-                          [:= :card.archived false]
-                          [:= :moderation_review.status "verified"]
-                          [:= :moderation_review.moderated_item_type "card"]
-                          [:= :moderation_review.most_recent true]]
-                 :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
-               (search.filter/build-filters
-                base-search-query "card"
-                (merge default-search-ctx {:verified true}))))))))
-
-(deftest ^:parallel build-verified-filter-test-1b
-  (testing "verified filter"
-    (mt/with-premium-features #{:content-verification}
-      (testing "for models"
-        (is (= (merge
-                base-search-query
-                {:where  [:and
-                          [:= :card.archived false]
-                          [:= :moderation_review.status "verified"]
-                          [:= :moderation_review.moderated_item_type "card"]
-                          [:= :moderation_review.most_recent true]]
-                 :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
-               (search.filter/build-filters
-                base-search-query "dataset"
-                (merge default-search-ctx {:verified true}))))))))
-
-(deftest ^:parallel build-verified-filter-test-2
-  (testing "verified filter"
-    (mt/with-premium-features #{}
-      (testing "for cards without ee features"
-        (is (= (merge
-                base-search-query
-                {:where  [:and
-                          [:= :card.archived false]
-                          [:= [:inline 0] [:inline 1]]]})
-               (search.filter/build-filters
-                base-search-query "card"
-                (merge default-search-ctx {:verified true}))))))))
-
-(deftest ^:parallel build-verified-filter-test-2b
-  (testing "verified filter"
-    (mt/with-premium-features #{}
-      (testing "for models without ee features"
-        (is (= (merge
-                base-search-query
-                {:where  [:and
-                          [:= :card.archived false]
-                          [:= [:inline 0] [:inline 1]]]})
-               (search.filter/build-filters
-                base-search-query "dataset"
-                (merge default-search-ctx {:verified true}))))))))
+(deftest ^:parallel build-curated-card-filter-test
+  (testing "curated filter for cards and models keeps those in remote-synced collections"
+    (doseq [model ["card" "dataset"]]
+      (is (= (merge
+              base-search-query
+              {:where [:and
+                       [:= :card.archived false]
+                       [:in :card.collection_id {:select [:id] :from [:collection] :where [:= :is_remote_synced true]}]]})
+             (search.filter/build-filters
+              base-search-query model
+              (merge default-search-ctx {:curated? true})))))))
 
 (deftest ^:parallel build-filter-throw-error-for-unsuported-filters-test
   (testing "throw error for filtering with unsupport models"

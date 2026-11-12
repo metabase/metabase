@@ -4,7 +4,7 @@
   Headline:
 
   - naive :hnsw -- too risky around under-fetching.
-    An anti-correlated :verified filter empties its pool outright (final recall 0.0 where :brute-force
+    An anti-correlated :curated filter empties its pool outright (final recall 0.0 where :brute-force
     scores 1.0), and even a half-selective filter halves it before the permission drop halves it again
     ({:raw-count 10 :returned 6} against 20/16 for every other variant).
   - :brute-force -- reliable, but poor asymptotic performance.
@@ -109,7 +109,7 @@
     that the permission filter then drops (under-fetch).
   - :core/:mid are bulk filler so retrieval is nowhere near saturated.
   - :pinned is inside the cutoff but far outside any candidate pool -- the re-ranking lever for layer 2.
-  - :rare holds the only verified docs and is anti-correlated with the probe: a :verified filter on it is
+  - :rare holds the only curated docs and is anti-correlated with the probe: a :curated filter on it is
     adversarial for post-filtering strategies. The adversarial filter must be a column with no supporting
     btree: a :models filter would be served exactly by the (model, model_id) unique constraint at this table
     size, bypassing the HNSW scan the matrix is exercising.
@@ -125,7 +125,7 @@
    {:band :core       :n 180 :model "dashboard" :d0 0.100 :dstep 0.0015}
    {:band :mid        :n 74  :model "dashboard" :d0 0.400 :dstep 0.0008}
    {:band :pinned     :n 6   :model "dashboard" :d0 0.465 :dstep 0.002 :pinned true}
-   {:band :rare       :n 12  :model "dashboard" :d0 0.550 :dstep 0.008 :verified true}
+   {:band :rare       :n 12  :model "dashboard" :d0 0.550 :dstep 0.008 :curated true}
    {:band :decoy      :n 20  :model "dashboard" :d0 0.750 :dstep 0.007}])
 
 (defn- vector-at-distance
@@ -150,9 +150,9 @@
   RRF rank reduces to the pure semantic (distance) rank."
   [{:keys [seed restricted-collection-id]}]
   (let [rng  (Random. (long seed))
-        rows (for [{:keys [band n model d0 dstep pinned verified]} bands
+        rows (for [{:keys [band n model d0 dstep pinned curated]} bands
                    i (range n)]
-               {:band band :model model :pinned pinned :verified verified :d (+ d0 (* i dstep))})
+               {:band band :model model :pinned pinned :curated curated :d (+ d0 (* i dstep))})
         rows (map-indexed (fn [idx row]
                             (let [{:keys [band model]} row]
                               (assoc row
@@ -160,7 +160,7 @@
                                      :name (format "%s %s %03d" (name band) model (inc idx))
                                      :vector (vector-at-distance rng 4 (:d row)))))
                           rows)]
-    {:docs         (vec (for [{:keys [band model pinned verified d id name]} rows]
+    {:docs         (vec (for [{:keys [band model pinned curated d id name]} rows]
                           (let [collection-id (when (= band :restricted) restricted-collection-id)]
                             {:model           model
                              :id              id
@@ -171,7 +171,7 @@
                              :creator_id      (mt/user->id (if (odd? id) :crowberto :rasta))
                              :archived        false
                              :pinned          (boolean pinned)
-                             :verified        (boolean verified)
+                             :curated         (boolean curated)
                              :collection_id   collection-id
                              ;; the permission filter runs on the decoded legacy_input, so like the real
                              ;; ingestion documents it must carry collection_id itself
@@ -205,11 +205,11 @@
                   (vals (dissoc (:embeddings ds) probe-text)))))
     (testing "geometry the assertions rely on"
       (let [top-20 (set (take 20 (exact-ids ds (constantly true))))]
-        (testing "exact top-20 = the whole restricted band + nearest core docs, nothing verified"
+        (testing "exact top-20 = the whole restricted band + nearest core docs, nothing curated"
           (is (every? (some-fn (band-ids ds :restricted) (band-ids ds :core)) top-20))
           (is (every? top-20 (band-ids ds :restricted))))
-        (testing "rare verified docs are all inside the cutoff, decoys all outside"
-          (is (= (band-ids ds :rare) (set (exact-ids ds :verified))))
+        (testing "rare curated docs are all inside the cutoff, decoys all outside"
+          (is (= (band-ids ds :rare) (set (exact-ids ds :curated))))
           (is (empty? (filter (band-ids ds :decoy) (exact-ids ds (constantly true))))))
         (testing "at least a full pool of accessible docs lies within the cutoff"
           (is (<= 20 (count (remove (band-ids ds :restricted) (exact-ids ds (constantly true)))))))
@@ -373,16 +373,16 @@
      (semantic.tu/with-only-semantic-weights
        (mt/with-dynamic-fn-redefs [semantic.index/filter-read-permitted identity]
          (let [exact-all  (exact-ids ds (constantly true))
-               exact-rare (exact-ids ds :verified)]
+               exact-rare (exact-ids ds :curated)]
            (testing "without an HNSW index"
              (testing "retrieval is exact: the pool is the true top-20 in distance order"
                (is (= (take 20 exact-all) (query-ids! :no-index)))
                (is (= (take 20 exact-all) (query-ids! :brute-force))))
-             (testing "but post-filtering still finds NOTHING for an anti-correlated :verified filter"
-               ;; the exact global top-20 contains nothing verified, so filtering it afterwards yields zero;
+             (testing "but post-filtering still finds NOTHING for an anti-correlated :curated filter"
+               ;; the exact global top-20 contains nothing curated, so filtering it afterwards yields zero;
                ;; only filter-first (:brute-force) retrieval is immune
-               (is (= [] (query-ids! :no-index :verified true)))
-               (is (= exact-rare (query-ids! :brute-force :verified true)))))
+               (is (= [] (query-ids! :no-index :curated? true)))
+               (is (= exact-rare (query-ids! :brute-force :curated? true)))))
            (build-hnsw-index!)
            (testing "with the HNSW index (forced)"
              (testing "unfiltered retrieval is exact: graph approximation error does not manifest at this scale"
@@ -396,18 +396,18 @@
                      (is (= 1.0 (ndcg-at 20 (:id->distance ds) exact-all ids)))))))
              (testing "naive :hnsw post-filters the same global pool, so the adversarial filter finds nothing"
                ;; structural, not graph luck: the scan's top-20 would need fewer than 20 of the 262 docs
-               ;; nearer than the rare band for anything verified to enter the pool
-               (is (= [] (query-ids! :hnsw :verified true))))
+               ;; nearer than the rare band for anything curated to enter the pool
+               (is (= [] (query-ids! :hnsw :curated? true))))
              (testing "iterative scans pull neighbours past the filter and fully recover, in exact order"
                ;; the inner limit (20) exceeds the 12 matches, so the scan runs until the graph is exhausted
                (doseq [variant [:hnsw-iterative-relaxed :hnsw-iterative-strict]]
                  (testing variant
-                   (is (= exact-rare (query-ids! variant :verified true))))))
+                   (is (= exact-rare (query-ids! variant :curated? true))))))
              (testing "hnsw.max_scan_tuples truncates an iterative scan before it reaches far-away matches"
                ;; the rare band sits at distance ranks 269-280, far past a 64-tuple visit budget; the cap
                ;; has scan-phase granularity, but no phase overshoots by the ~200 tuples that would need
                (is (= [] (query-ids! :hnsw-iterative-relaxed
-                                     :verified true
+                                     :curated? true
                                      :vector-search-max-scan-tuples 64)))))))))))
 
 ;;;; layer 2: final top results vs an exhaustive run of the same scoring pipeline
@@ -436,12 +436,12 @@
        (testing "under a selective filter the indexed iterative variants are strictly better end-to-end"
          (semantic.tu/with-only-semantic-weights
            (let [ideal-rare (mt/with-temporary-setting-values [semantic-search-results-limit 1000]
-                              (query-ids! :brute-force :verified true))]
-             (is (= 0.0 (recall-at 10 ideal-rare (query-ids! :no-index :verified true))))
-             (is (= 0.0 (recall-at 10 ideal-rare (query-ids! :hnsw :verified true))))
+                              (query-ids! :brute-force :curated? true))]
+             (is (= 0.0 (recall-at 10 ideal-rare (query-ids! :no-index :curated? true))))
+             (is (= 0.0 (recall-at 10 ideal-rare (query-ids! :hnsw :curated? true))))
              (doseq [variant [:hnsw-iterative-relaxed :hnsw-iterative-strict]]
                (testing variant
-                 (is (= 1.0 (recall-at 10 ideal-rare (query-ids! variant :verified true)))))))))))))
+                 (is (= 1.0 (recall-at 10 ideal-rare (query-ids! variant :curated? true)))))))))))))
 
 ;;;; layer 3: under-fetch from post-retrieval permission filtering
 

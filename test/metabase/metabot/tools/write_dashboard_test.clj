@@ -649,8 +649,8 @@
   "Calls `f` with an uncurated dashboard holding one uncurated question, a question in an official collection, and
   Metabots with `use_verified_content` on and off, as crowberto with the curation features granted."
   [f]
-  (mt/with-additional-premium-features #{:content-verification :official-collections :library}
-    (mt/with-temp [:model/Collection    {official :id}    {:name "Official", :authority_level "official"}
+  (mt/with-additional-premium-features #{:library}
+    (mt/with-temp [:model/Collection    {official :id}    {:name "Official", :is_remote_synced true}
                    :model/Collection    {plain :id}       {:name "Plain"}
                    :model/Card          {curated-id :id}  {:name          "Curated revenue"
                                                            :collection_id official
@@ -693,7 +693,7 @@
             (is (= {:class :recoverable
                     :code  ::write-dashboard/cards-not-curated
                     :text  (str "Question " plain-id " can't be added: this Metabot only uses curated content"
-                                " (verified, official, or Library content). Nothing was saved.\n"
+                                " (content in synced collections). Nothing was saved.\n"
                                 "Call `search` to find curated questions, models, or metrics and add one of those"
                                 " instead.")}
                    (failure {:dashboard_id dash-id

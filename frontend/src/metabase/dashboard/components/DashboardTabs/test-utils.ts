@@ -58,7 +58,6 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
       enable_embedding: false,
       initially_published_at: null,
       width: "fixed",
-      moderation_reviews: [],
     },
   },
   dashcards: {

@@ -34,17 +34,10 @@
                                 [:or [:= :is_published true]
                                  [:= :data_authority "authoritative"]]]}))
 
-(mu/defn official-collection-ids
-  "The IDs of the official Collections."
+(mu/defn remote-synced-collection-ids
+  "The IDs of the remote-synced Collections."
   []
-  (t2/select-pks-set :model/Collection :authority_level :official))
-
-(mu/defn unarchived-dashboard-ids-in-collections-reducible
-  "Reducible `:id` rows of the unarchived Dashboards in the Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/reducible-select [:model/Dashboard :id]
-                       {:where [:and [:= :archived false]
-                                [:in :collection_id collection-ids]]}))
+  (t2/select-pks-set :model/Collection :is_remote_synced true))
 
 (mu/defn collection-owners-and-locations
   "The ID, owner, and location of the Collections with `collection-ids`."

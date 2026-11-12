@@ -80,8 +80,6 @@ export const setup = ({
     currentUser: createMockUser({ is_superuser: isAdmin }),
   });
 
-  const onUpdateCollection = jest.fn();
-
   if (enterprisePlugins) {
     setupStaleItemsEndpoint(numberOfStaleItems);
     enterprisePlugins.forEach((plugin) => setupEnterpriseOnlyPlugin(plugin));
@@ -91,19 +89,11 @@ export const setup = ({
     <>
       <Route
         path="/"
-        element={
-          <CollectionMenu
-            collection={collection}
-            isAdmin={isAdmin}
-            onUpdateCollection={onUpdateCollection}
-          />
-        }
+        element={<CollectionMenu collection={collection} isAdmin={isAdmin} />}
       />
     </>,
     { storeInitialState: state, initialRoute: "/", withRouter: true },
   );
-
-  return { onUpdateCollection };
 };
 
 export const assertIndicatorVisible = async () => {

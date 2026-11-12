@@ -12,7 +12,7 @@ export function SettingsModal({
   return (
     <Modal
       opened={opened}
-      title={t`Set up remote sync for your Library`}
+      title={t`Set up remote sync for your semantic layer`}
       size="xl"
       onClose={onClose}
     >

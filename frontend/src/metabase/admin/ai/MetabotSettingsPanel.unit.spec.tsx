@@ -195,10 +195,10 @@ const setupEmbeddingPlugin = () => {
   setupCustomVizPluginListEndpoint([]);
 };
 
-const setupContentVerificationPlugin = () => {
+const setupRemoteSyncPlugin = () => {
   mockSettings({
     "token-features": createMockTokenFeatures({
-      content_verification: true,
+      remote_sync: true,
     }),
   });
   setupEnterprisePlugins();
@@ -318,51 +318,41 @@ describe("MetabotSettingsPanel", () => {
     expect(call?.options?.body).toBe(JSON.stringify({ value: false }));
   });
 
-  it("should not show verification switch without content_verification feature", async () => {
+  it("should not show official content switch without remote_sync feature", async () => {
     await setup();
 
+    expect(screen.queryByText("Official content")).not.toBeInTheDocument();
     expect(
-      screen.queryByText("Verified or curated content"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("Only use verified or curated content"),
+      screen.queryByText("Only use official content"),
     ).not.toBeInTheDocument();
   });
 
-  it("should show verification switch with content_verification feature", async () => {
-    setupContentVerificationPlugin();
+  it("should show official content switch with remote_sync feature", async () => {
+    setupRemoteSyncPlugin();
 
     await setup();
 
-    expect(
-      await screen.findByText("Verified or curated content"),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText("Only use verified or curated content"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Official content")).toBeInTheDocument();
     expect(
       await screen.findByRole("switch", {
-        name: "Only use verified or curated content",
+        name: "Only use official content",
       }),
     ).toBeInTheDocument();
   });
 
-  it("should allow enabling/disabling verified switch affecting use_verified_content", async () => {
-    setupContentVerificationPlugin();
+  it("should allow enabling/disabling official content switch affecting use_verified_content", async () => {
+    setupRemoteSyncPlugin();
 
     await setup();
 
-    const verifiedSwitch = await screen.findByRole("switch", {
-      name: "Only use verified or curated content",
+    const officialSwitch = await screen.findByRole("switch", {
+      name: "Only use official content",
     });
 
-    // Verify switch is initially unchecked (default metabot has use_verified_content: false)
-    expect(verifiedSwitch).not.toBeChecked();
+    expect(officialSwitch).not.toBeChecked();
 
-    // Click to enable
-    await userEvent.click(verifiedSwitch);
+    await userEvent.click(officialSwitch);
 
-    // Verify API call was made with correct payload
     await waitFor(async () => {
       const putRequests = await findRequests("PUT");
       expect(putRequests.length).toBe(1);

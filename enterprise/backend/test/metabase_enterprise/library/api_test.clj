@@ -20,7 +20,7 @@
          (mt/user-http-request :rasta :post 403 "ee/library"))
        (testing "POST /ee/library creates the Library root + Data/Metrics subcollections"
          (let [response (mt/user-http-request :crowberto :post 200 "ee/library")]
-           (is (= "Library" (:name response)))
+           (is (= "Semantic layer" (:name response)))
            (is (some? (t2/select-one-pk :model/Collection :type collection/library-data-collection-type)))
            (is (some? (t2/select-one-pk :model/Collection :type collection/library-metrics-collection-type)))))
        (testing "a second call rejects with 400 'Semantic layer already exists'"
@@ -58,7 +58,7 @@
              metrics-id (t2/select-one-pk :model/Collection :type collection/library-metrics-collection-type)
              response   (mt/user-http-request :crowberto :get 200 "ee/library")]
          (testing "When library exists, but no content"
-           (is (= "Library" (:name response)))
+           (is (= "Semantic layer" (:name response)))
            (is (= ["collection"] (:here response)))
            (is (= [] (:below response))))
          (testing "With content in the library"
@@ -72,7 +72,7 @@
                                           :collection_id metrics-id
                                           :type          :metric}]
              (let [response (mt/user-http-request :crowberto :get 200 "ee/library")]
-               (is (= "Library" (:name response)))
+               (is (= "Semantic layer" (:name response)))
                (is (= ["metric" "table"] (:below response)))
                (is (= ["collection"] (:here response))))))
          (testing "Dashboards and questions in a Dashboards collection show up"

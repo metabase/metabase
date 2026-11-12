@@ -220,7 +220,7 @@
 
 (deftest metabot-put-test
   (testing "PUT /api/metabot/metabot/:id"
-    (mt/with-premium-features #{:content-verification}
+    (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection {collection-id-1 :id} {:name "Collection 1"}
                      :model/Collection {collection-id-2 :id} {:name "Collection 2"}
                      :model/Metabot {metabot-id :id} {:name "Test Metabot"
@@ -272,13 +272,7 @@
           (is (= "Not found."
                  (mt/user-http-request :crowberto :put 404
                                        (format "metabot/metabot/%d" Integer/MAX_VALUE)
-                                       {:use_verified_content true}))))
-        (testing "should prevent enabling verified content without premium feature"
-          (mt/with-premium-features #{} ; no content-verification
-            (is (= "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                   (:message (mt/user-http-request :crowberto :put 402
-                                                   (format "metabot/metabot/%d" metabot-id)
-                                                   {:use_verified_content true}))))))))))
+                                       {:use_verified_content true}))))))))
 
 ;; PUT now schedules a background refresh (see suggested-prompts-refresh) instead of regenerating
 ;; inline, so the managed-AI lock / TOCTOU / rollback behavior is covered in
@@ -348,7 +342,7 @@
 
 (deftest metabot-prompt-regeneration-on-config-change-test
   (testing "PUT /api/metabot/metabot/:id schedules a background prompt refresh when the content scope changes"
-    (mt/with-premium-features #{:content-verification}
+    (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection {collection-id-1 :id} {:name "Collection 1"}
                      :model/Collection {collection-id-2 :id} {:name "Collection 2"}
                      :model/Metabot {metabot-id :id} {:name "Test Metabot"

@@ -22,7 +22,6 @@ import type {
   CurrencyStyle,
   TimeOnlyOptions,
 } from "./formatting";
-import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type {
   Parameter,
@@ -102,7 +101,6 @@ export interface Card<
 
   result_metadata: DatasetColumn[] | null;
   param_fields?: Record<ParameterId, Field[]>;
-  moderation_reviews?: ModerationReview[];
   persisted?: boolean;
 
   query_average_duration?: number | null;

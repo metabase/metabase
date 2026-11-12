@@ -31,7 +31,7 @@ describe("DataStudioLayout", () => {
       );
 
       expect(
-        await screen.findByText("Set up remote sync for your Library"),
+        await screen.findByText("Set up remote sync for your semantic layer"),
       ).toBeInTheDocument();
     });
 

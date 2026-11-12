@@ -119,7 +119,7 @@
    [:collection {:optional true} [:maybe [:map
                                           [:id   ms/PositiveInt]
                                           [:name [:maybe :string]]
-                                          [:authority_level {:optional true} [:maybe :string]]
+                                          [:is_remote_synced {:optional true} :boolean]
                                           [:type {:optional true} [:maybe :string]]]]]])
 
 (mr/def ::cache-config-list-response

@@ -18,6 +18,7 @@
    [metabase.search.embeddings.provider :as embeddings.provider]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
    [next.jdbc :as jdbc]
@@ -324,13 +325,12 @@
                       "model_id"
                       "model_updated_at"
                       "name"
-                      "official_collection"
+                      "official"
                       "personal_owner_id"
                       "pinned"
                       "root_collection_type"
                       "text_search_vector"
                       "text_search_with_native_query_vector"
-                      "verified"
                       "view_count"}
                     (->>  (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                                          (sql/format {:select [:column_name]
@@ -543,18 +543,56 @@
         (is (not (contains? published (str plain)))    "plain tables aren't candidates")
         (is (not (contains? authoritative (str plain))))))))
 
-(deftest official-collection-dashboard-ids-test
-  (testing "Migration 5 backfills official-only dashboards (official_collection is new on the spec, so
-            existing index rows lack it)"
-    (mt/with-temp [:model/Collection {official :id} {:authority_level :official}
-                   :model/Collection {normal :id}   {}
-                   :model/Dashboard {od :id} {:collection_id official}
-                   :model/Dashboard {nd :id} {:collection_id normal}
-                   :model/Dashboard {ad :id} {:collection_id official :archived true}]
-      (let [ids (set (#'semantic.db.migration.impl/official-collection-dashboard-ids))]
-        (is (contains? ids (str od))      "dashboards in official collections are backfilled")
-        (is (not (contains? ids (str nd))) "dashboards in normal collections are not")
-        (is (not (contains? ids (str ad))) "archived dashboards are skipped")))))
+(deftest migration-7-official-backfill-test
+  (testing "migration 7 replaces verified and official_collection with official from remote-synced collections"
+    (mt/with-premium-features #{:semantic-search}
+      (semantic.tu/with-test-db! {:mode :mock-initialized}
+        (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :is_remote_synced true}
+                       :model/Collection {plain-id :id}  {:name "Plain"}]
+          (let [pgvector       (semantic.env/get-pgvector-datasource!)
+                index-metadata (semantic.env/get-index-metadata)
+                meta-tbl       (keyword (:metadata-table-name index-metadata))
+                table-name     (active-index-table-name! pgvector index-metadata)
+                kw-tbl         (keyword table-name)
+                legacy-input   (fn [coll-id]
+                                 [:cast [:inline (json/encode {:collection_id              coll-id
+                                                               :collection_authority_level "official"
+                                                               :moderated_status           "verified"
+                                                               :verified                   true})]
+                                  :jsonb])]
+            (jdbc/execute! pgvector [(format "ALTER TABLE %s ADD COLUMN verified boolean, ADD COLUMN official_collection boolean"
+                                             (semantic.util/quote-table table-name))])
+            (insert-index-row! pgvector kw-tbl {:model         [:inline "card"]
+                                                :model_id      [:inline "1"]
+                                                :collection_id synced-id
+                                                :verified      true
+                                                :curated       true
+                                                :legacy_input  (legacy-input synced-id)})
+            (insert-index-row! pgvector kw-tbl {:model         [:inline "card"]
+                                                :model_id      [:inline "2"]
+                                                :collection_id plain-id
+                                                :verified      true
+                                                :curated       true
+                                                :legacy_input  (legacy-input plain-id)})
+            (jdbc/execute! pgvector (sql/format {:update meta-tbl :set {:index_version 6}}))
+            (semantic.core/init! (semantic.tu/mock-documents) nil)
+            (let [rows (->> (jdbc/execute! pgvector
+                                           (sql/format {:select [:model_id :official :curated :legacy_input]
+                                                        :from   [kw-tbl]
+                                                        :where  [:in :model_id [[:inline "1"] [:inline "2"]]]}
+                                                       :quoted true)
+                                           {:builder-fn jdbc.rs/as-unqualified-maps})
+                            (map (juxt :model_id #(update % :legacy_input (fn [v] (if (map? v) (update-keys v keyword) (json/decode+kw (str v)))))))
+                            (into {}))]
+              (is (=? {"1" {:official true :curated true}
+                       "2" {:official false :curated false}}
+                      rows))
+              (is (= {:collection_id               synced-id
+                      :collection_is_remote_synced true
+                      :curated                     true}
+                     (:legacy_input (rows "1"))))
+              (is (not (has-column?! pgvector table-name "verified")))
+              (is (not (has-column?! pgvector table-name "official_collection"))))))))))
 
 (deftest migration-6-content-hash-index-test
   (testing "migration 6 replaces the B-tree index on content with a hash index"

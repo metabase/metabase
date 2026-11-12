@@ -1,0 +1,126 @@
+## Official content is now content in a remote-synced collection, so verified content (moderation reviews) and
+## official collections (collection.authority_level) are dropped and the content view derives both from
+## collection.is_remote_synced.
+
+databaseChangeLog:
+  - changeSet:
+      id: kc7z53
+      author: ranquild
+      comment: Usage analytics; derive official and verified content from remote-synced collections (v8)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/content/v8/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/content/v8/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/content/v8/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/content/v7/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/content/v7/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/content/v7/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: y0p7zk
+      author: ranquild
+      comment: Drop moderation_review, since content is verified by being in a remote-synced collection
+      changes:
+        - dropTable:
+            tableName: moderation_review
+      rollback:
+        - createTable:
+            tableName: moderation_review
+            remarks: Reviews (from moderators) for a given question/dashboard (BUCM)
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: most recent modification time
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: creation time
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(255)
+                  remarks: verified, misleading, confusing, not_misleading, pending
+              - column:
+                  name: text
+                  type: ${text.type}
+                  remarks: Explanation of the review
+              - column:
+                  name: moderated_item_id
+                  type: int
+                  remarks: either a document or question ID; the item that needs review
+                  constraints:
+                    nullable: false
+              - column:
+                  name: moderated_item_type
+                  type: varchar(255)
+                  remarks: whether it's a question or dashboard
+                  constraints:
+                    nullable: false
+              - column:
+                  name: moderator_id
+                  type: int
+                  remarks: ID of the user who did the review
+                  constraints:
+                    nullable: false
+              - column:
+                  name: most_recent
+                  type: ${boolean.type}
+                  remarks: tag for most recent review
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: moderation_review
+            indexName: idx_moderation_review_item_type_item_id
+            columns:
+              - column:
+                  name: moderated_item_type
+              - column:
+                  name: moderated_item_id
+
+  - changeSet:
+      id: au5n0q
+      author: ranquild
+      comment: Drop collection.authority_level, since a collection is official when it is remote-synced
+      changes:
+        - dropColumn:
+            tableName: collection
+            columnName: authority_level
+      rollback:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: authority_level
+                  type: varchar(255)
+                  remarks: Nullable column to incidate collection's authority level. Initially values are "official" and nil.

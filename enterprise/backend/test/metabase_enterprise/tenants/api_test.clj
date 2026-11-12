@@ -848,16 +848,3 @@
                                                           :display                "table"
                                                           :visualization_settings {}
                                                           :dataset_query          query}))))))))))
-
-(deftest official-authority-level-in-shared-tenant-namespace-not-enforced-test
-  (testing "the backend does not block :authority_level \"official\" for shared-tenant-namespace collections (enforcement is FE-only)"
-    (mt/with-premium-features #{:tenants :official-collections}
-      (mt/with-temporary-setting-values [use-tenants true]
-        (mt/with-temp [:model/Collection {shared-id :id} {:namespace collection/shared-tenant-ns}]
-          (mt/with-model-cleanup [:model/Collection]
-            (is (=? {:authority_level "official"
-                     :namespace       (name collection/shared-tenant-ns)}
-                    (mt/user-http-request :crowberto :post 200 "collection/"
-                                          {:name            (mt/random-name)
-                                           :parent_id       shared-id
-                                           :authority_level "official"})))))))))

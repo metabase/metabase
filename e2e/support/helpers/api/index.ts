@@ -16,7 +16,6 @@ export { createDashboardWithTabs } from "./createDashboardWithTabs";
 export { createDocument } from "./createDocument";
 export { createLibrary } from "./createLibrary";
 export type { LibraryCollectionIds } from "./createLibrary";
-export { createModerationReview } from "./createModerationReview";
 export { createNativeQuestion } from "./createNativeQuestion";
 export type { NativeQuestionDetails } from "./createNativeQuestion";
 export { createNativeQuestionAndDashboard } from "./createNativeQuestionAndDashboard";

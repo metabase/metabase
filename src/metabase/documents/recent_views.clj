@@ -12,10 +12,10 @@
   (if (:collection_id model-object)
     {:id (:collection_id model-object)
      :name (:collection_name model-object)
-     :authority_level (some-> (:collection_authority_level model-object) name)}
+     :is_remote_synced (boolean (:collection_is_remote_synced model-object))}
     (select-keys
      (root/root-collection-with-ui-details nil)
-     [:id :name :authority_level])))
+     [:id :name :is_remote_synced])))
 
 (defn- parent-collection-valid?
   "Returns true when a parent collection actually exists for this document.

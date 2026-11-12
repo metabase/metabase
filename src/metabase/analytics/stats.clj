@@ -951,9 +951,6 @@
    {:name      :serialization
     :available (premium-features/enable-serialization?)
     :enabled   (premium-features/enable-serialization?)}
-   {:name      :official-collections
-    :available (premium-features/enable-official-collections?)
-    :enabled   (analytics.db/official-collection-exists?)}
    {:name      :cache-granular-controls
     :available (premium-features/enable-cache-granular-controls?)
     :enabled   (analytics.db/cache-config-exists?)}
@@ -974,11 +971,8 @@
    {:name      :content-translation
     :available (premium-features/enable-content-translation?)
     :enabled   (premium-features/enable-content-translation?)}
-   {:name      :content-verification
-    :available (premium-features/enable-content-verification?)
-    :enabled   (analytics.db/moderation-review-exists?)}
    {:name      :dashboard-subscription-filters
-    :available (premium-features/enable-content-verification?)
+    :available (premium-features/enable-dashboard-subscription-filters?)
     :enabled   (analytics.db/filtered-pulse-exists?)}
    {:name      :disable-password-login
     :available (premium-features/can-disable-password-login?)

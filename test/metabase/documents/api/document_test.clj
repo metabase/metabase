@@ -124,6 +124,19 @@
         (mt/user-http-request :crowberto
                               :get 404 "document/99999")))))
 
+(deftest get-document-includes-collection-remote-synced-test
+  (testing "GET /api/document/:id returns its collection with is_remote_synced"
+    (mt/with-temp [:model/Collection {synced-id :id}   {:is_remote_synced true}
+                   :model/Collection {unsynced-id :id} {}
+                   :model/Document   {synced-doc :id}   {:name "Synced" :collection_id synced-id
+                                                         :document (documents.test-util/text->prose-mirror-ast "A")}
+                   :model/Document   {unsynced-doc :id} {:name "Unsynced" :collection_id unsynced-id
+                                                         :document (documents.test-util/text->prose-mirror-ast "B")}]
+      (is (=? {:collection {:id synced-id :is_remote_synced true}}
+              (mt/user-http-request :crowberto :get 200 (format "document/%s" synced-doc))))
+      (is (=? {:collection {:id unsynced-id :is_remote_synced false}}
+              (mt/user-http-request :crowberto :get 200 (format "document/%s" unsynced-doc)))))))
+
 (deftest get-document-runs-content-gate-once-test
   (testing "one GET /api/document/:id adjudicates the document's content once"
     (mt/with-temp [:model/Collection {coll-id :id}     {}

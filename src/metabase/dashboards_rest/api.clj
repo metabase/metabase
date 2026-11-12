@@ -107,15 +107,12 @@
 (defn- hydrate-dashboard-details
   "Get dashboard details for the complete dashboard, including tabs, dashcards, params, etc."
   [{dashboard-id :id :as dashboard}]
-  ;; I'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
-  ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
-  ;; cannot be in this situation
   (span/with-span!
     {:name       "hydrate-dashboard-details"
      :attributes {:dashboard/id dashboard-id}}
     (binding [params/*field-id-context* (atom params/empty-field-id-context)]
       (cond->>  [[:dashcards
-                  [:card :can_write [:moderation_reviews :moderator_details]]
+                  [:card :can_write]
                   [:series :can_write]
                   :dashcard/action
                   :dashcard/linkcard-info]
@@ -123,12 +120,10 @@
                  :can_restore
                  :can_delete
                  :tabs
-                 :collection_authority_level
                  :can_write
                  :can_set_cache_policy
                  :param_fields
                  :is_remote_synced
-                 [:moderation_reviews :moderator_details]
                  [:collection :is_personal :effective_location]]
         (dashboards.settings/dashboards-save-last-used-parameters) (cons :last_used_param_values)
         true (apply t2/hydrate dashboard)

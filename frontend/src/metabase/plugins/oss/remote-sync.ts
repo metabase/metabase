@@ -33,6 +33,16 @@ export type RemoteSyncChangesBadgeProps = {
   target: RemoteSyncChangesTarget;
 };
 
+export type OfficialCollection = {
+  is_remote_synced?: boolean;
+};
+
+export type OfficialBadgeProps = {
+  collection: OfficialCollection | null | undefined;
+  size?: number;
+  showLabel?: boolean;
+};
+
 type PluginRemoteSync = {
   isEnabled: boolean;
   SettingsNavItem: ComponentType;
@@ -41,6 +51,8 @@ type PluginRemoteSync = {
   SetupMenuItem: ComponentType<RemoteSyncSetupMenuItemProps>;
   AppBarControls: ComponentType;
   ChangesBadge: ComponentType<RemoteSyncChangesBadgeProps>;
+  OfficialBadge: ComponentType<OfficialBadgeProps>;
+  isOfficial: (collection: OfficialCollection | null | undefined) => boolean;
   getIsRemoteSyncReadOnly: (state: State) => boolean;
   getIsRemoteSyncVisible: (state: State) => boolean;
 };
@@ -53,6 +65,8 @@ const getDefaultPluginRemoteSync = (): PluginRemoteSync => ({
   SetupMenuItem: PluginPlaceholder,
   AppBarControls: PluginPlaceholder,
   ChangesBadge: PluginPlaceholder,
+  OfficialBadge: PluginPlaceholder,
+  isOfficial: () => false,
   getIsRemoteSyncReadOnly: () => false,
   getIsRemoteSyncVisible: () => false,
 });

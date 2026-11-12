@@ -2,10 +2,7 @@ import type { JSX } from "react";
 import { t } from "ttag";
 
 import { getCollection } from "metabase/common/collections/utils";
-import {
-  PLUGIN_COLLECTIONS,
-  PLUGIN_COLLECTION_COMPONENTS,
-} from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Box, Icon } from "metabase/ui";
 import {
   collection as collectionUrl,
@@ -65,19 +62,10 @@ const getDatabaseInfoText = (): InfoTextData => {
   };
 };
 const getCollectionInfoText = (result: SearchResult): InfoTextData => {
-  const collection = getCollection(result) ?? {};
-
-  if (
-    PLUGIN_COLLECTIONS.isRegularCollection(collection) ||
-    !("authority_level" in collection && collection.authority_level)
-  ) {
-    return {
-      label: t`Collection`,
-    };
-  }
-  const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
   return {
-    label: `${type.name} ${t`Collection`}`,
+    label: PLUGIN_REMOTE_SYNC.isOfficial(result.collection)
+      ? t`Official Collection`
+      : t`Collection`,
   };
 };
 
@@ -87,15 +75,14 @@ const getCollectionResult = (result: SearchResult): InfoTextData => {
   const collectionName = collection.name;
   return collectionName
     ? {
-        icon:
-          "authority_level" in collection && collection.authority_level ? (
-            <Box ml="-1.5px" display="inherit" pos="relative" top="-0.5px">
-              <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
-                size={12}
-                collection={collection}
-              />
-            </Box>
-          ) : null,
+        icon: PLUGIN_REMOTE_SYNC.isOfficial(result.collection) ? (
+          <Box ml="-1.5px" display="inherit" pos="relative" top="-0.5px">
+            <PLUGIN_REMOTE_SYNC.OfficialBadge
+              collection={result.collection}
+              size={12}
+            />
+          </Box>
+        ) : null,
         link: colUrl,
         label: collectionName,
       }

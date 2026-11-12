@@ -363,11 +363,6 @@
   [action-ids :- [:set ::lib.schema.id/action]]
   (t2/delete! :model/Action :id [:in action-ids]))
 
-(mu/defn delete-card-moderation-reviews!
-  "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted."
-  [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/ModerationReview :moderated_item_type "card" :moderated_item_id card-id))
-
 (mu/defn delete-card-revisions!
   "Delete the Revisions of the Card with `card-id`, returning the number deleted."
   [card-id :- ::lib.schema.id/card]

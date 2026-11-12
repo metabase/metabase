@@ -160,18 +160,6 @@
    :id
    {:default []}))
 
-(mi/define-batched-hydration-method collections-authority-level
-  :collection_authority_level
-  "Efficiently hydrate the `:collection_authority_level` of a sequence of dashboards."
-  [dashboards]
-  (when (seq dashboards)
-    (let [coll-id->level (into {}
-                               (map (juxt :id :authority_level))
-                               (dashboards.db/dashboard-collection-authority-levels
-                                (into #{} (map u/the-id) dashboards)))]
-      (for [dashboard dashboards]
-        (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard)))))))
-
 (defn archive-or-unarchive-internal-dashboard-questions!
   "When updating dashboard cards, if we're removing all references to a Dashboard Question (which is internal to the
   dashboard, not displayed as part of a collection) we want to archive it. Similarly, we want to mark any Dashboard
@@ -256,8 +244,7 @@
                                   [:map {:closed true}
                                    [:id                         ms/PositiveInt]
                                    [:series                     {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]
-                                   [:card                       {:optional true} [:maybe ::queries.schema/card]]
-                                   [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]]]]]
+                                   [:card                       {:optional true} [:maybe ::queries.schema/card]]]]]]
   (let [old-dashcards    (:dashcards dashboard)
         id->old-dashcard (m/index-by :id old-dashcards)
         old-dashcard-ids (set (keys id->old-dashcard))
@@ -475,8 +462,7 @@
                   :last-edited-at :r.timestamp
                   :last-viewed-at true
                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-                  :verified       [:= "verified" :mr.status]
-                  :official-collection [:= "official" :collection.authority_level]
+                  :official       [:coalesce :collection.is_remote_synced false]
                   :view-count     true
                   :created-at     true
                   :updated-at     true
@@ -484,12 +470,11 @@
                   :collection-location :collection.location
                   :root-collection-type {:fn collection/root-collection-type}}
    :search-terms [:name :description]
-   :render-terms {:archived-directly          true
-                  :collection-authority_level :collection.authority_level
-                  :collection-name            :collection.name
+   :render-terms {:archived-directly           true
+                  :collection-is_remote_synced :collection.is_remote_synced
+                  :collection-name             :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
-                  :collection-position        true
-                  :moderated-status           :mr.status}
+                  :collection-position         true}
    :where        []
    :bookmark     [:model/DashboardBookmark [:and
                                             [:= :bookmark.dashboard_id :this.id]
@@ -501,11 +486,7 @@
                                                 ;; Interesting for inversion, another condition on whether to update.
                                                 ;; For now, let's just swallow the extra update (2x amplification)
                                                 [:= :r.most_recent true]
-                                                [:= :r.model "Dashboard"]]]
-                  :mr         [:model/ModerationReview [:and
-                                                        [:= :mr.moderated_item_type "dashboard"]
-                                                        [:= :mr.moderated_item_id :this.id]
-                                                        [:= :mr.most_recent true]]]}})
+                                                [:= :r.model "Dashboard"]]]}})
 
 (defmethod staleness/find-stale-query :model/Dashboard
   [_model args]
@@ -518,15 +499,10 @@
                     :left-join [:pulse [:and
                                         [:= :pulse.archived false]
                                         [:= :pulse.dashboard_id :report_dashboard.id]]
-                                :collection [:= :collection.id :report_dashboard.collection_id]
-                                :moderation_review [:and
-                                                    [:= :moderation_review.moderated_item_id :report_dashboard.id]
-                                                    [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
-                                                    [:= :moderation_review.most_recent true]
-                                                    [:= :moderation_review.status (h2x/literal "verified")]]]
+                                :collection [:= :collection.id :report_dashboard.collection_id]]
                     :where [:and
                             [:= :pulse.id nil]
-                            [:= :moderation_review.id nil]
+                            [:= [:coalesce :collection.is_remote_synced false] false]
                             [:= :report_dashboard.archived false]
                             [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
                             ;; find things only in regular collections, not the `instance-analytics` collection.
