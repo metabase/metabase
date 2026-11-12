@@ -22,10 +22,15 @@ const DEFAULT_HEIGHT = 600;
 interface DataAppFrameProps extends Omit<DataAppProps, "path"> {
   path: string;
   slug: string;
-
-  /** Later changes are ignored. The iframe routes path changes client-side. */
-  initialSrc: string;
   origin: string;
+
+  /**
+   * The URL the iframe first loads.
+   *
+   * Later values are ignored so the app does not reload.
+   * When `path` changes, the app navigates to the new page on its own.
+   */
+  initialSrc: string;
 
   locale?: string;
   store: SdkStore;
@@ -35,8 +40,8 @@ interface DataAppFrameProps extends Omit<DataAppProps, "path"> {
 export function DataAppFrame({
   path,
   slug,
-  initialSrc,
   origin,
+  initialSrc,
   locale,
   store,
   authConfig,
@@ -47,10 +52,10 @@ export function DataAppFrame({
 }: DataAppFrameProps) {
   const readyRef = useRef(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const srcRef = useRef(initialSrc);
   const currentAuthRef = useRef({ authConfig, store });
 
   const [error, setError] = useState<string | null>(null);
-  const [src] = useState(initialSrc);
 
   // The slug only dedupes events per app. It is not sent to analytics.
   useTrackSdkComponentMount("DataApp", slug, {});
@@ -159,7 +164,7 @@ export function DataAppFrame({
   return (
     <iframe
       ref={iframeRef}
-      src={src}
+      src={srcRef.current}
       className={className}
       allow="clipboard-write"
       data-testid="data-app-frame"
