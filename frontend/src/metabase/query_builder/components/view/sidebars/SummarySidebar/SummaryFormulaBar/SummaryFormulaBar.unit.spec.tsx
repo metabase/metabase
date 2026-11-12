@@ -158,6 +158,7 @@ describe("summary formula handoff", () => {
   afterEach(() => {
     jest.useRealTimers();
   });
+
   it("cleans up well-created columns after an Editor round trip, keeping manual columns", async () => {
     const { onQueryChange, setMode } = await setup({
       query: Lib.createTestQuery(SAMPLE_PROVIDER, {
@@ -213,6 +214,7 @@ describe("summary formula handoff", () => {
     expect(Lib.breakouts(query, -1)).toHaveLength(0);
     expect(Lib.expressions(query, -1)).toHaveLength(1);
   });
+
   it("keeps owning a grouping formula after it is renamed", async () => {
     const { onQueryChange } = await setup();
     fireEvent.change(getInput("columns"), {
@@ -235,6 +237,7 @@ describe("summary formula handoff", () => {
     expect(Lib.breakouts(query, -1)).toHaveLength(0);
     expect(Lib.expressions(query, -1)).toHaveLength(0);
   });
+
   it("removes a chip whose name is being edited on the first Remove click", async () => {
     const { onQueryChange } = await setup();
     fireEvent.change(getInput("columns"), {
@@ -260,6 +263,7 @@ describe("summary formula handoff", () => {
     expect(Lib.breakouts(query, -1)).toHaveLength(0);
     expect(Lib.expressions(query, -1)).toHaveLength(0);
   });
+
   it("keeps a formula regrouped after its grouping was removed outside the sidebar", async () => {
     const { onQueryChange } = await setup();
     fireEvent.change(getInput("columns"), {
@@ -283,6 +287,7 @@ describe("summary formula handoff", () => {
     expect(Lib.breakouts(query, -1)).toHaveLength(0);
     expect(Lib.expressions(query, -1)).toHaveLength(1);
   });
+
   it.each([
     {
       wellId: "values",
