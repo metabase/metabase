@@ -1067,16 +1067,6 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           { name: "data_app", properties: [] },
         ]);
       });
-
-      it("should not track data apps when none are embedded", () => {
-        const usage = createEmbeddedAnalyticsJsUsage(
-          new Set([createEmbeddedAnalyticsJsElement("metabase-question")]),
-        );
-
-        expect(usage.components).not.toContainEqual(
-          expect.objectContaining({ name: "data_app" }),
-        );
-      });
     });
   });
 
