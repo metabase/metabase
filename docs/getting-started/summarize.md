@@ -1,6 +1,6 @@
 ---
 title: "Summarize data"
-summary: "Use Metabase's summarizes to calculate averages, totals, and other metrics"
+summary: "Use Metabase's summaries to calculate averages, totals, and other metrics"
 ---
 
 # Summarize data
@@ -19,13 +19,13 @@ We assume that you already know how to [Ask a question in the query builder](./a
 
 Summarizing means combining data from multiple records together and producing a single number, like “average of product ratings”. So you need to determine:
 
-- the numerical **metric** that’s going to be used to combine value: for example, count, sum, or average
+- the numerical **metric** that’s going to be used to combine values: for example, count, sum, or average
 - the **column** whose values will be combined: for example, quantity, price, or rating
-- (optionally) **breakouts** . They determine the groups that the data is _broken out_ (or _grouped_) **by**. For example, you can compute order quantity grouped/broken out by months, or product rating grouped/broken out by product categories, or both. Breakouts also often called **dimensions**.
+- (optionally) **breakouts**. They determine the groups that the data is _broken out_ (or _grouped_) **by**. For example, you can compute order quantity grouped/broken out by months, or product rating grouped/broken out by product categories, or both. Breakouts are also often called **dimensions**.
 
 The word “dimension” here is suggestive: for a line or a bar chart, the first breakout will serve as the X-axis.
 
-For example, In Metabase you can find:
+For example, in Metabase you can find:
 
 - Average of rating:
 
@@ -37,18 +37,20 @@ For example, In Metabase you can find:
 ![Avg rating by category in the QB](./images/avg-rating-by-category.png)
 ![Avg rating by category as a bar chart](./images/avg-rating-by-category-viz.png)
 
-- Average order total by product category for each month:
+- Average of rating by product category for each month:
 
-![Avg rating by category and month QB ](./images/avg-rating-by-category-and-month.png)
+![Avg rating by category and month QB](./images/avg-rating-by-category-and-month.png)
 ![Avg rating by category and month as a time series](./images/avg-rating-by-category-and-month-viz.png)
 
 In all these cases, the metric is `Average`, the column is `Rating`, but adding breakouts creates different summaries and charts.
 
 ## Summarize by a column
 
-When viewing a table, you can click on the column header to create a summary of the table by this column. The type of summaries you'll see will vary based on the column type. For example, you can find the average number of seats in the Accounts table in the Sample Database that comes with every new Metabase instance.
+When viewing a table, you can click on the column header to create a summary of the table by this column. The type of summaries you'll see will vary based on the column type. For example, in the Accounts table in the Sample Database that comes with every new Metabase instance, the Email column offers **Distribution** and **Distinct values**.
 
-![Summarize column](./images/avg-rating.png)
+![Column header menu with the Distribution and Distinct values summaries](./images/column-filter.png)
+
+Number columns offer more summaries. For example, click on the Seats column header and select **Avg** to find the average number of seats.
 
 ## Summarize a chart or a table
 
@@ -64,7 +66,7 @@ When you click “visualize” on a question with summaries, Metabase will autom
 
 You can change the [chart type](../questions/visualizations/visualizing-results.md). Metabase charts have requirements on the number and the kind of breakouts you can use in summaries that feed into the chart:
 
-| Chart type                             | Breakout requirements                        | Breakouts are used for..                                                            |
+| Chart type                             | Breakout requirements                        | Breakouts are used for                                                              |
 | -------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------- |
 | Number, gauge, and progress charts     | Single number, no breakouts                  | N/A                                                                                 |
 | Pie charts                             | 1 breakout                                   | Color of segments                                                                   |
@@ -118,10 +120,10 @@ Let's say you have a table with values by month. Cumulative sum will be computed
 | Month    | Value | Cumulative sum |
 | -------- | ----- | -------------- |
 | July     | 5     | 5              |
-| November | 4     | 5+4 = 9        |
+| November | 4     | 5 + 4 = 9      |
 | March    | 2     | 5 + 4 + 2 = 11 |
 
-But if the months ordering is changed (while values remain the same), then the cumulative sum is changed as well:
+But if the order of the months changes (while the values stay the same), then the cumulative sum changes as well:
 
 | Month    | Value | Cumulative sum |
 | -------- | ----- | -------------- |
@@ -139,6 +141,6 @@ For example, if you want to see all the distinct values for product categories, 
 
 ### Note for SQL experts
 
-In SQL, you summarize by adding a function like `COUNT` into a `SELECT` statement — similarly to how you’d add a new column computed based on the values of other columns
+In SQL, you summarize by adding a function like `COUNT` into a `SELECT` statement — similarly to how you’d add a new column computed based on the values of other columns.
 
 In Metabase, these two operations are distinct: to add a new column, you can use a Custom column block, but to add an aggregation, you use a Summary block.
