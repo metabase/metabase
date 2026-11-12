@@ -1,6 +1,6 @@
 (ns metabase.change-log.task.truncate-change-log
-  "The task that deletes the `change_log` entries older than 30 days. Like the task that truncates the audit tables
-  (`metabase.audit-app.task.truncate-audit-tables`), it runs every 12 hours and deletes in batches of 50,000."
+  "Deletes `change_log` entries older than 30 days. Like `metabase.audit-app.task.truncate-audit-tables`, it runs
+  every 12 hours and deletes in batches of 50,000."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]

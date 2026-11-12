@@ -42,6 +42,13 @@ databaseChangeLog:
                   remarks: When the change was logged
                   constraints:
                     nullable: false
+              - column:
+                  name: position
+                  type: bigint
+                  remarks: The order in which readers follow the entries, set after the change commits
+                  constraints:
+                    unique: true
+                    uniqueConstraintName: idx_change_log_position
 
   - changeSet:
       id: cl4xr9

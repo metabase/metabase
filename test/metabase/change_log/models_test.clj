@@ -71,6 +71,15 @@
             (is (= (set (t2/select-pks-set :model/Field :table_id (:id t) :name [:in names]))
                    (set (map second rows))))
             (is (every? #(= ["metabase_field" "insert"] [(first %) (last %)]) rows))))
+        (testing "an insert that does not return the key still inserts, and warns instead of logging"
+          (mt/with-temp [:model/Pulse pulse {}
+                         :model/Card  card  {}]
+            (mt/with-log-messages-for-level [messages [metabase.change-log :warn]]
+              (is (= [] (logged-by #(t2/insert-returning-instance!
+                                     [:model/PulseCard :include_csv]
+                                     {:pulse_id (:id pulse), :card_id (:id card), :position 0}))))
+              (is (t2/exists? :model/PulseCard :pulse_id (:id pulse)))
+              (is (= 1 (count (messages)))))))
         (testing "a model keyed by a column other than `id` logs that key"
           (mt/with-temp [:model/Field f {:table_id (:id t)}]
             (is (= [["metabase_field_user_settings" (:id f) "insert"]]
@@ -165,12 +174,13 @@
             (t2/with-transaction [_conn nil {:rollback-only true}]
               (is (contains? (set (logged-by permissions.db/deactivate-all-tenants!))
                              ["tenant" (:id tenant) "update"])))))
-        (testing "log-rows! takes only a logged model"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is not logged"
-                                (change-log/log-rows! :model/Collection :update :id 1))))))))
+        (testing "`log-rows!` on a model that is not logged warns instead of logging"
+          (mt/with-log-messages-for-level [messages [metabase.change-log :warn]]
+            (is (= [] (logged-by #(change-log/log-rows! :model/Collection :update :id 1))))
+            (is (= 1 (count (messages))))))))))
 
 (deftest foreign-keys-test
-  (testing "reads the foreign keys of logged tables, with their ON DELETE rule, from the app DB"
+  (testing "reads the foreign keys that lead to logged tables, with their ON DELETE rule, from the app DB"
     (let [fks  (change-log.cascade/foreign-keys)
           edge (fn [parent child column]
                  (some #(when (and (= child (:child %)) (= column (:column %))) (:rule %)) (get fks parent)))]
@@ -183,8 +193,11 @@
       (testing "including those that reference a table that is not logged"
         (is (= :cascade (edge "report_dashboardcard" "pulse_card" :dashboard_card_id)))
         (is (= :set-null (edge "collection" "report_card" :collection_id))))
-      (testing "and none of a table that is not logged"
-        (is (not-any? #(= "collection" (:child %)) (mapcat val fks)))))))
+      (testing "including a cascade to a table that is not logged, when one of these references that table"
+        (is (= :cascade (edge "report_dashboard" "report_dashboardcard" :dashboard_id))))
+      (testing "and none to a table that is not logged and that none of these references"
+        (let [logged (change-log.cascade/logged-models)]
+          (is (every? #(or (contains? logged (:child %)) (contains? fks (:child %))) (mapcat val fks))))))))
 
 (defn- load-models!
   "Loads the namespace of every model. A model derives the hook when its namespace loads, and Metabase loads some only
@@ -195,7 +208,7 @@
     (t2/resolve-model model)))
 
 (deftest logged-model-keys-test
-  (testing "each logged model's key is one integer column, so `row_id` can hold it"
+  (testing "each logged model's key is one integer column"
     (load-models!)
     (let [column-types (t2/with-connection [^Connection conn]
                          (with-open [rs (.getColumns (.getMetaData conn) (.getCatalog conn) (.getSchema conn) "%" "%")]
@@ -271,6 +284,22 @@
         (testing "deleting a dashboard card, which is not logged, logs the subscription card deleted with it"
           (is (= [["pulse_card" (:id pc) "delete"]]
                  (logged-by #(t2/delete! :model/DashboardCard :id (:id dc)))))
+          (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
+
+(deftest cascade-through-unlogged-table-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:change-log}
+      (mt/with-temp [:model/Dashboard     dash  {}
+                     :model/DashboardTab  tab   {:dashboard_id (:id dash)}
+                     :model/Card          card  {}
+                     :model/DashboardCard dc    {:dashboard_id (:id dash), :dashboard_tab_id (:id tab)
+                                                 :card_id (:id card)}
+                     :model/Pulse         pulse {:dashboard_id (:id dash)}
+                     :model/PulseCard     pc    {:pulse_id (:id pulse), :card_id (:id card)
+                                                 :dashboard_card_id (:id dc)}]
+        (testing "deleting a dashboard tab logs the subscription card deleted with its dashboard card"
+          (is (= [["pulse_card" (:id pc) "delete"]]
+                 (logged-by #(t2/delete! :model/DashboardTab :id (:id tab)))))
           (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
 
 (defn- call-counts

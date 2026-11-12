@@ -1,52 +1,49 @@
 (ns metabase.change-log.core
-  "The change log tells a reader which rows of some app DB tables changed, so that it can keep a copy of those tables
-  without reading them whole. A logged model, one that derives `:hook/change-log`, logs each insert, update and delete
-  that Metabase makes to its rows: Metabase adds an entry to the table `change_log`, in the same transaction. Renaming
-  card 5 adds:
+  "Log which rows changed in some app DB tables so that a reader can incrementally synchronize them.
+
+  Each change adds a row to `change_log` in the transaction of the change. Renaming card 5 adds:
 
       {:id 830, :table_name \"report_card\", :row_id 5, :action \"update\", :created_at ...}
 
-  An entry names a row, not its values: a reader reads the row again. The change log is on while the license has the
-  `:change-log` feature.
+  The log is on while the license has the `:change-log` feature. While it is on, an insert runs one more query, an
+  update two, and a delete two plus the reads of what it cascades to. While it is off, a write runs no extra query.
 
-  - A delete through any model, logged or not, also logs the rows of logged tables that the database deletes with it
-    (`ON DELETE CASCADE`), as `delete`, and the rows it changes (`ON DELETE SET NULL`), as `update`. It follows foreign
-    keys only through logged tables, so it misses a row that the database deletes through a table that is not logged.
-    It logs them before the model's before-delete runs. So the rows that a before-delete deletes ahead of the foreign
-    keys, such as a Database's cards and fields, are logged too, and twice if it deletes them through their model, as
-    a Table does its fields.
-  - An update or a delete by condition reads the keys of the rows it matches, then writes. A row that starts to match
-    between the read and the write is changed but not logged.
-  - A write that bypasses the model logs its rows by hand, with [[log-rows!]]. Each one in Metabase does, except those
-    that only update usage stats when a row is read or run: view counts and the last viewed and last used times. Raw
-    SQL run outside Metabase and migrations are not logged.
-  - While the change log is on, a logged insert runs one more insert, and an update one read and one insert. A delete
-    reads its rows and the rows it cascades to, then inserts their entries. While the change log is off, no model runs
-    an extra query.
-  - The task `metabase.change-log.task.truncate-change-log` deletes the entries older than 30 days, every 12 hours.
+  To log a model, derive the hook next to its other hooks:
 
-  To read the change log:
+      (doto :model/PermissionsGroup
+        (derive :metabase/model)
+        (derive :hook/entity-id)
+        (derive :hook/change-log))
 
-  1. Read the entries in id order, and read again the row each entry names. Take a missing row as deleted. One change
-     can have more than one entry.
-  2. Expect ids to commit out of order. An id is given out when a transaction writes, not when it commits. Transaction
-     A takes id 850 and stays open, and B takes 851 and commits: a reader sees 851 first, and 850 only once A commits.
-     So the highest id read is not a watermark.
-  3. When your next unread id is below the smallest id in `change_log`, the truncate task deleted entries you never
-     read, and the changes they name are missing.
+  This logs each insert, update and delete through the model. A delete of any model also logs the rows of logged
+  tables that the database deletes (`ON DELETE CASCADE`) or updates (`ON DELETE SET NULL`) with it, at any depth. The
+  model needs a primary key of one integer column and a namespace that loads at startup: `metabase.change-log.models-test`
+  check both. The insert hook reads the key from the rows the insert returns, so an insert that picks its returned columns
+  must include the key: `[:model/User :id :email]`, not `[:model/User :email]`. Without the key, the insert goes ahead
+  and Metabase logs a warning instead of an entry.
 
-  To log a model:
+  A write that skips the model (raw SQL, `t2/query`, `t2/update!` on the table name) logs its rows with [[log-rows!]].
 
-  1. Derive `:hook/change-log` in the model's namespace. Its primary key must be one integer column. `row_id` is a
-     bigint, so while the change log is on, a model keyed any other way fails its writes or logs a wrong key. An insert
-     that names the columns it returns must name the key, as in `[:model/User :id :email]`.
-  2. Make sure the model's namespace loads at startup. Metabase may load a model's namespace only when the model is
-     first used, and until then a delete that cascades to the model's rows does not log them. If nothing loads it at
-     startup, require it from its module's init namespace, as `metabase.pulse.init` does.
-  3. Find the writes to its table that bypass the model (raw SQL, `t2/query`, `t2/update!` on the table name). Log the
-     rows of each one with [[log-rows!]], unless it only updates usage stats.
+  Not logged:
 
-  `metabase.change-log.models-test` checks steps 1 and 2 for every logged model."
+  - usage stats that reads update: view counts, last viewed and last used times
+  - migrations, and SQL run outside Metabase
+  - a row that starts to match an update or a delete after the hook read which rows match
+  - any change made while the log is off
+
+  To read the log, follow `position`:
+
+      SELECT * FROM change_log WHERE position > :cursor ORDER BY position
+
+  - Read again the row each entry names. A missing row was deleted. One change can have more than one entry.
+  - Keep the last position you read as your cursor. A new position is always above every position you can see.
+  - An entry gets its position about 5 seconds after its change commits, from the task
+    `metabase.change-log.task.number-change-log`. Until then it has none.
+  - Entries are deleted after 30 days. To start, or if your last read was longer ago than that, note the highest
+    position, read the tables whole, and follow from there.
+
+  Do not follow `id`. An entry takes its id when it is written and shows up when its transaction commits, so a lower
+  id can show up after a higher one (`ids-out-of-order-test`)."
   (:require
    [metabase.change-log.models]
    [potemkin :as p]))
