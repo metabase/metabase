@@ -307,6 +307,7 @@ const setup = async ({
   fetchMock.get(`path:/api/user/recipients`, { data: [] });
 
   const onChangeLocation = jest.fn();
+  const onClose = jest.fn();
 
   renderWithProviders(
     <Route
@@ -315,7 +316,7 @@ const setup = async ({
         <AddToDashSelectDashModal
           card={card}
           onChangeLocation={onChangeLocation}
-          onClose={() => undefined}
+          onClose={onClose}
         />
       }
     />,
@@ -331,7 +332,7 @@ const setup = async ({
     await waitForLoaderToBeRemoved();
   }
 
-  return { onChangeLocation };
+  return { onChangeLocation, onClose };
 };
 
 describe("AddToDashSelectDashModal", () => {
@@ -609,6 +610,29 @@ describe("AddToDashSelectDashModal", () => {
           name: /New dashboard/,
         }),
       ).toBeInTheDocument();
+    });
+
+    it("should close the create dashboard dialog, then the picker, with the Escape key", async () => {
+      const { onClose } = await setup();
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /New dashboard/ }),
+      );
+      expect(
+        await screen.findByRole("dialog", { name: "Create a new dashboard" }),
+      ).toBeInTheDocument();
+
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("dialog", { name: "Create a new dashboard" }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(screen.getByTestId("entity-picker-modal")).toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
+
+      await userEvent.keyboard("{Escape}");
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
 
     it("should show the create dashboard dialog", async () => {
