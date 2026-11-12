@@ -2273,6 +2273,18 @@
         (mt/user-http-request :rasta :put 403 (format "exploration/%d" (:id e))
                               {:collection_id (:id c)})))))
 
+(deftest exploration-put-move-to-root-requires-root-write-test
+  (testing "PUT /:id move to the root collection refuses when the caller lacks write on it"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection  c {}
+                     :model/Exploration e {:name          "to-root"
+                                           :creator_id    (mt/user->id :rasta)
+                                           :collection_id (:id c)}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) c)
+        (mt/user-http-request :rasta :put 403 (format "exploration/%d" (:id e))
+                              {:collection_id nil})
+        (is (= (:id c) (t2/select-one-fn :collection_id :model/Exploration :id (:id e))))))))
+
 (deftest exploration-put-move-requires-write-on-source-collection-test
   (testing "Moving an exploration in a shared collection requires write on the source collection."
     (mt/with-temp [:model/Collection src  {}
