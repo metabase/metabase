@@ -7,8 +7,6 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import { useMetadataToasts } from "metabase/common/hooks";
-import { MeasureVersionSection } from "metabase/data-studio/data-model/pages/DataModel/FieldDetailsPanel/ChangesOverTime";
-import { useChangingAttributes } from "metabase/metadata/table-structure";
 import { useSelector } from "metabase/redux";
 import { Button, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -39,7 +37,6 @@ export function MeasureDetailPage({
     getUserCanWriteMeasures(state, table.is_published),
   );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const { variant } = useChangingAttributes();
 
   const [description, setDescription] = useState(measure.description ?? "");
   const [definition, setDefinition] = useState(measure.definition);
@@ -129,13 +126,6 @@ export function MeasureDetailPage({
         onDescriptionChange={setDescription}
         readOnly={!canWriteMeasures}
       />
-      {variant === "measure" && (
-        <MeasureVersionSection
-          measure={measure}
-          table={table}
-          readOnly={!canWriteMeasures}
-        />
-      )}
       {canWriteMeasures && (
         <LeaveRouteConfirmModal
           key={measure.id}

@@ -6,15 +6,9 @@ import { FieldOrderPicker } from "metabase/metadata/components";
 import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useTableUpdateHandlers } from "metabase/metadata/hooks";
-import { useChangingAttributes } from "metabase/metadata/table-structure";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Button, Icon, Loader, Stack } from "metabase/ui";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
-import {
-  ChangingFieldsGroup,
-  useFieldGroups,
-} from "../../FieldDetailsPanel/ChangesOverTime";
 import {
   ListSearchBar,
   ListSearchEmptyState,
@@ -52,13 +46,6 @@ export function TableFieldsTab({
     [query],
   );
   const hasMatches = fields.some(filterField);
-  const { variant } = useChangingAttributes();
-  const { history, groups } = useFieldGroups(table);
-  const isGrouped = variant === "group" && groups.length > 0;
-  const isInGroup = (field: Field, memberIds: FieldId[]) =>
-    memberIds.includes(getRawTableFieldId(field));
-  const isTracked = (field: Field) =>
-    groups.some(({ memberIds }) => isInGroup(field, memberIds));
 
   if (fields.length === 0) {
     return (
@@ -116,46 +103,14 @@ export function TableFieldsTab({
         style={{ display: isSorting ? "none" : "block" }}
         aria-hidden={isSorting}
       >
-        {hasMatches && isGrouped && (
-          <Stack gap="xl">
-            <TableFieldList
-              table={table}
-              activeFieldId={activeFieldId}
-              filterField={(field) => filterField(field) && !isTracked(field)}
-              getFieldHref={getFieldHref}
-            />
-            {groups.map(({ historyTable, memberIds }) => (
-              <ChangingFieldsGroup
-                key={historyTable.id}
-                table={table}
-                history={history}
-                historyTable={historyTable}
-                memberFields={fields.filter((field) =>
-                  isInGroup(field, memberIds),
-                )}
-                readOnly={readOnly}
-              >
-                <TableFieldList
-                  table={table}
-                  activeFieldId={activeFieldId}
-                  filterField={(field) =>
-                    filterField(field) && isInGroup(field, memberIds)
-                  }
-                  getFieldHref={getFieldHref}
-                />
-              </ChangingFieldsGroup>
-            ))}
-          </Stack>
-        )}
-        {hasMatches && !isGrouped && (
+        {hasMatches ? (
           <TableFieldList
             table={table}
             activeFieldId={activeFieldId}
             filterField={filterField}
             getFieldHref={getFieldHref}
           />
-        )}
-        {!hasMatches && (
+        ) : (
           <ListSearchEmptyState>{t`No fields match "${query}"`}</ListSearchEmptyState>
         )}
       </Box>

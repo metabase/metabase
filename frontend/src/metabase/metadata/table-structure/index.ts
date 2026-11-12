@@ -123,23 +123,11 @@ export {
 } from "./history-review";
 export {
   type ChangingAttribute,
-  type ColumnPair,
-  type PastValuesBinding,
   type PastValuesSource,
-  type RelationshipVersioning,
-  SCD_PROTOTYPE_VARIANTS,
-  type ScdPrototypeVariant,
   type VersionChoice,
   findColumnByName,
   findFieldById,
-  getEventDateFields,
-  inferEventDateField,
-  getDimensionTableForHistory,
   getHistoryTableCandidates,
-  getReferencingFields,
-  getTrackedAttributes,
-  getVersionChoiceOptions,
-  inferBindingForHistoryTable,
   isHistoryTableName,
   useChangingAttributes,
 } from "./changing-attributes";

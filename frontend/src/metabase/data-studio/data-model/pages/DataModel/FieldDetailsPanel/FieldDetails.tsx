@@ -16,31 +16,19 @@ import {
   useFieldCasting,
   useFieldUpdateHandlers,
 } from "metabase/metadata/hooks";
-import {
-  useChangingAttributes,
-  useTableStructures,
-} from "metabase/metadata/table-structure";
+import { useTableStructures } from "metabase/metadata/table-structure";
 import {
   canCoerceFieldType,
   getFieldRawName,
 } from "metabase/metadata/utils/field";
 import { Box, Code, Stack, Switch, Tabs, Text } from "metabase/ui";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
+import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../../analytics";
 import { DetailsEditableText } from "../DetailPanel";
 
-import {
-  AttributeHistoryForm,
-  AttributeHistorySection,
-  ChangeBehaviorSection,
-  ColumnPairSection,
-  GroupMembershipSection,
-  RelationshipVersionSection,
-  useCanPickRelationshipVersion,
-  useIsDimensionAttribute,
-} from "./ChangesOverTime";
+import { ChangesOverTimeSection } from "./ChangesOverTime";
 import { CustomFieldSection } from "./CustomFieldSection";
 import S from "./FieldDetails.module.css";
 import {
@@ -84,13 +72,8 @@ interface FieldDetailsProps {
 export function FieldDetails({ field, table, header }: FieldDetailsProps) {
   const readOnly = !table.can_write;
   const isHistoryTable = useIsHistoryTable(table);
+  const canChangeOverTime = !isHistoryTable && !isPK(field) && !isFK(field);
   const isHistoryAttribute = useIsHistoryAttribute(field, table);
-  const { variant } = useChangingAttributes();
-  const isDimensionAttribute = useIsDimensionAttribute(field, table);
-  const canPickRelationshipVersion = useCanPickRelationshipVersion(
-    field,
-    table,
-  );
   const { handleNameChange, handleDescriptionChange } = useFieldUpdateHandlers({
     field,
   });
@@ -237,45 +220,8 @@ export function FieldDetails({ field, table, header }: FieldDetailsProps) {
               )}
             </DetailsTable>
           </SidebarSection>
-          {variant === "attribute" && isDimensionAttribute && (
-            <AttributeHistorySection
-              field={field}
-              table={table}
-              disabled={readOnly}
-            />
-          )}
-          {variant === "form" && isDimensionAttribute && (
-            <AttributeHistoryForm
-              field={field}
-              table={table}
-              disabled={readOnly}
-            />
-          )}
-          {(variant === "group" || variant === "group-flat") &&
-            isDimensionAttribute && (
-              <GroupMembershipSection
-                field={field}
-                table={table}
-                hasVersionRow={variant === "group-flat"}
-                disabled={readOnly}
-              />
-            )}
-          {variant === "behavior" && isDimensionAttribute && (
-            <ChangeBehaviorSection
-              field={field}
-              table={table}
-              disabled={readOnly}
-            />
-          )}
-          {variant === "columns" && isDimensionAttribute && (
-            <ColumnPairSection
-              field={field}
-              table={table}
-              disabled={readOnly}
-            />
-          )}
-          {variant === "relationship" && canPickRelationshipVersion && (
-            <RelationshipVersionSection
+          {canChangeOverTime && (
+            <ChangesOverTimeSection
               field={field}
               table={table}
               disabled={readOnly}

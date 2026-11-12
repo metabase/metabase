@@ -21,11 +21,7 @@ import { TableFieldsTab } from "./TableFieldsTab";
 import { TableMetadata, TableStats } from "./TableMetadata";
 import { TableProcess, useHasProcess } from "./TableProcess";
 import { TablePropertyList } from "./TablePropertyList";
-import {
-  TableHistorySection,
-  TableStructure,
-  useShowsHistoryTab,
-} from "./TableStructure";
+import { TableStructure } from "./TableStructure";
 
 interface Props {
   table: Table;
@@ -52,7 +48,6 @@ const TableSectionBase = ({
   const isCustomPropertyTable =
     structure.role != null &&
     isRoleA(structure.role, "role/CustomPropertyTable");
-  const isHistoryTable = useShowsHistoryTab(table);
   const hasProcess = useHasProcess(table) && IS_PROCESS_TAB_SHOWN;
   // Segments and measures belong to the semantic layer now: Connected data
   // only lists the ones a table already has, for viewing and editing
@@ -61,7 +56,7 @@ const TableSectionBase = ({
   // A link to a tab the table doesn't show lands on Details
   const isMissingTab =
     (activeTab === "process" && !hasProcess) ||
-    (activeTab === "history" && !isHistoryTable) ||
+    activeTab === "history" ||
     (activeTab === "segments" && !hasSegments) ||
     (activeTab === "measures" && !hasMeasures);
   const visibleTab = isMissingTab ? "details" : activeTab;
@@ -107,9 +102,6 @@ const TableSectionBase = ({
             {isCustomPropertyTable && (
               <Tabs.Tab value="properties">{t`Custom properties`}</Tabs.Tab>
             )}
-            {isHistoryTable && (
-              <Tabs.Tab value="history">{t`History`}</Tabs.Tab>
-            )}
             {hasProcess && <Tabs.Tab value="process">{t`Process`}</Tabs.Tab>}
             {hasSegments && <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>}
             {hasMeasures && <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>}
@@ -145,12 +137,6 @@ const TableSectionBase = ({
           {isCustomPropertyTable && (
             <Tabs.Panel value="properties">
               <TablePropertyList table={table} />
-            </Tabs.Panel>
-          )}
-
-          {isHistoryTable && (
-            <Tabs.Panel value="history">
-              <TableHistorySection table={table} readOnly={readOnly} />
             </Tabs.Panel>
           )}
 
