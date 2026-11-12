@@ -392,25 +392,32 @@
                   #(search/reconcile-cascading-documents! {"action" #{1}, "indexed-entity" #{"1:1"}})))))
         (is (zero? @checked))))))
 
-(deftest reconcile-chunks-reindex-statements-test
-  (testing "surviving ids are re-derived in bounded chunks, so one reconcile cannot build an unbounded query"
+(deftest reconcile-chunks-statements-test
+  (testing "a reconcile checks and re-derives its ids in bounded chunks, so it cannot build an unbounded query"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card   {card-id :id} {:name "Chunking Model", :type :model}
                      :model/Action {_a1 :id}     {:name "Chunk Action 1", :model_id card-id, :type :query}
                      :model/Action {_a2 :id}     {:name "Chunk Action 2", :model_id card-id, :type :query}
                      :model/Action {_a3 :id}     {:name "Chunk Action 3", :model_id card-id, :type :query}]
-        (let [cascading       (cascading-documents-of card-id)
-              runs            (atom [])
-              ingest-updates! (mt/original-fn #'search.ingestion/ingest-updates!)]
+        (let [cascading        (cascading-documents-of card-id)
+              checks           (atom [])
+              runs             (atom [])
+              existing-doc-ids (mt/original-fn #'search.ingestion/existing-doc-ids)
+              ingest-updates!  (mt/original-fn #'search.ingestion/ingest-updates!)]
           (is (= 3 (count (get cascading "action"))))
-          (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [messages]
-                                                                         (swap! runs conj messages)
-                                                                         (ingest-updates! messages))]
+          (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids (fn [search-model ids]
+                                                                          (swap! checks conj (count ids))
+                                                                          (existing-doc-ids search-model ids))
+                                      search.ingestion/ingest-updates!  (fn [messages]
+                                                                          (swap! runs conj messages)
+                                                                          (ingest-updates! messages))]
             ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
-            (with-redefs-fn {#'search.ingestion/reindex-batch-size 2}
+            (with-redefs-fn {#'search.ingestion/reconcile-batch-size 2}
               #(search/reconcile-cascading-documents! cascading)))
-          (testing "three surviving documents split across two statements, neither over the limit"
-            (is (= [2 1] (sort > (map (fn [[[_model [_in _id-expr ids]]]] (count ids)) @runs))))))))))
+          (testing "three surviving documents split across two checks and two re-index statements"
+            (is (= {:checks [2 1], :runs [2 1]}
+                   {:checks (sort > @checks)
+                    :runs   (sort > (map (fn [[[_model [_in _id-expr ids]]]] (count ids)) @runs))}))))))))
 
 (deftest cascade-enumeration-ceiling-test
   (testing "a fan-out past the ceiling is skipped rather than materialized"

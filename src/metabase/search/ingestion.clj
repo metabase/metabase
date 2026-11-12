@@ -368,10 +368,10 @@
         to-delete        (remove indexed-pairs passed-documents)]
     (update! documents to-delete)))
 
-;; The worker ORs a run of re-index messages into one query, so one unchunked id list would put up to the enumeration
-;; ceiling's worth of bind parameters in a single statement.
-(def ^:private reindex-batch-size
-  "Ids re-derived per statement when settling a [[reconcile]] message."
+;; Each chunk's survivor check and re-index are statements of their own, so their `IN` lists stay this size however
+;; many documents the delete reached.
+(def ^:private reconcile-batch-size
+  "Ids checked and re-derived per statement when settling a [[reconcile]] message."
   100)
 
 ;; Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
@@ -380,11 +380,14 @@
   "Settle one [[reconcile]] message: re-derive its documents that still resolve, and remove the rest.
   Documents whose survival cannot be enumerated are left alone."
   [{:keys [search-model ids]}]
-  ;; Nil means the survivors could not be enumerated, and reading it as "none survived" would purge live documents.
-  (when-some [alive (existing-doc-ids search-model ids)]
-    (doseq [chunk (partition-all reindex-batch-size alive)]
-      (ingest-updates! [[search-model (doc-id-selector search-model chunk)]]))
-    (when-let [gone (not-empty (set/difference ids alive))]
+  (doseq [chunk (partition-all reconcile-batch-size ids)
+          :let  [alive (existing-doc-ids search-model chunk)]
+          ;; Nil means the survivors could not be enumerated, and reading it as "none survived" would purge live
+          ;; documents.
+          :when (some? alive)]
+    (when (seq alive)
+      (ingest-updates! [[search-model (doc-id-selector search-model alive)]]))
+    (when-let [gone (not-empty (set/difference (set chunk) alive))]
       (apply-tombstones! [(tombstone search-model gone)]))))
 
 (defn- apply-run!
@@ -410,17 +413,17 @@
 (defn bulk-ingest!
   "Process the given search model updates, tombstones and reconciles, in queue order.
   A run of messages that fails is logged and the later runs still apply; the first failure is then rethrown."
-  [updates]
-  (tracing/with-span :search "search.ingestion.bulk-ingest" {:search/update-count (count updates)}
+  [messages]
+  (tracing/with-span :search "search.ingestion.bulk-ingest" {:search/update-count (count messages)}
     (lib-be/with-metadata-provider-cache
       (when (seq (search.engine/active-engines))
         ;; Preserve the queue's relative ordering: an update after a tombstone is authoritative, while a prior update
         ;; must finish before the delete. Only contiguous re-index messages are coalesced.
         ;; Nothing retries a failed batch, so a failing run must not cost the runs after it, a tombstone above all.
         ;; The first failure is rethrown once every run has had its turn, so the caller still sees it.
-        (when-some [e (reduce (fn [first-error messages]
+        (when-some [e (reduce (fn [first-error run]
                                 (try
-                                  (apply-run! messages)
+                                  (apply-run! run)
                                   first-error
                                   ;; The interrupt stops the batch, and its status stays set for the caller to see.
                                   (catch InterruptedException e
@@ -430,11 +433,11 @@
                                   ;; Any other Error is fatal, so it stops the batch at once.
                                   (catch Throwable e
                                     (if (or (instance? Exception e) (instance? AssertionError e))
-                                      (do (log/errorf e "Failed to ingest %d search index messages" (count messages))
+                                      (do (log/errorf e "Failed to ingest %d search index messages" (count run))
                                           (or first-error e))
                                       (throw e)))))
                               nil
-                              (message-runs updates))]
+                              (message-runs messages))]
           (throw e))))))
 
 (defn- track-queue-size! []
