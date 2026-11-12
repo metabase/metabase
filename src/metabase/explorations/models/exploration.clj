@@ -105,6 +105,14 @@
                   :collection-type            :collection.type
                   :archived-directly          true}})
 
+(def thread-check-columns
+  "The ExplorationThread columns that permission checks of its blocks and queries read."
+  [:model/ExplorationThread :id :exploration_id])
+
+(def block-check-columns
+  "The ExplorationBlock columns that permission checks of its pages read."
+  [:model/ExplorationBlock :id :exploration_thread_id])
+
 (t2/define-after-select :model/Exploration
   [instance]
   (remote-sync/register-loaded! :model/Collection (:collection_id instance))

@@ -39,6 +39,7 @@
 
 (t2/define-after-select :model/TimelineEvent
   [timeline-event]
+  (mi/register-parent! :model/Timeline (:timeline_id timeline-event))
   ;; We used to have a "balloons" icon but we removed it.
   ;; Use the default icon instead. (metabase#34586, metabase#35129)
   (update timeline-event :icon (fn [icon]
@@ -49,7 +50,7 @@
 (defmethod mi/perms-objects-set :model/TimelineEvent
   [event read-or-write]
   (let [timeline (or (:timeline event)
-                     (timeline.db/timeline (:timeline_id event)))]
+                     (mi/parent-row :model/Timeline (:timeline_id event)))]
     (mi/perms-objects-set timeline read-or-write)))
 
 (defmethod mi/can-create? :model/TimelineEvent

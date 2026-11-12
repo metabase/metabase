@@ -3,6 +3,7 @@
    [metabase-enterprise.advanced-permissions.db :as advanced-permissions.db]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
@@ -15,7 +16,7 @@
   :feature :advanced-permissions
   [instance]
   (let [table (or (:table instance)
-                  (advanced-permissions.db/table (:table_id instance)))]
+                  (mi/parent-row :model/Table (:table_id instance)))]
     (and (remote-sync/can-write? :model/TableUserSettings (:id table))
          (let [db-id (or (:db_id table)
                          (database/table-id->database-id (:table_id instance)))]

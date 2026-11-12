@@ -124,11 +124,6 @@
     (t2/select model :id [:in ids])
     []))
 
-(mu/defn thread-exploration-id-row
-  "The `:exploration_id` row of the ExplorationThread with `thread-id`, or nil."
-  [thread-id :- ms/PositiveInt]
-  (t2/select-one [:model/ExplorationThread :exploration_id] :id thread-id))
-
 (mu/defn thread-terminal-state
   "The ID, cancel time, and completion time of the ExplorationThread with `thread-id`."
   [thread-id :- ms/PositiveInt]
@@ -266,11 +261,6 @@
   "The ExplorationBlock with `block-id`, or nil."
   [block-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationBlock :id block-id))
-
-(mu/defn block-thread-id-row
-  "The `:exploration_thread_id` row of the ExplorationBlock with `block-id`, or nil."
-  [block-id :- ms/PositiveInt]
-  (t2/select-one [:model/ExplorationBlock :exploration_thread_id] :id block-id))
 
 (mu/defn block-metrics
   "The metric selections of the ExplorationBlock with `block-id`."

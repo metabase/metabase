@@ -15,6 +15,11 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+(t2/define-after-select :model/ExplorationPage
+  [page]
+  (mi/register-parent! exploration/block-check-columns (:exploration_block_id page))
+  page)
+
 (defmethod mi/can-read? :model/ExplorationPage
   ([instance]
    (mi/can-read? :model/ExplorationBlock (:exploration_block_id instance)))

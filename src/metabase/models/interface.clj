@@ -779,13 +779,71 @@
 (defn- current-user-has-root-permissions? []
   (contains? (current-user-permissions-set) "/"))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *parent-rows*
+  "An atom `{model-spec {:pending #{id} :rows {id row}}}` of the rows that permission checks of loaded rows read, bound
+  per request, or nil. A model spec is a model, or a vector of a model and the columns to select."
+  nil)
+
+(defn do-with-parent-rows-cache
+  "Calls `thunk` with [[*parent-rows*]] bound, keeping a cache already in place."
+  [thunk]
+  (binding [*parent-rows* (or *parent-rows* (atom {}))]
+    (thunk)))
+
+(defn register-parent!
+  "Remembers that this request loaded a row whose permission checks read the row of `model-spec` with `:id` `id`, so
+  that the first [[parent-row]] of `model-spec` selects this row too."
+  [model-spec id]
+  (when-let [cache (and (pos-int? id) *parent-rows*)]
+    (when-not (contains? (get-in @cache [model-spec :rows]) id)
+      (swap! cache update-in [model-spec :pending] (fnil conj #{}) id))))
+
+(defn parent-row
+  "The row of `model-spec`, a model or a vector of a model and its columns, with `:id` `id`, or nil, selected with the
+  pending parents of `model-spec` in a request."
+  [model-spec id]
+  (when id
+    (if-let [cache *parent-rows*]
+      (let [{:keys [pending rows]} (get @cache model-spec)]
+        (if (contains? rows id)
+          (get rows id)
+          (let [ids   (conj (or pending #{}) id)
+                found (into {}
+                            (comp (mapcat #(models.db/entities-by-id model-spec (vec %)))
+                                  (map (juxt :id identity)))
+                            (partition-all 1000 ids))]
+            (swap! cache update model-spec
+                   #(-> %
+                        (update :pending (fnil (fn [p] (reduce disj p ids)) #{}))
+                        (update :rows (fnil into {}) (map (fn [i] [i (get found i)])) ids)))
+            (get found id))))
+      (first (models.db/entities-by-id model-spec [id])))))
+
+(defn- forget-parent-rows!
+  []
+  (when-let [cache *parent-rows*]
+    (when (seq @cache)
+      (reset! cache {}))))
+
+(doseq [query-type [:toucan.query-type/insert.* :toucan.query-type/update.* :toucan.query-type/delete.*]]
+  (methodical/add-aux-method-with-unique-key!
+   #'t2.pipeline/transduce-query :before [query-type :default :default]
+   (fn [_rf _query-type _model _parsed-args resolved-query]
+     (forget-parent-rows!)
+     resolved-query)
+   ::forget-parent-rows))
+
 (mu/defn- check-perms-with-fn
   ([fn-symb       :- qualified-symbol?
     read-or-write :- [:enum :read :write]
     a-model       :- qualified-keyword?
     object-id     :- [:or pos-int? string?]]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (models.db/entity-by-pk a-model (first (t2/primary-keys a-model)) object-id))))
+       (check-perms-with-fn fn-symb read-or-write (let [pk-column (first (t2/primary-keys a-model))]
+                                                    (if (and (= :id pk-column) (pos-int? object-id))
+                                                      (parent-row a-model object-id)
+                                                      (models.db/entity-by-pk a-model pk-column object-id))))))
 
   ([fn-symb       :- qualified-symbol?
     read-or-write :- [:enum :read :write]

@@ -26,16 +26,6 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-one :model/Card :id [:in ids]))
 
-(mu/defn dashboard-collection-id
-  "The `:collection_id` of the Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :collection_id] :id dashboard-id))
-
-(mu/defn card-collection-id
-  "The `:collection_id` of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :collection_id] :id card-id))
-
 (mu/defn dashboard-collection-ids :- [:map-of ::lib.schema.id/dashboard [:maybe ::lib.schema.id/collection]]
   "The `:collection_id` of each of the Dashboards with `dashboard-ids`, by id."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]

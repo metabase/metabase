@@ -515,7 +515,7 @@
     `(do
        (defmethod mi/can-read? ~target
          ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
-         ([_# pk#]    (mi/can-read? (permissions.db/instance-by-id ~target pk#))))
+         ([_# pk#]    (mi/can-read? (mi/parent-row ~target pk#))))
        (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
 
     (string? target)

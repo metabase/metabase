@@ -18,6 +18,12 @@
    id        :- [:or :int :string]]
   (t2/select-one model pk-column id))
 
+(mu/defn entities-by-id
+  "The rows of `model-spec`, a model or a vector of a model and its columns, whose `:id` is one of `ids`."
+  [model-spec :- [:or qualified-keyword? [:cat qualified-keyword? [:+ keyword?]]]
+   ids        :- [:sequential pos-int?]]
+  (t2/select model-spec :id [:in ids]))
+
 (def ^:private model-row-schema
   "The literal registry keyword of the row/update schema of each model the generic entity helpers below are called
   with (a literal keyword, not a `require`, to avoid a dependency cycle with every module that owns one of these

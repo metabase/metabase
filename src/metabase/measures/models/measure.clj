@@ -64,7 +64,7 @@
 (defmethod mi/can-read? :model/Measure
   ([instance]
    (let [table (or (:table instance)
-                   (measures.db/table (:table_id instance)))]
+                   (mi/parent-row :model/Table (:table_id instance)))]
      (mi/can-read? table)))
   ([_model pk]
    (mi/can-read? (measures.db/measure pk))))
@@ -74,7 +74,7 @@
 (defmethod mi/can-write? :model/Measure
   ([instance]
    (let [table (or (:table instance)
-                   (measures.db/table (:table_id instance)))]
+                   (mi/parent-row :model/Table (:table_id instance)))]
      (and (or api/*is-superuser?*
               (and (api/entitled-data-analyst?)
                    (perms/user-has-permission-for-table?
@@ -175,6 +175,7 @@
   [measure]
   (remote-sync/register-loaded! :model/TableUserSettings (:table_id measure))
   (perms/register-loaded! :model/Table (:table_id measure))
+  (mi/register-parent! :model/Table (:table_id measure))
   (normalize-definition-from-db measure))
 
 (mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]

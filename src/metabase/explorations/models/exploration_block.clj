@@ -9,7 +9,6 @@
    entries carry their `dimension_mappings`, `:dimensions` entries carry the dim type
    snapshot — so a block is self-contained for both planning and per-row materialization."
   (:require
-   [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -85,18 +84,23 @@
   {:metrics    transform-metrics
    :dimensions transform-dimensions})
 
+(t2/define-after-select :model/ExplorationBlock
+  [block]
+  (mi/register-parent! exploration/thread-check-columns (:exploration_thread_id block))
+  block)
+
 (defmethod mi/can-read? :model/ExplorationBlock
   ([instance]
    (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [g (explorations.db/block-thread-id-row pk)]
+   (when-let [g (mi/parent-row exploration/block-check-columns pk)]
      (mi/can-read? :model/ExplorationThread (:exploration_thread_id g)))))
 
 (defmethod mi/can-write? :model/ExplorationBlock
   ([instance]
    (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [g (explorations.db/block-thread-id-row pk)]
+   (when-let [g (mi/parent-row exploration/block-check-columns pk)]
      (mi/can-write? :model/ExplorationThread (:exploration_thread_id g)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationBlock :can_write]

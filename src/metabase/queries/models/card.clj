@@ -139,6 +139,10 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
+(def ^:private document-check-columns
+  "The Document columns that permission checks of its Cards read."
+  [:model/Document :id :collection_id :exploration_id])
+
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
   nor a primary key to resolve it from.
@@ -182,7 +186,7 @@
   (let [document-id (parent-document-id card)]
     (if (or (= ::not-adjudicable document-id) (nil? document-id))
       true
-      (let [document (queries.db/document-collection-and-exploration document-id)]
+      (let [document (mi/parent-row document-check-columns document-id)]
         (case read-or-write
           :read  (if-let [snapshots (summary-card-snapshots card document)]
                    (and (mi/current-user-has-full-permissions? :read document)
@@ -206,7 +210,7 @@
    (and (perms/can-read-via-parent-collection? (:collection_id instance))
         (parent-document-permits? instance :read)))
   ([_ pk]
-   (mi/can-read? (queries.db/card pk))))
+   (mi/can-read? (mi/parent-row :model/Card pk))))
 
 (defmethod mi/can-write? :model/Card
   ([instance]
@@ -858,6 +862,7 @@
 (t2/define-after-select :model/Card
   [card]
   (remote-sync/register-loaded! :model/Collection (:collection_id card))
+  (mi/register-parent! document-check-columns (:document_id card))
   ;; +===============================================================================================+
   ;; |   DO NOT EDIT THIS FUNCTION DIRECTLY!                                                         |
   ;; |   Future revisions to the shapes of cards should be handled via [[upgrade-card-schema-to]].   |

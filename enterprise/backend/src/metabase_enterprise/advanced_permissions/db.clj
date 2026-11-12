@@ -8,11 +8,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
-
 (mu/defn group-manager?
   "Whether the User with `user-id` manages the PermissionsGroup with `group-id`."
   [user-id  :- ::lib.schema.id/user

@@ -37,13 +37,22 @@
    :config   mi/transform-json
    :state    mi/transform-json})
 
+(def ^:private target-models
+  "The model of the row a CacheConfig with each `model` value targets, for those whose checks read that row."
+  {"dashboard" :model/Dashboard
+   "question"  :model/Card})
+
+(t2/define-after-select :model/CacheConfig
+  [{:keys [model model_id] :as config}]
+  (when-let [target-model (get target-models model)]
+    (mi/register-parent! target-model model_id))
+  config)
+
 (defn- target-collection-id
   "Get the collection_id for the target entity of a CacheConfig."
   [{:keys [model model_id]}]
-  (case model
-    "dashboard" (:collection_id (cache.db/dashboard-collection-id model_id))
-    "question"  (:collection_id (cache.db/card-collection-id model_id))
-    nil))
+  (when-let [target-model (get target-models model)]
+    (:collection_id (mi/parent-row target-model model_id))))
 
 (defn- can-write-config?
   "Whether the current user can write the CacheConfig `instance`, given the collection of the dashboard or card it

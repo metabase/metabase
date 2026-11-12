@@ -133,6 +133,7 @@
   [field]
   (remote-sync/register-loaded! :model/TableUserSettings (:table_id field))
   (perms/register-loaded! :model/Table (:table_id field))
+  (mi/register-parent! :model/Table (:table_id field))
   (dissoc field :is_defective_duplicate :unique_field_helper))
 
 (defn- enforce-effective-type-invariant
@@ -185,7 +186,7 @@
   "Get the Table for a Field, either from hydration or by fetching."
   [instance]
   (or (:table instance)
-      (warehouse-schema.db/table (:table_id instance))))
+      (mi/parent-row :model/Table (:table_id instance))))
 
 (defmethod mi/can-read? :model/Field
   ;; Field permissions delegate to the parent Table. User can read this field if they can read its table.
@@ -206,8 +207,7 @@
   read-only instance syncs its table."
   metabase-enterprise.advanced-permissions.common
   [instance]
-  (let [table (or (:table instance)
-                  (warehouse-schema.db/table (:table_id instance)))]
+  (let [table (field->table instance)]
     (and (remote-sync/can-write? :model/TableUserSettings (:id table))
          (mi/superuser?))))
 

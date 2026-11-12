@@ -45,10 +45,15 @@
     (for [{:keys [id] :as tab} tabs]
       (assoc tab :cards (get tab-id->dashcards id [])))))
 
+(t2/define-after-select :model/DashboardTab
+  [dashtab]
+  (mi/register-parent! :model/Dashboard (:dashboard_id dashtab))
+  dashtab)
+
 (defmethod mi/perms-objects-set :model/DashboardTab
   [dashtab read-or-write]
   (let [dashboard (or (:dashboard dashtab)
-                      (dashboards.db/dashboard (:dashboard_id dashtab)))]
+                      (mi/parent-row :model/Dashboard (:dashboard_id dashtab)))]
     (mi/perms-objects-set dashboard read-or-write)))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------

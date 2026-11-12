@@ -815,9 +815,3 @@
   "The ID, visibility type, and Table ID of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :visibility_type :table_id] :id [:in field-ids]))
-
-(mu/defn instance-by-id
-  "The instance of `model` with `id`, or nil."
-  [model :- :keyword
-   id    :- ms/PositiveInt]
-  (t2/select-one model :id id))

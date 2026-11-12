@@ -22,18 +22,23 @@
    :data_access_token     perms/data-access-token-transform
    :resolved_source_ids   query-perms/resolved-source-ids-transform})
 
+(t2/define-after-select :model/ExplorationThread
+  [thread]
+  (mi/register-parent! :model/Exploration (:exploration_id thread))
+  thread)
+
 (defmethod mi/can-read? :model/ExplorationThread
   ([instance]
    (mi/can-read? :model/Exploration (:exploration_id instance)))
   ([_model pk]
-   (when-let [thread (explorations.db/thread-exploration-id-row pk)]
+   (when-let [thread (mi/parent-row exploration/thread-check-columns pk)]
      (mi/can-read? :model/Exploration (:exploration_id thread)))))
 
 (defmethod mi/can-write? :model/ExplorationThread
   ([instance]
    (mi/can-write? :model/Exploration (:exploration_id instance)))
   ([_model pk]
-   (when-let [thread (explorations.db/thread-exploration-id-row pk)]
+   (when-let [thread (mi/parent-row exploration/thread-check-columns pk)]
      (mi/can-write? :model/Exploration (:exploration_id thread)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :can_write]

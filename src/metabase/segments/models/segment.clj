@@ -85,7 +85,8 @@
 
 (defmethod mi/can-read? :model/Segment
   ([instance]
-   (let [table (:table (t2/hydrate instance :table))]
+   (let [table (or (:table instance)
+                   (mi/parent-row :model/Table (:table_id instance)))]
      (mi/can-read? table)))
   ([_model pk]
    (mi/can-read? (segments.db/segment pk))))
@@ -97,7 +98,7 @@
 (defmethod mi/can-write? :model/Segment
   ([instance]
    (let [table (or (:table instance)
-                   (segments.db/table (:table_id instance)))]
+                   (mi/parent-row :model/Table (:table_id instance)))]
      (and (or (mi/superuser?)
               (and (api/entitled-data-analyst?)
                    (perms/user-has-permission-for-table?
@@ -201,6 +202,7 @@
   [{:keys [definition] :as segment}]
   (remote-sync/register-loaded! :model/TableUserSettings (:table_id segment))
   (perms/register-loaded! :model/Table (:table_id segment))
+  (mi/register-parent! :model/Table (:table_id segment))
   (cond-> segment
     (some? definition) (assoc :definition (maybe-migrated-segment-definition segment))))
 

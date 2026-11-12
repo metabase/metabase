@@ -23,6 +23,11 @@
    :data_access_token      perms/data-access-token-transform
    :resolved_source_ids    query-perms/resolved-source-ids-transform})
 
+(t2/define-after-select :model/ExplorationQuery
+  [query]
+  (mi/register-parent! exploration/thread-check-columns (:exploration_thread_id query))
+  query)
+
 (defmethod mi/can-read? :model/ExplorationQuery
   ([instance]
    (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
