@@ -424,9 +424,11 @@
   [user-id-group-id->is-group-manager? :- [:map-of [:tuple ms/PositiveInt ms/PositiveInt] :boolean]]
   (t2/with-transaction [_conn]
     (u/prog1 (t2/query-one (insert-group-memberships-from-mapping-query user-id-group-id->is-group-manager?))
-      (change-log/log-rows! :model/PermissionsGroupMembership :insert
-                            {:where (into [:or] (for [[user-id group-id] (keys user-id-group-id->is-group-manager?)]
-                                                  [:and [:= :user_id user-id] [:= :group_id group-id]]))}))))
+      ;; without a pair the condition is empty, and matches every membership
+      (when (seq user-id-group-id->is-group-manager?)
+        (change-log/log-rows! :model/PermissionsGroupMembership :insert
+                              {:where (into [:or] (for [[user-id group-id] (keys user-id-group-id->is-group-manager?)]
+                                                    [:and [:= :user_id user-id] [:= :group_id group-id]]))})))))
 
 (mu/defn other-active-member-count
   "The number of active Users other than `user-id` in the PermissionsGroup with `group-id`."
