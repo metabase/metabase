@@ -311,9 +311,9 @@
   [user]
   (-> user
       (assoc :has_question_and_dashboard
-             (and (users-rest.db/has-visible-card? nil)
-                  (users-rest.db/has-visible-dashboard?)))
-      (assoc :has_model (users-rest.db/has-visible-card? "model"))))
+             (and (users-rest.db/has-visible-card? (:id user) nil)
+                  (users-rest.db/has-visible-dashboard? (:id user))))
+      (assoc :has_model (users-rest.db/has-visible-card? (:id user) "model"))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
@@ -340,7 +340,7 @@
   [user]
   (assoc user :can_write_any_collection
          (or (:is_superuser user)
-             (users-rest.db/writable-collection-exists?))))
+             (= :read-and-write (perms/some-collection-permission-for-user (:id user))))))
 
 (mr/def ::user-permissions
   "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,
