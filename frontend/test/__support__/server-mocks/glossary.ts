@@ -1,8 +1,8 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type CallLog } from "fetch-mock";
 
 import type { GlossaryItem, ListGlossaryResponse } from "metabase/api";
 
-import type { MockResponse } from "./types";
+type MockResponse<T> = T | ((call: CallLog) => T | Promise<T>);
 
 export function setupListGlossaryEndpoint(
   response: MockResponse<ListGlossaryResponse>,
