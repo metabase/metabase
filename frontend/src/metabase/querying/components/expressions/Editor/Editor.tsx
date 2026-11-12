@@ -225,7 +225,6 @@ export function Editor(props: EditorProps) {
         stageIndex={stageIndex}
         database={database}
         reportTimezone={reportTimezone}
-        expressionMode={expressionMode}
         {...props}
       />
     ),

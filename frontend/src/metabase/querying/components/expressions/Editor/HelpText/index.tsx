@@ -1,1 +1,0 @@
-export { HelpText } from "./HelpText";

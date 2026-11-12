@@ -1,13 +1,7 @@
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import cx from "classnames";
-import {
-  type RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { type RefObject, useEffect, useMemo, useState } from "react";
 
 import {
   enclosingFunction,
@@ -17,7 +11,6 @@ import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
-import { HelpText } from "../HelpText";
 import { Listbox, useCompletions } from "../Listbox";
 
 import S from "./Tooltip.module.css";
@@ -28,7 +21,6 @@ export function Tooltip({
   database,
   reportTimezone,
   tooltipRef,
-  expressionMode,
 
   state,
   view,
@@ -37,7 +29,6 @@ export function Tooltip({
   stageIndex: number;
   database: Pick<Database, "engine" | "features"> | undefined;
   reportTimezone?: string;
-  expressionMode: Lib.ExpressionMode;
 
   // from tooltip extension
   tooltipRef: RefObject<HTMLDivElement | null>;
@@ -60,29 +51,7 @@ export function Tooltip({
   }, [state.selection.main.head]);
 
   const { options: completions } = useCompletions(state);
-
-  const [isHelpTextOpen, setIsHelpTextOpen] = useState(true);
-  const [preferHelpText, setPreferHelpText] = useState(false);
-
-  const handleToggleHelpText = useCallback(() => {
-    if (completions.length > 0) {
-      setIsHelpTextOpen(!preferHelpText);
-      setPreferHelpText(!preferHelpText);
-      return;
-    }
-    setIsHelpTextOpen((open) => !open);
-  }, [completions, preferHelpText]);
-
-  useEffect(() => {
-    if (completions.length > 0) {
-      setPreferHelpText(false);
-    }
-  }, [completions.length, enclosingFn]);
-
-  const shouldShowHelpText =
-    completions.length === 0 ? isHelpTextOpen : preferHelpText;
-  const shouldShowCompletions =
-    completions.length === 0 ? false : !preferHelpText;
+  const hasCompletions = completions.length > 0;
 
   return (
     <Popover
@@ -100,23 +69,12 @@ export function Tooltip({
       <Popover.Dropdown
         data-testid="custom-expression-editor-suggestions"
         className={cx(S.dropdown, {
-          [S.completions]: shouldShowCompletions,
+          [S.completions]: hasCompletions,
         })}
         data-ignore-editor-clicks="true"
       >
         <div className={S.tooltip} ref={tooltipRef}>
-          {/* The options have the description of the argument instead. */}
-          {!shouldShowCompletions && (
-            <HelpText
-              enclosingFunction={enclosingFn}
-              database={database}
-              reportTimezone={reportTimezone}
-              open={shouldShowHelpText}
-              onToggle={handleToggleHelpText}
-              expressionMode={expressionMode}
-            />
-          )}
-          {shouldShowCompletions && (
+          {hasCompletions && (
             <Listbox
               state={state}
               view={view}
