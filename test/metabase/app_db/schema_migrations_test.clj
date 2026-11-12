@@ -4887,8 +4887,8 @@
           (is (thrown? Exception (t2/select :card_test))))))))
 
 (deftest workspace-idempotency-key-test
-  (testing "wk6itt..pagsu9: workspace.idempotency_key is unique per creator, and the rollback drops it"
-    (impl/test-migrations ["wk6itt" "pagsu9"] [migrate!]
+  (testing "wk6itt..kbq7xz: workspace.idempotency_key is unique per creator, and the rollback drops it"
+    (impl/test-migrations ["wk6itt" "kbq7xz"] [migrate!]
       (let [new-user! (fn [email]
                         (t2/insert-returning-pk! :core_user {:first_name    "Workspace"
                                                              :last_name     "Creator"
@@ -4913,7 +4913,8 @@
         (testing "a key is unique per creator"
           (ws! alice "k1")
           (is (thrown? Exception (ws! alice "k1")))
-          (is (pos-int? (ws! bob "k1")) "another creator may use the same key"))
+          (is (pos-int? (ws! bob "k1")) "another creator may use the same key")
+          (is (pos-int? (ws! alice "K1")) "keys that differ only in letter case are two keys, on every app DB"))
         (testing "workspaces without a key never conflict"
           (is (pos-int? (ws! alice nil)))
           (is (pos-int? (ws! alice nil))))
@@ -4922,7 +4923,7 @@
             (rollback/rollback-to-deployment! conn liquibase boundary)))
         (testing "rollback drops the column and keeps the workspaces"
           (is (not (contains? (t2/select-one :workspace :id existing) :idempotency_key)))
-          (is (= 5 (t2/count :workspace))))))))
+          (is (= 6 (t2/count :workspace))))))))
 
 (deftest data-app-slug-and-name-columns-migration-test
   (impl/test-migrations ["rwnbah"] [migrate!]

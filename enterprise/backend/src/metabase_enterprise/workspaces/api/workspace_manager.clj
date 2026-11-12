@@ -100,23 +100,29 @@
 
 (defn- request-idempotency-key
   "The request's `Idempotency-Key` header, or nil when absent. 400 unless it is 1 to
-   255 characters and not blank."
+   255 characters, not blank, with no leading or trailing whitespace. A MySQL app DB
+   ignores trailing spaces when it compares keys, so `\"k\"` and `\"k \"` would be
+   one key."
   [request]
   (when-let [k (get-in request [:headers "idempotency-key"])]
-    (api/check-400 (and (not (str/blank? k)) (<= (count k) 255))
-                   "Idempotency-Key must be 1 to 255 characters and not blank")
+    (api/check-400 (and (not (str/blank? k)) (= k (str/trim k)) (<= (count k) 255))
+                   "Idempotency-Key must be 1 to 255 characters, not blank, with no leading or trailing whitespace")
     k))
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
    for workspaces) and provision it (blocking).
 
-   Send an `Idempotency-Key` header (1 to 255 characters) to make the request safe to
-   retry. A key that already has a workspace of the current user never provisions
-   again: the response is that workspace (200), or 409 with error code
-   `workspace_busy` while it is still provisioning. A create that failed and deleted
-   its workspace frees its key. The body of a retry is not compared with the
-   original, so send a key again only to retry the same intended workspace."
+   Send an `Idempotency-Key` header to make the request safe to retry. The key must be
+   1 to 255 characters, not blank, with no leading or trailing whitespace; otherwise
+   400. Keys are compared exactly, letter case included. When the current user
+   already has a workspace with that key, nothing is provisioned. The response is
+   that workspace (200); 409 with error code `workspace_busy` while that workspace's
+   create is still running; or 500 with `workspace_id` and `cleanup_required` when
+   that create failed and kept the workspace, which must be deleted. A create that
+   failed and deleted its workspace frees its key. The body of a retry is not
+   compared with the original, so send a key again only to retry the same intended
+   workspace."
   [_route-params _query-params params :- CreateWorkspaceParams request]
   (api/create-check :model/Workspace params)
   (present-workspace

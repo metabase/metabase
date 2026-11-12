@@ -298,8 +298,9 @@
   "Insert the Workspace and its WorkspaceDatabase rows. Returns `{:created ws}`, or
   `{:retried ws-id}` when the creator already has a Workspace with `idempotency_key`.
   The unique index on (idempotency_key, creator_id) decides which of two concurrent
-  requests inserts; the other inserts nothing. Any other duplicate key, and a key
-  whose workspace a failed create deleted in the meantime, is rethrown as before."
+  requests inserts; the other inserts nothing. Rethrows the duplicate-key error when
+  it comes from another constraint, or when the workspace with this key was deleted,
+  by a failed create, between the insert and the lookup."
   [{:keys [creator_id idempotency_key] :as params}]
   (try
     {:created (workspace/create-workspace! params)}
@@ -310,16 +311,31 @@
         {:retried ws-id}
         (throw t)))))
 
+(defn- assert-create-not-pending
+  "Refuse (409, error code `workspace_busy`) while a database of workspace `ws-id` is
+  `:unprovisioned` and changed within [[in-flight-stale-after]]. A create commits all
+  its rows `:unprovisioned`, then provisions them one at a time, so such a row means
+  that the create has not yet reached that database."
+  [ws-id]
+  (when (ws.db/workspace-has-unprovisioned-databases-since? ws-id
+                                                            (t/minus (t/offset-date-time) in-flight-stale-after))
+    (throw (ex-info "A create with this idempotency key is still running. Retry once it finishes."
+                    {:status-code  409
+                     :error-code   "workspace_busy"
+                     :workspace_id ws-id}))))
+
 (defn- retried-workspace
-  "The workspace `ws-id` that an earlier create with the same idempotency key made,
-  hydrated, for a retry of that create. Refuses (409, `workspace_busy`) while that
-  create is still provisioning. When the earlier create failed and kept the
-  workspace because its cleanup failed too, some database is not `:provisioned`:
-  the retry replays that failure as a 500 with `cleanup_required`, and the key stays
-  taken until the workspace is deleted. A kept workspace with no databases (cleanup
-  removed them, then deleting the Workspace row failed) is a failed create too."
+  "Returns the hydrated workspace `ws-id`, which an earlier create with the same
+  idempotency key made. Refuses (409, `workspace_busy`) while that create is still
+  running: a database is `:provisioning`, or `:unprovisioned` and not yet reached,
+  and changed within [[in-flight-stale-after]]. When the workspace has no databases,
+  or a database that is not `:provisioned`, the retry answers 500 with `workspace_id`
+  and `cleanup_required`: the earlier create failed and kept the workspace, or
+  stopped (a crash) more than [[in-flight-stale-after]] ago. The key stays taken
+  until the workspace is deleted."
   [ws-id]
   (assert-workspace-not-busy ws-id)
+  (assert-create-not-pending ws-id)
   (let [ws (workspace/get-workspace ws-id)]
     (when (or (empty? (:databases ws))
               (not-every? #(= :provisioned (:status %)) (:databases ws)))
@@ -355,10 +371,10 @@
    An optional `idempotency_key` makes the create safe to retry. It is stored on the
    Workspace row, unique per creator. When the creator already has a workspace with
    that key, nothing is provisioned: the call returns that workspace, refuses with
-   409 (`workspace_busy`) while it is still provisioning, or answers 500 with
-   `cleanup_required` when that create failed and kept the workspace. The rest of a retry's params
-   are not compared with the original's. A failed create whose cleanup deleted its
-   workspace frees the key."
+   409 (`workspace_busy`) while that workspace's create is still running, or
+   answers 500 with `workspace_id` and `cleanup_required` when that create failed
+   and kept the workspace. The rest of a retry's params are not compared with the
+   original's. A failed create whose cleanup deleted its workspace frees the key."
   [{:keys [name creator_id database_ids idempotency_key]}]
   (let [databases (mapv (fn [db-id]
                           (let [database (assert-database-exists db-id)]

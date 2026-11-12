@@ -5,6 +5,7 @@
    are wired into the endpoints (one 403 spot-check is enough)."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [java-time.api :as t]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
@@ -162,10 +163,11 @@
                         {:name ws-name :database_ids [db-id]}))
 
 (defn- do-with-eligible-database!
-  "Call `f` with the id of a committed Database eligible for workspaces, deleting it and
-  any Workspace created meanwhile afterwards. Not `mt/with-temp`: that runs its body in
-  a rollback-only transaction which the request threads of these tests would inherit
-  and share, so concurrent creates would not race in separate transactions."
+  "Call `f` with the id of a committed Database that is eligible for workspaces.
+  Afterwards, delete that Database and every Workspace that `f` created. Not
+  `mt/with-temp`: that runs its body in a rollback-only transaction which the request
+  threads of these tests would inherit and share, so concurrent creates would not race
+  in separate transactions."
   [f]
   (let [db-id (t2/insert-returning-pk! :model/Database {:name     (mt/random-name)
                                                         :engine   :postgres
@@ -261,6 +263,12 @@
            (let [{ws-id :id} (create-with-key 200 "retry-after-failed-cleanup" "Wedged" db-id)]
              (is (=? {:databases [{:status "unprovisioned"}]}
                      (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))
+             ;; master's failed cleanup leaves the row `unprovisioned`, like a create that has not yet
+             ;; reached it, so a retry within 15 minutes is a 409; with #86788 the row is `teardown_failed`
+             (is (=? {:error-code "workspace_busy"}
+                     (create-with-key 409 "retry-after-failed-cleanup" "Wedged" db-id)))
+             (t2/update! :model/WorkspaceDatabase {:workspace_id ws-id}
+                         {:updated_at (t/minus (t/offset-date-time) (t/hours 1))})
              (is (=? {:workspace_id ws-id :cleanup_required true}
                      (create-with-key 500 "retry-after-failed-cleanup" "Wedged" db-id)))
              (is (= 1 @inits) "the retry provisioned nothing")
@@ -316,15 +324,78 @@
              (is (= 1 (t2/count :model/Workspace :idempotency_key "concurrent"))))))))))
 
 (deftest create-idempotency-key-validation-test
-  (testing "a blank or overlong Idempotency-Key is a 400 and creates nothing"
+  (testing "a blank or overlong Idempotency-Key, or one with surrounding whitespace, is a 400 and creates nothing"
     (do-with-eligible-database!
      (fn [db-id]
        (with-redefs [provisioning/dispatching-provisioner (counting-provisioner (atom 0) (constantly nil))]
-         (doseq [bad-key ["   " (apply str (repeat 256 "k"))]]
+         (doseq [bad-key ["   " (apply str (repeat 256 "k")) "k " " k"]]
            (create-with-key 400 bad-key "Bad key" db-id))
          (is (zero? (t2/count :model/Workspace :name "Bad key")))
          (testing "255 characters is allowed"
            (create-with-key 200 (apply str (repeat 255 "k")) "Long key" db-id)))))))
+
+(defn- pausing-before-nth-provision!
+  "A replacement for `provisioning/provision-single!` whose `n`th call delivers its row id
+  to `paused`, then waits for `resume`, before the row turns `:provisioning`."
+  [n paused resume]
+  (let [provision-single! provisioning/provision-single!
+        calls             (atom 0)]
+    (fn
+      ([wsd-id]
+       (when (= n (swap! calls inc))
+         (deliver paused wsd-id)
+         (deref resume 30000 nil))
+       (provision-single! wsd-id))
+      ;; the 1-arity original calls the var again with 2 args; that call is not counted
+      ([wsd-id provisioner]
+       (provision-single! wsd-id provisioner)))))
+
+(deftest create-idempotency-retry-before-database-provisioning-test
+  (testing "a same-key retry while a database of the first create is not yet provisioning gets 409 workspace_busy, never the failed-create 500"
+    (doseq [[n window] [[1 "before the first database turns provisioning"]
+                        [2 "after the first database is provisioned, before the second turns provisioning"]]]
+      (testing window
+        (do-with-eligible-database!
+         (fn [db1-id]
+           (do-with-eligible-database!
+            (fn [db2-id]
+              (let [idempotency-key (str "retry-before-provisioning-" n)
+                    paused          (promise)
+                    resume          (promise)
+                    create!         #(mt/user-http-request-full-response
+                                      :crowberto :post "ee/workspace-manager/"
+                                      {:request-options {:headers {"idempotency-key" idempotency-key}}}
+                                      {:name "Gated" :database_ids [db1-id db2-id]})]
+                (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)
+                              provisioning/provision-single!       (pausing-before-nth-provision! n paused resume)]
+                  (let [create (future (create!))]
+                    (try
+                      (is (some? (deref paused 10000 nil)) "the first create paused before a database turned provisioning")
+                      (let [{:keys [status body]} (create!)]
+                        (is (= 409 status) (str "body " (pr-str body)))
+                        (is (=? {:error-code "workspace_busy"} body)))
+                      (deliver resume true)
+                      (is (=? {:status 200 :body {:databases [{:status "provisioned"} {:status "provisioned"}]}}
+                              (deref create 10000 ::timed-out))
+                          "the first create still finishes")
+                      (finally
+                        (deliver resume true)
+                        (deref create 10000 nil))))))))))))))
+
+(deftest create-idempotency-retry-of-stale-workspace-test
+  (testing "a retry whose workspace has only rows older than 15 minutes that are not provisioned answers the failed-create 500"
+    (doseq [status [:provisioning :unprovisioned]]
+      (testing status
+        (do-with-eligible-database!
+         (fn [db-id]
+           (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+             (let [idempotency-key (str "retry-stale-" (name status))
+                   {ws-id :id}     (create-with-key 200 idempotency-key "Crashed" db-id)]
+               (t2/update! :model/WorkspaceDatabase {:workspace_id ws-id}
+                           {:status     status
+                            :updated_at (t/minus (t/offset-date-time) (t/hours 1))})
+               (is (=? {:workspace_id ws-id :cleanup_required true}
+                       (create-with-key 500 idempotency-key "Crashed" db-id)))))))))))
 
 (deftest rename-workspace-test
   (testing "PUT /:id renames a workspace and returns the updated WorkspaceResponse"

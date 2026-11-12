@@ -1,8 +1,12 @@
 ## Adds workspace.idempotency_key: the client-chosen Idempotency-Key header of the POST that created the workspace, so
 ## a retried create returns the workspace the first request made instead of provisioning a second one. The unique index
 ## scopes a key to its creator. Rows without a key (NULL) never conflict: H2, PostgreSQL and MySQL/MariaDB all treat
-## NULLs as distinct in a unique index. The key column leads the index so that MySQL never uses it to back the
-## creator_id foreign key, which keeps the index droppable on rollback.
+## NULLs as distinct in a unique index. The key column leads the index, so MySQL never uses this index for the
+## creator_id foreign key. The rollback can then drop the index.
+##
+## MySQL and MariaDB create app-DB tables with the case-insensitive collation utf8mb4_unicode_ci, which would make the
+## keys "Key" and "key" one key. kbq7xz gives the column the binary collation utf8mb4_bin there, so they compare by
+## bytes as on H2 and PostgreSQL. utf8mb4_bin still ignores trailing spaces; the API refuses a key that has them.
 
 databaseChangeLog:
   - changeSet:
@@ -34,3 +38,16 @@ databaseChangeLog:
                   name: idempotency_key
               - column:
                   name: creator_id
+
+  - changeSet:
+      id: kbq7xz
+      author: escherize
+      comment: Compare workspace.idempotency_key byte by byte on MySQL and MariaDB
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE workspace MODIFY idempotency_key VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT 'Idempotency-Key header of the request that created this workspace, unique per creator';
+      # No rollback of the collation: keys that differ only in letter case would collide in the unique index under
+      # utf8mb4_unicode_ci. The rollbacks of pagsu9 and wk6itt, which ship in this file, drop the index and the column.
+      rollback:
+        - empty: {}
