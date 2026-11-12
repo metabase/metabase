@@ -592,7 +592,7 @@ interface PublicSettings {
   "csp-img-allowed-hosts": string;
   "csp-img-enabled": boolean;
   "ai-features-enabled?": boolean;
-  "agent-api-enabled?": boolean;
+  "deprecated-agent-api-enabled?": boolean;
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "metaplow-tracking-enabled": boolean;
