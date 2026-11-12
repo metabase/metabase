@@ -271,24 +271,20 @@
 
 (mu/defn perms-objects-set-for-parent-collection :- [:set perms.u/PathSchema]
   "Implementation of `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
-  This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or for the Root
-  Collection if `collection_id` is `nil`."
-  ([collection-id :- [:maybe ms/PositiveInt]
-    read-or-write :- [:enum :read :write]]
-   (perms-objects-set-for-parent-collection nil collection-id read-or-write))
-
-  ([collection-namespace :- [:maybe ms/KeywordOrString]
-    collection-id        :- [:maybe ms/PositiveInt]
-    read-or-write        :- [:enum :read :write]]
-   ;; based on value of read-or-write determine the appropriate function used to calculate the perms path
-   (let [path-fn (case read-or-write
-                   :read  permissions.path/collection-read-path
-                   :write permissions.path/collection-readwrite-path)]
-     ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
-     ;; Collection
-     #{(path-fn (or collection-id
-                    {:metabase.collections.models.collection.root/is-root? true
-                     :namespace                                collection-namespace}))})))
+  This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or, if
+  `collection_id` is `nil`, of the root collection of `collection-namespace`."
+  [collection-namespace :- [:maybe ms/KeywordOrString]
+   collection-id        :- [:maybe ms/PositiveInt]
+   read-or-write        :- [:enum :read :write]]
+  ;; based on value of read-or-write determine the appropriate function used to calculate the perms path
+  (let [path-fn (case read-or-write
+                  :read  permissions.path/collection-read-path
+                  :write permissions.path/collection-readwrite-path)]
+    ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
+    ;; Collection
+    #{(path-fn (or collection-id
+                   {:metabase.collections.models.collection.root/is-root? true
+                    :namespace                                collection-namespace}))}))
 
 (mu/defn collection-read-access-group-ids :- [:set ms/PositiveInt]
   "Set of `PermissionsGroup` ids holding a stored read (or read-write) permission row for the collection with
@@ -436,14 +432,14 @@
   Used by models that opt into the collection-id-only contract via [[define-collection-based-visibility!]],
   and by semantic search's fast path; sharing this helper keeps the two paths structurally in sync.
   Takes `coll-id` (not an instance) so the logic cannot grow a dependency on other instance fields."
-  [coll-id]
+  [collection-namespace coll-id]
   (and (or (premium-features/enable-audit-app?)
            (not (and (some? coll-id) (audit/is-collection-id-audit? coll-id))))
        (mi/current-user-has-full-permissions?
         #{(permissions.path/collection-read-path
            (or coll-id
                {:metabase.collections.models.collection.root/is-root? true
-                :namespace                                            nil}))})))
+                :namespace                                            collection-namespace}))})))
 
 ;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
 (mu/defn can-read-audit-helper
@@ -459,7 +455,8 @@
     false
     (case model
       :model/Collection (mi/current-user-has-full-permissions? :read instance)
-      (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection (:collection_id instance) :read)))))
+      (mi/current-user-has-full-permissions?
+       (perms-objects-set-for-parent-collection nil (:collection_id instance) :read)))))
 
 ;;; ---- Collection-based visibility registration ----
 
@@ -515,7 +512,8 @@
     (keyword? target)
     `(do
        (defmethod mi/can-read? ~target
-         ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
+         ([instance#] (can-read-via-parent-collection? (governing-collection/root-namespace ~target)
+                                                       (:collection_id instance#)))
          ([_# pk#]    (mi/can-read? (permissions.db/instance-by-id ~target pk#))))
        (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
 

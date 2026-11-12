@@ -36,7 +36,8 @@
   :feature :library
   [table]
   (when (:is_published table)
-    (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection (:collection_id table) :read))))
+    (mi/current-user-has-full-permissions?
+     (perms/perms-objects-set-for-parent-collection nil (:collection_id table) :read))))
 
 (defenterprise published-table-perm-grant-rows
   "Returns a HoneySQL SELECT producing (id, perm_type, perm_value) rows for tables that are
