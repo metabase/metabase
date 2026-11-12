@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import type { DefaultSegment } from "metabase/metadata/table-segments";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
-import { Icon, Input, Menu, Popover, Select, Stack, rem } from "metabase/ui";
+import { Icon, Input, Menu, Popover, Select, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Segment, Table } from "metabase-types/api";
 
@@ -33,8 +33,6 @@ export function TableDefaultSegment({ table, readOnly }: TableSettingProps) {
   return (
     <Input.Wrapper
       label={t`Default segment`}
-      // Sized like the Segments tab's 17px section headings around it
-      labelProps={{ fz: "lg", lh: rem(20) }}
       description={t`Questions on this table start from this segment. People can remove it from a question.`}
     >
       <DefaultSegmentValue
@@ -349,54 +347,56 @@ function RequiredFilterFields({
         onChange={handleColumnChange}
         data-testid="table-required-filter-column"
       />
-      <Input.Wrapper
-        label={t`Default value`}
-        description={t`What the filter starts as. People can change it, but not remove it.`}
-      >
-        <Popover
-          opened={isValueOpen}
-          position="bottom-start"
-          disabled={disabled || valueColumn == null}
-          onChange={setIsValueOpen}
+      {fieldId != null && (
+        <Input.Wrapper
+          label={t`Default value for this filter`}
+          description={t`What the filter starts as. People can change it, but not remove it.`}
         >
-          <Popover.Target>
-            <Input
-              component="button"
-              w="fit-content"
-              miw="16rem"
-              mt="xs"
-              type="button"
-              aria-label={t`Default value`}
-              classNames={BUTTON_INPUT_CLASS_NAMES}
-              disabled={disabled || valueColumn == null}
-              rightSection={<Icon name="chevrondown" />}
-              rightSectionPointerEvents="none"
-              onClick={() => setIsValueOpen((isOpen) => !isOpen)}
-              data-testid="table-required-filter-value"
-            >
-              {hasSavedValue && requiredFilter.filterName != null ? (
-                requiredFilter.filterName
-              ) : (
-                // The color inputs use for their placeholders
-                <Input.Placeholder c="text-disabled">
-                  {fieldId == null ? t`Pick a column first` : t`Pick a value`}
-                </Input.Placeholder>
+          <Popover
+            opened={isValueOpen}
+            position="bottom-start"
+            disabled={disabled || valueColumn == null}
+            onChange={setIsValueOpen}
+          >
+            <Popover.Target>
+              <Input
+                component="button"
+                w="fit-content"
+                miw="16rem"
+                mt="xs"
+                type="button"
+                aria-label={t`Default value for this filter`}
+                classNames={BUTTON_INPUT_CLASS_NAMES}
+                disabled={disabled || valueColumn == null}
+                rightSection={<Icon name="chevrondown" />}
+                rightSectionPointerEvents="none"
+                onClick={() => setIsValueOpen((isOpen) => !isOpen)}
+                data-testid="table-required-filter-value"
+              >
+                {hasSavedValue && requiredFilter.filterName != null ? (
+                  requiredFilter.filterName
+                ) : (
+                  // The color inputs use for their placeholders
+                  <Input.Placeholder c="text-disabled">
+                    {t`Pick a value`}
+                  </Input.Placeholder>
+                )}
+              </Input>
+            </Popover.Target>
+            <Popover.Dropdown p={0}>
+              {valueQuery && valueColumn && (
+                <FilterPickerBody
+                  query={valueQuery}
+                  stageIndex={STAGE_INDEX}
+                  column={valueColumn}
+                  filter={hasSavedValue ? savedFilter : undefined}
+                  onChange={handleValueChange}
+                />
               )}
-            </Input>
-          </Popover.Target>
-          <Popover.Dropdown p={0}>
-            {valueQuery && valueColumn && (
-              <FilterPickerBody
-                query={valueQuery}
-                stageIndex={STAGE_INDEX}
-                column={valueColumn}
-                filter={hasSavedValue ? savedFilter : undefined}
-                onChange={handleValueChange}
-              />
-            )}
-          </Popover.Dropdown>
-        </Popover>
-      </Input.Wrapper>
+            </Popover.Dropdown>
+          </Popover>
+        </Input.Wrapper>
+      )}
     </Stack>
   );
 }

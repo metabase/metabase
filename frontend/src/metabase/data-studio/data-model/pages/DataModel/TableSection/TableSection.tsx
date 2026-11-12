@@ -13,8 +13,8 @@ import * as Urls from "metabase/urls";
 import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
 import type { FieldId, Table } from "metabase-types/api";
 
-import { MeasureList } from "./MeasureList";
-import { SegmentList } from "./SegmentList";
+import { SimpleMeasureList } from "./MeasureList";
+import { SimpleSegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
 import { TableFieldsTab } from "./TableFieldsTab";
@@ -34,6 +34,9 @@ interface Props {
   onUpdate: () => void;
 }
 
+// PROTOTYPE: process milestones are parked; flip to bring the tab back
+const IS_PROCESS_TAB_SHOWN = false;
+
 const TableSectionBase = ({
   table,
   activeFieldId,
@@ -50,11 +53,17 @@ const TableSectionBase = ({
     structure.role != null &&
     isRoleA(structure.role, "role/CustomPropertyTable");
   const isHistoryTable = useIsHistoryTable(table);
-  const hasProcess = useHasProcess(table);
-  // A link to the Process tab of a table without one lands on Details
+  const hasProcess = useHasProcess(table) && IS_PROCESS_TAB_SHOWN;
+  // Segments and measures belong to the semantic layer now: Connected data
+  // only lists the ones a table already has, for viewing and editing
+  const hasSegments = (table.segments?.length ?? 0) > 0;
+  const hasMeasures = (table.measures?.length ?? 0) > 0;
+  // A link to a tab the table doesn't show lands on Details
   const isMissingTab =
     (activeTab === "process" && !hasProcess) ||
-    (activeTab === "history" && !isHistoryTable);
+    (activeTab === "history" && !isHistoryTable) ||
+    (activeTab === "segments" && !hasSegments) ||
+    (activeTab === "measures" && !hasMeasures);
   const visibleTab = isMissingTab ? "details" : activeTab;
 
   const getFieldHref = (fieldId: FieldId) => {
@@ -102,8 +111,8 @@ const TableSectionBase = ({
               <Tabs.Tab value="history">{t`History`}</Tabs.Tab>
             )}
             {hasProcess && <Tabs.Tab value="process">{t`Process`}</Tabs.Tab>}
-            <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
-            <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
+            {hasSegments && <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>}
+            {hasMeasures && <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>}
           </Tabs.List>
 
           <Tabs.Panel value="details">
@@ -151,13 +160,17 @@ const TableSectionBase = ({
             </Tabs.Panel>
           )}
 
-          <Tabs.Panel value="segments">
-            <SegmentList table={table} />
-          </Tabs.Panel>
+          {hasSegments && (
+            <Tabs.Panel value="segments">
+              <SimpleSegmentList table={table} />
+            </Tabs.Panel>
+          )}
 
-          <Tabs.Panel value="measures">
-            <MeasureList table={table} />
-          </Tabs.Panel>
+          {hasMeasures && (
+            <Tabs.Panel value="measures">
+              <SimpleMeasureList table={table} />
+            </Tabs.Panel>
+          )}
         </Tabs>
       </Box>
     </Stack>

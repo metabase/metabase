@@ -18,6 +18,8 @@ export type MeasureGroup = {
   /** In display order */
   measureIds: MeasureId[];
   source: MeasureGroupSource;
+  /** The group this one sits in; top level when unset or no longer there */
+  parentGroupId?: string;
 };
 
 type TableMeasureGroups = {
@@ -55,6 +57,8 @@ function parseGroup(value: unknown): MeasureGroup | null {
       (id): id is MeasureId => typeof id === "number",
     ),
     source: SOURCES.find((known) => known === value.source) ?? "admin",
+    parentGroupId:
+      typeof value.parentGroupId === "string" ? value.parentGroupId : undefined,
   };
 }
 

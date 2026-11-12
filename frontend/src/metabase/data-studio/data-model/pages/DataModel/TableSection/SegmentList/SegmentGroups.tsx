@@ -196,14 +196,11 @@ export function SegmentGroupItem({
 export function SegmentGroupProposalItem({
   proposal,
   canAccept,
-  isMuted = false,
   onAccept,
   onDismiss,
 }: {
   proposal: SegmentGroupProposal;
   canAccept: boolean;
-  /** Secondary colors, to tell a proposal apart in a list of real groups */
-  isMuted?: boolean;
   onAccept: () => void;
   onDismiss: () => void;
 }) {
@@ -220,13 +217,8 @@ export function SegmentGroupProposalItem({
       <Group justify="space-between" wrap="nowrap" gap="md">
         <Stack gap="xs" miw={0}>
           <Flex align="center" gap="sm">
-            <Icon
-              name="segment_group"
-              c={isMuted ? "icon-secondary" : "text-secondary"}
-            />
-            <Text fw="bold" c={isMuted ? "text-secondary" : undefined}>
-              {proposal.name}
-            </Text>
+            <Icon name="segment_group" c="text-secondary" />
+            <Text fw="bold">{proposal.name}</Text>
           </Flex>
           <GroupMemberPills
             labels={proposal.members.map(({ label }) => label)}
@@ -252,7 +244,6 @@ export function KindPartitionProposalItem({
   field,
   query,
   canAccept,
-  isMuted,
   onAccept,
   onDismiss,
 }: {
@@ -260,7 +251,6 @@ export function KindPartitionProposalItem({
   /** The list's search, which the proposal's name must match */
   query: string;
   canAccept: boolean;
-  isMuted?: boolean;
   onAccept: (proposal: SegmentGroupProposal) => void;
   onDismiss: (proposal: SegmentGroupProposal) => void;
 }) {
@@ -279,7 +269,6 @@ export function KindPartitionProposalItem({
     <SegmentGroupProposalItem
       proposal={proposal}
       canAccept={canAccept}
-      isMuted={isMuted}
       onAccept={() => onAccept(proposal)}
       onDismiss={() => onDismiss(proposal)}
     />

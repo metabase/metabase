@@ -1,6 +1,8 @@
 import { Flex, Group, Icon, Pill } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { IconName } from "metabase-types/api";
+import type { DatasetQuery, IconName, Table } from "metabase-types/api";
+
+import { useTableQuery } from "../table-segments";
 
 /** One clause of a segment's or measure's definition, as a card shows it */
 export type QueryClause = {
@@ -47,4 +49,20 @@ export function ClausePills({ clauses }: { clauses: QueryClause[] }) {
       ))}
     </Group>
   );
+}
+
+/**
+ * Reads a segment's or measure's definition into its card's pills. A
+ * definition the query library can't read gets none, and the card falls back
+ * to its server description.
+ */
+export function useDefinitionClauses(table: Table) {
+  const { fromDefinition } = useTableQuery(table);
+  return (definition: DatasetQuery): QueryClause[] | undefined => {
+    try {
+      return getQueryClauses(fromDefinition(definition));
+    } catch {
+      return undefined;
+    }
+  };
 }

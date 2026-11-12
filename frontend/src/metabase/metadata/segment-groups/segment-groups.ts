@@ -37,6 +37,8 @@ export type SegmentGroup = {
   sourceFieldId?: FieldId;
   /** An admin edited a sync-made group, so sync leaves it alone */
   isAdminEdited?: boolean;
+  /** The group this one sits in; top level when unset or no longer there */
+  parentGroupId?: string;
 };
 
 type TableSegmentGroups = {
@@ -89,6 +91,8 @@ function parseGroup(value: unknown): SegmentGroup | null {
     sourceFieldId:
       typeof value.sourceFieldId === "number" ? value.sourceFieldId : undefined,
     isAdminEdited: value.isAdminEdited === true,
+    parentGroupId:
+      typeof value.parentGroupId === "string" ? value.parentGroupId : undefined,
   };
 }
 

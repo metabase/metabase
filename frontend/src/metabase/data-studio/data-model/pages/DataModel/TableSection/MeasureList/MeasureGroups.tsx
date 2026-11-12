@@ -104,15 +104,12 @@ export function MeasureGroupProposalItem({
   proposal,
   measures,
   canAccept,
-  isMuted = false,
   onAccept,
   onDismiss,
 }: {
   proposal: MeasureGroupProposal;
   measures: Measure[];
   canAccept: boolean;
-  /** Secondary colors, to tell a proposal apart in a list of real groups */
-  isMuted?: boolean;
   onAccept: () => void;
   onDismiss: () => void;
 }) {
@@ -129,15 +126,10 @@ export function MeasureGroupProposalItem({
       <Group justify="space-between" wrap="nowrap" gap="md">
         <Stack gap="xxs" miw={0}>
           <Flex align="center" gap="sm">
-            <Icon
-              name="folder"
-              c={isMuted ? "icon-secondary" : "text-secondary"}
-            />
-            <Text fw="bold" c={isMuted ? "text-secondary" : undefined}>
-              {proposal.name}
-            </Text>
+            <Icon name="folder" c="text-secondary" />
+            <Text fw="bold">{proposal.name}</Text>
           </Flex>
-          <Text lh="lg" c={isMuted ? "text-secondary" : undefined}>
+          <Text lh="lg">
             {getMemberNames(proposal.measureIds, measures).join(" · ")}
           </Text>
         </Stack>

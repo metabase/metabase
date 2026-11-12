@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { ActionIcon, Badge, Group, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Group, Icon, Tooltip } from "metabase/ui";
 
 /**
- * A proposal card's "Proposed" badge, then its accept (✓) and dismiss (✕)
- * icon buttons for people who can act on it
+ * A proposal's accept (✓) and dismiss (✕) icon buttons, for people who can
+ * act on it
  */
 export function ProposalActions({
   canAccept,
@@ -17,9 +17,6 @@ export function ProposalActions({
 }) {
   return (
     <Group gap="xs" wrap="nowrap" flex="0 0 auto">
-      <Badge variant="light" color="neutral" mr="xs">
-        {t`Proposed`}
-      </Badge>
       {canAccept && (
         <>
           <Tooltip label={t`Accept`}>

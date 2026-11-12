@@ -1,1 +1,6 @@
-export { ClausePills, type QueryClause, getQueryClauses } from "./ClausePills";
+export {
+  ClausePills,
+  type QueryClause,
+  getQueryClauses,
+  useDefinitionClauses,
+} from "./ClausePills";

@@ -93,15 +93,12 @@ export function CohortProposalItem({
   proposal,
   baseQuery,
   canAccept,
-  isMuted = false,
   onAccept,
   onDismiss,
 }: {
   proposal: CohortProposal;
   baseQuery: Lib.Query | undefined;
   canAccept: boolean;
-  /** Secondary colors, to tell a proposal apart in a list of real segments */
-  isMuted?: boolean;
   onAccept: () => void;
   onDismiss: () => void;
 }) {
@@ -122,13 +119,8 @@ export function CohortProposalItem({
       <Group justify="space-between" wrap="nowrap" gap="md">
         <Stack gap="xs" miw={0}>
           <Flex align="center" gap="sm">
-            <Icon
-              name="segment"
-              c={isMuted ? "icon-secondary" : "text-secondary"}
-            />
-            <Text fw="bold" c={isMuted ? "text-secondary" : undefined}>
-              {proposal.name}
-            </Text>
+            <Icon name="segment" c="text-secondary" />
+            <Text fw="bold">{proposal.name}</Text>
           </Flex>
           {filterName && (
             <ClausePills clauses={[{ kind: "filter", name: filterName }]} />

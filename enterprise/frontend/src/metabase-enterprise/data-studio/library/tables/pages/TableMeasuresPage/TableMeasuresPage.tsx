@@ -30,7 +30,7 @@ export function TableMeasuresPage() {
   return (
     <PageContainer data-testid="table-measures-page" gap="lg" px={0} pb={0}>
       <TableHeader table={table} px="3.5rem" />
-      <TableListBody>
+      <TableListBody hasPageBackground>
         <TableMeasures table={table} />
       </TableListBody>
     </PageContainer>

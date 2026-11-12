@@ -9,20 +9,15 @@ import { useSelector } from "metabase/redux";
 import { useNavigate, useSearchParams } from "metabase/router";
 import { Button, Icon, Stack, Tabs, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  ConcreteTableId,
-  Measure,
-  MeasureId,
-  Table,
-} from "metabase-types/api";
+import type { ConcreteTableId, MeasureId, Table } from "metabase-types/api";
 
-import { getQueryClauses } from "../ClausePills";
+import { useDefinitionClauses } from "../ClausePills";
 import {
   ListSearchBar,
   ListSearchEmptyState,
   matchesListSearch,
 } from "../ListSearchBar";
-import { ListEmptyItem, type ListLayout, ListSection } from "../ListSection";
+import { ListEmptyItem, ListSection } from "../ListSection";
 import { useTableQuery } from "../table-segments";
 
 import {
@@ -50,8 +45,6 @@ type MeasureListProps = {
   isSearchable?: boolean;
   /** A full page: 17px section subheadings, and more room between sections */
   isFullPage?: boolean;
-  /** Tabs for measures and groups, or one page of sections with proposals inline */
-  layout?: ListLayout;
 };
 
 function getDataModelMeasureUrls(table: Table): MeasureListUrls {
@@ -86,19 +79,10 @@ export function MeasureList({
   getUrls,
   isSearchable = true,
   isFullPage = false,
-  layout = "tabs",
 }: MeasureListProps) {
   const measures = table.measures ?? [];
-  const { query: baseQuery, fromDefinition } = useTableQuery(table);
-  // Each aggregation and filter of a measure's definition, for its card's pills
-  const getMeasureClauses = (measure: Measure) => {
-    try {
-      return getQueryClauses(fromDefinition(measure.definition));
-    } catch {
-      // A definition the query library can't read keeps its server description
-      return undefined;
-    }
-  };
+  const { query: baseQuery } = useTableQuery(table);
+  const getClauses = useDefinitionClauses(table);
   const [query, setQuery] = useState("");
   // Pages that return to the groups ask for them with `?view=groups`
   const [searchParams] = useSearchParams();
@@ -173,16 +157,15 @@ export function MeasureList({
       key={measure.id}
       measure={measure}
       href={urls.measure(measure.id)}
-      clauses={getMeasureClauses(measure)}
+      clauses={getClauses(measure.definition)}
     />
   ));
-  const getProposedMeasureItems = (isMuted: boolean) =>
+  const getProposedMeasureItems = () =>
     matchingMeasureProposals.map((proposal) => (
       <MeasureProposalItem
         key={proposal.key}
         proposal={proposal}
         canAccept={canWriteMeasures}
-        isMuted={isMuted}
         onAccept={() => measureProposals.accept(proposal)}
         onDismiss={() => measureProposals.dismiss(proposal)}
       />
@@ -199,62 +182,17 @@ export function MeasureList({
       }
     />
   ));
-  const getProposedGroupItems = (isMuted: boolean) =>
+  const getProposedGroupItems = () =>
     matchingGroupProposals.map((proposal) => (
       <MeasureGroupProposalItem
         key={proposal.key}
         proposal={proposal}
         measures={measures}
         canAccept={canWriteMeasures}
-        isMuted={isMuted}
         onAccept={() => groupProposals.accept(proposal)}
         onDismiss={() => groupProposals.dismiss(proposal)}
       />
     ));
-
-  if (layout === "sections") {
-    // One page: measures, then groups, each with its proposals mixed in
-    const proposedMeasureItems = getProposedMeasureItems(true);
-    const proposedGroupItems = getProposedGroupItems(true);
-    return (
-      <Stack
-        gap={isFullPage ? rem(48) : "xl"}
-        // With the page's 24px top padding, matches the 48px gap below
-        pt={isFullPage ? "xl" : 0}
-        data-testid="table-measures-page"
-      >
-        {isSearchable && (
-          <ListSearchBar
-            value={query}
-            placeholder={t`Search measures and groups`}
-            onChange={setQuery}
-          />
-        )}
-        <ListSection
-          title={t`Measures`}
-          isSubheading={isFullPage}
-          action={newMeasureButton}
-        >
-          {measureItems}
-          {proposedMeasureItems}
-          {measureItems.length === 0 && proposedMeasureItems.length === 0 && (
-            <ListEmptyItem>{t`No measures yet`}</ListEmptyItem>
-          )}
-        </ListSection>
-        <ListSection
-          title={t`Measure groups`}
-          isSubheading={isFullPage}
-          action={newMeasureGroupButton}
-        >
-          {groupItems}
-          {proposedGroupItems}
-          {groupItems.length === 0 && proposedGroupItems.length === 0 && (
-            <ListEmptyItem>{t`No measure groups yet`}</ListEmptyItem>
-          )}
-        </ListSection>
-      </Stack>
-    );
-  }
 
   return (
     <Stack
@@ -320,7 +258,7 @@ export function MeasureList({
             description={t`A row count, and the total of each amount column. Accepting one makes it a measure.`}
           >
             {matchingMeasureProposals.length > 0 ? (
-              getProposedMeasureItems(false)
+              getProposedMeasureItems()
             ) : (
               <ListEmptyItem>{t`No proposed measures`}</ListEmptyItem>
             )}
@@ -349,7 +287,7 @@ export function MeasureList({
             description={t`Measures grouped by what they measure. Accept one to make it a group.`}
           >
             {matchingGroupProposals.length > 0 ? (
-              getProposedGroupItems(false)
+              getProposedGroupItems()
             ) : (
               <ListEmptyItem>{t`No proposed measure groups`}</ListEmptyItem>
             )}

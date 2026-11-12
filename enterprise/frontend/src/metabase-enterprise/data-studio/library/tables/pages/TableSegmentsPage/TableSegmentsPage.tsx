@@ -30,7 +30,7 @@ export function TableSegmentsPage() {
   return (
     <PageContainer data-testid="table-segments-page" gap="lg" px={0} pb={0}>
       <TableHeader table={table} px="3.5rem" />
-      <TableListBody>
+      <TableListBody hasPageBackground>
         <TableSegments table={table} />
       </TableListBody>
     </PageContainer>

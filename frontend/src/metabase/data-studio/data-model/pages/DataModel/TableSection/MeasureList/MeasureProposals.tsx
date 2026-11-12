@@ -16,7 +16,7 @@ import { ProposalActions } from "../ListSection";
 const STAGE_INDEX = -1;
 
 /** The proposal's aggregation on the table's query, if the table offers it */
-function buildMeasureQuery(
+export function buildMeasureQuery(
   baseQuery: Lib.Query,
   proposal: MeasureProposal,
 ): Lib.Query | null {
@@ -97,14 +97,11 @@ export function useMeasureProposals(
 export function MeasureProposalItem({
   proposal,
   canAccept,
-  isMuted = false,
   onAccept,
   onDismiss,
 }: {
   proposal: MeasureProposal;
   canAccept: boolean;
-  /** Secondary colors, to tell a proposal apart in a list of real measures */
-  isMuted?: boolean;
   onAccept: () => void;
   onDismiss: () => void;
 }) {
@@ -121,13 +118,8 @@ export function MeasureProposalItem({
       <Group justify="space-between" wrap="nowrap" gap="md">
         <Stack gap="xxs" miw={0}>
           <Flex align="center" gap="sm">
-            <Icon
-              name="ruler"
-              c={isMuted ? "icon-secondary" : "text-secondary"}
-            />
-            <Text fw="bold" c={isMuted ? "text-secondary" : undefined}>
-              {proposal.name}
-            </Text>
+            <Icon name="ruler" c="text-secondary" />
+            <Text fw="bold">{proposal.name}</Text>
           </Flex>
         </Stack>
         <ProposalActions

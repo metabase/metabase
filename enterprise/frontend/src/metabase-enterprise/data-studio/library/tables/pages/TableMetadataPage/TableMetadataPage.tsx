@@ -4,9 +4,12 @@ import { DatabaseInfoSection } from "metabase/admin/databases/components/Databas
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
-import { TableRequiredFilter } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableFiltering";
+import {
+  TableDefaultSegment,
+  TableRequiredFilter,
+} from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableFiltering";
 import { useParams } from "metabase/router";
-import { Box, Center, Flex } from "metabase/ui";
+import { Box, Center, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { TableHeader } from "../../components/TableHeader";
@@ -51,15 +54,18 @@ export function TableMetadataPage() {
           >
             <TableSubjectFields table={table} readOnly={readOnly} />
           </DatabaseInfoSection>
+          <TableStructureSections table={table} />
           <DatabaseInfoSection
-            name={t`Required filter`}
-            description={t`Helpful for very large tables to prevent users from accidentally querying more data than they intend to.`}
+            name={t`Default segments and required filter`}
+            description={t`What every question on this table starts from. A required filter is helpful for very large tables, to prevent people from accidentally querying more data than they intend to.`}
             contentPx="xxxl"
             cardRadius="lg"
           >
-            <TableRequiredFilter table={table} readOnly={readOnly} />
+            <Stack gap="xxl">
+              <TableDefaultSegment table={table} readOnly={readOnly} />
+              <TableRequiredFilter table={table} readOnly={readOnly} />
+            </Stack>
           </DatabaseInfoSection>
-          <TableStructureSections table={table} />
         </Flex>
       </Box>
     </PageContainer>

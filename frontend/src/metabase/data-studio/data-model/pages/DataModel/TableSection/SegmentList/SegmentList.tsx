@@ -9,23 +9,18 @@ import type { SystemSegmentRole } from "metabase/metadata/table-segments";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { useSelector } from "metabase/redux";
 import { useNavigate, useSearchParams } from "metabase/router";
-import { Box, Button, Icon, Stack, Tabs, rem } from "metabase/ui";
+import { Button, Icon, Stack, Tabs, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Segment, SegmentId, Table } from "metabase-types/api";
+import type { SegmentId, Table } from "metabase-types/api";
 
-import { getQueryClauses } from "../ClausePills";
+import { useDefinitionClauses } from "../ClausePills";
 import {
   ListSearchBar,
   ListSearchEmptyState,
   matchesListSearch,
 } from "../ListSearchBar";
-import { ListEmptyItem, type ListLayout, ListSection } from "../ListSection";
-import { TableDefaultSegment } from "../TableFiltering";
-import {
-  isDefaultSegment,
-  useTableQuery,
-  useTableSegmentsModel,
-} from "../table-segments";
+import { ListEmptyItem, ListSection } from "../ListSection";
+import { isDefaultSegment, useTableSegmentsModel } from "../table-segments";
 
 import {
   CohortProposalItem,
@@ -60,10 +55,6 @@ type SegmentListProps = {
   isSearchable?: boolean;
   /** A full page: 17px section subheadings, and more room between sections */
   isFullPage?: boolean;
-  /** Shows the table's default segment setting above its segments */
-  hasDefaultSegmentSetting?: boolean;
-  /** Tabs for segments and groups, or one page of sections with proposals inline */
-  layout?: ListLayout;
 };
 
 function getDataModelSegmentUrls(table: Table): SegmentListUrls {
@@ -101,8 +92,6 @@ export function SegmentList({
   getUrls,
   isSearchable = true,
   isFullPage = false,
-  hasDefaultSegmentSetting = false,
-  layout = "tabs",
 }: SegmentListProps) {
   const [query, setQuery] = useState("");
   // Pages that return to the groups ask for them with `?view=groups`
@@ -128,16 +117,7 @@ export function SegmentList({
   );
   const isSearching = query.trim() !== "";
   const tableSegments = table.segments ?? [];
-  const { fromDefinition } = useTableQuery(table);
-  // Each clause of a segment's definition, for its card's pills
-  const getSegmentClauses = (segment: Segment) => {
-    try {
-      return getQueryClauses(fromDefinition(segment.definition));
-    } catch {
-      // A definition the query library can't read keeps its server description
-      return undefined;
-    }
-  };
+  const getClauses = useDefinitionClauses(table);
 
   const systemSegments = model.systemSegments.filter((segment) =>
     matchesListSearch(query, segment.label, ...segment.filterNames),
@@ -232,7 +212,7 @@ export function SegmentList({
         key={segment.id}
         segment={segment}
         href={urls.segment(segment.id)}
-        clauses={getSegmentClauses(segment)}
+        clauses={getClauses(segment.definition)}
         isDefault={isDefaultSegment(model.defaultSegment, {
           type: "custom",
           segmentId: segment.id,
@@ -240,14 +220,13 @@ export function SegmentList({
       />
     )),
   ];
-  const getProposedSegmentItems = (isMuted: boolean) =>
+  const getProposedSegmentItems = () =>
     matchingProposals.map((proposal) => (
       <CohortProposalItem
         key={proposal.key}
         proposal={proposal}
         baseQuery={model.baseQuery}
         canAccept={canCreateSegment}
-        isMuted={isMuted}
         onAccept={() => accept(proposal)}
         onDismiss={() => dismiss(proposal)}
       />
@@ -264,13 +243,12 @@ export function SegmentList({
       }
     />
   ));
-  const getProposedGroupItems = (isMuted: boolean) => [
+  const getProposedGroupItems = () => [
     ...matchingGroupProposals.map((proposal) => (
       <SegmentGroupProposalItem
         key={proposal.key}
         proposal={proposal}
         canAccept={canCreateSegment}
-        isMuted={isMuted}
         onAccept={() => groupProposalActions.accept(proposal)}
         onDismiss={() => groupProposalActions.dismiss(proposal)}
       />
@@ -281,64 +259,12 @@ export function SegmentList({
         field={field}
         query={query}
         canAccept={canCreateSegment}
-        isMuted={isMuted}
         onAccept={groupProposalActions.accept}
         onDismiss={groupProposalActions.dismiss}
       />
     )),
   ];
   const segmentGroupsDescription = t`Named sets of segments, like Open, Won and Lost deals. When the segments don't overlap, people can group by, filter on and compare them side by side.`;
-  const defaultSegmentSetting = hasDefaultSegmentSetting && (
-    <TableDefaultSegment table={table} readOnly={!table.can_write} />
-  );
-
-  if (layout === "sections") {
-    // One page: segments, then groups, each with its proposals mixed in
-    const proposedSegmentItems = getProposedSegmentItems(true);
-    const proposedGroupItems = getProposedGroupItems(true);
-    return (
-      <Stack
-        gap={isFullPage ? rem(48) : "xl"}
-        data-testid="table-segments-page"
-      >
-        {isSearchable && (
-          <ListSearchBar
-            value={query}
-            placeholder={t`Search segments and groups`}
-            onChange={setQuery}
-          />
-        )}
-        {defaultSegmentSetting && (
-          // The page's 24px top padding plus this match the 48px gap below
-          <Box pt={isFullPage ? "xl" : 0}>{defaultSegmentSetting}</Box>
-        )}
-        <ListSection
-          title={t`Segments`}
-          isSubheading={isFullPage}
-          action={newSegmentButton}
-        >
-          {segmentItems}
-          {proposedSegmentItems}
-          {segmentItems.length === 0 && proposedSegmentItems.length === 0 && (
-            <ListEmptyItem>{t`No segments yet`}</ListEmptyItem>
-          )}
-        </ListSection>
-        <ListSection
-          title={t`Segment groups`}
-          isSubheading={isFullPage}
-          description={segmentGroupsDescription}
-          action={newSegmentGroupButton}
-        >
-          {groupItems}
-          {proposedGroupItems}
-          {groupItems.length === 0 && proposedGroupItems.length === 0 && (
-            <ListEmptyItem>{t`No segment groups yet`}</ListEmptyItem>
-          )}
-        </ListSection>
-      </Stack>
-    );
-  }
-
   return (
     <Stack
       // A full page spaces its tabs and sections at twice the drawer's 24px
@@ -378,8 +304,6 @@ export function SegmentList({
         </ListSection>
       )}
 
-      {view === "custom" && defaultSegmentSetting}
-
       {view === "custom" &&
         (!isSearching ||
           customSegments.length > 0 ||
@@ -403,7 +327,7 @@ export function SegmentList({
           isSubheading={isFullPage}
           description={t`Partitions from statuses, flags, and values. Accepting one makes a segment for each of its groups, and the group itself.`}
         >
-          {getProposedGroupItems(false)}
+          {getProposedGroupItems()}
         </ListSection>
       )}
 
@@ -414,7 +338,7 @@ export function SegmentList({
           description={t`Rows in each bucket of a status, like Won or Lost, and rows that reached a milestone date, like Activated. Accepting one makes it a custom segment. None is a default segment unless you pick it.`}
         >
           {matchingProposals.length > 0 ? (
-            getProposedSegmentItems(false)
+            getProposedSegmentItems()
           ) : (
             <ListEmptyItem>{t`No proposed segments`}</ListEmptyItem>
           )}
