@@ -162,12 +162,12 @@ export function TableStructure({
             }
           />
           <DetailsRow
-            label={t`True from`}
+            label={t`Start date`}
             labelAside={<InfoIcon info={historyInfo.trueFrom} />}
             fillValue
             value={
               <ColumnSelect
-                label={t`True from`}
+                label={t`Start date`}
                 fields={fields}
                 value={structure.history.validFromFieldId}
                 disabled={readOnly}
@@ -178,12 +178,12 @@ export function TableStructure({
             }
           />
           <DetailsRow
-            label={t`True until`}
+            label={t`End date`}
             labelAside={<InfoIcon info={historyInfo.trueUntil} />}
             fillValue
             value={
               <ColumnSelect
-                label={t`True until`}
+                label={t`End date`}
                 fields={fields}
                 value={structure.history.validToFieldId}
                 placeholder={t`The next version`}
@@ -564,7 +564,10 @@ function StructureForm({
           />
           <Select
             label={
-              <LabelWithInfo label={t`True from`} info={historyInfo.trueFrom} />
+              <LabelWithInfo
+                label={t`Start date`}
+                info={historyInfo.trueFrom}
+              />
             }
             data={fields.map(toFieldOption)}
             value={toFieldValue(fields, history.validFromFieldId)}
@@ -576,10 +579,7 @@ function StructureForm({
           />
           <Select
             label={
-              <LabelWithInfo
-                label={t`True until`}
-                info={historyInfo.trueUntil}
-              />
+              <LabelWithInfo label={t`End date`} info={historyInfo.trueUntil} />
             }
             data={fields.map(toFieldOption)}
             value={toFieldValue(fields, history.validToFieldId)}
