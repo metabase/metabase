@@ -98,10 +98,10 @@
 (deftest failed-set-instance-workspace-leaves-workspace-mode-off-test
   (testing "set-instance-workspace! that fails after turning the flag on leaves this process out of workspace mode"
     (ws.settings/workspaces-enabled! false)
-    (let [set-flag ws.settings/workspaces-enabled!]
-      (with-redefs [ws.settings/workspaces-enabled! (fn [v]
-                                                      (set-flag v)
-                                                      (throw (ex-info "failure before commit" {})))]
+    (let [set-flag (mt/original-fn #'ws.settings/workspaces-enabled!)]
+      (mt/with-dynamic-fn-redefs [ws.settings/workspaces-enabled! (fn [v]
+                                                                    (set-flag v)
+                                                                    (throw (ex-info "failure before commit" {})))]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"failure before commit"
                               (ws/set-instance-workspace! {})))))
     (testing "the stored flag rolled back"
