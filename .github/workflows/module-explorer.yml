@@ -7,7 +7,7 @@ name: Module explorer
 
 on:
   schedule:
-    - cron: 20 6 * * * # every day at 6:20
+    - cron: 20 6 * * * # every day at 6:20 UTC
   push:
     branches: [master]
     paths:
