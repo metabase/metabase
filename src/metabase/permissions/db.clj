@@ -20,48 +20,29 @@
 
 ;;; --------------------------------------------- DataPermissions ---------------------------------------------
 
-(defn- value-rank-case
-  "A HoneySQL CASE expression mapping a `perm-type` row's value to its rank in the type's ordering, 0 being the most
-  permissive."
-  [perm-type]
-  (into [:case]
-        cat
-        (for [[i v] (map-indexed vector (-> permissions.schema/data-permissions perm-type :values))]
-          [[:= :p.perm_value (u/qualified-name v)] [:inline i]])))
-
 (mr/def ::scope
-  "Which `perm-type` rows count: within `:db-id`, outside `:exclude-db-ids`, and of the database itself plus one
-  `:table-id`, plus the tables in one `:schema-name` (nil and the empty string being the same schema), or alone with
-  `:database-level?`."
+  "Which `perm-type` rows count: within `:db-id`, outside `:exclude-db-ids`, and of the database itself plus the tables
+  in one `:schema-name`, nil and the empty string being the same schema."
   [:map {:closed true}
-   [:db-id           {:optional true} ::lib.schema.id/database]
-   [:exclude-db-ids  {:optional true} [:maybe [:sequential ::lib.schema.id/database]]]
-   [:table-id        {:optional true} ms/IntGreaterThanOrEqualToZero]
-   [:schema-name     {:optional true} [:maybe :string]]
-   [:database-level? {:optional true} :boolean]])
+   [:db-id          {:optional true} ::lib.schema.id/database]
+   [:exclude-db-ids {:optional true} [:maybe [:sequential ::lib.schema.id/database]]]
+   [:schema-name    {:optional true} [:maybe :string]]])
 
 (defn- scope-clauses
   "The WHERE clauses for the `perm-type` rows in `scope` of `p` left-joined to its table `mt`, see [[::scope]]."
-  [perm-type {:keys [db-id exclude-db-ids table-id database-level?] :as scope}]
+  [perm-type {:keys [db-id exclude-db-ids] :as scope}]
   [[:= :p.perm_type (u/qualified-name perm-type)]
    [:or [:= :p.table_id nil] [:= :mt.active true]]
    (when db-id
      [:= :p.db_id db-id])
    (when (seq exclude-db-ids)
      [:not-in :p.db_id exclude-db-ids])
-   (cond
-     table-id
-     [:or [:= :p.table_id nil] [:= :p.table_id table-id]]
-
-     (contains? scope :schema-name)
+   (when (contains? scope :schema-name)
      [:or
       [:= :p.table_id nil]
       (if (str/blank? (:schema-name scope))
         [:or [:= :p.schema_name nil] [:= :p.schema_name ""]]
-        [:= :p.schema_name (:schema-name scope)])]
-
-     database-level?
-     [:= :p.table_id nil])])
+        [:= :p.schema_name (:schema-name scope)])])])
 
 (defn- user-rows-query
   "The `perm-type` rows in `scope` of the User with `user-id`'s groups."
@@ -82,15 +63,6 @@
                            (assoc :select [[[:inline 1] :one]]
                                   :limit  [:inline 1])
                            (update :where conj [:= :p.perm_value (u/qualified-name perm-value)])))))
-
-(mu/defn permission-rank-pair :- [:map [:mn [:maybe :int]] [:mx [:maybe :int]]]
-  "The lowest and highest value ranks among the `perm-type` rows in `scope` of the User with `user-id`'s groups."
-  [user-id   :- [:maybe ::lib.schema.id/user]
-   perm-type :- ::permissions.schema/data-permission-type
-   scope     :- ::scope]
-  (let [rank (value-rank-case perm-type)]
-    (t2/query-one (assoc (user-rows-query user-id perm-type scope)
-                         :select [[[:min rank] :mn] [[:max rank] :mx]]))))
 
 (mu/defn most-restrictive-rank-pair :- [:map [:mn [:maybe :int]] [:mx [:maybe :int]]]
   "The lowest and highest, across the User with `user-id`'s groups, of each group's most restrictive value rank among
@@ -125,27 +97,31 @@
                     :from   [(t2/table-name :model/PermissionsGroupMembership)]
                     :where  [:= :user_id user-id]})
 
-(mu/defn user-database-level-values :- [:sequential [:map [:db_id :int] [:perm_type :string] [:perm_value :string]]]
-  "The distinct Database, type, and value of the database-level rows of the User with `user-id`'s groups on the
+(mu/defn user-database-level-values :- [:sequential [:map [:db_id :int] [:perm_value :string]]]
+  "The distinct Database and value of the database-level `perm-type` rows of the User with `user-id`'s groups on the
   Databases with `db-ids`."
-  [user-id :- ::lib.schema.id/user
-   db-ids  :- [:sequential ::lib.schema.id/database]]
-  (t2/query {:select-distinct [:p.db_id :p.perm_type :p.perm_value]
+  [user-id   :- ::lib.schema.id/user
+   perm-type :- ::permissions.schema/data-permission-type
+   db-ids    :- [:sequential ::lib.schema.id/database]]
+  (t2/query {:select-distinct [:p.db_id :p.perm_value]
              :from            [[(t2/table-name :model/DataPermissions) :p]]
              :where           [:and
+                               [:= :p.perm_type (u/qualified-name perm-type)]
                                [:in :p.db_id db-ids]
                                [:= :p.table_id nil]
                                [:in :p.group_id (user-group-ids-query user-id)]]}))
 
-(mu/defn user-table-level-values :- [:sequential [:map [:table_id :int] [:perm_type :string] [:perm_value :string]]]
-  "The distinct Table, type, and value of the rows of the User with `user-id`'s groups on the active Tables among
+(mu/defn user-table-level-values :- [:sequential [:map [:table_id :int] [:perm_value :string]]]
+  "The distinct Table and value of the `perm-type` rows of the User with `user-id`'s groups on the active Tables among
   `table-ids`."
   [user-id   :- ::lib.schema.id/user
+   perm-type :- ::permissions.schema/data-permission-type
    table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/query {:select-distinct [:p.table_id :p.perm_type :p.perm_value]
+  (t2/query {:select-distinct [:p.table_id :p.perm_value]
              :from            [[(t2/table-name :model/DataPermissions) :p]]
              :join            [[(t2/table-name :model/Table) :mt] [:and [:= :mt.id :p.table_id] [:= :mt.active true]]]
              :where           [:and
+                               [:= :p.perm_type (u/qualified-name perm-type)]
                                [:in :p.table_id table-ids]
                                [:in :p.group_id (user-group-ids-query user-id)]]}))
 
