@@ -48,6 +48,14 @@
                     ["metabase_field" @id "update"]
                     ["metabase_field" @id "delete"]]
                    rows))))
+        (testing "an update and a delete by primary key log the row"
+          (mt/with-temp [:model/Field f {:table_id (:id t)}]
+            (is (= [["metabase_field" (:id f) "update"]
+                    ["metabase_field" (:id f) "delete"]]
+                   ;; the linter asks for `:id`, but a bare key takes its own path through Toucan
+                   #_{:clj-kondo/ignore [:metabase/t2-implicit-pk]}
+                   (logged-by #(do (t2/update! :model/Field (:id f) {:name "h"})
+                                   (t2/delete! :model/Field (:id f))))))))
         (testing "an update that changes nothing is still logged"
           (is (= [["metabase_table" (:id t) "update"]]
                  (logged-by #(t2/update! :model/Table :id (:id t) {:name (:name t)})))))
