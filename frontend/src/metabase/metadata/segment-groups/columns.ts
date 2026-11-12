@@ -10,8 +10,9 @@ export function getSegmentFieldIds(segment: Pick<Segment, "definition">) {
   const fieldIds = new Set<FieldId>();
   const visit = (value: unknown) => {
     if (Array.isArray(value)) {
-      if (value[0] === "field") {
-        const id = typeof value[1] === "number" ? value[1] : value[2];
+      const clause: unknown[] = value;
+      if (clause[0] === "field") {
+        const id = typeof clause[1] === "number" ? clause[1] : clause[2];
         if (typeof id === "number") {
           fieldIds.add(id);
         }

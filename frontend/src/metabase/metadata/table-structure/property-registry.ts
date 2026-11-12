@@ -7,12 +7,12 @@ import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
 import type {
   ConcreteFieldReference,
-  TableId,
   Dataset,
   FieldId,
-  RowValue,
   JsonQuery,
+  RowValue,
   Table,
+  TableId,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 

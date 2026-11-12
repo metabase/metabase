@@ -12,4 +12,5 @@ export type AdhocMbqlQuery = {
  * are opaque, so a hand-written one is passed through as is
  */
 export const legacyQuery = (query: AdhocMbqlQuery): JsonQuery =>
+  // The API's query types are opaque; this one is plain legacy MBQL
   query as unknown as JsonQuery;

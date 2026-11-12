@@ -10,10 +10,10 @@ import { Link } from "metabase/common/components/Link";
 import {
   findTargetTable,
   isRoleA,
+  legacyQuery,
   usePropertyRegistry,
   usePropertySampleRows,
   useSchemaTables,
-  legacyQuery,
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { Button } from "metabase/ui";

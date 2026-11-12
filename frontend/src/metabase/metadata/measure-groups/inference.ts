@@ -47,11 +47,13 @@ function getAggregation(definition: unknown): unknown[] | null {
   if (!isObject(definition) || !Array.isArray(definition.stages)) {
     return null;
   }
-  const [stage] = definition.stages;
+  const stages: unknown[] = definition.stages;
+  const [stage] = stages;
   if (!isObject(stage) || !Array.isArray(stage.aggregation)) {
     return null;
   }
-  const [aggregation] = stage.aggregation;
+  const aggregations: unknown[] = stage.aggregation;
+  const [aggregation] = aggregations;
   return Array.isArray(aggregation) ? aggregation : null;
 }
 
@@ -60,7 +62,8 @@ function findFieldId(clause: unknown): FieldId | null {
   if (!Array.isArray(clause)) {
     return null;
   }
-  const [operator, , id] = clause;
+  const parts: unknown[] = clause;
+  const [operator, , id] = parts;
   if (operator === "field" && typeof id === "number") {
     return id;
   }

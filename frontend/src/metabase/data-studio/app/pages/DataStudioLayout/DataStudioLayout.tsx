@@ -76,24 +76,18 @@ export function DataStudioLayout() {
 
       <Divider />
       <AreaTabGroup label={t`Library`} showLabel={isNavbarOpened}>
-        <Box mt={isNavbarOpened ? "md" : 0}>
-          <AreaTabGroup
-            label={t`Official content`}
-            showLabel={isNavbarOpened}
-            isSubgroup
-          >
-            {isAdmin && (
-              <AreaTab
-                label={t`Data apps`}
-                icon="app"
-                to={Urls.dataStudioDataApps()}
-                isSelected={currentTab === "data-apps"}
-                showLabel={isNavbarOpened}
-                isGated={!PLUGIN_DATA_APPS.isEnabled}
-              />
-            )}
-          </AreaTabGroup>
-        </Box>
+        {isAdmin && (
+          <Box mt={isNavbarOpened ? "md" : 0}>
+            <AreaTab
+              label={t`Data apps`}
+              icon="app"
+              to={Urls.dataStudioDataApps()}
+              isSelected={currentTab === "data-apps"}
+              showLabel={isNavbarOpened}
+              isGated={!PLUGIN_DATA_APPS.isEnabled}
+            />
+          </Box>
+        )}
         <Box mt="lg">
           <AreaTabGroup
             label={t`Semantic layer`}

@@ -5,7 +5,7 @@ import {
   getStatusFields,
 } from "metabase/metadata/lifecycle";
 import { isDate, isFK, isInteger, isPK } from "metabase-lib/v1/types/utils/isa";
-import type { TableId, Field, FieldId, Table } from "metabase-types/api";
+import type { Field, FieldId, Table, TableId } from "metabase-types/api";
 
 import { inferDurableKeyFieldId, inferVersionFieldId } from "./history-source";
 import { type TableRole, getTableRoleLabel } from "./roles";

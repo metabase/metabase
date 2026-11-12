@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { TableId, Field, FieldId, Table } from "metabase-types/api";
+import type { Field, FieldId, Table, TableId } from "metabase-types/api";
 
 import type { ScdType, ScdTypeInference } from "./history-source";
 

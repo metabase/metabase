@@ -31,7 +31,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { TableId, Field, FieldId, Table } from "metabase-types/api";
+import type { Field, FieldId, Table, TableId } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
 import { InferredValue } from "../InferenceReview";

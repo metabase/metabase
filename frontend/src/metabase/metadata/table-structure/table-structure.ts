@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { usePrototypeStorage } from "metabase/metadata/prototype-storage";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { TableId, Field, FieldId, Table } from "metabase-types/api";
+import type { Field, FieldId, Table, TableId } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import {

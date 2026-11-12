@@ -329,9 +329,13 @@ const SAMPLE_PROPERTY_ROWS: RowValue[][] = [
   [1046, 15, "LB-10023"],
 ];
 
-function getEntityFilterValue(query: Record<string, unknown>) {
+function getEntityFilterValue(query: Record<string, unknown>): unknown {
   const filter = query.filter;
-  return Array.isArray(filter) && filter[0] === "=" ? filter[2] : undefined;
+  if (!Array.isArray(filter)) {
+    return undefined;
+  }
+  const clause: unknown[] = filter;
+  return clause[0] === "=" ? clause[2] : undefined;
 }
 
 function getSampleRowsDataset(query: Record<string, unknown>) {

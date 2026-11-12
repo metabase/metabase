@@ -6,8 +6,8 @@ import type {
   Dataset,
   Field,
   FieldId,
-  RowValue,
   JsonQuery,
+  RowValue,
   Table,
 } from "metabase-types/api";
 
