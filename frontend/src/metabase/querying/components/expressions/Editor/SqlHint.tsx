@@ -10,8 +10,6 @@ import {
 import { Box, Button, Code, Flex, Icon, Loader, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import type { GenerateExpressionResult } from "../GenerateExpressionPrompt/use-generate-expression";
-
 import S from "./Errors/Errors.module.css";
 import {
   type SqlFix,
@@ -20,6 +18,7 @@ import {
   getSqlFixes,
   looksLikeSql,
 } from "./sql-hints";
+import type { GenerateExpressionResult } from "./use-generate-expression";
 
 const MAX_SHOWN_FIXES = 3;
 

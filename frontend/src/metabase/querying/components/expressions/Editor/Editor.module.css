@@ -105,35 +105,43 @@
   transition: opacity 300ms;
 }
 
+/* The prompt to the AI has the font of the code. */
 .inlinePrompt {
   display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin: 0 2px;
-  padding: 0 6px;
-  border-radius: var(--mantine-radius-xs);
-  background-color: var(--mb-color-background_surface-brand-subtle);
-  font-family: var(--mb-default-font-family);
-  vertical-align: baseline;
-}
+  align-items: baseline;
+  padding: 0 4px;
+  border-radius: 4px;
+  background-color: var(--mb-color-background_page-highlighted);
+  color: var(--mb-color-text-brand-strong);
 
-.inlinePromptIcon {
-  flex-shrink: 0;
-  color: var(--mb-color-text-brand);
+  &.loading {
+    background-color: transparent;
+    color: var(--mb-color-text-disabled);
+  }
 }
 
 .inlinePromptInput {
+  min-width: 0;
   border: none;
   outline: none;
   padding: 0;
   background: transparent;
+  color: inherit;
   font: inherit;
+
+  &::placeholder {
+    color: inherit;
+    opacity: 0.6;
+  }
+}
+
+.promptStatus {
+  align-items: center;
   color: var(--mb-color-text-primary);
 }
 
-.inlinePromptError {
-  color: var(--mb-color-feedback-negative);
-  white-space: normal;
+.loadingDots {
+  flex-shrink: 0;
 }
 
 .parameterHint {

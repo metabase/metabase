@@ -43,14 +43,13 @@ import { AvailableColumnsBrowser } from "../AvailableColumnsBrowser";
 import { ExpressionSidePanel } from "../ExpressionSidePanel";
 import type { ExpressionSidebarName } from "../ExpressionSidebar";
 import { ExpressionSidebarPanel } from "../ExpressionSidebar";
-import { useGenerateExpression } from "../GenerateExpressionPrompt";
 import { LayoutMain, LayoutSidebar } from "../Layout";
 
 import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
 import { ExpressionDiffControls } from "./ExpressionDiffControls";
-import { InlinePrompt } from "./InlinePrompt";
+import { InlinePrompt, InlinePromptStatus } from "./InlinePrompt";
 import { InlineToolbar } from "./InlineToolbar";
 import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
@@ -63,6 +62,7 @@ import { closeInlinePrompt, inlinePrompt } from "./inline-prompt";
 import { showErrors as showErrorMarks } from "./language";
 import { useParameterHints } from "./parameter-hints";
 import { useEditorSidebar } from "./use-editor-sidebar";
+import { useGenerateExpression } from "./use-generate-expression";
 import { hasActiveSnippet, useInitialClause } from "./utils";
 
 export type EditorProps = {
@@ -241,13 +241,13 @@ export function Editor(props: EditorProps) {
     extensions: [customTooltip],
   });
 
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
+
   // An AI suggestion, shown as a diff against `source` until accepted or rejected.
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const proposedSource = proposal?.source ?? null;
   const isProposing = proposal != null;
-
-  const sourceRef = useRef(source);
-  sourceRef.current = source;
 
   if (validateRef) {
     validateRef.current = validateNow;
@@ -325,13 +325,22 @@ export function Editor(props: EditorProps) {
     [compileSource, query, stageIndex, availableColumns],
   );
 
+  // Shows a diff to confirm only a large change to a long expression. Other
+  // suggestions go into the code at once.
   const proposeSource = useCallback(
     async (source: string, name?: string) => {
       const formatted = await formatProposedSource(source);
-      setProposal({ source: formatted, name });
+      if (isComplexEdit(sourceRef.current, formatted)) {
+        setProposal({ source: formatted, name });
+      } else {
+        if (name?.trim()) {
+          onAcceptName?.(name.trim());
+        }
+        acceptSource(formatted);
+      }
       requestAnimationFrame(() => ref.current?.view?.focus());
     },
-    [formatProposedSource],
+    [formatProposedSource, acceptSource, onAcceptName],
   );
 
   // Text from a fix that the user already chose: no diff to confirm it.
@@ -655,7 +664,6 @@ export function Editor(props: EditorProps) {
           createPortal(
             <InlinePrompt
               isLoading={isGenerating}
-              error={promptError}
               onSubmit={handleSubmitPrompt}
               onClose={handleClosePrompt}
             />,
@@ -670,6 +678,9 @@ export function Editor(props: EditorProps) {
             onAcceptProposed={handleAcceptProposed}
             onRejectProposed={handleRejectProposed}
           />
+        )}
+        {promptPos != null && (
+          <InlinePromptStatus isLoading={isGenerating} error={promptError} />
         )}
         <Errors
           error={
@@ -966,6 +977,40 @@ function useExpression({
  * Reports the proposed text, its clause and the proposed name. It compiles
  * the text only when the proposal changes.
  */
+// A diff helps only when the AI rewrites a part of a long expression.
+const COMPLEX_SOURCE_LENGTH = 120;
+const COMPLEX_CHANGE_LENGTH = 20;
+
+/**
+ * True when the AI suggestion rewrites much of a long expression. Whitespace
+ * and letter case do not count, because the editor formats the suggestion,
+ * for example "and" to "AND".
+ */
+function isComplexEdit(before: string, after: string) {
+  const normalize = (source: string) =>
+    source.replace(/\s+/g, "").toLowerCase();
+  const a = normalize(before);
+  const b = normalize(after);
+  if (a.length < COMPLEX_SOURCE_LENGTH) {
+    return false;
+  }
+  let prefix = 0;
+  while (prefix < a.length && prefix < b.length && a[prefix] === b[prefix]) {
+    prefix++;
+  }
+  let suffix = 0;
+  while (
+    suffix < a.length - prefix &&
+    suffix < b.length - prefix &&
+    a[a.length - 1 - suffix] === b[b.length - 1 - suffix]
+  ) {
+    suffix++;
+  }
+  // The text of the old expression that the suggestion removes or rewrites.
+  const changedLength = a.length - prefix - suffix;
+  return changedLength >= COMPLEX_CHANGE_LENGTH;
+}
+
 function useReportProposal(
   proposal: Proposal | null,
   compileSource: (source: string) => Lib.ExpressionClause | null,
