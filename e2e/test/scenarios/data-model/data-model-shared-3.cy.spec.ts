@@ -7,7 +7,8 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
-const { TablePicker, TableSection, FieldSection, Shared } = cy.H.DataModel;
+const { TablePicker, TableSection, FieldSection, PreviewSection, Shared } =
+  cy.H.DataModel;
 
 const {
   verifyTablePreview,
@@ -385,12 +386,48 @@ areas.forEach((area) => {
               values: ["10", "10"],
             });
 
-            cy.log("truncates the prefix once the parent gets a long name");
+            cy.log("close the preview so the prefixes get their usual width");
+            FieldSection.getPreviewButton().click();
+            PreviewSection.get().should("not.exist");
+
+            cy.log("does not truncate a short prefix");
+            const shortPrefix = "Short prefix";
             const longPrefix = "Legendarily long column prefix";
             TableSection.getFieldNameInput("Json")
               .clear()
+              .type(shortPrefix)
+              .blur();
+
+            cy.log("in field section");
+            FieldSection.get()
+              .findByTestId("name-prefix")
+              .should("have.text", `${shortPrefix}:`)
+              .then((element) => {
+                H.assertIsNotEllipsified(element[0]);
+              });
+            FieldSection.get().findByTestId("name-prefix").realHover();
+            H.tooltip().should("not.exist");
+
+            cy.log("in table section");
+            // the test id is on a box that never clips, so measure its text
+            TableSection.getField("Json → D")
+              .findByTestId("name-prefix")
+              .findByText(`${shortPrefix}:`)
+              .then((element) => {
+                H.assertIsNotEllipsified(element[0]);
+              });
+            TableSection.getField("Json → D")
+              .findByTestId("name-prefix")
+              .realHover();
+            H.tooltip().should("not.exist");
+
+            cy.log("truncates a long prefix");
+            TableSection.getFieldNameInput(shortPrefix)
+              .clear()
               .type(longPrefix)
               .blur();
+
+            cy.log("in field section");
             FieldSection.get()
               .findByTestId("name-prefix")
               .should("have.text", `${longPrefix}:`)
@@ -407,13 +444,16 @@ areas.forEach((area) => {
             FieldSection.get().findByText("Field settings").realHover();
             H.tooltip().should("not.exist");
 
+            cy.log("in table section");
             TableSection.getField("Json → D")
               .scrollIntoView({ offset: { left: 0, top: -400 } })
               .findByTestId("name-prefix")
-              .should("have.text", `${longPrefix}:`)
+              .findByText(`${longPrefix}:`)
               .then((element) => {
                 H.assertIsEllipsified(element[0]);
-              })
+              });
+            TableSection.getField("Json → D")
+              .findByTestId("name-prefix")
               .realHover({ scrollBehavior: "center" });
             H.tooltip().should("be.visible").and("have.text", longPrefix);
           });

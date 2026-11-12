@@ -90,11 +90,7 @@ export const DataModel = {
     getDisplayValuesInput: getFieldDisplayValuesInput,
     getDisplayValuesFkTargetInput: getFieldDisplayValuesFkTargetInput,
     getUnfoldJsonInput: getFieldUnfoldJsonInput,
-    getFormatControl: getFieldFormatControl,
-    getMiniBarChartToggle: getFieldMiniBarChartToggle,
-    getMultiplyByNumberInput: getFieldMultiplyByNumberInput,
     getPrefixInput: getFieldPrefixInput,
-    getSuffixInput: getFieldSuffixInput,
     getCloseButton: getFieldSectionCloseButton,
   },
   PreviewSection: {
@@ -576,24 +572,8 @@ function getFieldUnfoldJsonInput() {
   );
 }
 
-function getFieldMiniBarChartToggle() {
-  return getFieldSection().findByLabelText("Show a mini bar chart");
-}
-
-function getFieldMultiplyByNumberInput() {
-  return getFieldSection().findByLabelText("Multiply by a number");
-}
-
-function getFieldFormatControl() {
-  return getFieldSection().findByTestId("chart-settings-widget-number_style");
-}
-
 function getFieldPrefixInput() {
   return getFieldSection().findByTestId("prefix");
-}
-
-function getFieldSuffixInput() {
-  return getFieldSection().findByTestId("suffix");
 }
 
 function getFieldSectionCloseButton() {

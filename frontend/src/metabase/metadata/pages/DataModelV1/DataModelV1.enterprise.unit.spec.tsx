@@ -37,7 +37,9 @@ import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Database, FieldId, FieldValue, Table } from "metabase-types/api";
 import {
+  createMockColumn,
   createMockDatabase,
+  createMockDataset,
   createMockField,
   createMockTable,
   createMockTokenFeatures,
@@ -511,8 +513,31 @@ describe("DataModelV1 > field section (advanced permissions)", () => {
   });
 
   describe("formatting", () => {
-    it("should save the number style of a field", async () => {
-      await setup({ table: ORDERS_TABLE, fieldId: ORDERS.QUANTITY });
+    it("should save the number style of a field and show it in the preview", async () => {
+      const { backend } = await setup({
+        table: ORDERS_TABLE,
+        fieldId: ORDERS.QUANTITY,
+      });
+      fetchMock.modifyRoute("dataset-post", {
+        response: (call) => {
+          const body = String(call.options.body);
+          const isQuantityPreview =
+            body.includes(`"source-table":${ORDERS_TABLE.id}`) &&
+            body.includes(`${ORDERS.QUANTITY}]`);
+          return createMockDataset({
+            data: {
+              cols: [
+                createMockColumn({
+                  ...backend.getField(ORDERS.QUANTITY),
+                  id: ORDERS.QUANTITY,
+                  source: "fields",
+                }),
+              ],
+              rows: isQuantityPreview ? [[2], [3]] : [],
+            },
+          });
+        },
+      });
 
       await userEvent.click(
         within(
@@ -529,6 +554,13 @@ describe("DataModelV1 > field section (advanced permissions)", () => {
         event_detail: "formatting",
         triggered_from: "admin",
       });
+
+      await userEvent.click(
+        within(getFieldSection()).getByRole("button", { name: /Preview/ }),
+      );
+      const preview = await screen.findByTestId("preview-section");
+      expect(await within(preview).findByText("200%")).toBeInTheDocument();
+      expect(within(preview).getByText("300%")).toBeInTheDocument();
 
       // the feature_level_permissions plugin asks for the editable data model
       const metadataUrls = fetchMock.callHistory
