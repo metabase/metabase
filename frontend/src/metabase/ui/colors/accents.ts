@@ -1,12 +1,10 @@
 import Color from "color";
 
-import type { ColorSettings } from "metabase-types/api";
-
 import {
   ACCENT_COLOR_NAMES_MAP,
   CHART_TINT_SHADE_FACTOR,
 } from "./constants/accents";
-import type { ChartColorV2 } from "./types";
+import type { ChartColorV2, ColorPalette } from "./types";
 import type { MetabaseAccentColorKey } from "./types/color-keys";
 
 /**
@@ -82,18 +80,23 @@ export function deriveChartShadeColor(hexColor: string): string {
 }
 
 /**
- * Given color settings, adds any missing accent variants, like "accent0-light", "accent1-dark", or even "accent2".
+ * Given a color palette (whitelabel colors after `mapWhitelabelColorsToTokens`), adds any missing accent variants, like "accent0-light", "accent1-dark", or even "accent2".
  * Similar to mapChartColorsToAccents, but more flexible:
  * - The base color is not required; can derive "accent0" and "accent0-dark" if only "accent0-light is provided"
  * - Can skip an accent entirely; can provide "accent0" and "accent2" but skip "accent1"
  * This flexibility is required for the ColorSettingsWidget UX
  */
-export function deriveAllAccentColors(colors: ColorSettings): ColorSettings {
+export function deriveAllAccentColors(
+  colors: ColorPalette,
+): Record<string, string> {
+  const definedColors = Object.entries(colors).filter(
+    (entry): entry is [string, string] => entry[1] !== undefined,
+  );
   const accentColors = Object.fromEntries(
-    Object.entries(colors).filter(([key]) => key.startsWith("accent")),
+    definedColors.filter(([key]) => key.startsWith("accent")),
   );
   const otherColors = Object.fromEntries(
-    Object.entries(colors).filter(([key]) => !key.startsWith("accent")),
+    definedColors.filter(([key]) => !key.startsWith("accent")),
   );
   const allAccentColors = Object.entries(accentColors).reduce(
     (acc, [key, value]) => {

@@ -9,46 +9,65 @@
    [metabase.run-tracking.core :as rt]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
+   [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.models.transform-run-cancelation :as wr.cancelation]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms])
   (:import
+   (com.mchange.v2.resourcepool TimeoutException)
    (java.time OffsetDateTime)
-   (java.util.concurrent Executors ScheduledExecutorService TimeUnit)))
+   (java.util.concurrent Future Executors ScheduledExecutorService TimeUnit)
+   (org.quartz JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private job-key "metabase.transforms.canceling")
+
+(mr/def ::canceled-run
+  "A TransformRun that a cancelation request was made for, with the `:request_time` of that request."
+  [:merge
+   ::transforms.schema/transform-run
+   [:map {:closed true}
+    [:request_time ms/TemporalInstant]]])
+
+(mr/def ::outcome
+  "How a cancelation completed."
+  [:enum "success" "timeout" "error"])
 
 (defonce ^:private ^ScheduledExecutorService scheduler
   (Executors/newScheduledThreadPool 1))
 
 (defonce ^:private connections (atom {}))
 
-(defn chan-start-run!
+(mu/defn chan-start-run! :- :nil
   "Registers cancel-chan for run-id"
-  [run-id cancel-chan]
+  [run-id      :- ms/PositiveInt
+   cancel-chan :- ::transforms-base.schema/chan]
   (swap! connections assoc run-id cancel-chan)
   nil)
 
-(defn chan-end-run!
+(mu/defn chan-end-run! :- [:maybe ::transforms-base.schema/chan]
   "Deregisters the cancel-chan for run-id and returns the channel"
-  [run-id]
+  [run-id :- ms/PositiveInt]
   (-> (swap-vals! connections dissoc run-id)
       first ;; old value
       (get run-id)))
 
-(defn chan-signal-cancel!
+(mu/defn chan-signal-cancel! :- [:maybe :boolean]
   "Cancels the run for a given run-id"
-  [run-id]
+  [run-id :- ms/PositiveInt]
   (when-some [cancel-chan (chan-end-run! run-id)]
     (a/put! cancel-chan :cancel!)
     true))
 
-(defn heartbeat-and-reconcile-runs!
+(mu/defn heartbeat-and-reconcile-runs! :- :nil
   "Per-node tick: heartbeat the runs this process is executing (those registered in `connections`),
   then signal cancel for any that another path (timeout sweeper, reaper, force-cancel) already
   terminated, so the local work stops promptly. Each node reconciles its own runs — only the
@@ -60,9 +79,10 @@
                                 :heartbeat! transform-run/heartbeat-runs!
                                 :on-gone    chan-signal-cancel!}))
 
-(defn chan-start-timeout-vthread!
+(mu/defn chan-start-timeout-vthread! :- (ms/InstanceOfClass Future)
   "Starts a vthread that will signal a timeout after a given number of minutes."
-  [run-id timeout-minutes]
+  [run-id          :- ms/PositiveInt
+   timeout-minutes :- number?]
   (u.jvm/in-virtual-thread*
    (try
      (Thread/sleep (long (* timeout-minutes 60 1000)))
@@ -83,20 +103,25 @@
            (some-> timeout-handle# future-cancel)
            (chan-end-run! run-id#))))))
 
-(defn- request-latency-ms
+(mu/defn- request-latency-ms :- [:maybe number?]
   "Milliseconds elapsed since `request-time`, or nil when `request-time` is nil.
 
   `request-time` is the `:time` column of `transform_run_cancelation`. Metabase's app-db JDBC layer (see
   `metabase.app-db.jdbc-protocols/read-column` for `Types/TIMESTAMP_WITH_TIMEZONE` and the mysql `Types/TIMESTAMP`
   branch) normalizes that column to `java.time.OffsetDateTime` on every supported app DB."
-  [request-time]
+  [request-time :- [:maybe ms/TemporalInstant]]
   (some-> ^OffsetDateTime request-time .toInstant .toEpochMilli u/since-ms-wall-clock))
 
-(defn- record-completion!
+(mu/defn- record-completion! :- [:maybe [:map {:closed true}
+                                         [:object  [:or ::transforms.schema/transform-run ::canceled-run]]
+                                         [:details [:map {:closed true} [:outcome ::outcome]]]]]
   "Emit metrics + audit event for a cancelation completion. `outcome` ∈ #{\"success\" \"timeout\" \"error\"}.
   `run` is the pre-fetched `:model/TransformRun` row (or nil); when nil the audit event is skipped, metrics still
   emit. The caller owns the fetch so we don't redundantly refetch a row it already has."
-  [run-id run request-time outcome]
+  [run-id       :- ms/PositiveInt
+   run          :- [:maybe [:or ::transforms.schema/transform-run ::canceled-run]]
+   request-time :- [:maybe ms/TemporalInstant]
+   outcome      :- ::outcome]
   (analytics/inc! :metabase-transforms/cancelation-completed {:outcome outcome})
   (when-let [latency (request-latency-ms request-time)]
     (analytics/observe! :metabase-transforms/cancelation-latency-ms
@@ -110,14 +135,15 @@
       (log/warnf "Failed to publish transform-run-canceled event for run %s (outcome=%s): %s"
                  run-id outcome (ex-message t)))))
 
-(defn cancel-run!
+(mu/defn cancel-run! :- [:maybe :int]
   "Cancel a `run` (a `:model/TransformRun` row). `request-time` is the `java.time.OffsetDateTime` of the cancelation
   request — the background loop passes the `:time` from the cancelation row; the API path passes
   `(OffsetDateTime/now)` since it just inserted the row microseconds earlier.
 
   Callers own the fetching of `run` since the full row is needed for instrumentation & audit logging of this
   operation which changes state."
-  [{run-id :id :as run} request-time]
+  [{run-id :id :as run} :- ::transforms.schema/transform-run
+   request-time         :- ms/TemporalInstant]
   (tracing/with-span :tasks "task.transform.cancel" {:run/id       run-id
                                                      :transform/id (:transform_id run)}
     (try
@@ -130,7 +156,8 @@
         (record-completion! run-id run request-time "error")
         (throw t)))))
 
-(defn- cancel-old-transform-runs! [_ctx]
+(mu/defn- cancel-old-transform-runs! :- :nil
+  [_ctx :- (ms/InstanceOfClass JobExecutionContext)]
   ;; `cancel-old-canceling-runs!` does a transactional select-then-update-by-id under row locks, so it returns
   ;; *only* the runs this sweep actually transitioned — `outcome=timeout` cannot overcount rows another path
   ;; (cancel-run!, timeout-run!) had already finished. "timeout" here = the *cancelation attempt* exceeded 2 min;
@@ -148,14 +175,18 @@
       (log/errorf "Error force-canceling stale transform runs: %s" (ex-message t))
       ;; Transaction rolled back — the row count is unrecoverable, so emit one aggregate error so the failure
       ;; is at least visible in metrics. Magnitude can be inferred from log volume if needed.
-      (analytics/inc! :metabase-transforms/cancelation-completed {:outcome "error"}))))
+      (analytics/inc! :metabase-transforms/cancelation-completed {:outcome "error"})
+      nil)))
 
-(task/defjob  ^{:doc "Cancel items that haven't been canceled in two minutes"
-                org.quartz.DisallowConcurrentExecution true}
-  CancelOldTransformRuns [ctx]
+(task/defjob CancelOldTransformRuns
+  "Cancel items that haven't been canceled in two minutes"
+  {:saved-class "metabase.transforms.canceling.CancelOldTransformRuns"
+   :concurrent? false}
+  [ctx]
   (cancel-old-transform-runs! ctx))
 
-(defn- start-job! []
+(mu/defn- start-job! :- [:maybe inst?]
+  []
   (when (not (task/job-exists? job-key))
     (let [job (jobs/build
                (jobs/of-type CancelOldTransformRuns)
@@ -183,6 +214,12 @@
                         :label   "transform run"
                         :reap-fn #(transform-run/reap-orphaned-runs! transform-heartbeat-stale-minutes)}))
 
+(mu/defn- app-db-checkout-timeout? :- :boolean
+  "Is `e`, or anything in its cause chain, a c3p0 pool-checkout timeout? Then the app DB pool is exhausted, and this
+  poller is only the messenger."
+  [^Throwable e :- (ms/InstanceOfClass Throwable)]
+  (boolean (some #(instance? TimeoutException %) (u/full-exception-chain e))))
+
 (defmethod task/init! ::CancelRuns [_]
   (log/info "Scheduling the cancelation background task.")
   ;; does not use the Quartz scheduler
@@ -199,4 +236,6 @@
                                          (log/error (str "Error canceling " id ": " (ex-message t)))))))
                                  (wr.cancelation/reducible-canceled-local-runs))
                            (catch Throwable t
-                             (log/errorf "Error while canceling a transform run: %s" (ex-message t)))) 0 20 TimeUnit/SECONDS))
+                             (if (app-db-checkout-timeout? t)
+                               (log/warnf "Could not check for transform runs to cancel: %s" (ex-message t))
+                               (log/errorf "Error while canceling a transform run: %s" (ex-message t))))) 0 20 TimeUnit/SECONDS))

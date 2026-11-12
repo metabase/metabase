@@ -13,6 +13,7 @@ import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { GetFieldValuesResponse } from "metabase-types/api";
 import {
+  ORDERS,
   ORDERS_ID,
   PEOPLE_SOURCE_VALUES,
   createSampleDatabase,
@@ -185,6 +186,29 @@ describe("QuestionFiltersHeader", () => {
     expect(Lib.filters(query, 1)).toHaveLength(1);
   });
 
+  it("should hide the filter panel after removing all filters", async () => {
+    const { getNextQuery } = setup();
+    const removeFilter = (filterName: string) =>
+      userEvent.click(
+        within(screen.getByText(filterName)).getByLabelText("Remove"),
+      );
+
+    await removeFilter("Quantity is greater than 4");
+    expect(screen.getByTestId("qb-filters-panel")).toBeInTheDocument();
+
+    await removeFilter("Count is greater than 5");
+    expect(screen.getByTestId("qb-filters-panel")).toBeInTheDocument();
+
+    await removeFilter("User → Source is Organic");
+    expect(screen.queryByTestId("qb-filters-panel")).not.toBeInTheDocument();
+    const query = getNextQuery();
+    expect(
+      Lib.stageIndexes(query).flatMap((stageIndex) =>
+        Lib.filters(query, stageIndex),
+      ),
+    ).toHaveLength(0);
+  });
+
   it("should remove a filter from the previous stage", async () => {
     const { getNextQuery } = setup();
 
@@ -221,12 +245,14 @@ const TEST_MULTISTAGE_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
           type: "operator",
           operator: ">",
           args: [
-            { type: "column", sourceName: "ORDERS", name: "QUANTITY" },
+            { type: "column", name: "QUANTITY" },
             { type: "literal", value: 4 },
           ],
         },
       ],
-      breakouts: [{ type: "column", sourceName: "PEOPLE", name: "SOURCE" }],
+      breakouts: [
+        { type: "column", sourceFieldId: ORDERS.USER_ID, name: "SOURCE" },
+      ],
     },
     {
       breakouts: [{ type: "column", name: "SOURCE" }],

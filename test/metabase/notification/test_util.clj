@@ -31,7 +31,7 @@
   [_channel-type {:keys [return-type return-value] :as _details}]
   (case return-type
     "throw"
-    (throw (ex-info "Test error" return-value))
+    (throw (ex-info "Test error" (assoc return-value :response/keys (set (keys return-value)))))
 
     "return-value"
     return-value))
@@ -132,7 +132,7 @@
     (try
       (thunk (models.notification/hydrate-notification notification))
       (finally
-        (t2/delete! :model/Notification (:id notification))))))
+        (t2/delete! :model/Notification :id (:id notification))))))
 
 (defmacro with-temp-notification
   "Macro that sets up a temporary notification for testing.

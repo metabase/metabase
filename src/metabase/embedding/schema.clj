@@ -1,6 +1,9 @@
 (ns metabase.embedding.schema
   "Malli schemas for the embedding module."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -24,3 +27,32 @@
    [:is_default {:optional true} [:maybe :boolean]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::sdk-react-18-host.host
+  "The `host` of a EmbeddingSdkReact18Host: a lowercase hostname, or an empty string when the host app page URL has no
+  hostname."
+  [:and :string [:fn {:error/message "must be lowercase"} #(= % (u/lower-case-en %))]])
+
+(mr/def ::sdk-react-18-host
+  "A EmbeddingSdkReact18Host as selected from the app DB: every column of `:embedding_sdk_react_18_host`. `host` is an
+  empty string when the host app page URL has no hostname."
+  [:map {:closed true}
+   [:id           ms/PositiveInt]
+   [:host         ::sdk-react-18-host.host]
+   [:created_at   ms/TemporalInstant]
+   [:last_seen_at ms/TemporalInstant]])
+
+(mr/def ::sdk-react-18-host.response
+  "A EmbeddingSdkReact18Host as the API returns it: `host` is nil when the host app page URL has no hostname."
+  [:merge
+   ::sdk-react-18-host
+   [:map {:closed true}
+    [:host [:maybe :string]]]])
+
+(mr/def ::external-embedding-theme
+  "An EmbeddingTheme as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::embedding-theme [:entity_id :name :settings]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

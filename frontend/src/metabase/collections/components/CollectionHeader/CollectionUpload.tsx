@@ -32,8 +32,7 @@ export function CollectionUpload({
       <>
         <UploadTooltip collection={collection}>
           <ActionIcon
-            variant="viewHeader"
-            size="2rem"
+            variant="subtle"
             aria-label={t`Upload data`}
             onClick={() => setShowInfoModal(true)}
           >
@@ -68,8 +67,7 @@ export function CollectionUpload({
     <UploadTooltip collection={collection}>
       <UploadLabel>
         <ActionIcon
-          variant="viewHeader"
-          size="2rem"
+          variant="subtle"
           component="span"
           aria-label={t`Upload data`}
         >

@@ -334,12 +334,13 @@
   single-stage query. For a full query table_id must name the definition's own source table; a mismatch is
   a teaching error. Not admin-only: writing requires superuser OR a data analyst with unrestricted view-data on the
   table, and the table must not live in a read-only remote-synced collection."
-  {:name        "segment_write"
-   :scope       metabot.scope/agent-content-write
+  {:name           "segment_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
    ;; `archived: true` trashes the segment, so this is not the additive-only update
    ;; `destructiveHint false` would assert.
-   :annotations {:readOnlyHint false :destructiveHint true}
-   :args        segment-write-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           segment-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [dispatched (v2.write/dispatch-write segment-write-entry args)]
     (case (first dispatched)
@@ -402,12 +403,13 @@
   full query table_id must name the definition's own source table; a mismatch is a teaching error. Not admin-only:
   writing requires superuser OR a data analyst with unrestricted view-data on the table, and the table must not live
   in a read-only remote-synced collection."
-  {:name        "measure_write"
-   :scope       metabot.scope/agent-content-write
+  {:name           "measure_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
    ;; `archived: true` trashes the measure, so this is not the additive-only update
    ;; `destructiveHint false` would assert.
-   :annotations {:readOnlyHint false :destructiveHint true}
-   :args        measure-write-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           measure-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [dispatched (v2.write/dispatch-write measure-write-entry args)]
     (case (first dispatched)

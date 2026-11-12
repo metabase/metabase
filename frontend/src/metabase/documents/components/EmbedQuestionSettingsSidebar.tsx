@@ -196,12 +196,7 @@ export const EmbedQuestionSettingsSidebar = ({
             </Menu>
           </Group>
 
-          <ActionIcon
-            mt="1rem"
-            mr="1rem"
-            color="text-primary"
-            onClick={handleDone}
-          >
+          <ActionIcon variant="subtle" mt="1rem" mr="1rem" onClick={handleDone}>
             <Icon name="close" />
           </ActionIcon>
         </Group>

@@ -15,7 +15,7 @@ export const ModelExplanationBanner = () => {
 
   const [opened, setOpened] = useState(false);
 
-  const { showMetabaseLinks, url } = useDocsUrl("data-modeling/models");
+  const { showMetabaseLinks, url } = useDocsUrl("data-modeling/models/models");
 
   const dismissBanner = () => {
     setHasDismissedBanner(true);

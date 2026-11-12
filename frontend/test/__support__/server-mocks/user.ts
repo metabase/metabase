@@ -25,6 +25,25 @@ export function setupUpdatePasswordEndpoint(userId: UserId) {
   fetchMock.put(`path:/api/user/${userId}/password`, {});
 }
 
+export function setupDisconnectSlackEndpoint(
+  userId: UserId,
+  {
+    status = 204,
+    body,
+    delay = 0,
+  }: {
+    status?: number;
+    body?: { message: string };
+    delay?: number;
+  } = {},
+) {
+  fetchMock.delete(
+    `path:/api/user/${userId}/slack`,
+    { status, body },
+    { delay },
+  );
+}
+
 export function setupUsersEndpoints(users: UserListResult[]) {
   users.forEach((user) => setupUserEndpoints(user));
   return fetchMock.get("path:/api/user", { data: users, total: users.length });

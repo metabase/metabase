@@ -8,15 +8,20 @@ import type {
   Dashboard,
   DashboardCardSize,
   DashboardId,
+  DashboardParameterMapping,
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
-import type { RowValue } from "./dataset";
+import type { DatasetColumn, RowValue } from "./dataset";
 import type { Document, DocumentId } from "./document";
 import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
-import type { CurrencyStyle, TimeOnlyOptions } from "./formatting";
+import type {
+  CurrencyPosition,
+  CurrencyStyle,
+  TimeOnlyOptions,
+} from "./formatting";
 import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type {
@@ -40,6 +45,8 @@ import type {
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
 
+export type CardQueryType = "query" | "native";
+
 export type CardCreationType =
   | "simple_question"
   | "custom_question"
@@ -47,6 +54,13 @@ export type CardCreationType =
 
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
+
+export type CardParameterMapping = Omit<
+  DashboardParameterMapping,
+  "card_id"
+> & {
+  card_id?: CardId | null;
+};
 
 export interface Card<
   Q extends DatasetQuery = DatasetQuery,
@@ -58,6 +72,7 @@ export interface Card<
   name: string;
   description: string | null;
   type: CardType;
+  query_type?: CardQueryType;
   public_uuid: string | null;
 
   /* Indicates whether static embedding for this card has been published */
@@ -82,8 +97,9 @@ export interface Card<
   metabot_chart_id?: string | null;
   dashboard_count: number | null;
   parameter_usage_count?: number | null;
+  parameter_mappings?: CardParameterMapping[] | null;
 
-  result_metadata: Field[] | null;
+  result_metadata: DatasetColumn[] | null;
   param_fields?: Record<ParameterId, Field[]>;
   moderation_reviews?: ModerationReview[];
   persisted?: boolean;
@@ -136,6 +152,8 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
 
 export type LineSize = "S" | "M" | "L";
 
+export type LineStyle = "solid" | "dashed" | "dotted";
+
 export type SeriesSettings = {
   title?: string;
   color?: string;
@@ -145,11 +163,13 @@ export type SeriesSettings = {
   display?: VisualizationDisplay;
   axis?: string;
   "line.size"?: LineSize;
-  "line.style"?: "solid" | "dashed" | "dotted";
+  "line.style"?: LineStyle;
   "line.interpolate"?: string;
   "line.marker_enabled"?: boolean;
   "line.missing"?: string;
   show_series_trendline?: boolean;
+  "trendline.color"?: string;
+  "trendline.style"?: LineStyle;
 };
 
 export type SeriesOrderSetting = {
@@ -246,6 +266,16 @@ export type StackType = "stacked" | "normalized" | null;
 export type StackValuesDisplay = "total" | "all" | "series";
 export type StackValueFormat = "value" | "percentage";
 
+export const LEGEND_POSITIONS = [
+  "auto",
+  "top",
+  "bottom",
+  "left",
+  "right",
+  "off",
+] as const;
+export type LegendPosition = (typeof LEGEND_POSITIONS)[number];
+
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = (typeof numericScale)[number];
 
@@ -272,6 +302,7 @@ export type ColumnSettings = TimeOnlyOptions & {
   compact?: boolean;
   currency?: string;
   currency_style?: CurrencyStyle;
+  currency_position?: CurrencyPosition;
   date_abbreviate?: boolean;
   date_format?: string;
   date_separator?: string;
@@ -339,11 +370,17 @@ export type VisualizationSettings = {
   /** Visible table columns and order, as `{ name, enabled }` entries. */
   "table.columns"?: TableColumnOrderSetting[];
 
+  /** Whether a table of two breakouts and one aggregation pivots; `false` keeps a row per group. */
+  "table.pivot"?: boolean;
+
   /**
    * Per-column titles, number or currency formatting, and click behavior.
    * Keys can be modern (`getColumnKey`) or legacy (`getLegacyColumnKey`).
    */
   column_settings?: Record<string, ColumnSettings>;
+
+  /** Show the x-axis title. `"auto"` hides it on short cards. */
+  "graph.x_axis.labels_enabled"?: boolean | "auto";
 
   /** Override the x-axis label. */
   "graph.x_axis.title_text"?: string;
@@ -361,6 +398,9 @@ export type VisualizationSettings = {
 
   /** Let Metabase choose the y-axis bounds automatically. */
   "graph.y_axis.auto_range"?: boolean;
+
+  /** Show the y-axis title. `"auto"` hides it on narrow cards. */
+  "graph.y_axis.labels_enabled"?: boolean | "auto";
 
   /** Override the y-axis label. On a split chart this labels the left axis. */
   "graph.y_axis.title_text"?: string;
@@ -394,6 +434,14 @@ export type VisualizationSettings = {
 
   /** Render compatible series in separate panels instead of one chart. */
   "graph.split_panels"?: boolean;
+
+  /**
+   * Where the legend sits on charts that have one: cartesian, row, scatter,
+   * and box plot charts with several series or a breakout, pies, bar-type
+   * funnels, and region maps. "auto" lets the chart pick a side that fits;
+   * "off" hides the legend.
+   */
+  "legend.position"?: LegendPosition;
 
   /**
    * Result column names used for the x-axis, category, or grouping dimension.
@@ -480,7 +528,7 @@ export type VisualizationSettings = {
   /** Sort pie slices by metric value. */
   "pie.sort_rows"?: boolean;
 
-  /** Show the pie legend. */
+  /** @deprecated Use `legend.position`. Read only as the pie's fallback. */
   "pie.show_legend"?: boolean;
 
   /** Show the total value in the center of the pie. */
@@ -566,6 +614,9 @@ export type VisualizationSettings = {
   /** Color used for the list entity icon. */
   "list.entity_icon_color"?: string;
 
+  /** Draw timeline events on time series charts. */
+  "timeline_events.enabled"?: boolean;
+
   [key: string]: any;
 } & EmbedVisualizationSettings;
 
@@ -596,6 +647,7 @@ export type CardQueryMetadata = {
   databases: Database[];
   tables: Table[];
   fields: Field[];
+  cards: Card[];
 };
 
 export type ListCardsRequest = {
@@ -605,8 +657,6 @@ export type ListCardsRequest = {
 
 export interface GetCardRequest {
   id: CardId | EntityToken;
-  context?: "collection";
-  ignore_view?: boolean;
   ignore_error?: boolean;
 }
 
@@ -617,16 +667,17 @@ export interface CreateCardRequest {
   visualization_settings: VisualizationSettings;
   type?: CardType;
   parameters?: Parameter[];
-  parameter_mappings?: unknown;
+  parameter_mappings?: CardParameterMapping[] | null;
   description?: string | null;
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
   dashboard_tab_id?: DashboardTabId;
   collection_position?: number | null;
-  result_metadata?: Field[] | null;
+  result_metadata?: DatasetColumn[] | null;
   cache_ttl?: number | null;
   size?: DashboardCardSize;
+  source_card_id?: CardId;
 }
 
 export interface CreateCardFromCsvRequest {
@@ -651,9 +702,8 @@ export interface UpdateCardRequest {
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
   collection_position?: number | null;
-  result_metadata?: Field[] | null;
+  result_metadata?: DatasetColumn[] | null;
   cache_ttl?: number;
-  collection_preview?: boolean;
   delete_old_dashcards?: boolean;
 }
 
@@ -679,7 +729,6 @@ export type InvalidCard = Pick<
   | "creator"
 > & {
   collection: CollectionEssentials;
-  collection_preview: boolean;
   entity_id: string;
   errors: CardError[];
   display: CardDisplayType;
@@ -704,7 +753,6 @@ export type StoredResultSort =
 export type CardQueryRequest = {
   cardId: CardId;
   dashboardId?: DashboardId;
-  collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];
   stored_result_id?: number;

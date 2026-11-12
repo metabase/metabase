@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,6 +11,7 @@ import {
   columnSettings,
   dimensionSetting,
   getDefaultSize,
+  getLegendPositionSetting,
   getMinSize,
   metricSetting,
 } from "metabase/viz-core";
@@ -168,5 +170,9 @@ export const FUNNEL_CHART_DEFINITION: VisualizationDefinition = {
       getDefault: (series: RawSeries) => (series.length > 1 ? "bar" : "funnel"),
       useRawSeries: true,
     },
+    "legend.position": getLegendPositionSetting({
+      getHidden: (_series, settings) => settings["funnel.type"] !== "bar",
+      readDependencies: ["funnel.type"],
+    }),
   },
 };

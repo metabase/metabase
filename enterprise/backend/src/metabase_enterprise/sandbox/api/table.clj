@@ -46,7 +46,8 @@
 (defenterprise batch-fetch-table-query-metadatas
   "Returns the query metadata used to power the Query Builder for the tables specified by`ids`.
   Options:
-    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive for tables the current
+      user can edit the data model of (default false)"
   :feature :sandboxes
   [ids opts]
   (for [table (schema.table/batch-fetch-query-metadatas* ids opts)]

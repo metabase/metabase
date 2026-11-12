@@ -134,10 +134,10 @@
                                (unpersist! [_ _database _persisted-info]))
               original-update! (mt/original-fn #'t2/update!)]
           (testing "If saving the `persisted` (or `error`) state fails..."
-            (mt/with-dynamic-fn-redefs [t2/update! (fn [model id update]
-                                                     (when (= "persisted" (:state update))
+            (mt/with-dynamic-fn-redefs [t2/update! (fn [model & args]
+                                                     (when (= "persisted" (:state (last args)))
                                                        (throw (ex-info "simulated error" {})))
-                                                     (original-update! model id update))]
+                                                     (apply original-update! model args))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"simulated error"
                                     (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil))))
             (testing "the PersistedInfo is left in the `refreshing` state"
@@ -335,7 +335,7 @@
         ;; [[metabase.channel.db/accepted-admin-emails]] filters on `last_login`. Record a login for our own
         ;; admin rather than relying on a shared test user, whose `last_login` is only set as a side effect of
         ;; some earlier test creating a session for them, and is therefore a matter of test ordering.
-        (t2/update! :model/User (:id admin) {:last_login :%now})
+        (t2/update! :model/User :id (:id admin) {:last_login :%now})
         (let [^org.quartz.Trigger trigger (#'task.persist-refresh/database-trigger db "0 0 0/8 * * ? *")]
           (#'task.persist-refresh/save-task-history!
            "persist-refresh" (u/the-id db)

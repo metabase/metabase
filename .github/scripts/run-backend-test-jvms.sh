@@ -155,6 +155,10 @@ for idx in "${INDEXES[@]}"; do
   prepare_jvm_dir "$JVM_DIRS_ROOT/partition-$idx"
 done
 
+# Prepare dependencies before concurrent JVMs can race to clone or check out the same Git library.
+# This also initializes the Clojure launcher before the partitions start.
+clojure -P -X:"$CLOJURE_ALIASES" >/dev/null || die "preparing Clojure dependencies failed"
+
 for idx in "${INDEXES[@]}"; do
   run_partition "$idx" "$JVM_DIRS_ROOT/partition-$idx" &
 done

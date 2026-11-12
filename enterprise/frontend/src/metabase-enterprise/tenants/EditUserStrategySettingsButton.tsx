@@ -11,12 +11,7 @@ export const EditUserStrategySettingsButton = ({
 }) => (
   <Link to={Urls.editUserStrategy(page)}>
     <Tooltip label={t`Edit user strategy`}>
-      <ActionIcon
-        size="lg"
-        variant="outline"
-        c="text-primary"
-        bd="1px solid var(--mb-color-border-neutral)"
-      >
+      <ActionIcon size="lg">
         <Icon name="gear" />
       </ActionIcon>
     </Tooltip>

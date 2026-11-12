@@ -1,5 +1,6 @@
 ---
 title: Caching query results
+summary: Store question results and serve them from the cache instead of querying your database again, with duration, schedule, and adaptive invalidation policies.
 redirect_from:
   - /docs/latest/administration-guide/14-caching
   - /docs/latest/enterprise-guide/cache
@@ -174,7 +175,7 @@ To clear the cache and refresh the results:
 
 If you're self-hosting Metabase, cached question results will be saved to your [application database](../installation-and-operation/configuring-application-database.md).
 
-If you're using Metabase Cloud, cached question results will be saved to Metabase's servers in the United States (as our Cloud service manages your application database for you.)
+If you're using Metabase Cloud, cached question results will be saved to Metabase's servers and remain in the region your instance is hosted in (as our Cloud service manages your application database for you.)
 
 ## Further reading
 

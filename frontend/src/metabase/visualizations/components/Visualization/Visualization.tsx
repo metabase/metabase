@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 /* eslint-disable complexity */
 import cx from "classnames";
 import React, {
   type CSSProperties,
   type ComponentType,
   type ErrorInfo,
+  type JSX,
   PureComponent,
   type ReactNode,
   type Ref,
@@ -36,6 +38,7 @@ import { getVisualizationComponent } from "metabase/visualizations";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
+import { getScalarSizeTier } from "metabase/visualizations/components/ScalarValue/sizing";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
@@ -60,7 +63,7 @@ import {
   isSameSeries,
   prefetchVisualizationComponent,
 } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,
   Dashboard,
@@ -71,6 +74,7 @@ import type {
   SeriesCard,
   SingleSeries,
   TimelineEvent,
+  TimelineEventsVisibility,
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -119,6 +123,7 @@ type VisualizationRawSeries = (
 
 type VisualizationOwnProps = {
   actionButtons?: ReactNode | null;
+  cardLevelFilters?: ReactNode | null;
   className?: string;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
@@ -130,6 +135,7 @@ type VisualizationOwnProps = {
     clicked: ClickObject | null,
   ) => Record<string, unknown>;
   getHref?: () => string | undefined;
+  getCardHref?: (nextCard: SeriesCard) => string | undefined;
   gridSize?: VisualizationGridSize;
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
@@ -159,12 +165,14 @@ type VisualizationOwnProps = {
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
   settings?: VisualizationSettings;
-  autoAdjustSettings?: boolean;
   showTitle?: boolean;
   showWarnings?: boolean;
   hideLegend?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
+  timelineEventsVisibility?: TimelineEventsVisibility;
+  onTimelineEventsShown?: () => void;
+  onTimelineEventsEnabledChange?: (isEnabled: boolean) => void;
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
@@ -230,10 +238,14 @@ const isLoading = (series: Series | null) => {
 
 const deriveStateFromProps = (props: VisualizationProps) => {
   const rawSeriesArray = props.rawSeries || [];
-  const firstCard = rawSeriesArray[0]?.card;
-  const firstQuestion = firstCard != null ? new Question(firstCard) : undefined;
+  const firstSeries = rawSeriesArray[0];
+  const firstCols =
+    firstSeries != null && "data" in firstSeries
+      ? (firstSeries.data?.cols ?? [])
+      : [];
   const isNativeView =
-    props.queryBuilderMode === "view" && firstQuestion?.isNative();
+    props.queryBuilderMode === "view" &&
+    firstCols.some((col) => col.source === "native");
 
   const transformed = props.rawSeries
     ? getVisualizationTransformed(
@@ -628,7 +640,7 @@ class Visualization extends PureComponent<
   render() {
     const {
       actionButtons,
-      autoAdjustSettings,
+      cardLevelFilters,
       canToggleSeriesVisibility,
       className,
       dashboard,
@@ -640,6 +652,7 @@ class Visualization extends PureComponent<
       fontFamily,
       getExtraDataForClick,
       getHref,
+      getCardHref,
       hasColumnReordering,
       hasDevWatermark,
       headerIcon,
@@ -689,12 +702,15 @@ class Visualization extends PureComponent<
       style,
       tableHeaderHeight,
       timelineEvents,
+      timelineEventsVisibility,
       totalNumGridCols,
       onDeselectTimelineEvents,
       onOpenChartSettings,
       onOpenTimelines,
       onSelectTimelineEvents,
       onSeeAllEvents,
+      onTimelineEventsShown,
+      onTimelineEventsEnabledChange,
       onTogglePreviewing,
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
@@ -788,6 +804,7 @@ class Visualization extends PureComponent<
         {actionButtons}
       </Flex>
     );
+    const cardLevelFiltersOffset = getScalarSizeTier(width, height).menuOffset;
 
     let { gridSize, gridUnit } = this.props;
     if (
@@ -845,6 +862,19 @@ class Visualization extends PureComponent<
           data-viz-ui-name={visualization?.getUiName?.()}
           ref={this.props.forwardedRef}
         >
+          {cardLevelFilters && !replacementContent && (
+            <Box pos="relative" h={0} flex="0 0 auto">
+              <Box
+                pos="absolute"
+                top={cardLevelFiltersOffset.top}
+                left={cardLevelFiltersOffset.right}
+                style={{ zIndex: 1 }}
+                data-testid="card-level-filters"
+              >
+                {cardLevelFilters}
+              </Box>
+            </Box>
+          )}
           {!!hasHeader && (
             <Box pt="0.625rem" px="sm" pb="xs" flex="0 0 auto">
               <ChartCaption
@@ -872,7 +902,6 @@ class Visualization extends PureComponent<
               error={errorMessageOverride ?? error}
               icon={errorIcon}
               isSmall={small}
-              isDashboard={!!isDashboard}
             />
           ) : genericError ? (
             <SmallGenericError bordered={false} />
@@ -924,6 +953,7 @@ class Visualization extends PureComponent<
                       fontFamily={fontFamily}
                       getExtraDataForClick={getExtraDataForClick}
                       getHref={getHref}
+                      getCardHref={getCardHref}
                       gridSize={gridSize}
                       hasColumnReordering={hasColumnReordering}
                       headerIcon={hasHeader ? null : headerIcon}
@@ -958,12 +988,16 @@ class Visualization extends PureComponent<
                       selectedTimelineEventIds={selectedTimelineEventIds}
                       series={series}
                       settings={settings}
-                      autoAdjustSettings={!!autoAdjustSettings}
                       showAllLegendItems={showAllLegendItems}
                       hideLegend={hideLegend}
                       showTitle={!!showTitle}
                       tableHeaderHeight={tableHeaderHeight}
                       timelineEvents={timelineEvents}
+                      timelineEventsVisibility={timelineEventsVisibility}
+                      onTimelineEventsShown={onTimelineEventsShown}
+                      onTimelineEventsEnabledChange={
+                        onTimelineEventsEnabledChange
+                      }
                       totalNumGridCols={totalNumGridCols}
                       visualizationIsClickable={this.visualizationIsClickable}
                       width={width}

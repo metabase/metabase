@@ -6,7 +6,8 @@
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::login-history
-  "A LoginHistory as selected from the app DB: every column of `:login_history`, plus `:active` added by the model's after-select hook."
+  "A LoginHistory as selected from the app DB: every column of `:login_history`, plus `:active` when selected by
+  [[metabase.login-history.db/login-history-for-user]]: whether the login's session is still live."
   [:merge
    ::login-history.update
    [:map {:closed true}

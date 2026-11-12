@@ -18,12 +18,12 @@ export function useQueryResults(
   const { lastRunResult, lastRunQuery } = uiState;
   const [runAdhocQuery, { isFetching: isRunning = false }] =
     useLazyGetAdhocQueryQuery();
-  const abortRef = useRef<() => void>();
+  const abortRef = useRef<() => void>(undefined);
 
   const { rawSeries, isRunnable, isResultDirty } = useMemo(() => {
-    // Read only for its card and its legacy query, so it needs no metadata.
     const lastRunQuestion = lastRunQuery
       ? Question.create({
+          metadata: question.metadata(),
           dataset_query: lastRunQuery,
           cardType: question.type(),
           display: question.display(),

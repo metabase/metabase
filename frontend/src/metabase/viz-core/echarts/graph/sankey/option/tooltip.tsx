@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { TooltipOption } from "echarts/types/dist/shared";
 import { t } from "ttag";
 
@@ -95,7 +96,7 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
 };
 
 export const getTooltipOption = (
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
   chartModel: SankeyChartModel,
 ): TooltipOption => {
   return {

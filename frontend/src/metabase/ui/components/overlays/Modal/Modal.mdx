@@ -14,6 +14,66 @@ Our themed wrapper around [Mantine Modal](https://v6.mantine.dev/core/modal/).
 
 - [Mantine Modal Docs](https://v6.mantine.dev/core/modal/)
 
+## Usage
+
+Pass the heading as `title` and put the action buttons in a `Modal.Footer` as the last child, so the title, body and buttons always get the same placement and spacing.
+
+```tsx
+<Modal title={t`Delete this database?`} opened={opened} onClose={onClose}>
+  <Text>{t`This can't be undone.`}</Text>
+  <Modal.Footer>
+    <Button onClick={onClose}>{t`Cancel`}</Button>
+    <Button variant="filled" color="negative">{t`Delete`}</Button>
+  </Modal.Footer>
+</Modal>
+```
+
+### Layouts
+
+- `layout="default"` left-aligns the title and body, and right-aligns the buttons.
+- `layout="centered"` centre-aligns everything, stacks the buttons with the primary one on top, and shows an optional `illustration` above the title. Body copy is centred too. To left-align it, pass `ta="start"` to its `Text` (or to the `Stack` that wraps it).
+
+Don't confuse `layout` with Mantine's `centered` prop, which sets the modal's vertical position in the viewport.
+
+<Canvas of={ModalStories.Overview} />
+
+### Density
+
+- `density="default"` leaves 16px below the title and above the buttons, and 12px between the buttons. Use it for confirmations, messages and single-input dialogs.
+- `density="relaxed"` leaves 24px below the title and above the buttons, and 16px between the buttons. Use it when the body is a form with several fields or is split into sections. Space the fields 24px apart (`Stack gap="xl"`) to match.
+
+<Canvas of={ModalStories.WithForm} />
+
+### Padding
+
+The `padding` prop only accepts `0`, for full-bleed modals that lay out their own contents, such as pickers and side sheets. Leave it out to get the standard padding.
+
+### Back button and header actions
+
+Pass `onBack` to show a Back button before the title. Clicking the title goes back too. Escape, the close button and clicking outside still close the modal, so a multi-step modal can be dismissed from any step.
+
+Pass `headerActions` for controls next to the close button, such as an icon button with a tooltip.
+
+```tsx
+<Modal
+  title={t`Static embedding`}
+  opened={opened}
+  headerActions={<ActionIcon aria-label={t`Edit`}>…</ActionIcon>}
+  onBack={onBack}
+  onClose={onClose}
+>
+```
+
+The `centered` layout doesn't support either prop.
+
+<Canvas of={ModalStories.BackButton} />
+
+### Custom layouts
+
+`Modal.Root`, `Modal.Overlay`, `Modal.Content`, `Modal.Header`, `Modal.Title`, `Modal.Heading`, `Modal.CloseButton` and `Modal.Body` are an escape hatch for modals that don't fit the standard structure, such as side sheets. Prefer the props above where you can.
+
+For a Back button in a custom header, use `Modal.Heading` in place of `Modal.Title` and pass it `onBack`. It renders the title with the same Back button as `Modal`, and takes a `subtitle` for text under the title.
+
 ## Guidelines
 
 ### Modal headings should be in sentence case.

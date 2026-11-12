@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import cx from "classnames";
 import {
   Children,
@@ -65,6 +66,7 @@ const MarkdownCodeBlock = ({
             opened={copied || undefined}
           >
             <ActionIcon
+              variant="subtle"
               aria-label={t`Copy code`}
               className={S.copyCodeButton}
               data-testid="metabot-code-block-copy"

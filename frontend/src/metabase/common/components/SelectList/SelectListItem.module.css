@@ -1,0 +1,67 @@
+.itemSpacing {
+  margin-bottom: 0.125rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* Padding is a class, not style props, so consumers can override it with their own className */
+.medium {
+  padding: 0.75rem 0.5rem;
+}
+
+.small {
+  padding: 0.5rem;
+}
+
+.highlight {
+  &.selected {
+    background-color: var(--mb-color-core-brand);
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--mb-color-core-brand);
+    }
+  }
+}
+
+.grid {
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+
+  &.hasLeftIcon {
+    grid-template-columns: min-content 1fr;
+  }
+
+  &.hasRightIcon {
+    grid-template-columns: 1fr min-content;
+  }
+
+  &.hasLeftIcon.hasRightIcon {
+    grid-template-columns: min-content 1fr min-content;
+  }
+}
+
+.title {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.icon {
+  justify-self: end;
+  color: var(--select-list-item-icon-color);
+}
+
+.selected .icon,
+.selected .title {
+  color: var(--mb-color-text-primary-inverse);
+}
+
+@media (hover: hover) {
+  .highlight:hover .icon,
+  .highlight:hover .title {
+    color: var(--mb-color-text-primary-inverse);
+  }
+}

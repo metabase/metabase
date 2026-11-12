@@ -32,6 +32,7 @@ const ENABLED_SEARCH_MODELS = [
   "document",
   "exploration",
   "transform",
+  "data-app",
 ] as const;
 
 export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;
@@ -123,6 +124,7 @@ export interface SearchResult<
   "last-edit-info"?: LastEditInfo;
   result_metadata?: Field[];
   collection_id?: CollectionId;
+  data_app_slug?: string | null;
 }
 
 /**

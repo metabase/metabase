@@ -1,4 +1,5 @@
 import { useFormikContext } from "formik";
+import type { JSX } from "react";
 import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";

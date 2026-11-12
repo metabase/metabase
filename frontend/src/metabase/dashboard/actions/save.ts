@@ -1,4 +1,3 @@
-import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
 import { cardApi, dashboardApi } from "metabase/api";
@@ -8,7 +7,9 @@ import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
 import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 import type {
+  ClickBehavior,
   DashCardId,
+  Dashboard,
   ParameterId,
   UpdateCardRequest,
 } from "metabase-types/api";
@@ -16,7 +17,7 @@ import { clickBehaviorIsValid } from "metabase-types/guards";
 
 import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
-import { getInlineParameterTabMap } from "../utils";
+import { getDashcardClickBehavior, getInlineParameterTabMap } from "../utils";
 
 import { setEditingDashboard } from "./core";
 import { fetchDashboard, fetchDashboardCardData } from "./data-fetching";
@@ -25,6 +26,27 @@ import {
   haveDashboardCardsChanged,
   trackAddedIFrameDashcards,
 } from "./utils";
+
+function setClickBehavior<T extends StoreDashcard>(
+  card: T,
+  clickBehavior: ClickBehavior | null | undefined,
+): T {
+  if (clickBehavior == null) {
+    if (!card.visualization_settings) {
+      return card;
+    }
+    const { click_behavior: _removed, ...visualizationSettings } =
+      card.visualization_settings;
+    return { ...card, visualization_settings: visualizationSettings };
+  }
+  return {
+    ...card,
+    visualization_settings: {
+      ...card.visualization_settings,
+      click_behavior: clickBehavior,
+    },
+  };
+}
 
 export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
 
@@ -68,6 +90,7 @@ export const updateDashboardAndCards = createThunkAction(
         );
 
         if (!cardsHaveChanged && !dashboardHasChanged) {
+          dispatch(setEditingDashboard(null, location));
           return;
         }
       }
@@ -76,16 +99,12 @@ export const updateDashboardAndCards = createThunkAction(
       // We currently only do this for dashcard click behavior.
       // Invalid (partially complete) states are fine during editing,
       // but we should restore the previous value if saved while invalid.
-      const clickBehaviorPath = ["visualization_settings", "click_behavior"];
       dashboard.dashcards = dashboard.dashcards.map((card, index) => {
-        if (!clickBehaviorIsValid(getIn(card, clickBehaviorPath))) {
-          const startingValue = getIn(dashboardBeforeEditing?.dashcards ?? [], [
-            index,
-            ...clickBehaviorPath,
-          ]);
-          return startingValue == null
-            ? dissocIn(card, clickBehaviorPath)
-            : assocIn(card, clickBehaviorPath, startingValue);
+        if (!clickBehaviorIsValid(getDashcardClickBehavior(card))) {
+          const startingValue =
+            dashboardBeforeEditing?.dashcards?.[index] &&
+            getDashcardClickBehavior(dashboardBeforeEditing.dashcards[index]);
+          return setClickBehavior(card, startingValue);
         }
         return card;
       });
@@ -193,7 +212,8 @@ export const updateDashboardAndCards = createThunkAction(
         .filter((tab) => !tab.isRemoved)
         .map(({ id, name }) => ({ id, name }));
 
-      const updatedDashboard = await runRtkEndpoint(
+      // `runRtkEndpoint` is untyped; `updateDashboard` responds with the saved dashboard
+      const updatedDashboard = (await runRtkEndpoint(
         {
           ...dashboard,
           dashcards: dashcardsToUpdate,
@@ -201,7 +221,7 @@ export const updateDashboardAndCards = createThunkAction(
         },
         dispatch,
         dashboardApi.endpoints.updateDashboard,
-      );
+      )) as Dashboard;
 
       const endTime = performance.now();
       const duration_milliseconds = Math.trunc(endTime - startTime);

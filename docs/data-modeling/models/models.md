@@ -1,5 +1,6 @@
 ---
 title: "Models"
+summary: Curate data from one or more tables into a reusable starting point for new questions, with your own column metadata. Consider transforms as an alternative.
 redirect_from:
   - /docs/latest/data-modeling/models
   - /docs/latest/users-guide/models
@@ -68,7 +69,7 @@ To view a model's details, visit the model and click on the **info** button in t
 - **History**: Lists changes to the model, and by whom.
 - **Relationships**: Lists which questions use the model, and which tables the model is linked to.
 - **Actions**: Lists actions created based on the model.
-- **Insights**: Info about the [model's usage](../../usage-and-performance-tools/usage-analytics.md). Only visible to admins on a [Pro or Enterprise plan](https://www.metabase.com/pricing/).
+- **Insights**: Info about the [model's usage](../../usage-and-performance-tools/usage-analytics.md). Only visible to admins on a [Pro or Enterprise plan](https://www.metabase.com/pricing).
 
 ## Add metadata to columns in a model
 
@@ -101,7 +102,7 @@ You can specify whether a column should appear in the table view, or just in a d
 - Table and detail views
 - Detail views only
 
-### Display as
+### Display as text, link, or image
 
 - Text
 - Link (it's a URL people should be able to click on)

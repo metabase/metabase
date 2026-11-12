@@ -63,7 +63,7 @@
       (log/debug (u/format-color 'cyan
                                  "Not creating proxy JDBC driver for class %s -- original driver was loaded by system ClassLoader"
                                  class-name))
-      (let [driver (proxy-driver (.newInstance klass))]
+      (let [driver (proxy-driver (.newInstance (.getDeclaredConstructor klass (into-array Class [])) (object-array 0)))]
         (log/debug (u/format-color 'blue "Registering JDBC proxy driver for %s..." class-name))
         (DriverManager/registerDriver driver)
         ;; deregister the non-proxy version of the driver so it doesn't try to handle our URLs. Most JDBC drivers register

@@ -532,6 +532,24 @@
                          {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring, `publish` = Snowplow emit) for one catalog within a Data Complexity Score run."
                           :labels      [:stage :catalog]
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
+   ;; content diagnostics scan (enterprise/content-diagnostics): one run/day/instance where the feature is on.
+   ;; Counters throughout, no histogram: at one scan a day an instance contributes a single sample, so its
+   ;; own bucket distribution is degenerate. The distribution worth having is the one across instances, and
+   ;; Prometheus already keeps a series per instance - increase(scan_duration_ms_total[7d]) divided by
+   ;; increase(scan_runs_total[7d]) is that instance's mean scan, which topk() ranks (naming the slow
+   ;; instances, which buckets cannot) and quantile() aggregates into a fleet percentile.
+   (prometheus/counter :metabase-content-diagnostics/scan-duration-ms
+                       {:description "Total milliseconds spent running Content Diagnostics scans, by outcome; over scan-runs it gives the mean scan."
+                        :labels      [:status]})
+   (prometheus/counter :metabase-content-diagnostics/scan-runs
+                       {:description "Number of Content Diagnostics scans, by outcome and, on failure, the stage that was running (none = succeeded, unknown = threw outside any stage)."
+                        :labels      [:status :stage]})
+   (prometheus/counter :metabase-content-diagnostics/scan-stage-ms
+                       {:description "Total milliseconds Content Diagnostics scans spent in each stage (checker.<name>, enrich, insert, invalidate); bumped on stage success only."
+                        :labels      [:stage]})
+   (prometheus/counter :metabase-content-diagnostics/findings-persisted
+                       {:description "Number of findings persisted by a Content Diagnostics scan that completed its insert stage, by finding type."
+                        :labels      [:finding-type]})
    ;; explorations
    (prometheus/gauge :metabase-explorations/pending-queue-depth
                      {:description "Number of exploration_query rows currently in 'pending' status (awaiting execution by the explorations background runner)."})
@@ -828,6 +846,21 @@
                          {:description "Duration in milliseconds of used-tables extraction."
                           ;; 1ms -> 30s
                           :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
+   ;; Tool executor: one fixed pool of 20 virtual threads, shared by every metabot conversation on the instance.
+   ;; The gauges are refreshed at scrape time by the `pull-collector` in `metabase.metabot.self.core`. They sample
+   ;; the pool, so they miss a burst between two scrapes. The wait histogram records every call.
+   (prometheus/gauge :metabase-metabot/tool-executor-pool-size
+                     {:description "Size of the metabot tool executor pool: the most tool calls that run at once."})
+   (prometheus/gauge :metabase-metabot/tool-executor-active
+                     {:description "Metabot tool calls running now."})
+   (prometheus/gauge :metabase-metabot/tool-executor-queued
+                     {:description "Metabot tool calls waiting for a free tool executor thread."})
+   (prometheus/histogram :metabase-metabot/tool-executor-wait-ms
+                         {:description (str "Time in milliseconds a metabot tool call waits for a free tool executor "
+                                            "thread, from reaching the pool to start. Excludes the wait on earlier "
+                                            "calls.")
+                          ;; 10ms -> 1 minute. Every edge is one time series per instance, so the list is short.
+                          :buckets [10 100 1000 10000 60000]})
    ;; messaging metrics
    (prometheus/gauge :metabase-mq/queue-depth
                      {:description "Batch count per queue by status, across all queue backends."
@@ -909,6 +942,10 @@
    (prometheus/counter :metabase-metaplow/errors
                        {:description "Metaplow event pipeline errors by stage."
                         :labels [:stage]})
+   ;; Not labelled by source address: the relays are anonymous and public, so the caller would pick the label value.
+   (prometheus/counter :metabase-analytics-relay/rejected
+                       {:description "Public telemetry relay requests rejected without forwarding, by relay and reason."
+                        :labels [:relay :reason]})
    (prometheus/gauge :metabase-memoize/cache-size
                      {:description "Number of entries currently held in a monitored in-memory memoization cache."
                       :labels [:cache]})])

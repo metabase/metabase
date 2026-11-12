@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { ReactElement, ReactNode } from "react";
 import { Component } from "react";
 import type {
@@ -156,8 +157,7 @@ export function ItemDragSource(props: ItemDragSourceProps) {
   const onMoveError = (error: unknown) =>
     sendToast({
       message: getErrorMessage(error),
-      icon: "warning_triangle_filled",
-      iconColor: "feedback-warning",
+      variant: "negative",
     });
   return (
     <DragSourceComponent

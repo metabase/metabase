@@ -3,7 +3,7 @@ import type React from "react";
 import { memo, useMemo } from "react";
 
 import type { CellAlign } from "metabase/data-grid/types";
-import { isDark } from "metabase/ui/colors/palette";
+import { tryIsDark } from "metabase/ui/colors/palette";
 
 import styles from "./BaseCell.module.css";
 
@@ -45,10 +45,7 @@ export const BaseCell = memo(function BaseCell({
       } as React.CSSProperties;
     }
 
-    const isDarkColor = isDark(backgroundColor);
-    const hoverColor = isDarkColor
-      ? `color-mix(in srgb, ${backgroundColor} 95%, white)`
-      : `color-mix(in srgb, ${backgroundColor} 97%, black)`;
+    const hoverColor = getHoverColor(backgroundColor);
 
     // Unjustified type cast. FIXME
     return {
@@ -75,3 +72,13 @@ export const BaseCell = memo(function BaseCell({
     </div>
   );
 });
+
+function getHoverColor(backgroundColor: string) {
+  const isDarkColor = tryIsDark(backgroundColor);
+  if (isDarkColor == null) {
+    return `color-mix(in srgb, var(--mb-color-core-brand), transparent 90%)`;
+  }
+  return isDarkColor
+    ? `color-mix(in srgb, ${backgroundColor} 95%, white)`
+    : `color-mix(in srgb, ${backgroundColor} 97%, black)`;
+}

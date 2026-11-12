@@ -18,9 +18,11 @@
 ;; populated before a trigger can fire locally.
 (defonce ^:private reapers (atom {}))
 
-(task/defjob ^{:doc "Reap orphaned (stale-heartbeat) runs for a registered run model."
-               org.quartz.DisallowConcurrentExecution true}
-  RunTrackingReaper [ctx]
+(task/defjob RunTrackingReaper
+  "Reap orphaned (stale-heartbeat) runs for a registered run model."
+  {:saved-class "metabase.run_tracking.task.RunTrackingReaper"
+   :concurrent? false}
+  [ctx]
   (let [job-key (.. ^JobExecutionContext ctx getJobDetail getKey getName)
         {:keys [reap-fn label]} (@reapers job-key)]
     (when-let [reaped (and reap-fn (not-empty (reap-fn)))]

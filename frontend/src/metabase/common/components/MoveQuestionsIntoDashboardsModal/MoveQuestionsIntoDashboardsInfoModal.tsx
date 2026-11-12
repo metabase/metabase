@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Flex, Icon, List, Modal } from "metabase/ui";
+import { Button, Icon, List, Modal } from "metabase/ui";
 
 interface MoveQuestionsIntoDashboardsInfoModalProps {
   onConfirm: () => void;
@@ -19,7 +19,7 @@ export const MoveQuestionsIntoDashboardsInfoModal = ({
     withCloseButton={false}
     data-testid="move-questions-into-dashboard-info-modal"
   >
-    <List spacing="lg" mt="1.25rem">
+    <List spacing="lg">
       <List.Item
         icon={<Icon name="collection" c="core-brand" mb="-2px" />}
         lh="1.5rem"
@@ -34,7 +34,7 @@ export const MoveQuestionsIntoDashboardsInfoModal = ({
       </List.Item>
     </List>
 
-    <Flex justify="flex-end" gap="lg" pt="1rem">
+    <Modal.Footer>
       <Button
         variant="subtle"
         color="neutral"
@@ -43,6 +43,6 @@ export const MoveQuestionsIntoDashboardsInfoModal = ({
       <Button variant="filled" onClick={onConfirm}>
         {t`Preview the changes`}
       </Button>
-    </Flex>
+    </Modal.Footer>
   </Modal>
 );

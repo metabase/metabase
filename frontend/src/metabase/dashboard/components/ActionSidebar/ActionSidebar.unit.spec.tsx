@@ -6,6 +6,7 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
@@ -22,6 +23,7 @@ import {
   createMockDashboardCard,
   createMockDatabase,
   createMockQueryAction,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { ActionSidebar } from "./ActionSidebar";
@@ -71,6 +73,11 @@ const setup = ({
     >
       <ActionSidebar />
     </MockDashboardContext>,
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+      }),
+    },
   );
 
   return { vizUpdateSpy, closeSpy };

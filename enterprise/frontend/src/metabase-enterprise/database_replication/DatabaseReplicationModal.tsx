@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Modal, type ModalProps } from "metabase/ui";
@@ -14,8 +15,14 @@ import {
   DatabaseReplicationForm,
   type DatabaseReplicationFormFields,
 } from "./DatabaseReplicationForm";
-import { DatabaseReplicationSettingUp } from "./DatabaseReplicationSettingUp";
-import { DatabaseReplicationSuccess } from "./DatabaseReplicationSuccess";
+import {
+  DatabaseReplicationSettingUp,
+  getDatabaseReplicationSettingUpModalProps,
+} from "./DatabaseReplicationSettingUp";
+import {
+  DatabaseReplicationSuccess,
+  getDatabaseReplicationSuccessModalProps,
+} from "./DatabaseReplicationSuccess";
 
 interface IRTKQueryError {
   status: unknown;
@@ -102,6 +109,15 @@ export const DatabaseReplicationModal = ({
 
   const canCloseModal = !isProgressStep && !isErrorStep;
 
+  // The steps share one Modal so it doesn't remount when the step changes,
+  // which means each step's layout, title and illustration are set on it here
+  const stepModalProps = match(setupStep)
+    .with("form", () => ({ title: t`Set up database replication` }))
+    .with("setting-up", getDatabaseReplicationSettingUpModalProps)
+    .with("success", getDatabaseReplicationSuccessModalProps)
+    .with("error", () => ({ title: t`Couldn't replicate database` }))
+    .exhaustive();
+
   return (
     <Modal
       opened={isProgressStep || opened}
@@ -109,15 +125,8 @@ export const DatabaseReplicationModal = ({
       closeOnClickOutside={canCloseModal}
       closeOnEscape={canCloseModal}
       withCloseButton={canCloseModal}
-      padding="2.5rem"
-      title={
-        isProgressStep
-          ? undefined
-          : isErrorStep
-            ? t`Couldn't replicate database`
-            : t`Set up database replication`
-      }
       mah="80%"
+      {...stepModalProps}
     >
       {setupStep === "form" ? (
         <DatabaseReplicationForm

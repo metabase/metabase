@@ -8,9 +8,10 @@ export const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 
 export const ENTITY_PICKER_OPTIONS = {
   hasDatabases: true,
+  hasDataApps: true,
   hasConfirmButtons: false,
   hasRecents: true,
-};
+} satisfies EntityPickerOptions;
 
 export const QUESTION_PICKER_OPTIONS: EntityPickerOptions = {
   hasRootCollection: true,
@@ -29,4 +30,7 @@ export const ENTRY_PICKER_MODELS: EntityPickerProps["models"] = [
   "metric",
   "dashboard",
   "transform",
+  "snippet",
+  "action",
+  "data-app",
 ];

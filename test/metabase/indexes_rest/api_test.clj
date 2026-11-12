@@ -21,11 +21,11 @@
   non-hosted instances, so a superuser passes the transform read/write checks the index endpoints rely on."
   []
   {:name   (mt/random-name)
-   :source {:type "query" :query (query-test-util/make-query :source-table "venues")}
+   :source {:type :query :query (query-test-util/make-query :source-table "venues")}
    :target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
 
 (defn- temp-incremental-transform-spec []
-  (assoc-in (temp-transform-spec) [:target :type] "table-incremental"))
+  (update (temp-transform-spec) :target assoc :type "table-incremental" :target-incremental-strategy {:type "append"}))
 
 (def ^:private btree {:kind "btree" :name "by_cat" :columns [{:name "name"}]})
 
@@ -191,13 +191,13 @@
   (mt/with-temp [:model/Transform {transform-id :id} (assoc (temp-incremental-transform-spec)
                                                             :last_checkpoint_value "100")]
     (letfn [(full-run? []
-              (transforms-base.u/full-incremental-run? (t2/select-one :model/Transform transform-id)))]
+              (transforms-base.u/full-incremental-run? (t2/select-one :model/Transform :id transform-id)))]
       (testing "no index changes: the watermark alone decides, so the next run appends"
         (is (not (full-run?))))
       (testing "POST leaves the watermark alone; the pending row forces the rebuild"
         (let [created (mt/user-http-request :crowberto :post 200 "index/request"
                                             {:transform_id transform-id :structured btree})]
-          (is (= "100" (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id)))
+          (is (= "100" (t2/select-one-fn :last_checkpoint_value :model/Transform :id transform-id)))
           (is (full-run?))
           (testing "PUT keeps forcing it (update-pending)"
             (mt/user-http-request :crowberto :put 200 (str "index/request/" (:id created))
@@ -207,7 +207,7 @@
             (mt/user-http-request :crowberto :delete 204 (str "index/request/" (:id created)))
             (is (full-run?)))
           (testing "once the request settles, runs go back to appending"
-            (t2/update! (t2/table-name :model/TableIndex) (:id created) {:status "succeeded"})
+            (t2/update! (t2/table-name :model/TableIndex) :id (:id created) {:status "succeeded"})
             (is (not (full-run?)))))))))
 
 (deftest inline-kind-index-name-test

@@ -5,8 +5,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { getNextId } from "__support__/utils";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { getNextId, waitForRequestsToSettle } from "__support__/utils";
 import {
   createMockColumn,
   createMockDatabase,
@@ -42,8 +41,6 @@ const idColumn = createMockColumn({
   semantic_type: "type/PK",
 });
 const table = createMockTable({
-  id: getQuestionVirtualTableId(modelId),
-  type: "model",
   fields: [idField],
 });
 
@@ -66,6 +63,7 @@ function setup({
       query={undefined}
       row={[1]}
       rowId={1}
+      modelId={modelId}
       showImplicitActions
       showNav={showNav}
       table={table}
@@ -82,8 +80,11 @@ function setup({
 }
 
 describe("DetailViewSidesheet", () => {
-  it("navigates rows with arrow keys when keyboard navigation is enabled", () => {
+  it("navigates rows with arrow keys when keyboard navigation is enabled", async () => {
     const { onNextClick, onPreviousClick } = setup();
+    // `ActionExecuteModal` initialises its values state after this render,
+    // with nothing observable to wait on, so flush that update here.
+    await waitForRequestsToSettle();
 
     fireEvent.keyDown(document.documentElement, { key: "ArrowUp" });
     expect(onPreviousClick).toHaveBeenCalledTimes(1);
@@ -92,8 +93,9 @@ describe("DetailViewSidesheet", () => {
     expect(onNextClick).toHaveBeenCalledTimes(1);
   });
 
-  it("does not navigate rows with arrow keys when keyboard navigation is disabled", () => {
+  it("does not navigate rows with arrow keys when keyboard navigation is disabled", async () => {
     const { onNextClick, onPreviousClick } = setup({ showNav: false });
+    await waitForRequestsToSettle();
 
     fireEvent.keyDown(document.documentElement, { key: "ArrowUp" });
     expect(onPreviousClick).not.toHaveBeenCalled();

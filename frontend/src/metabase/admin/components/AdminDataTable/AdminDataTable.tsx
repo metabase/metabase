@@ -138,7 +138,7 @@ export function AdminDataTable<Row, SortColumn extends string = string>({
             ) : showEmpty ? (
               <tr>
                 <td colSpan={columns.length}>
-                  <Flex c="text-disabled" justify="center">
+                  <Flex c="text-secondary" justify="center">
                     {emptyText}
                   </Flex>
                 </td>

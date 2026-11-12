@@ -192,7 +192,7 @@
 (defn- analyze-table! [table]
   ;; we're calling `analyze-db!` instead of `analyze-table!` because the latter doesn't care if you try to sync a
   ;; hidden table and will allow that. TODO - Does that behavior make sense?
-  (analyze/analyze-db! (t2/select-one :model/Database :id (:db_id table))))
+  (analyze/analyze-db! (:id (t2/select-one :model/Database :id (:db_id table)))))
 
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"

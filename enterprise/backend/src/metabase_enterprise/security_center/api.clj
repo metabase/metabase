@@ -143,7 +143,9 @@
      (fn [request respond raise]
        (when-not (premium-features/security-center-enabled?)
          (throw (ex-info (tru "Security Center is not available on this instance.")
-                         {:status-code 402 :status "error-premium-feature-not-available"})))
+                         {:status-code 402
+                          :status "error-premium-feature-not-available"
+                          :response/keys #{:status}})))
        (handler request respond raise)))))
 
 (def ^{:arglists '([request respond raise])} routes

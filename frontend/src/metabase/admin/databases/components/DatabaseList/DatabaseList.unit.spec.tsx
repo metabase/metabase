@@ -1,5 +1,9 @@
-import { render, screen } from "__support__/ui";
-import { createMockDatabase } from "metabase-types/api/mocks";
+import { setupEnginesEndpoint } from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
+import {
+  createMockDatabase,
+  createMockEngines,
+} from "metabase-types/api/mocks";
 
 import { DatabaseList } from "./DatabaseList";
 
@@ -17,15 +21,21 @@ async function setup({
   isAdmin,
 }: SetupOpts) {
   const databases = [
-    createMockDatabase({ is_sample: isSampleDb, is_stub: isStub }),
+    createMockDatabase({
+      engine: "postgres",
+      is_sample: isSampleDb,
+      is_stub: isStub,
+    }),
   ];
+  const engines = createMockEngines();
+  setupEnginesEndpoint(engines);
 
-  render(
+  renderWithProviders(
     <DatabaseList
       databases={databases}
       isAdmin={isAdmin}
       deletes={[]}
-      engines={{}}
+      engines={engines}
       addSampleDatabase={() => {}}
       deletionError={false}
       isAddingSampleDatabase={false}
@@ -51,18 +61,32 @@ describe("DatabaseListApp", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows stub databases as stubbed", async () => {
+  it("marks stub databases as stubbed", async () => {
     await setup({ isStub: true, isAdmin: true });
 
     expect(screen.getByText("Stubbed")).toBeInTheDocument();
-    expect(screen.queryByText("Active")).not.toBeInTheDocument();
   });
 
-  it("shows regular databases as active", async () => {
+  it("links each database to its admin page", async () => {
     await setup({ isAdmin: true });
 
-    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Database" })).toHaveAttribute(
+      "href",
+      "/admin/databases/1",
+    );
+  });
+
+  it("does not mark regular databases as stubbed", async () => {
+    await setup({ isAdmin: true });
+
     expect(screen.queryByText("Stubbed")).not.toBeInTheDocument();
+  });
+
+  it("shows each database's engine and the date it was added", async () => {
+    await setup({ isAdmin: true });
+
+    expect(await screen.findByText("PostgreSQL")).toBeInTheDocument();
+    expect(screen.getByText("Added January 1, 2015")).toBeInTheDocument();
   });
 
   it("does not show restore sample database button to non-admins", async () => {

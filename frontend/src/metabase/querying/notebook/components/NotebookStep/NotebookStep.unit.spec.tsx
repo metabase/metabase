@@ -69,12 +69,12 @@ const STEP_TYPES: NotebookStepType[] = [
 ];
 
 describe("NotebookStep", () => {
-  test.each(STEP_TYPES)(`renders a %s step correctly`, (type) => {
+  test.each(STEP_TYPES)(`renders a %s step correctly`, async (type) => {
     const step = createMockNotebookStep({ type });
     const testId = `step-${type}-${step.stageIndex}-${step.itemIndex}`;
     setup({ step });
 
-    expect(screen.getByTestId(testId)).toBeInTheDocument();
+    expect(await screen.findByTestId(testId)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Remove step" }),
     ).toBeInTheDocument();

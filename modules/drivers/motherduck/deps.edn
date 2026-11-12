@@ -1,0 +1,7 @@
+{:paths
+ ["src" "resources"]
+
+ ;; This driver has no production dependency. The driver speaks the Postgres wire
+ ;; protocol and uses `org.postgresql.Driver`. The core Metabase classpath already
+ ;; contains that JDBC driver.
+ :deps {}}

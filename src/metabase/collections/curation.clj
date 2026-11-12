@@ -37,7 +37,7 @@
     - metabase.metabot.curation/curated-ids — source-of-truth check for recent views
     - metabase-enterprise.data-complexity-score.complexity/enumerate-catalogs — set-membership mirror
       for the `:metabot` catalog's Cards (Tables call [[curated?]] directly)
-    - metabase-enterprise.semantic-search.db.migration.impl/add-data-authority-and-curated-columns! —
+    - metabase-enterprise.search.semantic.db.migration.impl/add-data-authority-and-curated-columns! —
       recomputes the precomputed `curated` column for existing index rows
 
   The signals above are populated at ingestion by the search specs, so a NEW signal must also be added to

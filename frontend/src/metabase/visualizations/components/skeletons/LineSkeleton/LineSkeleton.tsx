@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { ChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeletonImage";
 
 import S from "./LineSkeleton.module.css";

@@ -37,11 +37,11 @@
 }
 
 .chartArea {
-  fill: var(--mb-color-background-secondary);
+  fill: var(--mb-color-background_page-secondary);
 }
 
 .chartLine {
   fill: none;
-  stroke: var(--mb-color-border);
+  stroke: var(--mb-color-border-neutral);
   stroke-width: 0.4;
 }

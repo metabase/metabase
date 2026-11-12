@@ -319,7 +319,7 @@ A flow split into 8 tiny `it()` blocks pays that combined overhead 8 times. See 
 
 #### Before merging tiny tests, ask whether they belong in E2E at all
 
-A test whose **only** job is to assert that some elements exist or are visible — no backend interaction worth testing through the wire, no flow that traverses multiple screens, no real-data dependency — is almost always a unit test misfiled into the e2e suite. `frontend/CLAUDE.md` already says "prefer unit tests over E2E tests"; this is the most common failure mode.
+A test whose **only** job is to assert that some elements exist or are visible — no backend interaction worth testing through the wire, no flow that traverses multiple screens, no real-data dependency — is almost always a unit test misfiled into the e2e suite. `frontend/AGENTS.md` already says "prefer unit tests over E2E tests"; this is the most common failure mode.
 
 Strong signals the test should be a Jest + React Testing Library unit test instead:
 

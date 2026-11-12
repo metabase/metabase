@@ -12,6 +12,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -42,7 +43,7 @@
 
 (def ^:private ChannelType
   (mu/with-api-error-message
-   [:fn {:decode/string keyword}
+   [:fn {:decode/string keyword, :json-schema {:type "string"}}
     #(= "channel" (namespace (keyword %)))]
    (deferred-tru "Must be a namespaced channel. E.g: channel/http")))
 
@@ -127,7 +128,7 @@
     (catch Exception e
       {:status 400
        :body   {:message     (ex-message e)
-                :data        (ex-data e)}})))
+                :data        (api-error/response-data (ex-data e))}})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

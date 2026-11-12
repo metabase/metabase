@@ -9,6 +9,7 @@
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -17,7 +18,7 @@
    (com.mchange.v2.c3p0 C3P0Registry ConnectionCustomizer DataSources PoolBackedDataSource WrapperConnectionPoolDataSource)
    (java.lang.management ManagementFactory)
    (javax.management ObjectName)
-   (metabase.app_db.connection_pool_setup MetabaseConnectionCustomizer)))
+   (metabase.app_db.connection_pool_setup AppDbConnectionCustomizer)))
 
 (set! *warn-on-reflection* true)
 
@@ -67,26 +68,26 @@
           ;; a fresh database, so this builds a pool rather than finding a cached one
           (mt/with-temp [:model/Database db {:engine :h2, :details {:db (str "mem:" (mt/random-name))}}]
             (try
-              (sql-jdbc.conn/db->pooled-connection-spec db)
+              (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
               (is (empty? (c3p0-beans)))
               (finally
-                (sql-jdbc.conn/invalidate-pool-for-db! db)))))
+                (sql-jdbc.conn/invalidate-pool-for-db! (:id db))))))
         (finally
           (connection-pool/destroy-connection-pool! app-pool))))))
 
-(deftest MetabaseConnectionCustomizer-test
+(deftest AppDbConnectionCustomizer-test
   (testing "connection customizer is registered"
-    (let [customizer (C3P0Registry/getConnectionCustomizer (.getName MetabaseConnectionCustomizer))]
+    (let [customizer (C3P0Registry/getConnectionCustomizer (.getName AppDbConnectionCustomizer))]
       (is (some? customizer) "ConnectionCustomizer is not registered with c3p0")
       (is (instance? ConnectionCustomizer customizer)
           "checkin tracker must satisfy the c3p0 ConnectionCustomizer interface")
-      (is (instance? MetabaseConnectionCustomizer customizer)
-          "ConnectionCustomizer is not an instance of our MetabaseConnectionCustomizer")))
+      (is (instance? AppDbConnectionCustomizer customizer)
+          "ConnectionCustomizer is not an instance of our AppDbConnectionCustomizer")))
   (testing "db activity resets counter"
     (try
       (let [updated? (promise)]
         (add-watch (var-get #'mdb.connection-pool-setup/latest-activity)
-                   ::MetabaseConnectionCustomizer-test
+                   ::AppDbConnectionCustomizer-test
                    (fn [_key _ref _old-state _new-state]
                      (deliver updated? ::completed)))
         (reset! (var-get #'mdb.connection-pool-setup/latest-activity) nil)
@@ -98,7 +99,7 @@
           (is (instance? java.time.temporal.Temporal recent-checkin)
               "recent-checkin should be a temporal type (OffsetDateTime)")))
       (finally (remove-watch (var-get #'mdb.connection-pool-setup/latest-activity)
-                             ::MetabaseConnectionCustomizer-test)))))
+                             ::AppDbConnectionCustomizer-test)))))
 (deftest recent-activity-test
   ;; these tests are difficult to make non-flaky. Other threads can hit the db of course, and the lifecycle of the
   ;; connection pool is worked from other threads. This means we can't isolate the `latest-checkin` atom. Many will take

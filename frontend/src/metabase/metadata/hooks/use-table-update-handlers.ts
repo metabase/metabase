@@ -5,7 +5,6 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 type UseTableUpdateHandlersOpts = {
@@ -95,7 +94,7 @@ export function useTableUpdateHandlers({
         if (table.field_order === "custom") {
           const { error: undoError } = await updateTableFieldsOrder({
             id: table.id,
-            field_order: table.fields?.map(getRawTableFieldId) ?? [],
+            field_order: table.fields?.map((field) => field.id) ?? [],
           });
           sendUndoToast(undoError);
         } else {

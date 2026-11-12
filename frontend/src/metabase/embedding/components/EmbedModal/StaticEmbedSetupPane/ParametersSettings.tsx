@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
-import { useMemo } from "react";
+import { type JSX, useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";

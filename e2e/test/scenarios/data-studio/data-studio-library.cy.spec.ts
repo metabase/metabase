@@ -1,6 +1,7 @@
 const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { LibraryCollectionIds } from "e2e/support/helpers/api";
 import {
   TRUSTED_ORDERS_METRIC,
   createLibraryWithTable,
@@ -8,15 +9,6 @@ import {
 import type { Collection } from "metabase-types/api";
 
 const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;
-
-type LibraryResponse = Collection & {
-  effective_children?: Collection[];
-};
-
-type LibraryRootCollections = {
-  dataCollection: Collection;
-  metricCollection: Collection;
-};
 
 describe("scenarios > data studio > library", () => {
   beforeEach(() => {
@@ -69,7 +61,6 @@ describe("scenarios > data studio > library", () => {
     cy.log("Verify library collections appear in the library table");
     H.DataStudio.Library.collectionItem("Data").should("be.visible");
     H.DataStudio.Library.collectionItem("Metrics").should("be.visible");
-    H.DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
   });
 
   it("should let you move metrics into the library, even when empty", () => {
@@ -93,7 +84,7 @@ describe("scenarios > data studio > library", () => {
   });
 
   it("should show the library in the data picker and build the path from a value", () => {
-    createLibraryWithTable();
+    createLibraryWithTable().as("library");
 
     cy.log("Library is visible when only the Data collection has items");
     H.startNewQuestion();
@@ -104,10 +95,10 @@ describe("scenarios > data studio > library", () => {
     H.entityPickerModalItem(2, "Orders").should("exist");
 
     cy.log("Add a metric to the Metrics collection");
-    getLibraryRootCollections().then(({ metricCollection }) => {
+    cy.get<LibraryCollectionIds>("@library").then(({ metricsCollectionId }) => {
       H.createQuestion({ ...TRUSTED_ORDERS_METRIC }).then(({ body: card }) => {
         cy.request("PUT", `/api/card/${card.id}`, {
-          collection_id: metricCollection.id,
+          collection_id: metricsCollectionId,
         });
       });
     });
@@ -146,30 +137,29 @@ describe("scenarios > data studio > library", () => {
 
   describe("Library collection management", () => {
     it("should create, edit, move, and archive library collections and move a published table", () => {
-      H.createLibrary();
       H.createCollection({ name: "Outside Library" });
-      getLibraryRootCollections().then(({ dataCollection }) => {
+      H.createLibrary().then(({ dataCollectionId }) => {
         createLibraryCollection({
           name: "Collection Before Edit",
           description: "Original description",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         });
         createLibraryCollection({
           name: "Destination Collection",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         });
         createLibraryCollection({
           name: "Collection To Move",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         });
         H.publishTables({ table_ids: [ORDERS_ID] });
         createLibraryCollection({
           name: "Table Destination Collection",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         });
         createLibraryCollection({
           name: "Collection To Archive",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         });
       });
 
@@ -300,7 +290,6 @@ describe("scenarios > data studio > library", () => {
 
       H.DataStudio.Library.collectionItem("Data").should("be.visible");
       H.DataStudio.Library.collectionItem("Metrics").should("be.visible");
-      H.DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
 
       cy.log("Verify Data section empty state");
       H.DataStudio.Library.libraryPage()
@@ -316,14 +305,6 @@ describe("scenarios > data studio > library", () => {
         .should("be.visible");
       H.DataStudio.Library.libraryPage()
         .findByRole("link", { name: "New metric" })
-        .should("be.visible");
-
-      cy.log("Verify SQL snippets section empty state");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Reusable bits of code that save your time")
-        .should("be.visible");
-      H.DataStudio.Library.libraryPage()
-        .findByRole("link", { name: "New snippet" })
         .should("be.visible");
 
       cy.log("Click on 'Publish a table' button and verify modal opens");
@@ -395,20 +376,47 @@ describe("scenarios > data studio > library", () => {
       H.DataStudio.Library.tableItem("Orders").should("be.visible");
 
       cy.log(
-        "Verify Metrics and SQL snippets still show empty states (always expanded behavior)",
+        "Verify Metrics still shows its empty state (always expanded behavior)",
       );
       H.DataStudio.Library.emptyStateRow(
         "Standardized calculations with known dimensions",
       ).should("be.visible");
+    });
+
+    it("should show empty states on the SQL snippets and Data actions tabs", () => {
+      H.createLibrary();
+      H.DataStudio.Library.visit();
+
+      cy.log("Verify the semantic layer has no snippets or actions sections");
+      H.DataStudio.Library.collectionItem("SQL snippets").should("not.exist");
+      H.DataStudio.Library.collectionItem("Data actions").should("not.exist");
+
+      cy.log("Verify SQL snippets tab empty state");
+      H.DataStudio.nav().findByRole("link", { name: "SQL snippets" }).click();
       H.DataStudio.Library.emptyStateRow(
         "Reusable bits of code that save your time",
       ).should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findAllByTestId("collection-name")
+        .should("not.exist");
+      H.DataStudio.Library.libraryPage()
+        .findByRole("link", { name: "New snippet" })
+        .should("be.visible");
+
+      cy.log("Verify Data actions tab empty state");
+      H.DataStudio.nav().findByRole("link", { name: "Data actions" }).click();
+      H.DataStudio.Library.emptyStateRow("Queries that change data").should(
+        "be.visible",
+      );
+      H.DataStudio.Library.libraryPage()
+        .findAllByTestId("collection-name")
+        .should("not.exist");
     });
 
     describe("read-only mode", () => {
       beforeEach(() => {
         H.setupGitSync();
-        H.configureGit("read-only");
+        H.configureGitAndPullChanges("read-only");
         H.createLibrary();
       });
 
@@ -436,10 +444,11 @@ describe("scenarios > data studio > library", () => {
           .findByRole("link", { name: "New metric" })
           .should("not.exist");
 
-        cy.log("Verify SQL snippets section empty state action is not visible");
-        H.DataStudio.Library.libraryPage()
-          .findByText("Reusable bits of code that save your time")
-          .should("be.visible");
+        cy.log("Verify SQL snippets tab empty state action is not visible");
+        H.DataStudio.Snippets.visitList();
+        H.DataStudio.Library.emptyStateRow(
+          "Reusable bits of code that save your time",
+        ).should("be.visible");
         H.DataStudio.Library.libraryPage()
           .findByRole("link", { name: "New snippet" })
           .should("not.exist");
@@ -449,37 +458,34 @@ describe("scenarios > data studio > library", () => {
 
   describe("bulk actions", () => {
     it("selects, moves, and unpublishes library items in bulk", () => {
-      H.createLibrary();
-      getLibraryRootCollections().then(
-        ({ dataCollection, metricCollection }) => {
-          H.publishTables({
-            table_ids: [ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID],
-          });
-          H.createQuestion({ ...TRUSTED_ORDERS_METRIC }).then(
-            ({ body: card }) => {
-              cy.request("PUT", `/api/card/${card.id}`, {
-                collection_id: metricCollection.id,
-              });
-            },
-          );
-          createLibraryCollection({
-            name: "Folder A",
-            parent_id: dataCollection.id,
-          });
-          createLibraryCollection({
-            name: "Folder B",
-            parent_id: dataCollection.id,
-          });
-          createLibraryCollection({
-            name: "Folder C",
-            parent_id: dataCollection.id,
-          });
-          createLibraryCollection({
-            name: "Folder D",
-            parent_id: dataCollection.id,
-          });
-        },
-      );
+      H.createLibrary().then(({ dataCollectionId, metricsCollectionId }) => {
+        H.publishTables({
+          table_ids: [ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID],
+        });
+        H.createQuestion({ ...TRUSTED_ORDERS_METRIC }).then(
+          ({ body: card }) => {
+            cy.request("PUT", `/api/card/${card.id}`, {
+              collection_id: metricsCollectionId,
+            });
+          },
+        );
+        createLibraryCollection({
+          name: "Folder A",
+          parent_id: dataCollectionId,
+        });
+        createLibraryCollection({
+          name: "Folder B",
+          parent_id: dataCollectionId,
+        });
+        createLibraryCollection({
+          name: "Folder C",
+          parent_id: dataCollectionId,
+        });
+        createLibraryCollection({
+          name: "Folder D",
+          parent_id: dataCollectionId,
+        });
+      });
       H.DataStudio.Library.visit();
 
       cy.log("Section-root checkbox selects every item in the section");
@@ -590,11 +596,10 @@ describe("scenarios > data studio > library", () => {
     });
 
     it("subsumes a collection's descendants so moving the parent preserves nesting", () => {
-      H.createLibrary();
-      getLibraryRootCollections().then(({ dataCollection }) => {
+      H.createLibrary().then(({ dataCollectionId }) => {
         createLibraryCollection({
           name: "Parent Folder",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         }).then((parent) => {
           H.publishTables({ table_ids: [ORDERS_ID], collection_id: parent.id });
           createLibraryCollection({
@@ -604,7 +609,7 @@ describe("scenarios > data studio > library", () => {
         });
         createLibraryCollection({
           name: "Target Folder",
-          parent_id: dataCollection.id,
+          parent_id: dataCollectionId,
         });
       });
       H.DataStudio.Library.visit();
@@ -683,29 +688,6 @@ describe("scenarios > data studio > library", () => {
     });
   });
 });
-
-function getLibraryRootCollections(): Cypress.Chainable<LibraryRootCollections> {
-  return cy
-    .request<LibraryResponse>("GET", "/api/ee/library")
-    .then(({ body }) => {
-      const dataCollection = body.effective_children?.find(
-        (collection) => collection.type === "library-data",
-      );
-      const metricCollection = body.effective_children?.find(
-        (collection) => collection.type === "library-metrics",
-      );
-
-      expect(dataCollection, "Data collection").to.exist;
-      expect(metricCollection, "Metrics collection").to.exist;
-
-      return {
-        // Unjustified type cast. FIXME
-        dataCollection: dataCollection as Collection,
-        // Unjustified type cast. FIXME
-        metricCollection: metricCollection as Collection,
-      };
-    });
-}
 
 function createLibraryCollection({
   name,

@@ -51,11 +51,18 @@ export interface BaseEmbedTestPageOptions {
   };
 
   onVisitPage?(win: Cypress.AUTWindow): void;
+
+  // The embed must not see the Cypress session cookie unless the test needs it
+  signOut?: boolean;
 }
 
 export interface MetabaseElement {
   // The component to embed
-  component: "metabase-dashboard" | "metabase-question" | "metabase-browser";
+  component:
+    | "metabase-dashboard"
+    | "metabase-question"
+    | "metabase-browser"
+    | "metabase-data-app";
 
   // Attributes passed serialized to the element
   attributes: {
@@ -114,6 +121,7 @@ export function loadSdkIframeEmbedTestPage({
   origin = "",
   selector,
   onVisitPage,
+  signOut = true,
   ...options
 }: BaseEmbedTestPageOptions & { selector?: string }) {
   const testPageSource = getSdkIframeEmbedHtml(options);
@@ -124,6 +132,10 @@ export function loadSdkIframeEmbedTestPage({
     body: testPageSource,
     headers: { "content-type": "text/html" },
   }).as("dynamicPage");
+
+  if (signOut) {
+    cy.signOut();
+  }
 
   cy.visit(testPageUrl, { onLoad: onVisitPage });
   cy.title().should("include", "Metabase Embed Test");
@@ -164,7 +176,7 @@ function getSdkIframeEmbedHtml({
       ${elements
         .map(
           ({ component, attributes }) => `
-        <${component} ${convertPropertiesToEmbedTagAttributes(attributes)} />
+        <${component} ${convertPropertiesToEmbedTagAttributes(attributes)}></${component}>
       `,
         )
         .join("\n")}
@@ -203,11 +215,9 @@ const convertPropertiesToEmbedTagAttributes = (
 export function prepareSdkIframeEmbedTest({
   withToken = "bleeding-edge",
   enabledAuthMethods = ["jwt"],
-  signOut = false,
 }: {
   withToken?: false | "starter" | "bleeding-edge";
   enabledAuthMethods?: EnabledAuthMethods[];
-  signOut?: boolean;
 } = {}) {
   restore();
   cy.signInAsAdmin();
@@ -216,7 +226,7 @@ export function prepareSdkIframeEmbedTest({
     activateToken(withToken);
   }
 
-  cy.request("PUT", "/api/setting/enable-embedding-simple", {
+  cy.request("PUT", "/api/setting/enable-embedding-modular", {
     value: true,
   });
 
@@ -227,10 +237,6 @@ export function prepareSdkIframeEmbedTest({
   setupMockAuthProviders(enabledAuthMethods);
 
   mockEmbedJsToDevServer();
-
-  if (signOut) {
-    cy.signOut();
-  }
 }
 
 /**
@@ -256,10 +262,7 @@ export function prepareGuestEmbedSdkIframeEmbedTest({
 
   onPrepare?.();
 
-  cy.request("PUT", "/api/setting/enable-embedding-simple", {
-    value: true,
-  });
-  cy.request("PUT", "/api/setting/enable-embedding-static", {
+  cy.request("PUT", "/api/setting/enable-embedding-modular", {
     value: true,
   });
 
@@ -355,9 +358,11 @@ export const visitCustomHtmlPage = (
   {
     origin = "",
     onVisitPage,
+    signOut = true,
   }: {
     origin?: string;
     onVisitPage?: () => void;
+    signOut?: boolean;
   } = {},
 ) => {
   const testPageUrl = `${origin}/custom-html-page`;
@@ -365,6 +370,10 @@ export const visitCustomHtmlPage = (
     body: html,
     headers: { "content-type": "text/html" },
   }).as("dynamicPage");
+
+  if (signOut) {
+    cy.signOut();
+  }
 
   cy.visit(testPageUrl, { onLoad: onVisitPage });
 

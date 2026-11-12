@@ -385,8 +385,8 @@ export const useDataGridInstance = <TData, TValue>({
   }, [sorting, data, table]);
 
   const { measureGrid, columnVirtualizer } = virtualGrid;
-  const prevColumnSizing = useRef<ColumnSizingState>();
-  const prevWrappedColumns = useRef<string[]>();
+  const prevColumnSizing = useRef<ColumnSizingState>(undefined);
+  const prevWrappedColumns = useRef<string[]>(undefined);
 
   useEffect(() => {
     const didColumnSizingChange =
@@ -563,11 +563,26 @@ export const useDataGridInstance = <TData, TValue>({
   ]);
 
   // Reset column widths if controlled sizing map is removed
+  const prevControlledColumnSizingMap = usePrevious(controlledColumnSizingMap);
   useUpdateEffect(() => {
-    if (Object.keys(controlledColumnSizingMap ?? {}).length === 0) {
+    const controlledSizing = controlledColumnSizingMap ?? {};
+    if (Object.keys(controlledSizing).length === 0) {
       applyMeasuredColumnWidths({}, true);
     } else {
-      setColumnSizingMap((prev) => ({ ...prev, ...controlledColumnSizingMap }));
+      // A column whose controlled width went away falls back to its measured width instead of keeping the
+      // width it had, e.g. after a reorder moved a saved width to another column
+      const releasedColumnIds = Object.keys(
+        prevControlledColumnSizingMap ?? {},
+      ).filter((columnId) => !(columnId in controlledSizing));
+      const releasedColumnSizing = getTruncatedColumnSizing(
+        _.pick(measuredColumnSizingMap, releasedColumnIds),
+        truncateLongCellWidth,
+      );
+      setColumnSizingMap((prev) => ({
+        ..._.omit(prev, releasedColumnIds),
+        ...releasedColumnSizing,
+        ...controlledSizing,
+      }));
     }
   }, [controlledColumnSizingMap]);
 

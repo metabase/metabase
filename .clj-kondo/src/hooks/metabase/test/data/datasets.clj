@@ -18,10 +18,11 @@
       (empty? (set/difference drivers #{:h2 :mysql :postgres})))))
 
 (defn- validate-mb-driver-tests [x]
-  (when-not (:mb/driver-tests (meta (:ns x)))
+  (when-not (or (:mb/driver-tests (meta (:ns x)))
+                (get-in x [:context :mb/driver-tests]))
     (hooks/reg-finding!
      (assoc (meta (:ns x))
-            :message (str "Namespaces that run driver tests (test-driver or test-drivers) should be marked"
+            :message (str "Tests or namespaces that run driver tests (test-driver or test-drivers) should be marked"
                           " ^:mb/driver-tests [:metabase/validate-mb-driver-tests]")
             :type :metabase/validate-mb-driver-tests))))
 
@@ -29,7 +30,9 @@
   (when-not (only-core-drivers? (:node x))
     (validate-mb-driver-tests x)))
 
-(defn test-drivers [x]
+(defn test-drivers
+  "Validate driver-test tags and analyze the body without expanding driver fixtures."
+  [x]
   (validate-ns-tags x)
   (letfn [(update-node [node]
             (let [[test-drivers drivers-expr & body] (:children node)]

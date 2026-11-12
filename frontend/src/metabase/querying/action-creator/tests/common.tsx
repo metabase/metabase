@@ -35,7 +35,7 @@ export async function setup({
   action,
   canWrite = true,
   hasActionsEnabled = true,
-  isAdmin = false,
+  isAdmin = true,
   isPublicSharingEnabled = false,
   model,
 }: SetupOpts = {}) {
@@ -54,9 +54,13 @@ export async function setup({
   setupCardsEndpoints(model ? [model] : []);
 
   if (action) {
-    fetchMock.get(`path:/api/action/${action.id}`, action, {
-      name: `action-${action.id}-get`,
-    });
+    fetchMock.get(
+      `path:/api/action/${action.id}`,
+      { ...action, can_write: canWrite },
+      {
+        name: `action-${action.id}-get`,
+      },
+    );
     fetchMock.delete(`path:/api/action/${action.id}/public_link`, 204, {
       name: `public-link-${action.id}-delete`,
     });

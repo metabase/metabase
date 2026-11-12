@@ -77,23 +77,17 @@
 (defn with-thread-context-fn
   "Not for public consumption. See macro docstring for details."
   [context-map f]
-  (let [context-map (perf/update-keys context-map #(str "mb-" (u.format/qualified-name %)))
-        context-keys (keys context-map)
-        ;; Store original values before modifying
-        original-context (into {}
-                               (keep (fn [k]
-                                       (when-let [v (ThreadContext/get (name k))]
-                                         [(name k) v])))
-                               context-keys)]
+  (let [;; Store original values before modifying
+        original-context (ThreadContext/getImmutableContext)]
     (try
-      (doseq [k context-keys]
-        (ThreadContext/put (name k) (str (get context-map k))))
+      (reduce-kv (fn [_ k v]
+                   (ThreadContext/put (perf/str "mb-" (u.format/qualified-name k))
+                                      (str v)))
+                 nil context-map)
       (f)
       (finally
-        (doseq [k context-keys]
-          (if-let [original (find original-context (name k))]
-            (ThreadContext/put (name k) (val original))
-            (ThreadContext/remove (name k))))))))
+        (ThreadContext/clearMap)
+        (ThreadContext/putAll original-context)))))
 
 (defmacro with-thread-context
   "Executes body with the given context map and message prefix in ThreadContext.
@@ -289,8 +283,6 @@
   [& args]
   `(logf :error ~@args))
 
-;; part of the public log API; its callers live in test and EE code outside this lint's view
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro fatal
   "Log one or more args at the `:fatal` level."
   {:arglists '([& args] [e & args])}
@@ -322,7 +314,6 @@
      :clj  `(clojure.tools.logging/spy ~level ~expr))))
 
 ;; legacy REPL/debug API with no in-tree callers; retained pending a compatibility/removal audit
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro spyf
   "Evaluates an expression, and may write both the form and its formatted result to the log.
   Defaults to the `:debug` level."

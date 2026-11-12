@@ -14,6 +14,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -43,13 +44,13 @@
   (mt/test-driver :redshift
     (testing "default"
       (is (= "public"
-             (driver.sql/default-schema :redshift (mt/db)))))
+             (driver.sql/default-schema :redshift (lib.metadata/database (mt/metadata-provider))))))
     (testing "schema configured in the JDBC additional options"
       (let [schema  (redshift.tx/unique-session-schema)
             details (assoc (:details (mt/db)) :additional-options (str "currentSchema=" schema))]
         (mt/with-temp [:model/Database database {:engine :redshift, :details details}]
           (is (= schema
-                 (driver.sql/default-schema :redshift database))))))))
+                 (driver.sql/default-schema :redshift (driver.u/ensure-lib-database database)))))))))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
@@ -89,7 +90,7 @@
 (deftest remark-test
   (testing "if I run a Redshift query, does it get a remark added to it?"
     (mt/test-driver :redshift
-      (let [expected (for [line ["-- /* partner: \"metabase\", {\"dashboard_id\":5678,\"chart_id\":1234,\"optional_user_id\":1000,\"optional_account_id\":\"{{site-uuid}}\",\"filter_values\":{\"id\":[\"1\",\"2\",\"3\"]}} */ Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2"
+      (let [expected (for [line ["-- /* partner: \"metabase\", {\"dashboard_id\":5678,\"chart_id\":1234,\"optional_user_id\":1000,\"optional_account_id\":\"{{site-uuid}}\",\"filter_values\":{\"id\":[\"1\",\"2\",\"3\"]}} */ Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2 accountID: {{site-uuid}} dashboardID: 5678 cardID: 1234 context: ad-hoc databaseID: {{database-id}}"
                                  "SELECT"
                                  "  \"{{schema}}\".\"test_data_users\".\"id\" AS \"id\","
                                  "  \"{{schema}}\".\"test_data_users\".\"name\" AS \"name\","
@@ -110,6 +111,7 @@
                                  "  2000"]]
                        (-> line
                            (str/replace #"\Q{{site-uuid}}\E" (system/site-uuid))
+                           (str/replace #"\Q{{database-id}}\E" (str (mt/id)))
                            (str/replace #"\Q{{schema}}\E" (redshift.tx/unique-session-schema))))]
         (is (= expected
                (sql->lines
@@ -247,7 +249,7 @@
             ;; sync the schema again to pick up the new view (and table, though we aren't checking that)
             (binding [sync-util/*log-exceptions-and-continue?*                       false
                       redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-              (sync/sync-database! database {:scan :schema}))
+              (sync/sync-database! (:id database) {:scan :schema}))
             (testing "the new view should have been synced"
               (is (contains?
                    (t2/select-fn-set :name :model/Table :db_id (u/the-id database))
@@ -278,7 +280,7 @@
              qual-view-nm)
             (binding [sync-util/*log-exceptions-and-continue?*                       false
                       redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-              (sync/sync-database! database {:scan :schema}))
+              (sync/sync-database! (:id database) {:scan :schema}))
             (testing "the new view should have been synced without errors"
               (is (contains?
                    (t2/select-fn-set :name :model/Table :db_id (u/the-id database))
@@ -305,7 +307,7 @@
              (mt/with-temp [:model/Database db {:engine :redshift, :details details}]
                (let [table-is-in-results? (fn []
                                             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-                                              (->> (:tables (driver/describe-database :redshift db))
+                                              (->> (:tables (driver/describe-database :redshift (driver.u/ensure-lib-database db)))
                                                    (map :name)
                                                    (some #{table-name})
                                                    boolean)))
@@ -345,13 +347,13 @@
                            :model/Database db {:engine :redshift, :details details}]
               (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
                 (persist-models!)
-                (let [synced-schemas (into #{} (map :schema) (:tables (driver/describe-database :redshift db)))]
+                (let [synced-schemas (into #{} (map :schema) (:tables (driver/describe-database :redshift (driver.u/ensure-lib-database db))))]
                   (testing "sense check: there are results matching some schemas in the schema-filters-patterns"
                     ;; the schema this run just loaded `avian-singles` into, rather than anything shaped like a
                     ;; session schema: it ties the assertion to the name [[unique-prefix]] actually produces, so
                     ;; renaming those schemas fails here instead of silently emptying the result
                     (is (contains? synced-schemas (redshift.tx/unique-session-schema))))
-                  (let [all-schemas (map :table_schema (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                  (let [all-schemas (map :table_schema (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                                                    "select distinct table_schema from information_schema.tables;"))]
                     (testing "metabase_cache_ tables are excluded from results"
                       (let [match? #(re-matches #"metabase_cache(.*)" %)]
@@ -378,7 +380,7 @@
              qual-mview-nm)
             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
               (u/auto-retry 3
-                (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift database)))]
+                (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift (driver.u/ensure-lib-database database))))]
                   (when-not (contains? table-names mview-nm)
                     (Thread/sleep 1000)
                     (throw (ex-info "Materialized view not yet visible in describe-database results"
@@ -441,7 +443,7 @@
                 qual-view-name               (format "\"%s\".\"%s\"" schema-name view-nm)
                 mview-name                   (tx/db-qualified-table-name db-name "mview")
                 qual-mview-name              (format "\"%s\".\"%s\"" schema-name mview-name)
-                conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec database)
+                conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                 get-privileges               (fn []
                                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                                 [spec [:redshift (assoc (:details database) :user username)]
@@ -848,4 +850,238 @@
                                                            ["stringly" "false"]]]
                                       {:name nm, :schema "s", :type "table", :description nil, :selectable selectable}))]
         (is (= [{:name "readable", :schema "s", :description nil}]
-               (into [] (#'redshift/describe-database-tables db))))))))
+               (into [] (#'redshift/describe-database-tables (driver.u/lib-database (:id db))))))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "r.example.com" :port 5439 :user "u" :db "a?b"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :redshift details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))
+
+;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
+
+(defn- try-execute!
+  "Run `sql` against `spec`, logging exceptions at warn level. For cleanup
+   paths where the object may not exist *or* where a residual catalog row
+   (the very class of bug GHY-3709 covers) might prevent a successful drop.
+   Logging instead of swallowing surfaces orphan-role accumulation on CI."
+  [spec sql]
+  (try (jdbc/execute! spec [sql])
+       (catch Throwable t
+         (log/warnf t "Test cleanup failed: %s" sql))))
+
+(deftest ^:synchronized workspace-precondition-alter-default-privileges-test
+  ;; Redshift mirror of `metabase.driver.postgres-test/workspace-precondition-alter-default-privileges-test`,
+  ;; covering GHY-3709. We simulate the prod failure mode by:
+  ;;   - creating a non-superuser "tenant" role,
+  ;;   - seeding a schema with a table whose owner is a different role,
+  ;;   - connecting as the tenant role and running the pre-flight assert.
+  ;;
+  ;; The assert must throw with status 412, since the tenant role can neither
+  ;; impersonate the foreign owner nor flip to superuser at runtime. Once admin
+  ;; reassigns the table to the tenant role, the assert must pass.
+  ;;
+  ;; Note: Redshift's impersonation graph collapses to "current_user == owner
+  ;; OR current_user is superuser" -- there is no working `pg_has_role(...)`
+  ;; on RA3 clusters. The PG mirror grants role membership instead; here we
+  ;; ALTER OWNER to dodge the missing-overload problem.
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          suffix     (u/lower-case-en (mt/random-name))
+          tenant     (str "ws_pre_adp_tenant_" suffix)
+          owner      (str "ws_pre_adp_owner_" suffix)
+          schema     (str "ws_pre_adp_schema_" suffix)
+          table      (str "ws_pre_adp_t_" suffix)
+          password   "Pwd_ws_pre_adp_1!"]
+      (try
+        (execute! (str
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s';%n"  tenant password)
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s';%n"  owner password)
+                   (format "CREATE SCHEMA \"%s\";%n"                   schema)
+                   (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";%n" schema tenant)
+                   (format "CREATE TABLE \"%s\".\"%s\" (id INTEGER);%n" schema table)
+                   ;; Reassign the table to a different role so tenant doesn't own it.
+                   (format "ALTER TABLE \"%s\".\"%s\" OWNER TO \"%s\";%n" schema table owner)))
+        (sql-jdbc.conn/with-connection-spec-for-testing-connection
+         [tenant-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                        :user tenant
+                                        :password password)]]
+          (testing "throws when a relation in the input schema is owned by an unmemberable role"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"not a member of \d+ role"
+                 (redshift/assert-can-alter-default-privileges! tenant-spec schema))))
+          (testing "passes once the foreign-owned object is reassigned to the tenant"
+            (jdbc/execute! admin-spec
+                           [(format "ALTER TABLE \"%s\".\"%s\" OWNER TO \"%s\""
+                                    schema table tenant)])
+            (is (nil? (redshift/assert-can-alter-default-privileges! tenant-spec schema)))))
+        (finally
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema))
+          (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                 owner))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           tenant))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           owner)))))))
+
+(deftest ^:synchronized workspace-precondition-foreign-default-acl-grantor-test
+  ;; The other half of GHY-3709: a `pg_default_acl` row owned by a role the
+  ;; tenant cannot impersonate must be caught at grant time. If we let
+  ;; provisioning through, destroy-time REVOKE has no way to drop that row
+  ;; and `DROP USER` fails -- which is exactly the production error reported
+  ;; on workspace 69.
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          suffix     (u/lower-case-en (mt/random-name))
+          tenant     (str "ws_pre_facl_tenant_" suffix)
+          grantor    (str "ws_pre_facl_grantor_" suffix)
+          schema     (str "ws_pre_facl_schema_" suffix)
+          dummy      (str "ws_pre_facl_dummy_" suffix)
+          password   "Pwd_ws_pre_facl_1!"]
+      (try
+        (execute! (str
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s';%n"  tenant password)
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s' CREATEUSER;%n" grantor password)
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s';%n"  dummy password)
+                   (format "CREATE SCHEMA \"%s\" AUTHORIZATION \"%s\";%n" schema grantor)
+                   (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";%n" schema tenant)))
+        ;; Connect as the foreign grantor to seed a pg_default_acl row owned by them.
+        (sql-jdbc.conn/with-connection-spec-for-testing-connection
+         [grantor-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                         :user grantor
+                                         :password password)]]
+          (jdbc/execute! grantor-spec
+                         [(format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT SELECT ON TABLES TO \"%s\""
+                                  schema dummy)]))
+        (sql-jdbc.conn/with-connection-spec-for-testing-connection
+         [tenant-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                        :user tenant
+                                        :password password)]]
+          (testing "throws when the schema carries a pre-existing default-priv row from a foreign grantor"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"not a member of \d+ role"
+                 (redshift/assert-can-alter-default-privileges! tenant-spec schema)))))
+        (finally
+          ;; Revoke the seeded default-priv as the grantor (only they can).
+          (sql-jdbc.conn/with-connection-spec-for-testing-connection
+           [grantor-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                           :user grantor
+                                           :password password)]]
+            (try-execute! grantor-spec
+                          (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
+                                  schema dummy)))
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema))
+          ;; Flush any residual catalog rows referencing these test roles -- the
+          ;; whole point of this test is the case where DROP USER would fail on
+          ;; lingering default-priv entries, so cleanup must be belt-and-
+          ;; suspenders to keep CI re-runs from accumulating orphan roles.
+          (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                 grantor))
+          (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                 dummy))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           tenant))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           grantor))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           dummy)))))))
+
+(deftest ^:synchronized workspace-destroy-survives-foreign-grantor-default-priv-test
+  ;; GHY-3709 destroy-path integration test (Redshift counterpart to the PG test
+  ;; of the same name). PG sidesteps this via `DROP OWNED BY <iso-user>`, which
+  ;; removes default-priv ACL entries where the iso-user is grantee regardless
+  ;; of grantor. Redshift has no equivalent, so destroy has to enumerate
+  ;; `pg_default_acl` and issue `ALTER DEFAULT PRIVILEGES FOR USER <grantor>
+  ;; REVOKE` per discovered (grantor, schema) pair before `DROP USER`.
+  ;;
+  ;; Repro shape:
+  ;;   1. Provision an iso-user via `init-workspace-isolation!`.
+  ;;   2. Connect as a foreign role (not the current connection user) and
+  ;;      `ALTER DEFAULT PRIVILEGES IN SCHEMA <s> GRANT SELECT ON TABLES TO
+  ;;      <iso-user>` -- catalog row is owned by that foreign grantor.
+  ;;   3. Run `destroy-workspace-isolation!`. Without the fix, `DROP USER`
+  ;;      fails with "user cannot be dropped because some objects depend on
+  ;;      it / privileges for default privileges on new relations belonging
+  ;;      to user <grantor> in schema <s>". With the fix, destroy enumerates
+  ;;      the row, REVOKEs it FOR USER the grantor, and DROP USER succeeds.
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          suffix     (u/lower-case-en (mt/random-name))
+          grantor    (str "ws_dest_grantor_" suffix)
+          schema     (str "ws_dest_schema_" suffix)
+          password   "Pwd_ws_dest_1!"
+          workspace  {:id   (rand-int Integer/MAX_VALUE)
+                      :name (str "wsd-dest-foreign-" suffix)}]
+      (try
+        (execute! (str
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s' CREATEUSER;%n" grantor password)
+                   (format "CREATE SCHEMA \"%s\" AUTHORIZATION \"%s\";%n"        schema grantor)))
+        (let [workspace+det  (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
+              _              (driver/init-workspace-isolation! :redshift (mt/db) workspace+det)
+              iso-user       (-> workspace+det :database_details :user)]
+          (try
+            ;; Seed the foreign-grantor default-priv: connect as the foreign role
+            ;; and issue ALTER DEFAULT PRIVILEGES so the resulting pg_default_acl
+            ;; row's grantor (defacluser) is the foreign role, not current_user.
+            ;; This is the exact production shape that reproduced GHY-3709.
+            (sql-jdbc.conn/with-connection-spec-for-testing-connection
+             [grantor-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                             :user grantor
+                                             :password password)]]
+              (jdbc/execute! grantor-spec
+                             [(format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT SELECT ON TABLES TO \"%s\""
+                                      schema iso-user)]))
+            (testing "destroy completes without error despite foreign-grantor default-priv row"
+              (is (some? (driver/destroy-workspace-isolation! :redshift (mt/db) workspace+det))))
+            (testing "iso-user is gone from pg_user after destroy"
+              (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM pg_user WHERE usename = ?" iso-user]))))
+            (finally
+              ;; Belt-and-suspenders: if destroy raised, the iso-user may still
+              ;; exist with the foreign-grantor row still pinned to it. Revoke
+              ;; as the grantor (only they can drop their own default-priv) and
+              ;; force-drop the iso-user so CI re-runs don't accumulate orphans.
+              (try
+                (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                 [grantor-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                                 :user grantor
+                                                 :password password)]]
+                  (try-execute! grantor-spec
+                                (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
+                                        schema iso-user)))
+                (catch Throwable t
+                  (log/warn t "Test cleanup: connecting as foreign grantor failed")))
+              (try-execute! admin-spec (format "DROP OWNED BY \"%s\""       iso-user))
+              (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\"" iso-user)))))
+        (finally
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema))
+          (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                  grantor))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""            grantor)))))))
+
+(deftest ^:synchronized workspace-destroy-revokes-schema-only-grants-test
+  ;; `DROP USER` fails with `user ... cannot be dropped because the user has a
+  ;; privilege on some object` when the iso-user holds a schema-level USAGE
+  ;; grant on a schema with no relations: destroy used to discover schemas to
+  ;; revoke via `svv_relation_privileges` only, which cannot surface
+  ;; schema-level grants when the schema has no tables. The production grant
+  ;; path (`grant-workspace-read-access!`) issues `GRANT USAGE` per input
+  ;; schema, so any input schema without tables (or whose tables were dropped
+  ;; after provisioning) reproduces this.
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          suffix     (u/lower-case-en (mt/random-name))
+          schema     (str "ws_empty_schema_" suffix)
+          workspace  {:id   (rand-int Integer/MAX_VALUE)
+                      :name (str "wsd-dest-empty-" suffix)}]
+      (try
+        (execute! (format "CREATE SCHEMA \"%s\"" schema))
+        (let [workspace (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
+              _         (driver/init-workspace-isolation! :redshift (mt/db) workspace)
+              iso-user  (-> workspace :database_details :user)]
+          (try
+            (jdbc/execute! admin-spec [(format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\"" schema iso-user)])
+            (testing "destroy completes despite a schema-level-only grant on an empty schema"
+              (is (some? (driver/destroy-workspace-isolation! :redshift (mt/db) workspace))))
+            (testing "iso-user is gone from pg_user after destroy"
+              (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM pg_user WHERE usename = ?" iso-user]))))
+            (finally
+              (try-execute! admin-spec (format "DROP OWNED BY \"%s\""       iso-user))
+              (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\"" iso-user)))))
+        (finally
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema)))))))

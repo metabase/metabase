@@ -35,9 +35,10 @@
      "matched_count" 0
      "null_count"    0
      "null_rate"     nil}
-    (let [output-count  (nth row 0 nil)
+    (let [;; some drivers return counts as BigDecimal, and dividing those can fail, so use longs
+          output-count  (some-> (nth row 0 nil) long)
           ;; Non-outer joins return only COUNT(*); matched = output by definition
-          matched-count (or (nth row 1 nil) output-count)
+          matched-count (or (some-> (nth row 1 nil) long) output-count)
           null-count    (when (and output-count matched-count)
                           (- output-count matched-count))
           null-rate     (when (and null-count output-count (pos? output-count))

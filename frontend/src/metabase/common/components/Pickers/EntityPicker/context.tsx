@@ -9,7 +9,11 @@ import type {
   OmniPickerItem,
   SearchScope,
 } from "./types";
-import { getItemFunctions, getNamespacesFromModels } from "./utils";
+import {
+  getItemFunctions,
+  getNamespacesFromModels,
+  shouldShowDataApps,
+} from "./utils";
 
 export const OmniPickerContext = createContext<
   OmniPickerContextValue | undefined
@@ -32,6 +36,7 @@ export const EntityPickerProvider = ({
     options: value.options,
     namespaces,
     models: getValidCollectionItemModels(value.models),
+    showsDataApps: shouldShowDataApps(value),
   });
 
   const [previousPath, setPreviousPath] = useState<OmniPickerItem[]>([]);

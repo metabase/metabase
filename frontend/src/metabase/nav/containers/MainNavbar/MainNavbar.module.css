@@ -1,0 +1,9 @@
+.nav {
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  @media (--breakpoint-max-sm) {
+    width: 90vw;
+  }
+}

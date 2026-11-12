@@ -4,7 +4,7 @@
    [metabase-enterprise.analytics.db :as analytics.db]
    [metabase-enterprise.mfa.core :as mfa]
    [metabase-enterprise.scim.core :as scim]
-   [metabase-enterprise.semantic-search.core :as semantic-search]
+   [metabase-enterprise.search.semantic.core :as semantic-search]
    [metabase-enterprise.sso.settings :as ee-sso-settings]
    [metabase.driver :as driver]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]))
@@ -38,4 +38,7 @@
     :enabled   (some? (advanced-config.settings/subscription-allowed-domains))}
    {:name      :semantic-search
     :available (premium-features/enable-semantic-search?)
-    :enabled   (semantic-search/supported?)}])
+    :enabled   (semantic-search/supported?)}
+   {:name      :workspaces
+    :available (premium-features/enable-workspaces?)
+    :enabled   (analytics.db/workspace-exists?)}])

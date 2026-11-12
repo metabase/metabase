@@ -117,12 +117,12 @@
            {:parameters [{:in       :query
                           :name     "collection"
                           :required true
-                          :schema   {:oneOf [{:type :array :items {:type :integer :minimum 1}}
+                          :schema   {:anyOf [{:type :array :items {:type :integer :minimum 1}}
                                              {:type :null}]}}
                          {:in       :query
                           :name     "settings"
                           :required true
-                          :schema   {:oneOf [{:type :boolean} {:type :null}]}}
+                          :schema   {:anyOf [{:type :boolean} {:type :null}]}}
                          {:in       :query
                           :name     "data-model"
                           :required false
@@ -158,14 +158,14 @@
                  {:type     :object
                   :required ["dashcards"]
                   :properties
-                  {"name"      {:oneOf [{:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}
+                  {"name"      {:anyOf [{:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}
                                         {:type :null}]}
                    "dashcards" {:type :array
                                 :description string?
                                 :items       {:type       :object
                                               :required   ["id"]
                                               :properties {"id"     {:type :integer}
-                                                           "params" {:oneOf [{:type  :array
+                                                           "params" {:anyOf [{:type  :array
                                                                               :items {:type       :object
                                                                                       :required   ["param_id" "target"]
                                                                                       :properties {"param_id" {}
@@ -184,6 +184,21 @@
 (deftest ^:parallel openapi-all-routes
   (testing "Make sure we can successfully generate an OpenAPI spec for the entire API"
     (is (open-api/root-open-api-object #'routes/routes))))
+
+(defn- undeclared-empty-schemas
+  "The malli forms that make generating the OpenAPI spec of `routes` fail for compiling to a JSON Schema that accepts
+  anything without saying so."
+  [routes]
+  (try
+    (open-api/root-open-api-object routes)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (or (some (comp :forms ex-data) (take-while some? (iterate ex-cause e)))
+          (throw e)))))
+
+(deftest ^:parallel openapi-no-undeclared-empty-schemas-test
+  (testing "every endpoint schema that compiles to a JSON Schema accepting anything says so with :json-schema"
+    (is (= nil (undeclared-empty-schemas #'routes/routes)))))
 
 (deftest ^:parallel openapi-info-version-test
   (testing "OpenAPI spec includes required info.version field (see #67748)"

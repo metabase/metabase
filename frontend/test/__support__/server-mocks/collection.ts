@@ -1,15 +1,9 @@
 import fetchMock from "fetch-mock";
-import _ from "underscore";
 
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import {
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  convertSavedQuestionToVirtualTable,
-  getCollectionVirtualSchemaName,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
-  Card,
   Collection,
+  CollectionId,
   CollectionItem,
   Dashboard,
   DashboardQuestionCandidate,
@@ -121,40 +115,6 @@ export function setupCollectionsEndpoints({
   });
 }
 
-function getCollectionVirtualSchemaURLs(collection: Collection) {
-  const db = SAVED_QUESTIONS_VIRTUAL_DB_ID;
-  const schemaName = getCollectionVirtualSchemaName(collection);
-  const schema = encodeURIComponent(schemaName);
-
-  const questions = ["path:/api/database/", db, "/schema/", schema].join("");
-  const models = ["path:/api/database/", db, "/datasets/", schema].join("");
-
-  return { questions, models };
-}
-
-export function setupCollectionVirtualSchemaEndpoints(
-  collection: Collection,
-  cards: Card[],
-) {
-  const urls = getCollectionVirtualSchemaURLs(collection);
-
-  const [models, questions] = _.partition(
-    cards,
-    (card) => card.type === "model",
-  );
-  const modelVirtualTables = models.map(convertSavedQuestionToVirtualTable);
-  const questionVirtualTables = questions.map(
-    convertSavedQuestionToVirtualTable,
-  );
-
-  fetchMock.get(urls.questions, questionVirtualTables, {
-    name: "collection-questions-virtual-tables",
-  });
-  fetchMock.get(urls.models, modelVirtualTables, {
-    name: "collection-models-virtual-tables",
-  });
-}
-
 function matchesPinnedState(item: CollectionItem, pinnedState: string | null) {
   if (pinnedState === "is_pinned") {
     return item.collection_position != null;
@@ -231,6 +191,12 @@ export function setupCollectionItemsEndpoint({
   collectionItems: CollectionItem[];
   models?: string[];
 }) {
+  const itemsName = `collection-${collection.id}-items`;
+  const metadataName = `collection-${collection.id}-items-metadata`;
+  fetchMock.removeRoutes({
+    names: [itemsName, metadataName],
+    includeFallback: false,
+  });
   fetchMock.get(
     `path:/api/collection/${collection.id}/items`,
     (call) => {
@@ -240,12 +206,12 @@ export function setupCollectionItemsEndpoint({
         modelsParam,
       });
     },
-    { name: `collection-${collection.id}-items` },
+    { name: itemsName },
   );
   fetchMock.get(
     `path:/api/collection/${collection.id}/items/metadata`,
     (call) => collectionItemsMetadata(call, collectionItems),
-    { name: `collection-${collection.id}-items-metadata` },
+    { name: metadataName },
   );
 }
 
@@ -453,9 +419,20 @@ export function setupCreateCollectionEndpoint(
   });
 }
 
-export function setupUpdateCollectionEndpoint(collection: Collection) {
-  fetchMock.put(`path:/api/collection/${collection.id}`, collection, {
+export function setupUpdateCollectionEndpoint(
+  collection: Collection,
+  response: Collection | Promise<Collection> = collection,
+) {
+  fetchMock.put(`path:/api/collection/${collection.id}`, response, {
     name: `update-collection-${collection.id}`,
+  });
+}
+
+export function setupUpdateCollectionEndpointWithError(
+  collectionId: CollectionId,
+) {
+  fetchMock.put(`path:/api/collection/${collectionId}`, 500, {
+    name: `update-collection-${collectionId}`,
   });
 }
 

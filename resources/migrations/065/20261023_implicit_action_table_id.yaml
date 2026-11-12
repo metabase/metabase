@@ -1,0 +1,41 @@
+## An implicit action writes to one table. An action without a model stores it here; an action of a model leaves it
+## empty and reads its model's table when it runs.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-23T00:00:00
+      author: ranquild
+      comment: Add implicit_action.table_id
+      changes:
+        - addColumn:
+            tableName: implicit_action
+            columns:
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: The table the implicit action writes to
+
+  - changeSet:
+      id: v65.2026-10-23T00:00:02
+      author: ranquild
+      comment: Index implicit_action.table_id
+      changes:
+        - createIndex:
+            tableName: implicit_action
+            indexName: idx_implicit_action_table_id
+            columns:
+              - column:
+                  name: table_id
+
+  - changeSet:
+      id: v65.2026-10-23T00:00:03
+      author: ranquild
+      comment: Add a foreign key from implicit_action.table_id to metabase_table
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: implicit_action
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_implicit_action_table_id
+            onDelete: CASCADE

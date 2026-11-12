@@ -17,7 +17,7 @@ export function useCopyLink() {
   useEffect(() => {
     if (clipboard.error) {
       sendToast({
-        icon: "warning_triangle_filled",
+        variant: "negative",
         message: t`Couldn't copy link`,
       });
     }

@@ -29,6 +29,7 @@ export type SidebarFeatures = {
   variables?: boolean;
   snippets?: boolean;
   formatQuery?: boolean;
+  previewQuery?: boolean;
 };
 
 export type QueryEditorSidebarType =
@@ -80,7 +81,10 @@ export type QueryEditorUiOptions = {
   shouldShowLibrary?: false;
   hidePreview?: boolean;
   hideRunButton?: boolean;
+  hidePreviewQueryButton?: boolean;
   resizable?: boolean;
+  /** If true, a mod+Enter hotkey to run query will be attached */
+  canRunViaHotkey?: boolean;
 };
 
 /**

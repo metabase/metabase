@@ -1,4 +1,5 @@
 .root {
+  justify-content: center;
   box-shadow: 0 7px 20px var(--mb-color-shadow-default);
 
   &:hover {

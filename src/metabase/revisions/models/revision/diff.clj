@@ -22,7 +22,7 @@
     [:description nil _]
     (deferred-tru "added a description")
 
-    [:description (_ :guard some?) _]
+    [:description #'some? _]
     (deferred-tru "changed the description")
 
     [:document _ _]
@@ -88,16 +88,11 @@
     [:parameter_mappings _ _]
     (deferred-tru "changed the filter mapping")
 
-    [:collection_preview _ after]
-    (if after
-      (deferred-tru "enabled collection review")
-      (deferred-tru "disabled collection preview"))
-
     [:dataset_query _ _]
     (deferred-tru "modified the query")
 
     ;; report_card.type
-    [:type (_ :guard #{:question "question"}) (_ :guard #{:model "model"})]
+    [:type #{:question "question"} #{:model "model"}]
     (deferred-tru "turned this to a model")
 
     [:type old new]
@@ -158,7 +153,8 @@
     "Document"      (deferred-tru "Document")
     "Exploration"   (deferred-tru "Exploration")
     "Transform"     (deferred-tru "Transform")
-    "TransformTest" (deferred-tru "Transform test")))
+    "TransformTest" (deferred-tru "Transform test")
+    "CardTest"      (deferred-tru "Card test")))
 
 (defn diff-strings*
   "Create a seq of string describing how `o1` is different from `o2`.

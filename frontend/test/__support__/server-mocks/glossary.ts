@@ -1,0 +1,38 @@
+import fetchMock from "fetch-mock";
+
+import type { ListGlossaryResponse } from "metabase/api";
+import type { GlossaryItem } from "metabase-types/api";
+
+import type { MockResponse } from "./types";
+
+export function setupListGlossaryEndpoint(
+  response: MockResponse<ListGlossaryResponse>,
+) {
+  fetchMock.get("path:/api/glossary", response);
+}
+
+export function setupCreateGlossaryEndpoint(
+  response: MockResponse<GlossaryItem>,
+) {
+  fetchMock.post("path:/api/glossary", response);
+}
+
+export function setupCreateGlossaryEndpointWithError() {
+  fetchMock.post("path:/api/glossary", { status: 500, body: {} });
+}
+
+export function setupUpdateGlossaryEndpoint(item: GlossaryItem) {
+  fetchMock.put(`path:/api/glossary/${item.id}`, item);
+}
+
+export function setupUpdateGlossaryEndpointWithError(id: GlossaryItem["id"]) {
+  fetchMock.put(`path:/api/glossary/${id}`, { status: 500, body: {} });
+}
+
+export function setupDeleteGlossaryEndpoint(id: GlossaryItem["id"]) {
+  fetchMock.delete(`path:/api/glossary/${id}`, 204);
+}
+
+export function setupDeleteGlossaryEndpointWithError(id: GlossaryItem["id"]) {
+  fetchMock.delete(`path:/api/glossary/${id}`, { status: 500, body: {} });
+}

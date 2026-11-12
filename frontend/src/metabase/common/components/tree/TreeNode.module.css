@@ -1,0 +1,40 @@
+/* Zero specificity: the consumers that restyle a node (the admin tree, the navbar sidebar) override these with plain classes */
+:where(.root) {
+  padding-left: calc((var(--tree-depth) + 0.5) * 1rem);
+  color: var(--mb-color-core-brand);
+}
+
+:where(.root):hover {
+  background-color: var(--mb-color-background_surface-brand-subtle);
+}
+
+:where(.selected) {
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-core-brand);
+}
+
+:where(.selected):hover {
+  background-color: var(--mb-color-core-brand);
+}
+
+/* Padding and color stay in the class so that consumers can override them with style props */
+.expandToggle {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-xxs);
+  color: inherit;
+
+  &[hidden] {
+    visibility: hidden;
+  }
+}
+
+.expandIcon {
+  transition: transform 200ms;
+}
+
+.expanded {
+  transform: rotate(90deg);
+}
+
+.name {
+  word-break: break-word;
+}

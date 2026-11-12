@@ -6,8 +6,7 @@ import {
   UPDATE_DATA_PERMISSION,
   type UpdateDataPermissionPayload,
   updateDataPermission,
-} from "metabase/admin/permissions/permissions";
-import { DataPermissionType } from "metabase/admin/permissions/types";
+} from "metabase/permissions";
 import {
   combineReducers,
   createAction,
@@ -15,7 +14,11 @@ import {
   handleActions,
 } from "metabase/redux";
 import type { GroupTableAccessPolicy } from "metabase-types/api";
-import { DataPermission, DataPermissionValue } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionType,
+  DataPermissionValue,
+} from "metabase-types/api";
 
 import type { RawGroupTableAccessPolicyParams } from "./types";
 import { getPolicyKey, getPolicyKeyFromParams } from "./utils";

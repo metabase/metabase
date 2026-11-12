@@ -6,7 +6,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn- managed-groups-clause
@@ -38,20 +37,17 @@
   `tenancy` is \"external\" and `tenants-enabled?` is false, no groups are returned. `manager-user-id`, when given,
   restricts to the groups that User manages. `advanced-permissions-enabled?` false excludes the data-analyst magic
   group unless it has at least one active member. `tenants-enabled?` false also excludes tenant groups outright,
-  independent of `tenancy`. `exclude-data-app-groups?` excludes groups that a data app manages."
+  independent of `tenancy`."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
-   {:keys [tenancy manager-user-id tenants-enabled? advanced-permissions-enabled?
-           exclude-data-app-groups?]}
+   {:keys [tenancy manager-user-id tenants-enabled? advanced-permissions-enabled?]}
    :- [:map {:closed true}
        [:tenancy                        {:optional true} [:maybe [:enum "external" "internal"]]]
        [:manager-user-id                {:optional true} [:maybe ::lib.schema.id/user]]
        [:tenants-enabled?               {:optional true} :boolean]
-       [:advanced-permissions-enabled?  {:optional true} :boolean]
-       [:exclude-data-app-groups?       {:optional true} :boolean]]]
+       [:advanced-permissions-enabled?  {:optional true} :boolean]]]
   (let [base-where [:and
                     (managed-groups-clause :id manager-user-id)
-                    (when exclude-data-app-groups? [:not :is_data_app_group])
                     (when-not tenants-enabled? [:not :is_tenant_group])
                     (when-not advanced-permissions-enabled? (data-analyst-visibility-clause))]
         where (case tenancy
@@ -75,11 +71,6 @@
   [id :- ms/PositiveInt]
   (t2/exists? :model/PermissionsGroup :id id))
 
-(defn data-app-group?
-  "Whether the PermissionsGroup with `id` is managed by a data app."
-  [id]
-  (t2/exists? :model/PermissionsGroup :id id :is_data_app_group true))
-
 (mu/defn insert-permissions-group!
   "Insert a PermissionsGroup and return the inserted instance."
   [group-name    :- :string
@@ -90,7 +81,7 @@
   "Set the name of the PermissionsGroup with `id`, returning the number updated."
   [id         :- ms/PositiveInt
    group-name :- :string]
-  (t2/update! :model/PermissionsGroup id {:name group-name}))
+  (t2/update! :model/PermissionsGroup :id id {:name group-name}))
 
 (mu/defn delete-permissions-group!
   "Delete the PermissionsGroup with `id`, returning the number deleted."
@@ -118,11 +109,6 @@
   [user-id :- ::lib.schema.id/user]
   (t2/exists? :model/User :id user-id :is_superuser false))
 
-(defn active-user-exists?
-  "Whether an active User with `user-id` exists."
-  [user-id]
-  (t2/exists? :model/User :id user-id :is_active true))
-
 (mu/defn group-membership
   "The PermissionsGroupMembership with `id`, or nil."
   [id :- ms/PositiveInt]
@@ -132,7 +118,7 @@
   "Set the group manager flag of the PermissionsGroupMembership with `id`, returning the number updated."
   [id             :- ms/PositiveInt
    group-manager? :- :boolean]
-  (t2/update! :model/PermissionsGroupMembership id {:is_group_manager group-manager?}))
+  (t2/update! :model/PermissionsGroupMembership :id id {:is_group_manager group-manager?}))
 
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no
@@ -178,5 +164,4 @@
 (mu/defn tables-for-databases
   "The id, Database id, and schema of the Tables of the Databases with `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select [:model/Table :id :db_id :schema] :db_id [:in database-ids]
-             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select [:model/Table :id :db_id :schema] :db_id [:in database-ids]))

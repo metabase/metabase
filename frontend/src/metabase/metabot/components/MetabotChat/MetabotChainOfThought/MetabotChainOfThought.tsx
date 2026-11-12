@@ -25,11 +25,13 @@ import {
 } from "./utils";
 
 type MetabotChainOfThoughtProps = {
+  conversationId: string;
   part: MetabotAgentChainOfThoughtMessage;
   supportsReasoning?: boolean;
 };
 
 export const MetabotChainOfThought = ({
+  conversationId,
   part,
   supportsReasoning = true,
 }: MetabotChainOfThoughtProps) => {
@@ -39,12 +41,13 @@ export const MetabotChainOfThought = ({
   return (
     <>
       {!part.finished && <MetabotResponseLoader />}
-      <ChainOfThought part={part} />
+      <ChainOfThought conversationId={conversationId} part={part} />
     </>
   );
 };
 
 const ChainOfThought = ({
+  conversationId,
   part,
 }: Omit<MetabotChainOfThoughtProps, "supportsReasoning">) => {
   const isStreaming = !part.finished;
@@ -146,9 +149,11 @@ const ChainOfThought = ({
                   return (
                     <div key={`reasoning-${index}`} className={S.step}>
                       <ReasoningStep
+                        conversationId={conversationId}
                         text={step.text}
                         label={active ? t`Thinking` : stepReasoningLabel(index)}
                         active={active}
+                        shown={open}
                       />
                     </div>
                   );

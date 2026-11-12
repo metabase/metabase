@@ -1,39 +1,47 @@
-import { Group } from "@visx/group";
 import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { readAllPointsOutOfRange } from "metabase/static-viz/lib/data-visibility";
+import { withCartesianChartSize } from "metabase/static-viz/lib/rendering-context";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { getChartHeight } from "metabase/static-viz/lib/utils";
+import { STATIC_CARTESIAN_CHART_SIZE } from "metabase/static-viz/lib/utils";
 import {
   getChartLayout,
   getLegendItems,
   getScatterPlotModel,
   getScatterPlotOption,
+  getSizeAdjustedSettings,
   registerEChartsModules,
 } from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
 import { DataOutOfRangeOverlay } from "../DataOutOfRangeOverlay/DataOutOfRangeOverlay";
 import { Legend } from "../Legend";
-import { calculateLegendRows } from "../Legend/utils";
+import { getPlotBounds, layoutChartWithBottomLegend } from "../Legend/layout";
 
 registerEChartsModules();
 
-const WIDTH = 540;
-const HEIGHT = 360;
-const LEGEND_PADDING = 8;
-
 export function ScatterPlot({
   rawSeries,
-  settings,
-  renderingContext,
-  width = WIDTH,
-  height = HEIGHT,
+  settings: originalSettings,
+  renderingContext: originalRenderingContext,
+  width = STATIC_CARTESIAN_CHART_SIZE.width,
+  height = STATIC_CARTESIAN_CHART_SIZE.height,
   isStorybook = false,
   hasDevWatermark = false,
   fitWithinBounds = false,
+  gridSize,
 }: StaticChartProps) {
+  const renderingContext = withCartesianChartSize(originalRenderingContext, {
+    width,
+    height,
+  });
+  const settings = getSizeAdjustedSettings({
+    settings: originalSettings,
+    width,
+    height,
+    gridSize,
+  });
   const chartModel = getScatterPlotModel(
     rawSeries,
     settings,
@@ -41,16 +49,26 @@ export function ScatterPlot({
     renderingContext,
   );
 
-  const legendItems = getLegendItems(chartModel.seriesModels);
-  const { height: legendHeight, items: legendLayoutItems } =
-    calculateLegendRows({
-      items: legendItems,
-      width,
-      horizontalPadding: LEGEND_PADDING,
-      verticalPadding: LEGEND_PADDING,
-    });
-
-  const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
+  const {
+    chartHeight,
+    legend,
+    layout: chartLayout,
+  } = layoutChartWithBottomLegend({
+    items: getLegendItems(chartModel.seriesModels),
+    chartWidth: width,
+    height,
+    fitWithinBounds,
+    getLayout: (chartHeight) =>
+      getChartLayout(
+        chartModel,
+        settings,
+        false,
+        width,
+        chartHeight,
+        renderingContext,
+      ),
+    getPlot: (layout) => getPlotBounds(layout.padding, width),
+  });
 
   const chart = init(null, null, {
     renderer: "svg",
@@ -58,15 +76,6 @@ export function ScatterPlot({
     width,
     height: chartHeight,
   });
-
-  const chartLayout = getChartLayout(
-    chartModel,
-    settings,
-    false,
-    width,
-    chartHeight,
-    renderingContext,
-  );
 
   const option = getScatterPlotOption(
     chartModel,
@@ -85,17 +94,15 @@ export function ScatterPlot({
   const allPointsOutOfRange = readAllPointsOutOfRange(chart);
   chart.dispose();
 
-  const totalHeight = fitWithinBounds ? height : height + legendHeight;
+  const totalHeight = fitWithinBounds ? height : height + legend.height;
 
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={width} height={totalHeight}>
-      <Legend items={legendLayoutItems} />
-      <Group top={legendHeight}>
-        <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
-      </Group>
+      <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
+      <Legend top={chartHeight} items={legend.items} />
       {hasDevWatermark && (
         <Watermark
-          x={legendHeight}
+          x="0"
           y="0"
           height={height}
           width={width}

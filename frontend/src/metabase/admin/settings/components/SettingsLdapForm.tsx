@@ -178,7 +178,6 @@ export const SettingsLdapForm = () => {
         {({ dirty, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
-              <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning />
               <SettingsSection
                 title={t`Server settings`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
@@ -232,6 +231,7 @@ export const SettingsLdapForm = () => {
                   />
                 </Stack>
               </SettingsSection>
+              <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning />
               <SettingsSection
                 title={t`User schema`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}

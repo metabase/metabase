@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
 import type {
   CreateCustomVisualizationProps,
   CustomVisualization,
@@ -527,8 +528,7 @@ export async function loadCustomVizPluginForDisplay(
 
     if (!plugin) {
       onMessage?.({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "warning",
         message: t`Custom visualization "${display}" was requested but no matching installed plugin was found. Check the name and that the plugin is uploaded.`,
       });
       return { status: "unavailable" };

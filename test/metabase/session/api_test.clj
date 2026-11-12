@@ -2,7 +2,9 @@
   "Tests for /api/session"
   (:require
    [clj-http.client :as http]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
@@ -27,7 +29,7 @@
    [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.string :as string]
+   [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -85,9 +87,13 @@
                    [:user_id            [:= (mt/user->id :rasta)]]
                    [:device_id          ms/UUIDString]
                    [:device_description ms/NonBlankString]
-                   [:ip_address         ms/NonBlankString]
-                   [:active             [:= true]]]
-                  (t2/select-one :model/LoginHistory :user_id (mt/user->id :rasta), :session_id (t2/select-one-fn :id :model/Session :key_hashed (session/hash-session-key (:id response)))))))))
+                   [:ip_address         ms/NonBlankString]]
+                  (t2/select-one :model/LoginHistory
+                                 :user_id    (mt/user->id :rasta)
+                                 :session_id (t2/select-one-fn :id :model/Session
+                                                               :key_hashed (session/hash-session-key (:id response))))))
+      (is (true? (:active (first (login-history.db/login-history-for-user (mt/user->id :rasta)))))
+          "the login just made is the newest, and its session is live"))))
 
 (deftest login-remember-me-sets-max-age-test
   (testing "POST /api/session - 'remember me' checkbox sets Max-Age attribute on session cookie"
@@ -237,25 +243,33 @@
       (test.users/clear-cached-session-tokens!)
       (let [session-key        (client/authenticate (test.users/user->credentials :rasta))
             session-key-hashed (session/hash-session-key session-key)
-            login-history-id (t2/select-one-pk :model/LoginHistory :session_id (t2/select-one-pk :model/Session :key_hashed session-key-hashed))]
+            session-id         (t2/select-one-pk :model/Session :key_hashed session-key-hashed)
+            login-history-id   (t2/select-one-pk :model/LoginHistory :session_id session-id)]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
-        ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
+        ;; Ok, calling the logout endpoint should end the Session in the DB. Don't worry, `test-users` will log back
         ;; in on the next API call
         (client/client session-key :delete 204 "session")
-        ;; check whether it's still there -- should be GONE
-        (is (= nil
-               (t2/select-one :model/Session :key_hashed session-key-hashed)))
-        (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
+        (testing "the session is ended, attributed to the user, and its key destroyed — but the row is kept"
+          (is (nil? (t2/select-one :model/Session :key_hashed session-key-hashed)))
+          (is (=? {:end_reason       "logout"
+                   :ended_by_user_id (mt/user->id :rasta)
+                   :ended_at         some?
+                   :key_hashed       nil}
+                  (t2/select-one :model/Session :id session-id))))
+        (testing "the old cookie no longer authenticates"
+          (is (= "Unauthenticated" (client/client session-key :get 401 "user/current"))))
+        (testing "LoginHistory item should still exist, but read as no longer active"
           (is (malli= [:map
                        [:id                 ms/PositiveInt]
                        [:timestamp          (ms/InstanceOfClass java.time.OffsetDateTime)]
                        [:user_id            [:= (mt/user->id :rasta)]]
                        [:device_id          ms/UUIDString]
                        [:device_description ms/NonBlankString]
-                       [:ip_address         ms/NonBlankString]
-                       [:active             [:= false]]]
-                      (t2/select-one :model/LoginHistory :id login-history-id))))))))
+                       [:ip_address         ms/NonBlankString]]
+                      (t2/select-one :model/LoginHistory :id login-history-id)))
+          (is (false? (:active (first (login-history.db/login-history-for-user (mt/user->id :rasta)))))
+              "the newest login of the user is the one just logged out"))))))
 
 (deftest login-survives-concurrent-session-delete-test
   (testing (str "POST /api/session - SEC-1208: deleting the user's sessions (as a password change does) between the"
@@ -425,6 +439,33 @@
                      (:email sso-user)
                      (re-pattern "single sign-on")))))))))))
 
+(deftest forgot-password-sso-user-with-used-password-test
+  (testing "POST /api/session/forgot_password - SSO user with enabled provider gets link only for used, unexpired password"
+    (doseq [[password-attrs expected-body] [[{:last_used_at (t/offset-date-time)}
+                                             "Click the button below to reset the password"]
+                                            [{} "You're using Google to log in to"]
+                                            [{:last_used_at (t/offset-date-time)
+                                              :expires_at   (t/minus (t/offset-date-time) (t/days 1))}
+                                             "You're using Google to log in to"]]]
+      (testing (pr-str password-attrs)
+        (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                    (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                      (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+          (mt/with-temp [:model/User sso-user {:first_name "sso"
+                                               :last_name  "user"
+                                               :email      "sso-password-user@example.com"
+                                               :sso_source :google}
+                         :model/AuthIdentity _ (merge {:user_id     (:id sso-user)
+                                                       :provider    "password"
+                                                       :credentials {:plaintext_password "somePassword12!!"}}
+                                                      password-attrs)]
+            (mt/with-temporary-setting-values [site-url              "http://test.example.com"
+                                               google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                               google-auth-enabled   true]
+              (mt/with-fake-inbox
+                (mt/client :post 204 "session/forgot_password" {:email (:email sso-user)})
+                (is (mt/received-email-body? (:email sso-user) (re-pattern expected-body)))))))))))
+
 (deftest forgot-password-event-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
@@ -472,7 +513,7 @@
                        :new {:password (:new password)
                              :username email}}]
             (mt/client :post 200 "session" (:old creds))
-            (is (=? {:session_id string/valid-uuid?
+            (is (=? {:session_id u/uuid-string?
                      :success    true}
                     (mt/client :post 200 "session/reset_password" {:token    token
                                                                    :password (:new password)})))
@@ -510,7 +551,7 @@
           (let [password {:old "password"
                           :new "whateverUP12!!"}]
             (mt/with-temp [:model/User {:keys [id]} {}]
-              (t2/update! :model/User id {:last_login :%now})
+              (t2/update! :model/User :id id {:last_login :%now})
               (let [token       (auth-identity/create-password-reset! id)
                     reset-token (auth-identity/reset-token-hash id)]
                 (mt/client :post 200 "session/reset_password" {:token    token
@@ -541,14 +582,14 @@
       (let [uid (mt/user->id :rasta)
             token (auth-identity/create-password-reset! uid)
             ai (t2/select-one :model/AuthIdentity :user_id uid :provider "emailed-secret-password-reset")]
-        (t2/update! :model/AuthIdentity (:id ai)
+        (t2/update! :model/AuthIdentity :id (:id ai)
                     {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
         (is (=? {:errors {:password "Invalid reset token"}}
                 (mt/client :post 400 "session/reset_password" {:token    token
                                                                :password "whateverUP12!!"})))))))
 
 (deftest reset-password-from-token-invalidates-sessions-test
-  (testing "POST /api/session/reset_password deletes the user's existing sessions"
+  (testing "POST /api/session/reset_password ends the user's existing sessions"
     (mt/with-temp [:model/User user {}]
       (auth-identity/set-password! (:id user) "password")
       (let [session (auth-identity/create-session-with-auth-tracking!
@@ -560,8 +601,194 @@
         (is (some? (t2/select-one :model/Session :id (:id session)))
             "sanity check: the session exists before the reset")
         (mt/client :post 200 "session/reset_password" {:token token :password "whateverUP12!!"})
-        (is (nil? (t2/select-one :model/Session :id (:id session)))
-            "the pre-existing session should be deleted after resetting the password via token")))))
+        (is (=? {:end_reason "password-change", :ended_by_user_id (:id user), :ended_at some?, :key_hashed nil}
+                (t2/select-one :model/Session :id (:id session)))
+            "the pre-existing session should be ended, by the user, after resetting the password via token")))))
+
+(deftest reset-password-session-is-attributed-to-password-identity-test
+  (testing "POST /api/session/reset_password issues a session belonging to the user's password AuthIdentity"
+    (mt/with-temp [:model/User user {}
+                   ;; the pre-existing session hangs off a different identity, so last_used_at on the
+                   ;; password identity below is nil until the reset itself touches it
+                   :model/AuthIdentity _ {:user_id (:id user) :provider "google" :metadata {:sso_source "google"}}]
+      (auth-identity/set-password! (:id user) "password")
+      (let [stale-session (auth-identity/create-session-with-auth-tracking!
+                           user
+                           {:device_id "reset-attribution-device" :embedded false :token_exchange false
+                            :device_description "Test" :ip_address "127.0.0.1"}
+                           :provider/google)
+            token         (auth-identity/create-password-reset! (:id user))]
+        (mt/client :post 200 "session/reset_password" {:token token :password "whateverUP12!!"})
+        ;; read core_session directly: auth_identity_id is the column session listing joins the provider on
+        (let [password-identity-id (t2/select-one-pk :model/AuthIdentity :user_id (:id user) :provider "password")
+              sessions             (t2/query {:select [:id :auth_identity_id]
+                                              :from   [:core_session]
+                                              :where  [:and [:= :user_id (:id user)] [:= :ended_at nil]]})]
+          (is (=? {:end_reason "password-change", :key_hashed nil}
+                  (t2/select-one :model/Session :id (:id stale-session)))
+              "the session that existed before the reset is revoked")
+          (is (= 1 (count sessions))
+              "only the session the reset just created is live")
+          (is (some? (:auth_identity_id (first sessions)))
+              "the new session is attributed to an auth identity")
+          (is (= password-identity-id (:auth_identity_id (first sessions)))
+              "the new session is attributed to the password identity the reset just wrote")
+          (is (some? (t2/select-one-fn :last_used_at :model/AuthIdentity :id password-identity-id))
+              "completing the reset counts as a use of the password identity")
+          (is (nil? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
+              "the consumed reset identity is still deleted"))))))
+
+(deftest reset-password-refuses-current-password-test
+  (testing "POST /api/session/reset_password refuses, and changes nothing, when the new password is the current one"
+    (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "whateverUP12!!")
+      (let [token (auth-identity/create-password-reset! (:id user))]
+        (is (= {:errors {:password "New password must be different from your current password."}}
+               (mt/client :post 400 "session/reset_password" {:token token :password "whateverUP12!!"})))
+        (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
+            "the reset token is not consumed, so the user can retry with a different password")
+        (is (=? {:success true}
+                (mt/client :post 200 "session/reset_password" {:token token :password "somethingElseUP12!!"})))))))
+
+(deftest reset-password-bad-tokens-cost-same-bcrypt-work-test
+  (testing "POST /api/session/reset_password and GET /api/session/password_reset_token_valid run the same number of bcrypt checks for every token that gets the same answer"
+    (mt/with-temp [:model/User {idle-id :id} {}
+                   :model/User {pending-id :id} {}
+                   :model/User {expired-id :id} {}
+                   :model/User {inactive-id :id} {}]
+      (auth-identity/create-password-reset! pending-id)
+      (let [expired-token  (auth-identity/create-password-reset! expired-id)
+            inactive-token (auth-identity/create-password-reset! inactive-id)
+            expired-ai     (t2/select-one :model/AuthIdentity :user_id expired-id :provider "emailed-secret-password-reset")
+            checks         (atom 0)
+            bcrypt         (mt/original-fn #'u.password/bcrypt-verify)
+            invalid-token  {"malformed"           "not-a-token"
+                            "zero user id"        "0_abc"
+                            "no pending reset"    (str idle-id "_" (random-uuid))
+                            "wrong secret"        (str pending-id "_" (random-uuid))
+                            "expired"             expired-token}
+            cost           (fn [f] (reset! checks 0) (f) @checks)]
+        (t2/update! :model/AuthIdentity :id (:id expired-ai)
+                    {:credentials (assoc (:credentials expired-ai) :expires_at (t/minus (t/instant) (t/days 1)))})
+        (t2/update! :model/User :id inactive-id {:is_active false})
+        (mt/with-dynamic-fn-redefs [u.password/bcrypt-verify (fn [token hash] (swap! checks inc) (bcrypt token hash))]
+          (testing "reset_password answering Invalid reset token"
+            (let [costs (into {} (for [[label token] (assoc invalid-token "deactivated user" inactive-token)]
+                                   [label (cost #(is (= {:errors {:password "Invalid reset token"}}
+                                                        (mt/client :post 400 "session/reset_password"
+                                                                   {:token token :password "SomePassword12!!"}))))]))]
+              (is (apply = (vals costs)) (pr-str costs))))
+          (testing "password_reset_token_valid answering false"
+            (let [costs (into {} (for [[label token] (assoc invalid-token "deactivated user" inactive-token)]
+                                   [label (cost #(is (= {:valid false}
+                                                        (mt/client :get 200 "session/password_reset_token_valid" :token token))))]))]
+              (is (apply = (vals costs)) (pr-str costs)))))))))
+
+(deftest reset-password-changes-nothing-for-deactivated-user-test
+  (testing "POST /api/session/reset_password answers like an invalid token, and changes nothing, for a user deactivated after the token was sent"
+    (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "currentPassUP12!!")
+      (let [token (auth-identity/create-password-reset! (:id user))]
+        (t2/update! :model/User :id (:id user) {:is_active false})
+        (doseq [password ["currentPassUP12!!" "somethingElseUP12!!"]]
+          (testing password
+            (is (= {:errors {:password "Invalid reset token"}}
+                   (mt/client :post 400 "session/reset_password" {:token token :password password})))))
+        (is (:success? (auth-identity/authenticate :provider/password {:email (:email user) :password "currentPassUP12!!"}))
+            "the current password still works")
+        (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
+            "the reset token is not consumed")))))
+
+(deftest reset-password-compares-against-token-user-after-email-change-test
+  (testing "POST /api/session/reset_password compares with the password of the token's user, not of whoever now has the email the token was sent to"
+    (mt/with-temp [:model/User user  {:email "reset-owner@metabase.com"}
+                   :model/User other {:email "reset-other@metabase.com"}]
+      (auth-identity/set-password! (:id user) "ownerPassUP12!!")
+      (auth-identity/set-password! (:id other) "otherPassUP12!!")
+      (let [token (auth-identity/create-password-reset! (:id user))]
+        (t2/update! :model/User :id (:id user) {:email "reset-owner-moved@metabase.com"})
+        (t2/update! :model/User :id (:id other) {:email "reset-owner@metabase.com"})
+        (is (= {:errors {:password "New password must be different from your current password."}}
+               (mt/client :post 400 "session/reset_password" {:token token :password "ownerPassUP12!!"})))
+        (is (=? {:success true}
+                (mt/client :post 200 "session/reset_password" {:token token :password "otherPassUP12!!"})))))))
+
+(deftest reset-password-refused-when-password-login-disabled-test
+  (testing "POST /api/session/reset_password refuses, and changes nothing, when password login is disabled"
+    (ldap.test/with-ldap-server!
+      (mt/with-temp [:model/User user {}]
+        (auth-identity/set-password! (:id user) "password")
+        (let [session     (auth-identity/create-session-with-auth-tracking!
+                           user
+                           {:device_id "reset-disabled-device" :embedded false :token_exchange false
+                            :device_description "Test" :ip_address "127.0.0.1"}
+                           :provider/password)
+              credentials (t2/select-one-fn :credentials :model/AuthIdentity
+                                            :user_id (:id user) :provider "password")
+              token       (auth-identity/create-password-reset! (:id user))]
+          (mt/with-premium-features #{:disable-password-login}
+            (mt/with-temporary-setting-values [enable-password-login false]
+              (is (= "Password login is disabled for this instance."
+                     (mt/client :post 400 "session/reset_password" {:token token :password "whateverUP12!!"})))
+              (is (= credentials
+                     (t2/select-one-fn :credentials :model/AuthIdentity :user_id (:id user) :provider "password"))
+                  "the password is unchanged: the stored credential is still the same hash")
+              (is (some? (t2/select-one :model/Session :id (:id session)))
+                  "the user's existing sessions are not revoked")
+              (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "emailed-secret-password-reset"))
+                  "the reset token is not consumed"))))))))
+
+(deftest forgot-password-ldap-user-test
+  (testing "POST /api/session/forgot_password - LDAP user with used password gets link only when directory lacks them"
+    (ldap.test/with-ldap-server!
+      (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                  (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                    (fn [& args] (u/deref-with-timeout (apply orig args) 5000)))]
+        (doseq [[email sso-source expected-body] [["sally.brown@metabase.com" :ldap #"single sign-on"]
+                                                  ["sally.brown@metabase.com" nil #"single sign-on"]
+                                                  ["removed-ldap-user@metabase.com" :ldap
+                                                   #"Click the button below to reset the password"]]]
+          (testing (pr-str [email sso-source])
+            (mt/with-temp [:model/User user {:email email :sso_source sso-source}
+                           :model/AuthIdentity _ {:user_id      (:id user)
+                                                  :provider     "password"
+                                                  :credentials  {:plaintext_password "somePassword12!!"}
+                                                  :last_used_at (t/offset-date-time)}]
+              (mt/with-temporary-setting-values [site-url "http://test.example.com"]
+                (mt/with-fake-inbox
+                  (mt/client :post 204 "session/forgot_password" {:email email})
+                  (is (mt/received-email-body? email expected-body)))))))))))
+
+(deftest reset-password-gives-no-session-to-sso-user-test
+  (testing "POST /api/session/reset_password gives no session to user whose SSO provider is enabled"
+    (mt/with-temp [:model/User user {:sso_source :google}]
+      (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                         google-auth-enabled   true]
+        (let [token (auth-identity/create-password-reset! (:id user))]
+          (is (= {:success true}
+                 (mt/client :post 200 "session/reset_password" {:token token :password "newPassUP12!!"})))
+          (is (not (t2/exists? :model/Session :user_id (:id user))))
+          (is (some? (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")))
+          (is (nil? (t2/select-one-fn :last_used_at :model/AuthIdentity :user_id (:id user) :provider "password")))))
+      (testing "but gives session once provider is disabled"
+        (mt/with-temporary-setting-values [google-auth-enabled false]
+          (let [token (auth-identity/create-password-reset! (:id user))]
+            (is (=? {:success true :session_id string?}
+                    (mt/client :post 200 "session/reset_password" {:token token :password "otherPassUP12!!"})))))))))
+
+(deftest reset-password-keeps-ldap-check-for-directory-user-test
+  (testing "LDAP directory user gets no session from reset and cannot log in with password it sets"
+    (ldap.test/with-ldap-server!
+      (mt/with-temporary-setting-values [mfa-enforcement :off]
+        (mt/with-temp [:model/User user {:email "sally.brown@metabase.com" :sso_source :ldap}]
+          (let [token (auth-identity/create-password-reset! (:id user))]
+            (is (= {:success true}
+                   (mt/client :post 200 "session/reset_password" {:token token :password "newLocalUP12!!"})))
+            (is (not (t2/exists? :model/Session :user_id (:id user))))
+            (is (= {:errors {:password "did not match stored password"}}
+                   (mt/client :post 401 "session" {:username (:email user) :password "newLocalUP12!!"})))
+            (is (malli= SessionResponse
+                        (mt/client :post 200 "session" {:username (:email user) :password "1234"})))))))))
 
 (deftest check-reset-token-valid-test
   (testing "GET /session/password_reset_token_valid"
@@ -576,7 +803,7 @@
       (let [uid (mt/user->id :rasta)
             token (auth-identity/create-password-reset! uid)
             ai (t2/select-one :model/AuthIdentity :user_id uid :provider "emailed-secret-password-reset")]
-        (t2/update! :model/AuthIdentity (:id ai)
+        (t2/update! :model/AuthIdentity :id (:id ai)
                     {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
         (is (= {:valid false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
@@ -599,6 +826,13 @@
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours -1]
         (is (= -1 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))))
 
+(defsetting test-session-api-setting
+  "test setting"
+  :encryption :no
+  :user-local :only
+  :type       :string
+  :default    "FOO")
+
 (deftest properties-test
   (testing "GET /session/properties"
     (testing "Unauthenticated"
@@ -618,12 +852,6 @@
         (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin-write-authed-read :admin})))
                (set (keys (mt/user-http-request :crowberto :get 200 "session/properties")))))))
     (testing "Includes user-local settings"
-      (defsetting test-session-api-setting
-        "test setting"
-        :encryption :no
-        :user-local :only
-        :type       :string
-        :default    "FOO")
       (mt/with-test-user :lucky
         (is (= "FOO"
                (-> (mt/user-http-request :crowberto :get 200 "session/properties")
@@ -791,7 +1019,7 @@
                           (mt/client :post 200 "session/google_auth" {:token "foo"})))
               (is (=? {:first_name "test"
                        :last_name "user"}
-                      (t2/select-one :model/User user-id))))
+                      (t2/select-one :model/User :id user-id))))
             (testing "with throttling disabled"
               (with-redefs [api.session/throttling-disabled? true]
                 (is (malli= SessionResponse
@@ -854,6 +1082,22 @@
     (ldap.test/with-ldap-server!
       (is (= {:errors {:password "did not match stored password"}}
              (mt/client :post 401 "session" (mt/user->credentials :lucky)))))))
+
+(deftest ldap-login-throttles-account-across-login-aliases-test
+  (testing "LDAP login - failures under uid and mail add up for one directory account"
+    (ldap.test/with-ldap-server!
+      (mt/with-temporary-setting-values [mfa-enforcement :off]
+        (api.session/reset-throttlers-for-testing!)
+        (try
+          (doseq [username (concat (repeat 5 "sbrown20") (repeat 5 "Sally.Brown@metabase.com"))]
+            (mt/client :post 401 "session" {:username username, :password "wrong-password"}))
+          (is (=? {:errors {:username #"Too many attempts!.*"}}
+                  (mt/client :post 401 "session" {:username "sbrown20", :password "1234"})))
+          (testing "refused login creates no user"
+            (is (not (t2/exists? :model/User :%lower.email "sally.brown@metabase.com"))))
+          (finally
+            (api.session/reset-throttlers-for-testing!)
+            (t2/delete! :model/User :%lower.email "sally.brown@metabase.com")))))))
 
 (deftest ldap-login-deactivated-user-test
   (testing "LDAP login - deactivated user cannot login"
@@ -927,7 +1171,7 @@
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"
     (mt/with-temp [:model/User user]
-      (t2/update! :model/User (u/the-id user) {:password nil, :password_salt nil})
+      (t2/update! :model/User :id (u/the-id user) {:password nil, :password_salt nil})
       (let [device-info {:device_id          "Cam's Computer"
                          :device_description "The computer where Cam wrote this test"
                          :embedded           false
@@ -949,6 +1193,14 @@
     (testing "Test complexity check"
       (is (=? {:errors {:password "password is too common."}}
               (mt/client :post 400 "session/password-check" {:password "blah"}))))))
+
+(deftest ^:parallel password-check-does-not-echo-password-test
+  (testing "POST /api/session/password-check does not echo a rejected password in the response"
+    (let [response (mt/client :post 400 "session/password-check" {:password "password9"})]
+      (is (=? {:errors          {:password "password is too common."}
+               :specific-errors {:password ["valid password that is not too common, received: \"<< REDACTED SECRET >>\""]}}
+              response))
+      (is (not (str/includes? (pr-str response) "password9"))))))
 
 (deftest ^:parallel password-check-test-3
   (testing "POST /api/session/password-check"

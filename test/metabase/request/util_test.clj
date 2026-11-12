@@ -12,6 +12,8 @@
    [metabase.util.json :as json]
    [ring.mock.request :as ring.mock]))
 
+(set! *warn-on-reflection* true)
+
 (defn- cacheable? [uri]
   (req.util/cacheable? {:request-method :get :uri uri}))
 
@@ -28,19 +30,21 @@
       ;; compressed and sourcemap companions keep the hash of the file they belong to
       "/app/dist/home.713b08815fb2dac3.js.map"
       "/app/dist/0f617f82e97365e8.svg.br"))
-  (testing "fonts are cacheable"
+  (testing "the fonts the build emits are cacheable, like any other hashed asset"
     (are [uri] (true? (cacheable? uri))
-      "/app/fonts/Lato/lato-v16-latin-regular.woff2"
-      "/app/fonts/Lato/lato-v16-latin-regular.woff"
-      "/app/fonts/CustomFont/custom.ttf"
-      "/app/fonts/CustomFont/custom.otf"
-      "/app/fonts/CustomFont/custom.eot"))
+      "/app/dist/fonts/Lato/lato-v16-latin-regular.cc2c3b4a.woff2"
+      "/app/dist/fonts/PT_Serif/PTSerif-Bold.cc2c3b4a.woff2"))
   (testing "a name without a content hash is never cacheable, even when it starts with hex digits"
     (are [uri] (false? (cacheable? uri))
       "/app/dist/main.js"
       "/app/dist/favicon.png"
       "/app/dist/abc.png"
-      "/app/dist/deadbee.css"))
+      "/app/dist/deadbee.css"
+      "/app/dist/fonts/Lato/lato-v16-latin-regular.woff2"))
+  (testing "the font source path is not served, so it is not cacheable"
+    (are [uri] (false? (cacheable? uri))
+      "/app/fonts/Lato/lato-v16-latin-regular.woff2"
+      "/app/fonts/CustomFont/custom.ttf"))
   (testing "only GETs are cacheable"
     (is (false? (req.util/cacheable? {:request-method :post :uri "/app/dist/abc123def456.png"}))))
   (testing "other paths are not cacheable"
@@ -146,7 +150,11 @@
         (let [mock-request (-> (ring.mock/request :get "api/session")
                                (ring.mock/header "X-Forwarded-For" "5.6.7.8"))]
           (is (= "127.0.0.1"
-                 (request.current/ip-address mock-request))))))))
+                 (request.current/ip-address mock-request))))))
+    (testing "an oversized header value is bounded to the 45 characters an IP address can occupy"
+      (let [mock-request (-> (ring.mock/request :get "api/session")
+                             (ring.mock/header "X-Forwarded-For" (apply str (repeat 100 "a"))))]
+        (is (= 45 (count (request.current/ip-address mock-request))))))))
 
 (def ^:private mock-geojs-responses
   "Canned GeoJS responses for test IPs. These mock what GeoJS would return."
@@ -222,3 +230,30 @@
       (mt/with-dynamic-fn-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
         (req.util/geocode-ip-addresses ["8.8.8.8"])
         (is (= 1.0 (mt/metric-value system :metabase-geocoding/errors)))))))
+
+(deftest ^:parallel internal-data-app-route-test
+  (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/orders"]]
+    (is (req.util/data-app? {:uri uri}))
+    (is (req.util/internal-data-app? {:uri uri})))
+  (doseq [uri ["/embed/embedded-apps/sales" "/embed/apps-else/sales" "/apps/sales"]]
+    (is (false? (req.util/internal-data-app? {:uri uri}))))
+  (is (false? (req.util/internal-data-app? {}))))
+
+(deftest ^:parallel embedded-data-app-route-test
+  (doseq [uri ["/embed/embedded-apps/sales" "/embed/embedded-apps/sales/orders"]]
+    (is (req.util/data-app? {:uri uri}))
+    (is (req.util/embedded-data-app? {:uri uri})))
+  (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/embed/embedded-apps/other" "/embed/embedded-apps-else/sales"]]
+    (is (not (req.util/embedded-data-app? {:uri uri :params {:modular "true"}}))))
+  (is (false? (req.util/embedded-data-app? {}))))
+
+(deftest ^:parallel cookie-header-entries-test
+  (testing "the entries of the `Cookie` header in order, split on `;` only"
+    (is (= [["a" "1"] ["b" "x,y=2"] ["a" "3"]]
+           (req.util/cookie-header-entries {:headers {"cookie" "a=1; b=x,y=2;a=3"}}))))
+  (testing "an entry without `=` is a cookie with no name"
+    (is (= [["a" "1"] ["" "metabase.SESSION"]]
+           (req.util/cookie-header-entries {:headers {"cookie" "a=1; metabase.SESSION"}}))))
+  (testing "nil without a header, empty without entries"
+    (is (nil? (req.util/cookie-header-entries {:headers {}})))
+    (is (= [] (req.util/cookie-header-entries {:headers {"cookie" " ; "}})))))

@@ -1,0 +1,20 @@
+## The tables a data app's resources read are now walked from the dependency graph when an admin opens the
+## permission warnings, instead of being recorded on the app after every import.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-14T00:00:00
+      author: ranquild
+      comment: Drop data_app.table_ids, the dependency graph records the tables data apps read
+      changes:
+        - dropColumn:
+            tableName: data_app
+            columnName: table_ids
+      rollback:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: table_ids
+                  type: ${text.type}
+                  remarks: JSON array of table ids used by the last successful resource sync

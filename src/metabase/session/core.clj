@@ -1,16 +1,31 @@
 (ns metabase.session.core
   (:require
+   [metabase.session.db]
    [metabase.session.models.session]
+   [metabase.session.query]
    [metabase.session.settings]
    [metabase.util :as u]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.session.models.session/keep-me
+(comment metabase.session.db/keep-me
+         metabase.session.models.session/keep-me
+         metabase.session.query/keep-me
          metabase.session.settings/keep-me)
 
 (p/import-vars
+ [metabase.session.db
+  end-sessions!
+  end-sessions-by-ids!]
+ [metabase.session.query
+  live-expr
+  live-session-conditions
+  liveness-params
+  mcp-provider
+  not-mcp-session
+  session-from-and-joins
+  session-left-joins]
  [metabase.session.models.session
   generate-session-key
   generate-session-id

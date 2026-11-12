@@ -180,7 +180,6 @@
       "parameter_mappings": [],
       "display": "combo",
       "entity_id": "0YDHRDHqrGiAzFtsJEbuy",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.show_goal": false,
         "graph.show_trendline": false,

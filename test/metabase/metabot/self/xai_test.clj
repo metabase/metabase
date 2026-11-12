@@ -36,6 +36,8 @@
     (let [body (xai/xai-request-body {:input input :max-tokens 512})]
       (is (= 512 (:max_completion_tokens body)))
       (is (not (contains? body :max_tokens)))))
+  (testing "a caller with no cap gets the chat cap, not xAI's 128,000 default"
+    (is (= 32000 (:max_completion_tokens (xai/xai-request-body {:input input})))))
   (testing "chat keeps each model's default reasoning effort"
     (is (not (contains? (xai/xai-request-body {:input input :tools [(metabot.tu/get-time-tool)]})
                         :reasoning_effort))))

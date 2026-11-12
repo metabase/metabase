@@ -6,6 +6,4 @@ table_id:
 - PUBLIC
 - orders
 serdes/meta:
-- id: rEvEnUeOrDeRs0000001
-  label: revenue
-  model: Measure
+- model: Measure

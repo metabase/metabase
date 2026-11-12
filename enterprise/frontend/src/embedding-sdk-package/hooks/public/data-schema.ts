@@ -7,6 +7,7 @@ import type {
   SchemaColumn,
   SchemaJavaScriptType,
   SegmentSchema,
+  TableFieldSchema,
   TableSchema,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import type { DatasetColumn, RowValues } from "metabase-types/api";
@@ -19,6 +20,7 @@ export type {
   SchemaColumn,
   SchemaJavaScriptType,
   SegmentSchema,
+  TableFieldSchema,
   TableSchema,
 };
 
@@ -35,7 +37,7 @@ export type SchemaValue<TColumn extends SchemaColumn> =
       : TColumn["jsType"] extends "boolean"
         ? boolean | null
         : TColumn["jsType"] extends "Date"
-          ? string | Date | null
+          ? string | null
           : RowValue | null;
 
 /** @notExported SchemaValue */

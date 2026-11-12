@@ -1,6 +1,5 @@
 (ns metabase.driver.sql-jdbc.actions
   (:refer-clojure :exclude [some mapv select-keys empty? not-empty get-in])
-  #_{:clj-kondo/ignore [:discouraged-namespace]} ;; for using toucan2 in this ns
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -707,7 +706,7 @@
   [action context inputs]
   (table-row-delete! action context inputs))
 
-;;;; `bulk/update`
+;;;; `:table.row/update`
 
 (mu/defn- check-row-has-all-pk-columns
   "Return a 400 if `row` doesn't have all the required PK columns."

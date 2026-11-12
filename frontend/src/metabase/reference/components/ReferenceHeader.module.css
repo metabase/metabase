@@ -19,7 +19,7 @@
 }
 
 .headerSchema {
-  composes: textLight from "style";
+  composes: textSecondary from "style";
   position: absolute;
   top: -10px;
   font-size: 12px;

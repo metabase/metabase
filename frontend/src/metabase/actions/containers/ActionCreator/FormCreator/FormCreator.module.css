@@ -1,0 +1,4 @@
+.warningBorder {
+  border: 1px solid var(--mb-color-feedback-warning);
+  border-radius: 0.5rem;
+}

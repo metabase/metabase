@@ -13,7 +13,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent Callable ExecutorService SynchronousQueue ThreadPoolExecutor TimeUnit)
-   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
+   (org.apache.commons.lang3.concurrent BasicThreadFactory)
    (org.quartz.spi MutableTrigger)))
 
 (set! *warn-on-reflection* true)
@@ -28,7 +28,7 @@
      100 TimeUnit/SECONDS  ;; keep-alive time for idle threads
      (SynchronousQueue.)   ;; direct handoff
      (.build
-      (doto (BasicThreadFactory$Builder.)
+      (doto (BasicThreadFactory/builder)
         (.namingPattern "preemptive-caching-thread-pool-%d"))))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
@@ -258,9 +258,11 @@
      :schedule-refreshed   schedule-refresh-count
      :duration-refreshed   duration-refresh-count}))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc                                   "Refresh 'schedule' caches"}
-  Cache [_ctx]
+(task/defjob Cache
+  "Refresh 'schedule' caches"
+  {:saved-class "metabase_enterprise.cache.task.refresh_cache_configs.Cache"
+   :concurrent? false}
+  [_ctx]
   (refresh-cache-configs!))
 
 (def ^:private cache-job

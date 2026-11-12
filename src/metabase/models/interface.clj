@@ -16,13 +16,13 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.db :as models.db]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
@@ -38,14 +38,20 @@
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
+   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
+   [toucan2.tools.before-delete :as t2.before-delete]
    [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.util :as t2.u])
   (:import
    (java.sql Blob)
+   (java.time OffsetDateTime ZoneOffset)
+   (java.time.temporal ChronoUnit)
    (toucan2.instance Instance)))
 
 (set! *warn-on-reflection* true)
@@ -418,109 +424,6 @@
   {:in  encryption/maybe-encrypt
    :out (decrypt-error-context source encryption/maybe-decrypt)})
 
-;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
-;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
-(mr/def ::viz-settings-ref
-  "Apparently in some cases legacy viz settings keys can be wrapped in `[:ref ...]` e.g.
-
-    [:ref [:field 1 nil]]"
-  [:tuple
-   {:decode/normalize vec}
-   [:= {:decode/normalize keyword} :ref]
-   [:ref ::mbql.s/Reference]])
-
-(mr/def ::viz-settings-name
-  "Apparently in some cases legacy viz settings keys can be wrapped in `[:ref ...]` e.g.
-
-    [:ref [:field 1 nil]]"
-  [:tuple
-   {:decode/normalize vec}
-   [:= {:decode/normalize keyword} :name]
-   :string])
-
-;;; TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
-;;; `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
-;;; also [[metabase.models.visualization-settings]].
-(defn normalize-visualization-settings
-  "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
-   to MBQL 4 clauses so things work correctly."
-  [viz-settings]
-  (letfn [(normalize-column-settings-key [k]
-            (some-> k
-                    u/qualified-name
-                    json/decode
-                    ((fn [x]
-                       (cond
-                         (not (sequential? x)) x
-                         (= (first x) "ref")   (lib/normalize ::viz-settings-ref x)
-                         (= (first x) "name")  (lib/normalize ::viz-settings-name x)
-                         :else                 (try
-                                                 (mbql.normalize/normalize x)
-                                                 (catch Throwable e
-                                                   (log/debugf "Error normalizing column settings key %s: %s" (pr-str x) (ex-message e))
-                                                   nil)))))
-                    json/encode))
-          (normalize-column-settings [column-settings]
-            (into {} (for [[k v] column-settings
-                           ;; remove nil (bad) keys
-                           :let  [k (normalize-column-settings-key k)]
-                           :when (some? k)]
-                       [k (walk/keywordize-keys v)])))
-          (mbql-field-clause? [form]
-            (and (vector? form)
-                 (#{"field-id"
-                    "fk->"
-                    "datetime-field"
-                    "joined-field"
-                    "binning-strategy"
-                    "field"
-                    "aggregation"
-                    "expression"}
-                  (first form))))
-          (normalize-mbql-clauses [form]
-            (cond
-              (mbql-field-clause? form)
-              (try
-                (mbql.normalize/normalize form)
-                (catch Exception e
-                  (log/warnf "Unable to normalize visualization-settings part %s: %s"
-                             (pr-str form)
-                             (ex-message e))
-                  form))
-
-              (sequential? form)
-              (into (empty form) (map normalize-mbql-clauses) form)
-
-              (map? form)
-              (into (empty form)
-                    (map (fn [[k v]]
-                           ;; don't recurse into `:columns` if they are COLUMN NAMES! -- if the first column name is
-                           ;; something like "expression" then we don't want to accidentally treat it as an
-                           ;; `:expression` ref. Some `:columns` lists is viz settings do contain MBQL clauses
-                           ;; tho :unamused:
-                           (let [column-names? (and (= k :columns)
-                                                    (sequential? v)
-                                                    (every? (complement mbql-field-clause?) v))]
-                             [k (cond-> v
-                                  (not column-names?) normalize-mbql-clauses)])))
-                    form)
-
-              :else
-              form))]
-    (->
-     viz-settings
-     (dissoc "column_settings" "graph.metrics")
-     walk/keywordize-keys
-     ;; "key" is an old unused value
-     (m/update-existing :table.columns (fn [cols] (mapv #(dissoc % :key) cols)))
-     (cond-> (get viz-settings "column_settings")
-       (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings"))))
-     normalize-mbql-clauses
-     ;; exclude graph.metrics from normalization as it may start with the word "expression" but it is not
-     ;; MBQL (metabase#15882)
-     (cond-> (get viz-settings "graph.metrics")
-       (assoc :graph.metrics (get viz-settings "graph.metrics"))))))
-
 (jm/def-json-migration migrate-viz-settings*)
 
 (def ^:private viz-settings-current-version 2)
@@ -550,7 +453,9 @@
 (def transform-visualization-settings
   "Transform for viz-settings."
   {:in  (comp json-in migrate-viz-settings)
-   :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
+   :out (comp migrate-viz-settings
+              #(lib/normalize ::lib.schema.visualization-settings/visualization-settings %)
+              json-out-without-keywordization)})
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mr/validator u.cron/CronScheduleString)]
@@ -616,6 +521,19 @@
   []
   (h2x/current-datetime-honeysql-form (mdb/db-type)))
 
+(defn ->integer
+  "Return a HoneySQL form casting `expr` to an integer in the app DB: `SIGNED` for MySQL/MariaDB, which have no
+  `INTEGER` cast type."
+  [expr]
+  [:cast expr (case (mdb/db-type)
+                :mysql :signed
+                :integer)])
+
+(defn current-timestamp
+  "The current moment in UTC at the microsecond precision of the app DB's timestamp columns, so it reads back unchanged."
+  []
+  (.truncatedTo (OffsetDateTime/now ZoneOffset/UTC) ChronoUnit/MICROS))
+
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj
     (not (:created_at obj)) (assoc :created_at (now))))
@@ -669,6 +587,38 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
+
+(t2/define-before-insert :hook/dependencies
+  [instance]
+  (dependencies.hooks/before-insert &model instance)
+  instance)
+
+(t2/define-before-update :hook/dependencies
+  [instance]
+  (dependencies.hooks/before-update &model instance)
+  instance)
+
+(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* :hook/dependencies :default]
+  "Run the before-update hooks of a `:hook/dependencies` model in the transaction of its UPDATE, which Toucan otherwise
+  opens only after them, so the dependency marks commit or roll back with the UPDATE and after-commit work sees it."
+  [rf query-type model parsed-args resolved-query]
+  (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    (next-method rf query-type model parsed-args resolved-query)))
+
+(t2/define-before-delete :hook/dependencies
+  [instance]
+  instance)
+
+(methodical/defmethod t2.before-delete/before-delete :before :hook/dependencies
+  [model instance]
+  (dependencies.hooks/before-delete model instance)
+  instance)
+
+(doseq [hook [:hook/timestamped? :hook/created-at-timestamped? :hook/updated-at-timestamped? :hook/entity-id]]
+  (methodical/prefer-method! #'t2.before-insert/before-insert hook :hook/dependencies))
+
+(doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
+  (methodical/prefer-method! #'t2.before-update/before-update hook :hook/dependencies))
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.

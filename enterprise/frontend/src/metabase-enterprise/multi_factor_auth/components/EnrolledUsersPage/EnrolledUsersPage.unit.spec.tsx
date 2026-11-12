@@ -21,6 +21,13 @@ import {
 
 import { EnrolledUsersPage } from "./EnrolledUsersPage";
 
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
+
 const CURRENT_USER_ID = 1;
 
 const OTHER_USER = createMockMfaEnrolledUser({

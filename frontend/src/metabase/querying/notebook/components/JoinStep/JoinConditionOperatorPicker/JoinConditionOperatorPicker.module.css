@@ -26,34 +26,26 @@
     background-color: transparent;
 
     &.isOpened {
-      background-color: color-mix(
-        in srgb,
-        var(--mb-color-core-brand),
-        white 10%
-      );
+      background-color: var(--mb-color-background_surface-brand-strong-hover);
     }
 
     &:hover,
     &:focus {
-      background-color: color-mix(
-        in srgb,
-        var(--mb-color-core-brand),
-        white 10%
-      );
+      background-color: var(--mb-color-background_surface-brand-strong-hover);
     }
   }
 
   &.incompleteCondition {
-    color: var(--mb-color-core-brand);
+    color: var(--mb-color-text-brand-strong);
     border: 2px solid transparent;
 
     &.isOpened {
-      border-color: var(--mb-color-core-brand);
+      border-color: var(--mb-color-text-brand-strong);
     }
 
     &:hover,
     &:focus {
-      border: 2px solid var(--mb-color-core-brand);
+      border: 2px solid var(--mb-color-text-brand-strong);
     }
   }
 }

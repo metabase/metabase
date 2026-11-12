@@ -59,7 +59,12 @@ export const PaneHeader = ({
             <Group align="center" gap="sm" wrap="nowrap">
               {icon && <FixedSizeIcon name={icon} c="core-brand" size={20} />}
               {title}
-              {menu}
+              {menu && (
+                // The menu button is taller than the title, keep it from growing the header
+                <Flex h="var(--mantine-h3-line-height)" align="center">
+                  {menu}
+                </Flex>
+              )}
             </Group>
           )}
           {tabs}

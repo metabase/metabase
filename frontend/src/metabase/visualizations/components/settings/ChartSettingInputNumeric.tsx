@@ -12,6 +12,7 @@ import { useLatest } from "react-use";
 import { TextInput } from "metabase/ui";
 import type { ChartSettingWidgetProps } from "metabase/viz-core";
 
+export const DEBOUNCE_MS = 200;
 const ALLOWED_CHARS = new Set([
   "0",
   "1",
@@ -41,6 +42,7 @@ interface ChartSettingInputProps extends Omit<
   id?: string;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export const ChartSettingInputNumeric = ({
@@ -50,6 +52,7 @@ export const ChartSettingInputNumeric = ({
   options,
   id,
   className,
+  disabled,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
   const isFocusedRef = useRef(false);
@@ -85,7 +88,7 @@ export const ChartSettingInputNumeric = ({
   const processValueDebounced = useMemo(() => {
     return debounce((rawValue: string) => {
       processValueRef.current(rawValue);
-    }, 200);
+    }, DEBOUNCE_MS);
   }, [processValueRef]);
 
   const handleFocus = useCallback(() => {
@@ -109,12 +112,14 @@ export const ChartSettingInputNumeric = ({
       id={id}
       placeholder={placeholder}
       type="text"
+      disabled={disabled}
       error={inputValue && isNaN(Number(inputValue))}
       value={inputValue}
       onChange={(e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.value.split("").every((ch) => ALLOWED_CHARS.has(ch))) {
-          setInputValue(e.target.value);
-          processValueDebounced(e.target.value);
+        const value = e.target.value.replaceAll(",", ".");
+        if (value.split("").every((ch) => ALLOWED_CHARS.has(ch))) {
+          setInputValue(value);
+          processValueDebounced(value);
         }
       }}
       onFocus={handleFocus}

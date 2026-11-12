@@ -480,6 +480,19 @@
                 :model    "User"}
                (mt/latest-audit-log-entry :password-reset-successful (mt/user->id :rasta))))))))
 
+(deftest password-changed-event-test
+  (testing :event/password-changed
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [user (mt/fetch-user :rasta)]
+        (is (= {:object user :user-id (mt/user->id :crowberto)}
+               (events/publish-event! :event/password-changed {:object user :user-id (mt/user->id :crowberto)})))
+        (is (= {:model_id (mt/user->id :rasta)
+                :user_id  (mt/user->id :crowberto)
+                :details  {}
+                :topic    :password-changed
+                :model    "User"}
+               (mt/latest-audit-log-entry :password-changed (mt/user->id :rasta))))))))
+
 (deftest create-channel-event-test
   (mt/with-current-user (mt/user->id :rasta)
     (mt/with-temp [:model/Channel channel notification.tu/default-can-connect-channel]
@@ -698,8 +711,8 @@
                        :started_at (t/offset-date-time 2025 9 30 14 0 0)
                        :ended_at (t/offset-date-time 2025 9 30 14 0 0)}]
          (testing "event published with re-fetched task after version is set"
-           (t2/update! :model/RemoteSyncTask task-id {:version "abc123"})
-           (let [completed-task (t2/select-one :model/RemoteSyncTask task-id)]
+           (t2/update! :model/RemoteSyncTask :id task-id {:version "abc123"})
+           (let [completed-task (t2/select-one :model/RemoteSyncTask :id task-id)]
              (events/publish-event! :event/remote-sync-import
                                     {:object completed-task
                                      :details {:branch "main"}

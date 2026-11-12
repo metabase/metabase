@@ -139,6 +139,16 @@
            (println x y)))
        #_=> "")))
 
+(deftest str-test
+  (is (= "" (perf/str nil)))
+  (is (= "1" (perf/str 1)))
+  (is (= "12" (perf/str 1 2)))
+  (is (= "1" (perf/str 1 nil)))
+  (is (= "2" (perf/str nil 2)))
+  (is (= "123" (perf/str 1 2 3)))
+  (is (= "13" (perf/str 1 nil 3)))
+  (is (= "1234567" (perf/str 1 2 3 4 5 6 7))))
+
 (deftest ^:parallel test-postwalk
   (are [before after] (= after (perf/postwalk #(cond-> %
                                                  (number? %) inc)
@@ -352,3 +362,19 @@
              c2 (vec (range n))]
          (= (mapv + c1 c2)
             (perf/mapv + c1 c2))))))
+
+(deftest ^:parallel mapv-mostly-unchanged-test
+  (testing "returns the very same vector when `f` changes nothing"
+    (let [v [1 :a "b" [2]]]
+      (is (identical? v (perf/mapv-mostly-unchanged identity v))))
+    (is (= [] (perf/mapv-mostly-unchanged inc []))))
+  (testing "replaces only the elements `f` changed"
+    (let [inner [2]
+          v     [1 inner 3]
+          v'    (perf/mapv-mostly-unchanged #(if (= 3 %) 30 %) v)]
+      (is (= [1 [2] 30] v'))
+      (is (vector? v'))
+      (is (identical? inner (second v')))))
+  (testing "works on vectors that are not editable"
+    (is (= [9 2 3] (perf/mapv-mostly-unchanged #(if (= 1 %) 9 %) (subvec [0 1 2 3] 1))))
+    (is (= [:k 2] (perf/mapv-mostly-unchanged #(if (= 1 %) 2 %) (first {:k 1}))))))

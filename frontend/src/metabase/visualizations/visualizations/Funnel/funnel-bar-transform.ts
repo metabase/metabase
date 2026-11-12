@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { isNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
 import type { TransformSeries } from "metabase/visualizations/components/TransformedVisualization";
@@ -51,6 +52,7 @@ export const funnelToBarTransform: TransformSeries = (rawSeries, settings) => {
           "graph.y_axis.auto_split": false,
           "graph.y_axis.title_text": cols[metricIndex].display_name,
           "legend.is_reversed": false,
+          "legend.position": settings["legend.position"],
         },
       },
       data: {

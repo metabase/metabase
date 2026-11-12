@@ -7,6 +7,13 @@ import { useBeforeUnload } from "./use-before-unload";
 interface UseConfirmLeaveModalInput {
   isEnabled: boolean;
   isLocationAllowed?: (location: Location | undefined) => boolean;
+  // Decides blocking at navigation time, overriding the `isEnabled` +
+  // `isLocationAllowed` pair for the blocker (but not for `useBeforeUnload`).
+  // The pair is captured per render, so under React 19 a navigation can run
+  // against a render that has not committed the latest dirty state yet and slip
+  // through unblocked (metabase#76382). A caller that reads its dirty state from
+  // a live source (the redux store) at call time is immune to that race.
+  isBlocking?: (location: Location | undefined) => boolean;
 }
 
 interface UseConfirmLeaveModalResult {
@@ -30,11 +37,14 @@ const BLOCK_EVERY_LOCATION = () => false;
 export const useConfirmRouteLeaveModal = ({
   isEnabled,
   isLocationAllowed = BLOCK_EVERY_LOCATION,
+  isBlocking,
 }: UseConfirmLeaveModalInput): UseConfirmLeaveModalResult => {
   useBeforeUnload(isEnabled);
 
-  const blocker = useRouteLeaveBlocker(
-    ({ nextLocation }) => isEnabled && !isLocationAllowed(nextLocation),
+  const blocker = useRouteLeaveBlocker(({ nextLocation }) =>
+    isBlocking
+      ? isBlocking(nextLocation)
+      : isEnabled && !isLocationAllowed(nextLocation),
   );
 
   // The blocker holds the attempted navigation, so confirming resumes it and

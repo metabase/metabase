@@ -103,12 +103,11 @@
     (prune-batches! retention-batches-per-user :user-id user-id)))
 
 ;; This will be used to fix conflict false positives
-#_{:clj-kondo/ignore [:unused-private-var]}
-(defn- diff-keys
-  "Give the sorted list of keys on which m1 and m2 differ."
-  [m1 m2]
-  (->> (into (apply sorted-set (keys m1)) (keys m2))
-       (filter #(not= (get m1 %) (get m2 %)))))
+#_(defn- diff-keys
+    "Give the sorted list of keys on which m1 and m2 differ."
+    [m1 m2]
+    (->> (into (apply sorted-set (keys m1)) (keys m2))
+         (filter #(not= (get m1 %) (get m2 %)))))
 
 (defn- conflict?
   "Has another change superseded this batch, making it non-undoable? Typically, will mean someone else has edited it."

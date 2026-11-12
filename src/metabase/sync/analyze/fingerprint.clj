@@ -17,7 +17,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.table :as table]
    [redux.core :as redux]))
 
 (defn incomplete-analysis-kvs
@@ -90,7 +89,7 @@
                                (update count-info :updated-fingerprints inc))))
                          (empty-stats-map (count fingerprints))
                          (map vector fields fingerprints)))))
-        driver (driver.u/database->driver (table/database table))
+        driver (driver.u/database->driver (:db_id table))
         opts {:truncation-size *truncation-size*}]
     (tracing/with-span :sync "sync.fingerprint.sample" {:sync/table (:name table) :sync/field-count (count fields)}
       (driver/table-rows-sample driver table fields rff opts))))

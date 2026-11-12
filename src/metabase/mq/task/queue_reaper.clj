@@ -81,9 +81,10 @@
 (def ^:private job-key (jobs/key "metabase.mq.task.queue-reaper.job"))
 (def ^:private trigger-key (triggers/key "metabase.mq.task.queue-reaper.trigger"))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Drops queue messages no node in the cluster has a listener for (older than the max age)."}
-  QueueReaper
+(task/defjob QueueReaper
+  "Drops queue messages no node in the cluster has a listener for (older than the max age)."
+  {:saved-class "metabase.mq.task.queue_reaper.QueueReaper"
+   :concurrent? false}
   [ctx]
   (if (< (node-uptime-ms) startup-grace-ms)
     ;; too soon after startup — a recovering cluster may still be draining a backlog of old-but-valid

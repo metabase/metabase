@@ -23,7 +23,10 @@ async function main(): Promise<void> {
   // If re-running tests we report failures AND passing tests so that ci-conductor can
   // determine flaky tests. We should not ignore passing tests in this case.
   const ignorePassingTests = env.IS_RERUN === "true" ? false : true;
-  await reportTestFailures(normalizeFrontendJunit(ignorePassingTests), testSuite);
+  await reportTestFailures(
+    normalizeFrontendJunit(ignorePassingTests),
+    testSuite,
+  );
 }
 
 main().catch((error) => {

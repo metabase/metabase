@@ -20,7 +20,7 @@ const { H } = cy;
     describe("when embedding and public sharing are disabled", () => {
       beforeEach(() => {
         H.updateSetting("enable-public-sharing", false);
-        H.updateSetting("enable-embedding-static", false);
+        H.updateSetting("enable-embedding-modular", false);
       });
 
       it(`should hide the public link option for ${resource} and still let an admin open the embed modal`, () => {
@@ -54,7 +54,7 @@ const { H } = cy;
     describe("when embedding and public sharing are enabled", () => {
       beforeEach(() => {
         H.updateSetting("enable-public-sharing", true);
-        H.updateSetting("enable-embedding-static", true);
+        H.updateSetting("enable-embedding-modular", true);
       });
 
       describe("when user is non-admin", () => {
@@ -101,8 +101,13 @@ describe("Embed JS modal display", () => {
   });
 
   describe("when the user has a paid instance", () => {
-    it("should open Embed JS modal with the `enable simple embedding` card", () => {
+    it("should open Embed JS modal with the `enable modular embedding` card", () => {
       H.activateToken("pro-self-hosted");
+
+      // Once embedding is on, the embed flow asks only for the usage conditions
+      // and drops the "enable modular embedding" wording this asserts on. The
+      // snapshot leaves it on, so turn the merged setting off first.
+      H.updateSetting("enable-embedding-modular", false);
       H.visitDashboard("@dashboardId");
 
       H.openSharingMenu("Embed");

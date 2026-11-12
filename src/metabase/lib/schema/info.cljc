@@ -6,6 +6,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::context
@@ -20,8 +21,8 @@
    :ad-hoc
    :agent
    :cache-refresh
-   :collection
    :map-tiles
+   :metabot
    :metric
    :pulse
    :dashboard-subscription
@@ -76,7 +77,7 @@
    [:lens-params             {:optional true} [:maybe [:map {:closed true}
                                                        [:join_step {:optional true} [:maybe :int]]]]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]
-   [:visualization-settings  {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+   [:visualization-settings  {:optional true} [:maybe [:ref ::lib.schema.visualization-settings/visualization-settings]]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
    ;;
@@ -87,6 +88,11 @@
    [:metadata/model-metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
    [:metadata/own-model-query? {:optional true} :boolean]
    [:pivot/original-query    {:optional true} [:maybe [:ref :metabase.lib.schema/query]]]
+   ;; Hash of the pivot query as the caller submitted it, before the pivot QP rewrote it into subqueries. Added by
+   ;; [[metabase.query-processor.pivot]] to the first subquery only, so that
+   ;; [[metabase.query-processor.middleware.process-userland-query]] records the whole pivot's running time under the
+   ;; hash that the cache strategy's `:avg-execution-ms` lookup uses.
+   [:pivot/query-hash        {:optional true} [:maybe [:ref ::hash]]]
    ;; Pivot QP runs multiple queries, and in the dataset api, we need to have access to the original query
    ;; so that we can pass it to the pivot.qp for downloads on unsaved questions
    ;; this gets added by [[metabase.query-processor.pivot]] for pivot queries; it's merged in to other metadata

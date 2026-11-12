@@ -6,6 +6,7 @@
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -197,7 +198,7 @@
   "Get the set of field names that actually exist in the database for a given table."
   [database table]
   (let [table-metadata (driver/describe-table (driver/the-initialized-driver (:engine database))
-                                              database
+                                              (driver.u/ensure-lib-database database)
                                               table)]
     (into #{} (map :name) (:fields table-metadata))))
 

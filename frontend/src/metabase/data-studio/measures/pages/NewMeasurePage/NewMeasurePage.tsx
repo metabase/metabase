@@ -11,6 +11,7 @@ import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get
 import {
   type MetadataSelectorOpts,
   useMetadataProvider,
+  useQuestionFromOptsBuilder,
 } from "metabase/metadata-store";
 import { useNavigate } from "metabase/router";
 import { Button } from "metabase/ui";
@@ -18,9 +19,10 @@ import * as Lib from "metabase-lib";
 import type { DatasetQuery, Measure, Table } from "metabase-types/api";
 
 import { MeasureEditor } from "../../components/MeasureEditor";
-import { NewMeasureHeader } from "../../components/NewMeasureHeader";
 import { useMeasureQuery } from "../../hooks/use-measure-query";
 import { createInitialQueryForTable } from "../../utils/measure-query";
+
+import { NewMeasureHeader } from "./NewMeasureHeader";
 
 // Hoisted: the metadata selector memoises on the options object, so a fresh
 // literal each render would defeat it.
@@ -38,6 +40,7 @@ export function NewMeasurePage({
   getSuccessUrl,
 }: NewMeasurePageProps) {
   const navigate = useNavigate();
+  const buildQuestion = useQuestionFromOptsBuilder();
   const metadataProvider = useMetadataProvider(
     table?.db_id ?? null,
     WITH_HIDDEN_TABLES,
@@ -68,7 +71,7 @@ export function NewMeasurePage({
   const isValid = name.trim().length > 0 && aggregations.length === 1;
   const previewUrl =
     aggregations.length === 1
-      ? getDatasetQueryPreviewUrl(definition)
+      ? getDatasetQueryPreviewUrl(definition, buildQuestion)
       : undefined;
 
   const setQuery = useCallback((newQuery: Lib.Query) => {

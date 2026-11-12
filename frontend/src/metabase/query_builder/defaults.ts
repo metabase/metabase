@@ -30,7 +30,6 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   notebookNativePreviewSidebarWidth: null,
   showSidebarTitle: false,
   modal: null,
-  modalContext: null,
   highlightedNativeQueryLineNumbers: [],
   isShowingListViewConfiguration: false,
   nativeEditorSelectedRange: [],

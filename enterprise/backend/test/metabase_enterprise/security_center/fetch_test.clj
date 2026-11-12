@@ -9,6 +9,8 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- make-advisory
@@ -19,7 +21,7 @@
           :title             (str "Advisory " advisory-id)
           :description       "Test advisory"
           :remediation       "Upgrade"
-          :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+          :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
           :matching_query    nil
           :published_at      #t "2026-03-24T00:00:00Z"
           :updated_at        #t "2026-03-24T00:00:00Z"}
@@ -74,7 +76,7 @@
           "title"             (str "Advisory " advisory-id)
           "description"       "Test advisory"
           "remediation"       "Upgrade"
-          "affected_versions" [{"min" "0.1.0" "fixed" "99.99.99"}]
+          "affected_versions" [{"min" "0.1.0" "fixed" "1.999.0"}]
           "matching_query"    nil
           "published_at"      "2026-03-24T00:00:00Z"
           "updated_at"        "2026-03-24T00:00:00Z"

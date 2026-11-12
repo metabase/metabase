@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { type ComponentType, lazy } from "react";
 import { isValidElementType } from "react-is";
 import { t } from "ttag";
@@ -312,6 +313,15 @@ export function getVisualizationTransformed(
   } while (series !== lastSeries);
 
   return { series, visualization };
+}
+
+export function canDisplayTimelineEvents(
+  display: VisualizationDisplay | null | undefined,
+) {
+  return (
+    display != null &&
+    "timeline_events.enabled" in (visualizations.get(display)?.settings ?? {})
+  );
 }
 
 export function isCartesianChart(display: VisualizationDisplay) {

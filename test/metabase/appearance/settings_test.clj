@@ -8,6 +8,8 @@
    [metabase.test.util :as tu]
    [metabase.util.jvm :as u.jvm]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- image-data-uri [content-type content]
@@ -205,7 +207,7 @@
            clojure.lang.ExceptionInfo
            #"Setting help-link-custom-destination is not enabled because feature :whitelabel is not available"
            (appearance.settings/help-link-custom-destination! "http://www.metabase.com")))
-      (is (= "https://www.metabase.com/help/premium" (appearance.settings/help-link-custom-destination))))))
+      (is (= "https://www.metabase.com/help-premium" (appearance.settings/help-link-custom-destination))))))
 
 (deftest landing-page-setting-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]

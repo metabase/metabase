@@ -619,13 +619,18 @@
     (is (not= expressions replaced-expressions))
     (is (= 2 (count replaced-expressions)))
     (is (= expr-b repl-expr-b))
-    (testing "replacing with dependent should cascade"
+    (testing "replacing with an aggregation dependent should drop the aggregation"
       (is (=? {:stages [{:aggregation (symbol "nil #_\"key is not present.\"")
                          :expressions [[:field {:lib/expression-name "a"} (meta/id :venues :price)]
+                                       expr-b]}]}
+              (-> query
+                  (as-> <> (lib/aggregate <> (lib/sum (lib/expression-ref <> "a"))))
+                  (lib/replace-clause 0 expr-a (meta/field-metadata :venues :price))))))
+    (testing "replacing with a later-stage dependent should drop the later-stage reference"
+      (is (=? {:stages [{:expressions [[:field {:lib/expression-name "a"} (meta/id :venues :price)]
                                        expr-b]}
                         (complement :filters)]}
               (-> query
-                  (as-> <> (lib/aggregate <> (lib/sum (lib/expression-ref <> "a"))))
                   (as-> <> (lib/with-fields <> [(lib/expression-ref <> "a")]))
                   (lib/append-stage)
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "a"] 1))

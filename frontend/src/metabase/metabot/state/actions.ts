@@ -7,24 +7,27 @@ import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { Api } from "metabase/api";
 import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
-import { listTag } from "metabase/api/tags";
+import { idTag, listTag } from "metabase/api/tags";
 import { getUser } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { navigate } from "metabase/router";
+import { getRouterLocation, matchPath, navigate } from "metabase/router";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
+import { getBasename } from "metabase/utils/basename";
 import { retry } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
 import type {
+  DashboardId,
   JSONValue,
   MetabotAgentRequest,
   MetabotAgentResponse,
@@ -40,6 +43,7 @@ import {
   isHistoryEnabledProfile,
 } from "../constants";
 import { PLUGIN_METABOT_SLASH_COMMANDS } from "../plugins";
+import { isReasoningVisible } from "../utils/reasoning-visibility";
 
 import { metabot } from "./reducer";
 import {
@@ -64,7 +68,11 @@ import type {
   MetabotUserChatMessage,
   SlashCommand,
 } from "./types";
-import { createMessageId, parseSlashCommand } from "./utils";
+import {
+  createMessageId,
+  getServerErrorDisplay,
+  parseSlashCommand,
+} from "./utils";
 
 export const {
   addAgentTextDelta,
@@ -75,6 +83,7 @@ export const {
   setConversationSnapshot,
   setConversationTitle,
   setNavigateToPath,
+  dashboardSaved,
   setProfileOverride,
   reasoningStart,
   reasoningDelta,
@@ -486,6 +495,16 @@ const findCodeEditBuffer = (
   return buffers.find((buffer) => buffer.id === bufferId);
 };
 
+const isViewingDashboard = (dashboardId: DashboardId) => {
+  const pathname = getRouterLocation()?.pathname ?? "";
+  // the router's pathname keeps the basename of a subpath deployment
+  const match = matchPath(
+    { path: `${getBasename()}/dashboard/:slug`, end: false },
+    pathname,
+  );
+  return Urls.extractEntityId(match?.params.slug) === dashboardId;
+};
+
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
   MetabotAgentRequest & { isFullPageMetabot: boolean },
@@ -520,6 +539,7 @@ export const sendAgentRequest = createAsyncThunk<
           sourceId: conversationId,
         },
         {
+          shouldPaceReasoning: () => isReasoningVisible(conversationId),
           onDataPart: function handleDataPart(part) {
             const pushDataPart = (
               message: Omit<MetabotAgentDataPartMessage, "id" | "role">,
@@ -558,9 +578,9 @@ export const sendAgentRequest = createAsyncThunk<
                 });
               })
               .with({ type: "data-generated_entity" }, (part) => {
-                // TODO: always push, but let the surface render and/or navigate on its own
+                pushDataPart({ type: "data_part", part });
+
                 if (isFullPageMetabot) {
-                  pushDataPart({ type: "data_part", part });
                   return;
                 }
 
@@ -570,7 +590,6 @@ export const sendAgentRequest = createAsyncThunk<
                   if (part.data.type === "card") {
                     dispatch(setNavigateToPath(path));
                   }
-                  pushDataPart({ type: "data_part", part });
                   return;
                 }
 
@@ -594,6 +613,40 @@ export const sendAgentRequest = createAsyncThunk<
                   );
                 }
                 pushDataPart({ type: "data_part", part });
+              })
+              .with({ type: "data-dashboard_saved" }, (part) => {
+                const { dashboard_id, collection_id, open, saved_charts, url } =
+                  part.data;
+                // lists elsewhere, such as the dashboard's collection, refetch it
+                dispatch(
+                  Api.util.invalidateTags([
+                    listTag("dashboard"),
+                    idTag("dashboard", dashboard_id),
+                    idTag("collection", collection_id ?? "root"),
+                  ]),
+                );
+                saved_charts.forEach(({ chart_id, card_id }) =>
+                  dispatch(
+                    markChartSaved({ entityId: chart_id, cardId: card_id }),
+                  ),
+                );
+                // the dashboard page reloads itself when this names the dashboard it shows
+                dispatch(
+                  dashboardSaved({
+                    dashboardId: dashboard_id,
+                    saveId: part.data.tool_call_id,
+                  }),
+                );
+                pushDataPart({ type: "data_part", part });
+
+                const shouldOpen =
+                  open &&
+                  !isFullPageMetabot &&
+                  !isEmbeddingSdk() &&
+                  !isViewingDashboard(dashboard_id);
+                if (shouldOpen) {
+                  navigate(url);
+                }
               })
               .with({ type: "data-tool_title" }, (part) => {
                 const { tool_call_id, title } = part.data;
@@ -718,21 +771,7 @@ export const sendAgentRequest = createAsyncThunk<
           shouldRetry: true,
           serverStarted,
           error: streamedError,
-          display: isMatching(
-            {
-              type: P.union(
-                "ai_usage_limit_reached",
-                "ai_provider_billing",
-                "ai_provider_rate_limit",
-                "ai_provider_auth",
-              ),
-              message: P.string,
-            },
-            streamedError,
-          )
-            ? // special case where we want to show the returned error from the backend
-              { type: "message" as const, message: streamedError.message }
-            : undefined,
+          display: getServerErrorDisplay(streamedError),
         });
       }
 
@@ -770,6 +809,9 @@ export const sendAgentRequest = createAsyncThunk<
         error,
         getSetting(getState(), "metabot-name"),
       );
+      if (handled.error.type === "unknown") {
+        console.error(error);
+      }
       return rejectWithValue({
         type: "error" as const,
         conversation_id: request.conversation_id,
@@ -926,8 +968,7 @@ export const fetchConversationSnapshot = createAsyncThunk(
     if (error || !detail) {
       dispatch(
         addUndo({
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
           message: t`Sorry, we couldn't load that conversation.`,
         }),
       );

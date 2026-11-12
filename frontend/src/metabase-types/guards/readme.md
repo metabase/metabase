@@ -2,7 +2,7 @@
 
 Place all reusable type guard functions in this directory. To help keep things organized, please name the guards files in parallel to their corresponding type definition files from the `/api` directory.
 
-Type guards are functions that take a value and return a boolean indicating whether or not the value is of a certain type.  For example:
+Type guards are functions that take a value and return a boolean indicating whether or not the value is of a certain type. For example:
 
 ```ts
 function isString(value) {
@@ -23,6 +23,5 @@ if (isFish(pet)) {
   pet.swim();
 }
 ```
-
 
 https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates

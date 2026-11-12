@@ -148,7 +148,8 @@
                                                      (me/with-spell-checking
                                                        (mr/explain ModelToEntityIds model-key->entity-ids)))
                                        :allowed-models (sort (keys api-name->model))
-                                       :status-code 400})))
+                                       :status-code 400
+                                       :response/keys #{:explanation :allowed-models}})))
   (u/prog1 (into {}
                  (mapcat
                   (fn [[model eids]] (entity-ids->id-for-model model eids))

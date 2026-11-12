@@ -3,7 +3,6 @@
 
 // eslint-disable-next-line eslint-js/no-restricted-imports
 import { css } from "@emotion/react";
-import { getIn } from "icepick";
 
 import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
 import {
@@ -20,6 +19,7 @@ import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { getFontFamilyValue } from "metabase/utils/fonts";
+import { getAtPath } from "metabase/utils/get-at-path";
 import type { ColorSettings } from "metabase-types/api";
 
 const createColorVars = ({
@@ -88,6 +88,7 @@ export function getMetabaseSdkCssVariables({
         whitelabelColors,
         forceDynamicBrandRamp,
       })}
+      --mb-color-chart-axis: ${theme.fn.themeColor("chart-axis")};
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}
@@ -146,9 +147,9 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
 export const getThemeSpecificCssVariables = (theme: MantineTheme) => css`
   ${Object.entries(CSS_VARIABLES_TO_SDK_THEME_MAP)
     .map(([cssVar, themeKey]) => {
-      const value = getIn(theme.other, themeKey.split("."));
+      const value = getAtPath(theme.other, themeKey.split("."));
 
-      return value ? `${cssVar}: ${value};` : "";
+      return value ? `${cssVar}: ${String(value)};` : "";
     })
     .join("\n")}
 `;

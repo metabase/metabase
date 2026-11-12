@@ -1,5 +1,6 @@
 ---
 title: Adding and managing databases
+summary: Connect Metabase to your data sources, manage connection settings, and control how Metabase syncs and scans them.
 redirect_from:
   - /docs/latest/administration-guide/01-managing-databases
   - /docs/latest/databases/connections/sql-server

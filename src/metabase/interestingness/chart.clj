@@ -168,8 +168,9 @@
    (chart-interestingness chart-config
                           (chart.stats/compute-chart-stats chart-config {})))
   ([chart-config stats]
-   (let [nd         (non-degeneracy-score chart-config)
-         chart-type (:chart-type stats)]
+   (let [chart-config (assoc chart-config :series (chart.stats/analyzable-series chart-config))
+         nd           (non-degeneracy-score chart-config)
+         chart-type   (:chart-type stats)]
      (if (zero? nd)
        {:score 0.0 :non-degeneracy nd :signal nil :structure nil :chart-type chart-type}
        (let [sig    (signal-score stats)

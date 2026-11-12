@@ -58,6 +58,24 @@ describe("readManifest", () => {
     });
   });
 
+  describe("collection", () => {
+    it("reads the resource collection's entity ID", () => {
+      setup({ [YAML_PATH]: "collection: appCollectionEntity01\n" });
+
+      expect(readManifest(APP_ROOT)?.manifest.collection).toBe(
+        "appCollectionEntity01",
+      );
+    });
+
+    it("throws when it is not a string", () => {
+      setup({ [YAML_PATH]: "collection: [1, 2]\n" });
+
+      expect(() => readManifest(APP_ROOT)).toThrow(
+        '"collection" must be an entity ID',
+      );
+    });
+  });
+
   describe("allowed_hosts", () => {
     it("reads allowed_hosts as a list of strings", () => {
       setup({

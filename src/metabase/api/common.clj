@@ -86,9 +86,11 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p]))
 
@@ -152,7 +154,9 @@
                                   (not (i18n/localized-string? message)))
                            [(:message message) message]
                            [message])]
-      (throw (ex-info (str message) (assoc info :status-code code)))))
+      ;; a map message is authored as the response body, so all of it is client-facing
+      (throw (ex-info (str message)
+                      (apply api-error/extend-response-keys (assoc info :status-code code) (keys info))))))
   condition)
 
 (defn check
@@ -342,6 +346,13 @@
 (def generic-204-no-content
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
+
+(mr/def ::generic-204-no-content
+  "Response schema for an endpoint that returns [[generic-204-no-content]].
+  OpenAPI documents it as an empty body rather than as the Ring response map."
+  [:map {:closed true, :openapi/response-schema :nil}
+   [:status [:= 204]]
+   [:body   :nil]])
 
 (defn +check-superuser
   "Wrap a Ring handler to make sure the current user is a superuser before handling any requests.

@@ -27,9 +27,9 @@ export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
 
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- this is a console.error for a deprecated parameter
   const { url: staticEmbedParametersDocsUrl } = useDocsUrl(
-    "embedding/static-embedding-parameters",
+    "embedding/guest-embedding",
     {
-      anchor: "customizing-the-appearance-of-a-static-embed",
+      anchor: "customizing-appearance-of-guest-embeds",
     },
   );
 

@@ -3,13 +3,13 @@ import { render, screen } from "__support__/ui";
 import ScalarSkeleton from "./ScalarSkeleton";
 
 describe("ScalarSkeleton", () => {
-  it("should show a value pill", () => {
+  it("should show value and title placeholders even before measuring the card (#84334)", () => {
     render(<ScalarSkeleton />);
 
     const skeleton = screen.getByTestId("scalar-skeleton");
     expect(skeleton).toBeInTheDocument();
     expect(skeleton.querySelectorAll(".mb-mantine-Skeleton-root")).toHaveLength(
-      1,
+      2,
     );
   });
 

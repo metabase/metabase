@@ -63,6 +63,7 @@ export const MetabotLongChatNotice = ({
       >{t`New chat`}</Button>
       {variant === "warning" && (
         <ActionIcon
+          variant="subtle"
           size="sm"
           c="text-secondary"
           onClick={() => setDismissedWarning(true)}

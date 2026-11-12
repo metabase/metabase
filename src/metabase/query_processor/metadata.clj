@@ -13,6 +13,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
@@ -61,7 +62,9 @@
     (try
       (qp/process-query query' result-metadata-rff)
       (catch Throwable e
-        (log/errorf "Error running query to determine Card result metadata: %s" (ex-message e))
+        (if (qp.error-type/missing-required-parameter? e)
+          (log/debugf "Not running query to determine Card result metadata: %s" (ex-message e))
+          (log/errorf "Error running query to determine Card result metadata: %s" (ex-message e)))
         []))))
 
 (mu/defn- metadata-from-driver :- [:sequential :map]

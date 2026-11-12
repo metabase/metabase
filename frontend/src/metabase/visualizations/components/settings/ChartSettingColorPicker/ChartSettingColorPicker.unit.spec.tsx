@@ -6,7 +6,7 @@ import { color } from "metabase/ui/colors";
 import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 
 const pickAccent1 = async () => {
-  await userEvent.click(screen.getByLabelText(color("brand")));
+  await userEvent.click(screen.getByLabelText(color("core-brand")));
   const popover = await screen.findByRole("dialog");
   await userEvent.click(within(popover).getByLabelText(color("accent1")));
 };
@@ -16,7 +16,10 @@ describe("ChartSettingColorPicker", () => {
     const onChange = jest.fn();
 
     render(
-      <ChartSettingColorPicker value={color("brand")} onChange={onChange} />,
+      <ChartSettingColorPicker
+        value={color("core-brand")}
+        onChange={onChange}
+      />,
     );
 
     await pickAccent1();
@@ -30,7 +33,7 @@ describe("ChartSettingColorPicker", () => {
 
     render(
       <ChartSettingColorPicker
-        value={color("brand")}
+        value={color("core-brand")}
         forwardColorName
         onChange={onChange}
       />,

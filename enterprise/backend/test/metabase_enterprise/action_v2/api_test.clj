@@ -14,6 +14,7 @@
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -334,7 +335,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
     (mt/with-premium-features #{actions-feature-flag}
       (action-v2.tu/with-actions-temp-db mutual-recursion-users-teams
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/add-fk-sql driver/*driver*
                                           mutual-recursion-users-teams
                                           {:table-name "user"}
@@ -443,12 +444,12 @@
                         (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type
                                                                     :o  [t :null]}
                                                                    {:primary-key [:id]}]]
-                          (let [table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table :name] table-id)
+                          (let [table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table :name] :id table-id)
                                 field-id      (t2/select-one-fn :id [:model/Field :id] :table_id table-id :name "o")
                                 driver        driver/*driver*
                                 get-qp-state  (fn [] (map #(zipmap [:id :o] %) (table-rows table-id)))
-                                get-db-state  (fn [] (sql-jdbc/query driver (mt/id) {:select [:*] :from [table-name-kw]}))]
-                            (t2/update! :model/Field field-id {:coercion_strategy coercion-strategy})
+                                get-db-state  (fn [] (sql-jdbc/query driver (lib.metadata/database (mt/metadata-provider)) {:select [:*] :from [table-name-kw]}))]
+                            (t2/update! :model/Field :id field-id {:coercion_strategy coercion-strategy})
                             (testing "create"
                               (let [row                {:o input}
                                     {outputs :outputs} (action-v2.tu/create-rows! table-id [row])
@@ -564,12 +565,10 @@
                                                    {:primary-key [:id]}]]
           (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-table-editing false}}
             (testing "execute-form should return 400 error when data editing is not enabled"
-              (is (= {:message "Data editing is not enabled."}
-                     (select-keys
-                      (mt/user-http-request :crowberto :post 400 execute-form-url
-                                            {:scope  {:table-id table-id}
-                                             :action "data-grid.row/create"})
-                      [:message])))))))
+              (is (= "Data editing is not enabled."
+                     (mt/user-http-request :crowberto :post 400 execute-form-url
+                                           {:scope  {:table-id table-id}
+                                            :action "data-grid.row/create"})))))))
       (testing "Non auto-incrementing pk"
         (action-v2.tu/with-test-tables! [table-id [(ordered-map
                                                     :id        [:int]
@@ -666,6 +665,23 @@
                                               {:scope     scope
                                                :action delete-id})))))))))))
 
+(deftest execute-form-fk-field-test
+  (testing "execute-form sends the FK semantic type, so the form does not offer new values for FK fields"
+    (binding [actions.tu/*actions-test-data-tables* #{"people" "products" "orders"}]
+      (mt/with-premium-features #{actions-feature-flag}
+        (action-v2.tu/with-temp-test-db!
+          (let [params-by-id (fn [action]
+                               (->> (mt/user-http-request :crowberto :post 200 execute-form-url
+                                                          {:scope  {:table-id (mt/id :orders)}
+                                                           :action action})
+                                    :parameters
+                                    (into {} (map (juxt :id identity)))))]
+            (doseq [action ["data-grid.row/create" "data-grid.row/update"]]
+              (testing action
+                (is (=? {(mt/format-name :user_id)    {:input_type "dropdown" :semantic_type "type/FK"}
+                         (mt/format-name :product_id) {:input_type "dropdown" :semantic_type "type/FK"}}
+                        (params-by-id action)))))))))))
+
 (deftest validate-inputs-api-test
   (testing "Validation via bulk execute endpoint"
     (mt/with-premium-features #{actions-feature-flag}
@@ -736,7 +752,7 @@
                                                          :dbms_version {:flavor "MySQL"}
                                                          :settings     {:database-enable-table-editing true
                                                                         :database-enable-actions       true}}]
-                  (sync/sync-database! database)
+                  (sync/sync-database! (:id database))
                   (let [writable-id (t2/select-one-fn :id :model/Table :db_id (:id database) :name "writable_table")]
                     (testing "the writable table syncs as editable despite the REVOKE on the other table"
                       (is (true? (t2/select-one-fn :is_writable :model/Table :id writable-id))))
@@ -782,7 +798,7 @@
                                                          :dbms_version {:flavor "MySQL"}
                                                          :settings     {:database-enable-table-editing true
                                                                         :database-enable-actions       true}}]
-                  (sync/sync-database! database)
+                  (sync/sync-database! (:id database))
                   (let [table-id (t2/select-one-fn :id :model/Table :db_id (:id database) :name "optimistic_table")]
                     (testing "the table optimistically syncs as writable (the schema-level REVOKE line is ignored)"
                       (is (true? (t2/select-one-fn :is_writable :model/Table :id table-id))))

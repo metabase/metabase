@@ -9,6 +9,7 @@ import {
 import { checkNotNull, checkNumber, isNumber } from "metabase/utils/types";
 import {
   type DatasetColumn,
+  type LegendPosition,
   type PieRow,
   type RawSeries,
   type RowValue,
@@ -21,6 +22,7 @@ import { getPieColumns } from "../../echarts/pie/model";
 import type { ShowWarning } from "../../echarts/types";
 import { getHexColor } from "../../lib/color";
 import { getChartColor } from "../../lib/color-name";
+import { DEFAULT_LEGEND_POSITION } from "../../lib/settings/legend";
 import { getNumberOr } from "../../lib/settings/row-values";
 import { getDefaultDimensionsAndMetrics } from "../../lib/utils";
 import { unaggregatedDataWarningPie } from "../../lib/warnings";
@@ -46,7 +48,11 @@ export function getDefaultPieColumns(rawSeries: RawSeries) {
   };
 }
 
-export const getDefaultShowLegend = () => true;
+export const getDefaultLegendPosition = (
+  _series: unknown,
+  settings: ComputedVisualizationSettings,
+): LegendPosition =>
+  settings["pie.show_legend"] === false ? "off" : DEFAULT_LEGEND_POSITION;
 
 export const getDefaultShowTotal = () => true;
 

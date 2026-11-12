@@ -7,7 +7,9 @@ summary: Chat with Metabot directly in Slack to ask questions about your data, g
 
 ![Metabot in Slack](./images/metabot-slack.png)
 
-Chat with [Metabot](./metabot.md) in Slack. Direct message Metabot for private analysis, or mention @Metabot in a channel to collaborate with your team.
+Chat with [Metabot](./metabot.md) in Slack. Direct message Metabot for private analysis, or mention @Metabot in a channel to collaborate with your team. 
+
+Metabot in Slack is available on every Metabase plan.
 
 ## What Metabot can do
 
@@ -41,6 +43,8 @@ If you already have a Slack integration from before this feature existed, your S
 ### 4. Connect your Slack account to Metabase
 
 To chat with Metabot, people will need to link their Slack account to their Metabase account. The first time you message Metabot, it kicks off an OAuth flow that connects the two accounts. This connection lets Metabot use your Metabase permissions, so Metabot will only see data you're allowed to see.
+
+To disconnect your Slack account, go to the **Authentication** tab in your [account settings](../people-and-groups/account-settings.md) and click **Disconnect**.
 
 ## Chatting with Metabot in Slack
 

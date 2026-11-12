@@ -37,11 +37,12 @@ export const ExpandButton = memo(function ExpandButton({
 
   return (
     <ActionIcon
+      variant="subtle"
       aria-expanded={isExpanded}
       aria-label={isExpanded ? t`Collapse` : t`Expand`}
       className={cx(S.wrapper, S.button, className)}
       onClick={onClick}
-      size="1rem"
+      size="xs"
       tabIndex={-1}
     >
       <Icon

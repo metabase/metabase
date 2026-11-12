@@ -111,10 +111,10 @@
               (encryption-test/with-secret-key k1
                 (t2/insert! :model/Setting {:key "rotate-test-encrypted-setting", :value "encrypted with k1"})
                 (mdb.encryption/encrypt-db driver/*driver* data-source nil)
-                (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
+                (t2/update! :model/Database :id 1 {:details {:db "/tmp/test.db"}})
                 ;; other encrypted-json columns that must also be re-encrypted on rotation
-                (t2/update! :model/Database 1 {:settings {:database-enable-actions true}})
-                (t2/update! :model/User @user-id {:settings {:locale "en"}})
+                (t2/update! :model/Database :id 1 {:settings {:database-enable-actions true}})
+                (t2/update! :model/User :id @user-id {:settings {:locale "en"}})
                 (let [secret (first (t2/insert-returning-instances! :model/Secret {:name       "My Secret (encrypted)"
                                                                                    :kind       "password"
                                                                                    :value      (.getBytes secret-val StandardCharsets/UTF_8)
@@ -172,7 +172,7 @@
                   (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :details :model/Database :name "k2")))
                   (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details :model/Database :name "k3")))))
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
-                (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
+                (t2/update! :model/Database :id 1 {:details {:db "/tmp/test.db"}})
                 (t2/update! :model/Database {:name "k3"} {:details {:db "/tmp/test.db"}})
                 (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))

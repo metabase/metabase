@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useGetTimelineEventQuery,
@@ -7,11 +9,13 @@ import {
 import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
-import EditEventModal from "metabase/timelines/common/components/EditEventModal";
+import EditEventForm from "metabase/timelines/common/components/EditEventForm";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
-
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 
 function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
   const navigate = useNavigate();
@@ -49,18 +53,26 @@ function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
   const isLoading = isTimelineLoading || isEventLoading;
   const error = timelineError ?? eventError;
 
-  if (isLoading || error || !event) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   return (
-    <EditEventModal
-      event={event}
-      timeline={timeline}
-      onSubmit={onSubmit}
-      onArchive={onArchive}
+    <TimelineModal
+      title={t`Edit event`}
       onClose={onClose}
-    />
+      animated={false}
+      density="relaxed"
+      tall={isLoading || !!error || !event}
+    >
+      {isLoading || error || !event ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <EditEventForm
+          event={event}
+          timeline={timeline}
+          onSubmit={onSubmit}
+          onArchive={onArchive}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

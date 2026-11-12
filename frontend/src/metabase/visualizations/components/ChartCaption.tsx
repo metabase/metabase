@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback } from "react";
 
+import CS from "metabase/css/core/index.css";
 import type { IconProps } from "metabase/ui";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import type {
@@ -10,7 +13,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { ChartCaptionRoot } from "./ChartCaption.styled";
+import { LegendCaption } from "./legend/LegendCaption";
 
 interface ChartCaptionProps {
   series: Series | null;
@@ -57,7 +60,8 @@ const ChartCaption = ({
   }, [card, onChangeCardAndRun]);
 
   return (
-    <ChartCaptionRoot
+    <LegendCaption
+      className={cx(CS.mx1, CS.flexNoShrink)}
       title={title}
       description={description}
       getHref={canSelectTitle ? getHref : undefined}

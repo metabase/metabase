@@ -380,13 +380,13 @@
                            "CREATE TABLE table_d (fk_id integer NOT NULL REFERENCES table_a (id));"]]
           (jdbc/execute! spec [statement]))
         (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
-          (sync/sync-database! database {:scan :schema})
+          (sync/sync-database! (:id database) {:scan :schema})
           (let [table-id   (fn [table-name] (t2/select-one-pk :model/Table :db_id (:id database) :name table-name))
                 fk-field   (fn [table-name] (t2/select-one :model/Field :table_id (table-id table-name) :name "fk_id"))
                 table-a-id (table-id "table_a")
                 table-b-id (table-id "table_b")]
             (jdbc/execute! spec ["DROP TABLE table_d;"])
-            (sync/sync-database! database {:scan :schema})
+            (sync/sync-database! (:id database) {:scan :schema})
             (testing "precondition: the dropped table is inactive but its FK field is still active"
               (is (false? (t2/select-one-fn :active :model/Table :id (table-id "table_d"))))
               (is (=? {:active true, :fk_target_field_id some?} (fk-field "table_d"))))

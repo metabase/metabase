@@ -6,6 +6,4 @@ table_id:
 - PUBLIC
 - events
 serdes/meta:
-- id: rEvEnUeEvEnTs000001
-  label: revenue
-  model: Measure
+- model: Measure

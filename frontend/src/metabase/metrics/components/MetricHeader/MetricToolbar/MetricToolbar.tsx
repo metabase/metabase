@@ -8,10 +8,14 @@ import {
   useListNotificationsQuery,
 } from "metabase/api";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
-import { useMetadataProvider } from "metabase/metadata-store";
+import {
+  useMetadataProvider,
+  useQuestionFromCard,
+} from "metabase/metadata-store";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import {
   PLUGIN_AUDIT,
@@ -25,13 +29,10 @@ import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import { useNavigate } from "metabase/router";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
-
-import S from "./MetricToolbar.module.css";
 
 type MetricModalType =
   | "move"
@@ -85,6 +86,7 @@ function MetricToolbarButtons({
   onOpenModal,
 }: MetricToolbarButtonsProps) {
   const metadataProvider = useMetadataProvider(card.dataset_query.database);
+  const question = useQuestionFromCard(card);
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
   const { data: bookmarks = [] } = useListBookmarksQuery();
   const { data: questionNotifications, isLoading: isNotificationsLoading } =
@@ -114,19 +116,12 @@ function MetricToolbarButtons({
   const isCacheableQuestion =
     card.can_write &&
     PLUGIN_CACHING.isGranularCachingEnabled() &&
-    PLUGIN_CACHING.hasQuestionCacheSection(new Question(card));
+    PLUGIN_CACHING.hasQuestionCacheSection(question);
 
   return (
-    <Menu position="bottom-end">
+    <Menu>
       <Menu.Target>
-        <ActionIcon
-          variant="default"
-          size="lg"
-          className={S.moreOptionsButton}
-          aria-label={t`More options`}
-        >
-          <Icon name="ellipsis" />
-        </ActionIcon>
+        <MoreMenuButton aria-label={t`More options`} />
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
@@ -234,6 +229,7 @@ interface MetricModalProps {
 
 function MetricModal({ card, urls, modalType, onClose }: MetricModalProps) {
   const navigate = useNavigate();
+  const question = useQuestionFromCard(card);
 
   const handleCopy = (newCard: Card) => {
     navigate(urls.about(newCard.id));
@@ -257,12 +253,7 @@ function MetricModal({ card, urls, modalType, onClose }: MetricModalProps) {
         />
       );
     case "alert":
-      return (
-        <QuestionAlertListModal
-          question={new Question(card)}
-          onClose={onClose}
-        />
-      );
+      return <QuestionAlertListModal question={question} onClose={onClose} />;
     case "caching":
       return (
         <PLUGIN_CACHING.MetricCachingModal

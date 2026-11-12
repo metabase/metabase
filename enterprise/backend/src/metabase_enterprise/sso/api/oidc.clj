@@ -147,7 +147,8 @@
    [:issuer-uri :string]
    [:client-id :string]
    [:client-secret {:optional true} [:maybe :string]]
-   [:key {:optional true} [:maybe :string]]])
+   [:key {:optional true} [:maybe :string]]
+   [:scopes {:optional true} [:maybe [:sequential :string]]]])
 
 (def ^:private oidc-check-step-schema
   [:map
@@ -176,7 +177,7 @@
                         (if (str/blank? s)
                           (:client-secret stored)
                           s))
-        scopes        (or (:scopes stored) ["openid"])]
+        scopes        (or (:scopes body) (:scopes stored) ["openid"])]
     (check-oidc-connection! issuer-uri client-id client-secret scopes)))
 
 ;; DELETE /api/ee/sso/oidc/:key

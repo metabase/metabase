@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import querystring from "querystring";
 
 import { safeJsonParse } from "metabase/utils/json-parse";
@@ -64,6 +65,10 @@ export function stringifyHashOptions(options: querystring.ParsedUrlQueryInput) {
 export function isMac() {
   const { platform = "" } = navigator;
   return Boolean(platform.match(/^Mac/));
+}
+
+export function isWindows() {
+  return /Win/.test(navigator.platform);
 }
 
 export const isTouchDevice = () => {

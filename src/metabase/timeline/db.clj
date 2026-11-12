@@ -4,12 +4,31 @@
   (:require
    [malli.util :as mut]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(mu/defn synced-timeline-events-clause :- [:fn vector?]
+  "The clause over the TimelineEvent table aliased `alias` selecting the events of the timelines remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :timeline_id :model/Timeline opts))
+
+(mu/defn synced-timelines-clause :- [:fn vector?]
+  "The clause over the Timeline table aliased `alias` selecting the timelines remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  [:and
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn insert-timeline!
   "Insert the Timeline `row` and return the inserted instance."
@@ -51,7 +70,7 @@
   "Apply `changes` to the Timeline with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::timeline.schema/timeline.update [:name :default :description :icon :collection_id :archived])]
-  (t2/update! :model/Timeline id changes))
+  (t2/update! :model/Timeline :id id changes))
 
 (mu/defn set-timeline-events-archived!
   "Set the archived flag of the TimelineEvents of the Timeline with `timeline-id`, returning the number updated."
@@ -110,9 +129,17 @@
   "Apply `changes` to the TimelineEvent with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :description :timestamp :time_matters :timezone :icon :timeline_id :archived])]
-  (t2/update! :model/TimelineEvent id changes))
+  (t2/update! :model/TimelineEvent :id id changes))
 
 (mu/defn delete-timeline-event!
   "Delete the TimelineEvent with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
   (t2/delete! :model/TimelineEvent :id id))
+
+(mu/defn synced-timeline-items :- [:sequential ::timeline.schema/timeline]
+  "The Timelines with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Timeline :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))

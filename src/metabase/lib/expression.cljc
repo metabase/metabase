@@ -363,8 +363,6 @@
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])
 (lib.common/defop * [x y & more])
-;; Kondo gets confused
-#_{:clj-kondo/ignore [:unresolved-namespace :syntax]}
 (lib.common/defop / [x y & more])
 (lib.common/defop ^{:style/indent [:form]} case [cases] [cases fallback])
 (lib.common/defop coalesce [x y & more])
@@ -808,3 +806,25 @@
                      (not (lib.metadata/database-supports? query :expression-literals)))
             {:message  (i18n/tru "Standalone constants are not supported.")
              :friendly true})))))
+
+(defn- unique-name [names original-name index]
+  (let [indexed-name (str original-name " (" index ")")]
+    (if (names indexed-name)
+      (recur names original-name (inc index))
+      indexed-name)))
+
+(defn unique-expression-name
+  "Generates an expression name that's unique in the query.
+  The current clause for the expression whose name has been suggested (if
+  applicable) has already been removed from the query here."
+  [query stage-number suggested-name]
+  (let [columns (lib.metadata.calculation/visible-columns query stage-number)
+        other-names (set (map :display-name columns))]
+    (if (not (other-names suggested-name))
+      suggested-name
+      (let [start (str suggested-name " (")
+            ;; can't use regexes here because js/RegExp.escape is too new
+            duplicates (into #{suggested-name}
+                             (filter #(str/starts-with? % start) other-names))]
+        (unique-name duplicates suggested-name (count duplicates))))))
+str/replace

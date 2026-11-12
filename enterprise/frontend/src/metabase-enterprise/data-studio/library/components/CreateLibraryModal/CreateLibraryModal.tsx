@@ -10,7 +10,6 @@ import {
 } from "metabase/forms";
 import type { CreateLibraryModalProps } from "metabase/plugins";
 import {
-  Box,
   Button,
   Center,
   FixedSizeIcon,
@@ -114,10 +113,8 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
             />
           </List>
         </Stack>
-        <Group mt="xxl" gap="sm">
-          <Box flex={1}>
-            <FormErrorMessage />
-          </Box>
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
           <Button
             variant="subtle"
             color="neutral"
@@ -127,7 +124,7 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
             label={t`Create my semantic layer`}
             variant="filled"
           />
-        </Group>
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );

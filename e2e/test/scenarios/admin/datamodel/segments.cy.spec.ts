@@ -353,6 +353,7 @@ describe("scenarios > admin > datamodel > segments", () => {
         },
       }).then(({ body: { id } }) => {
         cy.visit(`/reference/segments/${id}`);
+        H.closeNavigationSidebar();
         cy.findAllByRole("listitem")
           .filter(":contains(X-ray this segment)")
           .click();
@@ -390,7 +391,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       H.activateToken("pro-self-hosted");
       cy.log("set up remote sync");
       H.setupGitSync();
-      H.configureGit("read-only");
+      H.configureGitAndPullChanges("read-only");
       H.createLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
       // Let's leave PEOPLE_ID unpublished

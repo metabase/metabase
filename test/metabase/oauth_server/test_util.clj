@@ -1,7 +1,14 @@
 (ns metabase.oauth-server.test-util
   "Helpers for tests that exercise the OAuth server."
   (:require
+   [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.test :as mt]))
+
+(defn reset-token-throttlers!
+  "Clear failed attempts counted by the OAuth token endpoint."
+  []
+  (doseq [throttler [@#'api.oauth/token-client-throttler @#'api.oauth/token-ip-throttler]]
+    (reset! (:attempts throttler) '())))
 
 (defmacro with-oauth-client
   "Execute `body` with a freshly registered `oauth_client` row, binding `client-id-binding` to its

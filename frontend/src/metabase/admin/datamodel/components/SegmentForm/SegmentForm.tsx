@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { FieldInputProps } from "formik";
 import { useFormik } from "formik";
-import { useEffect } from "react";
+import { type JSX, useEffect } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetTableQuery } from "metabase/api";
@@ -221,7 +222,7 @@ function getSegmentEditorProps(
       tableIdProps.onChange({
         target: {
           name: tableIdProps.name,
-          value: Lib.sourceTableOrCardId(query),
+          value: Lib.primarySourceTableId(query),
         },
       });
     },

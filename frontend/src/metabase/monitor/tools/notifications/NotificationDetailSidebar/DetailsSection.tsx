@@ -1,13 +1,15 @@
 import { t } from "ttag";
 
 import { Link as MBLink } from "metabase/common/components/Link";
+import {
+  DetailsRow,
+  DetailsTable,
+  SidebarSection,
+} from "metabase/monitor/components/DetailSidebar";
 import * as Urls from "metabase/urls";
 
 import { NotificationSummary } from "../NotificationSummary";
 
-import { DetailsRow } from "./DetailsRow";
-import { DetailsTable } from "./DetailsTable";
-import { SidebarSection } from "./SidebarSection";
 import type { DetailsSectionProps } from "./types";
 import { formatChannelSummary } from "./utils";
 

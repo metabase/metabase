@@ -71,6 +71,12 @@
    :display_name
    :description])
 
+(defmethod searchable-columns "data-app"
+  [_ _]
+  [:slug
+   :name
+   :description])
+
 (defmethod searchable-columns "transform"
   [_ search-native-query]
   (cond-> [:name

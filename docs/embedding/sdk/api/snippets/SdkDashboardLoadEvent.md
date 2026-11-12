@@ -6,9 +6,9 @@ type SdkDashboardLoadEvent = (dashboard: MetabaseDashboard | null) => void;
 
 <!-- [<snippet parameters>] -->
 
-| Parameter   | Type                                                        |
-| :---------- | :---------------------------------------------------------- |
-| `dashboard` | [`MetabaseDashboard`](./api/MetabaseDashboard.md) \| `null` |
+| Parameter   | Type                                                                                 |
+| :---------- | :----------------------------------------------------------------------------------- |
+| `dashboard` | [`MetabaseDashboard`](/docs/latest/embedding/sdk/api/MetabaseDashboard.md) \| `null` |
 
 <!-- [<endsnippet parameters>] -->
 

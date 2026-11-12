@@ -3,7 +3,9 @@
    [clojure.test :refer :all]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]))
 
 (set! *warn-on-reflection* true)
 
@@ -68,9 +70,7 @@
 
 (mr/def ::id pos-int?)
 
-;; referenced only inside quoted defendpoint args that parse-args resolves at runtime
-#_{:clj-kondo/ignore [:unused-private-var]}
-(def ^:private RouteParams
+(def RouteParams
   [:map
    [:id [:string {:api/regex #"[abc]{4}"}]]])
 
@@ -180,6 +180,11 @@
                  :query {:binding _query-params, :schema [:map {:closed true}]}}
         :body [(test)]})))
 
+(deftest ^:parallel parse-args-misplaced-response-schema-test
+  (testing "a response schema after the params is rejected instead of being dropped into the body"
+    (is (thrown-with-msg? Exception #"response schema must come right after the route"
+                          (#'api.macros/parse-args '(:get "/test" "A test endpoint." [] :- [:vector :string] (test)))))))
+
 (deftest ^:parallel decode-strips-undeclared-keys-test
   (testing "request decoding drops keys the schema does not name, so an open map cannot carry values downstream"
     (are [schema value expected] (= expected
@@ -209,3 +214,60 @@
       ::lib.schema.parameter/parameter
       {:type :string/contains, :value ["A"], :options {:case-sensitive false, :lib/uuid "not-yours"}}
       {:type :string/contains, :value ["A"], :options {:case-sensitive false}})))
+
+(deftest ^:parallel route-template-test
+  (testing "the route template is the accumulated prefix plus the endpoint's declared path"
+    (are [prefix path expected] (= expected
+                                   (#'api.macros/route-template prefix path))
+      "/api/card" "/:id"                      "/api/card/:id"
+      "/api/card" "/:id/query/:export-format" "/api/card/:id/query/:export-format"
+      ;; a `"/"` endpoint is the prefix itself -- no meaningless trailing slash
+      "/api/card" "/"                         "/api/card"
+      ;; no prefix at all (an endpoint handler used on its own)
+      nil         "/:id"                      "/:id"
+      ""          "/:id"                      "/:id"
+      nil         "/"                         "/"
+      ""          "/"                         "/")))
+
+(defn- specific-errors [schema params]
+  (try
+    (api.macros/decode-and-validate-params :body schema params)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:specific-errors (ex-data e)))))
+
+(deftest ^:parallel valid-password-decodes-to-secret-test
+  (testing "request decoding wraps a `ms/ValidPassword` in a secret"
+    (let [{:keys [password]} (api.macros/decode-and-validate-params :body
+                                                                    [:map [:password ms/ValidPassword]]
+                                                                    {:password "Xq7-unique-Zeb9-2026"})]
+      (is (u.secret/secret? password))
+      (is (= "Xq7-unique-Zeb9-2026" (u.secret/expose password))))))
+
+(deftest ^:parallel valid-password-specific-errors-redact-value-test
+  (testing "`:specific-errors` for a `ms/ValidPassword` show a rejected password redacted"
+    (are [schema params expected] (= expected (specific-errors schema params))
+      [:map {:closed true} [:password ms/ValidPassword]]
+      {:password "password9"}
+      {:password ["valid password that is not too common, received: \"<< REDACTED SECRET >>\""]}
+
+      ;; only a string is wrapped, and anything else is not a password
+      [:map {:closed true} [:password ms/ValidPassword]]
+      {:password 12345}
+      {:password ["valid password that is not too common, received: 12345"]}
+
+      [:map {:closed true} [:password ms/ValidPassword]]
+      {}
+      {:password ["missing required key, received: nil"]}
+
+      ;; nested in a sequence
+      [:map [:users [:sequential [:map [:password ms/ValidPassword]]]]]
+      {:users [{:password "password9"}]}
+      {:users [{:password ["valid password that is not too common, received: \"<< REDACTED SECRET >>\""]}]}
+
+      ;; an enclosing schema's error echoes the whole value
+      [:and
+       [:map [:password ms/ValidPassword] [:confirm :string]]
+       [:fn {:error/message "passwords must match"} (constantly false)]]
+      {:password "Xq7-unique-Zeb9-2026", :confirm "x"}
+      ["passwords must match, received: {:password \"<< REDACTED SECRET >>\", :confirm \"x\"}"])))

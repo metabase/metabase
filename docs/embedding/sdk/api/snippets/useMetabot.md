@@ -11,7 +11,7 @@ has mounted its internal subscriber. Guard before use:
 
 <!-- [<snippet returns>] -->
 
-[`UseMetabotResult`](./api/UseMetabotResult.md) \| `null`
+[`UseMetabotResult`](/docs/latest/embedding/sdk/api/UseMetabotResult.md) \| `null`
 
 <!-- [<endsnippet returns>] -->
 

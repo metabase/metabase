@@ -19,7 +19,7 @@
    (java.time Instant)
    (java.util Date)
    (java.util.concurrent Future TimeoutException TimeUnit)
-   (org.quartz DisallowConcurrentExecution JobExecutionContext)))
+   (org.quartz JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
@@ -149,9 +149,11 @@
     :paused (when-not (event-driven-pause? reason) paused-retry-delay-seconds)
     nil))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Backfill missing Metabot conversation titles."}
-  ConversationTitleBackfill [ctx]
+(task/defjob ConversationTitleBackfill
+  "Backfill missing Metabot conversation titles."
+  {:saved-class "metabase.metabot.task.conversation_title_backfill.ConversationTitleBackfill"
+   :concurrent? false}
+  [ctx]
   (let [ctx      ^JobExecutionContext ctx
         after-id (get (qc/from-job-data ctx) "after-id")
         result   (run-backfill-page! after-id)]

@@ -5,7 +5,12 @@ import { t } from "ttag";
 import { uniqueId } from "underscore";
 
 import Animation from "metabase/css/core/animation.module.css";
-import { Modal, type ModalOverlayProps, Stack } from "metabase/ui";
+import {
+  Modal,
+  type ModalOverlayProps,
+  SIDESHEET_TRANSITION_PROPS,
+  Stack,
+} from "metabase/ui";
 
 import Styles from "./sidesheet.module.css";
 
@@ -57,12 +62,18 @@ export function Sidesheet({
       closeOnEscape={closeOnEscape}
       shadow="xs_outline"
       h="100dvh"
+      transitionProps={SIDESHEET_TRANSITION_PROPS}
     >
       {withOverlay && (
-        <Modal.Overlay {...overlayProps} data-testid="modal-overlay" />
+        <Modal.Overlay
+          bg="modal-overlay"
+          {...overlayProps}
+          data-testid="modal-overlay"
+        />
       )}
       <Modal.Content
-        transitionProps={{ duration: 0 }}
+        // Slides in with the `slideLeft` CSS animation, not Mantine's transition
+        transitionProps={{ duration: 0, exitDuration: 0 }}
         px={0}
         w={sizes[size]}
         pos="fixed"
@@ -78,6 +89,7 @@ export function Sidesheet({
         aria-labelledby={titleId}
       >
         <Modal.Header
+          className={Styles.SidesheetHeader}
           bg="background_surface-primary"
           px={SIDESHEET_HORIZONTAL_PADDING}
           pt="xl"

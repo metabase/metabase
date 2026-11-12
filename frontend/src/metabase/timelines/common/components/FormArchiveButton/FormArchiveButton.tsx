@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import type { JSX, MouseEvent, ReactNode } from "react";
 
 import { Button } from "metabase/ui";
 
@@ -19,7 +19,6 @@ const FormArchiveButton = ({
       type="button"
       variant="subtle"
       color="negative"
-      px={0}
       onClick={onClick}
     >
       {children}

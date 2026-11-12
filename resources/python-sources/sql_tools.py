@@ -59,20 +59,21 @@ def needs_quoting(name: str, dialect: str = None) -> bool:
         return True
     return False
 
-def unquote_identifier(name: str, dialect: str = None):
-    """If name is already a quoted identifier (e.g., `foo` in MySQL, "foo" in Postgres),
-    return (unquoted_name, True). Otherwise return (name, False)."""
+def parse_identifier(name: str, dialect: str = None):
+    """The identifier `name` read the way the dialect reads a column alias, `SELECT 1 AS <name>`. None when `name` is
+    not one identifier: `x,y`, `x;y`, a keyword such as `select`, or a name that does not parse."""
     if not name:
-        return (name, False)
+        return None
     try:
-        dummy_sql = "SELECT 1 AS " + name
-        ast = sqlglot.parse_one(dummy_sql, dialect=dialect)
-        ident = ast.expressions[0].args.get("alias")
-        if ident and ident.quoted:
-            return (ident.this, True)
-    except:
-        pass
-    return (name, False)
+        ast = sqlglot.parse_one("SELECT 1 AS " + name, dialect=dialect)
+    except Exception:
+        return None
+    if not isinstance(ast, exp.Select) or len(ast.expressions) != 1 or not isinstance(ast.expressions[0], exp.Alias):
+        return None
+    ident = ast.expressions[0].args.get("alias")
+    if isinstance(ident, exp.Identifier) and (ident.quoted or ident.this == name):
+        return ident
+    return None
 
 def temp_table_prefix(table):
     """
@@ -132,6 +133,12 @@ def statements(sql, dialect=None):
     reading only the first statement answers a question nobody asked, quietly.
     """
     return [ast for ast in sqlglot.parse(sql, read=dialect) if ast is not None]
+
+
+def _nonempty_statements(stmts):
+    """`stmts` from `sqlglot.parse` without the empty ones: a stray semicolon parses as `None`, and a comment after a
+    semicolon as a bare `exp.Semicolon`."""
+    return [s for s in stmts if s is not None and not isinstance(s, exp.Semicolon)]
 
 
 def table_references(ast):
@@ -543,6 +550,29 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     return ast.sql(dialect=dialect)
 
 
+def add_insert_clause(sql: str, table_name: str, dialect: str = None) -> str:
+    """
+    Make an INSERT INTO statement that inserts the result of a SELECT statement into a table.
+
+    If the SELECT has a WITH clause, the WITH clause goes before INSERT INTO, as SQL Server requires.
+
+    :param sql: The SELECT SQL query string
+    :param table_name: The target table name (already formatted/quoted)
+    :param dialect: SQL dialect (e.g., "tsql" for SQL Server)
+    :return: The INSERT INTO SQL string
+
+    Examples:
+        add_insert_clause("WITH c AS (SELECT 1 AS x) SELECT x FROM c", '"T"', "tsql")
+        => 'WITH c AS (SELECT 1 AS x) INSERT INTO [T] SELECT x FROM c'
+    """
+    ast = sqlglot.parse_one(sql, read=dialect)
+
+    if not isinstance(ast, exp.Query):
+        raise ValueError("SQL must be a SELECT statement")
+
+    return exp.insert(ast, exp.to_table(table_name)).sql(dialect=dialect)
+
+
 def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema_json):
     """
     Extract column lineage from SQL query.
@@ -711,12 +741,14 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
 
         def set_identifier(node, arg, name):
             # Sets `arg` of `node` to the identifier `name`, quoted if the identifier it replaces was, if `name` comes
-            # quoted, or if `name` needs quoting. Some nodes hold non-Identifier children (e.g. Anonymous), which count
-            # as unquoted.
+            # quoted, or if `name` needs quoting. A name that is not one identifier is quoted whole, so it reads back as
+            # that one name. Some nodes hold non-Identifier children (e.g. Anonymous), which count as unquoted.
             original = node.args.get(arg)
             original_quoted = isinstance(original, exp.Identifier) and original.quoted
-            raw_name, was_quoted = unquote_identifier(name, dialect)
-            quoted = original_quoted or was_quoted or needs_quoting(raw_name, dialect)
+            parsed = parse_identifier(name, dialect)
+            was_quoted = parsed is not None and parsed.quoted
+            raw_name = parsed.this if was_quoted else name
+            quoted = original_quoted or parsed is None or was_quoted or needs_quoting(raw_name, dialect)
             node.set(arg, exp.Identifier(this=raw_name, quoted=quoted))
 
         def replace_table(node, replacement, catalog_arg, schema_arg, table_arg):
@@ -771,8 +803,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                                    if column_matches(key_table, key_column)),
                                   None)
                 if new_column:
-                    column_quoted = isinstance(node.this, exp.Identifier) and node.this.quoted
-                    node.set("this", exp.Identifier(this=new_column, quoted=column_quoted))
+                    set_identifier(node, "this", new_column)
 
             return node
 
@@ -1213,7 +1244,7 @@ class FieldReferenceWalker:
         # Column reference (including table.*)
         if isinstance(expr, exp.Column):
             column_name = expr.name
-            table_ref = expr.table
+            table_ref = self._column_qualifier(expr)
 
             # Table wildcard: SELECT t.*
             if column_name == "*":
@@ -1260,7 +1291,7 @@ class FieldReferenceWalker:
         # Column reference
         if isinstance(expr, exp.Column):
             column_name = expr.name
-            table_ref = expr.table
+            table_ref = self._column_qualifier(expr)
 
             # Table wildcard: t.* - expand to actual fields from source
             if column_name == "*" and table_ref:
@@ -1312,6 +1343,9 @@ class FieldReferenceWalker:
                 alias = expr.alias
                 for result in results:
                     if "col" in result:
+                        # Copy before setting the alias, as _find_returned_fields does: the same dict can be
+                        # shared with another select item (e.g. `u.a AS b, u.a`), which would take this alias too.
+                        result["col"] = dict(result["col"])
                         result["col"]["alias"] = alias
             return results
 
@@ -1434,7 +1468,7 @@ class FieldReferenceWalker:
     def _get_column(self, sources, column_expr, return_table_matches):
         """Get column reference with source resolution."""
         column_name = column_expr.name
-        table_ref = column_expr.table
+        table_ref = self._column_qualifier(column_expr)
 
         # Find valid sources
         if table_ref:
@@ -1588,6 +1622,18 @@ class FieldReferenceWalker:
             },
             "errors": errors
         }]
+
+    def _column_qualifier(self, column):
+        """
+        The table qualifier of `column`, spelled as the sources of a scope name their tables.
+
+        SQLGlot reads the T-SQL temp table `[#t]` in a FROM clause as the table `t` flagged temporary, but keeps `#t` as
+        the name of the same bracket-quoted qualifier in `[#t].col`. The prefix is dropped here so the two match.
+        """
+        table_ref = column.table
+        if self.dialect == "tsql":
+            return table_ref.lstrip("#")
+        return table_ref
 
     def _find_source(self, search, sources):
         """Find a source matching the search criteria."""
@@ -1815,7 +1861,8 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
 
     Returns:
         JSON string with keys transpiled_sql and status on success.
-        On failure the object contains keys status and error_message.
+        On failure the object contains keys status and error_message, and reason
+        'multiple_statements' when the SQL holds more than one statement.
     """
     result = {}
     if has_metabase_templates(sql):
@@ -1829,10 +1876,11 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     else:
         try:
             write = sqlglot.Dialect.get_or_raise(to_dialect)
-            expressions = sqlglot.parse(sql, read=from_dialect)
+            expressions = _nonempty_statements(sqlglot.parse(sql, read=from_dialect))
 
             if len(expressions) > 1:
                 result['status'] = 'error'
+                result['reason'] = 'multiple_statements'
                 result['error_message'] = 'Multiple SQL statements are not supported. Please provide a single query.'
             else:
                 ast = _quote_reserved_identifiers(expressions[0], write)
@@ -1863,20 +1911,342 @@ def _split_placeholder_casts(sql: str, dialect: str = None) -> str:
     return sql
 
 
+# Nodes that write, lock, or run something other than a query. A SELECT can hold some of these: `SELECT ... INTO`
+# creates a table, `FOR UPDATE`/`FOR SHARE` take row locks, and Postgres lets a CTE body be a DELETE ... RETURNING.
+# Spark and Hive's `SELECT TRANSFORM (...) USING '<command>'` pipes rows through a program on the cluster.
+_NOT_READ_ONLY_NODES = (
+    exp.DML, exp.DDL, exp.Into, exp.Lock, exp.Command, exp.Set, exp.Grant, exp.Revoke, exp.Drop, exp.Alter,
+    exp.TruncateTable, exp.Transaction, exp.Commit, exp.Rollback, exp.Use, exp.Execute, exp.LoadData, exp.Kill,
+    exp.Pragma, exp.Cache, exp.Uncache, exp.Refresh, exp.Analyze, exp.NextValueFor, exp.QueryTransform,
+)
+
+# Writes a SELECT can make through a built-in function. Advancing a sequence is one: sqlglot parses only the
+# SQL-standard `NEXT VALUE FOR` as its own node; Postgres and Redshift spell it as a function, Oracle and Snowflake as
+# a `.NEXTVAL` pseudo-column, and Snowflake also as the table function `TABLE(GETNEXTVAL(seq))`. Postgres large objects
+# are another, and any role can create one by default. So is asking Postgres for the current transaction's id, which
+# assigns one, and writing a message into the write-ahead log.
+_WRITE_FUNCTIONS = frozenset(
+    {
+        # sequences
+        "nextval", "setval", "getnextval",
+        # Postgres large objects
+        "lo_creat", "lo_create", "lo_from_bytea", "lo_put", "lowrite", "lo_truncate", "lo_truncate64", "lo_unlink",
+        "lo_import", "lo_export",
+        # Postgres transaction ids and the write-ahead log
+        "txid_current", "pg_current_xact_id", "pg_logical_emit_message",
+    }
+)
+
+# Built-in functions that reach past the query that calls them: they take a lock that can outlive it, change the
+# session's settings, signal or stop another session, hold the connection waiting, or act outside the database.
+_SESSION_EFFECT_FUNCTIONS = frozenset(
+    {
+        # Postgres advisory locks
+        "pg_advisory_lock", "pg_advisory_lock_shared", "pg_try_advisory_lock", "pg_try_advisory_lock_shared",
+        "pg_advisory_xact_lock", "pg_advisory_xact_lock_shared", "pg_try_advisory_xact_lock",
+        "pg_try_advisory_xact_lock_shared", "pg_advisory_unlock", "pg_advisory_unlock_shared",
+        "pg_advisory_unlock_all",
+        # MySQL named locks
+        "get_lock", "release_lock", "release_all_locks",
+        # session settings and signals
+        "set_config", "pg_notify", "pg_terminate_backend", "pg_cancel_backend", "pg_reload_conf",
+        # Postgres dblink: a named connection stays open on the session
+        "dblink_connect", "dblink_connect_u",
+        # Snowflake: stop another session's work
+        "system$cancel_query", "system$cancel_all_queries", "system$abort_session", "system$abort_transaction",
+        # waiting
+        "pg_sleep", "pg_sleep_for", "pg_sleep_until", "sleep", "benchmark", "sleepeachrow", "system$wait",
+        "master_pos_wait", "source_pos_wait", "wait_for_executed_gtid_set", "wait_until_sql_thread_after_gtids",
+        # running a program, Java code or a request outside the database
+        "executable", "reflect", "java_method", "http_request", "system$send_email", "sys_exec", "sys_eval",
+        # reading a file on the database server
+        "load_file",
+        # Postgres server administration: the write-ahead log, backups, replication slots, recovery, the log file
+        "pg_switch_wal", "pg_switch_xlog", "pg_create_restore_point", "pg_backup_start", "pg_backup_stop",
+        "pg_start_backup", "pg_stop_backup", "pg_promote", "pg_rotate_logfile", "pg_create_physical_replication_slot",
+        "pg_create_logical_replication_slot", "pg_drop_replication_slot", "pg_wal_replay_pause",
+        "pg_wal_replay_resume", "pg_export_snapshot",
+    }
+)
+
+# Table functions that read from another server, a URL, object storage or the server's files. Their names are common
+# words elsewhere (`url`, `file`, `mysql`), so each set applies only in its own dialect.
+_DIALECT_SESSION_EFFECT_FUNCTIONS = {
+    "clickhouse": frozenset(
+        {
+            "url", "urlcluster", "s3", "s3cluster", "gcs", "remote", "remotesecure", "mysql", "postgresql",
+            "mongodb", "redis", "sqlite", "file", "filecluster", "hdfs", "hdfscluster", "azureblobstorage",
+            "azureblobstoragecluster", "jdbc", "odbc", "deltalake", "iceberg", "hudi", "cosn", "oss", "hive",
+            "cluster", "clusterallreplicas",
+        }
+    ),
+    "duckdb": frozenset(
+        {
+            "read_csv", "read_csv_auto", "read_parquet", "parquet_scan", "read_json", "read_json_auto",
+            "read_json_objects", "read_ndjson", "read_ndjson_auto", "read_ndjson_objects", "read_text", "read_blob",
+            "read_xlsx", "sniff_csv", "glob", "iceberg_scan", "delta_scan",
+        }
+    ),
+}
+
+
+def _function_name(node: exp.Expression):
+    """The lower-case name of the function `node` calls, or None when it is not a function call."""
+    if isinstance(node, exp.Anonymous):
+        return node.name.lower()
+    # None of the names in `_SESSION_EFFECT_FUNCTIONS` has a node of its own today. This keeps the list working if a
+    # sqlglot upgrade gives one of them its own node.
+    if isinstance(node, exp.Func):
+        return node.sql_name().lower()
+    return None
+
+
+def _session_effect_function(stmt: exp.Expression, dialect: str):
+    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or of the
+    `_DIALECT_SESSION_EFFECT_FUNCTIONS` for `dialect`, or None."""
+    names = _SESSION_EFFECT_FUNCTIONS | _DIALECT_SESSION_EFFECT_FUNCTIONS.get(dialect, frozenset())
+    for node in stmt.walk():
+        name = _function_name(node)
+        if name in names:
+            return name
+    return None
+
+
+def _external_table(stmt: exp.Expression, dialect: str) -> bool:
+    """Whether `stmt` names a file or a URL as a table. DuckDB reads `FROM 'data.csv'` and `FROM "s3://b/x.parquet"`
+    as the file at that path, and a name holding `.`, `/`, `\\` or `:` cannot be a plain table there unless quoted."""
+    if dialect != "duckdb":
+        return False
+    return any(
+        isinstance(node, exp.Table) and re.search(r"[./\\:]", node.name or "") is not None for node in stmt.walk()
+    )
+
+
+# Functions that take a SQL string and run it. The parser reads that string as an opaque literal, so a write, a lock,
+# or a session change hidden inside it escapes the checks above: `query_to_xml('SELECT pg_advisory_lock(1)')` and
+# `dblink_exec(conn, 'DELETE ...')` both read as a plain SELECT. The wrapper is refused whatever the string holds, so
+# the string is never trusted. These names are distinctive, so matching across dialects costs no real query. Oracle's
+# package functions (`dbms_xmlgen.getxml`, `utl_http.request`) are the same hazard but collapse to a bare name that
+# could collide with an innocent column function, so they are left to the connection-level work instead.
+_SQL_EXECUTING_FUNCTIONS = frozenset(
+    {
+        # Postgres query-to-xml family
+        "query_to_xml", "query_to_xmlschema", "query_to_xml_and_xmlschema", "cursor_to_xml", "cursor_to_xmlschema",
+        # Postgres full-text and tablefunc helpers that run a passed query
+        "ts_stat", "ts_rewrite", "crosstab", "crosstab2", "crosstab3", "crosstab4", "connectby",
+        # Postgres dblink
+        "dblink", "dblink_exec", "dblink_send_query", "dblink_fetch", "dblink_open",
+        # SQL Server linked-server and ad hoc access
+        "openquery", "openrowset", "opendatasource",
+        # BigQuery federated query
+        "external_query",
+        # Snowflake: run a SQL string as a table function
+        "to_query",
+    }
+)
+
+
+def _sql_executing_function(stmt: exp.Expression):
+    """The name of the first function in `stmt` that is one of `_SQL_EXECUTING_FUNCTIONS`, or None."""
+    for node in stmt.walk():
+        name = _function_name(node)
+        if name in _SQL_EXECUTING_FUNCTIONS:
+            return name
+        # Trino passes a query through to a connector's database with `TABLE(catalog.system.query(query => '...'))`.
+        # The name `query` alone is too common to refuse, so it counts only under a `system` schema.
+        if (
+            isinstance(node, exp.Dot)
+            and node.this.name.lower() == "system"
+            and _function_name(node.expression) == "query"
+        ):
+            return "system.query"
+    return None
+
+
+def _dynamic_function_call(stmt: exp.Expression) -> bool:
+    """Whether `stmt` calls a function named by Snowflake's `IDENTIFIER(...)`, as in `IDENTIFIER('f')(1)`."""
+    # Name checks never see this name, a string or a variable, so the call is refused whatever it names.
+    # Only the call form has an `expressions` arg, which holds the call's arguments, possibly none.
+    # A table or column name such as `IDENTIFIER('t')` has no such arg.
+    return any("expressions" in node.args for node in stmt.find_all(exp.DynamicIdentifier))
+
+
+# SQL Server table hints that take update or exclusive locks, hold shared ones to the end of the transaction, or set
+# the granularity of the locks taken (`ROWLOCK`, `PAGLOCK`). `NOLOCK`, `INDEX(...)` and the rest only steer how a plain
+# read runs.
+_LOCKING_TABLE_HINTS = frozenset(
+    {"UPDLOCK", "XLOCK", "TABLOCK", "TABLOCKX", "HOLDLOCK", "SERIALIZABLE", "REPEATABLEREAD", "ROWLOCK", "PAGLOCK"}
+)
+
+
+def _writes_or_locks(node: exp.Expression) -> bool:
+    if isinstance(node, _NOT_READ_ONLY_NODES):
+        return True
+    if isinstance(node, exp.Anonymous):
+        return node.name.lower() in _WRITE_FUNCTIONS
+    # MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
+    # connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing.
+    # The variable is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
+    if isinstance(node, exp.PropertyEQ):
+        return node.this.find(exp.Parameter) is not None
+    if isinstance(node, exp.Column):
+        return bool(node.table) and node.name.lower() == "nextval"
+    if isinstance(node, exp.WithTableHint):
+        return any(hint.name.upper() in _LOCKING_TABLE_HINTS for hint in node.expressions)
+    # SQL Server still honours a hint written without WITH, `FROM t (TABLOCKX)`, which parses as a call to a
+    # table-valued function named `t`.
+    if isinstance(node, exp.Table) and isinstance(node.this, exp.Anonymous):
+        return any(
+            isinstance(arg, exp.Column) and not arg.table and arg.name.upper() in _LOCKING_TABLE_HINTS
+            for arg in node.this.expressions
+        )
+    # After an alias, `FROM t a (XLOCK)` parses as a column list on the alias, and SQL Server reads it as a hint.
+    # Only a plain table's alias counts: a derived table's column list, `(SELECT ...) d(a)`, names real columns.
+    if isinstance(node, exp.Table) and isinstance(node.args.get("alias"), exp.TableAlias):
+        return any(
+            column.name.upper() in _LOCKING_TABLE_HINTS for column in node.args["alias"].args.get("columns") or []
+        )
+    return False
+
+
+# Any other function with side effects, a user-defined one included, passes this check: `_SESSION_EFFECT_FUNCTIONS`
+# names the built-in ones known to matter, and no list of names can be complete. Grants on the database credential
+# are what keep such a function from writing. The read-only flag on the QP's connection does not on every driver:
+# the Postgres driver applies it only to a transaction, and the QP runs a read under autocommit.
+def _read_only(stmt: exp.Expression) -> bool:
+    return not any(_writes_or_locks(node) for node in stmt.walk())
+
+
+# Words that start a T-SQL statement. SQL Server ends a SELECT at one of them without a semicolon, while sqlglot
+# reads a bare one as a table alias: `SELECT 1 FROM t EXEC('...')` parses as one SELECT and runs as two statements.
+# All are reserved words there, so a query can only use one as a name inside brackets or quotes.
+# `MERGE`, `FETCH` and `USE` are left out: they also appear in join hints, `OFFSET ... FETCH` and `USE HINT`.
+_TSQL_STATEMENT_WORDS = frozenset(
+    {
+        "ALTER", "BACKUP", "BEGIN", "BULK", "CHECKPOINT", "CLOSE", "COMMIT", "CREATE", "DBCC", "DEALLOCATE",
+        "DECLARE", "DELETE", "DENY", "DROP", "EXEC", "EXECUTE", "GOTO", "GRANT", "INSERT", "KILL", "OPEN", "PRINT",
+        "RAISERROR", "READTEXT", "RECONFIGURE", "RESTORE", "REVERT", "REVOKE", "ROLLBACK", "SAVE", "SET", "SHUTDOWN",
+        "THROW", "TRUNCATE", "UPDATE", "UPDATETEXT", "WAITFOR", "WRITETEXT",
+    }
+)
+
+# Dialects whose server runs the body of a `/*! ... */` comment as SQL, and reads `--` as a comment only when
+# whitespace follows it.
+_MYSQL_FAMILY_DIALECTS = frozenset({"mysql", "mariadb", "singlestore", "starrocks", "doris", "tidb"})
+
+
+def _hidden_sql(sql: str, dialect: str, select: bool):
+    """`(reason, detail)` when `sql` holds text its database would run and sqlglot would not parse as a statement of
+    its own, else None.
+
+    The MySQL marks are looked for in the raw text, string literals included. Finding where a literal ends would need
+    the parser again, and MySQL's `NO_BACKSLASH_ESCAPES` mode ends one where sqlglot does not: after a backslash,
+    sqlglot reads a quote as part of the literal and MySQL in that mode reads it as the literal's end. A backslash
+    before a quote is refused for that reason, since everything after it may be SQL the parser took for text.
+
+    A `U&"..."` identifier is refused in every dialect. Postgres reads its escapes, so `U&"pg_\\0073leep"` names
+    `pg_sleep`, and sqlglot keeps them, so the function checks above never see the name. Like the MySQL marks, it is
+    looked for in the raw text.
+
+    A carriage return with no newline after it is refused in every dialect. sqlglot ends a `--` or `#` comment at
+    one, and MySQL does not, so the text after it would be a comment to one and SQL to the other.
+
+    The T-SQL statement words are looked for only when `select` says the statement is a SELECT, since a write
+    statement starts with one.
+    """
+    if re.search(r"\r(?!\n)", sql) is not None:
+        return ("lone-carriage-return", None)
+    if re.search(r"(?<![\w\$])[uU]&\"", sql) is not None:
+        return ("unicode-identifier", None)
+    if dialect == "tsql" and select:
+        quoted = (sqlglot.TokenType.STRING, sqlglot.TokenType.NATIONAL_STRING, sqlglot.TokenType.IDENTIFIER)
+        for tok in sqlglot.tokenize(sql, read=dialect):
+            if tok.token_type in quoted:
+                continue
+            # sqlglot keeps a character such as U+200B inside a word, `t<U+200B>EXEC`, where SQL Server may end the
+            # word. Each piece between characters that cannot be part of a name is checked on its own.
+            for word in re.split(r"[^\w@#$]+", tok.text):
+                if word.upper() in _TSQL_STATEMENT_WORDS:
+                    return ("statement-word", word.upper())
+    if dialect in _MYSQL_FAMILY_DIALECTS:
+        if "/*!" in sql or "/*M!" in sql:
+            return ("executable-comment", None)
+        # MySQL reads `--` as a comment only before ASCII whitespace or a control character. Python's `\s` also
+        # matches non-ASCII spaces such as U+00A0, so the characters are spelled out.
+        if re.search(r"--(?![ \t\n\r\f\v]|\Z)", sql) is not None:
+            return ("bare-dash-comment", None)
+        if re.search(r"\\['\"`]", sql) is not None:
+            return ("backslash-quote", None)
+    return None
+
+
+def _unbracketed(stmt: exp.Expression) -> exp.Expression:
+    """`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias."""
+    while isinstance(stmt, exp.Subquery) and not stmt.alias:
+        stmt = stmt.this
+    return stmt
+
+
+def _statement_reason(stmt: exp.Expression, sql: str, dialect: str):
+    """`(reason, detail)` for why `stmt`, parsed from `sql`, fails the checks every statement type shares, else None."""
+    function = _session_effect_function(stmt, dialect)
+    if function is not None:
+        return ("session-function", function)
+    if _external_table(stmt, dialect):
+        return ("external-table", None)
+    executor = _sql_executing_function(stmt)
+    if executor is not None:
+        return ("sql-executing-function", executor)
+    if _dynamic_function_call(stmt):
+        return ("dynamic-function-call", None)
+    return _hidden_sql(sql, dialect, isinstance(_unbracketed(stmt), (exp.Select, exp.SetOperation)))
+
+
+def _not_read_only_reason(stmts, sql: str, dialect: str):
+    """`(reason, detail)` for why `stmts`, parsed from `sql`, are not one read-only SELECT, else None."""
+    if not stmts:
+        return ("not-a-select", None)
+    if len(stmts) != 1:
+        return ("multiple-statements", None)
+    if not isinstance(_unbracketed(stmts[0]), (exp.Select, exp.SetOperation)):
+        return ("not-a-select", None)
+    if not _read_only(stmts[0]):
+        return ("writes-or-locks", None)
+    return _statement_reason(stmts[0], sql, dialect)
+
+
 def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None) -> str:
     """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
+
+    Every mode applies the checks the statement types share.
+    `stmt_type` "read-only" is stricter than "read": the SELECT must also hold nothing that writes or locks anywhere in
+    its tree, and statements holding only a comment after the last semicolon are not counted. When the statement is
+    refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
         stmts = sqlglot.parse(_split_placeholder_casts(sql, dialect), read=dialect)
         allowed_types = (exp.Select, exp.SetOperation)
-        if stmt_type != "read": allowed_types = (exp.Update, exp.Insert, exp.Delete)
+        if stmt_type == "read-only":
+            stmts = _nonempty_statements(stmts)
+        elif stmt_type != "read":
+            allowed_types = (exp.Update, exp.Insert, exp.Delete)
+        if stmt_type == "read-only":
+            problem = _not_read_only_reason(stmts, sql, dialect)
+        elif len(stmts) == 1:
+            problem = _statement_reason(stmts[0], sql, dialect)
+        else:
+            problem = None
+        if problem is not None:
+            result["reason"], result["reason_detail"] = problem
         if len(stmts) == 1:
             result["is_single_stmt?"] = True
-            if isinstance(stmts[0], allowed_types):
+            if isinstance(_unbracketed(stmts[0]), allowed_types) and problem is None:
                 result["allowed_stmt_type?"] = True
             result["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
     except Exception as e:
         result["error"] = str(e)
+    if stmt_type == "read-only" and "error" in result:
+        result["reason"] = "unparseable"
     return json.dumps(result)

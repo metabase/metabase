@@ -118,7 +118,7 @@
    1. Accumulates queries/charts from tool-output parts (via :structured-output)
    2. Buffers markdown links to handle links split across text chunks
    3. Resolves metabase:// URLs to proper Metabase paths
-   4. Flushes buffered content where the text ends: before the next part other than text or usage, and at stream end
+   4. Flushes buffered content where the text ends: before a tool call, a tool result or an error, and at stream end
 
    Parameters:
    - initial-queries: Initial map of query-id to query data
@@ -164,10 +164,9 @@
              (if (seq processed-text)
                (rf result (assoc part :text processed-text))
                result))
-           ;; Some servers send usage with every chunk, so a usage part doesn't end the text
-           :usage
-           (rf result part)
+           (:tool-input :tool-output :error)
            (let [result (flush! result)]
              (if (reduced? result)
                result
-               (rf result part)))))))))
+               (rf result part)))
+           (rf result part)))))))

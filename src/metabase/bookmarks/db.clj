@@ -207,6 +207,7 @@
                                                  :created_at]
                                         :from   [:document_bookmark]
                                         :where  [:= :user_id user-id]}]]
+    ^:allow-subquery
     {:union-all (conj base-queries
                       ^:allow-subquery {:select [[as-null :card_id]
                                                  [as-null :dashboard_id]

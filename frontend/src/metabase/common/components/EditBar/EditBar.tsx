@@ -1,14 +1,18 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { Flex, Group } from "metabase/ui";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+import { Flex, Group, Icon, Text } from "metabase/ui";
 
-import { EditIcon, Root, Title } from "./EditBar.styled";
+import styles from "./EditBar.module.css";
 
-type Props = {
+type EditBarLocation = "app" | "admin" | "embedding-hub";
+
+type EditBarProps = {
   title: string;
   center?: ReactNode;
   buttons: ReactNode;
-  admin?: boolean;
+  location?: EditBarLocation;
   className?: string;
   "data-testid"?: string;
 };
@@ -17,22 +21,30 @@ export function EditBar({
   title,
   center,
   buttons,
-  admin = false,
+  location = "app",
   className,
   "data-testid": dataTestId,
-}: Props) {
+}: EditBarProps) {
   return (
-    <Root
-      className={className}
-      admin={admin}
+    <Flex
+      component={FullWidthContainer}
+      className={cx(styles.root, className)}
+      // for styling
+      data-location={location}
+      align="center"
+      justify="space-between"
+      pos="relative"
+      py="sm"
       data-testid={dataTestId ?? "edit-bar"}
     >
       <Group gap="sm" align="center" wrap="nowrap">
-        <EditIcon name="pencil" size={12} />
-        <Title>{title}</Title>
+        <Icon name="pencil" size={12} className={styles.content} />
+        <Text component="span" className={styles.content} fw="bold" lh="md">
+          {title}
+        </Text>
       </Group>
       {center && <div>{center}</div>}
       <Flex gap="md">{buttons}</Flex>
-    </Root>
+    </Flex>
   );
 }

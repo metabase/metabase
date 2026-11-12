@@ -2,9 +2,8 @@ import type { ComponentType } from "react";
 
 import { Route } from "metabase/router";
 
-import { LibrarySectionLayout } from "./LibrarySectionLayout";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
-import { getDataStudioSnippetRoutes } from "./snippets/routes";
+import { LibrarySectionLayout } from "./pages/LibrarySectionLayout";
 import { getDataStudioTableRoutes } from "./tables/routes";
 
 /**
@@ -12,9 +11,9 @@ import { getDataStudioTableRoutes } from "./tables/routes";
  * screen before any of them arrive.
  */
 const libraryPage = () =>
-  import(/* webpackChunkName: "data-studio-library" */ "./LibraryPage").then(
-    ({ LibraryPage }) => ({ Component: LibraryPage }),
-  );
+  import(
+    /* webpackChunkName: "data-studio-library" */ "./pages/LibraryPage"
+  ).then(({ LibraryPage }) => ({ Component: LibraryPage }));
 
 export const getDataStudioLibraryRoutes = (IsAdmin: ComponentType) => {
   return (
@@ -22,7 +21,6 @@ export const getDataStudioLibraryRoutes = (IsAdmin: ComponentType) => {
       <Route index lazy={libraryPage} />
       {getDataStudioTableRoutes(IsAdmin)}
       {getDataStudioMetricRoutes()}
-      {getDataStudioSnippetRoutes()}
     </Route>
   );
 };

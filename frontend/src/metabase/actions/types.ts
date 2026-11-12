@@ -1,4 +1,3 @@
-import type Field from "metabase-lib/v1/metadata/Field";
 import type {
   ActionFormOption,
   FieldSettings as BaseFieldSettings,
@@ -20,7 +19,7 @@ type BaseUpdateActionParams = {
 };
 
 export type CreateQueryActionParams = BaseCreateActionParams &
-  Pick<WritebackQueryAction, "type" | "dataset_query" | "database_id">;
+  Pick<WritebackQueryAction, "type" | "dataset_query">;
 
 export type UpdateQueryActionParams = Partial<CreateQueryActionParams> &
   BaseUpdateActionParams;
@@ -42,9 +41,7 @@ export type UpdateActionParams =
   | UpdateQueryActionParams
   | UpdateImplicitActionParams;
 
-export type FieldSettings = BaseFieldSettings & {
-  field?: Field;
-};
+export type FieldSettings = BaseFieldSettings;
 
 export type ActionFormFieldProps = {
   name: string;
@@ -54,7 +51,6 @@ export type ActionFormFieldProps = {
   type: InputComponentType;
   optional?: boolean;
   options?: ActionFormOption[];
-  field?: Field;
 };
 
 export type ActionFormProps = {

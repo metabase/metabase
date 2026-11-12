@@ -11,22 +11,22 @@ import {
   SDK_DATA_APP_DEV_CONFIG_SOURCE,
 } from "./data-app-fixture-paths.mjs";
 
-const appName = process.argv[2];
-if (!appName) {
-  console.error("usage: build-data-app-fixture.mjs <appName>");
+const slug = process.argv[2];
+if (!slug) {
+  console.error("usage: build-data-app-fixture.mjs <slug>");
   process.exit(2);
 }
 
-const appDir = path.join(DATA_APP_FIXTURES_DIR, appName);
+const appDir = path.join(DATA_APP_FIXTURES_DIR, "data_apps", slug);
 
 if (!fs.existsSync(path.join(appDir, "src"))) {
-  console.error(`data-app fixture "${appName}" has no src/ at ${appDir}`);
+  console.error(`data-app fixture "${slug}" has no src/ at ${appDir}`);
   process.exit(2);
 }
 
 const scratchDir = path.join(DATA_APP_FIXTURES_DIR, ".build");
 fs.mkdirSync(scratchDir, { recursive: true });
-const dataAppDevEntry = path.join(scratchDir, `${appName}.data-app-dev.mjs`);
+const dataAppDevEntry = path.join(scratchDir, `${slug}.data-app-dev.mjs`);
 
 await bundle({
   entryPoints: [SDK_DATA_APP_DEV_CONFIG_SOURCE],

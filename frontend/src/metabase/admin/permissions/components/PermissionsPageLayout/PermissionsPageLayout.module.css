@@ -1,0 +1,4 @@
+.closeButton {
+  composes: textSecondaryHoverPrimary from "style";
+  transition: color 200ms;
+}

@@ -90,8 +90,7 @@
                                                  {:model_id  (:id model)
                                                   :pk_ref    (by-name "id")
                                                   :value_ref not-in-query})]
-              (is (=? {:cause #"Could not identify field by ref.*"}
-                      response)))))))))
+              (is (re-find #"Could not identify field by ref.*" response)))))))))
 
 (deftest snowplow-create-model-index-event-test
   (testing "Send a snowplow event when “Surface individual records matching against column” is toggled on (and saved)"

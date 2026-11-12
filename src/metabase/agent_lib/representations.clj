@@ -25,10 +25,11 @@
       `fields`;
     * explicit joins supported; implicit joins are filled in by the repair pass."
   (:require
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib.schema :as lib.schema]
-   [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
@@ -83,11 +84,12 @@
         decoded (mc/decode schema external-query mtx/string-transformer)]
     (when-let [error (mr/explain ::lib.schema/external-query decoded)]
       (throw (ex-info (tru "External query has an invalid structure.")
-                      {:status-code 400
-                       :error       :invalid-external-query
-                       :humanized   (mu.humanize/humanize error)
-                       :details     (pr-str (mu.humanize/humanize error))
-                       :schema      ::lib.schema/external-query})))
+                      {:status-code   400
+                       :error         :invalid-external-query
+                       :humanized     (mu.humanize/humanize error)
+                       :details       (pr-str (mu.humanize/humanize error))
+                       :schema        ::lib.schema/external-query
+                       :response/keys #{:humanized :details}})))
     decoded))
 
 (def ^:private known-stage-keys
@@ -118,11 +120,12 @@
                            stage-idx
                            (pr-str (vec unknown))
                            (pr-str (vec (sort known-stage-keys))))
-                      {:status-code  400
-                       :error        :unknown-stage-key
-                       :agent-error? true
-                       :stage-index  stage-idx
-                       :unknown-keys (vec unknown)})))))
+                      {:status-code   400
+                       :error         :unknown-stage-key
+                       :agent-error?  true
+                       :stage-index   stage-idx
+                       :unknown-keys  (vec unknown)
+                       :response/keys #{:unknown-keys}})))))
 
 ;;; ============================================================
 ;;; Repair-pipeline schema (string-keyed portable form)
@@ -141,36 +144,36 @@
 (defn- table-fk?
   "Portable table FK: [db-name, schema-or-null, table-name]."
   [x]
-  (match/matches? x
-                  [(_ :guard non-blank-string?) (s :guard (or (nil? s) (string? s))) (_ :guard non-blank-string?)]))
+  (match/matches? x [#'non-blank-string? (s :guard (or (nil? s) (string? s))) #'non-blank-string?]))
 
 (defn- field-fk?
   "Portable field FK: [db-name, schema-or-null, table-name, field-name, ...json-path-segments]."
   [x]
   (match/matches? x
-                  [(_ :guard non-blank-string?)
+                  [#'non-blank-string?
                    (s :guard (or (nil? s) (string? s)))
-                   (_ :guard non-blank-string?)
+                   #'non-blank-string?
                    & (args :guard (every? non-blank-string? args))]))
 
 (defn- clause-shape?
   [x]
-  (match/matches? x
-                  [(_ :guard non-blank-string?) (_ :guard map?) & _]))
+  (match/matches? x [#'non-blank-string? #'map? & _]))
 
 (defn- numeric-id-when-allowed?
   "A numeric id in a source slot, valid only on a surface that accepts numeric ids (checked at
-  validation time via [[metabase.models.serialization.resolve/*numeric-ids-allowed?*]], so the
+  validation time via [[repr.resolve/*numeric-ids-allowed?*]], so the
   same schema serves both surfaces)."
   [x]
-  (and (pos-int? x) serdes.resolve/*numeric-ids-allowed?*))
+  (and (pos-int? x) repr.resolve/*numeric-ids-allowed?*))
 
 (def ^:private registry
   {::table-fk [:and vector?
-               [:fn {:error/message "table FK must be [db-name, schema-or-null, table-name]"}
+               [:fn {:error/message (str "table FK must be [db-name, schema, table-name], "
+                                         "with null as the schema only in a database without schemas")}
                 table-fk?]]
    ::field-fk [:and vector?
-               [:fn {:error/message "field FK must be [db-name, schema-or-null, table-name, field-name, …]"}
+               [:fn {:error/message (str "field FK must be [db-name, schema, table-name, field-name, …], "
+                                         "with null as the schema only in a database without schemas")}
                 field-fk?]]
    ::options  [:and map?
                [:fn {:error/message "options must always be a map (use `{}` if empty)"}
@@ -223,17 +226,79 @@
   "Malli schema for a single MBQL stage in the portable representations form."
   [:schema {:registry registry} [:ref ::stage]])
 
-(defn validate-query
-  "Validate a string-keyed portable representations query against [[query-schema]] and return it
-  unchanged.
+(defn original-stage-index
+  "Return the original index of a repaired stage, or `stage-idx` if repair metadata is missing."
+  [query stage-idx]
+  (get (::original-stage-indexes (meta query)) stage-idx stage-idx))
 
-  Used as a sanity check between the repair and resolve passes."
-  [parsed]
-  (when-let [error (mr/explain query-schema parsed)]
-    (throw (ex-info (tru "Representations query has an invalid structure.")
-                    {:status-code 400
-                     :error       :invalid-representations-query
-                     :humanized   (mu.humanize/humanize error)
-                     :details     (pr-str (mu.humanize/humanize error))
-                     :schema      ::query})))
-  parsed)
+(defn original-query-path
+  "Translate a repaired query path to the stage indexes in the original input."
+  [query path]
+  (let [[stage-key stage-idx] path]
+    (cond-> path
+      (and (#{:stages "stages"} stage-key) (integer? stage-idx))
+      (assoc 1 (original-stage-index query stage-idx)))))
+
+(defn validate-query
+  "Validate a portable representations query against [[query-schema]] and return it unchanged.
+
+  `parsed` must have string keys. Error paths use the original stage indexes from `repaired-query`,
+  which defaults to `parsed`."
+  ([parsed] (validate-query parsed parsed))
+  ([parsed repaired-query]
+   (when-let [error (mr/explain query-schema parsed)]
+     (let [humanized (mu.humanize/humanize
+                      (update error :errors (fn [errors]
+                                              (mapv #(update % :in (partial original-query-path repaired-query))
+                                                    errors))))]
+       (throw (ex-info (tru "Representations query has an invalid structure.")
+                       {:status-code   400
+                        :error         :invalid-representations-query
+                        :error-code    :invalid-representations-query
+                        :humanized     humanized
+                        :details       (pr-str humanized)
+                        :schema        ::query
+                        :response/keys #{:humanized :details}}))))
+   parsed))
+
+(defn query-path
+  "Format a query location as a dotted path with bracketed indices, or `(root)` for an empty path."
+  [path]
+  (if (seq path)
+    (reduce (fn [s part]
+              (if (integer? part)
+                (str s "[" part "]")
+                (str s (when (seq s) ".") (if (keyword? part) (keyword->repr-string part) part))))
+            "" path)
+    "(root)"))
+
+(defn- humanized-locations
+  [path errors]
+  (cond
+    (nil? errors) nil
+    (map? errors) (mapcat (fn [[k v]] (humanized-locations (conj path k) v)) errors)
+    (seq? errors) (mapcat #(humanized-locations path %) errors)
+    (vector? errors)
+    (mapcat (fn [[i v]] (humanized-locations (conj path i) v)) (map-indexed vector errors))
+    :else [[path (str errors)]]))
+
+(def ^:private max-humanized-paths-length
+  "Character budget for structural validation paths, including the truncation marker."
+  500)
+
+(defn humanized->paths
+  "Flatten humanized validation errors into readable paths, capped at [[max-humanized-paths-length]] with an ellipsis."
+  [humanized]
+  (let [locations (humanized-locations [] humanized)
+        by-path   (group-by first locations)
+        text      (->> (distinct (map first locations))
+                       (map (fn [path]
+                              (str (query-path path) ": "
+                                   (str/join ", " (distinct (map second (get by-path path)))))))
+                       (interpose "; ")
+                       (mapcat seq)
+                       (take (inc max-humanized-paths-length))
+                       (apply str))]
+    (if (> (count text) max-humanized-paths-length)
+      (str (subs text 0 (dec max-humanized-paths-length)) "\u2026")
+      text)))

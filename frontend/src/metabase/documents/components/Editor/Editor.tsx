@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import Image from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
@@ -100,7 +101,7 @@ export interface EditorProps {
   editable?: boolean;
   isLoading?: boolean;
   /** Ref to the editor container for external access (e.g., anchor scrolling) */
-  editorContainerRef?: React.RefObject<HTMLDivElement>;
+  editorContainerRef?: React.RefObject<HTMLDivElement | null>;
   hostOverride?: Partial<DocumentEditorHost>;
   placeholder?: string;
 }

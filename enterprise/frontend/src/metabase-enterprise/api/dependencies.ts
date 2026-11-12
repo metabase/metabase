@@ -1,6 +1,8 @@
 import type {
+  DependencyCountsResponse,
   DependencyGraph,
   DependencyNode,
+  GetDependencyCountsRequest,
   GetDependencyGraphRequest,
   ListBreakingGraphNodesRequest,
   ListBreakingGraphNodesResponse,
@@ -12,12 +14,27 @@ import type {
 
 import { EnterpriseApi } from "./api";
 import {
+  listTag,
   provideDependencyGraphTags,
   provideDependencyNodeListTags,
 } from "./tags";
 
 export const dependencyApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getDependencyCounts: builder.query<
+      DependencyCountsResponse,
+      GetDependencyCountsRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/dependencies/counts",
+        params,
+      }),
+      providesTags: () => [
+        ...provideDependencyNodeListTags([]),
+        listTag("collection"),
+      ],
+    }),
     getDependencyGraph: builder.query<
       DependencyGraph,
       GetDependencyGraphRequest
@@ -81,6 +98,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
+  useGetDependencyCountsQuery,
   useGetDependencyGraphQuery,
   useListNodeDependentsQuery,
   useListBreakingGraphNodesQuery,

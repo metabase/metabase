@@ -16,9 +16,9 @@
    [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
-   [metabase.util.string :as string]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -47,10 +47,7 @@
       ;; the getter
       (is (contains? #{0 1} (call-count)))))
   (testing "Return falsey for an empty instance. Values should be cached for current app DB to support swapping in tests/REPL"
-    ;; create a new completely empty database.
-    (mt/with-temp-empty-app-db [_conn :h2]
-      ;; make sure the DB is setup (e.g., run all the Liquibase migrations)
-      (mdb/setup-db! :create-sample-content? true)
+    (mt/with-sample-h2-app-db!
       (t2/with-call-count [call-count]
         (dotimes [_ 5]
           (is (= false
@@ -67,8 +64,7 @@
 
 (deftest clear-token-test
   (testing "clear-token! removes the setup token so an unusable value isn't left in (public) Settings (UXW-4359)"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
+    (mt/with-empty-h2-app-db!
       (let [token (setup/create-token!)]
         (testing "a token exists and validates before it is cleared"
           (is (string? token))
@@ -85,28 +81,24 @@
             (is (= new-token (setup/setup-token)))))))))
 
 (deftest has-example-dashboard-id-setting-test
-  (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? true)
+  (mt/with-sample-h2-app-db!
     (testing "The example-dashboard-id setting should be set if the example content is loaded"
       (is (= 1
              (appearance/example-dashboard-id)))))
   (testing "The example-dashboard-id setting should be nil if the example content isn't loaded"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
+    (mt/with-empty-h2-app-db!
       (is (nil? (appearance/example-dashboard-id)))))
   (testing "The example-dashboard-id setting should be reset to nil if the example dashboard is archived"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? true)
+    (mt/with-sample-h2-app-db!
       (is (= 1
              (appearance/example-dashboard-id)))
-      (t2/update! :model/Dashboard 1 {:archived true})
+      (t2/update! :model/Dashboard :id 1 {:archived true})
       (is (nil? (appearance/example-dashboard-id))))))
 
 (deftest sample-content-permissions-test
-  (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? true)
+  (mt/with-sample-h2-app-db!
     (let [dashboard  (t2/select-one :model/Dashboard :creator_id config/internal-mb-user-id)
-          collection (t2/select-one :model/Collection (:collection_id dashboard))
+          collection (t2/select-one :model/Collection :id (:collection_id dashboard))
           card       (t2/select-one :model/Card :creator_id config/internal-mb-user-id)]
       (testing "Rasta (as a member of 'All Users') should have sufficient privileges to edit the example content"
         (mt/with-current-user (mt/user->id :rasta)
@@ -172,13 +164,13 @@
             (t2/delete! :setting :key "encryption-check")
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (is (= :done (mdb/setup-db! :create-sample-content? false)))
-            (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
+            (is (u/uuid-string? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
           (testing "The legacy plaintext \"unencrypted\" marker on such a database is replaced the same way"
             (t2/delete! :setting :key "encryption-check")
             (t2/insert! :setting {:key "encryption-check", :value "unencrypted"})
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (is (= :done (mdb/setup-db! :create-sample-content? false)))
-            (is (string/valid-uuid? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
+            (is (u/uuid-string? (encryption/maybe-decrypt (t2/select-one-fn :value "setting" :key "encryption-check")))))
           (testing "Starting without the key throws"
             (encryption-test/with-secret-key nil
               (reset! (:status mdb.connection/*application-db*) ::setup-finished)
@@ -189,7 +181,7 @@
               (reset! (:status mdb.connection/*application-db*) ::setup-finished)
               (is (thrown-with-msg? Exception #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" (mdb/setup-db! :create-sample-content? false)))
               (let [setting-value (:value (t2/select-one "setting" :key "site-uuid-for-version-info-fetching"))] ; need to select directly from "settings" to avoid auto-decryption
-                (is (not (string/valid-uuid? setting-value)))))))))))
+                (is (not (u/uuid-string? setting-value)))))))))))
 
 (defn- set-encryption-check-raw! [value]
   (t2/delete! :setting :key "encryption-check")

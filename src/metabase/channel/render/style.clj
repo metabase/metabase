@@ -83,6 +83,10 @@
   "Background fill for the row-label cells of a rendered `:pivot` table."
   "#FAFAFA")
 
+(def ^:const color-row-stripe-bg
+  "Background fill for alternating rows of a rendered `:table` when `table.striped` is enabled."
+  "#F9FBFC")
+
 ;; don't try to improve the code and make this a plain variable, in EE it's customizable which is why it's a function.
 ;; Too much of a hassle to have it be a fn in one version of the code an a constant in another
 (defn primary-color
@@ -192,9 +196,8 @@
 
 (defn- register-fonts! []
   (try
-    (register-font! "frontend_client/app/fonts/Lato/Lato-Regular.ttf")
-    (doseq [weight ["700" "900"]]
-      (register-font! (format "frontend_client/app/fonts/Lato/lato-v16-latin-%s.ttf" weight)))
+    (doseq [style ["Regular" "Bold" "Black"]]
+      (register-font! (format "fonts/pdf/Lato-%s.ttf" style)))
     (catch Throwable e
       (let [message (str (trs "Error registering fonts: Metabase will not be able to send Pulses.")
                          " "

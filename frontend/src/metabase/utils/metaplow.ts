@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { init, track } from "@metabase/track";
 import { isObject } from "underscore";
 
@@ -17,15 +18,22 @@ const getSanitizedUrl = (url: string) => {
 };
 
 interface MetaplowConfig {
+  hostUrl: string | null;
   getUserId: () => number | undefined;
 }
 
-export function initMetaplow(config: MetaplowConfig): void {
+export function getCollectorHostUrl(): string | null {
+  if (!Settings.get("metaplow-tracking-enabled")) {
+    return null;
+  }
   const metaplowUrl = Settings.get("metaplow-url");
-  if (!metaplowUrl) {
+  return metaplowUrl ? metaplowUrl.replace(/\/send$/, "") : null;
+}
+
+export function initMetaplow({ hostUrl, getUserId }: MetaplowConfig): void {
+  if (!hostUrl) {
     return;
   }
-  const hostUrl = metaplowUrl.replace(/\/send$/, "");
 
   init({
     website: METAPLOW_WEBSITE_ID,
@@ -59,7 +67,7 @@ export function initMetaplow(config: MetaplowConfig): void {
         data: {
           // Unjustified type cast. FIXME
           ...(payload.data as Record<string, unknown> | undefined),
-          user_id: config.getUserId(),
+          user_id: getUserId(),
         },
       };
     },

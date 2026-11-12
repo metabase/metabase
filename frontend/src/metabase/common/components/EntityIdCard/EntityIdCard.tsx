@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import {
@@ -12,7 +11,6 @@ import {
   SidesheetCardTitle,
 } from "metabase/common/components/Sidesheet";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
-import CS from "metabase/css/core/index.css";
 import {
   Flex,
   Group,
@@ -71,15 +69,18 @@ export const EntityInfoIcon = () => {
 
 export const EntityCopyButton = ({ entityId }: { entityId: string }) => (
   <CopyButton
-    className={cx(Styles.CopyButton, CS.hoverParent, CS.hoverVisibility)}
+    className={Styles.CopyButton}
     value={entityId}
+    aria-label={t`Copy entity ID ${entityId}`}
     style={{
       height: "1rem",
     }}
     target={
-      <Flex gap="sm" wrap="nowrap" align="center">
-        <div className={cx(CS.hoverChild)}>{COPY_BUTTON_ICON}</div>
-        <Text lh="1rem">{entityId}</Text>
+      <Flex component="span" gap="sm" wrap="nowrap" align="center">
+        <span className={Styles.CopyIcon}>{COPY_BUTTON_ICON}</span>
+        <Text component="span" lh="1rem">
+          {entityId}
+        </Text>
       </Flex>
     }
   />

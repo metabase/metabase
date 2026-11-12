@@ -9,6 +9,8 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel handle-bad-template-tags-test
   (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "
                 "response because of one malformed Card, dump the error to the logs and return nil.")
@@ -68,7 +70,7 @@
                          :name         "device_category"
                          :display-name "Device category"
                          :type         :dimension
-                         :dimension    [:field {} 298221]
+                         :field-id     298221
                          :default      nil}]
                        :native   "<<NATIVE QUERY>>"}]
            :database 26}
@@ -81,7 +83,7 @@
                                               "name"         "device_category"
                                               "display-name" "Device category"
                                               "type"         "dimension"
-                                              "dimension"    ["field" 298221 nil]
+                                              "field-id"     298221
                                               "widget-type"  "category/="
                                               "default"      nil}}
                           "query" "<<NATIVE QUERY>>"}})))))

@@ -16,17 +16,13 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/db/:id"
+(api.macros/defendpoint :post "/db/:id" :- [:map {:closed true} [:success [:= true]]]
   "Notification about a potential schema change to one of our `Databases`.
   Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single
   `Table`. Optional Parameter `:scan` can be `\"full\"` or `\"schema\"` for a full sync or a schema sync, available
   regardless if a `:table_id` or `:table_name` is passed.
   This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in
-  the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables.html#mb_api_key)"
+  the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_api_key)"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
@@ -38,14 +34,14 @@
   (let [schema?       (when scan (#{"schema" :schema} scan))
         table-sync-fn (if schema? sync-metadata/sync-table-metadata! sync/sync-table!)
         db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]
-    (api/let-404 [database (sync.db/database id)]
-      (let [table (cond
-                    table_id   (api/check-404 (sync.db/table-in-database id (int table_id)))
-                    table_name (api/check-404 (sync.db/table-by-name id table_name)))]
-        (cond-> (future (if table
-                          (table-sync-fn table)
-                          (db-sync-fn database)))
-          synchronous? deref))))
+    (api/check-404 (sync.db/database-exists? id))
+    (let [table (cond
+                  table_id   (api/check-404 (sync.db/table-in-database id (int table_id)))
+                  table_name (api/check-404 (sync.db/table-by-name id table_name)))]
+      (cond-> (future (if table
+                        (table-sync-fn table)
+                        (db-sync-fn id)))
+        synchronous? deref)))
   {:success true})
 
 (defn- without-stacktrace [^Throwable throwable]
@@ -53,10 +49,11 @@
     (.setStackTrace (make-array StackTraceElement 0))))
 
 (defn- find-and-sync-new-table
-  [database table-name schema-name]
-  (let [driver (driver.u/database->driver database)
-        table  {:name   table-name
-                :schema schema-name}]
+  [database-id table-name schema-name]
+  (let [database (driver.u/lib-database database-id)
+        driver   (driver.u/database->driver database)
+        table    {:name   table-name
+                  :schema schema-name}]
     (if (driver/table-exists? driver database table)
       (let [created (sync-tables/create-or-reactivate-table! database table)]
         (doto created
@@ -71,12 +68,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/db/attached_datawarehouse"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/db/attached_datawarehouse" :- [:map {:closed true} [:success [:= true]]]
   "Sync the attached datawarehouse. Can provide in the body:
   - table_name and schema_name: both strings. Will look for an existing table and sync it, otherwise will try to find a
   new table with that name and sync it. If it cannot find a table it will throw an error. If table_name is empty or
@@ -88,16 +81,16 @@
                                                      [:table_name   {:optional true} [:maybe ms/NonBlankString]]
                                                      [:schema_name  {:optional true} [:maybe string?]]
                                                      [:synchronous? {:default false} [:maybe ms/BooleanValue]]]]
-  (api/let-404 [database (sync.db/attached-dwh-database)]
+  (api/let-404 [database-id (sync.db/attached-dwh-database-id)]
     (if (str/blank? table_name)
-      (cond-> (future (sync-metadata/sync-db-metadata! database))
+      (cond-> (future (sync-metadata/sync-db-metadata! database-id))
         synchronous? deref)
-      (if-let [table (sync.db/table-by-schema-and-name (:id database) schema_name table_name)]
+      (if-let [table (sync.db/table-by-schema-and-name database-id schema_name table_name)]
         (cond-> (future (sync-metadata/sync-table-metadata! table))
           synchronous? deref)
         ;; find and sync is always synchronous. And we want it to be so since the "can't find this table" error is
         ;; rather informative. If it's on a future we won't see it.
-        (find-and-sync-new-table database table_name schema_name))))
+        (find-and-sync-new-table database-id table_name schema_name))))
   {:success true})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -113,12 +106,12 @@
    {:keys [schema_name table_name]} :- [:map {:closed true}
                                         [:schema_name ms/NonBlankString]
                                         [:table_name  ms/NonBlankString]]]
-  (api/let-404 [database (sync.db/database id)]
-    (if-not (sync.db/table-by-schema-and-name id schema_name table_name)
-      (find-and-sync-new-table database table_name schema_name)
-      (throw (without-stacktrace
-              (ex-info (trs "Table ''{0}.{1}'' already exists"
-                            schema_name table_name)
-                       {:status-code 400
-                        :schema_name schema_name
-                        :table_name  table_name}))))))
+  (api/check-404 (sync.db/database-exists? id))
+  (if-not (sync.db/table-by-schema-and-name id schema_name table_name)
+    (find-and-sync-new-table id table_name schema_name)
+    (throw (without-stacktrace
+            (ex-info (trs "Table ''{0}.{1}'' already exists"
+                          schema_name table_name)
+                     {:status-code 400
+                      :schema_name schema_name
+                      :table_name  table_name})))))

@@ -1,14 +1,13 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import { createRequire } from "node:module";
-import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { ResolverFactory } from "oxc-resolver";
-
 import { relative as upstreamImportX } from "eslint-plugin-import-x/utils/resolve";
+import { ResolverFactory } from "oxc-resolver";
 
 import { createImportResolverService } from "../oxlint-import-resolver.mjs";
 

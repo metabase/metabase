@@ -121,4 +121,37 @@ describe("TableSection", () => {
       await assertErrorToast("Failed to update field order");
     });
   });
+
+  describe("read-only table", () => {
+    it("shows a table that cannot be written as read-only", () => {
+      setup({ table: { ...ORDERS_TABLE, can_write: false } });
+
+      expect(
+        screen.getByPlaceholderText("Give this table a name"),
+      ).toHaveAttribute("readonly");
+      expect(screen.getByLabelText("table2 icon")).toBeInTheDocument();
+      expect(screen.getByLabelText("Go to this table")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Sorting/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText("Give this field a name"),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: /Sync options/ }),
+      ).toBeEnabled();
+    });
+
+    it("keeps a writable table editable", () => {
+      setup({ table: { ...ORDERS_TABLE, can_write: true } });
+
+      expect(
+        screen.getByPlaceholderText("Give this table a name"),
+      ).not.toHaveAttribute("readonly");
+      expect(screen.getByRole("button", { name: /Sorting/ })).toBeEnabled();
+      expect(
+        screen.getByPlaceholderText("Give this field a name"),
+      ).toBeEnabled();
+    });
+  });
 });

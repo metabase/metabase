@@ -4,7 +4,12 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SdkBreadcrumbs } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
+import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import {
+  SdkBreadcrumbs,
+  SdkBreadcrumbsProvider,
+} from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
+import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { useSdkInternalNavigation } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
@@ -38,7 +43,7 @@ type EntityBreadcrumbType = Exclude<SdkBreadcrumbItemType, "all-collections">;
 
 const BREADCRUMB_HEIGHT = "3.5rem";
 
-export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
+function MetabaseBrowserContent({ settings }: MetabaseBrowserProps) {
   const navigationContext = useSdkInternalNavigation();
   const { initialCollection } = settings;
 
@@ -292,3 +297,21 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
     </Stack>
   );
 }
+
+const MetabaseBrowserInner = ({ settings }: MetabaseBrowserProps) => (
+  <SdkInternalNavigationProvider
+    keepChildrenMounted
+    // Needed so dashboards and questions opened via click behavior can scroll
+    style={{ height: "100%" }}
+  >
+    {/*  re-mount breadcrumbs when initial collection changes */}
+    <SdkBreadcrumbsProvider key={settings.initialCollection}>
+      <MetabaseBrowserContent settings={settings} />
+    </SdkBreadcrumbsProvider>
+  </SdkInternalNavigationProvider>
+);
+
+export const MetabaseBrowser = withPublicComponentWrapper(
+  MetabaseBrowserInner,
+  { supportsGuestEmbed: false },
+);

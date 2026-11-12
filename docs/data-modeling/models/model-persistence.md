@@ -1,5 +1,6 @@
 ---
 title: Model persistence
+summary: Store model results as tables in your data warehouse so models load faster. Prefer transforms, because Metabase will deprecate model persistence.
 redirect_from:
   - /docs/latest/data-modeling/model-persistence
 ---
@@ -38,7 +39,7 @@ To turn on model persistence for your Metabase, go to **Admin** > **Performance*
 
 You can set models to refresh based on one of the default frequencies (every 1 hour, 2 hours, etc.), or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own update frequency.
 
-The cron scheduler uses the [default instance report Timezone](../../configuring-metabase/localization.md#set-default-instance-report-timezone) if selected. Otherwise the scheduler will use the System Timezone (which defaults to GMT in [Metabase Cloud](https://www.metabase.com/cloud/)).
+The cron scheduler uses the [default instance report Timezone](../../configuring-metabase/localization.md#set-default-instance-report-timezone) if selected. Otherwise the scheduler will use the System Timezone (which defaults to GMT in [Metabase Cloud](https://www.metabase.com/cloud)).
 
 We recommend scheduling your models to refresh on a frequency that makes sense with how often your source tables update with new data.
 

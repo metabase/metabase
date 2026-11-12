@@ -167,6 +167,7 @@ jobs:
           maildev: true
           openldap: true
           snowplow: true
+          metaplow: true
           postgres: ${{ inputs.qa_db }}
           mysql: ${{ inputs.qa_db }}
           mongo: ${{ inputs.qa_db }}

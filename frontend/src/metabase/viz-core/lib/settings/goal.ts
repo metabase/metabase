@@ -1,29 +1,7 @@
 import { t } from "ttag";
 
-import type { VisualizationSettings } from "metabase-types/api";
-
 import { getDefaultGoalLabel } from "../../shared/settings/cartesian-chart";
-import type { ChartGoal } from "../../shared/types/settings";
 import type { VisualizationSettingsDefinitions } from "../../types";
-
-import { getStackOffset } from "./stacking";
-
-const getGoalValue = (value: number, isPercent: boolean) =>
-  isPercent ? value / 100 : value;
-
-export const getChartGoal = (
-  settings: VisualizationSettings,
-): ChartGoal | null => {
-  if (!settings["graph.show_goal"]) {
-    return null;
-  }
-  const isPercent = getStackOffset(settings) === "expand";
-
-  return {
-    value: getGoalValue(settings["graph.goal_value"] ?? 0, isPercent),
-    label: settings["graph.goal_label"] ?? getDefaultGoalLabel(),
-  };
-};
 
 export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.show_goal": {

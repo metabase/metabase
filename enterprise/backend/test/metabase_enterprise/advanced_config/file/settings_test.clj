@@ -2,9 +2,16 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.core.config-from-file :as config-from-file]
+   [metabase.premium-features.settings :as premium-features.settings]
+   [metabase.premium-features.test-util :as premium-features.tu]
+   [metabase.premium-features.token-check :as token-check]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
@@ -15,6 +22,36 @@
   "Internal test setting."
   :visibility :internal
   :encryption :no)
+
+(defsetting config-from-file-feature-gated-test-setting
+  "Internal test setting gated behind a premium feature."
+  :visibility :internal
+  :encryption :no
+  :feature    :test-config-ordering-feature)
+
+(deftest settings-applied-token-first-test
+  (testing "premium-embedding-token is applied before other settings, regardless of file order (UXW-3782)"
+    ;; Simulate a token that, once set, unlocks `:test-config-ordering-feature`. We stub the token setter so we don't
+    ;; hit the MetaStore, and make the feature set reflect whether the token has been applied yet.
+    (mt/with-dynamic-fn-redefs [token-check/-set-premium-embedding-token!
+                                #(setting/set-value-of-type! :string :premium-embedding-token %)]
+      (binding [token-check/*token-features* (fn []
+                                               (cond-> #{"config-text-file"}
+                                                 (premium-features.settings/premium-embedding-token)
+                                                 (conj "test-config-ordering-feature")))]
+        ;; Inside the stubbed setter, so the original token is restored through the stub too.
+        (mt/with-temporary-setting-values [premium-embedding-token                     nil
+                                           config-from-file-feature-gated-test-setting nil]
+          (testing "feature-gated setting listed BEFORE the token still succeeds"
+            (advanced-config.file/initialize!
+             {:version 1
+              ;; array-map preserves insertion order: gated setting first, token second
+              ;; The YAML reader preserves order similarly, so this is a good test without needing a real file.
+              :config  {:settings (array-map
+                                   :config-from-file-feature-gated-test-setting "yes"
+                                   :premium-embedding-token                     (premium-features.tu/random-token))}})
+            (is (= "yes"
+                   (config-from-file-feature-gated-test-setting)))))))))
 
 (deftest settings-test
   (testing "Should be able to set settings with config-from-file"
@@ -43,3 +80,18 @@
                  :config  {:settings {:config-from-file-settings-test-setting-FAKE 1000}}})))
         (is (=? [{:level :warn, :message (u/colorize :yellow "Ignoring unknown setting in config: config-from-file-settings-test-setting-FAKE.")}]
                 (messages)))))))
+
+(deftest boot-initialize-test
+  (testing "The OSS boot hook applies the config file from disk, with `{{env VAR}}` templates expanded"
+    (mt/with-temp-file [filename "boot-config-file.yml"]
+      (spit filename (str "version: 1\n"
+                          "config:\n"
+                          "  settings:\n"
+                          "    config-from-file-settings-test-setting: '{{env config-from-file-boot-test-value}}'\n"))
+      (mt/with-temporary-setting-values [config-from-file-settings-test-setting nil]
+        (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env*
+                                                    :mb-config-file-path             filename
+                                                    :config-from-file-boot-test-value "from-env")]
+          (config-from-file/boot-initialize!)
+          (is (= "from-env"
+                 (config-from-file-settings-test-setting))))))))

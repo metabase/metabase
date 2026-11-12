@@ -11,6 +11,7 @@
    [hooks.common.modules :as hooks.modules]
    [humane-are.core :as humane-are]
    [mb.hawk.core :as hawk]
+   [mb.hawk.hooks]
    [metabase.analytics.core :as analytics.core]
    [metabase.config.core :as config]
    [metabase.core.bootstrap]
@@ -18,10 +19,12 @@
    [metabase.test.data.env :as tx.env]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u]
    [metabase.util.date-2]
    [metabase.util.i18n.impl]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [pjstadig.humane-test-output :as humane-test-output]))
 
 (set! *warn-on-reflection* true)
@@ -145,6 +148,16 @@
       (doseq [init-step steps]
         (fixtures/initialize init-step))
       (log/info (str "Initialized " (count steps) " fixtures in " (duration-ms) "ms")))))
+
+(methodical/defmethod mb.hawk.hooks/before-run ::proxy-dynamic-redef-targets
+  "Proxy every var that `with-dynamic-fn-redefs` names before the first test, so a test that calls a captured value
+  from its own replacement fails on its first run rather than on a later one."
+  [_options]
+  (let [{:keys [proxied skipped failed]} (dynamic-redefs/proxy-compiled-targets!)]
+    (log/infof "with-dynamic-fn-redefs: proxied %d vars before the run; skipped %d it cannot proxy: %s"
+               proxied (count skipped) (pr-str (sort-by str skipped)))
+    (doseq [[a-var e] failed]
+      (log/warnf e "with-dynamic-fn-redefs: could not proxy %s before the run" a-var))))
 
 (defn find-and-run-tests-repl
   "Find and run tests from the REPL."

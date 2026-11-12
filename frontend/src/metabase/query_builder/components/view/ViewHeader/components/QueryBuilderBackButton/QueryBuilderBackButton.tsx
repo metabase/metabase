@@ -55,17 +55,15 @@ export function QueryBuilderBackButton({
   return (
     <Tooltip label={label}>
       <ActionIcon
-        variant="outline"
+        size="lg"
         radius="xl"
-        size="2.625rem"
-        color="border-neutral"
         aria-label={label}
         onClick={handleClick}
         component={noLink ? undefined : Link}
         to={url}
         {...actionIconProps}
       >
-        <Icon c="core-brand" name="arrow_left" />
+        <Icon name="arrow_left" />
       </ActionIcon>
     </Tooltip>
   );

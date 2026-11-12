@@ -155,7 +155,6 @@
             (compare-results export-format (mt/native-query {:query  sql
                                                              :params args}))))))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *number-of-cans* nil)
 
 (deftest ^:parallel preserve-thread-bindings-test
@@ -329,7 +328,7 @@
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]
       (mt/with-temporary-setting-values [enable-public-sharing true
-                                         enable-embedding-static true]
+                                         enable-embedding-modular true]
         (embed-test/with-new-secret-key!
           ;; allowing `with-temp` here since it's needed to create Dashboards
           #_{:clj-kondo/ignore [:discouraged-var]}
@@ -629,15 +628,20 @@
 ;;; |                                        Streaming logic unit tests                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- export-column-order
+  "[[qp.streaming/export-column-order]] for an unknown display."
+  [cols table-columns]
+  (#'qp.streaming/export-column-order cols table-columns nil))
+
 (deftest ^:parallel export-column-order-test
   (testing "correlation of columns by field ref"
     (is (= [0 1]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
             [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}])))
     (is (= [1 0]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
             [{::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}])))))
@@ -656,7 +660,7 @@
   (testing "columns without corresponding viz-settings are included"
     ;; first two have order respected, then we include the rest of the columns
     (is (= [1 0 4 5 6]
-           (#'qp.streaming/export-column-order
+           (export-column-order
             [(col "Col1" 1)
              (col "Col2" 2)
              (col "Col3" 3)
@@ -672,12 +676,12 @@
 (deftest ^:parallel export-column-order-test-2
   (testing "correlation of columns by name"
     (is (= [0 1]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:name "Col1"}, {:name "Col2"}]
             [{::mb.viz/table-column-name "Col1", ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-name "Col2", ::mb.viz/table-column-enabled true}])))
     (is (= [1 0]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
             [{::mb.viz/table-column-name "Col2", ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-name "Col1", ::mb.viz/table-column-enabled true}])))))
@@ -685,12 +689,12 @@
 (deftest ^:parallel export-column-order-test-3
   (testing "correlation of columns by field ref"
     (is (= [0]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
             [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled false}])))
     (is (= [1]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
             [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled false}
              {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}])))))
@@ -698,7 +702,7 @@
 (deftest ^:parallel export-column-order-test-4
   (testing "remapped columns use the index of the new column"
     (is (= [1]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:id 0, :name "Col1", :remapped_to "Col2", :field_ref ["field" 0 nil]},
              {:id 1, :name "Col2", :remapped_from "Col1", :field_ref ["field" 1 nil]}]
             [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}])))))
@@ -707,12 +711,12 @@
   (testing "table-columns entries without a corresponding entry in cols are dropped per-entry; the matching cols are
            still exported in cols order (#19465, #75791)"
     (is (= [0]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}]
             [{::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-field-ref [:field 2 nil], ::mb.viz/table-column-enabled true}])))
     (is (= [0]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}]
             [{::mb.viz/table-column-name "Col1" , ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-name "Col2" , ::mb.viz/table-column-enabled true}])))))
@@ -720,28 +724,28 @@
 (deftest ^:parallel export-column-order-test-6
   (testing "if table-columns is nil, original order of cols is used"
     (is (= [0 1]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
             nil)))
     (is (= [0 1]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:name "Col1"}, {:name "Col2"}]
             nil)))))
 
 (deftest ^:parallel export-column-order-test-7
   (testing "if table-columns is nil, remapped columns are still respected"
     (is (= [1]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:id 0, :name "Col1" :remapped_to "Col2"}, {:id 1, :name "Col2" :remapped_from "Col1"}]
             nil)
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:name "Col1" :remapped_to "Col2"}, {:name "Col2" :remapped_from "Col1"}]
             nil)))))
 
 (deftest ^:parallel export-column-order-includes-unexcluded-columns
   (testing "if a column is not explicitly included it's splatted onto the end"
     (is (= [1 0 2]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:id 0, :name "Col1", :field_ref [:field 0 nil]}
              {:id 1, :name "Col2", :field_ref [:field 1 nil]}
              {:id 2, :name "Col3", :field_ref [:field 2 nil]}]
@@ -754,13 +758,63 @@
     ;; Models the reporter's case: 4-col native query (ID TITLE CATEGORY PRICE), TITLE hidden, custom order, plus
     ;; one stale orphan entry (EAN) left over from a previous version of the query.
     (is (= [0 2 3]
-           (@#'qp.streaming/export-column-order
+           (export-column-order
             [{:name "ID"}, {:name "TITLE"}, {:name "CATEGORY"}, {:name "PRICE"}]
             [{::mb.viz/table-column-name "ID"       , ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-name "EAN"      , ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-name "TITLE"    , ::mb.viz/table-column-enabled false}
              {::mb.viz/table-column-name "CATEGORY" , ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-name "PRICE"    , ::mb.viz/table-column-enabled true}])))))
+
+(deftest ^:parallel export-column-order-details-only-test
+  (let [cols          [{:id 0, :name "Col1", :field_ref [:field 0 nil]}
+                       {:id 1, :name "Col2", :field_ref [:field 1 nil], :visibility_type :details-only}
+                       {:id 2, :name "Col3", :field_ref [:field 2 nil]}]
+        table-columns [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}
+                       {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}
+                       {::mb.viz/table-column-field-ref [:field 2 nil], ::mb.viz/table-column-enabled true}]]
+    (testing "the table viz hides details-only columns, so table exports drop them too (#70909)"
+      (is (= [0 2]
+             (@#'qp.streaming/export-column-order cols table-columns :table)))
+      (testing "also when table-columns is nil"
+        (is (= [0 2]
+               (@#'qp.streaming/export-column-order (map #(dissoc % :field_ref) cols) nil :table)))))
+    (testing "every other display keeps them: object detail shows them, and charts plot whatever they are given"
+      (is (= [0 1 2]
+             (@#'qp.streaming/export-column-order cols table-columns :object)))
+      (is (= [0 1 2]
+             (@#'qp.streaming/export-column-order cols table-columns :line)))
+      (is (= [0 1 2]
+             (@#'qp.streaming/export-column-order cols table-columns nil))))))
+
+(deftest ^:parallel order-cols-details-only-test
+  (let [cols [{:id 0, :name "Col1", :field_ref [:field 0 nil]}
+              {:id 1, :name "Col2", :field_ref [:field 1 nil], :visibility_type :details-only}
+              {:id 2, :name "Col3", :field_ref [:field 2 nil]}]]
+    (testing "a table export drops details-only columns (#70909)"
+      (is (= ["Col1" "Col3"]
+             (map :name (first (qp.streaming/order-cols cols {::mb.viz/display :table}))))))
+    (testing "unless the legacy \"Pivot table\" toggle applies, since the pivot grid is built from every column"
+      (is (= ["Col1" "Col2" "Col3"]
+             (map :name (first (qp.streaming/order-cols cols {::mb.viz/display      :table
+                                                              :table.pivot         true
+                                                              :table.pivot_column  "Col2"
+                                                              :table.cell_column   "Col3"}))))))))
+
+(deftest ^:parallel simple-pivot-indexes-test
+  (let [cols     [{:name "Col1"} {:name "Col2"} {:name "Col3"} {:name "Col4"}]
+        settings {:table.pivot true, :table.pivot_column "Col2", :table.cell_column "Col3"}]
+    (testing "the toggle applies with more than three columns; the first column left over is the normal one (#86290)"
+      (is (= {:normal 0, :pivot 1, :cell 2}
+             (qp.streaming/simple-pivot-indexes cols settings))))
+    (testing "string-keyed settings work too"
+      (is (= {:normal 0, :pivot 1, :cell 2}
+             (qp.streaming/simple-pivot-indexes cols (update-keys settings name)))))
+    (testing "nil when the toggle is off, a column is missing, or both settings name the same column"
+      (is (nil? (qp.streaming/simple-pivot-indexes cols (dissoc settings :table.pivot))))
+      (is (nil? (qp.streaming/simple-pivot-indexes cols (assoc settings :table.pivot_column "Nope"))))
+      (is (nil? (qp.streaming/simple-pivot-indexes cols (assoc settings :table.cell_column "Col2"))))
+      (is (nil? (qp.streaming/simple-pivot-indexes (take 2 cols) settings))))))
 
 ;; QP Nil Fix Tests
 ;; These tests verify that query cancellation returns proper results instead of nil

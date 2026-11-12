@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 
 import type { ColorSettings } from "metabase-types/api/settings";
@@ -31,6 +32,7 @@ export const mutateColors = (whitelabelColors: ColorSettings) => {
 };
 
 export const staticVizOverrides = {
+  "chart-axis": baseColors.orion[20],
   "text-primary": baseColors.orion[80],
   "text-secondary": baseColors.orion[60],
   "text-disabled": baseColors.orion[40],

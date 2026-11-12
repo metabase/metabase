@@ -138,16 +138,20 @@ function providerToFormValues(
   };
 }
 
-function formValuesToProvider(
-  values: OIDCFormValues,
-  groupSync: Partial<OidcGroupSync> | undefined,
-): Partial<CustomOidcConfig> {
-  const scopes = values.scopes
-    ? values.scopes
+function parseScopes(scopes: string | null): string[] {
+  return scopes
+    ? scopes
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
     : DEFAULT_SCOPES;
+}
+
+function formValuesToProvider(
+  values: OIDCFormValues,
+  groupSync: Partial<OidcGroupSync> | undefined,
+): Partial<CustomOidcConfig> {
+  const scopes = parseScopes(values.scopes);
 
   const attributeMap: Record<string, string> = {};
   if (values["attribute-firstname"]) {
@@ -222,6 +226,7 @@ export function SettingsOIDCForm() {
       const req: OidcCheckRequest = {
         "issuer-uri": values["issuer-uri"],
         "client-id": values["client-id"],
+        scopes: parseScopes(values.scopes),
       };
       if (values["client-secret"]) {
         req["client-secret"] = values["client-secret"];
@@ -240,7 +245,7 @@ export function SettingsOIDCForm() {
         if (result.credentials?.verified === false) {
           sendToast({
             message: t`OIDC discovery succeeded, but credentials could not be verified. The identity provider does not support the grant type used for testing.`,
-            icon: "warning",
+            variant: "warning",
           });
         } else {
           sendToast({
@@ -251,7 +256,7 @@ export function SettingsOIDCForm() {
       } catch (error) {
         sendToast({
           message: getErrorMessage(error, t`OIDC configuration check failed`),
-          icon: "warning",
+          variant: "negative",
         });
       }
     },
@@ -260,7 +265,7 @@ export function SettingsOIDCForm() {
 
   const handleSubmit = useCallback(
     async (values: OIDCFormValues, helpers: FormikHelpers<OIDCFormValues>) => {
-      await runCheck(values);
+      // No need to runCheck separately here, the backend does it before saving the provider.
 
       // the card and the save button hold each other, so no card write can be in flight here
       const providerData = formValuesToProvider(
@@ -281,7 +286,7 @@ export function SettingsOIDCForm() {
       // the saved values become the baseline, so the form is clean before the refetch lands
       helpers.resetForm({ values });
     },
-    [existingProvider, createProvider, updateProvider, runCheck],
+    [existingProvider, createProvider, updateProvider],
   );
 
   if (isLoadingDetails || isLoadingValues || isLoadingProviders) {
@@ -305,11 +310,6 @@ export function SettingsOIDCForm() {
         {({ dirty, values, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
-              <UserProvisioningSection
-                settingKey="oidc-user-provisioning-enabled?"
-                providerName="OIDC"
-              />
-              {/* provisioning is its own setting, so the banner heads the cards it locks */}
               {lockedEnvName != null && <SetByEnvVar varName={lockedEnvName} />}
 
               <SettingsSection
@@ -380,6 +380,12 @@ export function SettingsOIDCForm() {
                   />
                 </Stack>
               </SettingsSection>
+
+              {/* its own setting, so it stays live under an env-locked provider */}
+              <UserProvisioningSection
+                settingKey="oidc-user-provisioning-enabled?"
+                providerName="OIDC"
+              />
 
               <CollapsibleSettingsSection
                 title={t`Attributes`}

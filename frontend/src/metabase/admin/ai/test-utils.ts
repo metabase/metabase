@@ -1,11 +1,12 @@
+import { TEST_METABOT_IDS } from "metabase/metabot/tests/utils";
 import type { MetabotId, SuggestedMetabotPrompt } from "metabase-types/api";
 
 export const mockSuggestedPrompts: Record<MetabotId, SuggestedMetabotPrompt[]> =
   {
-    "1": [
+    [TEST_METABOT_IDS.INTERNAL]: [
       {
         id: 1,
-        metabot_id: 1,
+        metabot_id: TEST_METABOT_IDS.INTERNAL,
         prompt: "What is the total revenue for this quarter?",
         model: "metric",
         model_id: 1,
@@ -15,7 +16,7 @@ export const mockSuggestedPrompts: Record<MetabotId, SuggestedMetabotPrompt[]> =
       },
       {
         id: 2,
-        metabot_id: 1,
+        metabot_id: TEST_METABOT_IDS.INTERNAL,
         prompt:
           "Show me the customer acquisition trends over the last 6 months",
         model: "model",
@@ -26,7 +27,7 @@ export const mockSuggestedPrompts: Record<MetabotId, SuggestedMetabotPrompt[]> =
       },
       {
         id: 3,
-        metabot_id: 1,
+        metabot_id: TEST_METABOT_IDS.INTERNAL,
         prompt: "What are our top performing products by sales volume?",
         model: "metric",
         model_id: 3,
@@ -36,7 +37,7 @@ export const mockSuggestedPrompts: Record<MetabotId, SuggestedMetabotPrompt[]> =
       },
       {
         id: 4,
-        metabot_id: 1,
+        metabot_id: TEST_METABOT_IDS.INTERNAL,
         prompt: "How has our monthly recurring revenue changed this year?",
         model: "model",
         model_id: 1,
@@ -46,7 +47,7 @@ export const mockSuggestedPrompts: Record<MetabotId, SuggestedMetabotPrompt[]> =
       },
       {
         id: 5,
-        metabot_id: 1,
+        metabot_id: TEST_METABOT_IDS.INTERNAL,
         prompt: "What is our customer churn rate compared to last quarter?",
         model: "metric",
         model_id: 2,
@@ -56,7 +57,7 @@ export const mockSuggestedPrompts: Record<MetabotId, SuggestedMetabotPrompt[]> =
       },
       {
         id: 6,
-        metabot_id: 1,
+        metabot_id: TEST_METABOT_IDS.INTERNAL,
         prompt: "Show me the geographic distribution of our user base",
         model: "model",
         model_id: 4,
@@ -66,7 +67,7 @@ export const mockSuggestedPrompts: Record<MetabotId, SuggestedMetabotPrompt[]> =
       },
       {
         id: 7,
-        metabot_id: 1,
+        metabot_id: TEST_METABOT_IDS.INTERNAL,
         prompt: "What is the average order value for new customers?",
         model: "metric",
         model_id: 4,
@@ -76,7 +77,7 @@ export const mockSuggestedPrompts: Record<MetabotId, SuggestedMetabotPrompt[]> =
       },
       {
         id: 8,
-        metabot_id: 1,
+        metabot_id: TEST_METABOT_IDS.INTERNAL,
         prompt: "How do our conversion rates vary by traffic source?",
         model: "model",
         model_id: 3,
@@ -85,10 +86,10 @@ export const mockSuggestedPrompts: Record<MetabotId, SuggestedMetabotPrompt[]> =
         updated_at: "2025-05-18T15:30:00Z",
       },
     ],
-    "2": [
+    [TEST_METABOT_IDS.EMBEDDED]: [
       {
         id: 1,
-        metabot_id: 1,
+        metabot_id: TEST_METABOT_IDS.EMBEDDED,
         prompt: "What is the total revenue for this quarter?",
         model: "metric",
         model_id: 1,

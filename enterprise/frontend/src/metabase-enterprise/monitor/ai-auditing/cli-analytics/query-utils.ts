@@ -5,7 +5,7 @@ import {
   breakoutByColumn,
   findColumn,
   joinGroupMembers,
-} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils";
+} from "metabase-enterprise/monitor/query-utils";
 import type {
   CardMetadata,
   ColumnMetadata,

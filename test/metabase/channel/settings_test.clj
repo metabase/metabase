@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.settings :as channel.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.startup.core :as startup]
    [metabase.test :as mt])
@@ -82,6 +83,25 @@
       (mt/with-temporary-setting-values [smtp-override-enabled nil
                                          email-smtp-host-override "localhost"]
         (is (= "true" (channel.settings/smtp-override-enabled! true)))))))
+
+(deftest email-configured?-test
+  (mt/with-premium-features [:cloud-custom-smtp]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (mt/with-temporary-setting-values [email-smtp-host          nil
+                                         email-smtp-host-override "cloud.metabase.com"
+                                         smtp-override-enabled    true]
+        (testing "the custom SMTP server alone counts as configured on a hosted instance"
+          (is (true? (channel.settings/email-configured?))))
+        (testing "a disabled custom SMTP server does not count"
+          (mt/with-temporary-setting-values [smtp-override-enabled false]
+            (is (false? (channel.settings/email-configured?)))))
+        (testing "the custom SMTP server does not count on a self-hosted instance"
+          (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
+            (is (false? (channel.settings/email-configured?)))))
+        (testing "the primary SMTP server counts when the custom one is disabled"
+          (mt/with-temporary-setting-values [email-smtp-host       "smtp.example.com"
+                                             smtp-override-enabled false]
+            (is (true? (channel.settings/email-configured?)))))))))
 
 (deftest find-cached-slack-channel-or-username-test
   (let [channels [{:display-name "#general"   :name "general"   :id "C001"}

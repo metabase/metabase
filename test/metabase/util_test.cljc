@@ -61,6 +61,30 @@
        "https://metabase.com" false
        "email@metabase.com"   false)))
 
+(deftest ^:parallel uuid-string?-test
+  (are [s expected] (= expected
+                       (u/uuid-string? s))
+    ;; the canonical form, in either case
+    "12345678-9abc-def0-1234-56789abcdef0"  true
+    "12345678-9ABC-DEF0-1234-56789ABCDEF0"  true
+    ;; short forms that `UUID/fromString` accepts on the JVM
+    "1-2-3-4-5"                             false
+    "157-bad-cafe-dead-beef"                false
+    ;; malformed strings
+    ""                                      false
+    "not-a-uuid"                            false
+    "123456789abcdef0123456789abcdef0"      false
+    " 12345678-9abc-def0-1234-56789abcdef0" false
+    ;; values that are not strings
+    nil                                     false
+    (random-uuid)                           false
+    12345678                                false))
+
+(defspec uuid-string?-accepts-generated-uuids-test 100
+  (prop/for-all [id gen/uuid]
+    (and (u/uuid-string? (str id))
+         (u/uuid-string? (u/upper-case-en (str id))))))
+
 (deftest ^:parallel state?-test
   (are [x expected] (= expected
                        (u/state? x))
@@ -379,8 +403,6 @@
     false "cam.saul+1@metabase.co.uk" "metabase.com"
     true  "cam.saul+1@metabase.com"   "metabase.com"))
 
-;; defspec-generated test var; the runner finds it via metadata, clojure-lsp sees no reference
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defspec pick-first-test 100
   (prop/for-all [coll (gen/list gen/small-integer)]
     (let [result (u/pick-first pos? coll)]
@@ -593,10 +615,10 @@
                   Month/MAY   2
                   3))))
      (testing "checks for type of cases"
-       (is (thrown? Exception #"`case-enum` only works.*"
-                    (u/case-enum Month/JANUARY
-                      Month/JANUARY    1
-                      DayOfWeek/SUNDAY 2))))))
+       (is (thrown-with-msg? Exception #"`case-enum` only works.*"
+                             (u/case-enum Month/JANUARY
+                               Month/JANUARY    1
+                               DayOfWeek/SUNDAY 2))))))
 
 (deftest ^:parallel truncate-string-to-byte-count-test
   (letfn [(truncate-string-to-byte-count [s byte-length]

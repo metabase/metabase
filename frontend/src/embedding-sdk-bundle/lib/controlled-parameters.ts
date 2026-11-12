@@ -1,3 +1,5 @@
+import { pick } from "underscore";
+
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -94,3 +96,27 @@ export function buildParametersPayload(
     }),
   };
 }
+
+/**
+ * Builds `clickParameters` for a navigated entity: the raw click values parsed
+ * with the target's parameter definitions, like the target parses them on load
+ * (`"Gizmo"` -> `["Gizmo"]`), keeping only the keys the click set.
+ */
+export const buildClickParameters = (
+  rawClickParameters: ParameterValues,
+  parameterDefinitions: UiParameter[],
+): ParameterValues => {
+  // `getParameterValuesBySlug` prefers `value`, which holds the current values
+  const definitionsWithoutValues = parameterDefinitions.map((parameter) => ({
+    ...parameter,
+    value: undefined,
+  }));
+
+  return pick(
+    getParameterValuesBySlug(
+      definitionsWithoutValues,
+      buildControlledParameters(rawClickParameters, definitionsWithoutValues),
+    ),
+    Object.keys(rawClickParameters),
+  );
+};

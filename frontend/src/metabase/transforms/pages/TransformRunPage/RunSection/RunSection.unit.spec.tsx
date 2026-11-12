@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupListDagRunTransformRunsEndpoint,
   setupListDagTransformsEndpoint,
+  setupListTransformJobsEndpoint,
   setupListTransformTagsEndpoint,
   setupRunTransformDagEndpoint,
 } from "__support__/server-mocks";
@@ -12,10 +13,12 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import type {
   RunTransformDagResponse,
   Transform,
+  TransformJob,
   TransformRunForJobRun,
 } from "metabase-types/api";
 import {
   createMockTransform,
+  createMockTransformJob,
   createMockTransformRun,
   createMockTransformRunForJobRun,
 } from "metabase-types/api/mocks";
@@ -37,10 +40,14 @@ function setup({
   transform,
   runDagResponse,
   dagMembers = DEFAULT_DAG_MEMBERS,
+  jobs = [],
+  noTitle,
 }: {
   transform?: Transform;
   runDagResponse?: RunTransformDagResponse;
   dagMembers?: TransformRunForJobRun[];
+  jobs?: TransformJob[];
+  noTitle?: boolean;
 } = {}) {
   const testTransform =
     transform ?? createMockTransform({ id: TRANSFORM_ID, last_run: null });
@@ -53,10 +60,11 @@ function setup({
   ]);
   setupRunTransformDagEndpoint(TRANSFORM_ID, runDagResponse);
   setupListDagRunTransformRunsEndpoint(DAG_RUN_ID, dagMembers);
+  setupListTransformJobsEndpoint(jobs);
 
   renderWithProviders(
     <>
-      <RunSection transform={testTransform} />
+      <RunSection transform={testTransform} noTitle={noTitle} />
       <UndoListing />
     </>,
   );
@@ -169,5 +177,87 @@ describe("RunSection DAG run flow", () => {
     expect(
       screen.queryByText("Scheduled to run as part of a reprocess run."),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("RunSection no active job note", () => {
+  const TAG_ID = 5;
+  const OTHER_TAG_ID = 6;
+  const NOTE_TEXT = "No enabled job runs these tags.";
+
+  const taggedTransform = createMockTransform({
+    id: TRANSFORM_ID,
+    last_run: null,
+    tag_ids: [TAG_ID],
+  });
+
+  async function waitForJobsRequest() {
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/transform-job")).toBe(
+        true,
+      );
+    });
+  }
+
+  it("shows the note with a jobs link when no active job has any of the transform's tags", async () => {
+    setup({
+      transform: taggedTransform,
+      jobs: [
+        createMockTransformJob({ id: 1, active: false, tag_ids: [TAG_ID] }),
+        createMockTransformJob({
+          id: 2,
+          active: true,
+          tag_ids: [OTHER_TAG_ID],
+        }),
+      ],
+    });
+
+    expect(await screen.findByText(NOTE_TEXT)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to jobs" })).toHaveAttribute(
+      "href",
+      "/data-studio/transforms/jobs",
+    );
+  });
+
+  it("shows the note when the section renders without a title", async () => {
+    setup({
+      transform: taggedTransform,
+      jobs: [
+        createMockTransformJob({ id: 1, active: false, tag_ids: [TAG_ID] }),
+      ],
+      noTitle: true,
+    });
+
+    expect(await screen.findByText(NOTE_TEXT)).toBeInTheDocument();
+  });
+
+  it("hides the note when an active job has one of the transform's tags", async () => {
+    setup({
+      transform: taggedTransform,
+      jobs: [
+        createMockTransformJob({
+          id: 1,
+          active: true,
+          tag_ids: [OTHER_TAG_ID, TAG_ID],
+        }),
+      ],
+    });
+    await waitForJobsRequest();
+
+    expect(screen.queryByText(NOTE_TEXT)).not.toBeInTheDocument();
+  });
+
+  it("hides the note and does not fetch jobs when the transform has no tags", async () => {
+    setup({
+      transform: createMockTransform({
+        id: TRANSFORM_ID,
+        last_run: null,
+        tag_ids: [],
+      }),
+    });
+    await screen.findByText("This transform hasn't been run before.");
+
+    expect(screen.queryByText(NOTE_TEXT)).not.toBeInTheDocument();
+    expect(fetchMock.callHistory.called("path:/api/transform-job")).toBe(false);
   });
 });

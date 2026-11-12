@@ -192,9 +192,7 @@ describe("scenarios > question > download", () => {
         .should("be.visible");
       cy.findByTestId("view-footer").button("Download results").click();
       H.popover().within(() => {
-        cy.findByText(".xlsx")
-          .parent()
-          .should("have.attr", "data-active", "true");
+        cy.findByRole("radio", { name: ".xlsx" }).should("be.checked");
         cy.findByText(".png").should("not.exist");
       });
     });
@@ -301,9 +299,7 @@ describe("scenarios > question > download", () => {
       H.getDashboardCardMenu(0).click();
       H.popover().findByText("Download results").click();
       H.popover().within(() => {
-        cy.findByText(".xlsx")
-          .parent()
-          .should("have.attr", "data-active", "true");
+        cy.findByRole("radio", { name: ".xlsx" }).should("be.checked");
       });
       cy.realPress("Escape");
       H.popover({ skipVisibilityCheck: true }).should("not.exist");

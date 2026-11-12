@@ -10,10 +10,10 @@ type DashboardCardMenuCustomElement = ({
 
 <!-- [<snippet parameters>] -->
 
-| Parameter                | Type                                                               |
-| :----------------------- | :----------------------------------------------------------------- |
-| `{ question, }`          | \{ `question`: [`MetabaseQuestion`](./api/MetabaseQuestion.md); \} |
-| `{ question, }.question` | [`MetabaseQuestion`](./api/MetabaseQuestion.md)                    |
+| Parameter                | Type                                                                                        |
+| :----------------------- | :------------------------------------------------------------------------------------------ |
+| `{ question, }`          | \{ `question`: [`MetabaseQuestion`](/docs/latest/embedding/sdk/api/MetabaseQuestion.md); \} |
+| `{ question, }.question` | [`MetabaseQuestion`](/docs/latest/embedding/sdk/api/MetabaseQuestion.md)                    |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -21,6 +21,6 @@ type DashboardCardMenuCustomElement = ({
 
 <!-- [<snippet returns>] -->
 
-[`ReactNode`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L478)
+[`ReactNode`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L436)
 
 <!-- [<endsnippet returns>] -->

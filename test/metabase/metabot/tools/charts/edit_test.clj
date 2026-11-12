@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.charts :as tools.charts]
    [metabase.metabot.tools.charts.edit :as edit-chart]
    [metabase.metabot.tools.construct :as tools.construct]
@@ -47,19 +48,10 @@
                                  :charts-state charts-state})]
           (is (= new-type (:chart-type result))
               (str "New chart type " new-type " should be set correctly"))))))
-  (testing "throws error for invalid chart type"
-    (let [charts-state {"chart-789" {:chart-id "chart-789"}}]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Invalid chart type"
-           (edit-chart/edit-chart
-            {:chart-id "chart-789"
-             :new-chart-type :invalid-type
-             :charts-state charts-state})))))
   (testing "throws error when chart not found"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"issues accessing the chart data"
+         #"No chart with ID \"nonexistent\" exists in this conversation"
          (edit-chart/edit-chart
           {:chart-id "nonexistent"
            :new-chart-type :bar
@@ -134,8 +126,11 @@
   (mt/with-current-user (test.users/user->id :crowberto)
     (let [table-fields-uri (str "metabase://table/" (mt/id :products) "/fields")
 
-          {[{{table :structured-output} :content}] :resources}
-          (tools.resources/read-resource-tool {:uris [table-fields-uri]})
+          ;; One URI, so the composed `:structured-output` is a one-element vector. The per-URI
+          ;; `:resources` list this used to read is the Agent API's shape and the tool no longer
+          ;; builds it.
+          {[table] :structured-output}
+          (test-util/call-tool tools.resources/read-resource-tool {:uris [table-fields-uri]})
 
           ;; Representations-format query: LLM-facing code should prefer the portable_fk path
           ;; over numeric field ids. Take them straight from the read_resource response.
@@ -154,11 +149,11 @@
                                    "aggregation"  [["count" {}]]
                                    "breakout"     [["field" {} category-field-fk]]}]}
           external-query (walk/keywordize-keys query-data)
-          construct-result (tools.construct/construct-notebook-query-tool
-                            {:query         external-query
-                             :title         "Counts by category"
-                             :description   "Counts by category."
-                             :visualization {:chart_type "bar"}})
+          construct-result (test-util/call-tool tools.construct/construct-notebook-query-tool
+                                                {:query         external-query
+                                                 :title         "Counts by category"
+                                                 :description   "Counts by category."
+                                                 :visualization {:chart_type "bar"}})
           query-id (get-in construct-result [:structured-output :query-id])
           query (get-in construct-result [:structured-output :query])
           chart-id (get-in construct-result [:structured-output :chart-id])]
@@ -170,10 +165,10 @@
         (is (contains? (tools.shared/current-queries-state) query-id))
         (testing "Edit chart can handle charts created using construct-notebook-query-tool"
           ;; (3) call the edit-chart-tool which uses the shared memory
-          (let [edit-result (tools.charts/edit-chart-tool {:chart_id chart-id
-                                                           :new_viz_settings {:chart_type "pie"}
-                                                           :title "Counts by category"
-                                                           :description "Counts by category."})
+          (let [edit-result (test-util/call-tool tools.charts/edit-chart-tool {:chart_id chart-id
+                                                                               :new_viz_settings {:chart_type "pie"}
+                                                                               :title "Counts by category"
+                                                                               :description "Counts by category."})
                 new-chart-id (get-in edit-result [:structured-output :chart-id])
                 new-chart-in-memory (get (tools.shared/current-charts-state) new-chart-id)]
             (is (= :pie
@@ -205,11 +200,11 @@
                                                        ["field" {}
                                                         [db-name "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
             external-query (walk/keywordize-keys query-data)
-            result (tools.construct/construct-notebook-query-tool
-                    {:query         external-query
-                     :title         "Test chart"
-                     :description   "Test chart description."
-                     :visualization {:chart_type "bar"}})
+            result (test-util/call-tool tools.construct/construct-notebook-query-tool
+                                        {:query         external-query
+                                         :title         "Test chart"
+                                         :description   "Test chart description."
+                                         :visualization {:chart_type "bar"}})
             query (get-in result [:structured-output :query])]
         (testing "order-by inner clause is now an aggregation reference, not :sum"
           (let [first-ord (first (get-in query [:stages 0 :order-by]))
@@ -250,23 +245,21 @@
                                                        ["field" {}
                                                         ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
             external-query (walk/keywordize-keys query-data)
-            result (tools.construct/construct-notebook-query-tool
-                    {:query         external-query
-                     :title         "Test chart"
-                     :description   "Test chart description."
-                     :visualization {:chart_type "bar"}})]
-        (testing "tool returns a clear, agent-targeted error rather than producing a chart"
-          ;; The outer `construct-notebook-query-tool` catches the ex-info and returns
-          ;; `{:output <message>}` (no `:structured-output`). That's the LLM-visible signal.
-          (is (nil? (:structured-output result))
-              (str "expected no structured-output, got: " (pr-str result)))
-          (is (string? (:output result)))
-          (is (re-find #"Sample" (:output result))
-              (str "error message should mention the offending DB name; got: "
-                   (:output result)))
-          (is (re-find #"read_resource|Unknown database" (:output result))
-              (str "error message should hint at the recovery path; got: "
-                   (:output result))))))))
+            {:keys [class code text]}
+            (test-util/tool-failure tools.construct/construct-notebook-query-tool
+                                    {:query         external-query
+                                     :title         "Test chart"
+                                     :description   "Test chart description."
+                                     :visualization {:chart_type "bar"}}
+                                    #{"read_resource"})]
+        (testing "tool raises a declared, agent-targeted error rather than producing a chart"
+          (is (= :recoverable class))
+          (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-database code))
+          (is (re-find #"Sample" text)
+              (str "error message should mention the offending DB name; got: " text))
+          (testing "and the declaration's recovery step says where a database name comes from"
+            (is (re-find #"portable FK" text)
+                (str "error message should hint at the recovery path; got: " text))))))))
 
 (deftest construct-notebook-query-llm-uses-canonical-db-name-end-to-end-test
   (testing (str "Symmetric to the previous test: the LLM writes `database: Sample Database`\n"
@@ -284,11 +277,11 @@
                                      "breakout"     [["field" {}
                                                       [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}
             external-query (walk/keywordize-keys query-data)
-            result (tools.construct/construct-notebook-query-tool
-                    {:query         external-query
-                     :title         "Test chart"
-                     :description   "Test chart description."
-                     :visualization {:chart_type "bar"}})
+            result (test-util/call-tool tools.construct/construct-notebook-query-tool
+                                        {:query         external-query
+                                         :title         "Test chart"
+                                         :description   "Test chart description."
+                                         :visualization {:chart_type "bar"}})
             query (get-in result [:structured-output :query])
             breakout-field (get-in query [:stages 0 :breakout 0])]
         (testing "the chart was constructed successfully"
@@ -310,13 +303,13 @@
                 "a JOIN and executes successfully against the app DB.")
     (mt/with-current-user (test.users/user->id :crowberto)
       (let [;; Discover portable FKs the same way the LLM does: via read_resource /fields.
-            {[{{orders-details :structured-output} :content}] :resources}
-            (tools.resources/read-resource-tool
-             {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
+            {[orders-details] :structured-output}
+            (test-util/call-tool tools.resources/read-resource-tool
+                                 {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
 
-            {[{{products-details :structured-output} :content}] :resources}
-            (tools.resources/read-resource-tool
-             {:uris [(str "metabase://table/" (mt/id :products) "/fields")]})
+            {[products-details] :structured-output}
+            (test-util/call-tool tools.resources/read-resource-tool
+                                 {:uris [(str "metabase://table/" (mt/id :products) "/fields")]})
 
             orders-fk           (:portable_fk orders-details)
             product-id-field    (some (fn [{:keys [display_name] :as f}]
@@ -340,11 +333,11 @@
                                      "breakout"     [["field" {} category-field-fk]]}]}
             external-query (walk/keywordize-keys query-data)
 
-            construct-result (tools.construct/construct-notebook-query-tool
-                              {:query         external-query
-                               :title         "Test chart"
-                               :description   "Test chart description."
-                               :visualization {:chart_type "bar"}})
+            construct-result (test-util/call-tool tools.construct/construct-notebook-query-tool
+                                                  {:query         external-query
+                                                   :title         "Test chart"
+                                                   :description   "Test chart description."
+                                                   :visualization {:chart_type "bar"}})
             query (get-in construct-result [:structured-output :query])
             breakout-field (get-in query [:stages 0 :breakout 0])
             field-opts (second breakout-field)]

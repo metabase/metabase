@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
@@ -93,7 +94,7 @@ export function UploadSettingsFormView({
   const showError = (msg: string) => {
     setErrorMessage(msg);
     setTimeout(() => setErrorMessage(null), FEEDBACK_TIMEOUT);
-    sendToast({ icon: "warning", message: msg });
+    sendToast({ variant: "negative", message: msg });
   };
 
   const handleEnableUploads = async () => {

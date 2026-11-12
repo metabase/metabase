@@ -13,6 +13,7 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
+import { getVisualizerRawSeries } from "./selectors";
 import {
   initializeVisualizer,
   reducer as visualizerReducer,
@@ -95,6 +96,44 @@ describe("visualizer slice", () => {
       expect(
         fetchMock.callHistory.called(`path:/api/card/${card.id}/query`),
       ).toBe(false);
+    });
+
+    it("should load the card as a data source when no columns are mapped (metabase#83540)", async () => {
+      const card = createMockCard({
+        id: 1,
+        name: "Unrenderable bar card",
+        display: "bar",
+      });
+      const dataset = createMockDataset({
+        data: createMockDatasetData({
+          rows: [[1, "Gadget"]],
+          cols: [
+            createMockColumn({ name: "ID" }),
+            createMockColumn({ name: "Category" }),
+          ],
+        }),
+      });
+
+      setupCardEndpoints(card);
+
+      const store = setup();
+
+      await store.dispatch(
+        initializeVisualizer({
+          state: {
+            display: "bar",
+            columns: [],
+            columnValuesMapping: {},
+            settings: {},
+            preloadedDatasets: { [card.id]: dataset },
+          },
+        }),
+      );
+
+      const state = store.getState();
+      expect(state.visualizer.present.cards).toEqual([card]);
+      expect(state.visualizer.present.datasets["card:1"]).toEqual(dataset);
+      expect(() => getVisualizerRawSeries(state)).not.toThrow();
     });
   });
 });

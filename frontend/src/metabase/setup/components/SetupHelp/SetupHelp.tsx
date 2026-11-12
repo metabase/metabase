@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -8,9 +9,7 @@ import { Box } from "metabase/ui";
 import S from "./SetupHelp.module.css";
 
 export const SetupHelp = (): JSX.Element => {
-  const { url: docsUrl } = useDocsUrl(
-    "configuring-metabase/setting-up-metabase",
-  );
+  const { url: docsUrl } = useDocsUrl("getting-started/setting-up-metabase");
   return (
     <Box
       component="footer"

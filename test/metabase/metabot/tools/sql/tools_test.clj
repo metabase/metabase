@@ -70,7 +70,7 @@
                                               lib/->legacy-MBQL)}]
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
-                   #"found multiple times"
+                   #"appears more than once"
                    (edit-sql-query/edit-sql-query
                     {:query-id query-id
                      :queries-state queries-state

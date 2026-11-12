@@ -54,7 +54,8 @@
                [:template        {:optional true} [:maybe ::models.channel/ChannelTemplate]]
                [:recipients      {:optional true} [:sequential ::models.notification/NotificationRecipient]]
                [:attachment_only {:optional true} [:maybe :boolean]]
-               [:include_pdf     {:optional true} [:maybe :boolean]]]]]]]
+               [:include_pdf     {:optional true} [:maybe :boolean]]
+               [:subject         {:optional true} [:maybe :string]]]]]]]
    [:payload_id              {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private NotificationBase

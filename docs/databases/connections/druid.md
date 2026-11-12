@@ -1,5 +1,6 @@
 ---
 title: Druid
+summary: Connect Metabase to Druid, with every connection and sync setting explained.
 ---
 
 # Druid
@@ -61,10 +62,6 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 ## Writable connection
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
-
-## Model features
-
-There aren't (yet) any model features available for Druid.
 
 ## Database routing
 

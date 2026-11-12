@@ -12,6 +12,15 @@ export const ManifestTab = ({ manifest }: Props) => {
     return <div className={S.Empty}>Manifest has not been validated yet.</div>;
   }
 
+  if (manifest.exists === false) {
+    return (
+      <div className={S.Empty}>
+        No data_app.yaml. It is optional: add one with allowed_hosts to let the
+        preview reach other hosts.
+      </div>
+    );
+  }
+
   return (
     <div className={S.StatusBody}>
       {manifest.restartRequired && (

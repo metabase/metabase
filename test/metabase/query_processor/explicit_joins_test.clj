@@ -951,7 +951,7 @@
                            (mt/run-mbql-query venues
                              {:joins [{:source-table $$categories
                                        :alias        "Cat"
-                                       :condition    [:= $id $id]
+                                       :condition    [:= $category_id &Cat.categories.id]
                                        :fields       [&Cat.categories.id]}]
                               :order-by [[:asc $id] [:asc &Cat.categories.id]]
                               :limit 1}))]
@@ -970,7 +970,7 @@
                                venues
                                {:joins [{:source-table $$categories
                                          :alias        evil-join-alias
-                                         :condition    [:= $id $id]
+                                         :condition    [:= $category_id [:field %categories.id {:join-alias evil-join-alias}]]
                                          :fields       [[:field %categories.id {:join-alias evil-join-alias}]]}]
                                 :order-by [[:asc $id] [:asc [:field %categories.id {:join-alias evil-join-alias}]]]
                                 :limit 1})]
@@ -1218,6 +1218,15 @@
    [3 "The Apple Pan" nil]
    [4 "Wurstküche" nil]])
 
+(defmethod driver/database-supports? [::driver/driver ::arbitrary-join-conditions]
+  [_driver _feature _database]
+  true)
+
+;;; Clickhouse doesn't support certain join conditions so we exclude it when necessary
+(defmethod driver/database-supports? [:clickhouse ::arbitrary-join-conditions]
+  [_driver _feature _database]
+  false)
+
 (defn- check-venues+categories-on-condition
   [condition expected-rows]
   (let [query (mt/mbql-query venues
@@ -1249,7 +1258,7 @@
     (check-venues+categories-on-condition
      [:=
       [:* 1 (mt/$ids venues $category_id)]
-      [:+ 0 (mt/$ids categories &c.categories.id)]]
+      [:- (mt/$ids categories &c.categories.id) 0]]
      venues+categories-expected-rows-for-fk=pk-join-condition)))
 
 (deftest ^:parallel join-expressions-lhs-col-rhs-expr-test
@@ -1320,7 +1329,7 @@
       [2 "Stout Burgers & Beers" "Dim Sum"]])))
 
 (deftest ^:parallel join-expressions-lhs-col-rhs-literal-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions ::arbitrary-join-conditions)
     (check-venues+categories-on-condition
      [:=
       (mt/$ids venues $name)
@@ -1357,7 +1366,7 @@
       [2 "Stout Burgers & Beers" "Café Sweets"]])))
 
 (deftest ^:parallel join-expressions-lhs-expr-rhs-col-with-operator-<-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions ::arbitrary-join-conditions)
     (check-venues+categories-on-condition
      [:<
       [:+ 1 (mt/$ids venues $price)]
@@ -1366,7 +1375,7 @@
       [1 "Red Medicine" "Bakery"]])))
 
 (deftest ^:parallel join-expressions-lhs-col-rhs-col-with-operator-!=-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions ::arbitrary-join-conditions)
     (check-venues+categories-on-condition
      [:!=
       (mt/$ids venues $category_id)
@@ -1466,7 +1475,7 @@
              {:description "products + orders with lhs and rhs expressions"
               :condition   [:=
                             [:+ 0 (mt/$ids products $id)]
-                            [:* 1 (mt/$ids orders &o.orders.product_id)]]}]]
+                            [:/ (mt/$ids orders &o.orders.product_id) 1]]}]]
       (testing (str "\n" description "\n" condition)
         (is (= [["Doohickey" 297271.47 14388.0]
                 ["Gadget" 406619.75 18865.0]

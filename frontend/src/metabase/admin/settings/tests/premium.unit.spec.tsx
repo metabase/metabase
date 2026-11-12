@@ -1,4 +1,4 @@
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 
 import {
   setup as baseSetup,
@@ -29,7 +29,6 @@ const routes = routeObjtoArray({
   ...upsellRoutes,
   ...enterpriseRoutes, // includes the license route
   cloud: { path: "skip", testPattern: /nope/ },
-  // `ossRoutes.remoteSync` expects OSS/Starter upsell copy; this suite enables all features (incl. remote_sync), so assert the real settings UI instead.
   remoteSync: { path: "/remote-sync", testPattern: /Set up remote sync/i },
 }).filter(({ path }) => path !== "skip");
 
@@ -73,5 +72,14 @@ describe("Admin Settings Routing - Enterprise with all features", () => {
       features: { hosting: true },
     });
     expect(await screen.findByText("Cloud settings")).toBeInTheDocument();
+  });
+
+  it("should offer a custom URL landing page with the whitelabel feature", async () => {
+    await setup({ isAdmin: true, initialRoute: "/general" });
+
+    const homepageSetting = await screen.findByTestId("homepage-setting");
+    expect(
+      within(homepageSetting).getByRole("radio", { name: "Custom URL" }),
+    ).toBeInTheDocument();
   });
 });

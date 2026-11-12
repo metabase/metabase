@@ -7,7 +7,7 @@ import { type RefObject, useMemo, useState } from "react";
 import { countWithinLimit } from "../utils/count-within-limit";
 
 type UseColumnPinningByCountProps = {
-  gridRef: RefObject<HTMLDivElement>;
+  gridRef: RefObject<HTMLDivElement | null>;
   pinnedColumnsCount: number;
   columnSizingMap: ColumnSizingState;
   columnOrder: string[];

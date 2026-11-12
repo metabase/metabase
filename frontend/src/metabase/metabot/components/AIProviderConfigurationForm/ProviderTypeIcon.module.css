@@ -1,7 +1,7 @@
 .icon {
   flex-shrink: 0;
   color: var(--mb-color-icon-brand);
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border-radius: var(--mantine-radius-sm);
 }
 

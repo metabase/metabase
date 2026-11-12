@@ -1,41 +1,61 @@
 import fetchMock from "fetch-mock";
 
-import type { Revision } from "metabase-types/api";
+import type { Revision, RevisionEntityType } from "metabase-types/api";
 
 export function setupRevisionsEndpoints(revisions: Revision[]) {
   fetchMock.get("path:/api/revision", revisions);
 }
 
-export function setupSegmentRevisionsEndpoint(
-  segmentId: number,
+export function setupEntityRevisionsEndpoint(
+  entity: RevisionEntityType,
+  id: number | string,
   revisions: Revision[],
 ) {
-  fetchMock.get(`path:/api/revision?entity=segment&id=${segmentId}`, revisions);
+  fetchMock.get(`path:/api/revision?entity=${entity}&id=${id}`, revisions);
 }
 
-export function setupMeasureRevisionsEndpoint(
-  measureId: number,
-  revisions: Revision[],
-) {
-  fetchMock.get(`path:/api/revision?entity=measure&id=${measureId}`, revisions);
+export function setupRevertRevisionEndpoint(revision: Revision) {
+  fetchMock.post("path:/api/revision/revert", revision);
 }
 
-export function setupDocumentRevisionsEndpoint(
-  documentId: number,
-  revisions: Revision[],
-) {
-  fetchMock.get(
-    `path:/api/revision?entity=document&id=${documentId}`,
-    revisions,
-  );
+export function setupRevertRevisionErrorEndpoint({
+  message,
+}: {
+  message: string;
+}) {
+  fetchMock.post("path:/api/revision/revert", {
+    status: 500,
+    body: { message },
+  });
 }
 
-export function setupTransformRevisionsEndpoint(
-  transformId: number,
-  revisions: Revision[],
-) {
-  fetchMock.get(
-    `path:/api/revision?entity=transform&id=${transformId}`,
-    revisions,
+/**
+ * Serves an entity's revisions and a revert endpoint that behaves like the real
+ * API: a revert of this entity records `revertRevision` at the top of the list, and
+ * `onRevert` is where the spec restores the entity's earlier version.
+ */
+export function setupRevertableRevisionsEndpoints({
+  entity,
+  id,
+  revisions,
+  revertRevision,
+  onRevert,
+}: {
+  entity: RevisionEntityType;
+  id: number | string;
+  revisions: Revision[];
+  revertRevision: Revision;
+  onRevert: () => void;
+}) {
+  let current = revisions;
+  fetchMock.get(`path:/api/revision?entity=${entity}&id=${id}`, () => current);
+  fetchMock.post(
+    "path:/api/revision/revert",
+    () => {
+      current = [revertRevision, ...current];
+      onRevert();
+      return revertRevision;
+    },
+    { body: { entity, id }, matchPartialBody: true },
   );
 }

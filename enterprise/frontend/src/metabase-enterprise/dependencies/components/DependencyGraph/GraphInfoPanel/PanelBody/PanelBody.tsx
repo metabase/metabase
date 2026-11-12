@@ -18,6 +18,8 @@ import {
   getNodeLastEditedAt,
   getNodeLastEditedBy,
   getNodeOwner,
+  getNodeParameters,
+  getParameterIcon,
 } from "../../../../utils";
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
@@ -37,6 +39,7 @@ export function PanelBody({ node, getGraphUrl }: PanelBodyProps) {
       <DescriptionSection node={node} />
       <OwnerSection node={node} />
       <CreatorAndLastEditorSection node={node} />
+      <ParametersSection node={node} />
       <TableSection node={node} getGraphUrl={getGraphUrl} />
       <FieldsSection node={node} />
     </Stack>
@@ -102,6 +105,37 @@ function CreatorAndLastEditorSection({ node }: SectionProps) {
       lastEditedAt={editedAt}
       lastEditor={editedBy}
     />
+  );
+}
+
+function ParametersSection({ node }: SectionProps) {
+  const parameters = getNodeParameters(node);
+  if (parameters == null) {
+    return null;
+  }
+
+  return (
+    <Stack gap="lg" lh="1rem">
+      <Title order={6}>{t`Parameters`}</Title>
+      {parameters.length > 0 ? (
+        parameters.map((parameter) => (
+          <Group
+            className={CS.textWrap}
+            key={parameter.id}
+            gap="sm"
+            wrap="nowrap"
+          >
+            <FixedSizeIcon
+              name={getParameterIcon(parameter)}
+              c="text-secondary"
+            />
+            {parameter.name}
+          </Group>
+        ))
+      ) : (
+        <Text lh="h4" c="text-secondary">{t`No parameters`}</Text>
+      )}
+    </Stack>
   );
 }
 

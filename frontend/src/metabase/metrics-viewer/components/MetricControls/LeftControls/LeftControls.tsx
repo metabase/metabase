@@ -85,9 +85,8 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
         <Menu position="top-start" withinPortal>
           <Menu.Target>
             <ActionIcon
-              className={S.compactChartTypeButton}
+              size="lg"
               aria-label={t`Change visualization type`}
-              variant="subtle"
               data-testid="metrics-viewer-compact-chart-controls"
             >
               {selectedChartType && (

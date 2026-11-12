@@ -12,6 +12,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import type { SettingKey } from "metabase-types/api";
@@ -45,6 +46,10 @@ const setup = (props: AdminSettingInputProps<SettingKey>) => {
       key: "site-url",
       is_env_setting: true,
       env_name: "MB_HARDCODED_URL",
+    }),
+    createMockSettingDefinition({
+      key: "site-name",
+      description: "The name used for this instance of New Test Co.",
     }),
   ]);
 
@@ -83,6 +88,20 @@ describe("AdminSettingInput", () => {
     ).toBeInTheDocument();
   });
 
+  it("should fall back to the setting description from the API (metabase#17043)", async () => {
+    setup({
+      title: "Site Name",
+      name: "site-name",
+      inputType: "text",
+    });
+
+    expect(
+      await within(await screen.findByTestId("site-name-setting")).findByText(
+        "The name used for this instance of New Test Co.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("should render a text input", async () => {
     setup({
       title: "Site Name",
@@ -94,6 +113,25 @@ describe("AdminSettingInput", () => {
     const input = await screen.findByRole("textbox");
     expect(input).toHaveAttribute("type", "text");
     expect(input).toHaveValue("Metabased");
+  });
+
+  it("should render a text input for an unset setting without a null value warning", async () => {
+    const consoleErrorSpy = jest.spyOn(console, "error");
+    setup({
+      title: "SMTP host",
+      name: "email-smtp-host",
+      inputType: "text",
+    });
+
+    const input = await screen.findByRole("textbox");
+    expect(input).toHaveValue("");
+    expect(
+      consoleErrorSpy.mock.calls.filter(([message]) =>
+        String(message).includes("should not be null"),
+      ),
+    ).toHaveLength(0);
+
+    consoleErrorSpy.mockRestore();
   });
 
   it("should render a select input", async () => {

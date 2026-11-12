@@ -84,6 +84,8 @@ describe("scenarios > visualizations > combo", () => {
       cy.findByText("Stack").click();
     });
 
+    H.getValueLabels().should("have.length.greaterThan", 0);
+
     // First circle of the line series
     H.cartesianChartCircleWithColor("#A989C5").eq(0).trigger("mousemove");
     H.assertEChartsTooltip({
@@ -99,7 +101,7 @@ describe("scenarios > visualizations > combo", () => {
     });
 
     // First circle of stacked area series
-    H.cartesianChartCircleWithColor("#98D9D9").eq(0).trigger("mousemove");
+    H.cartesianChartCircleWithColor("#98D9D9").eq(0).realHover();
 
     // Check the tooltip shows only stacked areas series
     H.assertEChartsTooltip({

@@ -1,5 +1,6 @@
 ---
 title: Databases overview
+summary: Connect and manage your databases, control syncing and scanning, secure your connections, and upload data.
 redirect_from:
   - /docs/latest/databases
 ---

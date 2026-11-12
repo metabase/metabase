@@ -26,20 +26,53 @@ jobs:
         env:
           AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
           AWS_REGION: ${{ vars.AWS_REGION }}
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          RECENT_MINOR_WINDOW_DAYS: 3
         with:
           script: | # js
             // Every supported major line gets regular minor releases so the
             // branches we backport into don't go stale. Support is read from
-            // `major_version_support` in version-info.json via getSupportedMajors —
+            // `major_version_support` in version-info.json via getSupportedMajorVersions —
             // the same source the auto-backport workflow uses to pick its targets.
-            const { getSupportedMajors } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const {
+              getOssVersionInfo,
+              getSupportedMajorVersions,
+              hasRecentMinorReleaseIn,
+              sendSlackMessage,
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            const majors = await getSupportedMajors();
+            const rawWindowDays = process.env.RECENT_MINOR_WINDOW_DAYS;
+            const windowDays = Number(rawWindowDays);
+            if (!Number.isInteger(windowDays) || windowDays < 1) {
+              core.setFailed(`RECENT_MINOR_WINDOW_DAYS must be a whole number of 1 or more, got "${rawWindowDays}"`);
+              return;
+            }
+
+            let versionInfo;
+            let majors;
+            try {
+              versionInfo = await getOssVersionInfo();
+              majors = getSupportedMajorVersions(versionInfo);
+            } catch (error) {
+              core.setFailed(`Could not read the supported majors from version-info.json: ${error.message}`);
+              return;
+            }
             console.log('supported majors', majors);
 
             // release-auto.yml releases one major per dispatch.
-            await Promise.all(majors.map(version =>
-              github.rest.actions.createWorkflowDispatch({
+            const results = await Promise.allSettled(majors.map(async version => {
+              if (hasRecentMinorReleaseIn(versionInfo, version, windowDays)) {
+                const message = `Minor version already released in the last ${windowDays} days, skipping automatic minor release for v${version}`;
+                console.log(message);
+                await sendSlackMessage({
+                  channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+                  message,
+                }).catch(error => core.warning(`Could not send the skip message for v${version}: ${error.message}`));
+                return 'skipped';
+              }
+
+              await github.rest.actions.createWorkflowDispatch({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 workflow_id: 'release-auto.yml',
@@ -48,5 +81,36 @@ jobs:
                   version: String(version),
                   kind: 'minor',
                 },
-              }).catch(console.error)
-            ));
+              });
+              return 'dispatched';
+            }));
+
+            const failures = [];
+            results.forEach((result, index) => {
+              const version = majors[index];
+              if (result.status === 'fulfilled') {
+                console.log(`v${version}: ${result.value}`);
+              } else {
+                failures.push(`v${version}: ${result.reason?.message ?? result.reason}`);
+              }
+            });
+
+            if (failures.length > 0) {
+              core.setFailed(`Auto-minor release was not scheduled for:\n${failures.join('\n')}`);
+            }
+      - name: Notify Slack of failure
+        if: failure()
+        uses: actions/github-script@v9
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendSlackMessage, mentionSlackTeam } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const team = mentionSlackTeam('release-managers');
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            await sendSlackMessage({
+              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+              message: `:rotating_light: Scheduling the automatic minor releases failed. Start the minor releases manually if necessary — see <${runUrl}|run logs> ${team}`,
+            }).catch(console.error);

@@ -1,5 +1,6 @@
 ---
 title: Environment variables
+summary: Every environment variable you can use to configure Metabase. Environment variables take precedence over settings in the admin panel.
 redirect_from:
   - /docs/latest/operations-guide/environment-variables
 ---
@@ -86,7 +87,7 @@ Whether AI features are enabled.
 - [Exported as](../installation-and-operation/serialization.md): `ai-usage-max-retention-days`.
 - Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
-Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely.
+Number of days to retain rows in the ai_usage_log, metabot_conversation, metabot_message, agent_api_call_log, and api_key_usage_log tables. Minimum value is 30; set to 0 to retain data indefinitely.
 
 Sets the maximum number of days Metabase preserves rows for the following application database tables:
 
@@ -94,6 +95,7 @@ Sets the maximum number of days Metabase preserves rows for the following applic
 - `metabot_conversation`
 - `metabot_message`
 - `agent_api_call_log`
+- `api_key_usage_log`
 
 Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
 If set to 0, Metabase will keep all rows. If you don't set this variable, Metabase keeps rows for 180 days.
@@ -731,6 +733,14 @@ Allow admins to securely embed questions and dashboards within other application
 
 Allow admins to embed Metabase via interactive embedding?
 
+### `MB_ENABLE_EMBEDDING_MODULAR`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `enable-embedding-modular`
+
+Allow admins to embed Metabase via modular embedding and guest embeds?
+
 ### `MB_ENABLE_EMBEDDING_SDK`
 
 - Type: boolean
@@ -739,7 +749,17 @@ Allow admins to embed Metabase via interactive embedding?
 
 Allow admins to embed Metabase via the SDK?
 
-### `MB_ENABLE_EMBEDDING_SIMPLE`
+### `MB_ENABLE_EMBEDDING_SIDECAR`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `enable-embedding-sidecar`
+
+Do admins link to Metabase from their own app? Only reported for analytics.
+
+### `MB_ENABLE_EMBEDDING_SIMPLE [DEPRECATED]`
+
+> DEPRECATED: 0.65.0
 
 - Type: boolean
 - Default: `false`
@@ -747,7 +767,9 @@ Allow admins to embed Metabase via the SDK?
 
 Allow admins to embed Metabase via modular embedding?
 
-### `MB_ENABLE_EMBEDDING_STATIC`
+### `MB_ENABLE_EMBEDDING_STATIC [DEPRECATED]`
+
+> DEPRECATED: 0.65.0
 
 - Type: boolean
 - Default: `false`
@@ -870,7 +892,7 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
-- Default: `https://www.metabase.com/help/premium`
+- Default: `https://www.metabase.com/help-premium`
 - [Configuration file name](./config-file.md): `help-link-custom-destination`
 
 Custom URL for the help link.
@@ -926,6 +948,41 @@ Whether or not we should install the Metabase analytics database on startup. Def
   via environmment variable.
 
 Setting this environment variable to false will prevent installing the analytics database, which is handy in a migration use-case where it conflicts with the incoming database.
+
+### `MB_INTERESTINGNESS_MAX_FIELDS_PER_SYNC`
+
+- Type: integer
+- Default: `100000`
+- [Exported as](../installation-and-operation/serialization.md): `interestingness-max-fields-per-sync`.
+
+Maximum number of fields per database to score for dimension interestingness in one sync. The leftovers pass
+  scores every field whose score is still NULL, which after a release that invalidates existing scores is every field
+  in the database; this bounds how long one sync spends on that backfill, leaving the rest for the next sync. Unlike
+  `scan-max-fields-per-table` and `fingerprint-max-fields-per-table` the skipped fields are not abandoned -- they stay
+  NULL and so are picked up by the following sync, which is why this can be set far higher than those two.
+
+### `MB_ISOLATED_ORIGIN`
+
+- Type: string
+- Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+A second address for this Metabase, such as https://example-isolated.com, that the browser keeps apart from the session: it never sends the session cookie there. Metabase serves data apps from it, so a data app reaches Metabase only through the page that shows it.
+
+Point this address at the same Metabase. The browser never sends the session cookie to it, so Metabase
+  serves content there that must stay apart from the session. Data apps run on it, and every request they make to
+  Metabase goes through the page that shows them. The address must meet these requirements:
+
+  - A site URL is set. Only pages at the site URL can show content from this address.
+  - It is only a scheme, host and port, with no path, query or fragment.
+  - Its host name differs from the site URL's host name. A different port isn't enough.
+  - It uses https when the site URL does.
+  - A reverse proxy in front of Metabase passes the original host name (`Host` or `X-Forwarded-Host`).
+  - If Metabase runs under a path, both addresses serve it under that path; leave the path out of this value.
+
+  If the value breaks one of the first four requirements, Metabase turns data apps off until you fix it. A separate
+  domain (such as `example-isolated.com` rather than `isolated.example.com`) isolates best while the session cookie's
+  `SameSite` is `lax` or `strict`.
 
 ### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_CHECKOUT_TIMEOUT_MS`
 
@@ -1522,14 +1579,6 @@ A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform
 
 Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
-### `MB_LLM_MAX_TOKENS`
-
-- Type: integer
-- Default: `4096`
-- [Configuration file name](./config-file.md): `llm-max-tokens`
-
-Maximum tokens for LLM responses.
-
 ### `MB_LLM_METABOT_PROVIDER`
 
 - Type: string
@@ -1586,6 +1635,34 @@ The Moonshot AI API Key.
 
 Backed by the moonshot connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
+### `MB_LLM_OLLAMA_API_BASE_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-ollama-api-base-url`
+
+The base URL of your Ollama server's OpenAI-compatible API, e.g. `http://localhost:11434/v1`, or `https://ollama.com/v1` for Ollama Cloud.
+
+Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL.
+
+### `MB_LLM_OLLAMA_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-ollama-api-key`
+
+The API key for Ollama Cloud, with MB_LLM_OLLAMA_API_BASE_URL set to https://ollama.com/v1. For self-hosted servers, only needed behind an authenticated proxy.
+
+Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_OLLAMA_REQUEST_TIMEOUT_MS`
+
+- Type: integer
+- Default: `300000`
+- [Configuration file name](./config-file.md): `llm-ollama-request-timeout-ms`
+
+Socket timeout in milliseconds for requests to your Ollama server.
+
 ### `MB_LLM_OPENAI_API_BASE_URL`
 
 - Type: string
@@ -1605,6 +1682,26 @@ Backed by the openai connection in the admin AI settings provider list: reads an
 The OpenAI API Key.
 
 Backed by the openai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_OPENAI_COMPATIBLE_API_BASE_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-openai-compatible-api-base-url`
+
+The base URL of a server that implements OpenAI's Chat Completions API, e.g. `https://api.scaleway.ai/v1`. Set `MB_LLM_METABOT_PROVIDER` to `openai-compatible/` followed by the model ID to choose its model.
+
+Backed by the openai-compatible connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL.
+
+### `MB_LLM_OPENAI_COMPATIBLE_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-openai-compatible-api-key`
+
+The API key for the server that the OpenAI-compatible connection talks to, if it asks for one.
+
+Backed by the openai-compatible connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_OPENAI_MODEL`
 
@@ -1825,6 +1922,13 @@ Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vs
 
 Whether the AI feature access admin page shows granular, per-tool group permissions instead of a single on/off toggle per group.
 
+### `MB_METABOT_CHAT_TURN_ASYNC_TIMEOUT_MS`
+
+- Type: positive-integer
+- Default: `1800000`
+
+Maximum duration of a Metabot chat turn in milliseconds.
+
 ### `MB_METABOT_ENABLED`
 
 - Type: boolean
@@ -1856,6 +1960,14 @@ The icon for Metabot. Set to `metabot` for the default icon, or a data URI for a
 
 The display name for Metabot, shown throughout the Metabase UI.
 
+### `MB_METABOT_QUERY_EXECUTION_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Configuration file name](./config-file.md): `metabot-query-execution-enabled`
+
+Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.
+
 ### `MB_METABOT_RECENT_VIEWS_ENABLED`
 
 - Type: boolean
@@ -1881,6 +1993,13 @@ Whether to show Metabot illustrations in the UI.
 - [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
 
 Signing secret for verifying requests from the Metabot Slack app.
+
+### `MB_METABOT_SQL_EXECUTION_ENABLED`
+
+- Type: boolean
+- Default: `true`
+
+Whether Metabot can also run SQL queries it wrote, for questions a notebook query can't express. Applies only when Metabot can run queries, and only on databases where the user may write SQL.
 
 ### `MB_MFA_CHALLENGE_SIGNING_KEY`
 
@@ -2071,6 +2190,17 @@ cron syntax string to schedule refreshing persisted models.
 
 Allow persisting models into the source database.
 
+### `MB_PIVOT_MAX_RESULT_ROWS`
+
+- Type: integer
+- Default: `200000`
+- [Exported as](../installation-and-operation/serialization.md): `pivot-max-result-rows`.
+- [Configuration file name](./config-file.md): `pivot-max-result-rows`
+
+Maximum number of rows a pivot query can return. Overrides MB_AGGREGATED_QUERY_ROW_LIMIT for pivot queries.
+
+Applies to pivot queries only. When MB_USE_NATIVE_PIVOT_TABLES is on and the driver supports native pivots, this is a hard cap on the number of rows a pivot query returns. Otherwise it only approximates the cap, and larger pivots can exceed it. Must be less than 1048575.
+
 ### `MB_PREMIUM_EMBEDDING_TOKEN`
 
 - Type: string
@@ -2134,83 +2264,83 @@ Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
 
 ### `MB_REMOTE_SYNC_AUTO_IMPORT`
 
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
 - Type: boolean
 - Default: `false`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import`
 
-Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only.
+Whether a read-only instance pulls changes from the repository on a schedule.
 
 ### `MB_REMOTE_SYNC_AUTO_IMPORT_RATE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `5`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import-rate`
 
-If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
+How often, in minutes, a read-only instance that pulls automatically checks the repository for changes.
 
 ### `MB_REMOTE_SYNC_BRANCH`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-branch`
 
-The remote branch to sync with, e.g. `main`.
-
-### `MB_REMOTE_SYNC_CHECK_CHANGES_CACHE_TTL_SECONDS`
-
-- Type: integer
-- Default: `60`
-- [Configuration file name](./config-file.md): `remote-sync-check-changes-cache-ttl-seconds`
-
-Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
+The branch of the repository to sync with, such as `main`.
 
 ### `MB_REMOTE_SYNC_GIT_TIMEOUT_SECONDS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `60`
 - [Configuration file name](./config-file.md): `remote-sync-git-timeout-seconds`
 
-Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely.
+How long, in seconds, remote sync waits for the git repository to respond.
 
 ### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `300000`
 - [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
 
-How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit.
+How long, in milliseconds, a remote sync task can go without a sign that it is still running before Metabase ends it.
 
 ### `MB_REMOTE_SYNC_TOKEN`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-token`
 
-An Authorization Bearer token allowing access to the git repo over HTTP.
-
-### `MB_REMOTE_SYNC_TRANSFORMS`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `remote-sync-transforms`
-
-Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).
+An access token for the git repository, such as a personal access token.
 
 ### `MB_REMOTE_SYNC_TYPE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: keyword
 - Default: `read-only`
 - [Configuration file name](./config-file.md): `remote-sync-type`
 
-Git synchronization type - :read-write or :read-only.
+Whether this instance pushes synced content to the repository (read-write) or only pulls it (read-only).
 
 ### `MB_REMOTE_SYNC_URL`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-url`
 
-The location of your git repository, e.g. `https://github.com/acme-inco/metabase.git`.
+The URL of the git repository to sync with, such as `https://github.com/acme-inco/metabase.git`.
 
 ### `MB_REPORT_TIMEZONE`
 
@@ -3294,7 +3424,7 @@ Type: integer<br>
 Default: `600000`<br>
 Since: v35.0
 
-Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Very few things might reach that timeout, since they return some type of data before, but things like CSV downloads might.
+Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Very few things might reach that timeout, since they return some type of data before, but things like CSV downloads might. Metabot chat responses aren't bound by this timeout.
 
 ### `MB_JETTY_DAEMON`
 

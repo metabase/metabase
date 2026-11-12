@@ -40,7 +40,10 @@
   ^java.time.temporal.Temporal []
   (product-feedback.db/earliest-user-date-joined))
 
-(task/defjob ^{:doc "Sends out a general 2 week email follow up email"} FollowUpEmail [_]
+(task/defjob FollowUpEmail
+  "Sends out a general 2 week email follow up email"
+  {:saved-class "metabase.product_feedback.task.follow_up_emails.FollowUpEmail"}
+  [_]
   ;; if we've already sent the follow-up email then we are done
   (when-not (product-feedback.settings/follow-up-email-sent)
     ;; figure out when we consider the instance created

@@ -128,13 +128,6 @@ export function SettingsSAMLForm() {
         {({ dirty, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
-              <UserProvisioningSection
-                settingKey="saml-user-provisioning-enabled?"
-                providerName="SAML"
-                reactivatesAccounts
-                lockedNote={scimNote}
-              />
-
               <SettingsSection
                 title={t`Identity provider (IdP) configuration`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
@@ -243,6 +236,13 @@ export function SettingsSAMLForm() {
                   />
                 </Stack>
               </SettingsSection>
+
+              <UserProvisioningSection
+                settingKey="saml-user-provisioning-enabled?"
+                providerName="SAML"
+                reactivatesAccounts
+                lockedNote={scimNote}
+              />
 
               <CollapsibleSettingsSection
                 title={t`Sign SSO requests`}

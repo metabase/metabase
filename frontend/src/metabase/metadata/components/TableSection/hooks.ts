@@ -6,11 +6,11 @@ const LOADER_WIDTH = 16;
 const FIELD_ORDER_PICKER_WIDTH = 136;
 
 export const useResponsiveButtons = ({
-  hasFields,
+  canSort,
   isSorting,
   isUpdatingSorting,
 }: {
-  hasFields: boolean;
+  canSort: boolean;
   isSorting: boolean;
   isUpdatingSorting: boolean;
 }) => {
@@ -40,7 +40,7 @@ export const useResponsiveButtons = ({
     } else {
       width += syncButtonWidth;
 
-      if (hasFields) {
+      if (canSort) {
         width += sortingButtonWidth + BUTTONS_GAP;
       }
     }

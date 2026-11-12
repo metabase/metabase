@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { isNotNull } from "metabase/utils/types";
 import type { RawSeries } from "metabase-types/api";
 
@@ -25,6 +26,7 @@ import type {
   ScatterPlotModel,
   SeriesModel,
 } from "../../model/types";
+import { getLabelValueFormatting } from "../../model/util";
 
 import { getScatterPlotDataset } from "./dataset";
 
@@ -60,6 +62,9 @@ export function getScatterPlotModel(
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): ScatterPlotModel {
+  const hasResponsiveTicks =
+    renderingContext.cartesianSize != null &&
+    renderingContext.cartesianSize !== "fullscreen";
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
   const cardsColumns = getCardsColumns(rawSeries, settings);
@@ -116,7 +121,11 @@ export function getScatterPlotModel(
       columnByDataKey,
       false,
       [],
-      false,
+      getLabelValueFormatting(
+        settings["graph.label_value_formatting"],
+        hasResponsiveTicks,
+      ) === "compact",
+      hasResponsiveTicks,
     );
 
   const trendLinesModel = getTrendLines(

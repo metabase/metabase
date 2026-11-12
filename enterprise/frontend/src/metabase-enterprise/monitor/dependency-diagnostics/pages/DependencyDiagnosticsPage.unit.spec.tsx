@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupDependencyCountsEndpoint,
   setupListBreakingGraphNodesEndpoint,
   setupListUnreferencedGraphNodesEndpoint,
   setupUserKeyValueEndpoints,
@@ -82,6 +83,7 @@ function setup({
     value: lastUsedParams,
   });
 
+  setupDependencyCountsEndpoint();
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const PageComponent =
@@ -169,7 +171,7 @@ describe("DependencyDiagnosticsPage", () => {
       const { router } = setup({
         mode: "broken",
         nodes: CARD_NODES,
-        urlParams: { groupTypes: ["table", "question", "transform"] },
+        urlParams: { groupTypes: ["table", "question"] },
       });
 
       await waitForListToLoad();

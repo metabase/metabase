@@ -1,10 +1,17 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-import { skipToken, useGetCollectionQuery } from "metabase/api";
+import {
+  actionApi,
+  skipToken,
+  snippetApi,
+  transformApi,
+  useGetCollectionQuery,
+} from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { getUser, getUserPersonalCollectionId } from "metabase/current-user";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls/collections";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -124,3 +131,20 @@ export const useGetDefaultCollectionId = (
   // eslint-disable-next-line react-hooks/rules-of-hooks -- this won't change at runtime, so it's safe
   return useOSSGetDefaultCollectionId(sourceCollectionId, options);
 };
+
+export function useInvalidateCollectionItems() {
+  const dispatch = useDispatch();
+
+  return useCallback(
+    (collection: Pick<Collection, "namespace">) => {
+      if (collection.namespace === "snippets") {
+        dispatch(snippetApi.util.invalidateTags([listTag("snippet")]));
+      } else if (collection.namespace === "transforms") {
+        dispatch(transformApi.util.invalidateTags([listTag("transform")]));
+      } else if (collection.namespace === "data-actions") {
+        dispatch(actionApi.util.invalidateTags([listTag("action")]));
+      }
+    },
+    [dispatch],
+  );
+}

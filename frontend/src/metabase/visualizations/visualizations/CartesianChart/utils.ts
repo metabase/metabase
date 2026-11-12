@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { EChartsCoreOption } from "echarts/core";
 
 import { dayjs } from "metabase/dayjs";
@@ -10,15 +11,32 @@ import {
   type HoveredObject,
   type SeriesModel,
   X_AXIS_DATA_KEY,
-  getDashboardAdjustedSettings,
   getDatasetKey,
+  getSizeAdjustedSettings,
+  isBreakoutSeries,
 } from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 
 import { normalizeDimensionValue } from "./events";
 import type { CartesianHoveredObject } from "./types";
 
-export { getDashboardAdjustedSettings };
+export { getSizeAdjustedSettings };
+
+type SeriesSelectContext = {
+  hasMultipleCards: boolean;
+  isDashboard: boolean;
+};
+
+/**
+ * Whether selecting this series in the legend always opens its question.
+ * When false, a breakout series opens drills for its value if it has any, and
+ * falls back to opening the question on a dashboard.
+ */
+export const doesSeriesAlwaysOpenQuestion = (
+  seriesModel: SeriesModel,
+  { hasMultipleCards, isDashboard }: SeriesSelectContext,
+): boolean =>
+  hasMultipleCards || (isDashboard && !isBreakoutSeries(seriesModel));
 
 export const getHoveredSeriesDataKey = (
   seriesModels: SeriesModel[],

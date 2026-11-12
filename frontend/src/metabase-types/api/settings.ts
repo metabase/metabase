@@ -4,7 +4,7 @@ import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { SdkIframeEmbedSetupTheme } from "./embedding-theme";
-import type { CurrencyStyle } from "./formatting";
+import type { CurrencyPosition, CurrencyStyle } from "./formatting";
 import type { GroupMappings } from "./group";
 import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
 import type { NotificationRecipient } from "./notification";
@@ -37,6 +37,7 @@ export interface NumberFormattingSettings {
 export interface CurrencyFormattingSettings {
   currency?: string;
   currency_style?: CurrencyStyle;
+  currency_position?: CurrencyPosition;
   currency_in_header?: boolean;
 }
 
@@ -48,6 +49,7 @@ export const engineKeys = [
   "druid-jdbc",
   "druid",
   "mongo",
+  "motherduck",
   "mysql",
   "oracle",
   "postgres",
@@ -213,12 +215,20 @@ export interface AlertUpgradeVersion {
   id?: string;
 }
 
+export interface MajorVersionSupport {
+  major: number;
+  released: string;
+  lts: boolean;
+  eol: string;
+}
+
 export interface VersionInfo {
   nightly?: VersionInfoRecord;
   beta?: VersionInfoRecord;
   latest?: VersionInfoRecord;
   older?: VersionInfoRecord[];
   alert_upgrade_versions?: AlertUpgradeVersion[];
+  major_version_support?: MajorVersionSupport[];
 }
 
 export type LocaleData = [string, string];
@@ -332,6 +342,7 @@ export const tokenFeatures = [
   "audit_app",
   "cache_granular_controls",
   "cloud_custom_smtp",
+  "content_diagnostics",
   "content_translation",
   "content_verification",
   "custom-viz",
@@ -381,6 +392,7 @@ export const tokenFeatures = [
   "library",
   "library_retrieval",
   "support-users",
+  "session-management",
   "tenants",
   "writable_connection",
   "admin_security_center",
@@ -463,10 +475,10 @@ interface InstanceSettings {
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
-  "enable-embedding-static": boolean;
+  "enable-embedding-modular": boolean;
   "enable-embedding-sdk": boolean;
-  "enable-embedding-simple": boolean;
   "enable-embedding-interactive": boolean;
+  "enable-embedding-sidecar": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
@@ -501,6 +513,7 @@ interface AdminSettings {
   "analytics-pii-retention-enabled"?: boolean;
   "custom-geojson-enabled": boolean;
   "encryption-enabled": boolean;
+  "metabot-query-execution-enabled?": boolean;
   "deprecation-notice-version"?: string;
   "disable-cors-on-localhost": boolean;
   "embedding-secret-key"?: string;
@@ -517,8 +530,7 @@ interface AdminSettings {
   "version-info"?: VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
-  "show-sdk-embed-terms": boolean | null;
-  "show-simple-embed-terms": boolean | null;
+  "show-modular-embed-terms": boolean | null;
   "system-timezone"?: string;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
@@ -556,6 +568,9 @@ interface SettingsManagerSettings {
   "llm-bedrock-session-token"?: string | null;
   "llm-vllm-api-base-url"?: string | null;
   "llm-vllm-api-key"?: string | null;
+  "llm-ollama-api-base-url"?: string | null;
+  "llm-ollama-api-key"?: string | null;
+  "llm-ollama-request-timeout-ms"?: number | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
@@ -570,6 +585,10 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  /** Origin, on a host name of its own, that data apps are served from (MB_ISOLATED_ORIGIN); null when unset (same-origin) or unusable (data apps are refused). */
+  "isolated-origin": string | null;
+  /** True when MB_ISOLATED_ORIGIN is set to a value that can't be used, which turns data apps off. */
+  "isolated-origin-misconfigured?": boolean;
   "csp-img-allowed-hosts": string;
   "csp-img-enabled": boolean;
   "ai-features-enabled?": boolean;
@@ -740,7 +759,29 @@ export type SettingKey = keyof Settings;
 
 export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
 
-export type ColorSettings = Record<string, string>;
+type ColorSettingsAccentIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+export type ColorSettingsAccentKey =
+  | `accent${ColorSettingsAccentIndex}`
+  | `accent${ColorSettingsAccentIndex}-light`
+  | `accent${ColorSettingsAccentIndex}-dark`;
+
+/** Keys that the `application-colors` setting stores. */
+export type ColorSettingsKey =
+  | "brand"
+  | "filter"
+  | "summarize"
+  | ColorSettingsAccentKey;
+
+/**
+ * The raw `application-colors` setting. Its keys are not color token names:
+ * translate it with `mapWhitelabelColorsToTokens` before you use it as a `ColorPalette`.
+ */
+export type ColorSettings = Partial<Record<ColorSettingsKey, string>> & {
+  "core-brand"?: never;
+  "core-filter"?: never;
+  "core-summarize"?: never;
+};
 
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export type TimeoutValue = { amount: number; unit: string };
@@ -770,7 +811,6 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-branch"?: string | null;
   "remote-sync-type"?: RemoteSyncType | null;
   "remote-sync-auto-import"?: boolean | null;
-  "remote-sync-transforms"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;

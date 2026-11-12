@@ -227,7 +227,7 @@
         (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
           (transforms.execute/execute! transform {:run-method :manual})
           (transforms.tu/wait-for-table target-name 10000)
-          (let [transform' (t2/select-one :model/Transform tid)
+          (let [transform' (t2/select-one :model/Transform :id tid)
                 result     (run-inspector-loop transform')]
             (assert-inspector-loop result :mbql)))))))
 
@@ -244,6 +244,6 @@
         (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
           (transforms.execute/execute! transform {:run-method :manual})
           (transforms.tu/wait-for-table target-name 10000)
-          (let [transform' (t2/select-one :model/Transform tid)
+          (let [transform' (t2/select-one :model/Transform :id tid)
                 result     (run-inspector-loop transform')]
             (assert-inspector-loop result :native)))))))

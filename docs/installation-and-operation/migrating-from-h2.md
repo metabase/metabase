@@ -1,5 +1,6 @@
 ---
 title: Migrating to a production application database
+summary: Move your Metabase off the built-in H2 database to a production-ready PostgreSQL application database.
 redirect_from:
   - /docs/latest/operations-guide/migrating-from-h2
   - /docs/latest/operations-guide/running-migrations-manually
@@ -9,7 +10,7 @@ redirect_from:
 
 This page covers how to convert a Metabase that's been using the built-in application database, H2, to a production-ready instance of PostgreSQL. For more on why you should use Postgres as your app DB, check out [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
 
-If you'd rather move to Metabase Cloud, check out [Migrate to Metabase Cloud](../cloud/migrate/guide.md).
+If you'd rather move to Metabase Cloud, check out [Migrate to Metabase Cloud](https://www.metabase.com/docs/latest/cloud/migrate/guide).
 
 ## Metabase's application database
 
@@ -25,7 +26,7 @@ The migration process is a one-off process. You can execute the migration script
 
 One important thing here is that the version of Metabase you use during the migration process must be the same. Meaning, the Metabase you use to run the migration command must be the same one that was last used to create or update H2 file, which must be the same version you'll be using in production. Only _after_ completing the migration should you consider upgrading.
 
-You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase.com/pricing) plan, which takes care of all of this stuff for you. If you have an existing Metabase, here's how you can [migrate to Metabase Cloud](../cloud/migrate/guide.md).
+You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase.com/pricing) plan, which takes care of all of this stuff for you. If you have an existing Metabase, here's how you can [migrate to Metabase Cloud](https://www.metabase.com/docs/latest/cloud/migrate/guide).
 
 ## Supported databases for storing your Metabase application data
 
@@ -82,7 +83,7 @@ Here's an example command for migrating to a Postgres database:
 ```
 export MB_DB_TYPE=postgres
 export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
+java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
 ```
 
 Here's an example command for migrating to a MySQL database using Java parameter instead of environment variables:
@@ -102,7 +103,7 @@ Start your Metabase (with the db connection info, but without the `load-from-h2`
 ```
 export MB_DB_TYPE=postgres
 export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+java -jar metabase.jar
 ```
 
 You should, however, keep your old H2 file just for safe-keeping, or as an heirloom, or talisman, or whatever.
@@ -150,7 +151,7 @@ From the directory with your H2 file and your Metabase JAR, run the migration co
 ```
 export MB_DB_TYPE=postgres
 export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
+java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
 ```
 
 Metabase will start up, perform the migration (meaning, it'll take the data from the H2 file and put it into your new app db, in this case a Postgres db), and then exit.

@@ -10,7 +10,6 @@
    [metabase.slackbot.api :as slackbot]
    [metabase.slackbot.channel :as slackbot.channel]
    [metabase.slackbot.client :as slackbot.client]
-   [metabase.slackbot.config :as slackbot.config]
    [metabase.slackbot.query :as slackbot.query]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
@@ -116,8 +115,7 @@
    Uses `with-temporary-raw-setting-values` to avoid settings with masking getters
    saving/restoring the obfuscated value instead of the original."
   [& body]
-  `(with-redefs [slackbot.config/validate-bot-token! (constantly {:ok true})
-                 slackbot.client/get-bot-user-id     (constantly "UBOT123")]
+  `(with-redefs [slackbot.client/get-bot-user-id     (constantly "UBOT123")]
      (with-ensure-encryption
        (mt/with-temporary-raw-setting-values [site-url "https://localhost:3000"
                                               slack-connect-client-id "test-client-id"

@@ -62,20 +62,28 @@ function sortGroupsTenantsDisabled(
   return [...defaultGroup, ...rest];
 }
 
-export function useFilterOptions({
-  date,
-  user,
-  group,
-  tenant,
-}: FilterUrlState) {
+type UseFilterOptionsOpts = {
+  /** Off for a page without the group and tenant filters, so their options aren't loaded. */
+  hasGroupAndTenantFilters?: boolean;
+};
+
+export function useFilterOptions(
+  { date, user, group, tenant }: FilterUrlState,
+  { hasGroupAndTenantFilters = true }: UseFilterOptionsOpts = {},
+) {
   const useTenantsSetting = useSetting("use-tenants");
   const tenantsFeatureEnabled =
     !!hasPremiumFeature("tenants") && !!useTenantsSetting;
   const { data: usersData, isLoading: isLoadingUsers } = useListUsersQuery({});
   const { data: groupsData, isLoading: isLoadingGroups } =
-    useListPermissionsGroupsQuery(undefined);
+    useListPermissionsGroupsQuery(undefined, {
+      skip: !hasGroupAndTenantFilters,
+    });
   const { data: tenantsData, isLoading: isLoadingTenants } =
-    useListTenantsQuery({ status: "active" }, { skip: !tenantsFeatureEnabled });
+    useListTenantsQuery(
+      { status: "active" },
+      { skip: !tenantsFeatureEnabled || !hasGroupAndTenantFilters },
+    );
 
   const userOptions = useMemo(
     () =>

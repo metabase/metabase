@@ -110,15 +110,17 @@ describe("scenarios > dashboard > filters > management", () => {
   });
 
   describe("change parameter type", () => {
-    it("should reset existing filter mappings and default value, and preselect the default operator for every type", () => {
-      createDashboardWithFilterAndQuestionMapped();
+    it("should reset existing filter mappings and default value, restore the saved operator and mappings for the saved type, and preselect the default operator for every type", () => {
+      createDashboardWithFilterAndQuestionMapped({
+        type: "string/does-not-contain",
+      });
 
       selectFilter("Text");
 
       H.getDashboardCard().should("contain", "People.Name");
 
-      cy.log("verify Text default value: Is");
-      H.sidebar().findByDisplayValue("Is").should("exist");
+      cy.log("verify the saved Text operator: Does not contain");
+      H.sidebar().findByDisplayValue("Does not contain").should("exist");
 
       cy.log("change filter type");
 
@@ -140,6 +142,20 @@ describe("scenarios > dashboard > filters > management", () => {
 
       H.getDashboardCard().should("not.contain", "People.Name");
 
+      changeFilterType("Text or Category");
+
+      cy.log("verify the saved parameter value is restored");
+      H.sidebar().within(() => {
+        cy.findByDisplayValue("Does not contain").should("exist");
+        cy.findByDisplayValue("Text or Category").should("exist");
+        cy.findByDisplayValue("Text").should("exist");
+      });
+
+      cy.log("verify that mapping is restored");
+      H.getDashboardCard().should("contain", "People.Name");
+
+      changeFilterType("Number");
+
       changeFilterType("ID");
 
       cy.log("verify ID default value: Numeric ID");
@@ -158,75 +174,6 @@ describe("scenarios > dashboard > filters > management", () => {
       H.saveDashboard();
 
       H.filterWidget().should("not.exist");
-    });
-
-    it("should restore the saved parameter value and mappings when user switches back to the saved filter type", () => {
-      const textFilter = createMockParameter({
-        name: "Text Text",
-        slug: "string",
-        id: "5aefc726",
-        type: "string/does-not-contain",
-        sectionId: "string",
-      });
-
-      const peopleQuestionDetails = {
-        query: { "source-table": PEOPLE_ID, limit: 5 },
-      };
-
-      H.createDashboardWithQuestions({
-        dashboardDetails: {
-          parameters: [textFilter],
-        },
-        questions: [peopleQuestionDetails],
-      }).then(({ dashboard, questions: cards }) => {
-        const [peopleCard] = cards;
-
-        H.updateDashboardCards({
-          dashboard_id: dashboard.id,
-          cards: [
-            {
-              card_id: peopleCard.id,
-              parameter_mappings: [
-                {
-                  parameter_id: textFilter.id,
-                  card_id: peopleCard.id,
-                  target: ["dimension", ["field", PEOPLE.NAME, null]],
-                },
-              ],
-            },
-          ],
-        });
-
-        H.visitDashboard(dashboard.id);
-      });
-
-      H.editDashboard();
-
-      selectFilter("Text Text");
-
-      H.sidebar().findByDisplayValue("Does not contain").should("exist");
-
-      H.getDashboardCard().should("contain", "People.Name");
-
-      changeFilterType("Number");
-
-      // default value for a number type
-      H.sidebar().findByDisplayValue("Equal to").should("exist");
-
-      cy.log("verify that mapping is cleared");
-      H.getDashboardCard().should("not.contain", "People.Name");
-
-      changeFilterType("Text or Category");
-
-      cy.log("verify the saved parameter value is restored");
-      H.sidebar().within(() => {
-        cy.findByDisplayValue("Does not contain").should("exist");
-        cy.findByDisplayValue("Text or Category").should("exist");
-        cy.findByDisplayValue("Text Text").should("exist");
-      });
-
-      cy.log("verify that mapping is restored");
-      H.getDashboardCard().should("contain", "People.Name");
     });
   });
 
@@ -255,12 +202,14 @@ describe("scenarios > dashboard > filters > management", () => {
   });
 });
 
-function createDashboardWithFilterAndQuestionMapped() {
+function createDashboardWithFilterAndQuestionMapped({
+  type = "string/=",
+} = {}) {
   const textFilter = createMockParameter({
     name: "Text",
     slug: "string",
     id: "5aefc726",
-    type: "string/=",
+    type,
     sectionId: "string",
     default: "value to check default",
   });

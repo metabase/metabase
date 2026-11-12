@@ -46,14 +46,13 @@ areas.forEach((area) => {
       cy.intercept("PUT", "/api/table").as("updateTables");
       cy.intercept("PUT", "/api/table/*").as("updateTable");
 
+      cy.intercept({ method: "GET", pathname: "/api/database" }).as(
+        "databases",
+      );
+
       if (area === "admin") {
-        cy.intercept("GET", "/api/database?*").as("databases");
         cy.intercept("GET", "/api/field/*/values").as("fieldValues");
         cy.intercept("PUT", "/api/table/*").as("updateTable");
-      }
-
-      if (area === "data studio") {
-        cy.intercept("GET", "/api/database").as("databases");
       }
     });
 
@@ -645,8 +644,9 @@ areas.forEach((area) => {
               .realHover({ scrollBehavior: "center" });
             H.tooltip().should("be.visible").and("have.text", longPrefix);
 
-            // hide tooltip
-            FieldSection.getDescriptionInput().realHover();
+            // hide tooltip, by hovering something it can't be covering (it can
+            // flip below the prefix, over the description input)
+            FieldSection.get().findByText("Field settings").realHover();
             H.tooltip().should("not.exist");
 
             cy.log("in table section");
@@ -669,8 +669,7 @@ areas.forEach((area) => {
             fieldId: ORDERS.QUANTITY,
           });
 
-          FieldSection.getStyleInput().click();
-          H.popover().findByText("Percent").click();
+          FieldSection.getFormatControl().findByText("123%").click();
           cy.wait("@updateField");
           H.expectUnstructuredSnowplowEvent({
             event: "metadata_edited",
@@ -722,11 +721,12 @@ areas.forEach((area) => {
               cy.findByText("Unit of currency").should("not.be.visible");
               cy.findByText("Currency label style").should("not.be.visible");
 
-              cy.get("#number_style").click();
+              // if you change the format to currency, currency settings should appear
+              cy.findByTestId("chart-settings-widget-number_style")
+                .findByText("$1.23")
+                .click();
             });
 
-          // if you change the style to currency, currency settings should appear
-          H.popover().findByText("Currency").click();
           cy.wait("@updateField");
           verifyAndCloseToast("Formatting of Quantity updated");
 

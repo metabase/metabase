@@ -1,6 +1,5 @@
 name: product_summary
 display_name: Product Summary
-created_at: '2026-04-02T03:01:23.703545Z'
 db_id: Sample Database
 schema: TRANSFORMS
 active: false

@@ -15,7 +15,7 @@
 ;; logs, or audit events — only a masked form is exposed. Internal callers that actually need to
 ;; HMAC with the secret must use `unobfuscated-mcp-embedding-signing-secret`.
 (defsetting mcp-embedding-signing-secret
-  (deferred-tru "Instance-wide secret used to derive embedding session keys for MCP sessions.")
+  "Instance-wide secret used to derive embedding session keys for MCP sessions."
   :encryption :when-encryption-key-set
   :visibility :internal
   :sensitive? true
@@ -62,7 +62,7 @@
   24)
 
 (defsetting mcp-query-handle-ttl-hours
-  (deferred-tru "Hours a stored MCP query handle is kept before the scheduled GC task deletes it.")
+  "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
   ;; `:positive-integer` rather than `:integer`: the GC deletes handles created before `now - ttl`,
   ;; so 0 puts the cutoff at *now* and clears the whole table on the next run, and a negative takes
   ;; handles minted seconds ago. The type guards the read path too, which a `:setter` cannot —

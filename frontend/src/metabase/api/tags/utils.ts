@@ -74,7 +74,7 @@ import type {
 import { getLensKey } from "../utils/transform-inspector-lens";
 
 import type { TagType } from "./constants";
-import { TAG_TYPE_MAPPING } from "./constants";
+import { REMOTE_SYNC_CONTENT_TAG_TYPES, TAG_TYPE_MAPPING } from "./constants";
 
 export function tag(type: TagType): TagDescription<TagType> {
   return { type };
@@ -111,7 +111,12 @@ export function provideActionListTags(
 export function provideActionTags(
   action: WritebackAction,
 ): TagDescription<TagType>[] {
-  return [idTag("action", action.id)];
+  return [
+    idTag("action", action.id),
+    ...(action.type === "implicit" && action.table_id != null
+      ? [idTag("table", action.table_id)]
+      : []),
+  ];
 }
 
 export function provideActivityItemListTags(
@@ -553,6 +558,10 @@ export function providePersistedModelTags(
   status: ModelCacheRefreshStatus,
 ): TagDescription<TagType>[] {
   return [idTag("persisted-model", status.card_id)];
+}
+
+export function provideRemoteSyncContentTags(): TagDescription<TagType>[] {
+  return REMOTE_SYNC_CONTENT_TAG_TYPES.map(listTag);
 }
 
 export function provideRevisionListTags(

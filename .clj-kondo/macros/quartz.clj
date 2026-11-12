@@ -18,3 +18,8 @@
   [& body]
   `(let [s# ~(first body)]
      (-> s# ~@(rest body))))
+
+(defmacro defjob-type
+  "A `deftype` with no fields, without the docstring and the options map."
+  [type-name & args]
+  `(deftype ~type-name [] ~@(drop-while (some-fn string? map?) args)))

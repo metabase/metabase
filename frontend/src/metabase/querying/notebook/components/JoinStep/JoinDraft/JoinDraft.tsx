@@ -36,7 +36,8 @@ export function JoinDraft({
   onJoinChange,
 }: JoinDraftProps) {
   const tc = useTranslateContent();
-  const sourceTableId = Lib.sourceTableOrCardId(query);
+  const sourceTableId = Lib.primarySourceTableId(query);
+  const sourceCardId = Lib.primarySourceCardId(query);
   const [strategy, setStrategy] = useState(
     () => initialStrategy ?? getDefaultJoinStrategy(query, stageIndex),
   );
@@ -104,7 +105,7 @@ export function JoinDraft({
   const handleResetRef = useLatest(handleReset);
   useLayoutEffect(
     () => handleResetRef.current(),
-    [sourceTableId, handleResetRef],
+    [sourceTableId, sourceCardId, handleResetRef],
   );
 
   return (
@@ -143,11 +144,12 @@ export function JoinDraft({
       {rhsTable && (
         <>
           <Flex className={S.JoinConditionOn}>
-            <Text c="core-brand" fw="bold">{t`on`}</Text>
+            <Text c="text-brand-strong" fw="bold">{t`on`}</Text>
           </Flex>
           <NotebookCell
             className={S.JoinConditionCell}
             color={color}
+            align="flex-start"
             data-testid="new-join-condition"
             p={rem("6px")}
           >

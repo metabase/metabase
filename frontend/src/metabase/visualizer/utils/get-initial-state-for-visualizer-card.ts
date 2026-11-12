@@ -22,11 +22,17 @@ export function getInitialStateForVisualizerCard(
     createDataSource("card", card.id, card.name),
   );
 
+  // the dashboard's dataset cache may still hold cards removed from this dashcard
+  const dashcardDatasets: Record<number, Dataset | null | undefined> =
+    Object.fromEntries(
+      cards.map((card) => [card.id, preloadedDatasets?.[card.id]]),
+    );
+
   const dataSourceDatasets: Record<
     VisualizerDataSourceId,
     Dataset | null | undefined
   > = Object.fromEntries(
-    Object.entries(preloadedDatasets ?? {}).map(([cardId, dataset]) => [
+    Object.entries(dashcardDatasets).map(([cardId, dataset]) => [
       `card:${cardId}`,
       dataset,
     ]),
@@ -38,5 +44,9 @@ export function getInitialStateForVisualizerCard(
     dataSources,
   );
 
-  return { ...visualizationEntity, columns, preloadedDatasets };
+  return {
+    ...visualizationEntity,
+    columns,
+    preloadedDatasets: dashcardDatasets,
+  };
 }

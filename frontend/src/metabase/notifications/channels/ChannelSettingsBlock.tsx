@@ -1,7 +1,8 @@
 import type { JSX, ReactNode } from "react";
+import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { ActionIcon, Group, Icon, Stack, Text } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 type ChannelSettingsBlockProps = {
   title: string;
@@ -24,15 +25,15 @@ export const ChannelSettingsBlock = ({
           <Text className={CS.textShortLineHeight}>{title}</Text>
         </Group>
 
-        {/* TODO: replace with ActionIcon (GDGT-2457) */}
-        <Button
+        <ActionIcon
           variant="subtle"
-          color="neutral"
           size="sm"
           data-testid="remove-channel-button"
-          leftSection={<Icon name="close" />}
           onClick={onRemoveChannel}
-        />
+          aria-label={t`Remove`}
+        >
+          <Icon name="close" />
+        </ActionIcon>
       </Group>
 
       {children}

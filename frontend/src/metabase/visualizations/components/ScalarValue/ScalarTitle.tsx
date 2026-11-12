@@ -1,33 +1,22 @@
-import cx from "classnames";
 import { type ReactNode, useCallback, useState } from "react";
 
-import { Markdown } from "metabase/common/components/Markdown";
-import { useTranslateContent } from "metabase/content-translation/hooks";
-import CS from "metabase/css/core/index.css";
-import {
-  Box,
-  Ellipsified,
-  Flex,
-  Icon,
-  type IconProps,
-  Tooltip,
-} from "metabase/ui";
+import { Box, Ellipsified, Flex, Icon, type IconProps } from "metabase/ui";
 
 import { LegendLabel } from "../legend/LegendLabel";
 
 import S from "./ScalarValue.module.css";
 
 interface ScalarTitleProps {
+  size?: "sm" | "md";
   children: ReactNode;
-  description?: string | null;
   icon?: IconProps | null;
   getHref?: () => string | undefined;
   onSelectTitle?: () => void;
 }
 
 export const ScalarTitle = ({
+  size = "md",
   children,
-  description,
   icon,
   getHref,
   onSelectTitle,
@@ -39,7 +28,6 @@ export const ScalarTitle = ({
     }
   }, [getHref]);
 
-  const tc = useTranslateContent();
   const title = <Ellipsified tooltip={children}>{children}</Ellipsified>;
 
   return (
@@ -48,6 +36,7 @@ export const ScalarTitle = ({
       justify="center"
       gap="xxs"
       maw="100%"
+      miw={0}
       data-testid="scalar-title"
     >
       {icon && (
@@ -59,7 +48,7 @@ export const ScalarTitle = ({
           tooltip={icon.tooltip}
         />
       )}
-      <Box fz="md" lh="md" fw={700} c="text-primary" ta="center" miw={0}>
+      <Box fz={size} lh={size} fw={700} c="text-primary" ta="center" miw={0}>
         {onSelectTitle ? (
           <LegendLabel
             className={S.titleLink}
@@ -76,28 +65,6 @@ export const ScalarTitle = ({
           title
         )}
       </Box>
-      {description && (
-        <Tooltip
-          label={
-            <Markdown dark compact disallowHeading unstyleLinks lineClamp={8}>
-              {tc(description)}
-            </Markdown>
-          }
-          maw="22em"
-        >
-          <Box
-            component="span"
-            tabIndex={0}
-            className={cx(
-              S.descriptionIcon,
-              CS.hoverChild,
-              CS.hoverChildSmooth,
-            )}
-          >
-            <Icon name="info" />
-          </Box>
-        </Tooltip>
-      )}
     </Flex>
   );
 };

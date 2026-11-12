@@ -57,10 +57,13 @@
   "List the names of the currently-attached query_execution partition tables."
   [conn]
   (map :pg_class/relname
+       ;; the regclass::oid cast resolves to only the table in the current schema.
+       ;; appdb with a non-default schema is not supported for new installs, but
+       ;; there are users who have upgraded from ancient installs who have it.
        (next.jdbc/execute! conn ["SELECT c.relname FROM pg_inherits i
                                     JOIN pg_class p ON i.inhparent = p.oid
                                     JOIN pg_class c ON i.inhrelid = c.oid
-                                   WHERE p.relname='query_execution'"])))
+                                   WHERE p.oid = 'query_execution'::regclass::oid"])))
 
 (defn fully-on-partitions?
   "Has the database fully switched to managing its truncation with partitions?
@@ -71,13 +74,13 @@
   []
   (and (= :postgres (mdb/db-type))
        (with-open [conn (.getConnection (mdb/data-source))]
-         (let [[oldest-partition] (sort (current-partitions conn))
-               [oldest] (next.jdbc/execute! conn [(str "SELECT min(started_at) AS min FROM "
-                                                       oldest-partition)])
-               oldest-date-time (some-> (:min oldest) t/instant
-                                        (t/local-date-time "UTC"))]
-           (or (nil? oldest-date-time)
-               (= oldest-partition (partition-for oldest-date-time)))))))
+         (when-let [oldest-partition (first (sort (current-partitions conn)))]
+           (let [[oldest] (next.jdbc/execute! conn [(str "SELECT min(started_at) AS min FROM "
+                                                         oldest-partition)])
+                 oldest-date-time (some-> (:min oldest) t/instant
+                                          (t/local-date-time "UTC"))]
+             (or (nil? oldest-date-time)
+                 (= oldest-partition (partition-for oldest-date-time))))))))
 
 ;;; and now for the side-effects...
 
@@ -101,8 +104,11 @@
 
 ;;; scheduling the jobs
 
-(task/defjob ^:private ^{org.quartz.DisallowConcurrentExecution true}
-  ManagePartitions [_]
+(task/defjob ManagePartitions
+  "Creates and drops the partitions of `query_execution`, under Postgres."
+  {:saved-class "metabase.audit_app.task.partitions.ManagePartitions"
+   :concurrent? false}
+  [_]
   (when (= :postgres (mdb/db-type)) ; mysql/h2 don't have partitions
     (let [retention-days (settings/audit-max-retention-days)]
       (with-open [conn (.getConnection (mdb/data-source))]

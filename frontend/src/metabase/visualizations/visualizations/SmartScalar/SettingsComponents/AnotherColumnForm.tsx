@@ -2,8 +2,10 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import {
   Box,
+  Button,
   Flex,
   PopoverBackButton,
   Select,
@@ -16,8 +18,6 @@ import type {
 } from "metabase-types/api";
 
 import { COMPARISON_TYPES } from "../constants";
-
-import { DoneButton } from "./SmartScalarSettingsWidgets.styled";
 
 interface AnotherColumnFormProps {
   value?: SmartScalarComparisonAnotherColumn;
@@ -83,6 +83,7 @@ export function AnotherColumnForm({
             onChange={handleChangeColumnKey}
             styles={{ dropdown: { width: "100%" } }}
             comboboxProps={{
+              keepMounted: false,
               withinPortal: false,
               floatingStrategy: "fixed",
             }}
@@ -93,9 +94,14 @@ export function AnotherColumnForm({
             onChange={handleChangeLabel}
           />
         </Stack>
-        <DoneButton type="submit" disabled={!canSubmit}>
+        <Button
+          className={CS.alignSelfEnd}
+          type="submit"
+          variant="filled"
+          disabled={!canSubmit}
+        >
           {t`Done`}
-        </DoneButton>
+        </Button>
       </Flex>
     </Box>
   );

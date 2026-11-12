@@ -29,6 +29,7 @@ import {
   useCurrentSearchScope,
   useGetLastCollection,
 } from "../../hooks/use-current-search-scope";
+import { getDataAppsRootItem } from "../../hooks/utils";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 
 export const SearchResults = ({
@@ -165,6 +166,10 @@ const getItemText = (item: OmniPickerItem) => {
     return "";
   }
 
+  if (item.model === "data-app") {
+    return getDataAppsRootItem().name;
+  }
+
   if (isMeasure(item)) {
     return item.table_display_name ?? item.table_name;
   }
@@ -239,7 +244,7 @@ export function SearchScopeSelector() {
       : null,
     lastCollection
       ? {
-          label: truncateName(lastCollection.name, 20),
+          label: lastCollection.name,
           value: String(lastCollection.id),
         }
       : null,
@@ -261,6 +266,7 @@ export function SearchScopeSelector() {
     >
       <Text>{t`Where to search:`}</Text>
       <SegmentedControl
+        labelMaxWidth="20ch"
         value={searchScope ? String(searchScope) : "all"}
         // Unjustified type cast. FIXME
         onChange={(newValue) => setSearchScope(newValue as SearchScope)}
@@ -269,10 +275,3 @@ export function SearchScopeSelector() {
     </Flex>
   );
 }
-
-const truncateName = (name: string, maxLength: number) => {
-  if (name.length <= maxLength) {
-    return name;
-  }
-  return name.slice(0, maxLength - 1) + "…";
-};

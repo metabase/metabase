@@ -12,6 +12,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -89,7 +90,7 @@
    [:description            {:optional true} [:maybe :string]]
    [:dataset_query          ::lib-be.schema/maybe-legacy-query]
    [:display                ms/NonBlankString]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
@@ -107,7 +108,7 @@
    [:description             {:optional true} [:maybe :string]]
    [:dataset_query           ::lib-be.schema/maybe-legacy-query]
    [:display                 :keyword]
-   [:visualization_settings  {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visualization_settings  {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id            {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id        {:optional true} [:maybe ms/PositiveInt]]
@@ -158,9 +159,11 @@
     (conversation-title/title-status id (:title conversation))))
 
 (defn- with-context-window
-  "Attach the window each message's `contextTokens` should be read against. It comes
-  from the model currently serving requests rather than the one that served the
-  turn, because the client uses it to judge whether the *next* message will fit."
+  "Attach the window each message's `contextTokens` should be read against.
+
+  It comes from the model currently serving requests rather than the one that served the turn,
+  because the client uses it to judge whether the *next* message will fit. Whether a past turn
+  filled its own window is stored on that turn's row instead, so this window does not change it."
   [detail]
   (let [window (metabot.self/context-window-tokens (metabot.settings/llm-metabot-provider))]
     (cond-> detail

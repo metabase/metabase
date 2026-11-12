@@ -2,8 +2,9 @@ import _ from "underscore";
 
 import { color } from "metabase/ui/colors";
 import { ACCENT_COUNT } from "metabase/ui/colors/palette";
+import type { ColorPalette } from "metabase/ui/colors/types";
 
-export const getAccentColorGroups = (palette: Record<string, string>) => {
+export const getAccentColorGroups = (palette: ColorPalette) => {
   const groups = [
     _.times(ACCENT_COUNT, (i) => [`accent${i}`]),
     _.times(ACCENT_COUNT, (i) => [`accent${i}`, `accent${i}-dark`]),

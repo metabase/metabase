@@ -19,6 +19,7 @@
  * signed in.
  */
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 
 /** One reading, as `timings` in `measure.ts` builds it. */
@@ -43,6 +44,7 @@ interface Series {
   secondLoad: Timings | null;
   steady: Timings | null;
   everyRunMs: number[];
+  calibrationMs: number;
 }
 
 interface Conditions {
@@ -51,6 +53,8 @@ interface Conditions {
   throttle: number;
   warm: boolean;
   offset: number;
+  /** Loads in this series. Defaults to the run count on the command line. */
+  loads?: number;
 }
 
 const url = process.argv[2];
@@ -75,22 +79,63 @@ const NETWORKS = {
   slow: { mbps: 5, latency: 150 },
 };
 
-/** CPU slowdown, where 1 leaves the runner at its own speed. */
-const CPUS = { fast: 1, slow: 4 };
+/**
+ * CPU slowdown. Neither condition is 1, because 1 leaves the reading at the
+ * mercy of whichever CPU the runner happened to draw, and a throttle absorbs
+ * some of that spread rather than passing it straight through.
+ */
+const CPUS = { fast: 2, slow: 4 };
 
-function measure({
+/**
+ * A second visit happens once per browser profile, so one cache-kept series can
+ * only ever produce one of them. Several short series in their own profiles give
+ * that reading a median and a spread for about the loads one long series costs.
+ */
+const WARM_PROFILES = 3;
+const WARM_LOADS = 3;
+
+/**
+ * A series takes a minute or two. A Chrome that stops answering leaves
+ * `measure.ts` waiting on its debugging socket without a bound, so past this
+ * the series is stopped and measured again.
+ */
+const SERIES_TIMEOUT_MS = 5 * 60 * 1000;
+const RETRY_PORT_OFFSET = 1000;
+
+async function measure(conditions: Conditions): Promise<Series> {
+  try {
+    return await measureOnce(conditions);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error(`${reason}, measuring the series again`);
+    // A new port, because the Chrome that hung may still hold the old one.
+    return measureOnce({
+      ...conditions,
+      offset: conditions.offset + RETRY_PORT_OFFSET,
+    });
+  }
+}
+
+function measureOnce({
   mbps,
   latency,
   throttle,
   warm,
   offset,
+  loads,
 }: Conditions): Promise<Series> {
   return new Promise<Series>((resolve, reject) => {
     const child = spawn(
       process.execPath,
-      [path.join(import.meta.dirname, "measure.ts"), url, String(runs)],
+      [
+        path.join(import.meta.dirname, "measure.ts"),
+        url,
+        String(loads ?? runs),
+      ],
       {
         stdio: ["ignore", "pipe", "inherit"],
+        // Its own process group, so stopping it also stops its Chrome.
+        detached: true,
         env: {
           ...process.env,
           NETWORK_MBPS: String(mbps),
@@ -104,13 +149,22 @@ function measure({
       },
     );
 
+    const timeout = setTimeout(() => {
+      if (child.pid) {
+        process.kill(-child.pid, "SIGKILL");
+      }
+    }, SERIES_TIMEOUT_MS);
+
     let output = "";
     child.stdout.on("data", (chunk) => (output += chunk));
-    child.on("exit", (code) =>
-      code === 0
-        ? resolve(JSON.parse(output))
-        : reject(new Error(`measure.ts exited with ${code}`)),
-    );
+    child.on("exit", (code, signal) => {
+      clearTimeout(timeout);
+      if (code === 0) {
+        resolve(JSON.parse(output));
+      } else {
+        reject(new Error(`measure.ts exited with ${code ?? signal}`));
+      }
+    });
   });
 }
 
@@ -132,6 +186,34 @@ function required(timings: Timings | null, name: string): Timings {
   }
   return timings;
 }
+
+/**
+ * The series whose reading is the median of the batch.
+ *
+ * Picking a series rather than averaging each reading keeps a state's readings
+ * in order with each other, the same reason `measure.ts` reports one load per
+ * state instead of a median per reading.
+ */
+function representativeSeries(
+  batch: Series[],
+  of: (series: Series) => Timings,
+): Series {
+  const sorted = [...batch].sort(
+    (a, b) => of(a).domContentLoadedMs - of(b).domContentLoadedMs,
+  );
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
+function readProc(file: string): string {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+const cpuModel =
+  readProc("/proc/cpuinfo").match(/^model name\s*:\s*(.+)$/m)?.[1] ?? "";
 
 function spreadPercent(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b);
@@ -159,13 +241,31 @@ function spreadPercent(values: number[]) {
         warm: false,
         offset: offset++,
       });
-      const warm = await measure({
-        mbps,
-        latency,
-        throttle,
-        warm: true,
-        offset: offset++,
-      });
+      const warmBatch = [];
+      for (let profile = 0; profile < WARM_PROFILES; profile++) {
+        warmBatch.push(
+          await measure({
+            mbps,
+            latency,
+            throttle,
+            warm: true,
+            offset: offset++,
+            loads: WARM_LOADS,
+          }),
+        );
+      }
+
+      // Each state picks its own series, because the second visit and the
+      // steady state are different loads already.
+      const warm = representativeSeries(warmBatch, (series) =>
+        required(series.secondLoad, "secondLoad"),
+      );
+      const steadiest = representativeSeries(warmBatch, (series) =>
+        required(series.steady, "steady"),
+      );
+      const calibrations = [cold, ...warmBatch]
+        .map((series) => series.calibrationMs)
+        .sort((a, b) => a - b);
 
       // Every cold reading in the row comes from `cold.median`, and every warm
       // reading from `warm.secondLoad`. Each is one load, so the readings in a
@@ -179,8 +279,19 @@ function spreadPercent(values: number[]) {
         cpuThrottle: throttle,
         coldMs: cold.median.domContentLoadedMs,
         warmMs: required(warm.secondLoad, "secondLoad").domContentLoadedMs,
-        steadyMs: required(warm.steady, "steady").domContentLoadedMs,
+        steadyMs: required(steadiest.steady, "steady").domContentLoadedMs,
         coldSpreadPercent: spreadPercent(cold.everyRunMs),
+        warmSpreadPercent: spreadPercent(
+          warmBatch.map(
+            (series) =>
+              required(series.secondLoad, "secondLoad").domContentLoadedMs,
+          ),
+        ),
+        steadySpreadPercent: spreadPercent(
+          warmBatch.map(
+            (series) => required(series.steady, "steady").domContentLoadedMs,
+          ),
+        ),
         // The cold load broken up, in the order a user meets it: bytes start
         // arriving, something is drawn, the shell commits, the page has its
         // data.
@@ -195,15 +306,17 @@ function spreadPercent(values: number[]) {
         // DOMContentLoaded alone.
         warmLargestPaintMs: required(warm.secondLoad, "secondLoad")
           .largestContentfulPaintMs,
-        steadyLargestPaintMs: required(warm.steady, "steady")
+        steadyLargestPaintMs: required(steadiest.steady, "steady")
           .largestContentfulPaintMs,
-        steadyPageReadyMs: required(warm.steady, "steady").pageReadyMs,
+        steadyPageReadyMs: required(steadiest.steady, "steady").pageReadyMs,
         locale: cold.locale,
         scripts: cold.scripts,
         scriptKb: cold.scriptKb,
         cssKb: cold.cssKb,
         totalKb: cold.totalKb,
         runs: cold.runs,
+        cpuModel,
+        calibrationMs: calibrations[Math.floor(calibrations.length / 2)],
       });
 
       console.error(`measured ${cpu} cpu on a ${network} network`);

@@ -1,6 +1,10 @@
 import { createMockStoreDashboard } from "__support__/state";
 import { INITIALIZE } from "metabase/redux/dashboard";
-import { createMockDashboard } from "metabase-types/api/mocks";
+import type { DashCardVisualizationSettings } from "metabase-types/api";
+import {
+  createMockDashboard,
+  createMockDashboardCard,
+} from "metabase-types/api/mocks";
 
 import {
   ADD_DASHCARD_IDS_TO_LOADING_QUEUE,
@@ -10,9 +14,20 @@ import {
   SET_DASHBOARD_ATTRIBUTES,
   SET_EDITING_DASHBOARD,
   SET_SIDEBAR,
+  clearCardData,
   fetchCardDataAction,
+  fetchDashboard,
+  markTimelineEventsShown,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardColumnSettings,
+  onUpdateDashCardVisualizationSettings,
+  selectTimelineEvents,
+  setDashCardTimelineEventsEnabled,
+  setDashCardTimelineEventsVisibility,
 } from "./actions";
+import { SIDEBAR_NAME } from "./constants";
 import { dashboardReducers as reducer } from "./reducers";
+import { timelineEvents } from "./reducers-typed";
 
 const TEST_DASHBOARD = createMockDashboard();
 
@@ -43,6 +58,12 @@ describe("dashboard reducers", () => {
       parameterValues: {},
       draftParameterValues: {},
       sidebar: { props: {} },
+      timelineEvents: {
+        overrides: {},
+        enabledByDashCard: {},
+        selection: null,
+        hasTrackedEventsShown: false,
+      },
       slowCards: {},
       loadingControls: {
         isLoading: false,
@@ -425,6 +446,244 @@ describe("dashboard reducers", () => {
         },
       });
       expect(result.dashcardData).toEqual({ 5: { 2: { data: [] } } });
+    });
+
+    it("keeps every dashcard's results readable as more results arrive and clear", () => {
+      const fulfilled = (dashcard_id: number, card_id: number) => ({
+        type: fetchCardDataAction.fulfilled.type,
+        payload: { dashcard_id, card_id, result: { data: [card_id] } },
+      });
+      const state = [
+        fulfilled(1, 10),
+        fulfilled(2, 20),
+        fulfilled(3, 30),
+        clearCardData(30, 3),
+        fulfilled(1, 11),
+      ].reduce(reducer, initState);
+
+      expect(state.dashcardData).toEqual({
+        1: { 10: { data: [10] }, 11: { data: [11] } },
+        2: { 20: { data: [20] } },
+        3: {},
+      });
+    });
+  });
+
+  describe("timelineEvents selection", () => {
+    const selectedState = () =>
+      reducer(
+        undefined,
+        selectTimelineEvents({ dashcardId: 1, eventIds: [100] }),
+      );
+
+    it("keeps the selected events while the events sidebar is open", () => {
+      const state = reducer(selectedState(), {
+        type: SET_SIDEBAR,
+        payload: { name: SIDEBAR_NAME.events },
+      });
+      expect(state.timelineEvents.selection).toEqual({
+        dashcardId: 1,
+        eventIds: [100],
+      });
+    });
+
+    it("drops the selected events when another sidebar replaces the events one", () => {
+      const state = reducer(selectedState(), {
+        type: SET_SIDEBAR,
+        payload: { name: SIDEBAR_NAME.sharing },
+      });
+      expect(state.timelineEvents.selection).toBeNull();
+    });
+
+    it("drops the selected events when the sidebar closes", () => {
+      const state = reducer(selectedState(), { type: CLOSE_SIDEBAR });
+      expect(state.timelineEvents.selection).toBeNull();
+    });
+
+    const overriddenState = () =>
+      reducer(
+        reducer(
+          selectedState(),
+          setDashCardTimelineEventsVisibility({
+            1: { "timeline.selected_timeline_ids": [10] },
+          }),
+        ),
+        setDashCardTimelineEventsEnabled({ dashcardId: 1, isEnabled: false }),
+      );
+
+    it.each([
+      {
+        name: "dashboard editing starts",
+        action: { type: SET_EDITING_DASHBOARD, payload: TEST_DASHBOARD },
+      },
+      { name: "another dashboard is opened", action: { type: INITIALIZE } },
+    ])("resets when $name", ({ action }) => {
+      const state = reducer(overriddenState(), action);
+      expect(state.timelineEvents).toEqual({
+        overrides: {},
+        enabledByDashCard: {},
+        selection: null,
+        hasTrackedEventsShown: false,
+      });
+    });
+
+    it("keeps the session overrides when the dashboard is refetched", () => {
+      const state = timelineEvents(overriddenState().timelineEvents, {
+        type: fetchDashboard.fulfilled.type,
+      });
+      expect(state).toEqual({
+        overrides: { 1: { "timeline.selected_timeline_ids": [10] } },
+        enabledByDashCard: { 1: false },
+        selection: { dashcardId: 1, eventIds: [100] },
+        hasTrackedEventsShown: false,
+      });
+    });
+  });
+
+  describe("timelineEvents tracking", () => {
+    const trackedState = () => reducer(undefined, markTimelineEventsShown());
+
+    it("remembers that the shown events were tracked", () => {
+      expect(trackedState().timelineEvents.hasTrackedEventsShown).toBe(true);
+    });
+
+    it("keeps the tracking across dashboard editing", () => {
+      const state = reducer(trackedState(), {
+        type: SET_EDITING_DASHBOARD,
+        payload: TEST_DASHBOARD,
+      });
+      expect(state.timelineEvents.hasTrackedEventsShown).toBe(true);
+    });
+
+    it("forgets the tracking when another dashboard is opened", () => {
+      const state = reducer(trackedState(), { type: INITIALIZE });
+      expect(state.timelineEvents.hasTrackedEventsShown).toBe(false);
+    });
+  });
+
+  describe("dashcard visualization settings", () => {
+    const DASHCARD_ID = 5;
+
+    const setupState = (
+      visualization_settings: DashCardVisualizationSettings | null | undefined,
+    ) => {
+      const dashcard = {
+        ...createMockDashboardCard({ id: DASHCARD_ID }),
+        // The persisted value can be null although the type only allows undefined
+        visualization_settings: visualization_settings as
+          | DashCardVisualizationSettings
+          | undefined,
+      };
+      return { ...initState, dashcards: { [DASHCARD_ID]: dashcard } };
+    };
+
+    describe("UPDATE_DASHCARD_VISUALIZATION_SETTINGS", () => {
+      it("merges into existing settings and marks the dashcard dirty", () => {
+        const state = reducer(
+          setupState({ "card.title": "Old", "card.description": "Keep" }),
+          onUpdateDashCardVisualizationSettings(DASHCARD_ID, {
+            "card.title": "New",
+          }),
+        );
+
+        expect(state.dashcards[DASHCARD_ID]?.visualization_settings).toEqual({
+          "card.title": "New",
+          "card.description": "Keep",
+        });
+        expect(state.dashcards[DASHCARD_ID]?.isDirty).toBe(true);
+      });
+
+      it.each([null, undefined])(
+        "creates visualization_settings when it is %s",
+        (initial) => {
+          const state = reducer(
+            setupState(initial),
+            onUpdateDashCardVisualizationSettings(DASHCARD_ID, {
+              "card.title": "New",
+            }),
+          );
+
+          expect(state.dashcards[DASHCARD_ID]?.visualization_settings).toEqual({
+            "card.title": "New",
+          });
+          expect(state.dashcards[DASHCARD_ID]?.isDirty).toBe(true);
+        },
+      );
+
+      it("leaves state unchanged for a missing dashcard id", () => {
+        const initial = setupState({ "card.title": "Old" });
+        const state = reducer(
+          initial,
+          onUpdateDashCardVisualizationSettings(999, { "card.title": "New" }),
+        );
+
+        expect(state.dashcards).toBe(initial.dashcards);
+      });
+    });
+
+    describe("UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN", () => {
+      it("creates column_settings when missing", () => {
+        const state = reducer(
+          setupState({}),
+          onUpdateDashCardColumnSettings(DASHCARD_ID, "COUNT", {
+            number_style: "percent",
+          }),
+        );
+
+        expect(state.dashcards[DASHCARD_ID]?.visualization_settings).toEqual({
+          column_settings: { COUNT: { number_style: "percent" } },
+        });
+        expect(state.dashcards[DASHCARD_ID]?.isDirty).toBe(true);
+      });
+
+      it("merges settings per column", () => {
+        const state = reducer(
+          setupState({
+            column_settings: {
+              COUNT: { number_style: "percent", decimals: 2 },
+              TOTAL: { decimals: 1 },
+            },
+          }),
+          onUpdateDashCardColumnSettings(DASHCARD_ID, "COUNT", {
+            decimals: 3,
+          }),
+        );
+
+        expect(state.dashcards[DASHCARD_ID]?.visualization_settings).toEqual({
+          column_settings: {
+            COUNT: { number_style: "percent", decimals: 3 },
+            TOTAL: { decimals: 1 },
+          },
+        });
+      });
+    });
+
+    describe("REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS", () => {
+      it("replaces the settings and marks the dashcard dirty", () => {
+        const state = reducer(
+          setupState({ "card.title": "Old", "card.description": "Gone" }),
+          onReplaceAllDashCardVisualizationSettings(DASHCARD_ID, {
+            "card.title": "New",
+          }),
+        );
+
+        expect(state.dashcards[DASHCARD_ID]?.visualization_settings).toEqual({
+          "card.title": "New",
+        });
+        expect(state.dashcards[DASHCARD_ID]?.isDirty).toBe(true);
+      });
+
+      it("leaves state unchanged for a missing dashcard id", () => {
+        const initial = setupState({ "card.title": "Old" });
+        const state = reducer(
+          initial,
+          onReplaceAllDashCardVisualizationSettings(999, {
+            "card.title": "New",
+          }),
+        );
+
+        expect(state.dashcards).toBe(initial.dashcards);
+      });
     });
   });
 });

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   type OmniPickerCollectionItem,
   type OmniPickerItem,
-  isInDbTree,
+  isInCollectionTree,
 } from "metabase/common/components/Pickers";
 import type {
   Collection,
@@ -51,7 +51,7 @@ export const canPlaceEntityInCollection = ({
   if (!entityType) {
     return true;
   }
-  if (isInDbTree(collection)) {
+  if (!isInCollectionTree(collection)) {
     return false;
   }
 

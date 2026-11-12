@@ -1,4 +1,4 @@
-import { type ReactNode, useLayoutEffect, useState } from "react";
+import { type JSX, type ReactNode, useLayoutEffect, useState } from "react";
 import {
   type DataRouter,
   RouterProvider as ReactRouterProvider,
@@ -12,6 +12,7 @@ import {
   createAppRouter,
   createMemoryAppRouter,
 } from "./create-router";
+import type { ChunkErrorFallback } from "./lazy-route";
 import type { LocationMirror } from "./location-mirror";
 
 /**
@@ -72,14 +73,21 @@ function useLocationMirror(
 export function RouterProvider({
   routes,
   onLocationChange,
-  hydrateFallback,
+  loadingFallback,
+  chunkErrorFallback,
 }: {
   routes: RouteObject[];
   onLocationChange?: LocationMirror;
-  hydrateFallback?: ReactNode;
+  loadingFallback?: ReactNode;
+  chunkErrorFallback?: ChunkErrorFallback;
 }): JSX.Element {
   const [router] = useState(() =>
-    createAppRouter(routes, getBasename() || undefined, hydrateFallback),
+    createAppRouter(
+      routes,
+      getBasename() || undefined,
+      loadingFallback,
+      chunkErrorFallback,
+    ),
   );
   useLocationMirror(router, onLocationChange);
 
@@ -98,21 +106,24 @@ export function RouterProviderMemory({
   basename,
   routerHolder,
   onLocationChange,
-  hydrateFallback,
+  loadingFallback,
+  chunkErrorFallback,
 }: {
   routes: RouteObject[];
   initialRoute: string;
   basename?: string;
   routerHolder?: MemoryTestRouterHolder;
   onLocationChange?: LocationMirror;
-  hydrateFallback?: ReactNode;
+  loadingFallback?: ReactNode;
+  chunkErrorFallback?: ChunkErrorFallback;
 }): JSX.Element {
   const [router] = useState(() => {
     const created = createMemoryAppRouter(
       routes,
       initialRoute,
       basename,
-      hydrateFallback,
+      loadingFallback,
+      chunkErrorFallback,
     );
     if (routerHolder) {
       routerHolder.current = created;

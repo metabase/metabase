@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { jt, t } from "ttag";
@@ -10,6 +11,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
+import { getTenantsBasePath } from "metabase/common/tenants";
 import {
   getGroupNameLocalized,
   isAdminGroup,
@@ -147,7 +149,7 @@ function ActionsPopover({
       <Menu shadow="sm" width={200} position="bottom-end">
         <Menu.Target>
           <UnstyledButton aria-label={`group-action-button`}>
-            <Icon c="text-disabled" name="ellipsis" />
+            <Icon c="text-secondary" name="ellipsis" />
           </UnstyledButton>
         </Menu.Target>
         <Menu.Dropdown>
@@ -222,7 +224,7 @@ function EditingGroupRow({
 function GroupNameCell({ group }: { group: GroupInfo }) {
   const name = getGroupNameLocalized(group);
   const membersLink = PLUGIN_TENANTS.isTenantGroup(group)
-    ? `/admin/people/tenants/groups/${group.id}`
+    ? `${getTenantsBasePath()}/groups/${group.id}`
     : `/admin/people/groups/${group.id}`;
 
   return (
@@ -304,7 +306,7 @@ const ApiKeyCount = ({ apiKeys }: { apiKeys: ApiKey[] }) => {
     return null;
   }
   return (
-    <Box component="span" c="text-disabled">
+    <Box component="span" c="text-secondary">
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}

@@ -1,12 +1,9 @@
 (ns metabase.metabot.tools.charts.edit
   "Tool for editing chart visualization settings."
   (:require
-   [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.charts.fit :as fit]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.util.log :as log]))
-
-(def ^:private valid-chart-types
-  "Valid chart types supported by Metabase."
-  (into #{} (map keyword) shared/chart-types))
 
 (defn- format-chart-link
   "Format a metabase:// link to the chart."
@@ -36,8 +33,8 @@
   - chart-id: ID of the chart to edit
   - new-chart-type: New chart type to use
   - charts-state: Map of chart-id to chart data from agent state
-  - query: (optional) fallback query to use when the chart's own :queries is
-    empty, e.g. a chart whose query only lives in the caller's queries-state
+  - query: (optional) the current query stored under the chart's :query_id. It replaces the chart's own copy, which
+    is stale once that query has been edited, and fills it in when the chart has none
 
   Returns a map with result and new-chart-data.
 
@@ -47,31 +44,26 @@
   - :chart-id - New unique ID for the edited chart
   - :chart-content - XML representation of the chart
   - :chart-link - Metabase link to the chart
-  - :chart-type - Type of chart created"
+  - :chart-type - Type of chart created
+
+  Throws [[recoverable.common/unknown-chart-id!]] for a chart ID that `charts-state` doesn't hold, and
+  [[fit/incompatible-chart-type!]] for a chart type that can't show the columns of the chart's query."
   [{:keys [chart-id new-chart-type charts-state query]}]
   (log/info "Editing chart" {:chart-id chart-id :new-chart-type new-chart-type})
 
-  ;; Validate chart type
-  (when-not (contains? valid-chart-types new-chart-type)
-    (throw (ex-info (str "Invalid chart type: " (name new-chart-type)
-                         ". Valid types are: " (pr-str valid-chart-types))
-                    {:agent-error? true
-                     :chart-type new-chart-type})))
-
   (let [chart-data (get charts-state (str chart-id))]
     (when-not chart-data
-      (throw (ex-info "Sorry, I have issues accessing the chart data. Is there anything else I can help you with?"
-                      {:agent-error? true
-                       :chart-id chart-id})))
-    (let [;; The caller may have resolved the query from somewhere other than
-          ;; charts-state (e.g. queries-state, when the chart carries a
-          ;; :query_id but no :queries). Fall back to that so :query on the
-          ;; result below doesn't end up nil while :query-id is set.
+      (recoverable.common/unknown-chart-id! {:chart-id  chart-id
+                                             :available (sort (keys charts-state))}))
+    (let [;; The result below carries `:query-id` and `:query`, and the end-of-response memory update stores that
+          ;; `:query` under that ID. So it must be the query as it stands now, not the copy the chart took when it was
+          ;; made: after an SQL edit, that copy would undo the edit.
           chart-data     (cond-> chart-data
-                           (not (first (:queries chart-data))) (assoc :queries [query]))
+                           query (update :queries #(into [query] (rest %))))
           new-chart-data (-> chart-data
                              (assoc :chart_id (str (random-uuid)))
                              (assoc :visualization_settings {:chart_type new-chart-type}))]
+      (fit/check-chart-type! new-chart-type (first (:queries chart-data)))
       {:new-chart-data new-chart-data
        :result {:chart-id (:chart_id new-chart-data)
                 ;; Carry the source chart's query-id/query through. `extract-charts` only

@@ -1,0 +1,41 @@
+## Token resolution needs a stored issuing client, even though the JWT bearer grant doesn't authenticate a client.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.uc38po
+      author: andreis
+      comment: Add the built-in OAuth client for the JWT bearer grant
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM oauth_client WHERE client_id = 'metabase-jwt-bearer';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO oauth_client (
+                  client_id
+                  , redirect_uris
+                  , grant_types
+                  , response_types
+                  , scopes
+                  , token_endpoint_auth_method
+                  , client_name
+                  , registration_type
+                  , client_type
+              ) VALUES (
+                  'metabase-jwt-bearer'
+                  , '[]'
+                  , '["urn:ietf:params:oauth:grant-type:jwt-bearer"]'
+                  , '[]'
+                  , '[]'
+                  , 'none'
+                  , 'JWT bearer grant'
+                  , 'static'
+                  , 'public'
+              );
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM oauth_client WHERE client_id = 'metabase-jwt-bearer';

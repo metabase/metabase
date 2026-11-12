@@ -1,13 +1,9 @@
 import { Fragment } from "react";
 
-import { Icon, Text } from "metabase/ui";
+import type { PermissionEditorBreadcrumb } from "metabase/permissions";
+import { Box, Icon, Text } from "metabase/ui";
 
-import type { PermissionEditorBreadcrumb } from "../../types";
-
-import {
-  BreadcrumbsLink,
-  BreadcrumbsSeparator,
-} from "./PermissionsEditorBreadcrumbs.styled";
+import S from "./PermissionsEditorBreadcrumbs.module.css";
 
 export interface PermissionsEditorBreadcrumbsProps {
   items: PermissionEditorBreadcrumb[];
@@ -36,17 +32,23 @@ export const PermissionsEditorBreadcrumbs = ({
               </>
             ) : (
               <Fragment>
-                <>
-                  <BreadcrumbsLink
-                    onClick={() => onBreadcrumbsItemSelect(item)}
-                  >
-                    {item.text}
-                  </BreadcrumbsLink>
-                  {subtext ? <> {subtext}</> : null}
-                </>
-                <BreadcrumbsSeparator>
+                <Box
+                  component="a"
+                  className={S.link}
+                  onClick={() => onBreadcrumbsItemSelect(item)}
+                >
+                  {item.text}
+                </Box>
+                {subtext ? <> {subtext}</> : null}
+                <Box
+                  display="inline-block"
+                  c="background_page-tertiary-inverse"
+                  pos="relative"
+                  mx="xs"
+                  top={2}
+                >
                   <Icon name="chevronright" />
-                </BreadcrumbsSeparator>
+                </Box>
               </Fragment>
             )}
           </Fragment>

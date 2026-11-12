@@ -13,7 +13,7 @@
   would touch, and which plan node the planner chose. Cache warmth is controlled with warmup runs.
 
   This intentionally re-implements the minimal SQL shapes rather than reusing the production builders in
-  `metabase-enterprise.semantic-search.index`, because those select index-specific columns that a generic
+  `metabase-enterprise.search.semantic.index`, because those select index-specific columns that a generic
   dump need not have."
   (:require
    [clojure.pprint :as pprint]
@@ -139,7 +139,7 @@
          ;; EXPLAIN reports per-loop averages. Row counts are per-loop, so a parallel scan (loops = workers)
          ;; needs the multiply for the true total; "Actual Total Time" is also per-loop but the workers run
          ;; concurrently, so it already approximates wall clock and must NOT be multiplied. (Matches the
-         ;; production scan-node-metrics in semantic_search/index.clj.)
+         ;; production scan-node-metrics in search/semantic/index.clj.)
          :inner-ms       (get node "Actual Total Time" 0)
          :node-type      (get node "Node Type")
          :index-name     (get node "Index Name")

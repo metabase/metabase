@@ -117,9 +117,6 @@ describe("SdkThemeProvider", () => {
     });
 
     expect(handleCssVariablesChange.mock.lastCall?.[0]).toContain(
-      "--mb-color-background-primary: #123456",
-    );
-    expect(handleCssVariablesChange.mock.lastCall?.[0]).toContain(
       "--mb-color-background_page-primary: #123456",
     );
   });
@@ -127,17 +124,26 @@ describe("SdkThemeProvider", () => {
   describe("brand ramp", () => {
     const { ocean } = getBaseColorsForThemeDefinitionOnly();
 
-    // Light defines `text-hover`/`text-brand` off brand[60]/[50], dark off brand[30]/[40]
+    // Light defines `text-brand-hover`/`text-brand` off brand[60]/[50], dark off brand[30]/[40]
     const LIGHT_OCEAN = { textHover: ocean[60], textBrand: ocean[50] };
     const DARK_OCEAN = { textHover: ocean[30], textBrand: ocean[40] };
 
     // We need to check what was actually injected into page, thus
-    // direct query (unlike other tests that use SdkCssVariablesTester)
+    // direct query (unlike other tests that use SdkCssVariablesTester).
+    // Emotion inserts rules through the CSSOM (`sheet.insertRule`), which
+    // leaves `textContent` empty, so read the applied rules off each sheet
+    // and fall back to `textContent` for any tag written as plain text.
+    const styleTagText = (element: HTMLStyleElement) => {
+      const rules = element.sheet?.cssRules;
+      if (rules && rules.length > 0) {
+        return [...rules].map((rule) => rule.cssText).join("\n");
+      }
+      return element.textContent ?? "";
+    };
+
     const emittedStyles = () =>
       // eslint-disable-next-line testing-library/no-node-access -- emotion writes these <style> tags; there is no Testing Library query for them
-      [...document.querySelectorAll("style")]
-        .map((element) => element.textContent ?? "")
-        .join("\n");
+      [...document.querySelectorAll("style")].map(styleTagText).join("\n");
 
     const setup = async (
       theme: MetabaseEmbeddingTheme | undefined,
@@ -157,7 +163,10 @@ describe("SdkThemeProvider", () => {
 
     it.each([
       ["a V1 theme", { colors: { brand: "#DF75E9" } }],
-      ["a V2 theme", { version: 2 as const, colors: { brand: "#DF75E9" } }],
+      [
+        "a V2 theme",
+        { version: 2 as const, colors: { "core-brand": "#DF75E9" } },
+      ],
       [
         "a dark V1 theme",
         { preset: "dark" as const, colors: { brand: "#DF75E9" } },
@@ -166,9 +175,6 @@ describe("SdkThemeProvider", () => {
       const { getCssVariable } = await setup(theme);
 
       expect(getCssVariable("--mb-color-core-brand")).toBe("#DF75E9");
-      expect(getCssVariable("--mb-color-text-hover")).toContain(
-        "var(--mb-color-core-brand)",
-      );
       expect(getCssVariable("--mb-color-text-brand-hover")).toContain(
         "var(--mb-color-core-brand)",
       );
@@ -186,7 +192,7 @@ describe("SdkThemeProvider", () => {
     ])("tracks a whitelabel brand color given %s", async (_name, theme) => {
       const { getCssVariable } = await setup(theme, { brand: "#DF75E9" });
 
-      expect(getCssVariable("--mb-color-text-hover")).toContain(
+      expect(getCssVariable("--mb-color-text-brand-hover")).toContain(
         "var(--mb-color-core-brand)",
       );
       expect(getCssVariable("--mb-color-text-brand")).toContain(
@@ -226,7 +232,7 @@ describe("SdkThemeProvider", () => {
       async (_name, theme, expected) => {
         const { getCssVariable } = await setup(theme);
 
-        expect(getCssVariable("--mb-color-text-hover")).toBe(
+        expect(getCssVariable("--mb-color-text-brand-hover")).toBe(
           expected.textHover,
         );
         expect(getCssVariable("--mb-color-text-brand")).toBe(

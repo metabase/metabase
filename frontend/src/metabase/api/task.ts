@@ -6,12 +6,14 @@ import type {
   ListTasksResponse,
   RunEntity,
   Task,
+  TaskCountsResponse,
   TaskInfo,
   TaskRunExtended,
 } from "metabase-types/api";
 
 import { Api } from "./api";
 import {
+  listTag,
   provideTaskListTags,
   provideTaskRunListTags,
   provideTaskRunTags,
@@ -21,6 +23,10 @@ import {
 
 export const taskApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    getTaskCounts: builder.query<TaskCountsResponse, void>({
+      query: () => ({ method: "GET", url: "/api/task/counts" }),
+      providesTags: [listTag("task"), listTag("task-run")],
+    }),
     listTasks: builder.query<ListTasksResponse, ListTasksRequest | void>({
       query: (params) => ({
         method: "GET",
@@ -83,6 +89,7 @@ export const taskApi = Api.injectEndpoints({
 });
 
 export const {
+  useGetTaskCountsQuery,
   useListTasksQuery,
   useLazyListTasksQuery,
   useListUniqueTasksQuery,

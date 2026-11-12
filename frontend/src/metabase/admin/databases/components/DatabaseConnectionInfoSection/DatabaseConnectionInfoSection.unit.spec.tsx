@@ -1,4 +1,6 @@
-import userEvent from "@testing-library/user-event";
+import userEvent, {
+  PointerEventsCheckLevel,
+} from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
@@ -100,6 +102,7 @@ describe("DatabaseConnectionInfoSection", () => {
           ),
         ).toBe(true);
       });
+      expect(await screen.findByText("Sync triggered!")).toBeInTheDocument();
     });
 
     it("shows an error when a schema sync fails", async () => {
@@ -134,6 +137,7 @@ describe("DatabaseConnectionInfoSection", () => {
           ),
         ).toBe(true);
       });
+      expect(await screen.findByText("Scan triggered!")).toBeInTheDocument();
     });
 
     describe("sync indicator", () => {
@@ -235,6 +239,27 @@ describe("DatabaseConnectionInfoSection", () => {
       expect(
         await screen.findByRole("button", { name: /Edit connection details/i }),
       ).toBeDisabled();
+    });
+
+    it("should explain why a cloud-attached sample database without details cannot be edited", async () => {
+      setup({
+        database: createMockDatabase({
+          is_sample: true,
+          is_attached_dwh: true,
+          details: undefined,
+        }),
+      });
+      const editButton = await screen.findByRole("button", {
+        name: /Edit connection details/i,
+      });
+      expect(editButton).toBeDisabled();
+
+      await userEvent.hover(editButton, {
+        pointerEventsCheck: PointerEventsCheckLevel.Never,
+      });
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "The sample database cannot be edited.",
+      );
     });
   });
 });

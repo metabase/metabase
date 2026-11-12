@@ -1,5 +1,7 @@
 import type {
   OmniPickerCollectionItem,
+  OmniPickerCollectionItemValue,
+  OmniPickerDataAppValue,
   OmniPickerItem,
   OmniPickerQuestionItem,
   OmniPickerTableItem,
@@ -13,7 +15,7 @@ import type {
   SearchModel,
 } from "metabase-types/api";
 
-import { getDependencyType } from "../../../../utils";
+import { getDependencyType, isDataStudioAction } from "../../../../utils";
 import { SEARCH_MODEL_TO_GROUP_TYPE } from "../constants";
 
 export function getTablePickerItem(
@@ -99,6 +101,37 @@ export function getDashboardPickerItem(
   return { id: node.id, model: "dashboard", name: node.data.name };
 }
 
+export function getSnippetPickerItem(
+  node: DependencyNode,
+): OmniPickerCollectionItemValue | undefined {
+  if (node.type !== "snippet") {
+    return;
+  }
+  return { id: node.id, model: "snippet", namespace: "snippets" };
+}
+
+export function getActionPickerItem(
+  node: DependencyNode,
+): OmniPickerCollectionItemValue | undefined {
+  if (node.type !== "action") {
+    return;
+  }
+  return {
+    id: node.id,
+    model: "action",
+    namespace: isDataStudioAction(node.data) ? "data-actions" : null,
+  };
+}
+
+export function getDataAppPickerItem(
+  node: DependencyNode,
+): OmniPickerDataAppValue | undefined {
+  if (node.type !== "data-app") {
+    return;
+  }
+  return { id: node.id, model: "data-app" };
+}
+
 export function getEntryPickerItem(
   node: DependencyNode,
 ): OmniPickerValue | undefined {
@@ -108,7 +141,10 @@ export function getEntryPickerItem(
     getQuestionPickerItem(node) ??
     getModelPickerItem(node) ??
     getMetricPickerItem(node) ??
-    getDashboardPickerItem(node)
+    getDashboardPickerItem(node) ??
+    getSnippetPickerItem(node) ??
+    getActionPickerItem(node) ??
+    getDataAppPickerItem(node)
   );
 }
 
@@ -121,6 +157,10 @@ export function getEntryPickerValue(
     item.model === "schema"
   ) {
     return;
+  }
+
+  if (item.model === "snippet" || item.model === "action") {
+    return { id: item.id, type: item.model };
   }
 
   // Unjustified type cast. FIXME

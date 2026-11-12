@@ -14,7 +14,7 @@ import type { NormalizedTest } from "./contract.ts";
 /**
  * List files under `dir` (recursively), keeping those `select` returns, as
  * paths joined to `dir`. Each adapter passes the topical part — which entries
- * are *its* JUnit files (hawk's `*_test.xml`, jest-junit's configured output
+ * are *its* JUnit files (hawk's `*.xml`, jest-junit's configured output
  * name, ...). Returns [] on any IO error — a missing artifact directory is a
  * no-op, not a failure (reporting is best-effort).
  */
@@ -67,7 +67,10 @@ function elementBody(inner: string): string {
  * Pure (string → normalized), so it's the unit-tested core that each suite's
  * adapter wraps with its own file discovery / labeling.
  */
-export function parseJunit(xml: string, ignorePassingTests: boolean = true): NormalizedTest[] {
+export function parseJunit(
+  xml: string,
+  ignorePassingTests: boolean = true,
+): NormalizedTest[] {
   try {
     const tests: NormalizedTest[] = [];
     // <testcase ...>...</testcase> (failing) or <testcase .../> (passing,
@@ -102,7 +105,10 @@ export function parseJunit(xml: string, ignorePassingTests: boolean = true): Nor
       const problems = [...inner.matchAll(problemRe)];
       // Don't report a test to CI Conductor if the test has no failures and we are ignoring passing tests OR
       // the test has no failures and a skipped tag.
-      if (problems.length === 0 && ( ignorePassingTests || skippedRe.test(inner))) {
+      if (
+        problems.length === 0 &&
+        (ignorePassingTests || skippedRe.test(inner))
+      ) {
         continue;
       }
 
@@ -136,7 +142,8 @@ export function parseJunit(xml: string, ignorePassingTests: boolean = true): Nor
         file: file || null,
         message,
         stack: stack || undefined,
-        status: problems.length === 0 && !ignorePassingTests ? "passed" : "failure",
+        status:
+          problems.length === 0 && !ignorePassingTests ? "passed" : "failure",
       });
     }
     return tests;

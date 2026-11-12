@@ -9,6 +9,7 @@ import {
 } from "__support__/state";
 import { ComponentProviderInternal } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { sdkReducers } from "embedding-sdk-bundle/store";
+import { sdkListenerMiddleware } from "embedding-sdk-bundle/store/listener-middleware";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
@@ -70,7 +71,8 @@ export function renderWithSDKProviders(
     };
   }
 
-  const storeMiddleware = _.compact([Api.middleware]);
+  // Same middleware as the real SDK store
+  const storeMiddleware = [Api.middleware, sdkListenerMiddleware.middleware];
 
   // Unjustified type cast. FIXME
   const store = getStore(

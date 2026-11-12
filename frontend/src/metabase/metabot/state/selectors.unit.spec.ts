@@ -1,17 +1,17 @@
-import { assocIn } from "icepick";
-
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetabotMessage } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import type { State } from "metabase/redux/store";
+import { checkNotNull } from "metabase/utils/types";
 
 import { CONTEXT_WINDOW_WARNING_PERCENT } from "../constants";
 
-import { getMetabotInitialState } from "./reducer-utils";
+import { createConversation, getMetabotInitialState } from "./reducer-utils";
 
 import {
   type MetabotConversationState,
   type MetabotMessage,
+  type MetabotState,
   getContextUsagePercent,
   getIncompleteTurn,
   getIsConversationInProgress,
@@ -32,24 +32,24 @@ function setup(
 
   const conversationId = convoState?.conversationId ?? "omnibot";
   const state = getMetabotInitialState();
-  const visibleState = assocIn(state, ["agents", "omnibot", "visible"], true);
-  const withMessages = assocIn(
-    visibleState,
-    ["conversations", conversationId, "messages"],
-    messages,
-  );
-  const withWindow = assocIn(
-    withMessages,
-    ["conversations", conversationId, "contextWindowTokens"],
-    CONTEXT_WINDOW,
-  );
-  const withConvoState = Object.entries(convoState ?? {}).reduce(
-    (acc, [key, value]) =>
-      assocIn(acc, ["conversations", conversationId, key], value),
-    withWindow,
-  );
+  const metabot: MetabotState = {
+    ...state,
+    agents: {
+      ...state.agents,
+      omnibot: { ...checkNotNull(state.agents.omnibot), visible: true },
+    },
+    conversations: {
+      ...state.conversations,
+      [conversationId]: {
+        ...createConversation({ conversationId }),
+        messages,
+        contextWindowTokens: CONTEXT_WINDOW,
+        ...convoState,
+      },
+    },
+  };
 
-  return createMockState({ metabot: withConvoState });
+  return createMockState({ metabot });
 }
 
 describe("metabot selectors", () => {
@@ -185,6 +185,31 @@ describe("metabot selectors", () => {
       expect(
         getLongChatNotice(setup([shortMessage]), "omnibot"),
       ).toBeUndefined();
+    });
+
+    const errored = (errorType: string) =>
+      createMockMetabotMessage({
+        status: { type: "errored", error: { type: errorType } },
+      });
+
+    it("reports full when the last turn failed because the context is full", () => {
+      const state = setup([shortMessage, errored("ai_provider_context_full")]);
+      expect(getLongChatNotice(state, "omnibot")).toBe("full");
+    });
+
+    it("shows nothing when the last turn failed for another reason", () => {
+      const state = setup([shortMessage, errored("ai_provider_billing")]);
+      expect(getLongChatNotice(state, "omnibot")).toBeUndefined();
+    });
+
+    it("shows nothing when only an earlier turn failed because the context is full", () => {
+      const state = setup([
+        shortMessage,
+        errored("ai_provider_context_full"),
+        shortMessage,
+        usage(10000),
+      ]);
+      expect(getLongChatNotice(state, "omnibot")).toBeUndefined();
     });
 
     describe("getContextUsagePercent", () => {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { exploration } from "metabase/urls/explorations";
 import type {
   CardId,
@@ -36,6 +37,7 @@ export type UrlableModel = {
   collection_id?: CollectionId | null;
   model_id?: CardId | null;
   table_id?: TableId;
+  data_app_slug?: string | null;
 };
 
 const NOT_FOUND_URL = "/404";
@@ -104,6 +106,11 @@ export function modelToUrl(item: UrlableModel): string {
       return dataStudioGlossary();
     case "dataapp":
       return dataApp(item.name);
+    case "data-app":
+      if (item.data_app_slug !== null && item.data_app_slug !== undefined) {
+        return dataApp(item.data_app_slug);
+      }
+      return NOT_FOUND_URL;
     default:
       return NOT_FOUND_URL;
   }

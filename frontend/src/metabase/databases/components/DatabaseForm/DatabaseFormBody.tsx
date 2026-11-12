@@ -64,9 +64,10 @@ export const DatabaseFormBody = ({
     [engines, isAdvanced, onEngineChange, setValues],
   );
 
-  const px = match(location)
-    .with("admin", "embedding_setup", () => "xl")
-    .otherwise(() => undefined);
+  // In the admin modal, `Modal.Footer` brings its own space above the buttons.
+  const mb = match(location)
+    .with("admin", () => 0)
+    .otherwise(() => "lg");
   const mah = match(location)
     .with("admin", "embedding_setup", () => "calc(100vh - 20rem)")
     .with("full-page", () => "100%")
@@ -75,8 +76,7 @@ export const DatabaseFormBody = ({
   return (
     <Box
       mah={mah}
-      mb="lg"
-      px={px}
+      mb={mb}
       flex={1}
       style={mah ? { overflowY: "auto" } : undefined}
     >

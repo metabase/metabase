@@ -37,7 +37,7 @@
 
 /* the theme's Accordion styles remove the focus outline; restore it */
 .CollapsibleAccordion .CollapsibleControl.CollapsibleControl:focus-visible {
-  outline: 2px solid var(--mb-color-focus);
+  outline: 2px solid var(--mb-color-input-focus);
 }
 
 /* stretch the hit area over the whole header row, description included */

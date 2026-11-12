@@ -11,12 +11,12 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.connection :as u.connection]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [get-in]]
-   [metabase.warehouses.schema :as warehouses.schema])
+   [metabase.util.performance :refer [get-in]])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
@@ -291,19 +291,6 @@
                  (assoc :is_writable (privilege-fn table :write))))))
      (sql-jdbc.sync.interface/db-tables driver (.getMetaData conn) nil db-name-or-nil))))
 
-(defn db-or-id-or-spec->database
-  "Get database instance from `db-or-id-or-spec`."
-  [db-or-id-or-spec]
-  (cond (driver-api/instance-of? :model/Database db-or-id-or-spec)
-        db-or-id-or-spec
-
-        (int? db-or-id-or-spec)
-        (driver-api/with-metadata-provider db-or-id-or-spec
-          (driver-api/database (driver-api/metadata-provider)))
-
-        :else
-        nil))
-
 (mu/defn describe-database
   "Default implementation of [[metabase.driver/describe-database]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData.
 
@@ -312,18 +299,17 @@
   list streams a batch at a time instead of being realized into a set up front. Building the reducible is
   eager -- satisfying [[metabase.driver/do-with-resilient-connection]], which requires an eager `f` -- while
   the connection is opened lazily at reduction time (with a fresh connection, outside the resilient scope)."
-  [driver           :- :keyword
-   db-or-id-or-spec :- [:or :int ::warehouses.schema/database]]
+  [driver   :- :keyword
+   database :- ::lib.schema.metadata/database]
   {:tables
    (reify clojure.lang.IReduceInit
      (reduce [_this rf init]
        (sql-jdbc.execute/do-with-connection-with-options
         driver
-        db-or-id-or-spec
+        database
         nil
         (fn [^Connection conn]
           (let [schema-filter-prop   (driver.u/find-schema-filters-prop driver)
-                database             (db-or-id-or-spec->database db-or-id-or-spec)
                 [inclusion-patterns
                  exclusion-patterns] (when (some? schema-filter-prop)
                                        (driver.s/db-details->schema-filter-patterns (:name schema-filter-prop) database))]

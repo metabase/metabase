@@ -1,7 +1,7 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
-  (:refer-clojure :exclude [some mapv empty? get-in update-keys])
+  (:refer-clojure :exclude [some mapv empty? get-in not-empty update-keys])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -14,17 +14,19 @@
    [metabase.driver.mongo.operators :refer [$add $addFields $addToSet $and
                                             $avg $concat $cond $dayOfMonth
                                             $dayOfWeek $dayOfYear $divide $eq
-                                            $expr $group $gt $gte $hour $limit
-                                            $literal $lookup $lt $lte $match
-                                            $max $min $minute $mod $month
-                                            $multiply $ne $not $or $project
-                                            $regexMatch $second
-                                            $setWindowFields $size $skip $sort
-                                            $strcasecmp $subtract $sum
-                                            $toBool $toLower $unwind $year]]
+                                            $expr $facet $group $gt $gte $hour
+                                            $limit $literal $lookup $lt $lte
+                                            $match $max $min $minute $mod
+                                            $month $multiply $ne $not $or
+                                            $project $regexMatch $replaceRoot
+                                            $second $setWindowFields $size $skip
+                                            $sort $strcasecmp $subtract $sum
+                                            $toBool $toLower $unionWith $unwind $year]]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -34,7 +36,10 @@
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -42,7 +47,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :as perf :refer [empty? get-in mapv some update-keys]])
+   [metabase.util.performance :as perf :refer [empty? get-in mapv not-empty some update-keys]])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -137,6 +142,26 @@
                                      ::lib.schema.common/non-blank-string
                                      ::lib.schema.common/non-blank-string]]]])
 
+(mr/def ::$facet-stage
+  [:map-of
+   [:= "$facet"]
+   [:map-of ::lib.schema.common/non-blank-string [:ref ::pipeline]]])
+
+(mr/def ::$union-with-stage
+  [:map-of
+   [:= "$unionWith"]
+   [:map
+    {:closed true}
+    ["coll"     ::lib.schema.common/non-blank-string]
+    ["pipeline" [:ref ::pipeline]]]])
+
+(mr/def ::$replace-root-stage
+  [:map-of
+   [:= "$replaceRoot"]
+   [:map
+    {:closed true}
+    ["newRoot" ::bson-value]]])
+
 (defn- contains-uncompiled-mbql-clause? [x]
   (cond
     (map? x)
@@ -181,7 +206,10 @@
       ["$match"           ::$match-stage]
       ["$limit"           ::$limit-stage]
       ["$skip"            ::$skip-stage]
-      ["$setWindowFields" ::$set-window-fields-stage]]
+      ["$setWindowFields" ::$set-window-fields-stage]
+      ["$facet"           ::$facet-stage]
+      ["$unionWith"       ::$union-with-stage]
+      ["$replaceRoot"     ::$replace-root-stage]]
      [:ref ::no-uncompiled-mbql]]]])
 
 (mr/def ::pipeline
@@ -2029,16 +2057,168 @@ function(bin) {
                 (ordered-map/ordered-map "_id" false)
                 projected-fields)}]]))
 
-(mu/defn- handle-breakout+aggregation :- ::compiled-pipeline
-  "Add projections, groupings, sortings, and other things needed to the Query pipeline context (`pipeline-ctx`) for
-  MBQL `aggregations` and `breakout-fields`."
+(mu/defn- query->collection-name :- [:maybe :string]
+  "Return `:collection` from a source query, if it exists."
+  [query :- ::lib.schema/query]
+  (some #(:collection (lib/query-stage query %))
+        (range 0 (lib/stage-count query))))
+
+(def ^:private pivot-facet-rows-field
+  "Intermediate field name for the concatenated pivot rows before `$unwind` + `$replaceRoot`."
+  "__mb_pivot_rows")
+
+(def ^:private facet-safe-limit
+  "Row-count ceiling at or below which the `$facet` compiler is chosen. `$facet` materializes its full
+  output into a single BSON document, which is capped at 16 MB; 10 000 rows stay comfortably under that
+  limit even for wide-breakout pivots. Above this threshold, we fall back to `$unionWith`."
+  10000)
+
+(defn- effective-pivot-limit
+  "Smallest row-count ceiling we can confirm for `query`'s pivot output: the MBQL stage `:limit` and/or
+  `:constraints :max-results`, whichever is tighter. Returns `nil` when neither is set."
+  [query stage-number]
+  (let [stage-limit (:limit (lib.util/query-stage query stage-number))
+        qp-limit    (get-in query [:constraints :max-results])]
+    (u/safe-min stage-limit qp-limit)))
+
+(defn- facet-pivot-stages
+  "`$facet` shape: one branch per entry in `branch-pipelines`, concatenated with `$concatArrays`,
+  flattened with `$unwind` and `$replaceRoot` into a document stream."
+  [branch-pipelines]
+  (let [facet-branches (into (ordered-map/ordered-map)
+                             (map-indexed (fn [i stages] [(str "combo_" i) stages]))
+                             branch-pipelines)]
+    [{$facet facet-branches}
+     {$addFields {pivot-facet-rows-field
+                  {"$concatArrays" (mapv #(str "$" %) (keys facet-branches))}}}
+     {$unwind {:path (str "$" pivot-facet-rows-field)}}
+     {$replaceRoot {"newRoot" (str "$" pivot-facet-rows-field)}}]))
+
+(defn- union-with-pivot-stages
+  "`$unionWith` shape: the first branch continues the main pipeline; each subsequent branch becomes a
+  `$unionWith` stage whose inner pipeline replays `base-pipeline` on `collection-name` and then runs
+  that branch's own grouping."
+  [branch-pipelines base-pipeline collection-name]
+  (into (vec (first branch-pipelines))
+        (map (fn [branch]
+               {$unionWith (ordered-map/ordered-map
+                            "coll"     collection-name
+                            "pipeline" (vec (concat base-pipeline branch)))}))
+        (rest branch-pipelines)))
+
+(defn- previous-stages-pipeline
+  "Compile stages before `stage-number` of `query` into their accumulated Mongo pipeline. `handle-pivot`
+  only receives the pivot stage's own upstream in `pipeline-ctx` — stages 0..N-1 are compiled
+  independently and concatenated by [[mbql->native-rec]], so a `$unionWith` branch that replays only
+  `pipeline-ctx` would skip prior stages (e.g. a sandbox-induced source-query at stage 0)."
+  [query stage-number]
+  (if (zero? stage-number)
+    []
+    (-> query
+        (update :stages #(vec (take stage-number %)))
+        mbql->native-rec
+        :query)))
+
+(mu/defn- handle-pivot :- ::compiled-pipeline
+  "Compile the last stage's `:pivot` clause into either a `$facet`-based single-pass pipeline or a
+  `$unionWith`-based multi-pass pipeline, picked by comparing the effective row ceiling to
+  [[facet-safe-limit]]. Each grouping combination becomes one branch that groups by its kept breakouts
+  and null-pads the dropped ones. The merged stream is sorted by the pivot-grouping bitmask followed by
+  the breakouts, then capped with `$limit` when a ceiling is known.
+
+  `$facet` holds all branches' output in one BSON document (16 MB cap; raises error 10334) with each
+  branch bounded by 100 MB in-memory (raises error 4031700); `$unionWith` streams but reads the base
+  collection once per branch."
   [query        :- ::lib.schema/query
    stage-number :- :int
    pipeline-ctx :- ::compiled-pipeline]
-  (if-not (or (seq (lib/breakouts query stage-number))
-              (seq (lib/aggregations query stage-number)))
-    ;; if both aggregations and breakouts are empty, there's nothing to do...
-    pipeline-ctx
+  (let [stage             (lib.util/query-stage query stage-number)
+        pivot             (:pivot stage)
+        breakouts         (vec (lib/breakouts query stage-number))
+        non-remap         (pivot.common/non-remap-positions breakouts)
+        orig->new         (pivot.common/remap-original->new-field-positions breakouts)
+        non-remap-bos     (mapv breakouts non-remap)
+        nr-idx-by-uuid    (into {} (map-indexed (fn [i b] [(lib.options/uuid b) i])) non-remap-bos)
+        rows-idx          (mapv nr-idx-by-uuid (:rows pivot))
+        cols-idx          (mapv nr-idx-by-uuid (:columns pivot))
+        combos            (pivot.common/breakout-combinations
+                           (count non-remap-bos)
+                           rows-idx
+                           cols-idx
+                           (get pivot :show-row-totals    true)
+                           (get pivot :show-column-totals true))
+        n-breakouts       (count breakouts)
+        full-projections  (vec (breakouts-and-ags->projected-fields query stage-number))
+        breakout-projs    (subvec full-projections 0 n-breakouts)
+        agg-projs         (subvec full-projections n-breakouts)
+        breakout-aliases  (mapv first breakout-projs)
+        compile-branch    (fn [combo]
+                            (let [kept-idx       (vec (pivot.common/expand-grouping-combo combo non-remap orig->new))
+                                  kept-set       (set kept-idx)
+                                  bitmask        (pivot.common/group-bitmask (count non-remap-bos) combo)
+                                  kept-breakouts (mapv breakouts kept-idx)
+                                  branch-query   (lib.util/update-query-stage
+                                                  query stage-number
+                                                  (fn [stg]
+                                                    (-> stg
+                                                        (dissoc :pivot :order-by :limit)
+                                                        (u/assoc-dissoc :breakout (not-empty kept-breakouts)))))
+                                  group-id       (when (seq kept-breakouts)
+                                                   (projection-group-map branch-query stage-number))
+                                  group-stages   (group-and-post-aggregations branch-query stage-number group-id)
+                                  branch-project (into (ordered-map/ordered-map "_id" false)
+                                                       cat
+                                                       [(map-indexed
+                                                         (fn [i [alias src]]
+                                                           [alias (if (kept-set i) src {$literal nil})])
+                                                         breakout-projs)
+                                                        [[lib.pivot/pivot-grouping-column-name {$literal bitmask}]]
+                                                        agg-projs])]
+                              (conj (vec group-stages) {$project branch-project})))
+        branch-pipelines  (mapv compile-branch combos)
+        ;; `-1` (DESC) sorts rollups first so a `:max-results` truncation drops detail rows rather than totals.
+        outer-sort        (into (ordered-map/ordered-map)
+                                (concat [[lib.pivot/pivot-grouping-column-name -1]]
+                                        (map (fn [alias] [alias 1]) breakout-aliases)))
+        effective-limit   (effective-pivot-limit query stage-number)
+        forced-shape      (:qp.pivot/forced-shape stage)
+        use-facet?        (case forced-shape
+                            :native-pivot-query true
+                            :union-all          false
+                            (and effective-limit (<= effective-limit facet-safe-limit)))
+        shape-stages      (if use-facet?
+                            (facet-pivot-stages branch-pipelines)
+                            (union-with-pivot-stages branch-pipelines
+                                                     (into (previous-stages-pipeline query stage-number)
+                                                           (:query pipeline-ctx))
+                                                     (find-source-collection query query)))
+        tail-stages       (cond-> [{$sort outer-sort}]
+                            effective-limit (conj {$limit effective-limit}))
+        pivot-stages      (into shape-stages tail-stages)
+        projections       (into breakout-aliases
+                                cat
+                                [[lib.pivot/pivot-grouping-column-name]
+                                 (map first agg-projs)])]
+    (-> pipeline-ctx
+        (assoc :projections projections)
+        (update :query into pivot-stages))))
+
+(defmethod qp.pivot/pivot-shapes :mongo
+  [_query _database]
+  [:native-pivot-query :union-all])
+
+(mu/defn- handle-breakout+aggregation :- ::compiled-pipeline
+  "Add projections, groupings, sortings, and other things needed to the Query pipeline context (`pipeline-ctx`) for
+  MBQL `aggregations` and `breakout-fields`. Dispatches to [[handle-pivot]] when the stage carries a `:pivot` clause."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   pipeline-ctx :- ::compiled-pipeline]
+  (cond
+    (:pivot (lib.util/query-stage query stage-number))
+    (handle-pivot query stage-number pipeline-ctx)
+
+    (or (seq (lib/breakouts query stage-number))
+        (seq (lib/aggregations query stage-number)))
     ;; determine the projections we'll need. projected-fields is like [[projected-field-name source]]`
     (let [projected-fields (breakouts-and-ags->projected-fields query stage-number)
           pipeline-stages  (breakouts-and-ags->pipeline-stages query stage-number projected-fields)]
@@ -2046,7 +2226,9 @@ function(bin) {
           ;; add :projections key which is just a sequence of the names of projections from above
           (assoc :projections (mapv first projected-fields))
           ;; now add additional clauses to the end of :query as applicable
-          (update :query into pipeline-stages)))))
+          (update :query into pipeline-stages)))
+
+    :else pipeline-ctx))
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
@@ -2242,12 +2424,6 @@ function(bin) {
             #'handle-fields
             #'handle-limit
             #'handle-page])))
-
-(mu/defn- query->collection-name :- [:maybe :string]
-  "Return `:collection` from a source query, if it exists."
-  [query :- ::lib.schema/query]
-  (some #(:collection (lib/query-stage query %))
-        (range 0 (lib/stage-count query))))
 
 (defn- log-aggregation-pipeline [form]
   (when-not driver-api/*disable-qp-logging*

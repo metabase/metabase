@@ -1,5 +1,3 @@
-import { assocIn } from "icepick";
-
 const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -372,7 +370,7 @@ const MODEL_NAME = "Test Action Model";
                 model_id: id,
               });
             })
-            .then(({ body: action }) => {
+            .then((action) => {
               H.createDashboard(dashboardDetails).then(
                 ({ body: dashboard }) => {
                   H.updateDashboardCards({
@@ -727,11 +725,16 @@ const MODEL_NAME = "Test Action Model";
           },
         };
 
-        const SAMPLE_WRITABLE_QUERY_ACTION = assocIn(
-          SAMPLE_QUERY_ACTION,
-          ["dataset_query", "native", "query"],
-          `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
-        );
+        const SAMPLE_WRITABLE_QUERY_ACTION = {
+          ...SAMPLE_QUERY_ACTION,
+          dataset_query: {
+            ...SAMPLE_QUERY_ACTION.dataset_query,
+            native: {
+              ...SAMPLE_QUERY_ACTION.dataset_query.native,
+              query: `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
+            },
+          },
+        };
 
         beforeEach(() => {
           H.restore(`${dialect}-writable`);
@@ -788,7 +791,7 @@ const MODEL_NAME = "Test Action Model";
           cy.findByTestId("action-editor-modal").should("not.exist");
 
           getActionParametersInputModal().within(() => {
-            cy.findByTestId("modal-header").findByText("New action name");
+            cy.findByRole("heading", { name: "New action name" });
 
             cy.findAllByPlaceholderText("Test placeholder");
 
@@ -915,7 +918,7 @@ describe(
           );
           cy.findByPlaceholderText("Score").should("have.value", "30");
 
-          cy.icon("close").click();
+          cy.findByLabelText("Close").click();
         });
 
         H.filterWidget().click();
@@ -1005,8 +1008,6 @@ describe(
           cy.icon("pencil").click();
         });
 
-        cy.wait("@getModel");
-
         cy.findAllByRole("dialog")
           .filter(":visible")
           .within(() => {
@@ -1069,8 +1070,6 @@ function createDashboardWithActionButton({
   if (hideField) {
     cy.findByRole("dialog").within(() => {
       cy.icon("pencil").click();
-
-      cy.wait("@getModel");
     });
 
     cy.findAllByRole("dialog")
@@ -1110,8 +1109,8 @@ const changeValue = ({ fieldName, fieldType, oldValue, newValue }) => {
   cy.findByPlaceholderText(fieldName)
     .should("have.attr", "type", fieldType)
     .should("have.value", oldValue)
-    .clear()
-    .type(newValue);
+    .clear({ scrollBehavior: "center" })
+    .type(newValue, { scrollBehavior: "center" });
 };
 
 function formFieldContainer(label) {

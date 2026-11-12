@@ -7,7 +7,6 @@ import {
 import {
   createMockCard,
   createMockField,
-  createMockStructuredDatasetQuery,
   createMockTable,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -20,54 +19,82 @@ describe("suggestMetrics", () => {
     const DATABASE_ID = SAMPLE_DATABASE.id;
     const TABLE_ID = 1;
 
+    const fields = [
+      createMockField({
+        id: 10,
+        table_id: TABLE_ID,
+        display_name: "Toucan Sam",
+        base_type: "type/Float",
+      }),
+      createMockField({
+        id: 11,
+        table_id: TABLE_ID,
+        display_name: "Sum",
+        base_type: "type/Float",
+      }),
+      createMockField({
+        id: 12,
+        table_id: TABLE_ID,
+        display_name: "count",
+        base_type: "type/Float",
+      }),
+      createMockField({
+        id: 13,
+        table_id: TABLE_ID,
+        display_name: "text",
+        base_type: "type/Text",
+      }),
+      createMockField({
+        id: 14,
+        table_id: TABLE_ID,
+        display_name: "date",
+        base_type: "type/DateTime",
+      }),
+    ];
+
+    const tableWithoutMetrics = createMockTable({
+      db_id: DATABASE_ID,
+      id: TABLE_ID,
+      fields,
+    });
+
+    const baseProvider = createMetadataProvider({
+      databaseId: DATABASE_ID,
+      metadata: createMockMetadata({
+        databases: [
+          createSampleDatabase({
+            id: DATABASE_ID,
+            name: "Database",
+            tables: [tableWithoutMetrics],
+          }),
+        ],
+      }),
+    });
+
     const METRIC_FOO = createMockCard({
       name: "FOO",
       type: "metric",
       table_id: TABLE_ID,
-      dataset_query: createMockStructuredDatasetQuery({
-        database: DATABASE_ID,
-        query: {
-          "source-table": TABLE_ID,
-          aggregation: [["sum", ["field", 11, {}]]],
-        },
+      dataset_query: Lib.createTestJsQuery(baseProvider, {
+        stages: [
+          {
+            source: { type: "table", id: TABLE_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", fieldId: 11 }],
+              },
+            ],
+          },
+        ],
       }),
     });
 
     const TABLE = createMockTable({
       db_id: DATABASE_ID,
       id: TABLE_ID,
-      fields: [
-        createMockField({
-          id: 10,
-          table_id: TABLE_ID,
-          display_name: "Toucan Sam",
-          base_type: "type/Float",
-        }),
-        createMockField({
-          id: 11,
-          table_id: TABLE_ID,
-          display_name: "Sum",
-          base_type: "type/Float",
-        }),
-        createMockField({
-          id: 12,
-          table_id: TABLE_ID,
-          display_name: "count",
-          base_type: "type/Float",
-        }),
-        createMockField({
-          id: 13,
-          table_id: TABLE_ID,
-          display_name: "text",
-          base_type: "type/Text",
-        }),
-        createMockField({
-          id: 14,
-          table_id: TABLE_ID,
-          display_name: "date",
-          base_type: "type/DateTime",
-        }),
-      ],
+      fields,
       metrics: [METRIC_FOO],
     });
 

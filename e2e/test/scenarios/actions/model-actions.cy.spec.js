@@ -1,5 +1,3 @@
-import { assocIn } from "icepick";
-
 const { H } = cy;
 import {
   SAMPLE_DB_ID,
@@ -55,11 +53,16 @@ const SAMPLE_QUERY_ACTION = {
   },
 };
 
-const SAMPLE_WRITABLE_QUERY_ACTION = assocIn(
-  SAMPLE_QUERY_ACTION,
-  ["dataset_query", "native", "query"],
-  `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
-);
+const SAMPLE_WRITABLE_QUERY_ACTION = {
+  ...SAMPLE_QUERY_ACTION,
+  dataset_query: {
+    ...SAMPLE_QUERY_ACTION.dataset_query,
+    native: {
+      ...SAMPLE_QUERY_ACTION.dataset_query.native,
+      query: `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
+    },
+  },
+};
 
 describe(
   "scenarios > actions > model actions",
@@ -151,11 +154,11 @@ describe(
         .should("be.visible");
 
       openActionMenuFor("Delete Order");
-      H.popover().findByText("Archive").click();
+      H.popover().findByText("Delete").click();
 
       H.modal().within(() => {
-        cy.findByText("Archive Delete Order?").should("be.visible");
-        cy.findByRole("button", { name: "Archive" }).click();
+        cy.findByText("Delete Delete Order?").should("be.visible");
+        cy.findByRole("button", { name: "Delete" }).click();
       });
 
       cy.findByRole("listitem", { name: "Delete Order" }).should("not.exist");
@@ -212,7 +215,7 @@ describe(
       openActionMenuFor(SAMPLE_QUERY_ACTION.name);
       H.popover().within(() => {
         cy.findByText("View").should("be.visible");
-        cy.findByText("Archive").should("not.exist");
+        cy.findByText("Delete").should("not.exist");
         cy.findByText("View").click();
       });
 
@@ -237,7 +240,7 @@ describe(
         cy.findByLabelText("Success message").should("be.disabled");
       });
 
-      cy.signIn("normal");
+      cy.signInAsAdmin();
       cy.reload();
 
       // Check can pick between all databases
@@ -250,9 +253,7 @@ describe(
         cy.findByText("QA Postgres12").should("be.visible");
       });
 
-      cy.signInAsAdmin();
       H.setActionsEnabledForDB(SAMPLE_DB_ID, false);
-      cy.signIn("normal");
       cy.reload();
 
       // Check can only see the action database

@@ -5,7 +5,6 @@ import path from "node:path";
 import {
   DATA_APP_BUILD_SCRIPT,
   DATA_APP_FIXTURES_DIR,
-  DATA_APP_SYNC_SCRIPT,
   REPO_ROOT,
 } from "./data-app-fixture-paths.mjs";
 
@@ -40,51 +39,45 @@ function run(script: string, args: string[], env: NodeJS.ProcessEnv = {}) {
   });
 }
 
-export async function syncDataApp({
-  appRoot,
-  metabaseUrl,
-  apiKey,
-}: {
-  appRoot: string;
-  metabaseUrl: string;
-  apiKey: string;
-}): Promise<{ ok: boolean; error: string | null }> {
-  try {
-    await run(DATA_APP_SYNC_SCRIPT, [appRoot], {
-      DATA_APP_MB_URL: metabaseUrl,
-      DATA_APP_MB_API_KEY: apiKey,
-    });
-    return { ok: true, error: null };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
+const REPOSITORY_DIRS = ["collections", "databases", "data_apps"];
+
+let buildingApps: Promise<void> | undefined;
+
+/** Builds every fixture app once per Cypress process, into its own `dist/`. */
+function buildDataApps() {
+  buildingApps ??= (async () => {
+    const appsDir = path.join(DATA_APP_FIXTURES_DIR, "data_apps");
+
+    for (const slug of fs.readdirSync(appsDir)) {
+      await run(DATA_APP_BUILD_SCRIPT, [slug]);
+    }
+  })();
+
+  return buildingApps;
 }
 
-export async function buildDataApp({
-  appName,
+/**
+ * Builds the fixture apps and copies the fixture repository, with the built
+ * bundles, into `destination`, as an author's repository holds them.
+ */
+export async function copyDataAppsFixture({
+  destination,
 }: {
-  appName: string;
-}): Promise<string> {
-  const appDir = path.join(DATA_APP_FIXTURES_DIR, appName);
+  destination: string;
+}): Promise<null> {
+  await buildDataApps();
 
-  if (!fs.existsSync(path.join(appDir, "src"))) {
-    throw new Error(`data-app fixture "${appName}" has no src/ at ${appDir}`);
-  }
-
-  await run(DATA_APP_BUILD_SCRIPT, [appName]);
-
-  const bundlePath = path.join(DATA_APP_FIXTURES_DIR, appName, "dist/index.js");
-
-  if (!fs.existsSync(bundlePath)) {
-    throw new Error(
-      `data-app build for "${appName}" produced no bundle at ${bundlePath}`,
+  for (const dir of REPOSITORY_DIRS) {
+    fs.cpSync(
+      path.join(DATA_APP_FIXTURES_DIR, dir),
+      path.join(destination, dir),
+      {
+        recursive: true,
+      },
     );
   }
 
-  return fs.readFileSync(bundlePath, "utf8");
+  return null;
 }
 
 /** Cypress resolves a relative path against the project root; match that. */
@@ -97,35 +90,6 @@ function inRepo(target: string) {
  * so a spec changes an app in one round trip, and so nothing is composed into a
  * shell string.
  */
-export async function scaffoldDataApp({
-  appName,
-  sdkFrom,
-}: {
-  appName: string;
-  sdkFrom: string;
-}): Promise<string> {
-  // The task owns the location so a caller cannot aim the `rmSync` below elsewhere.
-  if (path.basename(appName) !== appName) {
-    throw new Error(`A scaffolded app is named, not located: ${appName}`);
-  }
-
-  const root = path.join(REPO_ROOT, "e2e", "tmp", appName);
-
-  fs.rmSync(root, { recursive: true, force: true });
-  fs.mkdirSync(root, { recursive: true });
-  // The SDK the app synchronizes against, without a second npm install.
-  fs.symlinkSync(
-    path.join(inRepo(sdkFrom), "node_modules"),
-    path.join(root, "node_modules"),
-  );
-  fs.writeFileSync(
-    path.join(root, "data_app.yaml"),
-    `name: ${appName}\nslug: ${appName}\npath: ./dist/index.js\n`,
-  );
-
-  return root;
-}
-
 export async function writeDataAppFiles({
   files,
 }: {
@@ -137,30 +101,6 @@ export async function writeDataAppFiles({
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, contents);
   }
-
-  return null;
-}
-
-export async function removeDataAppDeclaration({
-  filePath,
-  exportName,
-}: {
-  filePath: string;
-  exportName: string;
-}): Promise<null> {
-  const target = inRepo(filePath);
-  const [imports, ...declarations] = fs
-    .readFileSync(target, "utf8")
-    .split("export const ");
-
-  fs.writeFileSync(
-    target,
-    imports +
-      declarations
-        .filter((declaration) => !declaration.startsWith(`${exportName} `))
-        .map((declaration) => `export const ${declaration}`)
-        .join(""),
-  );
 
   return null;
 }

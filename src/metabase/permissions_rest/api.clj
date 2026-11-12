@@ -128,12 +128,8 @@
   Actually changing the name brings a whole host of problems, and we very rarely actually present the names of
   Permissions Groups to users. (These are the only endpoints that reveal them.) So I think it makes sense to just
   adjust them here."
-  [{:keys [magic_group_type] :as group} using-tenants?]
-  (update group :name (fn [n]
-                        (if (and (= magic_group_type perms/all-users-magic-group-type)
-                                 using-tenants?)
-                          "All internal users"
-                          n))))
+  [group using-tenants?]
+  (assoc group :name (perms/group-display-name group using-tenants?)))
 
 (defn- maybe-fix-names
   "See [[maybe-fix-name]] for details."
@@ -170,7 +166,6 @@
                         {:tenancy                       tenancy
                          :manager-user-id               manager-user-id
                          :tenants-enabled?              (setting/get :use-tenants)
-                         :exclude-data-app-groups?      true
                          :advanced-permissions-enabled? (premium-features/enable-advanced-permissions?)})
         (t2/hydrate :member_count)
         (maybe-fix-names))))
@@ -255,11 +250,7 @@
                               :object <>
                               :previous-object group}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/group/:group-id"
+(api.macros/defendpoint :delete "/group/:group-id" :- ::api/generic-204-no-content
   "Delete a specific `PermissionsGroup`."
   [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
@@ -292,12 +283,6 @@
                                         api/*current-user-id*)
               :exclude-tenant-groups? (not (setting/get :use-tenants))})))
 
-(defn- check-data-app-group-feature!
-  [group-id]
-  (when (permissions-rest.db/data-app-group? group-id)
-    (premium-features/assert-has-feature :data-apps (tru "Data Apps"))
-    true))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -313,9 +298,6 @@
   (let [is_group_manager (boolean is_group_manager)]
     (perms/check-manager-of-group group_id)
     (perms/check-tenant-groups-visible! [group_id])
-    (when (check-data-app-group-feature! group_id)
-      (api/check-400 (permissions-rest.db/active-user-exists? user_id)
-                     (tru "Deactivated users cannot be added to data apps.")))
     (when is_group_manager
       ;; enable `is_group_manager` require advanced-permissions enabled
       (perms/check-advanced-permissions-enabled :group-manager)
@@ -352,11 +334,7 @@
     (permissions-rest.db/set-group-membership-manager! (:id old) is_group_manager)
     (permissions-rest.db/group-membership (:id old))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/membership/:group-id/clear"
+(api.macros/defendpoint :put "/membership/:group-id/clear" :- ::api/generic-204-no-content
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
@@ -367,11 +345,7 @@
   (perms/remove-all-users-from-group! group-id)
   api/generic-204-no-content)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/membership/:id"
+(api.macros/defendpoint :delete "/membership/:id" :- ::api/generic-204-no-content
   "Remove a User from a PermissionsGroup (delete their membership)."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]

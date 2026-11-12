@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  setupDocumentRevisionsEndpoint,
+  setupEntityRevisionsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
@@ -64,7 +64,7 @@ function setup({
   const onClose = jest.fn();
   const currentUser = mockUser;
 
-  setupDocumentRevisionsEndpoint(document.id, revisions);
+  setupEntityRevisionsEndpoint("document", document.id, revisions);
   setupUsersEndpoints([currentUser]);
 
   const state = createMockState({

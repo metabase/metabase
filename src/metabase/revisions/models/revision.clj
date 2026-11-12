@@ -19,6 +19,8 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
+(set! *warn-on-reflection* true)
+
 (defn toucan-model?
   "Check if `model` is a toucan model."
   [model]
@@ -83,6 +85,16 @@
 (defmethod revision-readable? :default
   [_model _object]
   true)
+
+(defmulti check-revert-available
+  "Throw a 402 unless the token has the premium feature that a revert of `model` to a revision needs. The default
+  throws nothing."
+  {:arglists '([model])}
+  mi/dispatch-on-model)
+
+(defmethod check-revert-available :default
+  [_model]
+  nil)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 

@@ -16,7 +16,7 @@ permissions:
 jobs:
   codeql:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
+    timeout-minutes: 30
     env:
       # disables overlay DB cache
       CODEQL_OVERLAY_DATABASE_MODE: none

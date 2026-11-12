@@ -59,14 +59,15 @@ export type DatabaseFeature =
   | "transforms/python"
   | "transforms/table";
 
+export type DatabaseNativePermissions = "write" | "none";
+
 export interface Database extends DatabaseData {
   id: DatabaseId;
-  is_saved_questions: boolean;
   features?: DatabaseFeature[];
   creator_id?: number;
   timezone?: string;
   default_schema?: string | null;
-  native_permissions: "write" | "none";
+  native_permissions: DatabaseNativePermissions;
   transforms_permissions?: "write" | "none";
   initial_sync_status: InitialSyncStatus;
   initial_sync_error?: string | null;
@@ -104,7 +105,6 @@ export interface DatabaseData {
   // [[metabase.models.interface/to-json]] for `:model/Database`:
   details?: Record<string, unknown>;
   write_data_details?: Record<string, unknown> | null;
-  admin_details?: Record<string, unknown> | null;
   schedules: DatabaseSchedules;
   auto_run_queries: boolean | null;
   refingerprint: boolean | null;
@@ -161,7 +161,6 @@ export type GetDatabaseHealthResponse =
 
 export type ListDatabasesRequest = {
   include?: "tables" | "schemas";
-  saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
   include_only_uploadable?: boolean;
@@ -169,7 +168,6 @@ export type ListDatabasesRequest = {
   include_stubs?: boolean;
   router_database_id?: DatabaseId;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
 };
 
 export interface ListDatabasesResponse {
@@ -187,7 +185,6 @@ export interface ListDatabaseSchemasRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
 }
 
 export interface ListDatabaseSchemaTablesRequest {
@@ -196,18 +193,13 @@ export interface ListDatabaseSchemaTablesRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
   include_measures?: boolean;
-}
-
-export interface ListVirtualDatabaseTablesRequest {
-  id: DatabaseId;
-  schema: string;
 }
 
 export interface GetDatabaseMetadataRequest {
   id: DatabaseId;
   include_hidden?: boolean;
+  include_sensitive_fields?: boolean;
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
   skip_fields: true; // make sure we don't get every field of every table
@@ -232,7 +224,6 @@ export interface UpdateDatabaseRequest {
   refingerprint?: boolean | null;
   details?: Record<string, unknown>;
   write_data_details?: Record<string, unknown> | null;
-  admin_details?: Record<string, unknown> | null;
   schedules?: DatabaseSchedules;
   description?: string;
   caveats?: string;
@@ -268,12 +259,6 @@ export type DatabaseEditErrorType = {
 
 export interface DatabaseIdFieldListQuery {
   include_editable_data_model?: boolean;
-}
-
-export interface SavedQuestionDatabase {
-  id: -1337;
-  name: "Saved Questions";
-  is_saved_questions: true;
 }
 
 export interface CreateDestinationDatabaseRequest {

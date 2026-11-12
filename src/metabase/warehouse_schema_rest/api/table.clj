@@ -12,6 +12,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -41,19 +42,22 @@
 
 (set! *warn-on-reflection* true)
 
+(events/derive! :event/table-update :metabase/event)
+
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
-  (into [:enum] (map name table/visibility-types)))
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] table/visibility-types))
 
 (def ^:private FieldOrder
   "Schema for a valid table field ordering."
-  (into [:enum] (map name table/field-orderings)))
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] table/field-orderings))
 
 (def ^:private EntityType
-  "Schema for a valid table entity type, as either a keyword or a string."
+  "Schema for a valid table entity type, normalized from its name."
   (mu/with-api-error-message
-   [:fn #(isa? types/entity-hierarchy (keyword %) :entity/*)]
-   (deferred-tru "value must be a valid entity type (keyword or string).")))
+   [:fn {:json-schema {:type "string"} :decode/normalize lib.schema.common/normalize-keyword}
+    #(and (keyword? %) (isa? types/entity-hierarchy % :entity/*))]
+   (deferred-tru "value must be a valid entity type.")))
 
 (mr/def ::data-authority-write
   "Schema for writing a valid table data authority."
@@ -78,10 +82,11 @@
 
   Optional filters:
   - `can-query=true` - filter to only tables the user can execute queries against
-  - `can-write=true` - filter to only tables the user can edit metadata for"
+  - `include-editable-data-model=true` - filter to only tables the user can edit the data model of, instead of the
+    tables the user can read"
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
-           published-only can-query can-write include-transform-targets]}
+           published-only can-query include-editable-data-model include-transform-targets]}
    :- [:map {:closed true}
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
@@ -93,7 +98,7 @@
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]
        [:published-only {:optional true} [:maybe ms/BooleanValue]]
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
-       [:can-write {:optional true} [:maybe ms/BooleanValue]]
+       [:include-editable-data-model {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
   (let [hydrations (cond-> [:db]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
@@ -113,21 +118,20 @@
       (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                           :table-ids (into #{} (map :id) tables)})
           tables)
-      (into [] (comp (filter mi/can-read?)
-                     (if can-query (filter mi/can-query?) identity)
-                     (if can-write (filter mi/can-write?) identity)
+      (if include-editable-data-model
+        (schema.table/filter-tables-by-data-model-perms tables)
+        (filter mi/can-read? tables))
+      (into [] (comp (if can-query (filter mi/can-query?) identity)
                      (map schema.table/present-table))
             tables))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/:id"
+  ;; partial schema only
+  :- [:map {:closed false}
+      [:data_authority ::data-authority-read]]
   "Get `Table` with ID."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
@@ -135,11 +139,8 @@
    {:keys [include_editable_data_model]}
    :- [:map {:closed true}
        [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
-  ;; partial schema only
-  :- [:map {:closed false}
-      [:data_authority ::data-authority-read]]
   (let [api-perm-check-fn (if include_editable_data_model
-                            api/write-check
+                            schema.table/check-data-model-perms
                             api/read-check)]
     (-> (api/check-404 (warehouse-schema-rest.db/table id))
         api-perm-check-fn
@@ -178,10 +179,9 @@
                                (fn [response]
                                  (dissoc response :json_query :context :cached :average_execution_time))))))))))
 
-(def ^:private TableUpdateBodySingle
-  "Body of `PUT /api/table/:id`."
-  [:map {:closed true}
-   [:display_name            {:optional true} [:maybe ms/NonBlankString]]
+(def ^:private table-update-entries
+  "User-settable Table columns, as optional `:map` entries."
+  [[:display_name            {:optional true} [:maybe ms/NonBlankString]]
    [:entity_type             {:optional true} [:maybe EntityType]]
    [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
    [:description             {:optional true} [:maybe :string]]
@@ -189,29 +189,22 @@
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:field_order             {:optional true} [:maybe FieldOrder]]
-   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
-   [:data_source             {:optional true} [:maybe :string]]
-   [:data_layer              {:optional true} [:maybe :string]]
+   [:data_authority          {:optional true} ::data-authority-write]
+   [:data_source             {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe :int]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])
 
+(def ^:private TableUpdateBodySingle
+  "Body of `PUT /api/table/:id`."
+  (into [:map {:closed true}] table-update-entries))
+
 (def ^:private TableUpdateBodyBulk
   "Body of the deprecated `PUT /api/table/`."
-  [:map {:closed true}
-   [:ids                                      [:sequential ms/PositiveInt]]
-   [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-   [:entity_type             {:optional true} [:maybe EntityType]]
-   [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
-   [:description             {:optional true} [:maybe :string]]
-   [:caveats                 {:optional true} [:maybe :string]]
-   [:points_of_interest      {:optional true} [:maybe :string]]
-   [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
-   [:data_source             {:optional true} [:maybe :string]]
-   [:data_layer              {:optional true} [:maybe :string]]
-   [:owner_email             {:optional true} [:maybe :string]]
-   [:owner_user_id           {:optional true} [:maybe :int]]])
+  (into [:map {:closed true}
+         [:ids [:sequential ms/PositiveInt]]]
+        table-update-entries))
 
 (mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
@@ -226,7 +219,7 @@
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
-    (schema.table-user-settings/upsert-user-settings existing-table changes))
+    (schema.table-user-settings/upsert-table-user-settings! existing-table changes))
   (let [updated-table        (warehouse-schema-rest.db/table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
@@ -299,7 +292,7 @@
 (api.macros/defendpoint :put "/"
   "Update all `Table` in `ids`.
 
-  Deprecated, should use PUT /table/edit from now on."
+  Deprecated: use `POST /api/data-studio/table/edit`."
   [_route-params
    _query-params
    {:keys [ids], :as body} :- TableUpdateBodyBulk]
@@ -317,13 +310,17 @@
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
-   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
-   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
+   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`.
+   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response if the current user has
+   data model editing permissions for the table. Defaults to `false`.
 
-   Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
-   data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
+   Passing `include_editable_data_model=true` will check that the current user has data model editing permissions for
+   the table, even when Remote Sync makes the table read-only, while `false` checks that they can read the table.
+   Defaults to `false`.
 
-   These options are provided for use in the Admin Edit Metadata page."
+   The response includes `can_write`, which is false when the user cannot edit the table's metadata right now.
+
+   These options are provided for use in the data model pages."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
@@ -335,34 +332,6 @@
   (schema.table/fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                                :include-hidden-fields?       include_hidden_fields
                                                :include-editable-data-model? include_editable_data_model}))
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/card__:id/query_metadata"
-  "Return metadata for the 'virtual' table for a Card."
-  {:scope api-scope/data-app}
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/card__:id/fks"
-  "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
-   serves mainly as a placeholder to avoid having to change anything on the frontend."
-  [_route-params :- [:map {:closed true}
-                     [:id ms/PositiveInt]]]
-  []) ; return empty array
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -389,12 +358,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/rescan_values"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/rescan_values" :- [:map {:closed true} [:status [:= :success]]]
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [{:keys [id]} :- [:map {:closed true}
@@ -413,12 +378,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/discard_values"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/discard_values" :- [:map {:closed true} [:status [:= :success]]]
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map {:closed true}
@@ -528,16 +489,12 @@
 (defn- sync-schema-async!
   [table user-id]
   (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
-  (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
+  (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/sync_schema"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/sync_schema" :- [:map {:closed true} [:status [:= :ok]]]
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]

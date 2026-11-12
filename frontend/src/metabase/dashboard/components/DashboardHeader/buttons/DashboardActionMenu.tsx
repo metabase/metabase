@@ -3,10 +3,12 @@ import { c, t } from "ttag";
 
 import { Link, type LinkProps } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { openEventsSidebar } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { useLocation } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
 import { parseSearchQuery } from "metabase/utils/browser";
@@ -40,8 +42,14 @@ const DashboardActionMenuInner = ({
   openSettingsSidebar,
 }: DashboardActionMenuProps) => {
   const location = useLocation();
-  const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
-    useDashboardContext();
+  const dispatch = useDispatch();
+  const {
+    dashboard,
+    isFullscreen,
+    onFullscreenChange,
+    onChangeLocation,
+    withTimelineEvents = false,
+  } = useDashboardContext();
   const [opened, setOpened] = useState(false);
   const [showAutoRefreshOptions, setShowAutoRefreshOptions] = useState(false);
 
@@ -67,21 +75,18 @@ const DashboardActionMenuInner = ({
     refreshDashboard,
   );
 
-  // solely for the dependency list below, so we don't ever have an undefined
+  // The trash shortcut opens `<pathname>/archive`. Without a location, it does nothing.
   const pathname = location?.pathname ?? "";
-  useRegisterShortcut(
-    [
-      {
-        id: "dashboard-send-to-trash",
-        perform: () => {
-          if (pathname) {
-            onChangeLocation(`${pathname}/archive`);
-          }
-        },
+  useRegisterShortcut([
+    {
+      id: "dashboard-send-to-trash",
+      perform: () => {
+        if (pathname) {
+          onChangeLocation(`${pathname}/archive`);
+        }
       },
-    ],
-    [pathname],
-  );
+    },
+  ]);
 
   if (!dashboard) {
     return null;
@@ -127,6 +132,18 @@ const DashboardActionMenuInner = ({
             <AutoRefreshMenuItem
               onClick={() => setShowAutoRefreshOptions(true)}
             />
+
+            {/* fullscreen hides every sidebar, so the panel this opens could never appear */}
+            {withTimelineEvents && !isFullscreen && (
+              <Menu.Item
+                leftSection={<Icon name="calendar" />}
+                onClick={() =>
+                  dispatch(openEventsSidebar({}, "dashboard_menu"))
+                }
+              >
+                {t`Events`}
+              </Menu.Item>
+            )}
 
             {(canEdit || canConfigureCaching) && (
               <Menu.Item

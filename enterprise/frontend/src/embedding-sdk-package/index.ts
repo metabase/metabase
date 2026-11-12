@@ -14,6 +14,7 @@ defineGlobalDependencies();
 export { CollectionBrowser } from "./components/public/CollectionBrowser";
 export { CreateQuestion } from "./components/public/CreateQuestion";
 export { CreateDashboardModal } from "./components/public/CreateDashboardModal";
+export { DataApp, type DataAppProps } from "./components/public/DataApp";
 export { EditableDashboard } from "./components/public/dashboard/EditableDashboard";
 export { InteractiveDashboard } from "./components/public/dashboard/InteractiveDashboard";
 export { StaticDashboard } from "./components/public/dashboard/StaticDashboard";
@@ -33,7 +34,6 @@ export { useAction } from "./hooks/public/use-action";
 export type {
   ActionExecuteError,
   ActionKind,
-  ActionResultForBulk,
   ActionResultForCreate,
   ActionResultForDelete,
   ActionResultForKind,
@@ -155,6 +155,9 @@ export type {
   MetabotIncompleteResponse,
   MetabotMessage,
   MetabotUserTextMessage,
+  NavigatedEntityParameterChangePayload,
+  NavigatedEntityParameters,
+  NavigationId,
   ParameterChangeSource,
   ParameterChangePayload,
   UseMetabotResult,
@@ -178,6 +181,7 @@ export type {
   SdkActionId,
   SdkActionDefinition,
   SdkActionInput,
+  SdkLegacyActionDefinition,
 } from "embedding-sdk-bundle/types";
 export type {
   FieldSchema,

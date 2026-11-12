@@ -60,7 +60,7 @@ export const ConnectionImpersonationStepContent = ({
         t`Failed to configure connection impersonation`,
       );
 
-      sendToast({ icon: "warning", toastColor: "feedback-negative", message });
+      sendToast({ variant: "negative", message });
     } finally {
       setUpdatingPermissions(false);
     }

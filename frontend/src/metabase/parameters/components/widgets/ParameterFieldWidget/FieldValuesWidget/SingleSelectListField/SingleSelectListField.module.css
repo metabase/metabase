@@ -1,5 +1,6 @@
 .optionsList {
   overflow: auto;
+  overflow-wrap: anywhere;
   list-style: none;
 }
 

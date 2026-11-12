@@ -149,7 +149,7 @@
   "The bullet for each [[tool-effect]]."
   {:read-only   "Read-only."
    :destructive "Can overwrite or delete existing data or content."
-   ;; a hint, not a contract: `document_write` carries it and rewrites whole bodies
+   ;; `destructiveHint false` is only a hint, so this promises nothing about what a writer won't touch
    :writes      "Creates or changes content."})
 
 (defn- facts-bullets

@@ -7,7 +7,7 @@
 
 .dots {
   --bright: var(--mb-color-icon-primary);
-  --dim: var(--mb-color-border-strong);
+  --dim: var(--mb-color-border-neutral-strong);
 
   width: 0.25rem;
   aspect-ratio: 1;

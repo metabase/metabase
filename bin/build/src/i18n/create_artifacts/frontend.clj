@@ -78,7 +78,7 @@
   rather than re-parsed here so scanner and writer stay in sync."
   [locale drop-msgids po-contents]
   (let [target-file (target-filename locale)]
-    (u/step (format "Create frontend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
+    (u/step (format "Create frontend artifact %s" target-file)
       (u/create-directory-unless-exists! target-directory)
       (u/delete-file-if-exists! target-file)
       (u/step "Write JSON"

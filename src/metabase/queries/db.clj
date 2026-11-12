@@ -4,54 +4,31 @@
   methods."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.schema]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ Cards ------------------------------------------------
 
-(def ^:private not-in-exploration-document
-  "The `:where` fragment excluding Cards that belong to an exploration Summary document.
-
-  Such a Card is materialized by the Summary itself — its `name` and `dataset_query` are copied from the
-  `ExplorationQuery` it renders, so they carry dimension values discovered under the creator's data-access lens. Its
-  parent Document is never serialized (see `metabase.documents.models.document`'s `extract-query`), and this Card's
-  `deserialization-dependencies` name that Document, so exporting the Card without it would leave a dangling
-  reference even setting the lens question aside."
-  [:or
-   [:= :document_id nil]
-   [:in :document_id ^:allow-subquery {:select [:id]
-                                       :from   [:document]
-                                       :where  [:= :exploration_id nil]}]])
-
-(mu/defn cards-for-serdes-reducible
-  "A reducible of the Cards to export via serdes: those whose `:collection_id` is in `collection-set` (nil in the set
-  counts as the root collection; an empty or nil set means every collection), further restricted to the rows whose
-  `filter-column` is one of `filter-ids` when `filter-column` is given, never a Card materialized by an exploration
-  Summary document, and ordered ascending by `order-columns` (unordered when empty)."
-  [collection-set :- [:maybe [:or [:set [:maybe ::lib.schema.id/collection]] [:sequential [:maybe ::lib.schema.id/collection]]]]
-   filter-column  :- [:maybe :keyword]
-   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]
-   order-columns  :- [:maybe [:sequential :keyword]]]
-  (t2/reducible-select :model/Card
-                       (cond-> {:where [:and
-                                        (when (seq collection-set)
-                                          [:or
-                                           [:in :collection_id collection-set]
-                                           (when (some nil? collection-set)
-                                             [:= :collection_id nil])])
-                                        (when filter-column
-                                          [:in filter-column filter-ids])
-                                        not-in-exploration-document]}
-                         (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
+(mu/defn synced-cards-clause :- [:fn vector?]
+  "The clause over the Card table aliased `alias` selecting the Cards remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  [:and
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -62,6 +39,11 @@
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
   [card-ids :- [:maybe [:or [:set [:maybe ::lib.schema.id/card]] [:sequential [:maybe ::lib.schema.id/card]]]]]
   (t2/select :model/Card :id [:in card-ids]))
+
+(mu/defn timelines
+  "The Timelines with `timeline-ids`; ids of deleted Timelines are skipped."
+  [timeline-ids :- [:set ms/PositiveInt]]
+  (t2/select :model/Timeline :id [:in timeline-ids]))
 
 (mu/defn card-query-info
   "The query-related fields of the Card with `card-id`.
@@ -133,6 +115,11 @@
              :type :metric
              {:order-by [[:name :asc]]}))
 
+(mu/defn document-collection-and-exploration
+  "The Document with `document-id` narrowed to `:id`, `:collection_id` and `:exploration_id`, or nil."
+  [document-id :- ms/PositiveInt]
+  (t2/select-one [:model/Document :id :collection_id :exploration_id] :id document-id))
+
 (mu/defn document-card-ids
   "The IDs of the Cards that belong to the Document with `document-id`."
   [document-id :- ms/PositiveInt]
@@ -147,7 +134,7 @@
   "Apply `changes` to the Card with `card-id`, returning the number updated."
   [card-id :- ::lib.schema.id/card
    changes :- ::queries.schema/card.update]
-  (t2/update! :model/Card card-id changes))
+  (t2/update! :model/Card :id card-id changes))
 
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
@@ -249,14 +236,14 @@
                          [:table.name :table-name]
                          [:table.db_id :field-db-id]]
              :from      [[:metabase_field :field]]
-             :left-join [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})
+             :left-join [[(t2/table-name :model/Table) :table]
                          [:= :field.table_id :table.id]]
              :where     [:in :field.id field-ids]}))
 
-(mu/defn field-table-ids
-  "The set of Table IDs of the Fields with `field-ids`."
+(mu/defn field-id->table-id :- [:map-of ::lib.schema.id/field ::lib.schema.id/table]
+  "Map of the ID of each Field with `field-ids` to its Table ID."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-pk->fn :table_id :model/Field :id [:in field-ids]))
 
 (mu/defn snippets
   "The NativeQuerySnippets with `snippet-ids`."
@@ -287,7 +274,7 @@
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard dashboard-id changes))
+  (t2/update! :model/Dashboard :id dashboard-id changes))
 
 (mu/defn dashcards-for-card
   "The DashboardCards showing the Card with `card-id`."
@@ -354,21 +341,17 @@
                                     :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                     :where  [:= :action.model_id model-id]}))
 
-(mu/defn move-actions-of-models!
-  "Move the Actions of the Cards with `model-ids` to the Collection with `collection-id`, returning the number
+(mu/defn move-actions-of-model!
+  "Move the Actions of the model Card with `model-id` to the Collection with `collection-id`, returning the number
   updated."
-  [model-ids     :- [:set ::lib.schema.id/card]
+  [model-id      :- ::lib.schema.id/card
    collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Action :model_id [:in model-ids] {:collection_id collection-id}))
+  (t2/update! :model/Action {:model_id model-id} {:collection_id collection-id}))
 
-(mu/defn set-actions-of-model-archived!
-  "Archive the unarchived Actions of the Card with `model-id` along with it, or unarchive the ones archived along with
-  it, returning the number updated."
-  [model-id  :- ms/PositiveInt
-   archived? :- :boolean]
-  (if archived?
-    (t2/update! :model/Action {:model_id model-id, :archived false} {:archived true, :archived_directly false})
-    (t2/update! :model/Action {:model_id model-id, :archived true, :archived_directly false} {:archived false})))
+(mu/defn delete-actions-of-model!
+  "Delete the Actions of the Card with `model-id`, returning the number deleted."
+  [model-id :- ms/PositiveInt]
+  (t2/delete! :model/Action :model_id model-id))
 
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
@@ -379,25 +362,6 @@
   "Delete the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:set ::lib.schema.id/action]]
   (t2/delete! :model/Action :id [:in action-ids]))
-
-(mu/defn delete-dashcards-for-model-actions!
-  "Delete the DashboardCards of the Actions of the model Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (if-let [action-ids (not-empty (t2/select-pks-set :model/Action :model_id model-id))]
-    (t2/delete! :model/DashboardCard :action_id [:in action-ids])
-    0))
-
-(mu/defn archive-explicit-actions-for-model!
-  "Archive the unarchived non-implicit Actions of the model Card with `model-id` directly, returning the number
-  updated."
-  [model-id :- ms/PositiveInt]
-  (t2/update! :model/Action {:model_id model-id, :type [:not= :implicit], :archived false}
-              {:archived true, :archived_directly true}))
-
-(mu/defn delete-implicit-actions-for-model!
-  "Delete the implicit Actions of the model Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (t2/delete! :model/Action :model_id model-id :type :implicit))
 
 (mu/defn delete-card-moderation-reviews!
   "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted."
@@ -577,10 +541,23 @@
   (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id
                                       :card_id          card-id}))
 
-(mu/defn stored-results-for-card
-  "The StoredResults used by the Card with `card-id`."
+(mu/defn stored-result-gate-inputs-for-card
+  "The StoredResults used by the Card with `card-id`, narrowed to the columns the cached-result gate reads."
   [card-id :- ::lib.schema.id/card]
-  (t2/select :model/StoredResult
+  (t2/select [:model/StoredResult
+              :id
+              :database_id
+              :dataset_query
+              :data_access_token
+              :resolved_source_ids]
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))
+
+(mu/defn synced-card-items :- [:sequential ::queries.schema/card]
+  "The Cards with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Card :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))

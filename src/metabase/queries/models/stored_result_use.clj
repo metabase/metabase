@@ -52,7 +52,7 @@
   "Throw a 403 unless the current user may be served *every* `stored_result` Card `card-id` renders
   from."
   [card-id :- ms/PositiveInt]
-  (let [snapshots (queries.db/stored-results-for-card card-id)]
+  (let [snapshots (queries.db/stored-result-gate-inputs-for-card card-id)]
     (when (empty? snapshots)
       (throw (ex-info (tru "This card has no cached results.") {:status-code 404})))
     (doseq [snapshot snapshots]

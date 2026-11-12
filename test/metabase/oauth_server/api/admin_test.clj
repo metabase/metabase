@@ -136,7 +136,7 @@
   (testing "Events whose client has been deleted still surface (LEFT JOIN), with null client fields"
     (mt/with-temp [:model/OAuthClient client (client-defaults)
                    :model/OAuthClientEvent event (event-defaults (:id client) "registered")]
-      (t2/delete! :model/OAuthClient (:id client))
+      (t2/delete! :model/OAuthClient :id (:id client))
       (let [rows (:data (mt/user-http-request :crowberto :get 200 "oauth/authorizations"))
             row  (first (filter #(= (:id event) (:id %)) rows))]
         (is (some? row) "The orphaned audit event should still be returned")

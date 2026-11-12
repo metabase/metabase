@@ -51,6 +51,7 @@ export const RulePreview = ({
         )}
       </Text>
       <ActionIcon
+        variant="subtle"
         onClick={(e) => {
           e.stopPropagation();
           onRemove();

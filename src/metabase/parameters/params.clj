@@ -58,7 +58,7 @@
       (throw (ex-info (str ":parameters must be a sequence of maps with :id and :type keys; "
                            (pr-str (me/humanize error)))
                       {:parameters parameters
-                       :errors     (:errors error)})))))
+                       :errors     (me/humanize error)})))))
 
 (defn assert-valid-parameter-mappings
   "Receive a Parameterized Object and check if its parameters is valid."
@@ -67,7 +67,7 @@
     (when-not (mr/validate schema parameter-mappings)
       (throw (ex-info ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
                       {:parameter_mappings parameter-mappings
-                       :errors             (:errors (mr/explain schema parameter-mappings))})))))
+                       :errors             (me/humanize (mr/explain schema parameter-mappings))})))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*
@@ -78,9 +78,7 @@
   false)
 
 (mu/defn- template-tag-name->field-id :- [:maybe ::lib.schema.id/field]
-  "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
-
-    (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
+  "Fetch the Field ID of the template tag named `template-tag-name` in `card`."
   [template-tag-name :- :string
    card              :- :metabase.queries.schema/card]
   (or (some-> card
@@ -89,8 +87,7 @@
               lib-be/normalize-query
               lib/all-template-tags-map
               (get template-tag-name)
-              :dimension
-              lib/field-ref-id)
+              :field-id)
       (do
         (log/trace "Could not find matching Field ID for target template tag")
         nil)))

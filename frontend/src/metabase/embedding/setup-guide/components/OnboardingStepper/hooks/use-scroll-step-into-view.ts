@@ -1,7 +1,7 @@
 import { createRef, useCallback, useMemo } from "react";
 
 interface UseScrollStepIntoViewResult {
-  stepRefs: Record<string, React.RefObject<HTMLDivElement>>;
+  stepRefs: Record<string, React.RefObject<HTMLDivElement | null>>;
   scrollStepIntoView: (stepId: string | null) => void;
 }
 
@@ -19,7 +19,7 @@ export function useScrollStepIntoView(
         return refs;
       },
       // Unjustified type cast. FIXME
-      {} as Record<string, React.RefObject<HTMLDivElement>>,
+      {} as Record<string, React.RefObject<HTMLDivElement | null>>,
     );
   }, [stepIds]);
 

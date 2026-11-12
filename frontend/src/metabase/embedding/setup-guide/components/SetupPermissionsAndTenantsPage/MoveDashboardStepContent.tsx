@@ -58,8 +58,7 @@ export const MoveDashboardStepContent = ({
       onCompleted();
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getErrorMessage(
           error,
           t`Failed to move dashboard to the shared collection`,
@@ -84,8 +83,7 @@ export const MoveDashboardStepContent = ({
       onCompleted();
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getErrorMessage(error, t`Failed to create a sample dashboard`),
       });
     }

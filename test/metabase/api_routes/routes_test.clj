@@ -30,12 +30,11 @@
       (z/find-next #(= (z/tag %) :map))))
 
 (defn- check-routes-map []
-  (with-open [r (clojure.lang.LineNumberingPushbackReader. (java.io.FileReader. "src/metabase/api_routes/routes.clj"))]
-    (let [zloc        (z/of-node (rewrite-clj.parser/parse-all r))
-          route-map   (find-route-map zloc)
-          actual-keys (find-map-keys route-map)]
-      (is (= (sort actual-keys)
-             actual-keys)))))
+  (let [zloc        (z/of-node (rewrite-clj.parser/parse-file-all "src/metabase/api_routes/routes.clj"))
+        route-map   (find-route-map zloc)
+        actual-keys (find-map-keys route-map)]
+    (is (= (sort actual-keys)
+           actual-keys))))
 
 (deftest ^:parallel keep-routes-sorted-test
   (testing "route-map keys should be sorted"

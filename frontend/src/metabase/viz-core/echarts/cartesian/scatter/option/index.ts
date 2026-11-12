@@ -18,6 +18,7 @@ import {
   getSharedEChartsOptions,
 } from "../../option";
 import { buildAxes, buildDimensionAxis } from "../../option/axis";
+import { applyResponsiveYAxisTicks } from "../../option/responsive-axis";
 import type { EChartsSeriesOption } from "../../option/types";
 import { getSeriesYAxisIndex } from "../../option/utils";
 import type { TimelineEventsModel } from "../../timeline-events/types";
@@ -125,12 +126,19 @@ export function getScatterPlotOption(
     yAxis = axes.yAxis;
   }
 
+  // echarts crashes building a cartesian coordinate system that has an x-axis
+  // but no y-axis, which happens on a render with no visible series. Drop the
+  // lone x-axis so an empty chart renders instead of throwing.
+  if (yAxis.length === 0) {
+    xAxis = [];
+  }
+
   return {
     ...getSharedEChartsOptions(isAnimated, renderingContext),
     ...splitPanelOverrides,
     grid,
     xAxis,
-    yAxis,
+    yAxis: applyResponsiveYAxisTicks(yAxis, chartModel, chartLayout, settings),
     dataset: echartsDataset,
     series: seriesOption,
   };

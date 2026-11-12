@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
 import { type ChangeEvent, useRef, useState } from "react";
 import { t } from "ttag";
@@ -151,6 +152,7 @@ export function MetabotIconField() {
             {!isDefaultIcon && (
               <Tooltip label={t`Remove custom icon`}>
                 <ActionIcon
+                  variant="subtle"
                   onClick={handleIconRemove}
                   aria-label={t`Remove custom icon`}
                 >

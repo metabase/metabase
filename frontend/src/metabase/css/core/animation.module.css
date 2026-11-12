@@ -56,12 +56,12 @@
 @keyframes pop-toast {
   from {
     opacity: 0;
-    transform: translate(-50%, 100px);
+    transform: translateY(100px);
   }
 
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
 }
 

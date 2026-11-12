@@ -23,7 +23,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -555,7 +555,7 @@
                       :definition revenue-definition}])))
 
 (def ^:private metric-content-store
-  (reify resolve.mp/ContentStore
+  (reify protocol.mp/ContentStore
     (card-by-entity-id    [_ eid] (get {metric-entity-id          {:id 900 :database_id 1}
                                         datetime-metric-entity-id {:id 902 :database_id 1}}
                                        eid))
@@ -635,6 +635,25 @@
                             #"/ expects a number"
                             (repr.repair/assert-editor-accepts-expressions! q))))))
 
+(deftest editor-errors-use-query-stage-metadata-test
+  (let [parsed {"lib/type" "mbql/query"
+                "stages" [{"lib/type" "mbql.stage/mbql"
+                           "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                          {"lib/type" "mbql.stage/mbql"
+                           "aggregation" [["count" {}]]
+                           "filters" [[">" {} ["aggregation" {} 0] 10]]}
+                          {"lib/type" "mbql.stage/mbql"
+                           "filters" [[">" {} ["offset" {} ["field" {} "count"] -1] 1]]}]}
+        repaired (repr.repair/repair mp parsed)
+        query    (with-meta (repr.resolve/resolve-query mp repaired) (meta repaired))
+        error    (try
+                   (repr.repair/assert-editor-accepts-expressions! query)
+                   (catch clojure.lang.ExceptionInfo e e))]
+    (is (= 4 (lib/stage-count query)))
+    (is (= :expression-editor-rejection (:error (ex-data error))))
+    (is (= 2 (:stage (ex-data error))))
+    (is (re-find #"rejects a `filters:` clause in stage 2:" (ex-message error)))))
+
 (deftest annotate-metric-ref-types-leaves-hard-cases-untouched-test
   (let [agg-query (fn [agg]
                     {:lib/type     :mbql/query
@@ -675,7 +694,7 @@
                                "breakout"     [["field" {"temporal-unit" "month"}
                                                 ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]]}]}
           q        (repr.resolve/resolve-query mp parsed)
-          exported (repr.resolve/try-export-query mp q resolve.mp/unchecked-app-db-content-store)]
+          exported (repr.resolve/try-export-query mp q protocol.mp/unchecked-app-db-content-store)]
       (is (map? exported))
       (is (= "mbql/query" (get exported "lib/type")))
       (is (= "Sample" (get exported "database")))
@@ -687,10 +706,10 @@
 
 (deftest try-export-query-nil-and-error-fallback-test
   (testing "nil / blank input returns nil so the caller can omit the field"
-    (is (nil? (repr.resolve/try-export-query mp nil resolve.mp/unchecked-app-db-content-store)))
-    (is (nil? (repr.resolve/try-export-query mp {} resolve.mp/unchecked-app-db-content-store)))
+    (is (nil? (repr.resolve/try-export-query mp nil protocol.mp/unchecked-app-db-content-store)))
+    (is (nil? (repr.resolve/try-export-query mp {} protocol.mp/unchecked-app-db-content-store)))
     (is (nil? (repr.resolve/try-export-query nil {:lib/type :mbql/query :database 1 :stages []}
-                                             resolve.mp/unchecked-app-db-content-store))))
+                                             protocol.mp/unchecked-app-db-content-store))))
   (testing "export errors are swallowed and surface as nil (the caller falls back gracefully)"
     ;; A query map with a numeric field id that doesn't exist in the metadata-provider
     ;; will throw inside `export-mbql`; we want the helper to return nil rather than
@@ -699,7 +718,7 @@
                  :database 1
                  :stages   [{:lib/type     :mbql.stage/mbql
                              :source-table 99999}]}]
-      (is (nil? (repr.resolve/try-export-query mp bogus resolve.mp/unchecked-app-db-content-store))))))
+      (is (nil? (repr.resolve/try-export-query mp bogus protocol.mp/unchecked-app-db-content-store))))))
 
 (def ^:private source-card-export-query
   {:lib/type :mbql/query
@@ -708,7 +727,7 @@
                :source-card 900}]})
 
 (defn- recording-export-content-store [calls]
-  (reify resolve.mp/ContentStore
+  (reify protocol.mp/ContentStore
     (card-by-entity-id    [_ _] nil)
     (measure-by-entity-id [_ _] nil)
     (segment-by-entity-id [_ _] nil)

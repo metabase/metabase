@@ -31,6 +31,8 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -57,6 +59,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -77,12 +80,12 @@
   (mt/test-driver :postgres
     (testing "default"
       (is (= "public"
-             (driver.sql/default-schema :postgres (mt/db)))))
+             (driver.sql/default-schema :postgres (lib.metadata/database (mt/metadata-provider))))))
     (testing "schema configured in the JDBC additional options"
       (let [details (assoc (:details (mt/db)) :additional-options "currentSchema=information_schema")]
         (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
           (is (= "information_schema"
-                 (driver.sql/default-schema :postgres database))))))))
+                 (driver.sql/default-schema :postgres (driver.u/ensure-lib-database database)))))))))
 
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
@@ -126,8 +129,13 @@
 (defn- exec!
   "Execute a sequence of statements against the database whose spec is passed as the first param."
   [spec statements]
-  (doseq [statement statements]
-    (jdbc/execute! spec [statement])))
+  ;; `Statement.execute` rather than `jdbc/execute!`'s `executeUpdate`: MotherDuck returns a result set for DROP.
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver/*driver* spec {:write? true}
+   (fn [^Connection conn]
+     (with-open [stmt (.createStatement conn)]
+       (doseq [^String statement statements]
+         (.execute stmt statement))))))
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
@@ -211,45 +219,48 @@
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
 
 (deftest ^:synchronized edge-case-identifiers-test
-  (mt/test-driver :postgres
-    (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
-      (mt/dataset dots-in-names
-        (is (= {:columns ["id" "dotted.name"]
-                :rows    [[1 "toucan_cage"]
-                          [2 "four_loko"]
-                          [3 "ouija_board"]]}
-               (mt/rows+column-names (mt/run-mbql-query objects.stuff))))))
-    (testing "make sure schema/table/field names with hyphens in them work correctly (#8766)"
-      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "hyphen-names-test"})
-            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        ;; create the postgres DB
-        (tx/drop-if-exists-and-create-db! driver/*driver* "hyphen-names-test")
-        ;; create the DB object
-        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
-          (let [sync! #(sync/sync-database! database)]
-            ;; populate the DB and create a view
-            (exec! spec ["CREATE SCHEMA \"x-mas\";"
-                         "CREATE TABLE \"x-mas\".\"presents-and-gifts\" (\"gift-description\" TEXT NOT NULL);"
-                         "INSERT INTO \"x-mas\".\"presents-and-gifts\" (\"gift-description\") VALUES ('Bird Hat');;"])
-            (sync!)
-            (is (= [["Bird Hat"]]
+  (mt/test-drivers #{:postgres :motherduck}
+    ;; Each section queries another database as Rasta, and dev mode limits the permission cache misses in one user scope.
+    ;; Start a new scope for each driver.
+    (mt/with-test-user :rasta
+      (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
+        (mt/dataset dots-in-names
+          (is (= {:columns ["id" "dotted.name"]
+                  :rows    [[1 "toucan_cage"]
+                            [2 "four_loko"]
+                            [3 "ouija_board"]]}
+                 (mt/rows+column-names (mt/run-mbql-query objects.stuff))))))
+      (testing "make sure schema/table/field names with hyphens in them work correctly (#8766)"
+        (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "hyphen-names-test"})
+              spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+          ;; create the postgres DB
+          (tx/drop-if-exists-and-create-db! driver/*driver* "hyphen-names-test")
+          ;; create the DB object
+          (mt/with-temp [:model/Database database {:engine driver/*driver*, :details details}]
+            (let [sync! #(sync/sync-database! (:id database))]
+              ;; populate the DB and create a view
+              (exec! spec ["CREATE SCHEMA \"x-mas\";"
+                           "CREATE TABLE \"x-mas\".\"presents-and-gifts\" (\"gift-description\" TEXT NOT NULL);"
+                           "INSERT INTO \"x-mas\".\"presents-and-gifts\" (\"gift-description\") VALUES ('Bird Hat');;"])
+              (sync!)
+              (is (= [["Bird Hat"]]
+                     (mt/rows (qp/process-query
+                               {:database (u/the-id database)
+                                :type     :query
+                                :query    {:source-table (t2/select-one-pk :model/Table :name "presents-and-gifts")}}))))))))
+      (testing "Make sure that Schemas / Tables / Fields with backslashes in their names get escaped properly"
+        (mt/with-empty-db
+          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+            (doseq [stmt ["CREATE SCHEMA \"my\\schema\";"
+                          "CREATE TABLE \"my\\schema\".\"my\\table\" (\"my\\field\" INTEGER);"
+                          "INSERT INTO \"my\\schema\".\"my\\table\" (\"my\\field\") VALUES (42);"]]
+              (jdbc/execute! conn-spec stmt))
+            (sync/sync-database! (mt/id) {:scan :schema})
+            (is (= [[42]]
                    (mt/rows (qp/process-query
-                             {:database (u/the-id database)
+                             {:database (mt/id)
                               :type     :query
-                              :query    {:source-table (t2/select-one-pk :model/Table :name "presents-and-gifts")}}))))))))
-    (testing "Make sure that Schemas / Tables / Fields with backslashes in their names get escaped properly"
-      (mt/with-empty-db
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-          (doseq [stmt ["CREATE SCHEMA \"my\\schema\";"
-                        "CREATE TABLE \"my\\schema\".\"my\\table\" (\"my\\field\" INTEGER);"
-                        "INSERT INTO \"my\\schema\".\"my\\table\" (\"my\\field\") VALUES (42);"]]
-            (jdbc/execute! conn-spec stmt))
-          (sync/sync-database! (mt/db) {:scan :schema})
-          (is (= [[42]]
-                 (mt/rows (qp/process-query
-                           {:database (mt/id)
-                            :type     :query
-                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (mt/id))}})))))))))
+                              :query    {:source-table (t2/select-one-pk :model/Table :db_id (mt/id))}}))))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -262,7 +273,7 @@
     [["Cam" 1]]]])
 
 (deftest duplicate-names-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (testing "Make sure that duplicate column names (e.g. caused by using a FK) still return both columns"
       (mt/dataset duplicate-names
         (is (= {:columns ["name" "name_2"]
@@ -300,10 +311,16 @@
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;
+                       COMMENT ON COLUMN test_mview.true_facts IS 'Facts that are true';
                        ANALYZE test_mview;"])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
           (is (=? [(default-table-result "test_mview")]
-                  (describe-database->tables :postgres database))))))))
+                  (describe-database->tables :postgres (driver.u/lib-database (:id database)))))
+          (is (=? [{:table-schema  "public"
+                    :table-name    "test_mview"
+                    :name          "true_facts"
+                    :field-comment "Facts that are true"}]
+                  (into [] (driver/describe-fields :postgres (driver.u/ensure-lib-database database) {:table-names ["test_mview"]})))))))))
 
 (deftest foreign-tables-test
   (mt/test-driver :postgres
@@ -337,7 +354,7 @@
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
           (is (=? [(default-table-result "foreign_table")
                    (default-table-result "local_table" {:estimated_row_count nil})]
-                  (describe-database->tables :postgres database))))))))
+                  (describe-database->tables :postgres (driver.u/lib-database (:id database))))))))))
 
 (deftest estimated-row-count-hides-zero-test
   (mt/test-driver :postgres
@@ -349,7 +366,7 @@
                          ANALYZE empty_table;"])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "estimated_count_test")}]
           (is (=? [(default-table-result "empty_table" {:estimated_row_count nil})]
-                  (describe-database->tables :postgres database))))))))
+                  (describe-database->tables :postgres (driver.u/lib-database (:id database))))))))))
 
 (deftest recreated-views-test
   (mt/test-driver :postgres
@@ -361,7 +378,7 @@
         (tx/drop-if-exists-and-create-db! driver/*driver* "dropped_views_test")
         ;; create the DB object
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
-          (let [sync! #(sync/sync-database! database)]
+          (let [sync! #(sync/sync-database! (:id database))]
             ;; populate the DB and create a view
             (exec! spec ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
                          "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Parroty');"
@@ -401,7 +418,7 @@
           (if (>= major-v 10)
             ;; create the DB object
             (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname db-name)}]
-              (let [sync! #(sync/sync-database! database)]
+              (let [sync! #(sync/sync-database! (:id database))]
                 ;; create a main partitioned table and two partitions for it
                 (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\");"
                              "CREATE TABLE part_vals_0 (val bigint NOT NULL);"
@@ -415,7 +432,7 @@
                 (sync!)
                 ;; all three of these tables should appear in the metadata (including, importantly, the "main" table)
                 (is (=? (map default-table-result ["part_vals" "part_vals_0" "part_vals_1"])
-                        (describe-database->tables :postgres database)))))
+                        (describe-database->tables :postgres (driver.u/lib-database (:id database)))))))
             (log/warn
              (u/format-color
               'yellow
@@ -458,9 +475,8 @@
     (let [parent     (h2x/identifier :field "public" "test_table" "data")
           nfc-field  {:nfc-path ["data" "key"] :database-type "text"}
           [json-sql] (sql/format-expr (#'sql.qp/json-query :postgres parent nfc-field))
-          stage      {:lib/type :mbql.stage/native :native (str "SELECT " json-sql " AS k FROM t")}
-          out-sql    (-> (driver.sql/validate-impersonated-query* :postgres {:stages [stage]})
-                         :stages first :native)]
+          query      (lib/native-query meta/metadata-provider (str "SELECT " json-sql " AS k FROM t"))
+          out-sql    (lib/raw-native-query (driver.sql/validate-impersonated-query* :postgres query))]
       ;; The broken reconstruction looks like `CAST(parent #>> array[?] AS TEXT[])` — i.e.
       ;; the cast wraps the entire `#>>` expression instead of just the path argument.
       (is (not (re-find #"(?i)#>>\s+array\s*\[\?\]\s+AS\s+TEXT\s*\[\s*\]" out-sql))
@@ -682,13 +698,13 @@
                     "  GROUPING("
                     "    \"__mb_source\".\"region\","
                     "    \"__mb_source\".\"__mb_pivot_nfc\""
-                    "  ) ASC,"
+                    "  ) DESC,"
                     "  \"__mb_source\".\"__mb_pivot_nfc\" ASC,"
                     "  \"__mb_source\".\"region\" ASC"]
                    (str/split-lines (driver/prettify-native-form :postgres sql))))))))))
 
 (deftest nested-field-pivot-e2e-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (mt/dataset json
       (testing "pivot with a nested-field (JSON-unfolded) breakout executes end-to-end and the native path agrees with the multi-query path"
         (let [mp        (mt/metadata-provider)
@@ -779,7 +795,7 @@
                                   "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")])
         (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
           (mt/with-db database
-            (sync-tables/sync-tables-and-database! database)
+            (sync-tables/sync-tables-and-database! (driver.u/lib-database (:id database)))
             (is (= #{{:name              "trivial_json → a",
                       :database-type     "decimal",
                       :base-type         :type/Integer,
@@ -789,7 +805,7 @@
                       :nfc-path          [:trivial_json "a"]}}
                    (sql-jdbc.sync/describe-nested-field-columns
                     :postgres
-                    database
+                    (driver.u/lib-database (:id database))
                     {:schema "bobdobbs" :name "describe_json_table" :id (mt/id "describe_json_table")})))))))))
 
 (deftest describe-funky-name-table-nested-field-columns-test
@@ -804,7 +820,7 @@
                                   "INSERT INTO \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json) VALUES ('{\"a\": 1}');")])
         (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
           (mt/with-db database
-            (sync-tables/sync-tables-and-database! database)
+            (sync-tables/sync-tables-and-database! (driver.u/lib-database (:id database)))
             (is (= #{{:name              "trivial_json → a",
                       :database-type     "decimal",
                       :base-type         :type/Integer,
@@ -814,7 +830,7 @@
                       :nfc-path          [:trivial_json "a"]}}
                    (sql-jdbc.sync/describe-nested-field-columns
                     :postgres
-                    database
+                    (driver.u/lib-database (:id database))
                     {:schema "AAAH_#" :name "dESCribe_json_table_%" :id (mt/id "dESCribe_json_table_%")})))))))))
 
 (mt/defdataset with-uuid
@@ -827,7 +843,7 @@
      [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]]])
 
 (deftest uuid-columns-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (mt/dataset with-uuid
       (testing "Check that we can load a Postgres Database with a :type/UUID"
         (is (= [{:name "id", :base_type :type/Integer}
@@ -862,7 +878,7 @@
                                            :display_name "User ID"
                                            :type         "dimension"
                                            :widget-type  "number"
-                                           :dimension    [:field (mt/id :users :user_id) nil]}}})
+                                           :field-id     (mt/id :users :user_id)}}})
                         :parameters
                         [{:type   "text"
                           :target ["dimension" ["template-tag" "user"]]
@@ -879,7 +895,7 @@
                                            :display_name "User ID"
                                            :type         "dimension"
                                            :widget-type  :number
-                                           :dimension    [:field (mt/id :users :user_id) nil]}}})
+                                           :field-id     (mt/id :users :user_id)}}})
                         :parameters
                         [{:type   "text"
                           :target ["dimension" ["template-tag" "user"]]
@@ -957,7 +973,7 @@
                           "Katie Parakeet" 23.99]]]
          (next.jdbc/execute! conn sql+args))))
     (mt/with-temp [:model/Database db {:engine :postgres, :details (assoc details :dbname "money_columns_test")}]
-      (sync/sync-database! db)
+      (sync/sync-database! (:id db))
       (mt/with-db db
         (thunk)))))
 
@@ -966,7 +982,7 @@
     (testing "It should be possible to return money column results (#3754)"
       (sql-jdbc.execute/do-with-connection-with-options
        :postgres
-       (mt/db)
+       (mt/id)
        nil
        (fn [conn]
          (with-open [stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
@@ -1052,9 +1068,9 @@
 (defn- do-with-enums-db! [f]
   (create-enums-db!)
   (mt/with-temp [:model/Database database {:engine :postgres, :details (enums-test-db-details)}]
-    (sync-metadata/sync-db-metadata! database)
+    (sync-metadata/sync-db-metadata! (:id database))
     (f database)
-    (driver/notify-database-updated :postgres database)))
+    (driver/notify-database-updated :postgres (driver.u/lib-database (:id database)))))
 
 (deftest ^:parallel enums-test
   (mt/test-driver :postgres
@@ -1069,7 +1085,7 @@
      (fn [db]
        (testing "check that we can actually fetch the enum types from a DB"
          (is (= #{"\"bird_schema\".\"bird_status\"" "bird type" "bird_status"}
-                (#'postgres/enum-types db))))
+                (#'postgres/enum-types (driver.u/lib-database (:id db))))))
 
        (testing "check that describe-table properly describes the database & base types of the enum fields"
          (is (=? [{:table-schema               "public"
@@ -1109,7 +1125,7 @@
                    :database-required          true
                    :database-is-auto-increment false
                    :json-unfolding             false}]
-                 (->> (driver/describe-fields :postgres db {:table-names ["birds"]})
+                 (->> (driver/describe-fields :postgres (driver.u/ensure-lib-database db) {:table-names ["birds"]})
                       (into #{})
                       (sort-by :database-position)))))
 
@@ -1168,7 +1184,7 @@
                                  {"type" {:name         "type"
                                           :display-name "Type"
                                           :type         :dimension
-                                          :dimension    (lib/ref type-field)
+                                          :field-id     (:id type-field)
                                           :widget-type  :string/=}}))
                            :parameters [{:type   :string/=
                                          :target [:dimension [:template-tag "type"]]
@@ -1179,7 +1195,7 @@
     (do-with-enums-db!
      (fn [db]
        (tx/create-view-of-table! driver/*driver* db "birds_m" "birds" true)
-       (sync/sync-database! db)
+       (sync/sync-database! (:id db))
 
        (testing "check that describe-table properly describes the database & base types of the enum fields"
          (is (=? [{:table-schema               "public"
@@ -1219,7 +1235,7 @@
                    :database-required          false
                    :database-is-auto-increment false
                    :json-unfolding             false}]
-                 (->> (driver/describe-fields :postgres db {:table-names ["birds_m"]})
+                 (->> (driver/describe-fields :postgres (driver.u/ensure-lib-database db) {:table-names ["birds_m"]})
                       (into #{})
                       (sort-by :database-position)))))
 
@@ -1464,7 +1480,7 @@
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details) [stmt]))
         (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
           (mt/with-db database
-            (sync/sync-database! database)
+            (sync/sync-database! (:id database))
             (mt/with-actions-enabled
               (testing "when creating with invalid email"
                 (is (=? {:errors      {}
@@ -1495,7 +1511,7 @@
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details) [stmt]))
         (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
           (mt/with-db database
-            (sync/sync-database! database)
+            (sync/sync-database! (:id database))
             (mt/with-actions-enabled
               (testing "when creating"
                 (is (=? {:errors      {"column1" "This Column1 value already exists."
@@ -1524,10 +1540,33 @@
                                                                   :filter       [:= $mytable.id 2]}
                                                      :type       :query}))))))))))))
 
+(deftest ^:parallel float-special-values-test
+  ;; MotherDuck's endpoint sends infinities as `+Inf` and `-Inf`, which pgjdbc can't parse (QUE-1013).
+  (mt/test-drivers #{:postgres :motherduck}
+    (let [values ["Infinity" "-Infinity" "NaN" "1.5"]
+          query  (mt/native-query
+                  {:query (str "SELECT "
+                               (str/join ", " (for [[i v] (map-indexed vector values)
+                                                    [prefix db-type] [["d" "DOUBLE PRECISION"] ["r" "REAL"]]]
+                                                (format "CAST('%s' AS %s) AS %s%d" v db-type prefix i)))
+                               ", ARRAY[CAST('Infinity' AS DOUBLE PRECISION), CAST('-Infinity' AS DOUBLE PRECISION), 1.5]"
+                               " AS a")})
+          row    (first (mt/rows (qp/process-query query)))]
+      ;; Compare classes and strings, since NaN isn't equal to itself.
+      (is (= [[Double "Infinity"]  [Float "Infinity"]
+              [Double "-Infinity"] [Float "-Infinity"]
+              [Double "NaN"]       [Float "NaN"]
+              [Double "1.5"]       [Float "1.5"]]
+             (mapv (juxt class str) (butlast row))))
+      (is (= [Double Double Double]
+             (map class (last row))))
+      (is (= "[##Inf ##-Inf 1.5]"
+             (str (last row)))))))
+
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
 (deftest timezone-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (letfn [(get-timezone-with-report-timezone [report-timezone]
               (mt/with-temporary-setting-values [report-timezone report-timezone]
                 (ffirst
@@ -1546,21 +1585,52 @@
         (is (= (get-timezone-with-report-timezone nil)
                (get-timezone-with-report-timezone "Crunk Burger")))))))
 
+(deftest timetz-values-test
+  ;; MotherDuck's endpoint sends TIMETZ values in its own format (QUE-969). Metabase shows every time with an offset in
+  ;; the results time zone, so both drivers must give the same output for the same values.
+  (mt/test-drivers #{:postgres :motherduck}
+    (let [literals ["12:34:56+05"
+                    "12:34:56.123456+05:30"
+                    "20:00:00-05"
+                    "00:00:00+15:59"
+                    "23:59:59-15:59"
+                    "12:00:00+05:30:15"]
+          query    (mt/native-query
+                    {:query (str "SELECT "
+                                 (str/join ", " (map-indexed #(format "CAST('%s' AS TIMETZ) AS t%d" %2 %1) literals)))})]
+      (testing "in UTC"
+        (is (= [["07:34:56Z"
+                 "07:04:56.123456Z"
+                 "01:00:00Z"
+                 "08:01:00Z"
+                 "15:58:59Z"
+                 "06:29:45Z"]]
+               (mt/rows (qp/process-query query)))))
+      (testing "in another report time zone"
+        (mt/with-temporary-setting-values [report-timezone "Asia/Tokyo"]
+          (is (= [["16:34:56+09:00"
+                   "16:04:56.123456+09:00"
+                   "10:00:00+09:00"
+                   "17:01:00+09:00"
+                   "00:58:59+09:00"
+                   "15:29:45+09:00"]]
+                 (mt/rows (qp/process-query query)))))))))
+
 (deftest fingerprint-time-fields-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (testing "Make sure we're able to fingerprint TIME fields (#5911)"
       (tx/drop-if-exists-and-create-db! driver/*driver* "time_field_test")
-      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "time_field_test"})]
-        (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
-                       [(str "CREATE TABLE toucan_sleep_schedule ("
-                             "  start_time TIME WITHOUT TIME ZONE NOT NULL, "
-                             "  end_time TIME WITHOUT TIME ZONE NOT NULL, "
-                             "  reason VARCHAR(256) NOT NULL"
-                             ");"
-                             "INSERT INTO toucan_sleep_schedule (start_time, end_time, reason) "
-                             "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
-        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
-          (sync/sync-database! database)
+      (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "time_field_test"})]
+        (exec! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+               [(str "CREATE TABLE toucan_sleep_schedule ("
+                     "  start_time TIME WITHOUT TIME ZONE NOT NULL, "
+                     "  end_time TIME WITHOUT TIME ZONE NOT NULL, "
+                     "  reason VARCHAR(256) NOT NULL"
+                     ");")
+                (str "INSERT INTO toucan_sleep_schedule (start_time, end_time, reason) "
+                     "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
+        (mt/with-temp [:model/Database database {:engine driver/*driver*, :details details}]
+          (sync/sync-database! (:id database))
           (let [fingerprints  (t2/select-fn->fn :name :fingerprint :model/Field
                                                 :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database)))
                 ;; Strip extended interestingness stats — this test covers the core TIME fingerprint
@@ -1606,7 +1676,11 @@
           :type     :native
           :native   {:query "SELECT adsasdasd;"}})
         (catch Throwable e
-          (is (= "ERROR: column \"adsasdasd\" does not exist\n  Position: 20"
+          ;; The position counts the `-- <remark>\n` line that comes before the query.
+          (is (= (format "ERROR: column \"adsasdasd\" does not exist\n  Position: %d"
+                         (+ (count (format "-- Metabase accountID: %s databaseID: %d\n" (system/site-uuid) (mt/id)))
+                            (count "SELECT ")
+                            1))
                  (try
                    (-> e ex-cause ex-message)
                    (catch Throwable e
@@ -1658,9 +1732,46 @@
         (mt/with-temp [:model/Database database {:engine :postgres, :details test-user-details}]
           ;; make sure that sync still succeeds even tho some tables are not SELECTable.
           (binding [sync-util/*log-exceptions-and-continue?* false]
-            (is (some? (sync/sync-database! database {:scan :schema}))))
+            (is (some? (sync/sync-database! (:id database) {:scan :schema}))))
           (is (= #{"table_with_perms"}
                  (t2/select-fn-set :name :model/Table :db_id (:id database)))))))))
+
+(deftest json-unfolding-skips-columns-without-select-privilege-test
+  (testing "JSON unfolding only samples JSON columns the connection user can read, so column-level grants don't break field sync (#83790)"
+    (mt/test-driver :postgres
+      (tx/drop-if-exists-and-create-db! driver/*driver* "json-column-grants-test")
+      (let [role          (str "mb_restricted_" (u/lower-case-en (mt/random-name)))
+            details       (mt/dbdef->connection-details :postgres :db {:database-name  "json-column-grants-test"
+                                                                       :json-unfolding true})
+            spec          (sql-jdbc.conn/connection-details->spec :postgres details)
+            active-fields (fn [database]
+                            (t2/select-fn-set :name :model/Field
+                                              :table_id (t2/select-one-pk :model/Table :db_id (:id database) :name "table_a")
+                                              :active true))]
+        (doseq [statement ["CREATE TABLE public.table_a (id INTEGER PRIMARY KEY, col_visible TEXT, col_json JSONB, col_json_hidden JSONB, col_hidden TEXT);"
+                           "INSERT INTO public.table_a VALUES (1, 'a', '{\"key_a\": 1}', '{\"key_b\": 2}', 'b');"
+                           (format "CREATE ROLE %s LOGIN PASSWORD 'password';" role)
+                           (format "GRANT SELECT (id, col_visible, col_json) ON public.table_a TO %s;" role)]]
+          (jdbc/execute! spec [statement]))
+        (try
+          (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+            (testing "sanity check: a user that can read every column syncs all of them"
+              (sync/sync-database! (:id database) {:scan :schema})
+              (is (= #{"id" "col_visible" "col_json" "col_json → key_a" "col_json_hidden" "col_json_hidden → key_b" "col_hidden"}
+                     (active-fields database))))
+            (t2/update! :model/Database :id (:id database) {:details (assoc details :user role :password "password")})
+            (let [database (t2/select-one :model/Database :id (:id database))]
+              (binding [sync-util/*log-exceptions-and-continue?* false]
+                (sync/sync-database! (:id database) {:scan :schema}))
+              (testing "after switching to a user with column-level grants, unreadable columns are retired and readable JSON is still unfolded"
+                (is (= #{"id" "col_visible" "col_json" "col_json → key_a"}
+                       (active-fields database))))
+              (testing "a raw query on the table runs"
+                (mt/with-db database
+                  (is (= 1 (count (mt/rows (mt/run-mbql-query table_a)))))))))
+          (finally
+            (jdbc/execute! spec [(format "DROP OWNED BY %s;" role)])
+            (jdbc/execute! spec [(format "DROP ROLE %s;" role)])))))))
 
 (deftest json-operator-?-works
   (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
@@ -1678,7 +1789,7 @@
                                  "json_val::jsonb ?& array['a', 'b']"
                                  "FROM \"json_table\";")]
         (mt/with-temp [:model/Database database {:engine :postgres, :details json-db-details}]
-          (mt/with-db database (sync/sync-database! database)
+          (mt/with-db database (sync/sync-database! (:id database))
             (is (= [[true false true]]
                    (-> {:query query}
                        (mt/native-query)
@@ -1703,23 +1814,22 @@
 
 (deftest sync-json-with-composite-pks-test
   (testing "Make sure sync a table with json columns that have composite pks works"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (tx/drop-if-exists-and-create-db! driver/*driver* "composite-pks-test")
       (with-redefs [table-rows-sample/nested-field-sample-limit 4]
         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite-pks-test"})
               spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
-          (doseq [statement (concat ["CREATE TABLE PUBLIC.json_table(first_id INTEGER, second_id INTEGER, json_val JSON, PRIMARY KEY(first_id, second_id));"]
-                                    (for [[first-id second-id json] [[1 1 "{\"int_turn_string\":1}"]
-                                                                     [2 2 "{\"int_turn_string\":2}"]
-                                                                     [3 3 "{\"int_turn_string\":3}"]
-                                                                     [4 4 "{\"int_turn_string\":4}"]
-                                                                     [4 5 "{\"int_turn_string\":\"x\"}"]
-                                                                     [4 6 "{\"int_turn_string\":5}"]]]
-                                      (format "INSERT INTO PUBLIC.json_table (first_id, second_id, json_val) VALUES (%d, %d, '%s');" first-id second-id json)))]
-            (jdbc/execute! spec [statement]))
+          (exec! spec (concat ["CREATE TABLE json_table(first_id INTEGER, second_id INTEGER, json_val JSON, PRIMARY KEY(first_id, second_id));"]
+                              (for [[first-id second-id json] [[1 1 "{\"int_turn_string\":1}"]
+                                                               [2 2 "{\"int_turn_string\":2}"]
+                                                               [3 3 "{\"int_turn_string\":3}"]
+                                                               [4 4 "{\"int_turn_string\":4}"]
+                                                               [4 5 "{\"int_turn_string\":\"x\"}"]
+                                                               [4 6 "{\"int_turn_string\":5}"]]]
+                                (format "INSERT INTO json_table (first_id, second_id, json_val) VALUES (%d, %d, '%s');" first-id second-id json))))
           (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
             (mt/with-db database
-              (sync-tables/sync-tables-and-database! database)
+              (sync-tables/sync-tables-and-database! (driver.u/lib-database (:id database)))
               (is (= #{{:name              "json_val → int_turn_string",
                         :database-type     "text"
                         :base-type         :type/Text
@@ -1728,8 +1838,8 @@
                         :visibility-type   :normal
                         :nfc-path          [:json_val "int_turn_string"]}}
                      (sql-jdbc.sync/describe-nested-field-columns
-                      :postgres
-                      database
+                      driver/*driver*
+                      (driver.u/lib-database (:id database))
                       (t2/select-one :model/Table :db_id (mt/id) :name "json_table")))))))))))
 
 (defn- pretty-sql [s]
@@ -1851,21 +1961,23 @@
     [base ist-expr]))
 
 (defn- assert-now-wrapped-in-target-timezone
-  "Compile `query` and assert that every `NOW()` in the SQL is wrapped in `TIMEZONE(?, NOW())`."
+  "Compile `query` and assert that every `NOW()` in the SQL is wrapped in `TIMEZONE(zone, NOW())`, with the zone as a
+  parameter or, as MotherDuck emits it, an inlined literal. Then run `query`, to check the database accepts that SQL."
   [query]
   (let [sql       (:query (qp.compile/compile query))
         bare-nows (count (re-seq #"(?i)\bNOW\(\)" sql))
-        wrapped   (count (re-seq #"(?i)TIMEZONE\(\s*\?\s*,\s*NOW\(\)\s*\)" sql))]
+        wrapped   (count (re-seq #"(?i)TIMEZONE\(\s*(?:\?|'[^']*')\s*,\s*NOW\(\)\s*\)" sql))]
     (is (pos? bare-nows)
         "sanity: the compiled SQL uses NOW() as a filter boundary")
     (is (= bare-nows wrapped)
-        (str "Every NOW() must be wrapped in TIMEZONE(?, NOW()) so it lands in the"
-             " target timezone of the convertTimezone LHS.\nSQL:\n" sql))))
+        (str "Every NOW() must be wrapped in TIMEZONE(zone, NOW()) so it lands in the"
+             " target timezone of the convertTimezone LHS.\nSQL:\n" sql))
+    (is (=? {:status :completed} (qp/process-query query)))))
 
 (deftest ^:parallel convert-timezone-relative-datetime-filter-test
   ;; Regression for #80155.
   (testing "Relative-datetime filter on a convertTimezone expression compiles LHS and RHS in the same wall-clock frame"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset attempted-murders
         (let [[base ist-expr] (ist-convert-timezone-expression)]
           (assert-now-wrapped-in-target-timezone
@@ -1874,7 +1986,7 @@
 (deftest ^:parallel convert-timezone-bucketed-lhs-filter-test
   ;; Regression for #80155.
   (testing "A bucketed convertTimezone LHS still compiles LHS and RHS in the same wall-clock frame"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset attempted-murders
         ;; Field bucket (week) and relative-datetime bucket (month) are incompatible, so
         ;; `optimize-temporal-clauses` (an index-friendliness rewrite that otherwise unbuckets the LHS)
@@ -1887,7 +1999,7 @@
 (deftest ^:parallel convert-timezone-now-filter-test
   ;; Regression for #80155.
   (testing "A :now filter RHS on a convertTimezone LHS compiles both sides in the same wall-clock frame"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset attempted-murders
         (let [[base ist-expr] (ist-convert-timezone-expression)]
           (assert-now-wrapped-in-target-timezone
@@ -1896,7 +2008,7 @@
 (deftest ^:parallel convert-timezone-today-filter-test
   ;; Regression for #80155.
   (testing "A :today filter RHS on a convertTimezone LHS compiles both sides in the same wall-clock frame"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset attempted-murders
         (let [[base ist-expr] (ist-convert-timezone-expression)]
           (assert-now-wrapped-in-target-timezone
@@ -1905,7 +2017,7 @@
 (deftest ^:parallel convert-timezone-wrapped-in-datetime-add-filter-test
   ;; Regression for #80155.
   (testing "A convertTimezone nested inside datetime-add still compiles LHS and RHS in the same wall-clock frame"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset attempted-murders
         (let [mp       (mt/metadata-provider)
               datetime (lib.metadata/field mp (mt/id :attempts :datetime))
@@ -2011,11 +2123,11 @@
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= #{"public"}
-               (driver/syncable-schemas driver/*driver* (mt/db))))))
+               (driver/syncable-schemas driver/*driver* (lib.metadata/database (mt/metadata-provider)))))))
     (testing "metabase_cache schemas should be excluded"
       (mt/dataset test-data
         (mt/with-persistence-enabled! [persist-models!]
-          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
             (mt/with-temp [:model/Card _ {:name "model"
                                           :type :model
                                           :dataset_query (mt/mbql-query categories)
@@ -2024,13 +2136,13 @@
               (is (some (partial re-matches #"metabase_cache(.*)")
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
-                              (driver/syncable-schemas driver/*driver* (mt/db))))))))))))
+                              (driver/syncable-schemas driver/*driver* (lib.metadata/database (mt/metadata-provider)))))))))))))
 
 (deftest table-privileges-test
   (mt/test-driver :postgres
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (mt/with-empty-db
-        (let [conn-spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [conn-spec      (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                 [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
@@ -2107,7 +2219,7 @@
       (mt/dataset test-data
         (let [long-sleep-sql "select pg_sleep(5)"]
           (sql-jdbc.execute/do-with-connection-with-options
-           :postgres (mt/db) nil
+           :postgres (mt/id) nil
            (fn [conn]
              (with-open [stmt (sql-jdbc.sync.common/prepare-statement :postgres conn long-sleep-sql [])]
                (try (doto stmt
@@ -2141,7 +2253,7 @@
       (mt/with-empty-db
         (sql-jdbc.execute/do-with-connection-with-options
          :postgres
-         (mt/db)
+         (mt/id)
          nil
          (fn [^Connection conn]
            (let [do-test (fn [& {:keys [schema-pattern table-pattern schemas tables]
@@ -2154,7 +2266,7 @@
                                              :postgres (.getMetaData conn) nil schema-pattern table-pattern
                                              ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))
                                   (into #{} (map #(dissoc % :estimated_row_count))
-                                        (#'postgres/get-tables (mt/db) schemas tables)))))]
+                                        (#'postgres/get-tables (lib.metadata/database (mt/metadata-provider)) schemas tables)))))]
              (doseq [stmt ["CREATE TABLE public.table (id INTEGER, type TEXT);"
                            "CREATE UNIQUE INDEX idx_table_type ON public.table(type);"
                            "CREATE TABLE public.partition_table (id INTEGER) PARTITION BY RANGE (id);"
@@ -2233,14 +2345,14 @@
 
 (deftest have-select-privelege?-timeout-test
   (mt/test-driver :postgres
-    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table :id (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
         (testing "checking select privilege defaults to allow on timeout (#56737)"
           (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT pg_sleep(3)"])]
             (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
               (sql-jdbc.execute/do-with-connection-with-options
                driver/*driver*
-               (mt/db)
+               (mt/id)
                nil
                (fn [^java.sql.Connection conn]
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
@@ -2271,7 +2383,7 @@
                                                  :user "sync_writable_test_user"
                                                  :password "password")]
               (mt/with-temp [:model/Database database {:engine "postgres", :details user-connection-details}]
-                (sync/sync-database! database)
+                (sync/sync-database! (:id database))
                 (testing "only fullaccess table has writeable permissions"
                   (is (= {"readonly_table"   false
                           "readwrite_table"  false
@@ -2280,7 +2392,7 @@
                 (testing "After granting full access to all tables and re-syncing"
                   (doseq [table-name ["readonly_table" "readwrite_table"]]
                     (jdbc/execute! conn (format "GRANT INSERT, UPDATE, DELETE ON sync_test_schema.%s TO sync_writable_test_user" table-name)))
-                  (sync/sync-database! database)
+                  (sync/sync-database! (:id database))
                   (is (= {"readonly_table"   true
                           "readwrite_table"  true
                           "fullaccess_table" true}
@@ -2307,7 +2419,7 @@
 
 (deftest ^:parallel arrays-have-base-type
   (testing "queries with pg arrays have a base type on column metadata (#63909)"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (is (=? [{:name "id"
                 :database_type "int4"
                 :base_type :type/Integer}
@@ -2442,7 +2554,7 @@
 
 (deftest bytea-column-not-truncated-test
   (testing "fix for #30671"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset (mt/dataset-definition
                    "bytea_dataset"
                    [["bytea_table"
@@ -2649,6 +2761,196 @@
                      :name "xix"}
                     (first (driver/validate-native-query-fields :postgres broken-query))))))))))
 
+;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
+
+(defmacro ^:private with-drop-schema!
+  "Run `body`, ensuring `schema` is dropped (CASCADE) on `admin-spec` afterward."
+  [admin-spec schema & body]
+  `(try
+     ~@body
+     (finally
+       (jdbc/execute! ~admin-spec
+                      [(format "DROP SCHEMA IF EXISTS %s CASCADE"
+                               (sql.u/quote-name :postgres :schema ~schema))]))))
+
+(defmacro ^:private with-drop-role!
+  "Run `body`, ensuring `role` is dropped on `admin-spec` afterward."
+  [admin-spec role & body]
+  `(try
+     ~@body
+     (finally
+       (jdbc/execute! ~admin-spec
+                      [(format "DROP ROLE IF EXISTS %s"
+                               (sql.u/quote-name :postgres :field ~role))]))))
+
+(deftest workspace-precondition-usage-grant-option-test
+  (mt/test-driver :postgres
+    (testing "assert-has-usage-grant-option! throws when current_user lacks USAGE WITH GRANT OPTION on the schema"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database (mt/db)))
+              role       "ws_pre_usage_role"
+              schema     "ws_pre_usage_schema"
+              password   (str (random-uuid))]
+          (with-drop-role! admin-spec role
+            (with-drop-schema! admin-spec schema
+              (let [qrole   (sql.u/quote-name :postgres :field role)
+                    qschema (sql.u/quote-name :postgres :schema schema)]
+                (jdbc/execute! admin-spec
+                               [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD '%s'; "
+                                             "CREATE SCHEMA %s; "
+                                             ;; USAGE without WITH GRANT OPTION
+                                             "GRANT USAGE ON SCHEMA %s TO %s;")
+                                        qrole password qschema qschema qrole)])
+                (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                 [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
+                  (testing "fails when grant option is missing"
+                    (is (thrown-with-msg?
+                         clojure.lang.ExceptionInfo
+                         #"USAGE WITH GRANT OPTION"
+                         (postgres/assert-has-usage-grant-option! user-spec schema))))
+                  (testing "passes once WITH GRANT OPTION is granted"
+                    (jdbc/execute! admin-spec
+                                   [(format "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION"
+                                            qschema qrole)])
+                    (is (nil? (postgres/assert-has-usage-grant-option! user-spec schema)))))))))))))
+
+(deftest workspace-precondition-table-grant-option-test
+  (mt/test-driver :postgres
+    (testing "assert-has-grant-option! throws when current_user lacks SELECT WITH GRANT OPTION on a schema table"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database (mt/db)))
+              role       "ws_pre_table_role"
+              schema     "ws_pre_table_schema"
+              table      "ws_pre_table_t"
+              password   (str (random-uuid))]
+          (with-drop-role! admin-spec role
+            (with-drop-schema! admin-spec schema
+              (let [qrole   (sql.u/quote-name :postgres :field role)
+                    qschema (sql.u/quote-name :postgres :schema schema)
+                    qtable  (sql.u/quote-name :postgres :table table)
+                    qobject (str qschema "." qtable)]
+                (jdbc/execute! admin-spec
+                               [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD '%s'; "
+                                             "CREATE SCHEMA %s; "
+                                             "CREATE TABLE %s (id INT); "
+                                             ;; Pass the schema-USAGE precondition so we test the table check in isolation.
+                                             "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION; "
+                                             ;; SELECT *without* WITH GRANT OPTION
+                                             "GRANT SELECT ON %s TO %s;")
+                                        qrole password qschema qobject qschema qrole qobject qrole)])
+                (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                 [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
+                  (testing "fails and names the offending table"
+                    (is (thrown-with-msg?
+                         clojure.lang.ExceptionInfo
+                         #"SELECT WITH GRANT OPTION"
+                         (postgres/assert-has-grant-option! user-spec schema))))
+                  (testing "passes once SELECT WITH GRANT OPTION is granted"
+                    (jdbc/execute! admin-spec
+                                   [(format "GRANT SELECT ON %s TO %s WITH GRANT OPTION"
+                                            qobject qrole)])
+                    (is (nil? (postgres/assert-has-grant-option! user-spec schema)))))))))))))
+
+(deftest workspace-precondition-alter-default-privileges-test
+  (mt/test-driver :postgres
+    (testing "assert-can-alter-default-privileges! throws when an object owner is not a role the current_user belongs to"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database (mt/db)))
+              role       "ws_pre_adp_role"
+              owner      "ws_pre_adp_other_owner"
+              schema     "ws_pre_adp_schema"
+              table      "ws_pre_adp_t"
+              password   (str (random-uuid))]
+          (with-drop-role! admin-spec role
+            (with-drop-role! admin-spec owner
+              (with-drop-schema! admin-spec schema
+                (let [qrole   (sql.u/quote-name :postgres :field role)
+                      qowner  (sql.u/quote-name :postgres :field owner)
+                      qschema (sql.u/quote-name :postgres :schema schema)
+                      qobject (str qschema "." (sql.u/quote-name :postgres :table table))]
+                  (jdbc/execute! admin-spec
+                                 [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD '%s'; "
+                                               "CREATE ROLE %s; "
+                                               "CREATE SCHEMA %s; "
+                                               "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION; "
+                                               "CREATE TABLE %s (id INT); "
+                                               "ALTER TABLE %s OWNER TO %s;")
+                                          qrole password qowner qschema qschema qrole qobject qobject qowner)])
+                  (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                   [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
+                    (testing "fails and names the unmemberable owner"
+                      (is (thrown-with-msg?
+                           clojure.lang.ExceptionInfo
+                           #"login \"ws_pre_adp_role\" is not a member of 1 role.*`GRANT \"ws_pre_adp_other_owner\" TO \"ws_pre_adp_role\";`"
+                           (postgres/assert-can-alter-default-privileges! user-spec schema))))
+                    (testing "passes once the current_user becomes a member of the owner role"
+                      (jdbc/execute! admin-spec
+                                     [(format "GRANT %s TO %s" qowner qrole)])
+                      (is (nil? (postgres/assert-can-alter-default-privileges! user-spec schema))))))))))))))
+
+(deftest ^:synchronized workspace-destroy-survives-foreign-grantor-default-priv-test
+  ;; PostgreSQL counterpart to Redshift's GHY-3709 destroy fix. The Redshift
+  ;; driver had to grow explicit `pg_default_acl` discovery + per-grantor
+  ;; REVOKEs because Redshift's `DROP OWNED BY` semantics differ from PG. PG's
+  ;; destroy issues `DROP OWNED BY <iso-user>` which removes default-priv ACL
+  ;; entries where the iso-user appears as a grantee, regardless of who granted
+  ;; them. This test pins that contract: seed a foreign-grantor default-priv
+  ;; row targeting the iso-user and confirm `destroy-workspace-isolation!`
+  ;; still cleans up without raising "user cannot be dropped because some
+  ;; objects depend on it".
+  (mt/test-driver :postgres
+    (testing "destroy succeeds when a non-current_user grantor seeded a default-priv targeting the iso-user"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database (mt/db)))
+              grantor    "ws_destroy_foreign_grantor"
+              schema     "ws_destroy_foreign_schema"
+              qgrantor   (sql.u/quote-name :postgres :field grantor)
+              qschema    (sql.u/quote-name :postgres :schema schema)
+              workspace  {:id   (rand-int Integer/MAX_VALUE)
+                          :name "wsd-foreign-destroy"}]
+          (with-drop-role! admin-spec grantor
+            (with-drop-schema! admin-spec schema
+              (jdbc/execute! admin-spec
+                             [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD 'pwd'; "
+                                           "GRANT %s TO CURRENT_USER; "
+                                           "CREATE SCHEMA %s AUTHORIZATION %s;")
+                                      qgrantor qgrantor qschema qgrantor)])
+              (let [workspace+det (merge workspace (driver/workspace-isolation-details :postgres (mt/db) workspace))
+                    ;; the shared test cluster grants CREATE on public to PUBLIC on Postgres 14, which init
+                    ;; refuses; metabase.driver.postgres.workspace-test covers that check
+                    _             (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+                                    (driver/init-workspace-isolation! :postgres (mt/db) workspace+det))
+                    iso-user      (-> workspace+det :database_details :user)
+                    qiso          (sql.u/quote-name :postgres :field iso-user)]
+                (try
+                  ;; Seed the foreign-grantor default-priv: set the grantor role and
+                  ;; issue ALTER DEFAULT PRIVILEGES so the resulting pg_default_acl
+                  ;; row is owned by the grantor, not by current_user.
+                  (jdbc/execute! admin-spec
+                                 [(format (str "SET ROLE %s; "
+                                               "ALTER DEFAULT PRIVILEGES IN SCHEMA %s "
+                                               "GRANT SELECT ON TABLES TO %s; "
+                                               "RESET ROLE;")
+                                          qgrantor qschema qiso)])
+                  (testing "destroy completes without error"
+                    (is (nil? (driver/destroy-workspace-isolation! :postgres (mt/db) workspace+det))))
+                  (testing "the iso-user has been dropped"
+                    (is (empty? (jdbc/query admin-spec
+                                            ["SELECT 1 FROM pg_roles WHERE rolname = ?" iso-user]))))
+                  (finally
+                    ;; If destroy raised, the iso-user may still exist -- clean up so the
+                    ;; with-drop-role!/with-drop-schema! frames don't fail on the schema.
+                    ;; Log instead of swallowing so CI surfaces orphan-role accumulation
+                    ;; rather than masking it behind a failed schema drop downstream.
+                    (try (jdbc/execute! admin-spec
+                                        [(format "DROP OWNED BY %s CASCADE" qiso)])
+                         (catch Throwable t
+                           (log/warnf t "Test cleanup: DROP OWNED BY %s failed" qiso)))
+                    (try (jdbc/execute! admin-spec
+                                        [(format "DROP USER IF EXISTS %s" qiso)])
+                         (catch Throwable t
+                           (log/warnf t "Test cleanup: DROP USER %s failed" qiso)))))))))))))
+
 (deftest ^:synchronized reducible-query-streams-large-result-set-test
   (testing "reducible-query streams large result sets via a server-side cursor (autoCommit=false)"
     (mt/test-driver :postgres
@@ -2657,6 +2959,32 @@
       ;; streaming the JDBC driver buffers the whole ResultSet (~2.1B rows) and OOMs at any heap size.
       (let [n      Integer/MAX_VALUE
             result (sql-jdbc.execute/reducible-query
-                    (mt/db) [(format "SELECT generate_series(1, %d) AS i" n)])]
+                    (lib.metadata/database (mt/metadata-provider)) [(format "SELECT generate_series(1, %d) AS i" n)])]
         (testing "only the first rows are pulled, not all ~2 billion"
           (is (= [1 2 3] (into [] (comp (take 3) (map :i)) result))))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 5432 :user "u" :db "a?b"}
+                   {:host "localhost:5432/d?b" :port 5432 :user "u" :db "d"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :postgres details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))
+
+(deftest ^:synchronized workspace-isolation-accepts-an-id-only-database-test
+  (mt/test-driver :postgres
+    (testing "init and destroy load the Database by id, so an id-only database map works, as it did before #85487"
+      (let [database  {:id (mt/id)}
+            ws-id     (str "idonly" (mt/random-hash))
+            workspace (merge {:id ws-id}
+                             (driver/workspace-isolation-details :postgres (mt/db) {:id ws-id}))]
+        (try
+          ;; the shared test cluster grants CREATE on public to PUBLIC on Postgres 14, which init refuses;
+          ;; metabase.driver.postgres.workspace-test covers that check
+          (is (= :ok (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+                       (driver/init-workspace-isolation! :postgres database workspace)
+                       :ok)))
+          (finally
+            (is (= :ok (do (driver/destroy-workspace-isolation! :postgres database workspace) :ok)))))))))

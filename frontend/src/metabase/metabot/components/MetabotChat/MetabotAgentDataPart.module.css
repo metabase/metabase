@@ -1,5 +1,6 @@
 .sources [data-smart-link="link"] {
   color: var(--mb-color-text-primary);
+  text-decoration: none;
 
   &:hover,
   &:focus-visible {

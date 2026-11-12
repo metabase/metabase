@@ -1,9 +1,10 @@
 (ns metabase.timeline.models.timeline-event
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
-   [metabase.timeline.schema]
+   [metabase.timeline.schema :as timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -12,6 +13,7 @@
 (doto :model/TimelineEvent
   (derive :metabase/model)
   (derive :hook/timestamped?)
+  (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
@@ -29,8 +31,9 @@
 
 (def Source
   "Timeline Event Source Schema. For Snowplow Events, where the Event is created from is important.
-  Events are added from one of three sources: `collections`, `questions` (cards in backend code), or directly with an API call. An API call is indicated by having no source key in the `timeline-event` request."
-  [:enum "collections" "question"])
+  Events are added from one of four sources: `collections`, `question` (cards in backend code), `dashboard`, or directly
+  with an API call. An API call is indicated by having no source key in the `timeline-event` request."
+  [:enum "collections" "question" "dashboard"])
 
 ;;;; transforms
 
@@ -99,12 +102,15 @@
 
 ;;;; serialization
 
-;; nested in Timeline
-(defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
-  {:copy      [:archived :description :icon :name :time_matters :timezone]
-   :skip      []
-   :transform {:created_at  (serdes/date)
-               :creator_id  (serdes/fk :model/User)
-               :timeline_id (serdes/parent-ref)
-               :timestamp   (serdes/date)}
-   :defaults {:archived false}})
+(defmethod serialization/spec :model/TimelineEvent [_]
+  {:schema    ::timeline.schema/external-timeline-event
+   :copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
+   :parent    {:model :model/Timeline :key :timeline_id :order (juxt :name :entity_id)}
+   :transform {:timeline_id serialization/import-only-transform
+               :creator_id serialization/user-transform
+               :timestamp  serialization/date-transform}
+   :defaults  {:archived false}})
+
+(defmethod remote-sync/spec :model/TimelineEvent
+  [_model]
+  {:synced-filter-clause timeline.db/synced-timeline-events-clause})

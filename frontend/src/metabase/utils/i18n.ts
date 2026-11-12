@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import type { LocaleData } from "ttag";
 import { addLocale, useLocale } from "ttag";
 
@@ -150,15 +151,25 @@ export function siteLocale(): string | undefined {
   return undefined;
 }
 
-// register site locale with ttag, if needed later
-if (window.MetabaseSiteLocalization) {
-  const translationsObject = window.MetabaseSiteLocalization;
-  const locale = translationsObject.headers.language;
+/**
+ * Registers the instance catalogue with ttag without making it the active one,
+ * so `withInstanceLanguage` can switch to it later.
+ */
+export function registerSiteLocalization(
+  translationsObject: LocaleDataWithLanguage,
+): void {
   addMsgIds(translationsObject);
-  addLocale(locale, translationsObject);
+  addLocale(translationsObject.headers.language, translationsObject);
+  window.MetabaseSiteLocalization = translationsObject;
 }
 
-// set the initial localization to user locale
-if (window.MetabaseUserLocalization) {
-  setLocalization(window.MetabaseUserLocalization);
+/**
+ * Makes a catalogue the active one. `withInstanceLanguage` restores it after
+ * running in the instance language, and custom visualizations read its name.
+ */
+export function applyUserLocalization(
+  translationsObject: LocaleDataWithLanguage,
+): void {
+  window.MetabaseUserLocalization = translationsObject;
+  setLocalization(translationsObject);
 }

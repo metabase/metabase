@@ -26,6 +26,7 @@ import type {
   RowValue,
   Series,
   Table,
+  TableEntityType,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -179,7 +180,7 @@ export const getColumnTitle = (
   });
 };
 
-export const getEntityIcon = (entityType?: Table["entity_type"]) => {
+export const getEntityIcon = (entityType?: TableEntityType | null) => {
   switch (entityType) {
     case "entity/UserTable":
       return "person";
@@ -208,7 +209,7 @@ export const getTableQuery = createSelector(
       return undefined;
     }
 
-    const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
+    const tableMetadata = Lib.tableMetadata(metadataProvider, table.id);
     if (tableMetadata == null) {
       return undefined;
     }

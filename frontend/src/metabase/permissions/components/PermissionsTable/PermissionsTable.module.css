@@ -1,0 +1,59 @@
+.table {
+  border-collapse: collapse;
+}
+
+.cell {
+  padding: 0.625rem 1rem;
+  min-height: 2.5rem;
+  overflow: hidden;
+  background: var(--mb-color-background_page-primary);
+
+  &:first-of-type {
+    position: sticky;
+    top: 0;
+    left: 0;
+    max-width: 18.75rem;
+    padding-left: 0;
+    padding-right: 1.5rem;
+
+    /* Collapsed table borders do not follow a sticky cell, so the column divider is drawn here */
+    &::after {
+      content: " ";
+      position: absolute;
+      top: 0;
+      right: 0;
+      height: 100%;
+      border-right: 1px solid var(--mb-color-border-neutral-subtle);
+    }
+  }
+}
+
+/* The header paints its own 1px bottom line over the page color, since collapsed table borders do not stick with it */
+.headerCell {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-image: linear-gradient(
+    to top,
+    var(--mb-color-border-neutral-subtle) 1px,
+    transparent 1px
+  );
+
+  &:first-of-type {
+    z-index: 2;
+
+    &::after {
+      display: none;
+    }
+  }
+}
+
+.row {
+  border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
+}
+
+.entityNameLink {
+  font-weight: 700;
+  text-decoration: underline;
+  color: var(--mb-color-navbar-admin-inverse);
+}

@@ -63,6 +63,16 @@ describe("scenarios > embedding-sdk > styles", () => {
   });
 
   describe("theming", () => {
+    const assertBrandColor = (color: string) => {
+      getSdkRoot().within(() => {
+        cy.findByTestId("visualization-root").should("be.visible");
+        cy.findByTestId("notebook-button").click();
+        cy.findByText("Back to visualization")
+          .invoke("css", "color")
+          .should("equal", color);
+      });
+    };
+
     const theme = defineMetabaseTheme({
       colors: {
         brand: "#FF0000",
@@ -75,14 +85,11 @@ describe("scenarios > embedding-sdk > styles", () => {
           authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={theme}
         >
-          <InteractiveQuestion questionId="new" />
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );
 
-      getSdkRoot()
-        .findByText("Pick your starting data")
-        .invoke("css", "color")
-        .should("equal", "rgb(255, 0, 0)");
+      assertBrandColor("rgb(255, 0, 0)");
     });
 
     it("should use the brand color from the app settings as fallback if they're present", () => {
@@ -98,14 +105,11 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-          <InteractiveQuestion questionId="new" />
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );
 
-      getSdkRoot()
-        .findByText("Pick your starting data")
-        .invoke("css", "color")
-        .should("equal", "rgb(0, 255, 0)");
+      assertBrandColor("rgb(0, 255, 0)");
     });
 
     it("but should prioritize the theme colors over the app settings", () => {
@@ -124,14 +128,11 @@ describe("scenarios > embedding-sdk > styles", () => {
           authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={theme}
         >
-          <InteractiveQuestion questionId="new" />
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );
 
-      getSdkRoot()
-        .findByText("Pick your starting data")
-        .invoke("css", "color")
-        .should("equal", "rgb(255, 0, 0)");
+      assertBrandColor("rgb(255, 0, 0)");
     });
 
     it('should be able to reset theme colors by setting it to "undefined" (EMB-696)', () => {
@@ -320,9 +321,11 @@ describe("scenarios > embedding-sdk > styles", () => {
     it("should work with 'Custom' fontFamily, using the font files linked in the instance", () => {
       cy.signInAsAdmin();
 
+      // `application-font-files` links fonts the customer hosts, so the URL is the test's to
+      // choose. It stays same-origin to satisfy the instance's `font-src` policy, and the
+      // instance's own bundled fonts are no longer reachable at a predictable path.
       const fontUrl =
-        Cypress.config().baseUrl +
-        "/app/fonts/Open_Sans/OpenSans-Regular.woff2";
+        Cypress.config().baseUrl + "/e2e-custom-font/OpenSans-Regular.woff2";
       // setting `application-font-files` will make getFont return "Custom"
       H.updateSetting("application-font-files", [
         {
@@ -334,7 +337,11 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       cy.signOut();
 
-      cy.intercept("GET", fontUrl).as("fontFile");
+      cy.intercept("GET", fontUrl, {
+        statusCode: 200,
+        headers: { "content-type": "font/woff2" },
+        body: "",
+      }).as("fontFile");
 
       cy.intercept("GET", "/api/user/current").as("getUser");
 
@@ -642,7 +649,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       getSdkRoot().findByText("Product ID").should("exist");
 
-      const MANTINE_VAR = "--mantine-color-brand-0";
+      const MANTINE_VAR = "--mantine-color-core-brand-0";
 
       cy.get(".mb-wrapper")
         .first()

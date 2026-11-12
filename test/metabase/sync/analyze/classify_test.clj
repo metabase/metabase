@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
+   [metabase.driver.util :as driver.u]
    [metabase.sync.analyze.classify :as classify]
    [metabase.sync.interface :as i]
    [metabase.test :as mt]
@@ -77,7 +78,7 @@
                                                                 :global {:distinct-count 3}}
                                           :last_analyzed       nil}]
       (is (nil? (:semantic_type (t2/select-one :model/Field :id (u/the-id field)))))
-      (classify/classify-fields-for-db! db (constantly nil))
+      (classify/classify-fields-for-db! (driver.u/lib-database (:id db)) (constantly nil))
       (is (= :type/Income (:semantic_type (t2/select-one :model/Field :id (u/the-id field))))))))
 
 (deftest classify-decimal-fields-test
@@ -95,7 +96,7 @@
                                                                 :global {:distinct-count 3}}
                                           :last_analyzed       nil}]
       (is (nil? (:semantic_type (t2/select-one :model/Field :id (u/the-id field)))))
-      (classify/classify-fields-for-db! db (constantly nil))
+      (classify/classify-fields-for-db! (driver.u/lib-database (:id db)) (constantly nil))
       (is (= :type/Income (:semantic_type (t2/select-one :model/Field :id (u/the-id field))))))))
 
 (deftest single-name-field-per-table-test

@@ -32,10 +32,16 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at least one read scope"
                               (v2.write/readback #{"agent:content:write"} empty-scopes row [:bookmarked])))))))
 
-(deftest ^:parallel readback-unrestricted-callers-get-the-row-test
-  (testing "the unrestricted sentinel and nil token-scopes (internal callers) both read back in full"
-    (is (= row (v2.write/readback #{::api.scope/unrestricted} ["agent:content:read"] row [:bookmarked])))
-    (is (= row (v2.write/readback nil ["agent:content:read"] row [:bookmarked])))))
+(deftest ^:parallel readback-degrades-for-unrestricted-and-nil-scopes-test
+  (testing "GHY-4942: the unrestricted sentinel and nil token-scopes hold no named scope, so they get the degraded
+            row like any caller lacking the read scope"
+    (doseq [token-scopes [#{::api.scope/unrestricted} nil]]
+      (testing (pr-str token-scopes)
+        (let [result (v2.write/readback token-scopes ["agent:content:read"] row [:bookmarked])]
+          (is (= #{:id :note :bookmarked} (set (keys result)))
+              "name must not survive the degradation")
+          (is (re-find #"agent:content:read" (:note result))
+              "the note names the missing scope"))))))
 
 (deftest ^:parallel readback-note-pluralizes-test
   (testing "one missing scope reads `scope`, several read `scopes`, and all are named"

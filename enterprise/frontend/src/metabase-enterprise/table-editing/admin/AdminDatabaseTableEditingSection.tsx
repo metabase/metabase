@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -7,10 +8,10 @@ import {
   Label,
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
 import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
-import { getResponseErrorMessage } from "metabase/utils/errors";
 import type {
   Database,
   DatabaseData,
@@ -146,5 +147,5 @@ function getResponseErrorMessageReason(error: unknown): string | undefined {
     return error.data.reasons[0]?.message ?? undefined;
   }
 
-  return getResponseErrorMessage(error);
+  return findErrorMessage(error);
 }

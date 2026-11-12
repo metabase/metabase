@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { FormFileInput } from "metabase/common/components/FormFileInput";
 import {
   FormNumberInput,

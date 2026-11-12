@@ -65,8 +65,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
 
         sendToast({
           message,
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
         });
       } else {
         sendToast({ message: t`Changes saved` });
@@ -90,15 +89,14 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
       }
 
       if (response.error) {
-        const message =
-          // Unjustified type cast. FIXME
-          (response.error as { data?: { message: string } })?.data?.message ||
-          t`Error saving settings`;
+        const message = getErrorMessage(
+          response.error,
+          t`Error saving settings`,
+        );
 
         sendToast({
           message,
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
         });
       } else {
         sendToast({ message: t`Changes saved`, icon: "check_filled" });
@@ -155,15 +153,14 @@ export const useAdminSettings = <
 
       if (toast) {
         if (response.error) {
-          const message =
-            // Unjustified type cast. FIXME
-            (response.error as { data?: { message: string } })?.data?.message ||
-            t`Error saving settings`;
+          const message = getErrorMessage(
+            response.error,
+            t`Error saving settings`,
+          );
 
           sendToast({
             message,
-            icon: "warning",
-            toastColor: "feedback-negative",
+            variant: "negative",
           });
         } else {
           sendToast({ message: t`Changes saved`, icon: "check_filled" });

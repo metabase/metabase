@@ -1,5 +1,6 @@
 ---
 title: Plugin manifests
+summary: Write the plugin manifest that tells Metabase what your driver provides and how to load it.
 ---
 
 # Plugin manifests
@@ -117,7 +118,7 @@ dependencies:
     # management page as well in the future
     message: >
       Metabase requires the Oracle JDBC driver to connect to JDBC databases. See
-      https://metabase.com/docs/latest/administration-guide/databases/oracle.html
+      https://www.metabase.com/docs/latest/databases/connections/oracle
       for more details
 
   # A 'plugin' dependency checks whether a given plugin is available.

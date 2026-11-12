@@ -102,6 +102,21 @@ export interface MetabaseDashboardAttributes {
   "enable-entity-navigation"?: boolean;
 
   /**
+   * Filter values for dashboards and SQL questions the user reaches through
+   * entity navigation. Needs `enable-entity-navigation`. Keyed by the `navigationId` that the
+   * `navigated-entity-parameters-change` DOM event reports, e.g.
+   * `{ '<navigationId>': { 'productId': '42' } }`.
+   * Each navigation gets a new `navigationId`, going back keeps it.
+   * Each entry works like `parameters` and replaces the values of that visit:
+   * keys you omit use their default, `null` clears a value. To keep the values
+   * the click set, start from the event's `clickParameters`. A visit
+   * without an entry keeps the click-behavior values and is not controlled.
+   *
+   * @remarks Pro/Enterprise
+   */
+  "navigated-entity-parameters"?: object;
+
+  /**
    * Optional custom context string passed through to the guest token endpoint.
    *
    * @remarks Guest embed
@@ -212,7 +227,7 @@ export interface MetabaseQuestionAttributes {
    *
    * @remarks Pro/Enterprise, Guest embed
    */
-  "entity-types"?: ("model" | "table")[];
+  "entity-types"?: ("model" | "table" | "metric" | "semantic-layer")[];
 
   /**
    * Optional custom context string passed through to the guest token endpoint.
@@ -281,9 +296,14 @@ export interface MetabaseBrowserAttributes {
 
   /**
    * An array of entity types to show in the question's data picker:
-   * `model`, `table`.
+   * `model`, `table`, `metric`, `semantic-layer`.
    */
-  "data-picker-entity-types"?: ("model" | "table")[];
+  "data-picker-entity-types"?: (
+    | "model"
+    | "table"
+    | "metric"
+    | "semantic-layer"
+  )[];
 
   /**
    * Whether to show the "New question" button.
@@ -335,6 +355,22 @@ export interface MetabaseMetabotAttributes {
    * The collection to save a question to.
    */
   "target-collection"?: number | string;
+}
+
+/**
+ * Attributes for the `<metabase-data-app>` web component.
+ *
+ * Embeds a Metabase data app. Only available for authenticated (SSO) modular embeds.
+ *
+ * @remarks Pro/Enterprise
+ **/
+export interface MetabaseDataAppAttributes {
+  /**
+   * App slug, optionally followed by routes and query parameters.
+   *
+   * For example, `my-app` or `my-app/orders/details?tab=summary`.
+   **/
+  path: string;
 }
 
 /**
@@ -446,4 +482,5 @@ export interface ComponentToAttributes {
   "metabase-dashboard": MetabaseDashboardAttributes;
   "metabase-browser": MetabaseBrowserAttributes;
   "metabase-metabot": MetabaseMetabotAttributes;
+  "metabase-data-app": MetabaseDataAppAttributes;
 }

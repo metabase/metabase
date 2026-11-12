@@ -2,8 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { DEFAULT_VISIBLE_COLUMNS_LIST } from "metabase/common/collections/columns";
+import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  COLLECTION_CONTENT_COLUMNS,
+  type CollectionContentTableColumn,
+  DEFAULT_VISIBLE_COLUMNS_LIST,
+} from "metabase/common/collections/columns";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import type { ItemWithLastEditInfo } from "metabase/common/components/LastEditInfoLabel/LastEditInfoLabel";
 import { dayjs } from "metabase/dayjs";
@@ -192,6 +196,75 @@ describe("BaseItemsTable", () => {
 
       expect(tooltip).toBeInTheDocument();
       expect(tooltip).toHaveTextContent("important text");
+    });
+  });
+
+  it("renders the header in the order of COLLECTION_CONTENT_COLUMNS, which the skeleton rows follow", () => {
+    const HEADER_LABELS: Record<CollectionContentTableColumn, string> = {
+      type: "Type",
+      name: "Name",
+      description: "Description",
+      lastEditedBy: "Last edited by",
+      lastEditedAt: "Last edited at",
+      actionMenu: "",
+      archive: "",
+    };
+    setup({
+      items: [],
+      visibleColumnsMap: getVisibleColumnsMap([...COLLECTION_CONTENT_COLUMNS]),
+    });
+
+    const headerCells = within(
+      screen.getByTestId("items-table-head"),
+    ).getAllByRole("columnheader");
+    // The last header cell is the table's right edge, not a column.
+    const columnLabels = headerCells
+      .slice(0, -1)
+      .map((cell) => cell.textContent);
+
+    expect(columnLabels).toEqual(
+      COLLECTION_CONTENT_COLUMNS.map((column) => HEADER_LABELS[column]),
+    );
+  });
+
+  describe("skeleton", () => {
+    const selectableProps: Partial<BaseItemsTableProps> = {
+      collection: createMockCollection({ can_write: true }),
+      onToggleSelected: jest.fn<void, [CollectionItem]>(),
+    };
+
+    it.each([
+      { description: "when items can be selected", props: selectableProps },
+      { description: "when items can't be selected", props: {} },
+    ])(
+      "renders one placeholder cell per header cell $description",
+      ({ props }) => {
+        setup({ withSkeleton: true, items: [], ...props });
+
+        const headerCells = within(
+          screen.getByTestId("items-table-head"),
+        ).getAllByRole("columnheader");
+        // The placeholder rows are hidden from assistive technology.
+        const rows = within(
+          screen.getByTestId("items-table-skeleton"),
+        ).getAllByRole("row", { hidden: true });
+
+        expect(rows.length).toBeGreaterThan(0);
+        rows.forEach((row) => {
+          expect(
+            within(row).getAllByRole("cell", { hidden: true }),
+          ).toHaveLength(headerCells.length);
+        });
+      },
+    );
+
+    it("does not render the select all checkbox", () => {
+      setup({ withSkeleton: true, items: [], ...selectableProps });
+
+      expect(screen.getByTestId("items-table-skeleton")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Select all items"),
+      ).not.toBeInTheDocument();
     });
   });
 });

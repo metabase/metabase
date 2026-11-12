@@ -10,7 +10,12 @@ import type {
   CardId,
   ClickBehaviorParameterMapping,
 } from "metabase-types/api";
-import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDashboard,
+} from "metabase-types/api/mocks";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 import {
   PRODUCTS,
   PRODUCTS_ID,
@@ -64,10 +69,8 @@ describe("getClickBehaviorTarget", () => {
       id: 5,
       name: "Products (drill target)",
       dataset_query: Lib.toJsQuery(
-        Lib.fromJsQuery(metadataProvider, {
-          type: "query",
-          query: { "source-table": PRODUCTS_ID },
-          database: SAMPLE_DB_ID,
+        Lib.createTestQuery(metadataProvider, {
+          stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
         }),
       ),
     });
@@ -115,22 +118,14 @@ describe("getClickBehaviorTarget", () => {
   it("keeps a native target question as a saved-question target", () => {
     const targetCard = createMockCard({
       id: 6,
+      entity_id: createMockEntityId("native-target-entity-id"),
       name: "Native drill target",
-      dataset_query: {
-        type: "native",
-        database: SAMPLE_DB_ID,
-        native: {
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestNativeQuery(metadataProvider, {
           query: "select * from products where category = {{category}}",
-          "template-tags": {
-            category: {
-              id: "tag-1",
-              name: "category",
-              "display-name": "Category",
-              type: "text",
-            },
-          },
-        },
-      },
+          templateTags: { category: { type: "text" } },
+        }),
+      ),
     });
 
     const clicked = buildQuestionLinkClicked({
@@ -153,6 +148,38 @@ describe("getClickBehaviorTarget", () => {
     }
 
     expect(target.id).toBe(6);
+    expect(target.entityId).toBe("native-target-entity-id");
     expect(target.parameters).toEqual({ category: "Gizmo" });
+  });
+
+  it("carries the entity id of a target dashboard", () => {
+    const targetDashboard = createMockDashboard({
+      id: 7,
+      entity_id: createMockEntityId("dashboard-target-entity-id"),
+      name: "Dashboard drill target",
+    });
+
+    const clicked: ClickObject = {
+      settings: {
+        click_behavior: {
+          type: "link",
+          linkType: "dashboard",
+          targetId: 7,
+          parameterMapping: {},
+        },
+      },
+      dimensions: [{ column: categoryColumn, value: "Gizmo" }],
+      extraData: { dashboards: { 7: targetDashboard } },
+    };
+
+    const target = getClickBehaviorTarget(clicked, sourceQuestion);
+
+    expect(target?.type).toBe("dashboard");
+    if (target?.type !== "dashboard") {
+      throw new Error("expected a dashboard target");
+    }
+
+    expect(target.id).toBe(7);
+    expect(target.entityId).toBe("dashboard-target-entity-id");
   });
 });

@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { createAction } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
 import _ from "underscore";
@@ -54,6 +54,7 @@ import {
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
 import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
+import { throwIfSignalAborted } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -277,7 +278,7 @@ export const fetchCardDataAction = createAsyncThunk<
       dashcard?.parameter_mappings ?? undefined,
     );
 
-    const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
+    const lastResult = dashcardData?.[dashcard.id]?.[card.id];
     if (!reload) {
       // if reload not set, check to see if the last result has the same query dict and return that
       if (
@@ -707,6 +708,11 @@ function copyVirtualCardsToCards(dashboard: Dashboard): Dashboard {
 
 let fetchDashboardCancellation: AbortController | null;
 
+export function cancelFetchDashboard() {
+  fetchDashboardCancellation?.abort();
+  fetchDashboardCancellation = null;
+}
+
 const EMPTY_LINK_TARGETS: DashboardLinkTargets = {
   questions: {},
   dashboards: {},
@@ -765,15 +771,14 @@ export const fetchDashboard = createAsyncThunk(
     },
     { getState, dispatch, rejectWithValue },
   ) => {
-    if (fetchDashboardCancellation) {
-      fetchDashboardCancellation.abort();
-    }
+    cancelFetchDashboard();
     fetchDashboardCancellation = new AbortController();
+    const { signal } = fetchDashboardCancellation;
 
     try {
       let entities;
       let linkTargets: DashboardLinkTargets = EMPTY_LINK_TARGETS;
-      let result;
+      let result: Dashboard;
       const dashboardLoadId = uuid();
 
       const dashboardType = getDashboardType(dashId);
@@ -798,7 +803,7 @@ export const fetchDashboard = createAsyncThunk(
           { uuid: dashId, dashboard_load_id: dashboardLoadId },
           dispatch,
           publicApi.endpoints.getPublicDashboard,
-          { signal: fetchDashboardCancellation.signal },
+          { signal },
         );
         result = {
           ...result,
@@ -813,7 +818,7 @@ export const fetchDashboard = createAsyncThunk(
           { token: dashId, dashboard_load_id: dashboardLoadId },
           dispatch,
           embedApi.endpoints.getEmbedDashboard,
-          { signal: fetchDashboardCancellation.signal },
+          { signal },
         );
         result = {
           ...result,
@@ -831,7 +836,7 @@ export const fetchDashboard = createAsyncThunk(
             { subPath, dashboard_load_id: dashboardLoadId },
             dispatch,
             automagicDashboardsApi.endpoints.getXrayDashboard,
-            { signal: fetchDashboardCancellation.signal },
+            { signal },
           ),
           runRtkEndpoint(
             {
@@ -841,7 +846,7 @@ export const fetchDashboard = createAsyncThunk(
             },
             dispatch,
             automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
-            { signal: fetchDashboardCancellation.signal },
+            { signal },
           ),
         ]);
         linkTargets = toLinkTargets(queryMetadata);
@@ -880,7 +885,7 @@ export const fetchDashboard = createAsyncThunk(
           { id: dashId, dashboard_load_id: dashboardLoadId },
           dispatch,
           dashboardApi.endpoints.getDashboard,
-          { signal: fetchDashboardCancellation.signal },
+          { signal },
         );
         const queryMetadataRequest = runRtkEndpoint(
           { id: dashId, dashboard_load_id: dashboardLoadId },
@@ -916,6 +921,9 @@ export const fetchDashboard = createAsyncThunk(
         result = response;
       }
 
+      // A request without the signal, such as the prefetched path's metadata,
+      // can outlive a newer fetch or an unmount, so its result is dropped here
+      throwIfSignalAborted(signal);
       fetchDashboardCancellation = null;
 
       const isUsingCachedResults = entities != null;

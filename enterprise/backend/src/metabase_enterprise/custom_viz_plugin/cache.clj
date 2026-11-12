@@ -31,7 +31,9 @@
 
 ;;; ------------------------------------------------ Hash ------------------------------------------------
 
-(defn- bytes-hash [^bytes b]
+(defn bytes-hash
+  "The SHA-256 of the bundle bytes `b`, hex-encoded, as `bundle_hash` stores it."
+  [^bytes b]
   (-> b buddy-hash/sha256 codecs/bytes->hex))
 
 (defn- string-hash [^String s]
@@ -224,8 +226,19 @@
 
 ;;; ------------------------------------------------ Save Bundle ------------------------------------------------
 
-(defn- derived-columns
-  "DB columns derived from a validated bundle."
+(defn check-bundle-identifier!
+  "Throw a 400 ex-info unless the `name` in `validated`'s manifest equals `identifier`, the identity an existing
+  plugin's questions are saved under. Returns `validated`."
+  [identifier {:keys [manifest] :as validated}]
+  (let [bundle-name (:name manifest)]
+    (when-not (= bundle-name identifier)
+      (throw (ex-info (format "Bundle manifest \"name\" (%s) does not match the plugin's identifier (%s)."
+                              bundle-name identifier)
+                      {:status-code 400})))
+    validated))
+
+(defn derived-columns
+  "DB columns derived from a validated bundle (see [[validate-bundle!]])."
   [{:keys [bytes hash manifest version-str]}]
   {:status           :active
    :error_message    nil

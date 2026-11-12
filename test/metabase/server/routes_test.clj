@@ -2,6 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.embedding.settings :as embedding.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.server.routes.index :as index]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]))
@@ -33,12 +35,38 @@
     (index/data-app request #(deliver p %) #(deliver p %))
     @p))
 
+(deftest modular-data-app-bootstrap-test
+  (mt/with-dynamic-fn-redefs [premium-features/enable-data-apps? (constantly true)
+                              embedding.settings/enable-embedding-modular (constantly true)
+                              index/data-app-shell (fn [_ respond _] (respond {:status 200 :body "SHELL"}))]
+    (doseq [headers [{} {"x-metabase-session" "session"} {"x-api-key" "key"}]]
+      (is (= "SHELL" (:body (serve-data-app {:uri "/embed/embedded-apps/missing"
+                                             :metabase-user-id 1 :headers headers})))))
+    (mt/with-dynamic-fn-redefs [embedding.settings/enable-embedding-modular (constantly false)]
+      (is (= 403 (:status (serve-data-app {:uri "/embed/embedded-apps/sales"})))))))
+
+(deftest modular-data-app-through-routes-test
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:data-apps :embedding-simple}
+     (mt/with-temporary-setting-values [enable-embedding-modular true embedding-app-origins-sdk ""]
+       (binding [client/*url-prefix* ""]
+         (mt/with-dynamic-fn-redefs [index/data-app-shell (fn [_ respond _] (respond {:status 200 :body "SHELL"}))]
+           (doseq [path ["embed/embedded-apps/missing" "embed/embedded-apps/missing/orders?active=true"]
+                   user [nil :rasta]]
+             (let [response (if user
+                              (mt/user-http-request-full-response user :get 200 path)
+                              (client/client-full-response :get 200 path))
+                   policy (get-in response [:headers "Content-Security-Policy"])]
+               (is (= "SHELL" (:body response)))
+               (is (str/includes? policy "frame-ancestors *;"))
+               (is (not (str/includes? policy "'unsafe-eval'")))
+               (is (nil? (get-in response [:headers "X-Frame-Options"])))))))))))
+
 (deftest data-app-entrypoint-is-gated-by-the-data-apps-feature-test
   (testing "the /embed/apps/:name entrypoint is served only with :data-apps; without it it
             responds nil so routing falls through to the generic embed handler — exactly as if data
             apps did not exist"
-    ;; Stub the raw shell so the test needs no built frontend HTML; the feature gate lives in
-    ;; `index/data-app` itself, which is what we're exercising here.
+    ;; Stub authorization and HTML rendering to isolate the feature gate.
     (with-redefs [index/data-app-shell (fn [_req respond _raise] (respond {:status 200 :body "DATA-APP"}))]
       (let [request {:uri "/embed/apps/sales" :metabase-user-id (mt/user->id :rasta)}]
         ;; `enable-data-apps?` also requires the EE code to be present (`config/ee-available?`), so the

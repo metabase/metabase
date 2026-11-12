@@ -54,7 +54,7 @@
     (is (=? {:humanized {:x ["should be an int, got: \"3\""]
                          :y ["missing required key, got: nil"]}}
             (try (baz)
-                 (catch Exception e (def eed (ex-data e)) eed)))
+                 (catch Exception e (ex-data e))))
         "when baz returns an invalid form um/defn throws")
     (is (= "Inputs: []\n  Return: [:map [:x int?] [:y int?]]"
            (:doc (meta #'baz))))))

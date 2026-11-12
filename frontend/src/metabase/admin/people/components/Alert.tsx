@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Modal, Stack, Text } from "metabase/ui";
+import { Button, Modal, Text } from "metabase/ui";
 
 interface AlertProps {
   message?: string | null;
@@ -15,9 +15,9 @@ export const Alert = ({ message, onClose }: AlertProps) => (
     withCloseButton={false}
     data-testid="alert-modal"
   >
-    <Stack gap="xl">
-      <Text>{message}</Text>
-      <Button variant="filled" ml="auto" onClick={onClose}>{t`Ok`}</Button>
-    </Stack>
+    <Text>{message}</Text>
+    <Modal.Footer>
+      <Button variant="filled" onClick={onClose}>{t`Ok`}</Button>
+    </Modal.Footer>
   </Modal>
 );

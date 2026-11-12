@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
@@ -46,7 +47,6 @@ export function ObjectDetail({
         question={resolvedQuestion}
         showHeader={rest.settings["detail.showHeader"]}
         showControls={false}
-        showRelations={false}
         closeObjectDetail={closeObjectDetail}
         isDataApp={isDataApp}
       />

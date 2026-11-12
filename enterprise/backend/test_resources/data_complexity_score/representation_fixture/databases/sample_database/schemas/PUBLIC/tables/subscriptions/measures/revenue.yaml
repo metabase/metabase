@@ -6,6 +6,4 @@ table_id:
 - PUBLIC
 - subscriptions
 serdes/meta:
-- id: rEvEnUeSuBs000000001
-  label: revenue
-  model: Measure
+- model: Measure

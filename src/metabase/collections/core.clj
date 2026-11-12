@@ -21,31 +21,25 @@
  [metabase.collections.models.collection
   archive-or-unarchive-collection!
   has-remote-synced-collection?
-  check-for-remote-sync-update
-  check-non-remote-synced-dependencies
-  check-remote-synced-dependents
+  clear-remote-synced-collection!
   create-library-collection!
-  ensure-library-dashboards-collection!
   descendant-ids
-  ineligible-dependencies
   instance-analytics-collection-type
   library-collection
   library-collection-type
-  library-dashboards-collection-type
-  library-dashboards-collection?
+  library-collection-types
   library-data-collection-type
   library-metrics-collection-type
   location-path
   location-path->ids
-  moving-from-remote-synced?
-  moving-into-remote-synced?
-  non-remote-synced-dependencies
-  remote-synced-collection
-  remote-synced-collection?
-  remote-synced-dependents
+  root-collection-type-by-id
+  set-remote-synced!
   shared-tenant-collection?
+  slugify
   transforms-ns
+  trash-collection-id
   data-apps-ns
+  data-actions-ns
   default-allowed-namespaces]
  [metabase.collections.util
   annotate-dashboards])

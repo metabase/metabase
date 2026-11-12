@@ -37,7 +37,7 @@ import {
   Popover,
   Tooltip,
 } from "metabase/ui";
-import { getTimelineEventSettings } from "metabase/viz-core";
+import { showTimelines } from "metabase/visualizations/lib/timeline-events-visibility";
 import type {
   DocumentContent,
   ExplorationId,
@@ -125,8 +125,7 @@ export function ActionToolbar({
       );
     } catch (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "warning",
+        variant: "negative",
         message: t`Failed to update star`,
       });
     }
@@ -148,8 +147,7 @@ export function ActionToolbar({
         return true;
       } catch (error) {
         sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
           message: t`Failed to update visibility`,
         });
         return false;
@@ -178,13 +176,7 @@ export function ActionToolbar({
     async (chart: ExplorationChartForDocumentEmbed) => {
       const timelineSettings =
         selectedTimelineId != null
-          ? getTimelineEventSettings(
-              availableTimelines,
-              (
-                availableTimelines.find((t) => t.id === selectedTimelineId)
-                  ?.events ?? []
-              ).map((event) => event.id),
-            )
+          ? showTimelines({}, [selectedTimelineId], availableTimelines)
           : {};
       const { data: document, error } = await appendChartToSummary({
         explorationId,
@@ -198,8 +190,7 @@ export function ActionToolbar({
       if (error || !document) {
         sendToast({
           message: t`Failed to add to Summary`,
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
         });
         return;
       }
@@ -307,8 +298,7 @@ export function ActionToolbar({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "warning",
+        variant: "negative",
         message: t`Failed to send comment`,
       });
     } else {
@@ -334,8 +324,8 @@ export function ActionToolbar({
 
       <Group
         gap="xxs"
-        bg="background-primary"
-        bd="1px solid border"
+        bg="background_page-primary"
+        bd="1px solid border-neutral"
         bdrs="lg"
         px="sm"
         py="xxs"
@@ -347,7 +337,7 @@ export function ActionToolbar({
               {selectedTimeline ? (
                 <Group
                   aria-label={t`Change selected timeline`}
-                  bd="0.5px solid border"
+                  bd="0.5px solid border-neutral"
                   bdrs="lg"
                   py="xxs"
                   px="sm"
@@ -356,6 +346,7 @@ export function ActionToolbar({
                 >
                   {selectedTimeline.name}
                   <ActionIcon
+                    variant="subtle"
                     aria-label={t`Remove timeline`}
                     onClick={(e) => {
                       handleSelectTimelineId(null, "click");
@@ -466,11 +457,7 @@ export function ActionToolbar({
         >
           <Menu.Target>
             <Tooltip label={t`More actions`} disabled={isMoreActionsOpen}>
-              <ActionIcon
-                size="2rem"
-                variant="viewHeader"
-                aria-label={t`More actions`}
-              >
+              <ActionIcon variant="subtle" aria-label={t`More actions`}>
                 <Icon name="ellipsis" size="1.125rem" />
               </ActionIcon>
             </Tooltip>
@@ -522,10 +509,8 @@ function TriageNavButton({
   return (
     <Tooltip label={label} openDelay={TRIAGE_TOOLTIP_OPEN_DELAY}>
       <ActionIcon
-        className={S.triageButton}
         aria-label={label}
         radius="xl"
-        size="2rem"
         disabled={!onClick}
         onClick={onClick}
       >

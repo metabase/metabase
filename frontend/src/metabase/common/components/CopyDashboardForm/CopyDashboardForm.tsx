@@ -4,7 +4,6 @@ import * as Yup from "yup";
 
 import { useGetDashboardQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import { FormFooter } from "metabase/common/components/FormFooter";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/Pickers";
 import {
   DASHBOARD_DESCRIPTION_MAX_LENGTH,
@@ -20,7 +19,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Group, Icon, Tooltip } from "metabase/ui";
+import { Button, Group, Icon, Modal, Stack, Tooltip } from "metabase/ui";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import * as Errors from "metabase/utils/errors";
 import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
@@ -109,53 +108,51 @@ function CopyDashboardForm({
     >
       <Form>
         <FormObserver onChange={handleChange} />
-        <FormTextInput
-          name="name"
-          label={t`Name`}
-          placeholder={t`What is the name of your dashboard?`}
-          autoFocus
-          mb="1.5rem"
-        />
-        <FormTextarea
-          name="description"
-          label={t`Description`}
-          placeholder={t`It's optional but oh, so helpful`}
-          nullable
-          mb="1.5rem"
-          minRows={6}
-        />
-        <FormCollectionPicker
-          name="collection_id"
-          title={t`Which collection should this go in?`}
-          filterPersonalCollections={filterPersonalCollections}
-          entityType="dashboard"
-        />
-
-        {!hideShallowCopy && (
-          <FormCheckbox
-            mt="1rem"
-            name="is_shallow_copy"
-            label={
-              <Group align="center" gap="xxs">
-                {t`Only duplicate the dashboard`}
-
-                <Tooltip
-                  label={t`If you check this, the cards in the duplicated dashboard will reference the original questions.`}
-                >
-                  <Icon name="info" size={18} />
-                </Tooltip>
-              </Group>
-            }
+        <Stack gap="xl">
+          <FormTextInput
+            name="name"
+            label={t`Name`}
+            placeholder={t`What is the name of your dashboard?`}
+            autoFocus
           />
-        )}
+          <FormTextarea
+            name="description"
+            label={t`Description`}
+            placeholder={t`It's optional but oh, so helpful`}
+            nullable
+            minRows={6}
+          />
+          <FormCollectionPicker
+            name="collection_id"
+            title={t`Which collection should this go in?`}
+            filterPersonalCollections={filterPersonalCollections}
+            entityType="dashboard"
+          />
+          {!hideShallowCopy && (
+            <FormCheckbox
+              name="is_shallow_copy"
+              label={
+                <Group align="center" gap="xxs">
+                  {t`Only duplicate the dashboard`}
 
-        <FormFooter mt="1.5rem">
-          <FormErrorMessage inline />
+                  <Tooltip
+                    label={t`If you check this, the cards in the duplicated dashboard will reference the original questions.`}
+                  >
+                    <Icon name="info" size={18} />
+                  </Tooltip>
+                </Group>
+              }
+            />
+          )}
+        </Stack>
+
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
           {!!onClose && (
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
           )}
           <FormSubmitButton label={c(`A verb, not a noun`).t`Duplicate`} />
-        </FormFooter>
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );

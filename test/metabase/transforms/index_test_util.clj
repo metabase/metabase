@@ -6,13 +6,14 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
 (defn- postgres-indexes
   [database schema table]
-  (->> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+  (->> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                    ["SELECT indexname FROM pg_indexes WHERE schemaname = ? AND tablename = ?" schema table])
        (map :indexname)
        set))
@@ -22,7 +23,7 @@
   `sortkey` is the column's 1-based position in the key; an interleaved key alternates the sign, so a negative value
   anywhere means interleaved while `abs` still gives the position. `distkey` is true on the single KEY-dist column."
   [database schema table]
-  (let [rows      (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+  (let [rows      (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                               [(str "SELECT column_name, sortkey, distkey FROM svv_redshift_columns "
                                     "WHERE schema_name = ? AND table_name = ? ORDER BY abs(sortkey)")
                                schema table])
@@ -35,7 +36,7 @@
 (defn- mysql-indexes
   [database schema table]
   ;; MySQL has no schemas, so `schema` is nil; fall back to the connection's database.
-  (->> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+  (->> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                    [(str "SELECT DISTINCT index_name FROM information_schema.statistics "
                          "WHERE table_schema = COALESCE(?, DATABASE()) AND table_name = ?")
                     schema table])
@@ -45,7 +46,7 @@
 
 (defn- clickhouse-indexes
   [database schema table]
-  (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))]
     {:sorting-key  (-> (jdbc/query spec ["SELECT sorting_key FROM system.tables WHERE database = ? AND name = ?"
                                          schema table])
                        first :sorting_key)
@@ -73,7 +74,7 @@
   "Read a Snowflake table's clustering key back as an ordered vector of column names, or [] when unclustered.
   `CLUSTERING_KEY` comes back as a string like `LINEAR(category, price)`."
   [database schema table]
-  (let [clustering-key (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+  (let [clustering-key (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                                        [(str "SELECT clustering_key FROM information_schema.tables "
                                              "WHERE table_schema = ? AND table_name = ?")
                                         schema table])
@@ -89,7 +90,7 @@
 
 (defn- sqlserver-indexes
   [database schema table]
-  (->> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+  (->> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                    [(str "SELECT i.name AS index_name FROM sys.indexes i "
                          "WHERE i.object_id = OBJECT_ID(?) AND i.type IN (1, 2) AND i.name IS NOT NULL")
                     (format "[%s].[%s]" schema table)])

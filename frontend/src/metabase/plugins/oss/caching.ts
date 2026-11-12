@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { ComponentType, Dispatch, SetStateAction } from "react";
 import { t } from "ttag";
 import type { AnySchema } from "yup";
@@ -64,6 +65,8 @@ export type SidebarCacheFormProps = {
   overlayProps?: ModalOverlayProps;
   onClose: () => void;
   onBack: () => void;
+  /** When false, the form is not a sub-page with a title to go back by */
+  withBackButton?: boolean;
 } & StackProps;
 
 export type PreemptiveCachingSwitchProps = {

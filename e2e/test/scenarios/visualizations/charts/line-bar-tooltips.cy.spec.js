@@ -20,14 +20,14 @@ function testSumTotalChange(
 ) {
   tooltipSelector("#88BF4D", 0);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2025");
+    H.tooltipHeader().should("have.text", "2025");
     H.assertTooltipRow(seriesName, { color: "#88BF4D", value: "42,156.87" });
   });
 
   tooltipSelector("#88BF4D", 1);
 
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2026");
+    H.tooltipHeader().should("have.text", "2026");
     H.assertTooltipRow(seriesName, {
       color: "#88BF4D",
       value: "205,256.02",
@@ -99,7 +99,7 @@ function testAvgTotalChange(
 ) {
   tooltipSelector("#A989C5", 0);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2025");
+    H.tooltipHeader().should("have.text", "2025");
     H.assertTooltipRow(seriesName, {
       color: "#A989C5",
       value: "56.66",
@@ -108,7 +108,7 @@ function testAvgTotalChange(
 
   tooltipSelector("#A989C5", 1);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2025");
+    H.tooltipHeader().should("have.text", "2026");
     H.assertTooltipRow(seriesName, {
       color: "#A989C5",
       value: "56.86",
@@ -140,7 +140,7 @@ function testCumSumChange(
   if (testFirstTooltip) {
     showTooltipForCircleInSeries("#88BF4D", 0);
     H.echartsTooltip().within(() => {
-      H.tooltipHeader("2025");
+      H.tooltipHeader().should("have.text", "2025");
       H.assertTooltipRow(seriesName, {
         color: "#88BF4D",
         value: "3,236",
@@ -150,7 +150,7 @@ function testCumSumChange(
 
   showTooltipForCircleInSeries("#88BF4D", 1);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2026");
+    H.tooltipHeader().should("have.text", "2026");
     H.assertTooltipRow(seriesName, {
       color: "#88BF4D",
       value: "17,587",
@@ -175,7 +175,7 @@ const AVG_DISCOUNT_SUM_DISCOUNT = {
 function testAvgDiscountChange(seriesName = "Average of Discount") {
   showTooltipForCircleInSeries("#509EE3", 0);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2025");
+    H.tooltipHeader().should("have.text", "2025");
     H.assertTooltipRow(seriesName, {
       color: "#509EE3",
       value: "5.03",
@@ -184,7 +184,7 @@ function testAvgDiscountChange(seriesName = "Average of Discount") {
 
   showTooltipForCircleInSeries("#509EE3", 1);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2026");
+    H.tooltipHeader().should("have.text", "2026");
     H.assertTooltipRow(seriesName, {
       color: "#509EE3",
       value: "5.41",
@@ -196,7 +196,7 @@ function testAvgDiscountChange(seriesName = "Average of Discount") {
 function testSumDiscountChange(seriesName = "Sum of Discount") {
   showTooltipForCircleInSeries("#98D9D9", 0);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2025");
+    H.tooltipHeader().should("have.text", "2025");
     H.assertTooltipRow(seriesName, {
       color: "#98D9D9",
       value: "342.09",
@@ -205,7 +205,7 @@ function testSumDiscountChange(seriesName = "Sum of Discount") {
 
   showTooltipForCircleInSeries("#98D9D9", 1);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2026");
+    H.tooltipHeader().should("have.text", "2026");
     H.assertTooltipRow(seriesName, {
       color: "#98D9D9",
       value: "1,953.08",
@@ -447,6 +447,10 @@ union all select 2, 20, 'short value'`,
 
       // Tooltip by default shows only visible series data
       showTooltipForBarInSeries(COUNT_COLOR);
+      H.assertEChartsTooltip({
+        header: "0",
+        rows: [{ name: COUNT, value: "2,308" }],
+      });
       H.assertEChartsTooltipNotContain([SUM_OF_TOTAL, AVG_OF_QUANTITY]);
 
       // Go to the additional tooltip columns setting
@@ -517,7 +521,7 @@ union all select 2, 20, 'short value'`,
       });
     });
 
-    it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
+    it("should show percent change, and updated column titles after editing them via Visualization Options, in tooltips", () => {
       const originalName = "Sum of Total";
       const customName = "Custom";
 
@@ -526,6 +530,8 @@ union all select 2, 20, 'short value'`,
         header: "2025",
         rows: [{ name: originalName, value: "42,156.87" }],
       });
+
+      testSumTotalChange();
 
       H.editDashboard();
       H.showDashcardVisualizerModalSettings(0, {
@@ -543,10 +549,6 @@ union all select 2, 20, 'short value'`,
         rows: [{ name: customName, value: "42,156.87" }],
       });
     });
-
-    it("should show percent change in tooltip for timeseries axis", () => {
-      testSumTotalChange();
-    });
   });
 
   describe("> single series question on dashboard with added series", () => {
@@ -559,7 +561,7 @@ union all select 2, 20, 'short value'`,
       });
     });
 
-    it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
+    it("should show percent change, and updated column titles after editing them via Visualization Options, in tooltips", () => {
       const originalSeriesName = "Q1";
       const updatedOriginalSeriesName = "Custom Q1";
       const addedSeriesName = "Q2";
@@ -584,6 +586,9 @@ union all select 2, 20, 'short value'`,
           },
         ],
       });
+
+      testSumTotalChange(showTooltipForCircleInSeries, "Q1");
+      testAvgTotalChange(showTooltipForCircleInSeries, "Q2");
 
       H.editDashboard();
       H.showDashcardVisualizerModal(0, {
@@ -625,11 +630,6 @@ union all select 2, 20, 'short value'`,
         ],
       });
     });
-
-    it("should show percent change in tooltip for timeseries axis", () => {
-      testSumTotalChange(showTooltipForCircleInSeries, "Q1");
-      testAvgTotalChange(showTooltipForCircleInSeries, "Q2");
-    });
   });
 
   describe("> multi series question on dashboard", () => {
@@ -641,7 +641,7 @@ union all select 2, 20, 'short value'`,
       });
     });
 
-    it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
+    it("should show percent change and updated column titles in tooltips, and hide the tooltip when the click popover is visible", () => {
       const originalAvgSeriesName = "Average of Total";
       const originalCumSumSeriesName = "Cumulative sum of Quantity";
       const customAvgSeriesName = "Custom 1";
@@ -663,6 +663,29 @@ union all select 2, 20, 'short value'`,
           },
         ],
       });
+
+      testAvgTotalChange();
+      testCumSumChange();
+
+      H.cartesianChartCircleWithColor("#A989C5")
+        .first()
+        .as("firstCircle")
+        .trigger("mousemove");
+      H.assertEChartsTooltip({ header: "2025" });
+
+      cy.get("@firstCircle").click();
+
+      // The tooltip hides when the click popover is visible
+      H.popover().should("be.visible");
+      cy.get("body").should(($body) => {
+        const visibleTooltips = $body
+          .find('[data-testid="echarts-tooltip"]')
+          .toArray()
+          .filter(H.isFixedPositionElementVisible);
+        expect(visibleTooltips).to.have.length(0);
+      });
+      cy.realPress("Escape");
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
       H.editDashboard();
       H.showDashcardVisualizerModalSettings(0, {
@@ -693,11 +716,6 @@ union all select 2, 20, 'short value'`,
           },
         ],
       });
-    });
-
-    it("should show percent change in tooltip for timeseries axis", () => {
-      testAvgTotalChange();
-      testCumSumChange();
     });
   });
 
@@ -737,26 +755,6 @@ union all select 2, 20, 'short value'`,
     });
   });
 
-  it("tooltips should be hidden when click popover is visible", () => {
-    setup({
-      question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
-    }).then((dashboardId) => {
-      H.visitDashboard(dashboardId);
-    });
-
-    H.cartesianChartCircleWithColor("#A989C5")
-      .first()
-      .as("firstCircle")
-      .trigger("mousemove");
-
-    // Ensure the tooltip is visible
-    H.assertEChartsTooltip({ header: "2025" });
-
-    cy.get("@firstCircle").click();
-
-    cy.findAllByTestId("echarts-tooltip").should("be.hidden");
-  });
-
   describe("> multi series question on dashboard with added question", () => {
     beforeEach(() => {
       setup({
@@ -784,7 +782,7 @@ union all select 2, 20, 'short value'`,
       });
     });
 
-    it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
+    it("should show percent change, and updated column titles after editing them via Visualization Options, in tooltips", () => {
       const originalName = "Sum of Total";
       const updatedName = "Custom";
 
@@ -799,6 +797,8 @@ union all select 2, 20, 'short value'`,
           },
         ],
       });
+
+      testSumTotalChange(showTooltipForBarInSeries);
 
       H.editDashboard();
       H.showDashcardVisualizerModalSettings(0, {
@@ -822,10 +822,6 @@ union all select 2, 20, 'short value'`,
         ],
       });
     });
-
-    it("should show percent change in tooltip for timeseries axis", () => {
-      testSumTotalChange(showTooltipForBarInSeries);
-    });
   });
 
   describe("> bar chart question on dashboard with added series", () => {
@@ -838,7 +834,7 @@ union all select 2, 20, 'short value'`,
       });
     });
 
-    it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
+    it("should show percent change, and updated column titles after editing them via Visualization Options, in tooltips", () => {
       const originalSeriesColor = "#88BF4D";
       const addedSeriesColor = "#A989C5";
       const originalSeriesName = "Q1";
@@ -869,6 +865,9 @@ union all select 2, 20, 'short value'`,
           },
         ],
       });
+
+      testSumTotalChange(showTooltipForBarInSeries, "Q1");
+      testAvgTotalChange(showTooltipForBarInSeries, "Q2");
 
       H.editDashboard();
       H.showDashcardVisualizerModalSettings(0, {
@@ -905,11 +904,6 @@ union all select 2, 20, 'short value'`,
         ],
       });
     });
-
-    it("should show percent change in tooltip for timeseries axis", () => {
-      testSumTotalChange(showTooltipForBarInSeries, "Q1");
-      testAvgTotalChange(showTooltipForBarInSeries, "Q2");
-    });
   });
 
   describe("> single series question grouped by month on dashboard", () => {
@@ -931,7 +925,7 @@ union all select 2, 20, 'short value'`,
           },
         ],
       });
-      testTooltipExcludesText("Compared to previous month");
+      assertNoPercentChange("Sum of Total");
 
       showTooltipForCircleInSeries("#88BF4D", 1);
       H.assertEChartsTooltip({
@@ -965,7 +959,7 @@ union all select 2, 20, 'short value'`,
           },
         ],
       });
-      testTooltipExcludesText("Compared to previous month");
+      assertNoPercentChange("Sum of Total");
       showTooltipForCircleInSeries("#88BF4D", 1);
       H.assertEChartsTooltip({
         header: "June 2025",
@@ -977,7 +971,7 @@ union all select 2, 20, 'short value'`,
           },
         ],
       });
-      testTooltipExcludesText("Compared to previous month");
+      assertNoPercentChange("Sum of Total");
 
       showTooltipForCircleInSeries("#88BF4D", 2);
       H.assertEChartsTooltip({
@@ -1003,7 +997,7 @@ union all select 2, 20, 'short value'`,
           },
         ],
       });
-      testTooltipExcludesText("Compared to previous month");
+      assertNoPercentChange("Sum of Total");
     });
 
     it("should not show if x-axis is not timeseries", () => {
@@ -1024,7 +1018,7 @@ union all select 2, 20, 'short value'`,
           },
         ],
       });
-      testTooltipExcludesText("Compared to previous month");
+      assertNoPercentChange("Sum of Total");
 
       showTooltipForCircleInSeries("#88BF4D", 1);
       H.assertEChartsTooltip({
@@ -1038,7 +1032,7 @@ union all select 2, 20, 'short value'`,
         ],
       });
 
-      testTooltipExcludesText("Compared to previous month");
+      assertNoPercentChange("Sum of Total");
     });
   });
 
@@ -1105,7 +1099,7 @@ union all select 2, 20, 'short value'`,
       APRIL_CHANGES.forEach((change, index) => {
         showTooltipForCircleInSeries("#88BF4D", index);
         if (change === null) {
-          testTooltipExcludesText("Compared to previous");
+          assertNoPercentChange("Sum of Total");
           return;
         }
         H.assertEChartsTooltip({
@@ -1128,7 +1122,7 @@ union all select 2, 20, 'short value'`,
       DST_WEEK_CHANGES.forEach((change, index) => {
         showTooltipForCircleInSeries("#88BF4D", index);
         if (change === null) {
-          testTooltipExcludesText("Compared to previous");
+          assertNoPercentChange("Sum of Total");
           return;
         }
 
@@ -1152,7 +1146,7 @@ union all select 2, 20, 'short value'`,
       DST_DAY_CHANGES.forEach((change, index) => {
         showTooltipForCircleInSeries("#88BF4D", index);
         if (change === null) {
-          testTooltipExcludesText("Compared to previous");
+          assertNoPercentChange("Sum of Total");
           return;
         }
         H.assertEChartsTooltip({
@@ -1215,9 +1209,14 @@ function showTooltipForBarInSeries(seriesColor, index = 0) {
   H.chartPathWithFillColor(seriesColor).eq(index).realHover();
 }
 
-function testTooltipExcludesText(text) {
+// A row with a percent change has 4 cells: marker, name, value, change.
+function assertNoPercentChange(seriesName) {
   H.echartsTooltip().within(() => {
-    cy.contains(text).should("not.exist");
+    cy.findByText(seriesName)
+      .closest("tr")
+      .children("td")
+      .should("have.length", 3);
+    cy.findByText(/%$/).should("not.exist");
   });
 }
 

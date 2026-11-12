@@ -2,13 +2,14 @@ import type { ReactNode } from "react";
 
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { Stack } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentHeader } from "../../components/SegmentHeader";
-import { SegmentRevisionHistory } from "../../components/SegmentRevisionHistory";
 import type { SegmentTabUrls } from "../../types";
 
+import { SegmentRevisionHistory } from "./SegmentRevisionHistory";
 import S from "./SegmentRevisionHistoryPage.module.css";
 
 type SegmentRevisionHistoryPageProps = {
@@ -24,12 +25,16 @@ export function SegmentRevisionHistoryPage({
   breadcrumbs,
   onRemove,
 }: SegmentRevisionHistoryPageProps) {
+  const buildQuestion = useQuestionFromOptsBuilder();
   return (
     <PageContainer data-testid="segment-revision-history-page">
       <SegmentHeader
         segment={segment}
         tabUrls={tabUrls}
-        previewUrl={getDatasetQueryPreviewUrl(segment.definition)}
+        previewUrl={getDatasetQueryPreviewUrl(
+          segment.definition,
+          buildQuestion,
+        )}
         onRemove={onRemove}
         breadcrumbs={breadcrumbs}
       />

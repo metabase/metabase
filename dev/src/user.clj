@@ -188,7 +188,6 @@
       (spit ".nrepl-port" port)
       (nrepl-server/start-server
        :port port
-       :bind "0.0.0.0"
        ;; this handler has cider middlewares installed:
        :handler (apply nrepl-server/default-handler
                        (conj cider-nrepl/cider-middleware 'refactor-nrepl.middleware/wrap-refactor)))))

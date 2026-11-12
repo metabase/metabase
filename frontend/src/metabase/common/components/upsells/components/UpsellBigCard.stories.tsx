@@ -55,7 +55,7 @@ const SecondaryTemplate = ({
         {children}
         <ExternalLink
           className={S.SecondaryCTALink}
-          href="https://www.metabase.com/docs"
+          href="https://www.metabase.com/docs/latest/"
         >
           Learn more
         </ExternalLink>
@@ -83,7 +83,7 @@ const ModalTemplate = ({
           {children}
           <ExternalLink
             className={S.SecondaryCTALink}
-            href="https://www.metabase.com/docs"
+            href="https://www.metabase.com/docs/latest/"
           >
             Learn more
           </ExternalLink>

@@ -1,0 +1,8 @@
+/* A class rather than style props, so consumers can override the size */
+.avatar {
+  width: 3em;
+  height: 3em;
+  border-radius: 999px;
+  background-color: var(--mb-color-core-brand);
+  flex-shrink: 0;
+}

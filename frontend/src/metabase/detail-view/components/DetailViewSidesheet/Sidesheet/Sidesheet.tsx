@@ -3,7 +3,15 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import Animation from "metabase/css/core/animation.module.css";
-import { Button, Group, Icon, Modal, Stack, Tooltip, rem } from "metabase/ui";
+import {
+  ActionIcon,
+  Group,
+  Icon,
+  Modal,
+  Stack,
+  Tooltip,
+  rem,
+} from "metabase/ui";
 
 import S from "./Sidesheet.module.css";
 
@@ -43,15 +51,14 @@ export function Sidesheet({
             {actions}
 
             <Tooltip label={t`Close`}>
-              {/* TODO: replace with ActionIcon (GDGT-2457) */}
-              <Button
+              <ActionIcon
                 aria-label={t`Close`}
-                leftSection={<Icon name="close" />}
                 size="sm"
                 variant="subtle"
-                color="neutral"
                 onClick={onClose}
-              />
+              >
+                <Icon name="close" />
+              </ActionIcon>
             </Tooltip>
           </Group>
 

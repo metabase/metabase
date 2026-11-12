@@ -48,6 +48,7 @@ export function getCopyTextFieldProps<E extends CopyableElement>({
           <Tooltip label={t`Copied!`} opened={copied}>
             <ActionIcon
               variant="subtle"
+              size="sm"
               aria-label={t`Copy`}
               data-testid="copy-button"
               onClick={() => {

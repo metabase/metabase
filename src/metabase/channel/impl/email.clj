@@ -4,7 +4,8 @@
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [hiccup.core :refer [h html]]
+   [hiccup.core :refer [html]]
+   [hiccup.util :as hiccup.util]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
@@ -120,7 +121,7 @@
           heading-text    (:text part)
           style           (style/style (if (seq inline-params) {:margin-bottom "4px"} {}))]
       ;; hiccup 1 doesn't escape strings and :content reaches `{{{computed.dashboard_content}}}` as-is
-      {:content (str (html [:h2 {:style style} (h heading-text)])
+      {:content (str (html [:h2 {:style style} (hiccup.util/escape-html heading-text)])
                      rendered-params)})
     :tab-title
     {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html (system/site-url))}))
@@ -221,7 +222,7 @@
 (def ^:private payload-type->default-template
   {:notification/dashboard {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
-                                           :subject "{{payload.dashboard.name}}"
+                                           :subject "{{computed.subject}}"
                                            :path    "dashboard_subscription"}}
    :notification/card      {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
@@ -302,7 +303,7 @@
       nil)))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type creator_id] :as notification-payload} {:keys [template recipients attachment_only include_pdf]}]
+  [_channel-type {:keys [payload payload_type creator_id] :as notification-payload} {:keys [template recipients attachment_only include_pdf subject]}]
   (let [{:keys [dashboard_parts
                 dashboard_subscription
                 parameters
@@ -349,7 +350,8 @@
                               "<p>Dashboard content available in attached files</p>")
         message-context-fn  (fn [non-user-email]
                               (-> notification-payload
-                                  (assoc :computed {:dashboard_content  dashboard-content
+                                  (assoc :computed {:subject            (or subject (:name dashboard))
+                                                    :dashboard_content  dashboard-content
                                                     :icon_cid           (:content-id icon-attachment)
                                                     :dashboard_has_tabs (some-> dashboard :tabs seq)
                                                     :management_text    (if (nil? non-user-email)

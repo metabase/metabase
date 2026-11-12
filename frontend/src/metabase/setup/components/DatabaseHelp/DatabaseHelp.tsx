@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { DatabaseHelpCard } from "metabase/databases/components/DatabaseHelpCard";
 import { useSelector } from "metabase/redux";
 

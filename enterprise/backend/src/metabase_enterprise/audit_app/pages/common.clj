@@ -213,10 +213,10 @@
   [query query-string & fields-to-search]
   (sql.helpers/where query (when (seq query-string)
                              (let [query-string (h2x/like-substring query-string)]
-                               (cons
-                                :or
-                                (for [field fields-to-search]
-                                  [:like (lowercase-field field) query-string]))))))
+                               ;; this has to be a vector: a seq compiles as a list of values, not a call to `:or`
+                               (into [:or]
+                                     (for [field fields-to-search]
+                                       [:like (lowercase-field field) query-string]))))))
 
 (def ^:private sort-directions
   "The only two directions an audit page may sort in."

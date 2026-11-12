@@ -21,6 +21,7 @@
  [i18n.common
   join-strings-with-conjunction]
  [i18n.impl
+  available-locale-names
   available-locale?
   fallback-locale
   locale
@@ -148,6 +149,7 @@
              {:error/message (str "instance of " (.getCanonicalName klass))}
              (partial instance? klass)])]
     [:or
+     {:json-schema {:type "string"}}
      (instance-of UserLocalizedString)
      (instance-of SiteLocalizedString)]))
 

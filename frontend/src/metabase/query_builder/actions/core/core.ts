@@ -1,21 +1,18 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import _ from "underscore";
 
 import {
   cardApi,
-  databaseApi,
   invalidateNotificationsApiCache,
   revisionApi,
+  timelineApi,
 } from "metabase/api";
-import { listTag } from "metabase/api/tags";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
-import {
-  getShallowDatabases,
-  selectQuestionFromCard,
-} from "metabase/metadata-store";
+import { selectQuestionFromCard } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
@@ -25,20 +22,32 @@ import {
   questionUpdated,
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
+import {
+  LIST_TIMELINES_REQUEST,
+  getTransformedTimelines,
+  selectListTimelines,
+} from "metabase/timelines/panel/selectors";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { isNotNull } from "metabase/utils/types";
 import {
+  getCollectionTimelinesVisibility,
+  getRecordedTimelineEventsVisibility,
+} from "metabase/visualizations/lib/timeline-events-visibility";
+import {
+  canDisplayTimelineEvents,
   getCardAfterVisualizationClick,
   getRegisteredDefaultSize,
 } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
-import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { Card, DashboardTabId, DatasetQuery } from "metabase-types/api";
+import type { Card, CardId, DashboardTabId } from "metabase-types/api";
 
-import { trackNewQuestionSaved } from "../../analytics";
+import {
+  trackNewQuestionSaved,
+  trackQuestionTimelineEventsSaved,
+} from "../../analytics";
 import { updateModelIndexes } from "../../model-indexes/actions";
 import {
   API_CREATE_QUESTION,
@@ -60,6 +69,7 @@ import {
   getSubmittableQuestion,
   isBasedOnExistingQuestion,
 } from "../../store/selectors";
+import { isLegacyTimelineEventsSource } from "../../utils/timeline-events";
 import { runDirtyQuestionQuery, runQuestionQuery } from "../querying";
 import { updateUrl } from "../url";
 import { zoomInRow } from "../zoom";
@@ -99,7 +109,9 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     dispatch(loadMetadataForCard(card));
 
     // if the name of the card changed this will update the url slug
-    dispatch(updateUrl(new Question(card), { dirty: false }));
+    dispatch(
+      updateUrl(selectQuestionFromCard(getState(), card), { dirty: false }),
+    );
 
     return card;
   };
@@ -206,23 +218,49 @@ export const navigateToNewCardInsideQB = createThunkAction(
   },
 );
 
-// DEPRECATED, still used in a couple places
-export const setDatasetQuery =
-  (datasetQuery: DatasetQuery) => (dispatch: Dispatch, getState: GetState) => {
-    if (datasetQuery instanceof NativeQuery) {
-      datasetQuery = datasetQuery.datasetQuery();
-    }
-
+export const setQuery =
+  (query: Lib.Query) => (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
 
     if (!question) {
       return;
     }
 
-    dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
+    dispatch(updateQuestion(question.setQuery(query)));
   };
 
-type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
+export type OnCreateOptions = {
+  dashboardTabId?: DashboardTabId | undefined;
+  sourceCardId?: CardId | undefined;
+  sourceQuestion?: Question | undefined;
+};
+
+// Record the displayed selection so the saved question shows the same events on a dashboard.
+const needsTimelineEventsRecording = (question: Question) =>
+  getRecordedTimelineEventsVisibility(question.settings()) == null &&
+  canDisplayTimelineEvents(question.display());
+
+const recordCollectionTimelineEvents = async (
+  question: Question,
+  dispatch: Dispatch,
+  getState: GetState,
+) => {
+  await dispatch(
+    timelineApi.endpoints.listTimelines.initiate(LIST_TIMELINES_REQUEST, {
+      forceRefetch: false,
+      subscribe: false,
+    }),
+  );
+  // Record an empty collection too, only a failed request leaves the selection unrecorded.
+  return selectListTimelines(getState()).isSuccess
+    ? question.updateSettings(
+        getCollectionTimelinesVisibility(
+          getTransformedTimelines(getState()),
+          question.collectionId(),
+        ),
+      )
+    : question;
+};
 
 export const apiCreateQuestion = (
   question: Question,
@@ -230,6 +268,20 @@ export const apiCreateQuestion = (
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     let submittableQuestion = getSubmittableQuestion(getState(), question);
+    if (needsTimelineEventsRecording(submittableQuestion)) {
+      submittableQuestion = isLegacyTimelineEventsSource(
+        options?.sourceQuestion ?? submittableQuestion,
+      )
+        ? submittableQuestion.updateSettings({
+            "timeline.selected_timeline_ids": [],
+            "timeline.excluded_timeline_event_ids": [],
+          })
+        : await recordCollectionTimelineEvents(
+            submittableQuestion,
+            dispatch,
+            getState,
+          );
+    }
     // Saving models with list view setting as a question in not allowed for now,
     // so we change it back to table.
     if (
@@ -244,16 +296,12 @@ export const apiCreateQuestion = (
       options,
     );
 
-    const databases = Object.values(getShallowDatabases(getState()));
-    if (!databases.some((database) => database.is_saved_questions)) {
-      dispatch(databaseApi.util.invalidateTags([listTag("database")]));
-    }
-
     trackNewQuestionSaved(
       question,
       createdQuestion,
       isBasedOnExistingQuestion(getState()),
     );
+    trackQuestionTimelineEventsSaved(createdQuestion);
 
     // Saving a card, locks in the current display as though it had been
     // selected in the UI.
@@ -276,7 +324,17 @@ export const apiCreateQuestion = (
               display: "list",
             })
           : createdQuestionWithMetadata.composeQuestionAdhoc();
-      dispatch(runQuestionQuery({ overrideWithQuestion: composedQuestion }));
+      // Run the composed adhoc query for results only. Its URL is the adhoc
+      // /question/query, but the canonical URL is the saved model's /model/:id,
+      // written by the updateUrl the create flow schedules. Letting the adhoc run
+      // mirror its URL leaves that navigation pending when the model redirect
+      // fires, and the redirect sits out for it (metabase#51020).
+      dispatch(
+        runQuestionQuery({
+          overrideWithQuestion: composedQuestion,
+          shouldUpdateUrl: false,
+        }),
+      );
     }
 
     return createdQuestionWithMetadata;
@@ -301,7 +359,17 @@ export const apiUpdateQuestion = (
       rerunQuery = rerunQuery ?? isResultDirty ?? false;
     }
 
-    const submittableQuestion = getSubmittableQuestion(getState(), question);
+    let submittableQuestion = getSubmittableQuestion(getState(), question);
+    if (
+      needsTimelineEventsRecording(submittableQuestion) &&
+      !isLegacyTimelineEventsSource(originalQuestion)
+    ) {
+      submittableQuestion = await recordCollectionTimelineEvents(
+        submittableQuestion,
+        dispatch,
+        getState,
+      );
+    }
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)
@@ -317,6 +385,8 @@ export const apiUpdateQuestion = (
         excludeVisualisationSettings: isMetric,
       },
     );
+
+    trackQuestionTimelineEventsSaved(updatedQuestion, originalQuestion);
 
     // invalidate question notifications
     // (some of the old alerts might be removed during update)
@@ -386,6 +456,7 @@ async function reduxCreateQuestion(
     createQuestionCard({
       ...question.card(),
       dashboard_tab_id: options?.dashboardTabId,
+      source_card_id: options?.sourceCardId,
       ...(size && { size: { size_x: size.width, size_y: size.height } }),
     }),
   )) as Card;

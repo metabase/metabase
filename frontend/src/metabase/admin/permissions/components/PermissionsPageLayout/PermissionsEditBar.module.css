@@ -1,0 +1,14 @@
+/*
+ * Lines the banner up with the rest of the hub's permissions page: its icon
+ * with the page title and tab labels (`TAB_LABEL_INSET` in
+ * embedding-hub/pages/EmbeddingHubPermissionsPage.tsx), its buttons with the
+ * app switcher (`CONTENT_PADDING_X` in nav/components/AreaLayout/AreaContent.tsx).
+ *
+ * `:not([data-css-specificity-hack])` rather than a bare class: this needs to
+ * beat `FullWidthContainer`'s own padding, including the wider values it sets
+ * in media queries, which are all single-class specificity.
+ */
+.hubEditBar:not([data-css-specificity-hack="🧭"]) {
+  padding-left: 2.5rem;
+  padding-right: 3.5rem;
+}

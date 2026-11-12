@@ -11,7 +11,10 @@
 
 (set! *warn-on-reflection* true)
 
-(task/defjob ^{:doc "If we can collect usage data, do so and send it home"} SendAnonymousUsageStats [_]
+(task/defjob SendAnonymousUsageStats
+  "If we can collect usage data, do so and send it home"
+  {:saved-class "metabase.analytics.task.send_anonymous_stats.SendAnonymousUsageStats"}
+  [_]
   (when (analytics.settings/anon-tracking-enabled)
     (log/debug "Sending anonymous usage stats.")
     (try

@@ -7,14 +7,16 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-me
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
+import type * as MetabaseApi from "metabase/api";
 import { selectCard, selectTableQueryMetadata } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { selectMetadataProviderUnfiltered } from "metabase/metadata-store";
-import { fetchTableMetadata } from "metabase/redux/tables";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
-import { TEST_METADATA } from "./fixtures";
+import { TEST_JS_METADATA, TEST_METADATA } from "./fixtures";
 
 jest.mock("embedding-sdk-package/hooks/private/use-lazy-selector", () => ({
   useLazySelector: jest.fn(() => ({ status: "success" })),
@@ -32,6 +34,7 @@ jest.mock("embedding-sdk-shared/hooks/use-sdk-loading-state", () => ({
 }));
 
 jest.mock("metabase/api", () => ({
+  ...jest.requireActual<typeof MetabaseApi>("metabase/api"),
   cardApi: {
     endpoints: {
       getCard: { name: "getCard" },
@@ -47,8 +50,8 @@ jest.mock("metabase/api/utils/run-rtk-endpoint", () => ({
 }));
 
 jest.mock("metabase/redux/tables", () => ({
-  fetchTableMetadata: jest.fn(({ id }) => ({
-    type: "fetchTableMetadata",
+  fetchTableMetadataAndForeignKeys: jest.fn(({ id }) => ({
+    type: "fetchTableMetadataAndForeignKeys",
     payload: id,
   })),
 }));
@@ -57,7 +60,9 @@ jest.mock("metabase/metadata-store", () => ({
   selectMetadataProviderUnfiltered: jest.fn(),
 }));
 
-export const mockFetchTableMetadata = jest.mocked(fetchTableMetadata);
+export const mockFetchTableMetadataAndForeignKeys = jest.mocked(
+  fetchTableMetadataAndForeignKeys,
+);
 export const mockSelectCard = jest.mocked(selectCard);
 export const mockSelectTableQueryMetadata = jest.mocked(
   selectTableQueryMetadata,
@@ -97,9 +102,12 @@ export const TEST_DATASET_QUERY = createMockDatasetQuery([
   { "source-table": 1 },
 ]);
 
-export const mockPropsStore = (reduxStore: SdkStore) =>
+export const mockPropsStore = (
+  reduxStore: SdkStore,
+  dataApp?: { name: string; isDev?: boolean },
+) =>
   mockUseMetabaseProviderPropsStore.mockReturnValue({
-    state: { internalProps: { reduxStore }, props: null },
+    state: { internalProps: { reduxStore, dataApp }, props: null },
     store: ensureMetabaseProviderPropsStore(),
   });
 
@@ -134,15 +142,19 @@ export function createDeferred<TValue>() {
   return { promise, resolve, reject };
 }
 
+/** The entity ID a published "Orders question" (card 41) resolves from. */
+export const PUBLISHED_QUESTION_ENTITY_ID = "ordersQuestionEntity1";
+
 export const resetTestState = (): void => {
   jest.clearAllMocks();
-  mockRunRtkEndpoint.mockResolvedValue(undefined);
-
-  // One fixture drives the provider and both cache lookups.
-  const metadata = TEST_METADATA as unknown as Lib.Metadata;
+  mockRunRtkEndpoint.mockImplementation(async (request) =>
+    isObject(request) && request.id === PUBLISHED_QUESTION_ENTITY_ID
+      ? TEST_METADATA.questions[41]
+      : undefined,
+  );
 
   mockSelectMetadataProviderUnfiltered.mockImplementation(
-    (_state, databaseId) => Lib.metadataProvider(databaseId, metadata),
+    (_state, databaseId) => Lib.metadataProvider(databaseId, TEST_JS_METADATA),
   );
   // The RTK-generated selectors carry the whole endpoint map in their types,
   // which a fixture cannot satisfy. Only `data` is read from the result.

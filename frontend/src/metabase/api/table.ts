@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import type { ThunkAction, UnknownAction } from "@reduxjs/toolkit";
 
 import type {
@@ -76,13 +77,14 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, { id }) =>
+      invalidatesTags: (_, error, { id, collection_id }) =>
         invalidateTags(error, [
           idTag("table", id),
           tag("database"),
           tag("card"),
           tag("dataset"),
           listTag("erd"),
+          ...(collection_id !== undefined ? [listTag("table")] : []),
         ]),
       onQueryStarted: async (
         { id, ...body },
@@ -265,6 +267,7 @@ export const tableApi = Api.injectEndpoints({
 
 export const {
   useListTablesQuery,
+  useLazyListTablesQuery,
   useGetTableQuery,
   useLazyGetTableQuery,
   useGetTableQueryMetadataQuery,

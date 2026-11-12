@@ -1,7 +1,7 @@
 import { version as reactVersion, useEffect } from "react";
 
 // Raise this when the SDK bundle starts to need a newer React major.
-const MINIMUM_SUPPORTED_REACT_MAJOR_VERSION = 18;
+const MINIMUM_SUPPORTED_REACT_MAJOR_VERSION = 19;
 
 export function getHostReactMajorVersion(): number | null {
   const majorVersion = parseInt(reactVersion, 10);

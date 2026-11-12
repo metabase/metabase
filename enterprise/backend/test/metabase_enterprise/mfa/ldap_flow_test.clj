@@ -91,7 +91,7 @@
                                              :provider    "totp"
                                              :confirmed_at (t/instant)
                                              :credentials  {:secret secret}})
-            (with-redefs [sso/find-user (fn [& _] (throw (ex-info "connection refused" {})))]
+            (mt/with-dynamic-fn-redefs [sso/find-user (fn [& _] (throw (ex-info "connection refused" {})))]
               (testing "enroll re-auth with the directory down is a 400, not a 500"
                 (is (=? {:errors {:password some?}}
                         (mt/client session-key :post 400 "ee/mfa/enroll"

@@ -1,0 +1,7 @@
+.step {
+  border-right: 1px solid var(--mb-color-border-neutral);
+}
+
+.webkitLayer {
+  will-change: transform;
+}

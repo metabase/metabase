@@ -19,6 +19,16 @@
           (is (= :yes (:permission/metabot-sql-generation perms)))
           (is (= :yes (:permission/metabot-nlq perms))))))))
 
+(deftest resolve-user-permissions-tenant-user-default-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "a tenant user gets permission/metabot :yes from the migration-seeded All tenant users row"
+      (mt/with-temporary-setting-values [metabot-advanced-permissions false]
+        (mt/with-temp [:model/Tenant {tenant-id :id} {}
+                       :model/User   {user-id :id}   {:tenant_id tenant-id}]
+          (is (= #{(u/the-id (perms/all-external-users-group))}
+                 (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)))
+          (is (= :yes (:permission/metabot (scope/resolve-user-permissions user-id)))))))))
+
 (deftest resolve-user-permissions-stored-test
   (mt/with-premium-features #{:ai-controls}
     (testing "in group-level mode a user in a group with stored permissions gets those values"

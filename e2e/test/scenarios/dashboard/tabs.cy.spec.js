@@ -9,9 +9,19 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { createMockDashboardCard } from "metabase-types/api/mocks";
+import {
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
-const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+
+const ORDERS_QUESTION = {
+  name: "Orders question",
+  query: {
+    "source-table": ORDERS_ID,
+  },
+};
 
 const DASHBOARD_DATE_FILTER = {
   id: "1",
@@ -57,36 +67,6 @@ describe("scenarios > dashboard > tabs", () => {
     cy.signInAsAdmin();
   });
 
-  it("should only display cards on the selected tab", () => {
-    // Create new tab
-    H.visitDashboardAndCreateTab({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      save: false,
-    });
-
-    cy.findByRole("heading", {
-      name: "Create a new question or browse your collections for an existing one.",
-    }).should("exist");
-    H.dashboardGrid().should("not.exist");
-
-    // Add card to second tab
-    H.openQuestionsSidebar();
-    H.sidebar().within(() => {
-      cy.findByText("Orders, Count").click();
-    });
-    H.saveDashboard();
-    cy.url().should("match", /\d+\-tab\-2/); // id is not stable
-
-    // Go back to first tab
-    H.goToTab("Tab 1");
-    H.dashboardCards().within(() => {
-      cy.findByText("Orders, count").should("not.exist");
-    });
-    H.dashboardCards().within(() => {
-      cy.findByText("Orders").should("be.visible");
-    });
-  });
-
   it("should only display filters mapped to cards on the selected tab", () => {
     H.createDashboardWithTabs({
       tabs: [TAB_1, TAB_2],
@@ -101,6 +81,8 @@ describe("scenarios > dashboard > tabs", () => {
           id: -1,
           card_id: ORDERS_QUESTION_ID,
           dashboard_tab_id: TAB_1.id,
+          size_x: 10,
+          size_y: 4,
           parameter_mappings: [
             createDateFilterMapping({ card_id: ORDERS_QUESTION_ID }),
             createTextFilterMapping({ card_id: ORDERS_BY_YEAR_QUESTION_ID }),
@@ -110,6 +92,8 @@ describe("scenarios > dashboard > tabs", () => {
           id: -2,
           card_id: ORDERS_BY_YEAR_QUESTION_ID,
           dashboard_tab_id: TAB_2.id,
+          size_x: 10,
+          size_y: 4,
           parameter_mappings: [
             createDateFilterMapping({ card_id: ORDERS_BY_YEAR_QUESTION_ID }),
             createNumberFilterMapping({ card_id: ORDERS_BY_YEAR_QUESTION_ID }),
@@ -121,6 +105,15 @@ describe("scenarios > dashboard > tabs", () => {
     assertFiltersVisibility({
       visible: [DASHBOARD_DATE_FILTER, DASHBOARD_TEXT_FILTER],
       hidden: [DASHBOARD_NUMBER_FILTER, DASHBOARD_LOCATION_FILTER],
+    });
+
+    cy.log("leaving edit mode should not show cards from other tabs");
+    H.dashboardGrid().within(() => {
+      cy.findByText("Orders").should("be.visible");
+      cy.findByText("Orders, Count, Grouped by Created At (year)").should(
+        "not.exist",
+      );
+      H.getDashboardCards().should("have.length", 1);
     });
 
     assertFilterValues([
@@ -167,24 +160,6 @@ describe("scenarios > dashboard > tabs", () => {
     H.dashboardGrid().within(() => {
       cy.findByText("New heading").should("exist");
       H.getDashboardCards().should("have.length", 2);
-    });
-  });
-
-  it("should allow undoing a tab deletion", () => {
-    H.visitDashboardAndCreateTab({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      save: false,
-    });
-
-    // Delete first tab
-    H.deleteTab("Tab 1");
-    cy.findByRole("tab", { name: "Tab 1" }).should("not.exist");
-
-    // Undo then go back to first tab
-    H.undo();
-    H.goToTab("Tab 1");
-    H.dashboardCards().within(() => {
-      cy.findByText("Orders").should("be.visible");
     });
   });
 
@@ -366,7 +341,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
   });
 
-  it("should only fetch cards on the current tab", () => {
+  it("should only display and fetch cards on the current tab, also in public and embedded dashboards", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
@@ -375,8 +350,12 @@ describe("scenarios > dashboard > tabs", () => {
       save: false,
     });
 
+    cy.findByRole("heading", {
+      name: "Create a new question or browse your collections for an existing one.",
+    }).should("exist");
+    H.dashboardGrid().should("not.exist");
+
     // Add card to second tab
-    cy.icon("pencil").click();
     H.openQuestionsSidebar();
     H.sidebar().within(() => {
       cy.findByText("Orders, Count").click();
@@ -385,6 +364,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.wait("@cardQuery");
 
     H.saveDashboard();
+    cy.url().should("match", /\d+\-tab\-2/); // id is not stable
 
     cy.wait("@saveDashboardCards").then(({ response }) => {
       cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
@@ -451,6 +431,10 @@ describe("scenarios > dashboard > tabs", () => {
     // Go back to first tab, expect no additional queries
     H.goToTab("Tab 1");
     cy.findAllByTestId("dashcard").contains("37.65");
+    H.dashboardCards().within(() => {
+      cy.findByText("Orders").should("be.visible");
+      cy.findByText("Orders, Count").should("not.exist");
+    });
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
 
@@ -511,39 +495,19 @@ describe("scenarios > dashboard > tabs", () => {
     H.goToTab("Tab 1");
     cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
-  });
 
-  it("should only fetch cards on the current tab of an embedded dashboard", () => {
-    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
-    H.visitDashboardAndCreateTab({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      save: false,
-    });
-
-    // Add card to second tab
-    cy.icon("pencil").click();
-    H.openQuestionsSidebar();
-    H.sidebar().within(() => {
-      cy.findByText("Orders, Count").click();
-    });
-    cy.wait("@cardQuery");
-    H.saveDashboard();
-    cy.wait("@saveDashboardCards").then(({ response }) => {
-      cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
-    });
-
+    cy.log("static embedding");
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.intercept(
       "GET",
       `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_QUESTION_ID}*`,
-      cy.spy().as("firstTabQuerySpy"),
-    ).as("firstTabQuery");
+      cy.spy().as("embedFirstTabQuerySpy"),
+    ).as("embedFirstTabQuery");
     cy.intercept(
       "GET",
       `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_COUNT_QUESTION_ID}*`,
-      cy.spy().as("secondTabQuerySpy"),
-    ).as("secondTabQuery");
+      cy.spy().as("embedSecondTabQuerySpy"),
+    ).as("embedSecondTabQuery");
 
     H.openLegacyStaticEmbeddingModal({
       resource: "dashboard",
@@ -558,19 +522,19 @@ describe("scenarios > dashboard > tabs", () => {
     H.visitIframe();
     // wait for results
     cy.findAllByTestId("dashcard").contains("37.65");
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@secondTabQuerySpy").should("not.have.been.called");
+    cy.get("@embedFirstTabQuerySpy").should("have.been.calledOnce");
+    cy.get("@embedSecondTabQuerySpy").should("not.have.been.called");
 
-    cy.wait("@firstTabQuery");
+    cy.wait("@embedFirstTabQuery");
 
     H.goToTab("Tab 2");
-    cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@secondTabQuery");
+    cy.get("@embedSecondTabQuerySpy").should("have.been.calledOnce");
+    cy.get("@embedFirstTabQuerySpy").should("have.been.calledOnce");
+    cy.wait("@embedSecondTabQuery");
 
     H.goToTab("Tab 1");
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
+    cy.get("@embedFirstTabQuerySpy").should("have.been.calledOnce");
+    cy.get("@embedSecondTabQuerySpy").should("have.been.calledOnce");
   });
 
   it("should apply filter and show loading spinner when changing tabs (#33767)", () => {
@@ -668,7 +632,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 2");
   });
 
-  it("should allow users to duplicate and delete tabs more than once (#45364)", () => {
+  it("should allow users to duplicate, delete and undo deleting tabs more than once (#45364)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
 
@@ -684,6 +648,21 @@ describe("scenarios > dashboard > tabs", () => {
     cy.findAllByRole("tab").eq(2).should("have.text", "Copy of Tab 1");
 
     H.deleteTab("Tab 1");
+    cy.findByRole("tab", { name: "Tab 1" }).should("not.exist");
+
+    cy.log("undo restores the deleted tab with its cards");
+    H.undo();
+    H.goToTab("Tab 1");
+    H.dashboardCards().within(() => {
+      cy.findByText("Orders").should("be.visible");
+    });
+
+    // Delete Tab 1 while another tab is selected, as before the undo
+    cy.findAllByRole("tab", { name: "Copy of Tab 1" })
+      .should("have.length", 2)
+      .last()
+      .click();
+    H.deleteTab("Tab 1");
 
     cy.findAllByRole("tab").eq(0).should("have.text", "Copy of Tab 1");
     cy.findAllByRole("tab").eq(1).should("have.text", "Copy of Tab 1");
@@ -697,7 +676,36 @@ describe("scenarios > dashboard > tabs", () => {
   });
 });
 
-describe("scenarios > dashboard > tabs", () => {
+const CATEGORY_PARAMETER = createMockParameter({
+  id: "2",
+  name: "Category",
+  type: "string/=",
+});
+
+const PRODUCTS_QUESTION_DETAILS = {
+  name: "Products",
+  query: { "source-table": PRODUCTS_ID },
+};
+
+function createMappedDashcard(mappedQuestionId) {
+  return createMockDashboardCard({
+    id: 1,
+    card_id: mappedQuestionId,
+    parameter_mappings: [
+      {
+        parameter_id: CATEGORY_PARAMETER.id,
+        card_id: mappedQuestionId,
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+      },
+    ],
+    row: 0,
+    col: 0,
+    size_x: 10,
+    size_y: 5,
+  });
+}
+
+describe("scenarios > dashboard > tabs > snowplow", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -709,23 +717,7 @@ describe("scenarios > dashboard > tabs", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should send snowplow events when dashboard tabs are created and deleted", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    H.editDashboard();
-    H.createNewTab();
-    H.saveDashboard();
-    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" });
-    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_created" });
-
-    H.editDashboard();
-    H.deleteTab("Tab 2");
-    H.saveDashboard();
-    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" }, 2);
-    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_deleted" });
-  });
-
-  it("should send snowplow events when cards are moved between tabs", () => {
+  it("should send snowplow events when tabs are created and deleted and cards are moved between them", () => {
     const cardMovedEventName = "card_moved_to_tab";
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -737,8 +729,406 @@ describe("scenarios > dashboard > tabs", () => {
     H.goToTab("Tab 1");
 
     H.moveDashCardToTab({ tabName: "Tab 2" });
-
     H.expectUnstructuredSnowplowEvent({ event: cardMovedEventName });
+
+    H.saveDashboard();
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" });
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_created" });
+
+    H.editDashboard();
+    H.deleteTab("Tab 1");
+    H.saveDashboard();
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" }, 2);
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_deleted" });
+  });
+
+  it("should allow the user to duplicate a dashcard and a tab", () => {
+    H.createQuestion(PRODUCTS_QUESTION_DETAILS).then(
+      ({ body: { id: mappedQuestionId } }) => {
+        H.createDashboard({ parameters: [CATEGORY_PARAMETER] }).then(
+          ({ body: { id: dashboardId } }) => {
+            cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+              dashcards: [createMappedDashcard(mappedQuestionId)],
+            });
+            H.visitDashboard(dashboardId);
+          },
+        );
+      },
+    );
+
+    cy.log("duplicate a dashcard");
+    cy.findByLabelText("Edit dashboard").click();
+
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Duplicate")
+      .click();
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_card_duplicated" });
+
+    // check that the new card loads _before_ saving
+    cy.findAllByText("Products").should("have.length", 2);
+    // Also confirm with the card content (VIZ-289)
+    cy.findAllByText("Small Marble Shoes").should("have.length", 2);
+
+    H.saveDashboard();
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" });
+
+    cy.log("duplicate a tab");
+    cy.findByLabelText("Edit dashboard").click();
+
+    H.duplicateTab("Tab 1");
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_duplicated" });
+    H.getDashboardCard().within(() => {
+      cy.findByText("Products").should("exist");
+      cy.findByText("Category").should("exist");
+      cy.findByText(/(Problem|Error)/i).should("not.exist");
+    });
+    H.saveDashboard();
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" }, 2);
+
+    cy.log("the filter applies to the duplicated cards on both tabs");
+    H.assertTabSelected("Copy of Tab 1");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+    });
+    cy.button("Add filter").click();
+
+    cy.findAllByText("Incredible Bronze Pants").should("have.length", 2);
+
+    H.goToTab("Tab 1");
+    cy.findAllByText("Incredible Bronze Pants").should("have.length", 2);
+  });
+});
+
+describe("scenarios > dashboard > tabs > add a question to an empty dashboard with tabs (metabase#61013)", () => {
+  const dashboardName = "Dashboard 61013";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createDashboardWithTabs({
+      name: dashboardName,
+
+      tabs: [
+        {
+          id: 1,
+          name: "Tab 1",
+        },
+        {
+          id: 2,
+          name: "Tab 2",
+        },
+      ],
+    });
+  });
+
+  it("should only add one card and save correctly to the dashboard when the dashboard is empty but has multiple tabs (metabase#61013)", () => {
+    H.createQuestion(ORDERS_QUESTION).then(({ body }) =>
+      H.visitQuestion(body.id),
+    );
+
+    cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Add to dashboard").click();
+
+    H.modal().within(() => {
+      cy.findByPlaceholderText("Search…").type(dashboardName);
+      cy.findByText(dashboardName).click();
+      cy.findByTestId("entity-picker-select-button").click();
+    });
+
+    H.getDashboardCards().should("have.length", 1);
+    H.getDashboardCard(0).within(() => {
+      cy.findByText("Orders question").should("be.visible");
+      cy.findByText("Showing first 2,000 rows").should("be.visible");
+    });
+
+    cy.findByTestId("edit-bar")
+      .findByText("You're editing this dashboard.")
+      .should("be.visible");
+
+    H.saveDashboard();
+
+    H.getDashboardCards().should("have.length", 1);
+    H.getDashboardCard(0).within(() => {
+      cy.findByText("Orders question").should("be.visible");
+      cy.findByText("Showing first 2,000 rows").should("be.visible");
+    });
+  });
+
+  it("should not wait for cards to load before switching to edit mode", () => {
+    slowDownCardQuery();
+
+    // visitQuestion waits for the query, which we don't want here.
+    // we just want to visit the dashboard directly
+    H.createQuestion(ORDERS_QUESTION, { visitQuestion: false }).then(
+      ({ body }) => cy.visit(`/question/${body.id}`),
+    );
+
+    cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Add to dashboard").click();
+
+    H.modal().within(() => {
+      cy.findByPlaceholderText("Search…").type(dashboardName);
+      cy.findByText(dashboardName).click();
+      cy.findByTestId("entity-picker-select-button").click();
+    });
+
+    cy.findByTestId("edit-bar")
+      .findByText("You're editing this dashboard.")
+      .should("be.visible");
+    H.getDashboardCard(0)
+      .findByTestId("loading-indicator")
+      .should("be.visible");
+  });
+});
+
+describe("scenarios > dashboard > tabs > query reruns when switching tabs (metabase#39863)", () => {
+  const DATE_FILTER = {
+    id: "2",
+    name: "Date filter",
+    slug: "filter-date",
+    type: "date/all-options",
+  };
+
+  const CREATED_AT_FIELD_REF = [
+    "field",
+    ORDERS.CREATED_AT,
+    { "base-type": "type/DateTime" },
+  ];
+
+  const ID_FILTER = {
+    id: "3",
+    name: "ID filter",
+    slug: "filter-id",
+    type: "id",
+  };
+
+  const USER_ID_FILTER = {
+    id: "4",
+    name: "User ID filter",
+    slug: "filter-user-id",
+    type: "id",
+  };
+
+  const PRODUCT_ID_FILTER = {
+    id: "5",
+    name: "Product ID filter",
+    slug: "filter-product-id",
+    type: "id",
+  };
+
+  const SUBTOTAL_FILTER = {
+    id: "6",
+    name: "Subtotal filter",
+    slug: "filter-subtotal",
+    type: "number/<=",
+  };
+
+  const TOTAL_FILTER = {
+    id: "7",
+    name: "Total filter",
+    slug: "filter-total",
+    type: "number/<=",
+  };
+
+  const TAX_FILTER = {
+    id: "8",
+    name: "Tax filter",
+    slug: "filter-tax",
+    type: "number/<=",
+  };
+
+  const DISCOUNT_FILTER = {
+    id: "9",
+    name: "Discount filter",
+    slug: "filter-discount",
+    type: "number/<=",
+  };
+
+  const QUANTITY_FILTER = {
+    id: "10",
+    name: "Quantity filter",
+    slug: "filter-quantity",
+    type: "number/<=",
+  };
+
+  const ID_FIELD_REF = ["field", ORDERS.ID, { "base-type": "type/BigInteger" }];
+
+  const USER_ID_FIELD_REF = [
+    "field",
+    ORDERS.USER_ID,
+    { "base-type": "type/BigInteger" },
+  ];
+
+  const PRODUCT_ID_FIELD_REF = [
+    "field",
+    ORDERS.PRODUCT_ID,
+    { "base-type": "type/BigInteger" },
+  ];
+
+  const SUBTOTAL_FIELD_REF = [
+    "field",
+    ORDERS.SUBTOTAL,
+    { "base-type": "type/Float" },
+  ];
+
+  const TOTAL_FIELD_REF = [
+    "field",
+    ORDERS.TOTAL,
+    { "base-type": "type/Float" },
+  ];
+
+  const TAX_FIELD_REF = ["field", ORDERS.TAX, { "base-type": "type/Float" }];
+
+  const DISCOUNT_FIELD_REF = [
+    "field",
+    ORDERS.DISCOUNT,
+    { "base-type": "type/Float" },
+  ];
+
+  const QUANTITY_FIELD_REF = [
+    "field",
+    ORDERS.QUANTITY,
+    { "base-type": "type/Number" },
+  ];
+
+  const DASHCARD_WITH_9_FILTERS = {
+    card_id: ORDERS_QUESTION_ID,
+    parameter_mappings: [
+      {
+        parameter_id: DATE_FILTER.id,
+        card_id: ORDERS_QUESTION_ID,
+        target: ["dimension", CREATED_AT_FIELD_REF],
+      },
+      {
+        parameter_id: ID_FILTER.id,
+        card_id: ORDERS_QUESTION_ID,
+        target: ["dimension", ID_FIELD_REF],
+      },
+      {
+        parameter_id: USER_ID_FILTER.id,
+        card_id: ORDERS_QUESTION_ID,
+        target: ["dimension", USER_ID_FIELD_REF],
+      },
+      {
+        parameter_id: PRODUCT_ID_FILTER.id,
+        card_id: ORDERS_QUESTION_ID,
+        target: ["dimension", PRODUCT_ID_FIELD_REF],
+      },
+      {
+        parameter_id: SUBTOTAL_FILTER.id,
+        card_id: ORDERS_QUESTION_ID,
+        target: ["dimension", SUBTOTAL_FIELD_REF],
+      },
+      {
+        parameter_id: TOTAL_FILTER.id,
+        card_id: ORDERS_QUESTION_ID,
+        target: ["dimension", TOTAL_FIELD_REF],
+      },
+      {
+        parameter_id: TAX_FILTER.id,
+        card_id: ORDERS_QUESTION_ID,
+        target: ["dimension", TAX_FIELD_REF],
+      },
+      {
+        parameter_id: DISCOUNT_FILTER.id,
+        card_id: ORDERS_QUESTION_ID,
+        target: ["dimension", DISCOUNT_FIELD_REF],
+      },
+      {
+        parameter_id: QUANTITY_FILTER.id,
+        card_id: ORDERS_QUESTION_ID,
+        target: ["dimension", QUANTITY_FIELD_REF],
+      },
+    ],
+    size_x: 10,
+    size_y: 4,
+  };
+
+  function setDateFilter() {
+    cy.findByLabelText("Date filter").click();
+    H.popover()
+      .findByText(/Previous 12 months/i)
+      .click();
+  }
+
+  function assertNoLoadingSpinners() {
+    H.dashboardGrid()
+      .findAllByTestId("loading-indicator")
+      .should("have.length", 0);
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+  });
+
+  it("should not rerun queries just because there are 9 or more attached filters to a dash-card", () => {
+    H.createDashboardWithTabs({
+      tabs: [TAB_1, TAB_2],
+      parameters: [
+        DATE_FILTER,
+        ID_FILTER,
+        USER_ID_FILTER,
+        PRODUCT_ID_FILTER,
+        SUBTOTAL_FILTER,
+        TOTAL_FILTER,
+        TAX_FILTER,
+        DISCOUNT_FILTER,
+        QUANTITY_FILTER,
+      ],
+      dashcards: [
+        createMockDashboardCard({
+          ...DASHCARD_WITH_9_FILTERS,
+          id: -1,
+          dashboard_tab_id: TAB_1.id,
+        }),
+        createMockDashboardCard({
+          ...DASHCARD_WITH_9_FILTERS,
+          id: -2,
+          dashboard_tab_id: TAB_2.id,
+        }),
+      ],
+    }).then((dashboard) => H.visitDashboard(dashboard.id));
+
+    // Initial query for 1st tab
+    cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
+    cy.get("@dashcardQuery.all").should("have.length", 1);
+
+    // Initial query for 2nd tab
+    H.goToTab(TAB_2.name);
+    cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
+    cy.get("@dashcardQuery.all").should("have.length", 2);
+
+    // No parameters change, no query rerun
+    H.goToTab(TAB_1.name);
+    assertNoLoadingSpinners();
+    cy.get("@dashcardQuery.all").should("have.length", 2);
+
+    // Rerun 1st tab query with new parameters
+    setDateFilter();
+    cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
+    cy.get("@dashcardQuery.all").should("have.length", 3);
+
+    // Rerun 2nd tab query with new parameters
+    H.goToTab(TAB_2.name);
+    cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
+    cy.get("@dashcardQuery.all").should("have.length", 4);
+
+    // No parameters change, no query rerun
+    H.goToTab(TAB_1.name);
+    H.goToTab(TAB_2.name);
+    assertNoLoadingSpinners();
+    cy.get("@dashcardQuery.all").should("have.length", 4);
   });
 });
 
@@ -800,16 +1190,23 @@ const createNumberFilterMapping = ({ card_id }) => {
 };
 
 function assertFiltersVisibility({ visible = [], hidden = [] }) {
-  cy.findByTestId("dashboard-parameters-widget-container", () => {
-    visible.forEach((filter) => cy.findByText(filter.name).should("exist"));
-    hidden.forEach((filter) => cy.findByText(filter.name).should("not.exist"));
+  // A filter with a value shows it next to its name, e.g. "Text filter: fa"
+  const nameMatcher = (filter) => new RegExp(`^${filter.name}`);
+
+  cy.findByTestId("dashboard-parameters-widget-container").within(() => {
+    visible.forEach((filter) =>
+      cy.findByText(nameMatcher(filter)).should("exist"),
+    );
+    hidden.forEach((filter) =>
+      cy.findByText(nameMatcher(filter)).should("not.exist"),
+    );
   });
 
   // Ensure all filters are visible in edit mode
   H.editDashboard();
-  cy.findByTestId("edit-dashboard-parameters-widget-container", () => {
+  cy.findByTestId("edit-dashboard-parameters-widget-container").within(() => {
     [...visible, ...hidden].forEach((filter) =>
-      cy.findByText(filter.name).should("exist"),
+      cy.findByText(nameMatcher(filter)).should("exist"),
     );
   });
 
@@ -821,5 +1218,13 @@ function assertFilterValues(filterValues) {
     const displayValue = value === undefined ? "" : value.toString();
     const filterQueryParameter = `${filter.slug}=${displayValue}`;
     cy.location("search").should("contain", filterQueryParameter);
+  });
+}
+
+function slowDownCardQuery() {
+  return cy.intercept("POST", "/api/card/*/query", (req) => {
+    req.on("response", (res) => {
+      res.setDelay(300000);
+    });
   });
 }

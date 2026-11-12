@@ -21,6 +21,7 @@ import type {
   RowValues,
 } from "metabase-types/api/dataset";
 
+import type { ComparisonDisplay } from "./compute";
 import { COMPARISON_TYPES } from "./constants";
 
 export const formatChange = (
@@ -233,6 +234,26 @@ export function getComparisons(
     ? filteredComparisons
     : getDefaultComparison(series, settings);
 }
+
+export const getChangeText = ({
+  isChanged,
+  isMissing,
+  signedPercent,
+  valueDisplay,
+}: ComparisonDisplay) => {
+  if (isChanged) {
+    return valueDisplay != null && valueDisplay !== ""
+      ? `${signedPercent} (${valueDisplay})`
+      : signedPercent;
+  }
+
+  // the missing display value carries its own parentheses: "N/A (No data)"
+  if (isMissing) {
+    return `${signedPercent} ${valueDisplay}`;
+  }
+
+  return signedPercent;
+};
 
 type getMaxPeriodsAgoParameters = {
   cols: DatasetColumn[];

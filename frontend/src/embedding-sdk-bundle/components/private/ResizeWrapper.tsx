@@ -16,7 +16,7 @@ interface ResizeWrapperProps extends BoxProps {
   /** Content to be wrapped and resized */
   children: ReactNode;
   /** Optional ref to attach to the inner div that receives the measured dimensions */
-  ref?: RefObject<HTMLDivElement>;
+  ref?: RefObject<HTMLDivElement | null>;
 }
 
 /**

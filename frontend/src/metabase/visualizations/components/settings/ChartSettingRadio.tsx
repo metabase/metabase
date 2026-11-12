@@ -7,6 +7,8 @@ interface ChartSettingRadioProps {
   options: { name: string; value: string | null }[];
   value: string | null;
   className?: string;
+  disabled?: boolean;
+  description?: string;
   onChange: (value: unknown) => void;
 }
 
@@ -15,6 +17,8 @@ export const ChartSettingRadio = ({
   onChange,
   options: rawOptions = [],
   className,
+  disabled,
+  description,
 }: ChartSettingRadioProps) => {
   const options: { name: string; value: string }[] = useMemo(() => {
     return rawOptions.map(({ name, value }) => ({
@@ -28,6 +32,7 @@ export const ChartSettingRadio = ({
       value={encodeWidgetValue(value)}
       className={className}
       onChange={(value) => onChange(decodeWidgetValue(value))}
+      description={description}
     >
       <Stack gap="xxs">
         {options.map(({ name, value: optionValue }) => (
@@ -42,6 +47,7 @@ export const ChartSettingRadio = ({
               </Text>
             }
             value={optionValue}
+            disabled={disabled}
             styles={{
               inner: { alignSelf: "center" },
             }}

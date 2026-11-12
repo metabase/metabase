@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
+import { type JSX, useMemo } from "react";
 
 import {
   useListDatabasesQuery,

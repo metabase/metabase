@@ -1,5 +1,6 @@
 import { capitalize } from "inflection";
 
+import { createAction } from "./api";
 import {
   commandPalette,
   commandPaletteButton,
@@ -18,14 +19,6 @@ export function setActionsEnabledForDB(dbId, enabled = true) {
 export function fillActionQuery(query) {
   NativeEditor.type(query);
 }
-/**
- *
- * @param {import("metabase/actions/types").CreateQueryActionParams} actionDetails
- */
-export function createAction(actionDetails) {
-  return cy.request("POST", "/api/action", actionDetails);
-}
-
 /**
  * create a single implicit action of the given kind for the given model
  *

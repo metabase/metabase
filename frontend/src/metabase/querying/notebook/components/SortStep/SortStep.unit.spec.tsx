@@ -22,7 +22,6 @@ function createQueryWithOrderBy(direction: Lib.OrderByDirection = "asc") {
         orderBys: [
           {
             type: "column",
-            sourceName: "ORDERS",
             name: "CREATED_AT",
             direction,
           },

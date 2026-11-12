@@ -15,7 +15,7 @@ describe("ImpossibleToCreateModelModal (EE without token)", () => {
     expect(sqlSnippetLink).toBeInTheDocument();
     expect(sqlSnippetLink).toHaveProperty(
       "href",
-      "https://www.metabase.com/docs/latest/questions/native-editor/sql-snippets.html",
+      "https://www.metabase.com/docs/latest/questions/native-editor/snippets.html",
     );
 
     const referenceLink = screen.getByRole("link", {
@@ -35,7 +35,7 @@ describe("ImpossibleToCreateModelModal (EE without token)", () => {
     expect(sqlSnippetLink).toBeInTheDocument();
     expect(sqlSnippetLink).toHaveProperty(
       "href",
-      "https://www.metabase.com/docs/latest/questions/native-editor/sql-snippets.html",
+      "https://www.metabase.com/docs/latest/questions/native-editor/snippets.html",
     );
 
     const referenceLink = screen.getByRole("link", {

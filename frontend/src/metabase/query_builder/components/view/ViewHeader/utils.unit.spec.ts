@@ -1,19 +1,38 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
-  createMockNativeDatasetQuery,
   createMockParameter,
-  createMockTemplateTag,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
-import {
-  createAdHocNativeCard,
-  createSampleDatabase,
-  createSavedNativeCard,
-  createSavedStructuredCard,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { canExploreResults } from "./utils";
+
+function createSavedStructuredCard() {
+  return createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  });
+}
+
+function createAdHocNativeCard() {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+  });
+}
+
+function createSavedNativeCard() {
+  return createMockCard({
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+  });
+}
 
 describe("canExploreResults", () => {
   const metadata = createMockMetadata({
@@ -32,16 +51,14 @@ describe("canExploreResults", () => {
 
   it("should be false with parameters", () => {
     const card = createMockCard({
-      dataset_query: createMockNativeDatasetQuery({
-        type: "native",
-        native: {
-          query: "select * from order where id > {{min_id}}",
-          "template-tags": {
-            min_id: createMockTemplateTag({
-              type: "text",
-              name: "min_id",
-              "display-name": "Min ID",
-            }),
+      query_type: "native",
+      dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+        query: "select * from order where id > {{min_id}}",
+        templateTags: {
+          min_id: {
+            type: "text",
+            name: "min_id",
+            "display-name": "Min ID",
           },
         },
       }),

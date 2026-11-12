@@ -9,4 +9,5 @@
   com.amazonaws/aws-java-sdk-core     {:mvn/version "1.12.792"
                                        ;; pinned in and resolved from /deps.edn
                                        :exclusions [com.fasterxml.jackson.core/jackson-core
-                                                    com.fasterxml.jackson.core/jackson-databind]}}}
+                                                    com.fasterxml.jackson.core/jackson-databind
+                                                    com.fasterxml.jackson.dataformat/jackson-dataformat-cbor]}}}

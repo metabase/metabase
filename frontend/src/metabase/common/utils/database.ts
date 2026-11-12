@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card, Dashboard, Database, DatabaseId } from "metabase-types/api";
 
 export const isDbModifiable = (
@@ -34,16 +33,16 @@ export const hasActionsEnabled = (database: Pick<Database, "settings">) => {
   return Boolean(database.settings?.["database-enable-actions"]);
 };
 
+export const hasNativeWritePermissions = (
+  database: Pick<Database, "native_permissions">,
+) => {
+  return database.native_permissions === "write";
+};
+
 export const hasWritableConnectionDetails = (
   database: Pick<Database, "write_data_details">,
 ) => {
   return database.write_data_details != null;
-};
-
-export const hasAdminConnectionDetails = (
-  database: Pick<Database, "admin_details">,
-) => {
-  return database.admin_details != null;
 };
 
 export const hasDbRoutingEnabled = (
@@ -103,13 +102,10 @@ export function hasTableEditingEnabled(database: Pick<Database, "settings">) {
 }
 
 /**
- * Match a database by exact (case-sensitive) name, ignoring the virtual
- * "Saved Questions" database; on a name collision the lowest id wins.
+ * Match a database by exact (case-sensitive) name; on a name collision the
+ * lowest id wins.
  */
 export const findDatabaseByName = (databases: Database[], name: string) =>
   databases
-    .filter(
-      (database) =>
-        database.name === name && database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID,
-    )
+    .filter((database) => database.name === name)
     .sort((a, b) => a.id - b.id)[0];

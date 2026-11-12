@@ -84,7 +84,9 @@ export const GroupControlsTogether = ({
         );
         currentGroup = [];
       } else if (
-        nextChild.props?.["data-group"] === GROUP_ATTRIBUTES.separate
+        // Schedule controls tag siblings with a `data-group` attribute.
+        (nextChild.props as { "data-group"?: string })?.["data-group"] ===
+        GROUP_ATTRIBUTES.separate
       ) {
         // If the next child has a "separate" attribute, break the current group cycle
         // and start a new one

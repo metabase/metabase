@@ -1,5 +1,6 @@
 ---
 title: Content verification
+summary: Mark items as verified to show they're accurate and up to date. Verified items get a checkmark and rank higher in search.
 ---
 
 # Content verification

@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { GROUPS_BASE_PATH } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
   useGetGroupTableAccessPolicyQuery,
@@ -8,7 +7,9 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { getGroupsBasePath } from "metabase/permissions";
 import { useDispatch, useSelector } from "metabase/redux";
+import { Modal } from "metabase/ui";
 import { parseIntParam } from "metabase/urls";
 import { getGroupTableAccessPolicy } from "metabase-enterprise/sandboxes/selectors";
 import type { GroupTableAccessPolicy } from "metabase-types/api";
@@ -16,7 +17,7 @@ import type { GroupTableAccessPolicy } from "metabase-types/api";
 import { updatePolicy, updateTableSandboxingPermission } from "../actions";
 import EditSandboxingModal from "../components/EditSandboxingModal";
 
-const EditSandboxingModalContainer = ({
+const EditSandboxingModalBody = ({
   params,
   location,
   onClose,
@@ -77,7 +78,7 @@ const EditSandboxingModalContainer = ({
         entityId: { databaseId, schemaName: params.schemaName, tableId },
         // the modal is mounted under both permissions editor views; only
         // permission post-actions read the view
-        view: location.pathname.startsWith(GROUPS_BASE_PATH)
+        view: location.pathname.startsWith(getGroupsBasePath())
           ? "group"
           : "database",
       }),
@@ -95,6 +96,26 @@ const EditSandboxingModalContainer = ({
     />
   );
 };
+
+const EditSandboxingModalContainer = ({
+  params,
+  location,
+  onClose,
+}: ModalComponentProps) => (
+  <Modal
+    opened
+    density="relaxed"
+    withCloseButton={false}
+    title={t`Configure row and column security for this table`}
+    onClose={onClose}
+  >
+    <EditSandboxingModalBody
+      params={params}
+      location={location}
+      onClose={onClose}
+    />
+  </Modal>
+);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EditSandboxingModalContainer;

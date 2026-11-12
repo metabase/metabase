@@ -27,7 +27,7 @@
     (mt/with-temp [:model/Database db {:details (#'sample-data/try-to-extract-sample-database! :sqlite)
                                        :engine  :sqlite
                                        :name    "Sample Database"}]
-      (sync/sync-database! db)
+      (sync/sync-database! (:id db))
       (thunk db))))
 
 (defn- table-id [db table-name]

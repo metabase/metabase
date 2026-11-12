@@ -3,7 +3,7 @@ import { t } from "ttag";
 import type { EmbeddingDisplayOptions } from "metabase/embedding/types";
 import { Stack, Switch } from "metabase/ui";
 
-import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
+import { DisplayOptionSection } from "./DisplayOptionSection";
 
 interface DownloadSettingsProps {
   displayOptions: EmbeddingDisplayOptions;

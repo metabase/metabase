@@ -10,44 +10,7 @@ describe("scenarios > question > trendline", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
   }
 
-  it("displays trendline when there are multiple numeric outputs (for simple question) (metabase#12781)", () => {
-    setup({
-      name: "12781",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [
-          ["avg", ["field", ORDERS.SUBTOTAL, null]],
-          ["sum", ["field", ORDERS.TOTAL, null]],
-        ],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-      },
-      display: "line",
-    });
-
-    // Change settings to trendline
-    H.openVizSettingsSidebar();
-    H.leftSidebar().within(() => {
-      cy.findByText("Display").click();
-      cy.findByText("Trend line").click();
-    });
-
-    // Check graph is still there
-    cy.get("rect");
-
-    // Remove sum of total
-    H.leftSidebar().within(() => {
-      cy.findByText("Data").click();
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      cy.icon("close").last().click({ force: true });
-      cy.findByText("Done").click();
-    });
-
-    // Graph should still exist
-    cy.findByPlaceholderText("Created At").should("not.exist");
-    cy.get("rect");
-  });
-
-  it("should handle per-series trend line settings", () => {
+  it("should handle per-series trend line settings (metabase#12781)", () => {
     setup({
       name: "Per-series trend line settings",
       query: {
@@ -65,16 +28,107 @@ describe("scenarios > question > trendline", () => {
       cy.findByText("Display").click();
       cy.findByText("Trend line").click();
     });
+
+    cy.log("global customization is hidden when there are multiple series");
+    H.leftSidebar().within(() => {
+      cy.findByText("Trend line color").should("not.exist");
+      cy.findByText("Trend line style").should("not.exist");
+    });
     H.trendLine().should("have.length", 2);
 
+    cy.log("trend lines are customized in the series settings popover");
     H.leftSidebar().within(() => {
       cy.findByText("Data").click();
       cy.findByTestId("settings-avg").click();
     });
     H.popover().within(() => {
+      cy.findByText("Trend line color").should("be.visible");
+      cy.findByText("Trend line style").should("be.visible");
+      cy.findByTestId("chart-settings-widget-trendline.style")
+        .icon("line_style_dashed")
+        .click();
+    });
+    H.trendLine().filter("[stroke-dasharray]").should("have.length", 1);
+
+    cy.log("pick a custom color for this series trend line");
+    H.leftSidebar().findByTestId("settings-avg").click();
+    // #8A5EB0 is the default trend line color, the shade of the avg series
+    H.popover().findByLabelText("#8A5EB0").click();
+    cy.findByTestId("color-selector-popover")
+      .findByLabelText("#509EE3")
+      .click();
+    H.trendLine()
+      .filter("[stroke='#509EE3']")
+      .should("have.length", 1)
+      .and("have.attr", "stroke-dasharray");
+
+    cy.log("hiding the series trend line hides its customization settings");
+    H.leftSidebar().findByTestId("settings-avg").click();
+    H.popover().findByText("Show trend line for this series").click();
+    H.trendLine().should("have.length", 1);
+    H.leftSidebar().findByTestId("settings-avg").click();
+    H.popover().within(() => {
+      cy.findByText("Show trend line for this series").should("be.visible");
+      cy.findByText("Trend line color").should("not.exist");
+      cy.findByText("Trend line style").should("not.exist");
       cy.findByText("Show trend line for this series").click();
     });
+    H.trendLine().should("have.length", 2);
+    // The popover closes on Escape only when the key event starts inside it
+    H.popover()
+      .findByRole("switch", { name: "Show trend line for this series" })
+      .focus();
+    cy.realPress("Escape");
+    cy.get("[data-element-id=mantine-popover]")
+      .filter(":visible")
+      .should("not.exist");
+
+    H.leftSidebar().within(() => {
+      cy.findByTestId("remove-sum").click();
+      cy.findByText("Done").click();
+    });
     H.trendLine().should("have.length", 1);
+    H.cartesianChartCircle().should("be.visible");
+  });
+
+  it("should allow customizing the trend line color and style", () => {
+    setup({
+      name: "Trend line customization",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+      },
+      display: "line",
+    });
+
+    cy.log("color and style settings appear only when the trend line is on");
+    H.openVizSettingsSidebar();
+    H.leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByText("Trend line color").should("not.exist");
+      cy.findByText("Trend line style").should("not.exist");
+      cy.findByText("Trend line").click();
+      cy.findByText("Trend line color").should("be.visible");
+      cy.findByText("Trend line style").should("be.visible");
+    });
+
+    cy.log("by default the trend line is solid and uses the series shade");
+    H.trendLine()
+      .should("be.visible")
+      .and("have.attr", "stroke", "#227FD2")
+      .and("not.have.attr", "stroke-dasharray");
+
+    cy.log("changing the style renders a dashed trend line");
+    H.leftSidebar().within(() => {
+      cy.icon("line_style_dashed").click();
+    });
+    H.trendLine().should("be.visible").and("have.attr", "stroke-dasharray");
+
+    cy.log("changing the color applies it to the trend line");
+    H.leftSidebar().findByLabelText("#227FD2").click();
+    H.popover().findByLabelText("#88BF4D").click();
+    H.trendLine().should("be.visible").and("have.attr", "stroke", "#88BF4D");
   });
 
   it("should display trend line for stack-100% chart (metabase#25614)", () => {

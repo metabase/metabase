@@ -12,9 +12,9 @@
   Fidelity notes: production renders these templates with Java Handlebars
   (jknack) — this tool uses handlebars.js, which is equivalent for everything
   these templates use ({{#if}}, {{#each}}, {{#with}}, partials). The custom
-  helpers (equals, format-date, now, initials, card-url, dashboard-url,
-  trash-url) are re-implemented below; format-date approximates java-time
-  formatting with a common-token subset.
+  helpers (equals, format-date, now, initials, mailto-url, card-url,
+  dashboard-url, trash-url) are re-implemented below; format-date approximates
+  java-time formatting with a common-token subset.
 -->
 <html lang="en">
 <head>
@@ -271,6 +271,8 @@ Handlebars.registerHelper('initials', (name) => {
   const m = String(name || '').match(/\b\w/g);
   return m ? m.slice(0, 2).join('').toUpperCase() : '';
 });
+Handlebars.registerHelper('mailto-url', (email) =>
+  `mailto:${String(email ?? '').replace(/[%?#]/g, encodeURIComponent)}`);
 Handlebars.registerHelper('card-url', (id) => `${SITE_URL}/question/${id}`);
 Handlebars.registerHelper('dashboard-url', (id) => `${SITE_URL}/dashboard/${id}`);
 Handlebars.registerHelper('trash-url', () => `${SITE_URL}/trash`);

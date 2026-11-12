@@ -1,6 +1,6 @@
 import type { FormikConfig, FormikValues } from "formik";
 import { Formik } from "formik";
-import { useMemo } from "react";
+import { type JSX, useMemo } from "react";
 
 import type { FormStatus } from "../../contexts";
 import { FormContext } from "../../contexts";

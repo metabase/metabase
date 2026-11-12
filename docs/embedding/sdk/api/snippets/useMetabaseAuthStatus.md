@@ -9,6 +9,6 @@ Returns `null` until the SDK is fully loaded and initialized.
 
 <!-- [<snippet returns>] -->
 
-[`InitializationStatus`](./api/InitializationStatus.md) \| `null`
+[`InitializationStatus`](/docs/latest/embedding/sdk/api/InitializationStatus.md) \| `null`
 
 <!-- [<endsnippet returns>] -->

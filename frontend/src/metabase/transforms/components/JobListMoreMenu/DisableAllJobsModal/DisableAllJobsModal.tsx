@@ -7,7 +7,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, FocusTrap, Modal, Text } from "metabase/ui";
 
 type DisableAllJobsModalProps = {
   onConfirm: () => void;
@@ -22,7 +22,6 @@ export function DisableAllJobsModal({
     <Modal
       title={t`Disable all jobs?`}
       opened
-      padding="xxl"
       onClose={onClose}
       onClick={(event) => event.stopPropagation()}
     >
@@ -46,18 +45,14 @@ function DisableAllJobsForm({ onConfirm, onClose }: DisableAllJobsModalProps) {
   return (
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       <Form>
-        <Stack gap="xl">
-          <Text>
-            {t`Any jobs that are currently running will finish and no new job runs will start.`}
-          </Text>
-          <Group>
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton label={t`Disable all`} variant="filled" />
-          </Group>
-        </Stack>
+        <Text>
+          {t`Any jobs that are currently running will finish and no new job runs will start.`}
+        </Text>
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
+          <Button onClick={onClose}>{t`Cancel`}</Button>
+          <FormSubmitButton label={t`Disable all`} variant="filled" />
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );

@@ -1,13 +1,18 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { useRef } from "react";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Stack, Text, Tooltip } from "metabase/ui";
+import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
 import {
   ScalarCardShell,
   useScalarCardShell,
 } from "metabase/visualizations/components/ScalarValue/ScalarCardShell";
+import { ScalarDescription } from "metabase/visualizations/components/ScalarValue/ScalarDescription";
+import { ScalarLabel } from "metabase/visualizations/components/ScalarValue/ScalarLabel";
 import { ScalarValue } from "metabase/visualizations/components/ScalarValue/ScalarValue";
+import { getScalarValueFontSize } from "metabase/visualizations/components/ScalarValue/sizing";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import {
   compactifyValue,
@@ -23,6 +28,7 @@ import {
   type ComputedVisualizationSettings,
   segmentIsValid,
 } from "metabase/viz-core";
+import { isString } from "metabase-lib/v1/types/utils/isa";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
 import { SCALAR_CHART_DEFINITION } from "./definition";
@@ -45,6 +51,8 @@ function ScalarComponent(
   props: VisualizationProps & VisualizationPassThroughProps,
 ) {
   const scalarRef = useRef<HTMLDivElement>(null);
+  const { isTruncated: isValueTruncated, ref: valueRef } =
+    useIsTruncated<HTMLHeadingElement>({ ignoreHeightTruncation: true });
 
   const {
     series: [
@@ -63,14 +71,14 @@ function ScalarComponent(
   const sublabel = settings["scalar.sublabel"];
   const isMetricsViewer = label !== undefined;
 
-  const {
-    tier,
-    availableWidth,
-    title,
-    titleElement,
-    showsTitleTooltip,
-    innerTooltipHoverHandlers,
-  } = useScalarCardShell(props, { hideTitle: isMetricsViewer });
+  const { tier, availableWidth, titleElement, description } =
+    useScalarCardShell(props, {
+      hideTitle: isMetricsViewer,
+    });
+  const descriptionFooter =
+    tier.size === 100 && description ? (
+      <ScalarDescription description={description} />
+    ) : null;
 
   if (rawSeries.length > 1) {
     return (
@@ -109,6 +117,9 @@ function ScalarComponent(
     tier.valueFontSize,
     formatOptions,
   );
+  const fontSize = isString(column)
+    ? getScalarValueFontSize(displayValue, availableWidth, tier.valueFontSize)
+    : tier.valueFontSize;
 
   const isClickable = onVisualizationClick != null && !isMetricsViewer;
 
@@ -131,22 +142,20 @@ function ScalarComponent(
     }
   };
 
-  const hasValueTooltip =
-    fullScalarValue !== displayValue || tooltipContent != null;
+  const showsFullValueTooltip =
+    fullScalarValue !== displayValue || isValueTruncated;
 
   return (
     <ScalarCardShell
       tier={tier}
-      title={title}
-      showsTitleTooltip={showsTitleTooltip}
       actionButtons={actionButtons}
-      innerTooltipHoverHandlers={innerTooltipHoverHandlers}
+      footer={descriptionFooter}
     >
-      <Box maw="100%" {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}>
+      <Box maw="100%">
         <ScalarValueContainer
           className={DashboardS.fullscreenNormalText}
           tooltip={fullScalarValue}
-          alwaysShowTooltip={fullScalarValue !== displayValue}
+          alwaysShowTooltip={showsFullValueTooltip}
           isClickable={isClickable}
         >
           <Tooltip
@@ -158,9 +167,10 @@ function ScalarComponent(
           >
             <Stack onClick={handleClick} ref={scalarRef} align="center" gap={0}>
               <ScalarValue
+                ref={valueRef}
                 color={color}
                 disableHover={isMetricsViewer}
-                fontSize={tier.valueFontSize}
+                fontSize={fontSize}
                 // Unjustified type cast. FIXME
                 value={displayValue as string}
               />
@@ -178,7 +188,11 @@ function ScalarComponent(
           </Tooltip>
         </ScalarValueContainer>
       </Box>
-      {titleElement}
+      {titleElement && (
+        <ScalarLabel description={descriptionFooter ? null : description}>
+          {titleElement}
+        </ScalarLabel>
+      )}
     </ScalarCardShell>
   );
 }

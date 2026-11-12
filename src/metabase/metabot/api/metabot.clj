@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.metabot.task.suggested-prompts-refresh :as metabot.suggested-prompts-refresh]
@@ -92,13 +93,14 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/prompt-suggestions"
-  "Return the prompt suggestions for the metabot instance with `id`."
-  [{:keys [id]} :- [:map {:closed true} [:id pos-int?]]
+  "Return the prompt suggestions for a Metabot primary key or entity ID."
+  [{:keys [id]} :- [:map {:closed true} [:id [:or pos-int? :string]]]
    {:keys [sample model model_id]} :- [:map {:closed true}
                                        [:sample {:optional true} :boolean]
                                        [:model {:optional true} [:enum "metric" "model"]]
                                        [:model_id {:optional true} pos-int?]]]
-  (let [offset  (when-not sample (request/offset))
+  (let [id      (:id (api/check-404 (metabot.config/find-metabot id) "Unknown Metabot."))
+        offset  (when-not sample (request/offset))
         total   (metabot.db/prompt-count id model model_id)
         prompts (metabot.db/prompts id model model_id sample (request/limit) offset)]
     {:prompts prompts
@@ -106,22 +108,14 @@
      :offset  offset
      :total   total}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id/prompt-suggestions"
+(api.macros/defendpoint :delete "/:id/prompt-suggestions" :- ::api/generic-204-no-content
   "Delete all prompt suggestions for the metabot instance with `id`."
   [{:keys [id]} :- [:map {:closed true} [:id pos-int?]]]
   (api/check-superuser)
   (metabot.suggested-prompts/delete-all-metabot-prompts id)
   api/generic-204-no-content)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id/prompt-suggestions/:prompt-id"
+(api.macros/defendpoint :delete "/:id/prompt-suggestions/:prompt-id" :- ::api/generic-204-no-content
   "Delete the prompt suggestion with ID `prompt-id` for the metabot instance with `id`."
   [{:keys [id prompt-id]} :- [:map {:closed true}
                               [:id pos-int?]

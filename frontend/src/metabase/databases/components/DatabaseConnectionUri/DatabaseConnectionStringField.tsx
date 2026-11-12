@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { usePrevious, useTimeout } from "@mantine/hooks";
 import type { FormikErrors } from "formik";
 import { useField } from "formik";

@@ -1,7 +1,7 @@
+import { Flex } from "metabase/ui";
 import type { FieldSettings } from "metabase-types/api";
 
 import { FieldSettingsPopover } from "./FieldSettingsPopover";
-import { FieldSettingsButtonsContainer } from "./FormCreator.styled";
 import { OptionPopover } from "./OptionEditor";
 
 export function FieldSettingsButtons({
@@ -26,7 +26,7 @@ export function FieldSettingsButtons({
     fieldSettings.inputType === "select" || fieldSettings.inputType === "radio";
 
   return (
-    <FieldSettingsButtonsContainer>
+    <Flex align="center" gap="sm">
       {hasOptions && (
         <OptionPopover
           fieldType={fieldSettings.fieldType}
@@ -35,6 +35,6 @@ export function FieldSettingsButtons({
         />
       )}
       <FieldSettingsPopover fieldSettings={fieldSettings} onChange={onChange} />
-    </FieldSettingsButtonsContainer>
+    </Flex>
   );
 }

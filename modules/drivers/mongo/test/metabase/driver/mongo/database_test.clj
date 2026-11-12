@@ -20,11 +20,13 @@
            (mongo.db/db-name {:conn-uri "mongodb://localhost/some_db"})))))
 
 (deftest ^:parallel details-normalized-respects-connection-type-test
-  (testing "Mongo's details-normalized uses effective-details for full database objects"
+  (testing "Mongo's details-normalized uses effective-details for the Lib metadata of a database"
     (let [read-details  {:dbname "test-db" :host "read-host"}
           write-details {:dbname "test-db" :host "write-host"}
-          database      {:details            read-details
-                         :write_data_details write-details}]
+          database      {:lib/type           :metadata/database
+                         :id                 1
+                         :details            read-details
+                         :write-data-details write-details}]
       (testing "default connection type uses :details"
         (let [result (mongo.db/details-normalized database)]
           (is (= "read-host" (:host result)))))
@@ -34,7 +36,9 @@
             (is (= "write-host" (:host result))))))))
   (testing "Mongo's details-normalized falls back to :details when no write details"
     (let [read-details {:dbname "test-db" :host "read-host"}
-          database     {:details read-details}]
+          database     {:lib/type :metadata/database
+                        :id       1
+                        :details  read-details}]
       (driver.conn/with-write-connection
         (let [result (mongo.db/details-normalized database)]
           (is (= "read-host" (:host result))))))))
@@ -43,8 +47,10 @@
   (testing "Mongo's details-normalized uses effective-details for conn-uri databases"
     (let [read-details  {:conn-uri "mongodb://read-host:27017/test-db"}
           write-details {:conn-uri "mongodb://write-host:27017/test-db"}
-          database      {:details            read-details
-                         :write_data_details write-details}]
+          database      {:lib/type           :metadata/database
+                         :id                 1
+                         :details            read-details
+                         :write-data-details write-details}]
       (testing "default connection type uses :details"
         (let [result (mongo.db/details-normalized database)]
           (is (= "mongodb://read-host:27017/test-db" (:conn-uri result)))))

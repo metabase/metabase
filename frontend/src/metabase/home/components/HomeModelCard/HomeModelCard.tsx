@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import type { IconData } from "metabase/common/utils/icon";
 import { Box, Ellipsified } from "metabase/ui";

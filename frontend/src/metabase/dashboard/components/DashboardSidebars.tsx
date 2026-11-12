@@ -4,6 +4,7 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { ActionSidebar } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
+import { DashboardEventsSidebar } from "./DashboardEventsSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
 import DashboardSubscriptionsSidebar from "./DashboardSubscriptionsSidebar";
@@ -32,6 +33,8 @@ export function DashboardSidebars() {
       return <DashboardSubscriptionsSidebar />;
     case SIDEBAR_NAME.info:
       return <DashboardInfoSidebar />;
+    case SIDEBAR_NAME.events:
+      return <DashboardEventsSidebar />;
     default:
       return null;
   }

@@ -12,6 +12,7 @@
    [metabase.driver :as driver]
    [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.redshift :as redshift.tx]
@@ -141,7 +142,7 @@
       (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
         (mt/with-temp [:model/Database database {:engine :redshift, :details db-details}]
           (let [schema (redshift.tx/unique-session-schema)
-                spec   (sql-jdbc.conn/db->pooled-connection-spec database)]
+                spec   (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))]
             (doseq [{:keys [label indexes expected]} live-cases]
               (testing label
                 ;; unique per-case table names so the two seams (and parallel runs) don't collide in the shared schema

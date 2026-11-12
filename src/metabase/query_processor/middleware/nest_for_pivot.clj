@@ -26,7 +26,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
-   ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [empty? mapv select-keys some]]))

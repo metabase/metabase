@@ -4,6 +4,7 @@ import {
   setupCardQueryEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
+  setupSearchErrorEndpoint,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -207,6 +208,7 @@ export type SetupOpts = {
   tokenFeatures?: Partial<TokenFeatures>;
   canCreateQueries?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  searchError?: boolean;
 };
 
 export function setup({
@@ -216,6 +218,7 @@ export function setup({
   tokenFeatures = {},
   canCreateQueries = true,
   enterprisePlugins = [],
+  searchError = false,
 }: SetupOpts = {}) {
   const state = createMockState({
     setup: createMockSetupState({
@@ -247,7 +250,11 @@ export function setup({
   const recentMetrics = mockRecentMetrics.slice(0, recentMetricCount);
 
   setupSettingsEndpoints([]);
-  setupSearchEndpoints(metrics.map(createMockSearchResult));
+  if (searchError) {
+    setupSearchErrorEndpoint();
+  } else {
+    setupSearchEndpoints(metrics.map(createMockSearchResult));
+  }
   setupRecentViewsEndpoints(recentMetrics);
 
   for (const metric of metrics) {

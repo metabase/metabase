@@ -11,7 +11,7 @@
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log])
   (:import
-   (org.quartz DisallowConcurrentExecution JobExecutionContext)))
+   (org.quartz JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
@@ -50,8 +50,9 @@
           (log/warnf "Skipping and deleting trigger for subscription %d because the notification is deactivated" subscription-id)
           (notification.task.send-trigger/delete-trigger-for-subscription! subscription-id))))))
 
-(task/defjob ^{:doc "Triggers that send a notification for a subscription."}
-  SendNotification
+(task/defjob SendNotification
+  "Triggers that send a notification for a subscription."
+  {:saved-class "metabase.notification.task.send.SendNotification"}
   [context]
   (let [{:strs [subscription-id]} (qc/from-job-data context)
         ^JobExecutionContext ctx  context
@@ -73,17 +74,16 @@
                  subscription-id trigger-key scheduled-fire-time fire-time recovering? refire-count scheduler-id)
       (send-notification* subscription-id))))
 
-(task/defjob
-  ^{:doc
-    "Find all notification subscriptions with cron schedules and create a trigger for each.
-    Run once on startup.
+(task/defjob InitNotificationTriggers
+  "Find all notification subscriptions with cron schedules and create a trigger for each.
+  Run once on startup.
 
-    Context: We've migrated alerts from pulse to notifications, see the `v53.2024-12-12T08:05:00` migration.
-    This job is needed to create triggers for all existing notification subscriptions after the migration.
-    The fact that it runs on every startup is because we have no way to have it run only once.
-    Ideally this should be a migration."
-    DisallowConcurrentExecution true}
-  InitNotificationTriggers
+  Context: We've migrated alerts from pulse to notifications, see the `v53.2024-12-12T08:05:00` migration.
+  This job is needed to create triggers for all existing notification subscriptions after the migration.
+  The fact that it runs on every startup is because we have no way to have it run only once.
+  Ideally this should be a migration."
+  {:saved-class "metabase.notification.task.send.InitNotificationTriggers"
+   :concurrent? false}
   [_context]
   (log/info "Initializing SendNotification triggers")
   (notification.task.send-trigger/init-send-notification-triggers!))

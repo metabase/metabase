@@ -1,5 +1,6 @@
 ---
 title: "IP addresses to whitelist"
+summary: The IP addresses Metabase Cloud connects from in each region, to add to your firewall or security group rules.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true
@@ -58,4 +59,4 @@ Here are the IP addresses we use in each region.
 
 ## Changing regions
 
-To change regions, check out [Changing which region your Metabase is hosted in](./change-region.md).
+To change regions, check out [Changing which region your Metabase is hosted in](https://www.metabase.com/docs/latest/cloud/change-region).

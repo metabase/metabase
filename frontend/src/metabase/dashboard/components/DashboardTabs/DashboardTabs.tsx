@@ -46,24 +46,21 @@ export function DashboardTabs({
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
 
-  useRegisterShortcut(
-    [
-      {
-        id: "dashboard-change-tab",
-        perform: (_, event) => {
-          if (!event?.key) {
-            return;
-          }
-          const key = parseInt(event.key);
-          const tab = tabs[key - 1];
-          if (tab) {
-            selectTab(tab.id);
-          }
-        },
+  useRegisterShortcut([
+    {
+      id: "dashboard-change-tab",
+      perform: (_, event) => {
+        if (!event?.key) {
+          return;
+        }
+        const key = parseInt(event.key);
+        const tab = tabs[key - 1];
+        if (tab) {
+          selectTab(tab.id);
+        }
       },
-    ],
-    [tabs],
-  );
+    },
+  ]);
 
   if (!showTabs) {
     return null;
@@ -170,7 +167,7 @@ export function DashboardTabs({
         )}
         {isEditing && (
           <ActionIcon
-            variant="viewHeader"
+            variant="subtle"
             onClick={createNewTab}
             aria-label={t`Create new tab`}
             className={S.createTabButton}

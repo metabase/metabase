@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -154,7 +155,7 @@ describe("WhatsNewNotification", () => {
       const dismissButton = await screen.findByRole("button", {
         name: /close/i,
       }); // Use the icon name if no specific label
-      dismissButton.click();
+      await userEvent.click(dismissButton);
 
       await waitFor(() => {
         expect(fetchMock.callHistory.called(LAST_ACK_SETTINGS_URL)).toBe(true);

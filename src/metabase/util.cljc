@@ -485,7 +485,7 @@
     (round-to-decimals 2 35.5058998M) -> 35.51"
   ^Double [^Integer decimal-place, ^Number number]
   {:pre [(integer? decimal-place) (number? number)]}
-  #?(:clj  (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP))
+  #?(:clj  (double (.setScale (bigdec number) decimal-place java.math.RoundingMode/HALF_UP))
      :cljs (parse-double (.toFixed number decimal-place))))
 
 (defn real-number?
@@ -598,8 +598,18 @@
       (throw (error (tru "Not something with an ID: {0}" (pr-str object-or-id))))))
 
 (def ^java.util.regex.Pattern uuid-regex
-  "A regular expression for matching canonical string representations of UUIDs."
+  "A regular expression for matching canonical lowercase string representations of UUIDs."
   #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
+
+(defn uuid-string?
+  "True if `s` is a string in the canonical 8-4-4-4-12 hex form of a UUID, in either case."
+  [s]
+  ;; On the JVM, `parse-uuid` and `UUID/fromString` accept any five dash-separated groups of hex digits.
+  ;; Case is ignored because some callers check values that users type, such as ClickHouse filter values.
+  ;; Checking the length first avoids lower-casing long input.
+  (boolean (and (string? s)
+                (= 36 (count s))
+                (re-matches uuid-regex (lower-case-en s)))))
 
 (defn one-or-many
   "Wraps a single element in a sequence; returns sequences as-is. In lots of situations we'd like to accept either a
@@ -663,9 +673,13 @@
      (select-non-nil-keys {:a 100, :b nil} #{:a :b :c})
      ;; -> {:a 100}"
   [m ks]
-  (into {} (for [k     ks
-                 :when (some? (get m k))]
-             {k (get m k)})))
+  (persistent!
+   (reduce (fn [acc k]
+             (let [v (get m k)]
+               (cond-> acc
+                 (some? v) (assoc! k v))))
+           (transient {})
+           ks)))
 
 (defn select-keys-when
   "Returns a map that only contains keys that are either `:present` or `:non-nil`. Combines behavior of `select-keys`
@@ -810,8 +824,6 @@
   `profile` form or 1 for a form inside that."
   0)
 
-;; only called from `profile` macroexpansions, so clojure-lsp sees no usage
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn -profile-print-time
   "Impl for [[profile]] macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a
   [[profile]]d form."
@@ -1304,7 +1316,7 @@
    Returns the number of items processed."
   [proc reducible]
   (let [cnt (volatile! 0)]
-    (reduce (fn [_ item] (vswap! cnt inc) (proc item)) nil reducible)
+    (run! (fn [item] (vswap! cnt inc) (proc item)) reducible)
     @cnt))
 
 (defn generate-nano-id

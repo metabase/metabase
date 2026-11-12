@@ -3,10 +3,12 @@ import { useMemo } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
 import { RelatedSettingCard } from "metabase/admin/components/RelatedSettingsSection";
+import { useSetupGuideReturnPath } from "metabase/embedding/setup-guide/hooks";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import { useNavigate } from "metabase/router";
 import { Button, Flex, SimpleGrid, Stack, Text, Title } from "metabase/ui";
 import { conjunct } from "metabase/utils/formatting/strings";
+import * as EnterpriseUrls from "metabase-enterprise/urls";
 import type { DataSegregationStrategy } from "metabase-types/api";
 
 import { useListTenantsQuery } from "../../../api/tenants";
@@ -38,13 +40,14 @@ export const TenantsSummaryOnboardingStep = ({
   rlsColumnName?: string | null;
 }) => {
   const navigate = useNavigate();
+  const returnPath = useSetupGuideReturnPath();
 
   const { data: tenantsData } = useListTenantsQuery(
     { status: "active" },
     { skip: tenants.length > 0 },
   );
 
-  const onDone = () => navigate("/admin/embedding/setup-guide");
+  const onDone = () => navigate(returnPath);
 
   const tenantsToShow = useMemo(() => {
     // If we have tenants from the flow, use them
@@ -122,13 +125,13 @@ const RelatedSettingsSection = () => (
     <RelatedSettingCard
       name={t`Tenants`}
       icon="globe"
-      to="/admin/people/tenants"
+      to={EnterpriseUrls.tenants()}
     />
 
     <RelatedSettingCard
       name={t`People`}
       icon="person"
-      to="/admin/people/tenants/people"
+      to={EnterpriseUrls.tenantPeople()}
     />
 
     <RelatedSettingCard
@@ -140,7 +143,7 @@ const RelatedSettingsSection = () => (
     <RelatedSettingCard
       name={t`Permissions`}
       icon="group"
-      to="/admin/permissions"
+      to={EnterpriseUrls.tenantsPermissions()}
     />
   </SimpleGrid>
 );

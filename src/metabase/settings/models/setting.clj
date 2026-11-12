@@ -14,10 +14,11 @@
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.models.serialization :as serdes]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.db :as settings.db]
    [metabase.settings.models.setting.cache :as setting.cache]
+   [metabase.settings.schema :as settings.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -77,7 +78,8 @@
     "metabot-enabled"
     "ldap-sync-admin-group"
     "user-recent-views"
-    "most-recently-viewed-dashboard"})
+    "most-recently-viewed-dashboard"
+    "llm-max-tokens"})
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-retired-setting-names*
@@ -96,19 +98,23 @@
 
 (declare export?)
 
-(defmethod serdes/extract-all "Setting" [_model _opts]
-  (for [{:keys [key value]} (admin-writable-site-wide-settings
-                             :getter (partial get-value-of-type :string))
-        :when (export? key)]
-    {:serdes/meta [{:model "Setting" :id (name key)}]
-     :key key
-     :value value}))
+(defn exportable-settings
+  "The site-wide settings an admin can write, that serialization exports, as `{:key :value}` maps with string values:
+  the ones whose value isn't set by an environment variable."
+  []
+  (for [{:keys [key value is_env_setting]} (admin-writable-site-wide-settings
+                                            :getter (partial get-value-of-type :string))
+        :when (and (export? key) (not is_env_setting))]
+    {:key key :value value}))
 
-(defmethod serdes/load-find-local "Setting" [[{:keys [id]}]]
-  (get-value-of-type :string (keyword id)))
-
-(defmethod serdes/load-one! "Setting" [{:keys [key value]} _]
-  (set-value-of-type! :string key (some-> value str)))
+(defmethod serialization/spec :model/Setting [_]
+  {:schema    ::settings.schema/external-setting
+   :identity  [:key]
+   :primary-key :key
+   :copy      [:value]
+   :skip      [:value_with_aad]
+   :transform {:key {:export (fn [_ _ ks _] (mapv name ks))
+                     :import (fn [_ _ ks _] (mapv keyword ks))}}})
 
 (def ^:private Type
   [:fn
@@ -1045,10 +1051,11 @@
          s-name (setting-name setting)]
      (when (and feature (not (has-feature? feature)))
        (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" s-name feature)
-                       {:status-code 402
-                        :status      "error-premium-feature-not-available"
-                        :setting     s-name
-                        :feature     feature})))
+                       {:status-code   402
+                        :status        "error-premium-feature-not-available"
+                        :setting       s-name
+                        :feature       feature
+                        :response/keys #{:status}})))
      (when (and enabled? (not (enabled?)))
        (throw (ex-info (tru "Setting {0} is not enabled" s-name)
                        {:status-code 400
@@ -1497,9 +1504,9 @@
         setting-definition-symbol (gensym "setting-")]
     `(let [setting-options#          (merge (merge-base ~options) ~setting-metadata)
            ~setting-definition-symbol (register-setting! setting-options#)]
-       ~(when maybe-i18n-exception
-          `(when (#'requires-i18n? ~setting-definition-symbol)
-             (throw ~maybe-i18n-exception)))
+       ~@(when maybe-i18n-exception
+           [`(when (#'requires-i18n? ~setting-definition-symbol)
+               (throw ~maybe-i18n-exception))])
        (-> (def ~setting-getter-fn-symbol (setting-fn :getter ~setting-definition-symbol))
            (alter-meta! merge (setting-fn-metadata :getter ~setting-definition-symbol)))
        ;; unfortunately we can't evaluate this condition at compile time, as the options might contain runtime forms.

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -96,9 +97,8 @@ export function BrowseMetrics() {
               {canCreateMetric && (
                 <Tooltip label={t`Create a new metric`} position="bottom">
                   <ActionIcon
+                    variant="subtle"
                     aria-label={t`Create a new metric`}
-                    size={32}
-                    variant="viewHeader"
                     component={ForwardRefLink}
                     to={newMetricLink}
                     onClick={() => {
@@ -153,7 +153,7 @@ function MetricsEmptyState({
   newMetricLink: string;
 }) {
   const { url: metricsDocsLink, showMetabaseLinks } = useDocsUrl(
-    "data-modeling/metrics",
+    "data-modeling/semantic-layer/metrics",
   );
 
   return (

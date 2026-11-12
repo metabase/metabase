@@ -1,4 +1,5 @@
-import type { PropsWithChildren } from "react";
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
+import type { JSX, PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import EmptyStateIcon from "assets/img/empty-states/collection.svg";

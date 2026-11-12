@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import cx from "classnames";
 import { isValidElement, useMemo } from "react";
 

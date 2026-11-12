@@ -68,7 +68,6 @@ export function NativeQueryPreviewSidebarToggle({
         onClick={onToggleNativeQueryPreviewSidebar}
         size="lg"
         className={S.nativeSidebarToggle}
-        c="text-primary"
         variant="subtle"
         aria-label={label}
       >

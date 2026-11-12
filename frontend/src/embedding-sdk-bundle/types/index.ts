@@ -5,6 +5,7 @@ export type * from "./dashboard";
 export type * from "./entity";
 export type * from "./events";
 export type * from "./metabot";
+export type * from "./navigation";
 export type * from "./plugins";
 export type * from "./question";
 export type * from "./theme";

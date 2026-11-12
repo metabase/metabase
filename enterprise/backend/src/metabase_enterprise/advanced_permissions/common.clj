@@ -10,14 +10,13 @@
    [metabase.warehouses.models.database :as database]))
 
 (defenterprise current-user-can-write-field?
-  "Enterprise version. Returns a boolean whether the current user can write the given field.
-   Checks both that the user has manage-table-metadata permission and that the parent table
-   is editable (not in a remote-synced collection in read-only mode)."
+  "Enterprise version: whether the current user can manage the metadata of the table of the field `instance`, which
+  nobody can when a read-only instance syncs the table."
   :feature :advanced-permissions
   [instance]
   (let [table (or (:table instance)
                   (advanced-permissions.db/table (:table_id instance)))]
-    (and (remote-sync/table-editable? table)
+    (and (remote-sync/can-write? :model/TableUserSettings (:id table))
          (let [db-id (or (:db_id table)
                          (database/table-id->database-id (:table_id instance)))]
            (perms/user-has-permission-for-table?
@@ -50,11 +49,11 @@
    db-id))
 
 (defenterprise current-user-can-write-table?
-  "Enterprise version. Checks both that the user has manage-table-metadata permission and
-   that the table is editable (not in a remote-synced collection in read-only mode)."
+  "Enterprise version: whether the current user can manage the metadata of `table`, which nobody can when a read-only
+  instance syncs it."
   :feature :advanced-permissions
   [table]
-  (and (remote-sync/table-editable? table)
+  (and (remote-sync/can-write? :model/TableUserSettings (:id table))
        (perms/user-has-permission-for-table?
         api/*current-user-id*
         :perms/manage-table-metadata
@@ -77,6 +76,9 @@
             :can_access_db_details   (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
             :can_access_transforms   (or api/*is-superuser?* (and (api/entitled-data-analyst?)
                                                                   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms
+                                                                                                     :exclude-db-ids [audit/audit-db-id])))
+            :can_access_workspaces   (or api/*is-superuser?* (and api/*is-data-analyst?*
+                                                                  (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/view-data
                                                                                                      :exclude-db-ids [audit/audit-db-id])))
             :is_data_analyst         api/*is-data-analyst?*
             :is_group_manager        api/*is-group-manager?*)))
@@ -177,9 +179,8 @@
     (let [blocked-group-ids   (advanced-permissions.db/blocked-group-ids group-ids)
           impersonation-group-ids (advanced-permissions.db/impersonated-group-ids group-ids)
           sandbox-group-ids   (advanced-permissions.db/sandboxed-group-ids group-ids)
-          ;; New databases have no legacy grants to preserve. App groups must start blocked.
           blocked-groups      (into (or blocked-group-ids #{})
-                                    (concat impersonation-group-ids sandbox-group-ids (perms/data-app-group-ids)))]
+                                    (concat impersonation-group-ids sandbox-group-ids))]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
 
 (defenterprise new-table-sandboxed-groups
@@ -211,14 +212,9 @@
     ;; DB-level, so a new table should get `:unrestricted` and inherit the DB-level impersonation policy.
     (let [blocked-group-ids (advanced-permissions.db/blocked-group-ids-for-database db-id group-ids)
           sandbox-group-ids (new-table-sandboxed-groups db-id group-ids)
-          app-group-ids     (set (perms/data-app-group-ids))
-          app-view-data     (when (some app-group-ids group-ids)
-                              (perms/data-app-view-data-permission-level db-id))
           blocked-groups    (into (or blocked-group-ids #{}) sandbox-group-ids)]
-      ;; A new table must not introduce a block into an app group's database-wide legacy permission.
       (into {} (map (fn [group-id]
                       [group-id (cond
-                                  (app-group-ids group-id) app-view-data
                                   (blocked-groups group-id) :blocked
                                   :else :unrestricted)]))
             group-ids))))

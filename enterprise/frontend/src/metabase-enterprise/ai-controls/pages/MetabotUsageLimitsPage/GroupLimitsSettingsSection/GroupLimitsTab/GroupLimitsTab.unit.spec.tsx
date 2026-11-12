@@ -119,6 +119,16 @@ describe("GroupLimitsTab", () => {
     expect(screen.getByText("Tenant group")).toBeInTheDocument();
   });
 
+  it("explains that a user in several groups gets the highest group limit", () => {
+    setup();
+
+    expect(
+      screen.getByText(
+        /If a user belongs to more than one group, they'll be given the highest limit among all the groups they belong to\./,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("populates inputs from existing group limits", () => {
     setup({
       groupLimits: [
