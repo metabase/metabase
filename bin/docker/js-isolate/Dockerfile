@@ -68,7 +68,7 @@ RUN set -eu; \
       curl -fsSLO "$url"; \
       echo "$(curl -fsSL "$url.sha1" | cut -d' ' -f1)  ${name}-${GRAAL_VERSION}.jar" | sha1sum -c -; \
     }; \
-    mkdir /image-path; \
+    mkdir /image-path /test-lib; \
     cd /image-path; \
     for artifact in \
       js/js-language regex/regex \
@@ -76,7 +76,10 @@ RUN set -eu; \
       polyglot/polyglot sdk/collections sdk/nativeimage sdk/word sdk/jniutils sdk/nativebridge \
       shadowed/icu4j shadowed/xz; do \
       fetch "$artifact"; \
-    done
+    done; \
+    cd /test-lib; \
+    case "$(dpkg --print-architecture)" in amd64) arch=amd64 ;; arm64) arch=aarch64 ;; esac; \
+    fetch "js/js-isolate-linux-${arch}-community"
 
 # Flags from GraalVM's own polyglot isolate build (mx_truffle.py PolyglotIsolateProject), plus --libc=musl
 RUN set -eu; \
@@ -119,6 +122,23 @@ RUN mkdir /out/licenses \
     && cp /opt/zlib-LICENSE /out/licenses/zlib-LICENSE \
     && cp /usr/share/doc/musl/copyright /out/licenses/musl-COPYRIGHT
 
+# Loads the isolate the way the Alpine image does; the final stage copies from here so BuildKit can't skip it
+FROM eclipse-temurin:25-jdk-alpine AS test
+
+COPY --from=build /out/ /out/
+COPY --from=build /test-lib/ /image-path/polyglot-*.jar /image-path/collections-*.jar /image-path/nativeimage-*.jar \
+     /image-path/word-*.jar /image-path/jniutils-*.jar /image-path/nativebridge-*.jar /image-path/truffle-api-*.jar \
+     /test/lib/
+COPY IsolateSmokeTest.java /test/
+
+# `ldd` performs every relocation, so it also catches symbols a lazy dlopen would only miss at call time
+RUN set -eu; \
+    ! ldd /out/libpolyglotisolate.so 2>&1 | grep -E 'Error (loading|relocating)' || { echo "unresolved symbols" >&2; exit 1; }; \
+    case "$(uname -m)" in x86_64) arch=amd64 ;; aarch64) arch=aarch64 ;; esac; \
+    java --enable-native-access=ALL-UNNAMED \
+      "-Dpolyglot.engine.resourcePath.engine.js-isolate-linux-${arch}=/out" \
+      -cp '/test/lib/*' /test/IsolateSmokeTest.java /out
+
 FROM scratch
 
-COPY --from=build /out/ /
+COPY --from=test /out/ /
