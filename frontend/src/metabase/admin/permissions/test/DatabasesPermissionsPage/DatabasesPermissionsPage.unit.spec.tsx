@@ -1,6 +1,7 @@
 import { userEvent } from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { callMockEvent } from "__support__/events";
 import {
   setupDatabasesEndpoints,
@@ -23,6 +24,10 @@ import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import type { Database } from "metabase-types/api";
+import {
+  createMockDatabase,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 const TEST_DATABASE = createSampleDatabase();
@@ -40,9 +45,17 @@ const setup = async ({
   shouldWaitForLoader = true,
   showUpdatedPermissionModal = false,
   deferDatabaseMetadata = false,
+  initialRoute = `/admin/permissions/data/database/${TEST_DATABASE.id}`,
+  databases = [TEST_DATABASE],
+}: {
+  shouldWaitForLoader?: boolean;
+  showUpdatedPermissionModal?: boolean;
+  deferDatabaseMetadata?: boolean;
+  initialRoute?: string;
+  databases?: Database[];
 } = {}) => {
-  setupDatabasesEndpoints([TEST_DATABASE]);
-  setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
+  setupDatabasesEndpoints(databases);
+  setupPermissionsGraphEndpoints(TEST_GROUPS, databases);
   setupGroupsEndpoint(TEST_GROUPS);
 
   const databaseMetadata = defer<Database>();
@@ -74,7 +87,7 @@ const setup = async ({
     </Route>,
     {
       withRouter: true,
-      initialRoute: `/admin/permissions/data/database/${TEST_DATABASE.id}`,
+      initialRoute,
       storeInitialState: {
         settings: mockSettings({
           "show-updated-permission-modal": showUpdatedPermissionModal,
@@ -169,6 +182,37 @@ describe("DatabasesPermissionsPage", () => {
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
       expect(mockEvent.returnValue).toBe(undefined);
+    });
+  });
+
+  // Initializing the plugin is global for this file, so this block runs last
+  describe("instance analytics database (metabase#44856)", () => {
+    const AUDIT_DATABASE = createMockDatabase({
+      id: 13371337,
+      name: "Internal Metabase database",
+      is_audit: true,
+    });
+
+    beforeEach(() => {
+      mockSettings({
+        "token-features": createMockTokenFeatures({ audit_app: true }),
+      });
+      setupEnterpriseOnlyPlugin("audit_app");
+    });
+
+    it("does not list the instance analytics database in the databases sidebar", async () => {
+      await setup({
+        initialRoute: "/admin/permissions/data/database",
+        databases: [AUDIT_DATABASE, TEST_DATABASE],
+      });
+
+      const sidebar = await screen.findByRole("complementary");
+      expect(
+        await within(sidebar).findByText(TEST_DATABASE.name),
+      ).toBeInTheDocument();
+      expect(
+        within(sidebar).queryByText(AUDIT_DATABASE.name),
+      ).not.toBeInTheDocument();
     });
   });
 });

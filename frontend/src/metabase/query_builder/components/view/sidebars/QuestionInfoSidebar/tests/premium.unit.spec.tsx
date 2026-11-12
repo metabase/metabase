@@ -102,6 +102,31 @@ describe("QuestionInfoSidebar > premium", () => {
       });
     });
 
+    describe("Insights link", () => {
+      it("should show an Insights link to users who can see usage analytics", async () => {
+        await setupEnterprise({ card: createMockCard({ id: 2 }) });
+        expect(
+          await screen.findByRole("tab", { name: "Overview" }),
+        ).toBeInTheDocument();
+        expect(
+          await screen.findByRole("link", { name: /Insights/i }),
+        ).toHaveAttribute("href", "/dashboard/202?question_id=2");
+      });
+
+      it("should not show an Insights link to users without access to usage analytics", async () => {
+        await setupEnterprise({
+          card: createMockCard({ id: 2 }),
+          auditInfo: {},
+        });
+        expect(
+          await screen.findByRole("tab", { name: "Overview" }),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole("link", { name: /Insights/i }),
+        ).not.toBeInTheDocument();
+      });
+    });
+
     describe("for admins", () => {
       beforeEach(() => {
         jest.useFakeTimers();

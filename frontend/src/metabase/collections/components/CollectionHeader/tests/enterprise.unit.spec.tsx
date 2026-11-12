@@ -102,6 +102,8 @@ describe("instance analytics custom reports collection", () => {
     expect(getIcon("lock")).toBeInTheDocument();
     expect(queryIcon("archive")).not.toBeInTheDocument();
     expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+    expect(screen.getByText("Edit permissions")).toBeInTheDocument();
+    expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
   });
 });
 

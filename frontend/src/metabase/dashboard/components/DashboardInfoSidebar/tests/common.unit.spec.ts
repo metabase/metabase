@@ -27,6 +27,18 @@ describe("DashboardInfoSidebar", () => {
     expect(screen.getByRole("tab", { name: "Overview" })).toBeInTheDocument();
   });
 
+  it("should never show an Insights link in OSS, even to admins", async () => {
+    await setup({ user: { is_superuser: true } });
+    expect(
+      await screen.findByRole("tab", { name: "Overview" }),
+    ).toBeInTheDocument();
+    // OSS shows an upsell tab, never a link to usage analytics
+    expect(screen.getByRole("tab", { name: /Insights/ })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Insights/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("should render history tab", async () => {
     await setup();
     expect(screen.getByRole("tab", { name: "History" })).toBeInTheDocument();

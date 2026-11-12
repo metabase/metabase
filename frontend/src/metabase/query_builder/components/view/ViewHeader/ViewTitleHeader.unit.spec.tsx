@@ -489,6 +489,30 @@ describe("ViewTitleHeader", () => {
           setup({ card, isObjectDetail: true });
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
         });
+
+        it("offers to view the SQL in notebook mode with native write permissions", () => {
+          setup({
+            card,
+            queryBuilderMode: "notebook",
+            result: createMockDataset(),
+          });
+          expect(
+            screen.getByRole("switch", { name: "View SQL" }),
+          ).toBeInTheDocument();
+        });
+
+        it("does not offer to view the SQL in notebook mode without native write permissions, like on the instance analytics database (metabase#49904)", () => {
+          setup({
+            card,
+            queryBuilderMode: "notebook",
+            result: createMockDataset(),
+            database: createSampleDatabase({ native_permissions: "none" }),
+          });
+          expect(screen.getByTestId("notebook-button")).toBeInTheDocument();
+          expect(
+            screen.queryByRole("switch", { name: "View SQL" }),
+          ).not.toBeInTheDocument();
+        });
       });
     });
   });
