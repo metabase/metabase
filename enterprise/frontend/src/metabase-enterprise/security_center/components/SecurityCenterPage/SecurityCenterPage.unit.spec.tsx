@@ -599,6 +599,9 @@ describe("SecurityCenterPage", () => {
       expect(
         screen.queryByText("Security advisories are up to date"),
       ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Checking for security advisories…"),
+      ).not.toBeInTheDocument();
     });
 
     it("reports 'up to date' when the sync succeeds", async () => {
@@ -618,6 +621,9 @@ describe("SecurityCenterPage", () => {
       expect(
         screen.getByText("Security advisories are up to date"),
       ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Checking for security advisories…"),
+      ).not.toBeInTheDocument();
     });
   });
 });

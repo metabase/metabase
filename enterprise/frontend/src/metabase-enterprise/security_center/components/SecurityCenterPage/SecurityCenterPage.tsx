@@ -4,8 +4,10 @@ import { t } from "ttag";
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { useToast } from "metabase/common/hooks";
+import type { ToastArgs } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
+import { useDispatch } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
 import { useSearchParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import {
@@ -41,6 +43,7 @@ const DEFAULT_FILTER: AdvisoryFilter = {
 };
 
 const MAX_POLL_COUNT = 30;
+const SYNC_TOAST_ID = "security-center-sync";
 
 export function SecurityCenterPage() {
   const [searchParams] = useSearchParams();
@@ -62,7 +65,11 @@ export function SecurityCenterPage() {
   );
   const notificationConfig = useNotificationConfigState();
   const version = useSetting("version");
-  const [sendToast] = useToast();
+  const dispatch = useDispatch();
+  const sendToast = useCallback(
+    (toast: ToastArgs) => dispatch(addUndo({ ...toast, id: SYNC_TOAST_ID })),
+    [dispatch],
+  );
   const isSmallScreen = useIsSmallScreen();
 
   const lastSyncAttemptedAtBeforeSync = useRef<string | null>(null);
@@ -77,6 +84,7 @@ export function SecurityCenterPage() {
       sendToast({
         icon: "sync",
         message: t`Checking for security advisories…`,
+        timeout: 0,
       });
       setIsPolling(true);
     } catch {
