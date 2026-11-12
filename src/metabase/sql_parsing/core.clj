@@ -503,9 +503,7 @@
       :else error)))
 
 (defn cached-by-identity
-  "The value of `(compute)` for `k`, computed one time for each `k` object and kept in `cache`, an `IdentityHashMap`.
-  A chain of UNIONs gives the same composite field to more than one member of a field spec, so a walk without the cache
-  does the same work twice at each level."
+  "The value of `(compute)` for `k`, computed one time for each `k` object and kept in `cache`, an `IdentityHashMap`."
   [^IdentityHashMap cache k compute]
   (if (.containsKey cache k)
     (.get cache k)

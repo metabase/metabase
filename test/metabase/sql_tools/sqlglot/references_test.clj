@@ -1,6 +1,7 @@
 ;; SQLGlot version of references test
 (ns metabase.sql-tools.sqlglot.references-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.sql-parsing.core :as sql-parsing]))
@@ -1640,3 +1641,12 @@ left join monthly_account_subscription_status mas
       (is (seq (errors "SELECT [#u].[ID] FROM [#t]"))))
     (testing "control: outside T-SQL, a quoted name starting with # is a plain name"
       (is (seq (:errors (sql-parsing/field-references "postgres" "SELECT \"#t\".id FROM t")))))))
+
+(deftest ^:parallel computed-column-chain-test
+  (testing "a column computed from computed columns of a CTE does not hold the fields that the CTE reads"
+    (let [ctes (for [i (range 1 9)]
+                 (format "c%d AS (SELECT a.v + a.w AS v, a.v - a.w AS w FROM c%d a)" i (dec i)))
+          sql  (str "WITH c0 AS (SELECT v, w FROM t), " (str/join ", " ctes) " SELECT v, w FROM c8")]
+      (is (= [{:type :custom-field, :alias "v"}
+              {:type :custom-field, :alias "w"}]
+             (:returned-fields (->references sql)))))))
