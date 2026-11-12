@@ -504,17 +504,30 @@
   (when (seq db-ids)
     (metabot.db/destination-database-ids db-ids)))
 
+(defn- remove-destination-cards
+  "`cards` without the cards backed by a destination (routed) database (see [[destination-db-ids]])."
+  [cards]
+  (let [destination-ids (destination-db-ids (into #{} (keep :database_id) cards))]
+    (if (seq destination-ids)
+      (remove #(contains? destination-ids (:database_id %)) cards)
+      cards)))
+
 (defn get-metrics-and-models
   "Retrieve the metric and model cards for the Metabot instance with ID `metabot-id` from the app DB.
 
   Only cards visible to the current user are returned, excluding those backed by a destination
   (routed) database (see [[destination-db-ids]])."
   [metabot-id & {:keys [limit]}]
-  (let [cards (metabot.db/metabot-metrics-and-models metabot-id limit)
-        destination-ids (destination-db-ids (into #{} (keep :database_id) cards))]
-    (if (seq destination-ids)
-      (remove #(contains? destination-ids (:database_id %)) cards)
-      cards)))
+  (remove-destination-cards (metabot.db/metabot-metrics-and-models metabot-id limit)))
+
+(defn get-cards-of-type
+  "Retrieve the cards of `card-type` (`:metric` or `:model`) for the Metabot instance with ID `metabot-id`: curated
+  first, then the most recently used.
+
+  Only cards visible to the current user are returned, excluding those backed by a destination
+  (routed) database (see [[destination-db-ids]]). `limit` caps the rows before that exclusion."
+  [metabot-id card-type & {:keys [limit]}]
+  (remove-destination-cards (metabot.db/metabot-cards-of-type metabot-id card-type limit)))
 
 ;;; ------------------------------------------ metric sources ------------------------------------------
 
