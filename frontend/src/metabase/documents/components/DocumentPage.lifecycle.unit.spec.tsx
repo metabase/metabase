@@ -8,8 +8,10 @@ import {
   setupCollectionsEndpoints,
   setupCommentEndpoints,
   setupCopyDocumentEndpoint,
+  setupCopyDocumentErrorEndpoint,
   setupCreateBookmarkEndpoint,
   setupCreateDocumentEndpoint,
+  setupCreateDocumentErrorEndpoint,
   setupDocumentErrorEndpoint,
   setupEntityRevisionsEndpoint,
   setupLibraryEndpoints,
@@ -321,6 +323,39 @@ describe("DocumentPage lifecycle", () => {
         target_id: COPY.id,
       });
     });
+
+    it("keeps the duplicate modal open and stays on the document when duplicating fails", async () => {
+      setupCopyDocumentErrorEndpoint(DOCUMENT_ID, { status: 500 });
+      const { router } = setup();
+
+      await waitFor(() => expect(getTitleInput()).toHaveValue("Test Document"));
+      await openMoreOptions();
+      await clickMenuItem(/Duplicate/);
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Duplicate" }),
+      );
+
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(
+            `path:/api/document/${DOCUMENT_ID}/copy`,
+            {
+              method: "POST",
+            },
+          ),
+        ).toHaveLength(1),
+      );
+      expect(
+        await screen.findByRole("button", { name: "Failed" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: 'Duplicate "Test Document"' }),
+      ).toBeInTheDocument();
+      expect(router?.location.pathname).toBe(`/document/${DOCUMENT_ID}`);
+      expect(trackSimpleEvent).not.toHaveBeenCalledWith(
+        expect.objectContaining({ event: "document_duplicated" }),
+      );
+    });
   });
 
   describe("creating", () => {
@@ -370,6 +405,35 @@ describe("DocumentPage lifecycle", () => {
           method: "GET",
         }),
       ).toHaveLength(0);
+    });
+
+    it("shows an error toast and keeps the document unsaved when creating fails", async () => {
+      setupCreateDocumentErrorEndpoint({ status: 500 });
+      const { router, store } = setup({
+        initialRoute: "/document/new",
+        documents: [],
+      });
+
+      await userEvent.type(await findTitleInput(), "Title");
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Save" }),
+      );
+      const selectButton = await screen.findByTestId(
+        "entity-picker-select-button",
+      );
+      await waitFor(() => expect(selectButton).toBeEnabled());
+      await userEvent.click(selectButton);
+
+      await waitFor(() =>
+        expect(getToasts(store)).toMatchObject([
+          { message: "Error saving document", icon: "warning" },
+        ]),
+      );
+      expect(
+        fetchMock.callHistory.calls("path:/api/document", { method: "POST" }),
+      ).toHaveLength(1);
+      expect(router?.location.pathname).toBe("/document/new");
+      await expectSaveButton();
     });
 
     it("resets the editor when navigating from /new to /new and the changes are discarded", async () => {
