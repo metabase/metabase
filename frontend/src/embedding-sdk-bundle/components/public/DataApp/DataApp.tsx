@@ -47,6 +47,7 @@ function DataAppInner({ path, ...props }: DataAppProps) {
 
   useTrackSdkComponentMount(
     "DataApp",
+    // the slug and path are not sent to analytics - this only dedupe events per app
     getEmbeddedAppSlugFromPath(path) ?? null,
     {},
   );

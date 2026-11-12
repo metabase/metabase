@@ -430,9 +430,11 @@ describe("DataApp", () => {
       .mocked(trackSdkSimpleEvent)
       .mock.calls.map(([event]) => {
         const detail: unknown = JSON.parse(event.event_detail ?? "{}");
+
         return { event: event.event, detail };
       });
 
+    // one event for each data app: tracked-store + tracked-crm
     expect(components).toEqual([
       {
         event: "embedding_sdk_component_rendered",
