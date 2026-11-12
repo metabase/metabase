@@ -14,6 +14,7 @@ import {
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -21,7 +22,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { Route } from "metabase/router";
+import { Route, useParams } from "metabase/router";
 import type { CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
@@ -63,10 +64,30 @@ function setup({
   setupCollectionByIdEndpoint({ collections: [collection] });
   setupCollectionItemsEndpoint({ collection, collectionItems });
 
-  renderWithProviders(
-    <Route path="/" element={<CollectionContent collectionId={1} />} />,
+  const { router } = renderWithProviders(
+    <>
+      <Route path="/" element={<CollectionContent collectionId={1} />} />
+      <Route
+        path="/question/:slug"
+        element={<DestinationPage entity="Question" />}
+      />
+      <Route
+        path="/dashboard/:slug"
+        element={<DestinationPage entity="Dashboard" />}
+      />
+      <Route path="/model/:slug" element={<DestinationPage entity="Model" />} />
+    </>,
     { withRouter: true, withDND: true },
   );
+  if (!router) {
+    throw new Error("withRouter renders a router");
+  }
+  return { router };
+}
+
+function DestinationPage({ entity }: { entity: string }) {
+  const { slug } = useParams();
+  return <h1>{`${entity} page ${slug}`}</h1>;
 }
 
 describe("CollectionContent pinned items", () => {
@@ -215,7 +236,7 @@ describe("CollectionContent pinning from item menus", () => {
     const items = createItems();
     setupItemUpdateEndpoint(items, getItem(items, QUESTION_NAME));
     setupItemUpdateEndpoint(items, getItem(items, DASHBOARD_NAME));
-    setup({ collectionItems: items });
+    const { router } = setup({ collectionItems: items });
     await screen.findByText(QUESTION_NAME);
 
     await openRowMenu(QUESTION_NAME);
@@ -263,12 +284,32 @@ describe("CollectionContent pinning from item menus", () => {
     expect(fetchMock.callHistory.calls(/\/api\/card\/\d+\/query/)).toHaveLength(
       0,
     );
+
+    await userEvent.click(within(dashboardCard).getByText(DASHBOARD_NAME));
+    expect(
+      await screen.findByRole("heading", { name: /^Dashboard page 11/ }),
+    ).toBeInTheDocument();
+    expect(router.location.pathname).toMatch(/^\/dashboard\/11/);
+
+    act(() => {
+      router.navigate("/");
+    });
+    const questionCardAfterReturn = await waitFor(() =>
+      getPinnedCard(QUESTION_NAME),
+    );
+    await userEvent.click(
+      within(questionCardAfterReturn).getByText(QUESTION_NAME),
+    );
+    expect(
+      await screen.findByRole("heading", { name: /^Question page 12/ }),
+    ).toBeInTheDocument();
+    expect(router.location.pathname).toMatch(/^\/question\/12/);
   });
 
   it("pins a model", async () => {
     const items = createItems();
     setupItemUpdateEndpoint(items, getItem(items, MODEL_NAME));
-    setup({ collectionItems: items });
+    const { router } = setup({ collectionItems: items });
 
     await openRowMenu(MODEL_NAME);
     await userEvent.click(
@@ -285,6 +326,12 @@ describe("CollectionContent pinning from item menus", () => {
       "href",
       expect.stringContaining("/model/13"),
     );
+
+    await userEvent.click(within(modelCard).getByText("A model"));
+    expect(
+      await screen.findByRole("heading", { name: /^Model page 13/ }),
+    ).toBeInTheDocument();
+    expect(router.location.pathname).toMatch(/^\/model\/13/);
   });
 });
 
