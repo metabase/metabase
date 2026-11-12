@@ -842,8 +842,8 @@
                                                               :creator_id    (mt/user->id :rasta)
                                                               :collection_id unreadable-coll}
                      :model/Card       {plain :id}           {:collection_id readable-coll}
-                     :model/Card       {in-readable-doc :id} {:collection_id readable-coll :document_id readable-doc}
-                     :model/Card       {in-hidden-doc :id}   {:collection_id readable-coll :document_id hidden-doc}]
+                     :model/Card       {in-readable-doc :id} {:collection_id readable-coll, :document_id readable-doc}
+                     :model/Card       {in-hidden-doc :id}   {:collection_id readable-coll, :document_id hidden-doc}]
         (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll)})]
           (let [ids    [plain in-readable-doc in-hidden-doc]
                 result (#'semantic.index/filter-read-permitted

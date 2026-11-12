@@ -200,8 +200,8 @@
 ;;
 ;; Cost: Cards leave semantic search's collection-id-only fast path and take its slow path instead,
 ;; which loads every candidate before pagination. It selects only `id`, `collection_id` and `document_id`
-;; (`read-check-columns` in `metabase-enterprise.search.semantic.db`), so the document check below adds no
-;; further queries. Add a column there if this method starts reading another one.
+;; (`read-check-selects` in `metabase-enterprise.search.semantic.db`), so the document check below needs no
+;; query to look up `document_id`. Add a column there if this method starts reading another one.
 (defmethod mi/can-read? :model/Card
   ([instance]
    (and (perms/can-read-via-parent-collection? (:collection_id instance))
