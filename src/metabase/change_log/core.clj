@@ -17,7 +17,7 @@
 
   This logs each insert, update and delete through the model. A delete of any model also logs the rows of logged
   tables that the database deletes (`ON DELETE CASCADE`) or updates (`ON DELETE SET NULL`) with it, at any depth. The
-  model needs a primary key of one integer column and a namespace that loads at startup: `metabase.change-log.models-test`
+  model needs a primary key of one integer column and a namespace that loads at startup: `metabase.change-log.hooks-test`
   check both. The insert hook reads the key from the rows the insert returns, so an insert that picks its returned columns
   must include the key: `[:model/User :id :email]`, not `[:model/User :email]`. Without the key, the insert goes ahead
   and Metabase logs a warning instead of an entry.
@@ -45,11 +45,11 @@
   Do not follow `id`. An entry takes its id when it is written and shows up when its transaction commits, so a lower
   id can show up after a higher one (`ids-out-of-order-test`)."
   (:require
-   [metabase.change-log.models]
+   [metabase.change-log.hooks]
    [potemkin :as p]))
 
-(comment metabase.change-log.models/keep-me)
+(comment metabase.change-log.hooks/keep-me)
 
 (p/import-vars
- [metabase.change-log.models
+ [metabase.change-log.hooks
   log-rows!])

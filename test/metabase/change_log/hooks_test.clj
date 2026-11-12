@@ -1,4 +1,4 @@
-(ns metabase.change-log.models-test
+(ns metabase.change-log.hooks-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

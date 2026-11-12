@@ -1,11 +1,11 @@
-(ns metabase.change-log.models
+(ns metabase.change-log.hooks
   "The hooks that write the change log (see `metabase.change-log.core`). They are `:around` methods on Toucan's
   `transduce-query`, like the `:hook/dependencies` one in `metabase.models.interface`. Toucan's own before-update,
   before-delete and after-insert hooks would select the rows on every write, also while the log is off.
 
   Toucan calls `transduce-query` again from inside a write (after-insert, after-update, and before-update's one UPDATE
   per row). The insert and update hooks add `::logged` to the `parsed-args` of a call they log and skip a call that
-  has it. `metabase.change-log.models-test` fails if a Toucan upgrade changes this."
+  has it. `metabase.change-log.hooks-test` fails if a Toucan upgrade changes this."
   (:require
    [metabase.change-log.cascade :as change-log.cascade]
    [metabase.change-log.db :as change-log.db]
