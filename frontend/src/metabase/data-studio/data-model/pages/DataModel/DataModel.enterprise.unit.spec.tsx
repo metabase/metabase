@@ -23,6 +23,7 @@ import {
 import * as Analytics from "metabase/analytics";
 import {
   findToast,
+  flushRequests,
   selectOption,
   typeAndBlur,
   undo,
@@ -133,7 +134,8 @@ describe("DataModel > undo (advanced permissions)", () => {
     jest.spyOn(Analytics, "trackSimpleEvent");
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await flushRequests();
     jest.restoreAllMocks();
   });
 
@@ -212,6 +214,7 @@ describe("DataModel > undo (advanced permissions)", () => {
     const putRoute = `stateful-field-${ORDERS.QUANTITY}-put`;
 
     await selectOption(getSemanticTypeInput(), "Score");
+    await findToast("Semantic type of Quantity updated");
     expect(Analytics.trackSimpleEvent).toHaveBeenCalledWith({
       event: "metadata_edited",
       event_detail: "semantic_type_change",

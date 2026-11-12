@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 
 export async function findToast(message: string) {
   return await waitFor(() => {
@@ -23,9 +24,15 @@ export async function dismissToasts() {
   );
 }
 
-/** Clicks Undo in the toast of a change, then waits for "Change undone". */
+/**
+ * Clicks Undo in the toast of a change, then waits for "Change undone".
+ *
+ * It first lets the refetch that the change started finish: a refetch that
+ * answers after the undo overwrites the restored value (see the PR findings).
+ */
 export async function undo(message: string) {
   const toast = await findToast(message);
+  await flushRequests();
   await userEvent.click(within(toast).getByRole("button", { name: "Undo" }));
   await findToast("Change undone");
   await dismissToasts();
@@ -48,7 +55,21 @@ export async function findShownListbox() {
   });
 }
 
+/** Some options stay disabled until the data they depend on loads. */
 export async function selectOption(input: HTMLElement, name: string) {
   await userEvent.click(input);
-  await userEvent.click(within(await findShownListbox()).getByText(name));
+  const listbox = await findShownListbox();
+  const option = await waitFor(() => {
+    const option = within(listbox).getByText(name).closest('[role="option"]');
+    if (!option || option.hasAttribute("data-combobox-disabled")) {
+      throw new Error(`Cannot find the enabled option "${name}"`);
+    }
+    return option;
+  });
+  await userEvent.click(option);
+}
+
+/** Lets the requests a test started finish, so they cannot leak into the next test. */
+export async function flushRequests() {
+  await act(() => fetchMock.callHistory.flush(true));
 }
