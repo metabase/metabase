@@ -12,7 +12,11 @@ on:
     branches: [master]
     paths:
       - .clj-kondo/config/modules/**
-      - .github/team.json
+      # the code that builds the data
+      - .clj-kondo/src/hooks/common/modules.clj
+      - dev/src/dev/module_cycle_names.clj
+      - dev/src/dev/module_explorer.clj
+      - dev/src/dev/module_graph.clj
   workflow_dispatch:
 
 permissions:
