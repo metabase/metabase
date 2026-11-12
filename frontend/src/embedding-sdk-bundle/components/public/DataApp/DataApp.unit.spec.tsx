@@ -1,3 +1,8 @@
+jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
+  ...jest.requireActual("embedding-sdk-bundle/analytics/snowplow"),
+  trackSdkSimpleEvent: jest.fn(),
+}));
+
 import {
   act,
   render as renderWithoutProviders,
@@ -6,9 +11,11 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 
+import { renderWithProviders } from "__support__/ui";
+import { trackSdkSimpleEvent } from "embedding-sdk-bundle/analytics/snowplow";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
-import { getSdkStore } from "embedding-sdk-bundle/store";
+import { getSdkStore, sdkReducers } from "embedding-sdk-bundle/store";
 import {
   PLUGIN_EMBEDDING_SDK_AUTH,
   initAuth,
@@ -17,8 +24,14 @@ import {
   setErrorComponent,
   setPluginsReady,
 } from "embedding-sdk-bundle/store/reducer";
+import {
+  createMockLoginStatusState,
+  createMockSdkState,
+} from "embedding-sdk-bundle/test/mocks/state";
+import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { defer } from "metabase/utils/promise";
+import { createMockSettings } from "metabase-types/api/mocks";
 
 import { DataApp, type DataAppProps } from "./DataApp";
 
@@ -393,5 +406,48 @@ describe("DataApp", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "SSO is unavailable",
     );
+  });
+
+  it("reports one component event per data app", () => {
+    const { state } = setupSdkState({
+      settingValues: createMockSettings({ "anon-tracking-enabled": true }),
+      sdkState: createMockSdkState({
+        initStatus: createMockLoginStatusState({ status: "success" }),
+        sdkTrackerReady: true,
+      }),
+    });
+
+    renderWithProviders(
+      <>
+        <DataApp path="tracked-store/orders" />
+        <DataApp path="tracked-store/customers" />
+        <DataApp path="tracked-crm" />
+      </>,
+      { storeInitialState: state, customReducers: sdkReducers },
+    );
+
+    const components = jest
+      .mocked(trackSdkSimpleEvent)
+      .mock.calls.map(([event]) => {
+        const detail: unknown = JSON.parse(event.event_detail ?? "{}");
+        return { event: event.event, detail };
+      });
+
+    expect(components).toEqual([
+      {
+        event: "embedding_sdk_component_rendered",
+        detail: expect.objectContaining({
+          component: "DataApp",
+          properties: {},
+        }),
+      },
+      {
+        event: "embedding_sdk_component_rendered",
+        detail: expect.objectContaining({
+          component: "DataApp",
+          properties: {},
+        }),
+      },
+    ]);
   });
 });

@@ -1049,6 +1049,35 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         });
       });
     });
+
+    describe("data app", () => {
+      it("should track data app embeds as one component without properties", () => {
+        const usage = createEmbeddedAnalyticsJsUsage(
+          new Set([
+            createEmbeddedAnalyticsJsElement("metabase-data-app", {
+              path: "my-store/orders",
+            }),
+            createEmbeddedAnalyticsJsElement("metabase-data-app", {
+              path: "my-crm",
+            }),
+          ]),
+        );
+
+        expect(usage.components).toEqual([
+          { name: "data_app", properties: [] },
+        ]);
+      });
+
+      it("should not track data apps when none are embedded", () => {
+        const usage = createEmbeddedAnalyticsJsUsage(
+          new Set([createEmbeddedAnalyticsJsElement("metabase-question")]),
+        );
+
+        expect(usage.components).not.toContainEqual(
+          expect.objectContaining({ name: "data_app" }),
+        );
+      });
+    });
   });
 
   describe("Guest embed defaults", () => {
@@ -1117,7 +1146,8 @@ type Component =
   | "metabase-dashboard"
   | "metabase-question"
   | "metabase-browser"
-  | "metabase-metabot";
+  | "metabase-metabot"
+  | "metabase-data-app";
 function createEmbeddedAnalyticsJsElement(
   componentName: Component,
   properties: Record<string, any> = {},

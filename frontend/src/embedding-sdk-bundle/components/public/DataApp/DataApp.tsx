@@ -1,11 +1,13 @@
 import { type CSSProperties, useId, useMemo } from "react";
 
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { PublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
 import { useSdkStore } from "embedding-sdk-bundle/store";
 import {
   getDataAppEmbedUrl,
+  getEmbeddedAppSlugFromPath,
   normalizeDataAppPath,
   validateDataAppPath,
 } from "embedding-sdk-shared/lib/embedded-data-app-path";
@@ -42,6 +44,12 @@ function DataAppInner({ path, ...props }: DataAppProps) {
 
   const id = useId();
   const reduxStore = useSdkStore();
+
+  useTrackSdkComponentMount(
+    "DataApp",
+    getEmbeddedAppSlugFromPath(path) ?? null,
+    {},
+  );
 
   const authConfig = providerProps?.authConfig;
   const instanceUrl = authConfig?.metabaseInstanceUrl;
