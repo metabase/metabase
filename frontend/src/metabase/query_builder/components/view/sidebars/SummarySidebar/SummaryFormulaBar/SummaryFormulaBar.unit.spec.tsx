@@ -213,6 +213,31 @@ describe("summary formula handoff", () => {
     expect(Lib.breakouts(query, -1)).toHaveLength(0);
     expect(Lib.expressions(query, -1)).toHaveLength(0);
   });
+  it("removes a chip whose name is being edited on the first Remove click", async () => {
+    const { onQueryChange } = await setup();
+    fireEvent.change(getInput("columns"), {
+      target: { value: "=[Total] + 10" },
+    });
+    await screen.findByRole("textbox", { name: "Formula" });
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await expectClosed();
+    await userEvent.dblClick(
+      within(screen.getByTestId("summary-well-columns")).getByText(
+        "Total + 10",
+      ),
+    );
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Rename Total + 10" }),
+      "Bonus",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Total + 10" }),
+    );
+    expect(onQueryChange).toHaveBeenCalledTimes(2);
+    const [query] = onQueryChange.mock.calls[1];
+    expect(Lib.breakouts(query, -1)).toHaveLength(0);
+    expect(Lib.expressions(query, -1)).toHaveLength(0);
+  });
   it("keeps a formula regrouped after its grouping was removed outside the sidebar", async () => {
     const { onQueryChange } = await setup();
     fireEvent.change(getInput("columns"), {

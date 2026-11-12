@@ -46,7 +46,7 @@ export function ValueChip({
     <WellChip
       drag={{ kind: "value", item }}
       rename={
-        item.kind === "expression"
+        item.kind === "expression" || item.isNamed
           ? { name: item.label, onRename: handleRename }
           : undefined
       }

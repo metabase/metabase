@@ -30,13 +30,11 @@ import { SummaryWell, type WellDropState } from "./SummaryWell";
 import { SummaryWellInput } from "./SummaryWellInput";
 import { ValueChip } from "./ValueChip";
 
-const NO_GENERATED_EXPRESSIONS: SummaryGeneratedExpression[] = [];
-
 type SummaryWellsProps = {
   query: Lib.Query;
   stageIndex: number;
   sections: SummaryFieldSection[];
-  generatedExpressions?: SummaryGeneratedExpression[];
+  generatedExpressions: SummaryGeneratedExpression[];
   formulaInputs?: Partial<Record<SummaryWellId, SummaryFormulaInput>>;
   draftFormula?: (DraftFormulaChipProps & { wellId: SummaryWellId }) | null;
   draggedItem: SummaryDragItem | null;
@@ -48,7 +46,7 @@ export function SummaryWells({
   query,
   stageIndex,
   sections,
-  generatedExpressions = NO_GENERATED_EXPRESSIONS,
+  generatedExpressions,
   formulaInputs,
   draftFormula,
   draggedItem,

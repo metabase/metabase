@@ -652,28 +652,58 @@
     (is (=? [[:expression {} "b"]]
             (lib/breakouts edited)))))
 
+(defn- expression-column
+  [query expression-name]
+  (m/find-first (comp #{expression-name} :name) (lib/breakoutable-columns query)))
+
+(defn- next-day-query
+  "Orders with a `Next day` date expression grouped by `unit`."
+  [unit]
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/expression "Next day" (lib/datetime-add (meta/field-metadata :orders :created-at) 1 :day)))]
+    (lib/breakout query (lib/with-temporal-bucket (expression-column query "Next day") unit))))
+
+(defn- rename-next-day
+  "Replace the `Next day` expression of stage 0 with `replacement`, or with itself, under the name `Tomorrow`."
+  [query replacement]
+  (let [[expr] (lib/expressions query 0)]
+    (lib/replace-clause query 0 expr (lib/with-expression-name (or replacement expr) "Tomorrow"))))
+
+(defn- unbucketed? [options]
+  (not (contains? options :temporal-unit)))
+
 (deftest ^:parallel replace-expression-keeps-bucketing-of-references-test
-  (let [bucketed-breakout (fn [query expression-name unit]
-                            (lib/breakout query (-> (m/find-first (comp #{expression-name} :name)
-                                                                  (lib/breakoutable-columns query))
-                                                    (lib/with-temporal-bucket unit))))
-        query             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                              (lib/expression "Next day" (lib/datetime-add (meta/field-metadata :orders :created-at) 1 :day))
-                              (bucketed-breakout "Next day" :month)
-                              lib/append-stage
-                              (bucketed-breakout "Next day" :year))
-        [expr]            (lib/expressions query 0)
-        renamed           (lib/replace-clause query 0 expr (lib/with-expression-name expr "Tomorrow"))
-        retyped           (lib/replace-clause query 0 expr (lib/with-expression-name
-                                                             (lib/+ (meta/field-metadata :orders :total) 1)
-                                                             "Tomorrow"))
-        unbucketed?       #(not (contains? % :temporal-unit))]
-    (testing "a replacement of the same type keeps the bucketing of its references in this and later stages"
+  (let [base-query (-> (next-day-query :month)
+                       lib/append-stage
+                       (as-> $q (lib/breakout $q (lib/with-temporal-bucket (expression-column $q "Next day") :year))))
+        query      (-> base-query
+                       (as-> $q (lib/breakout $q (lib/with-temporal-bucket (expression-column $q "Next day") :month-of-year)))
+                       (as-> $q (lib/filter $q (lib/< (expression-column $q "Next day") "2026-03-15"))))
+        renamed    (rename-next-day query nil)
+        retyped    (rename-next-day base-query (lib/+ (meta/field-metadata :orders :total) 1))]
+    (testing "a replacement of the same type keeps the bucketing of each reference, in this and later stages"
       (is (=? [[:expression {:temporal-unit :month} "Tomorrow"]] (lib/breakouts renamed 0)))
-      (is (=? [[:field {:temporal-unit :year} "Tomorrow"]] (lib/breakouts renamed 1))))
+      (is (=? [[:field {:temporal-unit :year} "Tomorrow"]
+               [:field {:temporal-unit :month-of-year, :effective-type :type/Integer} "Tomorrow"]]
+              (lib/breakouts renamed 1)))
+      (is (=? [[:< {} [:field unbucketed? "Tomorrow"] "2026-03-15"]] (lib/filters renamed 1))))
     (testing "a replacement of another type drops the bucketing"
       (is (=? [[:expression unbucketed? "Tomorrow"]] (lib/breakouts retyped 0)))
       (is (=? [[:field unbucketed? "Tomorrow"]] (lib/breakouts retyped 1))))))
+
+(deftest ^:parallel replace-expression-with-extraction-unit-test
+  (testing "the extraction unit of this stage is not bucketing of the later stage's references to its integer column"
+    (let [query   (-> (next-day-query :month-of-year)
+                      lib/append-stage
+                      (as-> $q (lib/breakout $q (lib/with-binning (expression-column $q "Next day")
+                                                                  {:strategy :num-bins, :num-bins 4})))
+                      (as-> $q (lib/filter $q (lib/> (expression-column $q "Next day") 3))))
+          renamed (rename-next-day query nil)]
+      (is (=? [[:expression {:temporal-unit :month-of-year, :effective-type :type/Integer} "Tomorrow"]]
+              (lib/breakouts renamed 0)))
+      (is (=? [[:field #(and (unbucketed? %) (= {:strategy :num-bins, :num-bins 4} (:binning %))) "Tomorrow"]]
+              (lib/breakouts renamed 1)))
+      (is (=? [[:> {} [:field unbucketed? "Tomorrow"] 3]] (lib/filters renamed 1))))))
 
 (deftest ^:parallel replace-order-by-breakout-col-test
   (testing "issue #30980"

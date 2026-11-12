@@ -1,3 +1,4 @@
+import { useMergedRef } from "@mantine/hooks";
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -20,6 +21,7 @@ import type {
 } from "../types";
 import { filterFieldSections } from "../utils";
 
+import { useWellFieldRef } from "./SummaryWell";
 import {
   DROPDOWN_GAP_PX,
   DROPDOWN_MAX_HEIGHT_PX,
@@ -52,6 +54,7 @@ export function SummaryWellInput({
 }: SummaryWellInputProps) {
   const fieldRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const mergedInputRef = useMergedRef(inputRef, useWellFieldRef());
   const [dropdownFrame, setDropdownFrame] = useState<DropdownFrame | null>(
     null,
   );
@@ -168,7 +171,7 @@ export function SummaryWellInput({
           {children}
           <Combobox.EventsTarget>
             <PillsInput.Field
-              ref={inputRef}
+              ref={mergedInputRef}
               className={S.wellFieldInput}
               placeholder={texts.placeholder}
               value={searchText}

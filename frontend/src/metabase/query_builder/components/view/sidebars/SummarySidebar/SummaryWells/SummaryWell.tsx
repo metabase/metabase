@@ -1,5 +1,12 @@
 import { useDroppable } from "@dnd-kit/core";
-import type { MouseEvent, ReactNode } from "react";
+import {
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+  createContext,
+  useContext,
+  useRef,
+} from "react";
 
 import { Card, Flex, Text } from "metabase/ui";
 
@@ -9,6 +16,12 @@ import type { SummaryWellId } from "../types";
 // clicks on these keep their own behavior instead of focusing the well's field
 const INTERACTIVE_SELECTOR =
   "button, input, a, [role='button'], [contenteditable='true']";
+
+const WellFieldContext =
+  createContext<RefObject<HTMLInputElement | null> | null>(null);
+
+/** The typeahead field of the surrounding well. */
+export const useWellFieldRef = () => useContext(WellFieldContext);
 
 export type WellDropState = "accepts" | "rejects" | "over";
 
@@ -25,6 +38,7 @@ export function SummaryWell({
   dropState,
   children,
 }: SummaryWellProps) {
+  const fieldRef = useRef<HTMLInputElement>(null);
   const { setNodeRef, isOver } = useDroppable({
     id: `well:${wellId}`,
     data: { wellId },
@@ -39,7 +53,7 @@ export function SummaryWell({
     ) {
       return;
     }
-    const field = event.currentTarget.querySelector("input");
+    const field = fieldRef.current;
     if (field) {
       // keep the mousedown from blurring the field we're about to focus
       event.preventDefault();
@@ -48,20 +62,22 @@ export function SummaryWell({
   };
 
   return (
-    <Card
-      ref={setNodeRef}
-      className={S.well}
-      radius="lg"
-      shadow="xs_outline"
-      p="md"
-      data-testid={`summary-well-${wellId}`}
-      data-drop={effectiveDropState ?? undefined}
-      onMouseDown={handleMouseDown}
-    >
-      <Flex className={S.wellHeader}>
-        <Text className={S.wellTitle}>{title}</Text>
-      </Flex>
-      {children}
-    </Card>
+    <WellFieldContext.Provider value={fieldRef}>
+      <Card
+        ref={setNodeRef}
+        className={S.well}
+        radius="lg"
+        shadow="xs_outline"
+        p="md"
+        data-testid={`summary-well-${wellId}`}
+        data-drop={effectiveDropState ?? undefined}
+        onMouseDown={handleMouseDown}
+      >
+        <Flex className={S.wellHeader}>
+          <Text className={S.wellTitle}>{title}</Text>
+        </Flex>
+        {children}
+      </Card>
+    </WellFieldContext.Provider>
   );
 }

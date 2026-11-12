@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  fireEvent,
   mockTextOverflow,
   renderWithProviders,
   screen,
@@ -43,11 +44,16 @@ const SUMMARIZED_QUERY: TestQuerySpec = {
 
 type SetupOpts = {
   spec?: TestQuerySpec;
-  /** Custom columns the wells created. */
+  /** Custom columns the wells created, on `formulaStageIndex`. */
   formulaNames?: string[];
+  formulaStageIndex?: number;
 };
 
-function setup({ spec = SUMMARIZED_QUERY, formulaNames = [] }: SetupOpts = {}) {
+function setup({
+  spec = SUMMARIZED_QUERY,
+  formulaNames = [],
+  formulaStageIndex = STAGE_INDEX,
+}: SetupOpts = {}) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, spec);
   const onPick = jest.fn<void, [SummaryWellId, SummaryField]>();
   const onChange = jest.fn<void, [Lib.Query, SummaryQueryChangeOptions?]>();
@@ -57,7 +63,7 @@ function setup({ spec = SUMMARIZED_QUERY, formulaNames = [] }: SetupOpts = {}) {
       stageIndex={STAGE_INDEX}
       sections={getFieldSections(query, STAGE_INDEX)}
       generatedExpressions={formulaNames
-        .map((name) => makeSummaryFormula(query, STAGE_INDEX, name))
+        .map((name) => makeSummaryFormula(query, formulaStageIndex, name))
         .filter(isNotNull)}
       draggedItem={null}
       onPick={onPick}
@@ -419,22 +425,57 @@ describe("SummaryWells", () => {
       ],
     };
 
-    async function renameChip(label: string, name: string, key: string) {
+    async function renameChip(label: string, name: string, ending: string) {
       await userEvent.dblClick(screen.getByText(label));
       const input = screen.getByRole("textbox", { name: `Rename ${name}` });
       await userEvent.clear(input);
-      await userEvent.type(input, `New ${name}{${key}}`);
+      await userEvent.type(input, `New ${name}${ending}`);
     }
 
     it("renames a named value on double-click, unless Escape drops the new name", async () => {
       const { onChange, getLastChange } = setup({ spec });
 
-      await renameChip("Revenue", "Revenue", "Escape");
+      await renameChip("Revenue", "Revenue", "{Escape}");
       expect(onChange).not.toHaveBeenCalled();
       expect(screen.getByText("Revenue")).toBeInTheDocument();
+      expect(getValuesField()).toHaveFocus();
 
-      await renameChip("Revenue", "Revenue", "Enter");
+      await renameChip("Revenue", "Revenue", "{Enter}");
       expect(getLastChange().values).toEqual(["Count", "New Revenue"]);
+      expect(getValuesField()).toHaveFocus();
+    });
+
+    it("renames from the keyboard with F2 on a control of the chip", async () => {
+      const { getLastChange } = setup({ spec });
+
+      screen.getByRole("button", { name: "Remove Revenue" }).focus();
+      await userEvent.keyboard("{F2}");
+      const input = screen.getByRole("textbox", { name: "Rename Revenue" });
+      await userEvent.clear(input);
+      await userEvent.type(input, "New Revenue{Enter}");
+
+      expect(getLastChange().values).toEqual(["Count", "New Revenue"]);
+    });
+
+    it("keeps the new name and moves to the well's field when the well is clicked", async () => {
+      const { getLastChange } = setup({ spec });
+
+      await renameChip("Revenue", "Revenue", "");
+      await userEvent.click(screen.getByText("Summarize by"));
+
+      expect(getLastChange().values).toEqual(["Count", "New Revenue"]);
+      expect(getValuesField()).toHaveFocus();
+    });
+
+    it("lets Enter end an IME composition without applying the name", async () => {
+      const { onChange } = setup({ spec });
+
+      await userEvent.dblClick(screen.getByText("Revenue"));
+      const input = screen.getByRole("textbox", { name: "Rename Revenue" });
+      fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+
+      expect(input).toBeInTheDocument();
+      expect(onChange).not.toHaveBeenCalled();
     });
 
     it("renames a grouping formula with its unit and hands the new name over", async () => {
@@ -443,7 +484,7 @@ describe("SummaryWells", () => {
         formulaNames: ["Next day"],
       });
 
-      await renameChip("Next day: Month", "Next day", "Enter");
+      await renameChip("Next day: Month", "Next day", "{Enter}");
 
       expect(getLastChange().dimensions).toEqual([
         "Created At: Month",
@@ -462,6 +503,42 @@ describe("SummaryWells", () => {
 
       expect(
         screen.queryByRole("textbox", { name: /^Rename/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("offers no renaming to a custom column with the name of a formula on another stage", async () => {
+      const stagedSpec: TestQuerySpec = {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            expressions: [
+              { name: "Bonus", value: { type: "column", name: "TOTAL" } },
+            ],
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [{ type: "column", name: "Bonus" }],
+          },
+          { aggregations: [{ type: "operator", operator: "count" }] },
+          {
+            expressions: [
+              { name: "Bonus", value: { type: "literal", value: 10 } },
+            ],
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [{ type: "column", name: "Bonus" }],
+          },
+        ],
+      };
+      setup({
+        spec: stagedSpec,
+        formulaNames: ["Bonus"],
+        formulaStageIndex: 0,
+      });
+
+      await userEvent.dblClick(
+        within(screen.getByTestId("summary-well-columns")).getByText("Bonus"),
+      );
+
+      expect(
+        screen.queryByRole("textbox", { name: "Rename Bonus" }),
       ).not.toBeInTheDocument();
     });
   });

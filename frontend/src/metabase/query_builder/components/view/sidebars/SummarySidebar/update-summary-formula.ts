@@ -29,10 +29,19 @@ export function updateSummaryFormula({
   const index =
     stageIndex < 0 ? Lib.stageCount(query) + stageIndex : stageIndex;
   const owned = reconcileSummaryFormulas(query, generatedExpressions).map(
-    (formula) =>
-      formula.stageIndex === index && formula.name === renamedFormula?.name
-        ? { ...formula, name: renamedFormula.nextName }
-        : formula,
+    (formula) => {
+      const isRenamedStage =
+        isNotNull(renamedFormula) && formula.stageIndex === index;
+      if (!isRenamedStage) {
+        return formula;
+      }
+      // a rename also rewrites the formulas that refer to the renamed one
+      const name =
+        formula.name === renamedFormula.name
+          ? renamedFormula.nextName
+          : formula.name;
+      return makeSummaryFormula(nextQuery, index, name) ?? formula;
+    },
   );
   let formulas = owned;
 
