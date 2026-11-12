@@ -567,7 +567,7 @@
                [`(with-temp-env-var-value! ~(vec more) ~@body)]
                body))))
 
-(defmacro ^:private with-temp-system-property!
+(defmacro with-temp-system-property!
   "Run `body` with Java system property `k` set to `v`, restoring whatever it was afterwards."
   [[k v] & body]
   `(let [k# ~k, before# (System/getProperty k#)]
