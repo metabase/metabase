@@ -28,6 +28,7 @@ const setup = ({
   hasSlackSetup = false,
   canManageSubscriptions,
   isEnterprise = false,
+  canEdit = false,
   dashboard: dashboardOverrides = {},
 }: {
   isAdmin?: boolean;
@@ -35,6 +36,7 @@ const setup = ({
   hasSlackSetup?: boolean;
   canManageSubscriptions?: boolean;
   isEnterprise?: boolean;
+  canEdit?: boolean;
   dashboard?: Partial<ReturnType<typeof createMockDashboard>>;
 } = {}) => {
   const dashboard = createMockDashboard({
@@ -72,7 +74,7 @@ const setup = ({
           <DashboardActionMenu
             canResetFilters={false}
             onResetFilters={jest.fn()}
-            canEdit={false}
+            canEdit={canEdit}
             openSettingsSidebar={jest.fn()}
           />
         </MockDashboardContext>
@@ -155,5 +157,25 @@ describe("DashboardActionMenu", () => {
     expect(screen.getByText("60 minutes")).toBeInTheDocument();
     expect(screen.queryByText("Duplicate")).not.toBeInTheDocument();
     expect(screen.queryByText("Enter fullscreen")).not.toBeInTheDocument();
+  });
+
+  it("should only offer to duplicate a dashboard the user cannot edit (metabase#15280)", async () => {
+    setup({ canEdit: false });
+    await openMenu();
+
+    expect(await screen.findByText("Duplicate")).toBeInTheDocument();
+    expect(screen.queryByText("Edit settings")).not.toBeInTheDocument();
+    expect(screen.queryByText("Move")).not.toBeInTheDocument();
+    expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
+  });
+
+  it("should offer to edit, move, and trash a dashboard the user can edit", async () => {
+    setup({ canEdit: true });
+    await openMenu();
+
+    expect(await screen.findByText("Duplicate")).toBeInTheDocument();
+    expect(screen.getByText("Edit settings")).toBeInTheDocument();
+    expect(screen.getByText("Move")).toBeInTheDocument();
+    expect(screen.getByText("Move to trash")).toBeInTheDocument();
   });
 });
