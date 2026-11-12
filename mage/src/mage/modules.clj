@@ -128,7 +128,6 @@
      audit-app
      auth-provider
      batch-processing
-     bookmarks
      channel
      collections
      content-verification
@@ -139,23 +138,19 @@
      dependencies
      documents
      embedding
-     enterprise/serialization
      enterprise/transforms
      events
      explorations
      formatter
      funnysql
      geojson
-     glossary
      indexed-entities
      interestingness
      lib.types
-     mcp
      measures
      metabot
      mq
      notification
-     osi
      permissions
      premium-features
      public-sharing
@@ -271,6 +266,21 @@
                      {:missing missing})))
    (let [affected (affected-modules deps (remove #(driver-exempt? deps rules %) modules))]
      (boolean (some affected triggers)))))
+
+(defn unreached-driver-test-exemptions
+  "Exemptions in `rules`, shaped like [[driver-test-rules]], that skip no driver tests in the module graph `deps`.
+  No trigger depends on such a module, or on a submodule that its exemption covers.
+  These are warnings rather than [[driver-test-rule-problems]], so that dropping a dependency never fails a build."
+  [deps {:keys [exemptions triggers] :as rules}]
+  (let [decider  (fn [module]
+                   (some #(when (listed-decision rules %) %) (modules/lineage deps module)))
+        covered  (group-by decider (keys deps))
+        reached? (fn [module]
+                   (some (affected-modules deps [module]) triggers))]
+    (for [module (sort-by str exemptions)
+          :when  (and (contains? deps module)
+                      (not-any? reached? (covered module)))]
+      module)))
 
 (defn- changes-important-file-for-drivers?
   "Whether we should always run driver tests because `updated-files` touches something important like
@@ -716,6 +726,10 @@
                 :jvm-args   ["-X:dev" "dev.modules-config/fix-config!"]
                 :nrepl-msg  (c/green "Regenerating modules config via the running dev REPL...")
                 :jvm-msg    (c/yellow "No dev REPL found — starting a JVM (slower; start your dev REPL for ~5s runs)...")})]
+    ;; Reported here because a change to the module graph is what leaves an exemption unreached.
+    (doseq [module (unreached-driver-test-exemptions (dependencies) driver-test-rules)]
+      (println (format "WARNING: no driver-test trigger depends on %s -- remove it from driver-test-exemptions in mage.modules"
+                       module)))
     (printf "\nFinished in %.1fs\n" (/ (u/since-ms timer) 1000.0))
     (flush)
     (u/exit (or exit 0))))

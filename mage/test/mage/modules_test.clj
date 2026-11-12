@@ -338,6 +338,18 @@
               {:type :redundant-opt-in,    :module y}}
            (set (mage.modules/driver-test-rule-problems deps rules))))))
 
+(deftest unreached-driver-test-exemptions-test
+  ;; The trigger `t` uses `a.sub`, `b` and `c.sub.in`, and nothing else.
+  (let [deps  (assoc (graph '[a a.sub b c c.sub c.sub.in d]) 't '#{a.sub b c.sub.in})
+        rules '{:triggers   #{t}
+                :exemptions #{a b c d nope}
+                :opt-ins    #{c.sub}}]
+    ;; `a` is reached through the submodule it covers, and `b` directly.
+    ;; The opt-in `c.sub` takes `c.sub.in` out of `c`'s cover, which leaves `c` unreached.
+    ;; The undeclared `nope` is a problem for [[mage.modules/driver-test-rule-problems]] instead.
+    (is (= '[c d]
+           (mage.modules/unreached-driver-test-exemptions deps rules)))))
+
 (deftest driver-tests-needed-test
   (let [deps (mage.modules/dependencies)]
     (are [files modules expected] (= expected (mage.modules/driver-tests-needed? deps files modules))
