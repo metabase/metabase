@@ -209,8 +209,8 @@
                          #(walk-export-timeline-fks visit % :model/TimelineEvent))))
 
 (defn- update-dynamic-goal-ids
-  "`settings` with each entity goal's `:id` replaced by `(f model id)`, nested visualizer settings included. A goal of an
-  unknown `:type`, or for which `f` returns nil, becomes nil, so an id never outlives the entity it named."
+  "`settings` with each entity goal's `:id` replaced by `(f model id)`, nested visualizer settings included. A goal of
+  an unknown `:type`, or for which `f` returns nil, becomes nil, so an id never outlives the entity it named."
   [settings f]
   (dynamic-goals/update-dashcard-goal-values
    settings
@@ -323,8 +323,8 @@
                          #(walk-import-timeline-fks visit % :model/TimelineEvent))))
 
 (defn- walk-import-dynamic-goals
-  "Dynamic goals with their entity ids replaced by what `visit` returns. A goal whose id is not an entity id becomes nil,
-  so a source instance's database id can't select an unrelated destination entity."
+  "Dynamic goals with their entity ids replaced by what `visit` returns. A goal whose id is not an entity id becomes
+  nil, so a source instance's database id can't select an unrelated destination entity."
   [visit settings]
   (update-dynamic-goal-ids settings (fn [model id]
                                       (when (mbql/entity-id? id)
