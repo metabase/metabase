@@ -3,10 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import type {
   CreateGlossaryRequest,
-  GlossaryItem,
   UpdateGlossaryRequest,
 } from "metabase/api";
 import { defer } from "metabase/utils/promise";
+import type { GlossaryItem } from "metabase-types/api";
 
 import { GlossaryTable } from "./GlossaryTable";
 

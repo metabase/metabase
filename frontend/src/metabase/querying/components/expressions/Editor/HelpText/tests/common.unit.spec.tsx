@@ -107,6 +107,22 @@ describe("HelpText (OSS)", () => {
     });
   });
 
+  it("should render the usage, description and arguments of lower", async () => {
+    await setup({ enclosingFunction: { name: "lower" } });
+
+    expect(
+      screen.getByTestId("expression-helper-popover-structure"),
+    ).toHaveTextContent("lower(value)");
+    expect(
+      screen.getByText("Returns the string of text in all lower case."),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByTestId("expression-helper-popover-arguments"),
+      ).getByText("The column with values to convert to lower case."),
+    ).toBeInTheDocument();
+  });
+
   it("should render long examples on multiple lines", async () => {
     await setup({
       enclosingFunction: {

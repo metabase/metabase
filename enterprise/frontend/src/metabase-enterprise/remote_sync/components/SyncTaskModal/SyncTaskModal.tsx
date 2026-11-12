@@ -32,30 +32,30 @@ type SyncTaskModalProps = {
   onClose: () => void;
 };
 
-export const SyncTaskModal = ({
-  title,
-  taskId,
-  onClose,
-}: SyncTaskModalProps) => (
-  <Modal
-    opened={taskId != null}
-    title={title}
-    closeOnClickOutside={false}
-    closeOnEscape={false}
-    withCloseButton={false}
-    onClose={onClose}
-  >
-    <FocusTrap.InitialFocus />
-    {taskId != null && <SyncTaskModalBody taskId={taskId} onClose={onClose} />}
-  </Modal>
-);
+export function SyncTaskModal({ title, taskId, onClose }: SyncTaskModalProps) {
+  return (
+    <Modal
+      opened={taskId != null}
+      title={title}
+      closeOnClickOutside={false}
+      closeOnEscape={false}
+      withCloseButton={false}
+      onClose={onClose}
+    >
+      <FocusTrap.InitialFocus />
+      {taskId != null && (
+        <SyncTaskModalBody taskId={taskId} onClose={onClose} />
+      )}
+    </Modal>
+  );
+}
 
 type SyncTaskModalBodyProps = {
   taskId: RemoteSyncTaskId;
   onClose: () => void;
 };
 
-const SyncTaskModalBody = ({ taskId, onClose }: SyncTaskModalBodyProps) => {
+function SyncTaskModalBody({ taskId, onClose }: SyncTaskModalBodyProps) {
   const task = useSyncTask(taskId, onClose);
 
   if (
@@ -67,12 +67,12 @@ const SyncTaskModalBody = ({ taskId, onClose }: SyncTaskModalBodyProps) => {
   }
 
   return <FinishedTask task={task} onClose={onClose} />;
-};
+}
 
-const useSyncTask = (
+function useSyncTask(
   taskId: RemoteSyncTaskId,
   onSuccess: () => void,
-): RemoteSyncTask | undefined => {
+): RemoteSyncTask | undefined {
   const [isPolling, setIsPolling] = useState(true);
   const { data } = useGetRemoteSyncCurrentTaskQuery(undefined, {
     pollingInterval: isPolling ? TASK_POLLING_INTERVAL_MS : 0,
@@ -97,21 +97,22 @@ const useSyncTask = (
   }, [isPolling, status, outcome, dispatch, sendToast, onSuccess]);
 
   return task;
-};
+}
 
-const getOutcomeMessage = (outcome: RemoteSyncTask["outcome"]) =>
-  match(outcome?.kind)
+function getOutcomeMessage(outcome: RemoteSyncTask["outcome"]) {
+  return match(outcome?.kind)
     .with("pulled", () => t`Pulled the latest changes`)
     .with("pull-skipped", () => t`Everything is up to date`)
     .with("pushed", () => t`Pushed your changes`)
     .with("push-skipped", () => t`There was nothing to push`)
     .otherwise(() => t`Sync finished`);
+}
 
 type RunningTaskProps = {
   task: RemoteSyncTask | undefined;
 };
 
-const RunningTask = ({ task }: RunningTaskProps) => {
+function RunningTask({ task }: RunningTaskProps) {
   const [cancelTask, { isLoading, isSuccess: isCancelling }] =
     useCancelRemoteSyncCurrentTaskMutation();
 
@@ -144,60 +145,65 @@ const RunningTask = ({ task }: RunningTaskProps) => {
       </Group>
     </Stack>
   );
-};
+}
 
 type FinishedTaskProps = {
   task: RemoteSyncTask;
   onClose: () => void;
 };
 
-const FinishedTask = ({ task, onClose }: FinishedTaskProps) => (
-  <Stack gap="lg">
-    <Text>{getErrorMessage(task)}</Text>
-    {task.status === "cancelled" && (
-      <Text size="sm" c="text-secondary">
-        {getStoppedAt(task)}
-      </Text>
-    )}
-    {task.conflicts != null && task.conflicts.length > 0 && (
-      <List>
-        {task.conflicts.map((conflict) => (
-          <List.Item key={conflict}>{conflict}</List.Item>
-        ))}
-      </List>
-    )}
-    <Group justify="flex-end">
-      <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
-    </Group>
-  </Stack>
-);
+function FinishedTask({ task, onClose }: FinishedTaskProps) {
+  return (
+    <Stack gap="lg">
+      <Text>{getErrorMessage(task)}</Text>
+      {task.status === "cancelled" && (
+        <Text size="sm" c="text-secondary">
+          {getStoppedAt(task)}
+        </Text>
+      )}
+      {task.conflicts != null && task.conflicts.length > 0 && (
+        <List>
+          {task.conflicts.map((conflict) => (
+            <List.Item key={conflict}>{conflict}</List.Item>
+          ))}
+        </List>
+      )}
+      <Group justify="flex-end">
+        <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
+      </Group>
+    </Stack>
+  );
+}
 
-const getErrorMessage = (task: RemoteSyncTask) =>
-  task.error_message ??
-  match(task)
-    .with({ status: "cancelled" }, () => t`The sync was cancelled.`)
-    .with(
-      { status: "conflict", outcome: { kind: "remote-changed" } },
-      () =>
-        t`The branch changed since you opened Push. Push again to merge or overwrite its changes.`,
-    )
-    .with(
-      { status: "conflict" },
-      () => t`The same content was changed here and on the branch.`,
-    )
-    .otherwise(() => t`The sync failed.`);
+function getErrorMessage(task: RemoteSyncTask) {
+  return (
+    task.error_message ??
+    match(task)
+      .with({ status: "cancelled" }, () => t`The sync was cancelled.`)
+      .with(
+        { status: "conflict", outcome: { kind: "remote-changed" } },
+        () =>
+          t`The branch changed since you opened Push. Push again to merge or overwrite its changes.`,
+      )
+      .with(
+        { status: "conflict" },
+        () => t`The same content was changed here and on the branch.`,
+      )
+      .otherwise(() => t`The sync failed.`)
+  );
+}
 
-const getStartedBy = (task: RemoteSyncTask) => {
+function getStartedBy(task: RemoteSyncTask) {
   const time = dayjs(task.started_at).format("LT");
   return task.initiated_by_user != null
     ? c("{0} is a person's name, {1} is a time of day")
         .t`Started by ${getUserName(task.initiated_by_user)} at ${time}`
     : c("{0} is a time of day").t`Started at ${time}`;
-};
+}
 
-const getStoppedAt = (task: RemoteSyncTask) => {
+function getStoppedAt(task: RemoteSyncTask) {
   const percent = Math.round((task.progress ?? 0) * 100);
   const startedBy = getStartedBy(task);
   return c("{0} is a percentage, {1} says who started the sync and when")
     .t`Stopped at ${percent}% · ${startedBy}`;
-};
+}

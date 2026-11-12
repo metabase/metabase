@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -62,15 +63,18 @@
         (is (false? (remote-sync/read-only?)))
         (is (true? (remote-sync/can-write? :model/Card (:id card))))))))
 
-(deftest synced-label-test
-  (testing "entities are named by their name, and glossary entries by their term"
-    (is (= "Card" (remote-sync/synced-label :model/Card {:name "Card"})))
-    (is (= "Term" (remote-sync/synced-label :model/Glossary {:term "Term"})))))
+(deftest synced-name-test
+  (testing "exported entities are named by their name, and glossary entries by their term"
+    (is (= "Card" (remote-sync/synced-name :model/Card {:name "Card"})))
+    (is (= "Term" (remote-sync/synced-name :model/Glossary {:term "Term"})))))
 
-(deftest synced-collection-id-test
-  (testing "changes show under the collection of their row, and a collection's under itself"
-    (is (= 2 (remote-sync/synced-collection-id :model/Card {:id 1 :collection_id 2})))
-    (is (= 1 (remote-sync/synced-collection-id :model/Collection {:id 1 :location "/"})))))
+(deftest items-test
+  (doseq [model (remote-sync/synced-models)
+          :let  [items (:synced-items (remote-sync/spec model))]]
+    (testing (str model " has items unless it is a SerDes child nested in its parent, and its items query runs on the app DB")
+      (if (when-let [parent (:parent (serialization/spec model))] (not (:import-only? parent)))
+        (is (nil? items))
+        (is (= [] (items [Integer/MAX_VALUE])))))))
 
 (deftest synced-rows-per-model-test
   (mt/with-temp [:model/Collection        synced          {:name "Synced" :is_remote_synced true :location "/"}
