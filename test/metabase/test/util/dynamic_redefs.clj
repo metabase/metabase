@@ -304,14 +304,10 @@
   ;; Leave the rest, such as multimethods, for the macro to refuse when a test runs it. A failure only costs one var
   ;; its early proxy, so record it rather than abort the run.
   (let [{targets true, skipped false} (group-by proxyable? @compiled-targets)
-        failed                        (into {}
-                                            (keep (fn [a-var]
-                                                    (try
-                                                      (patch-vars! [a-var])
-                                                      nil
-                                                      (catch Exception e
-                                                        [a-var e]))))
-                                            targets)]
+        failed                        (into {} (for [a-var targets
+                                                     :let  [e (try (patch-vars! [a-var]) nil (catch Exception e e))]
+                                                     :when e]
+                                                 [a-var e]))]
     {:proxied (- (count targets) (count failed))
      :skipped (vec skipped)
      :failed  failed}))
@@ -337,7 +333,7 @@
      So does a replacement that calls a value captured from the var, such as `(let [orig f] ...)`.
      To delegate to the original, capture it with [[original-fn]].
    - The test runner proxies every var this macro names before the first test, so a captured value is the proxy even
-     on a test's first run, and that mistake fails at once.
+     on a test's first run, and a replacement that calls it fails on that run.
      A run that skips the runner's entry points, such as one started from CIDER, proxies each var on its first
      redefinition instead, so the mistake only shows on a later run.
    - Only threads that inherit the calling thread's dynamic bindings see the replacement.

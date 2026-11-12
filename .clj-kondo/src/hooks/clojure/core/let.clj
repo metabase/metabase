@@ -24,12 +24,11 @@
       nil)))
 
 (defn- reexported-from
-  "The vars that `var-sym` could be a potemkin re-export of.
-   That is a var of the same name in each namespace that its own namespace imports from."
+  "The vars that `var-sym` could be a potemkin re-export of."
   [var-sym]
-  (let [var-name (symbol (name var-sym))]
-    (for [ns-sym (get-in (common/ns-analysis (symbol (namespace var-sym))) [:clj :proxied-namespaces])
-          :when  (get-in (common/ns-analysis ns-sym) [:clj var-name])]
+  (let [var-name (symbol (name var-sym))
+        proxied  (common/proxied-analyses (common/ns-analysis (symbol (namespace var-sym))))]
+    (for [ns-sym (common/reexport-sources proxied var-name)]
       (symbol (name ns-sym) (name var-name)))))
 
 (defn- var-and-sources
@@ -84,7 +83,7 @@
 
 (defn- message [sym]
   (str "This captures " sym ", which with-dynamic-fn-redefs redefines below. "
-       "After the first run the var holds the proxy, so calling this inside the redef calls the replacement. "
+       "The var holds a proxy, so calling this inside the redef calls the replacement. "
        "Use (mt/original-fn #'" sym ") instead. [:metabase/dynamic-redefs-captured-proxy]"))
 
 (defn lint-let
@@ -105,15 +104,14 @@
                         :init        init
                         :var-node    var-node
                         :captured    captured})]
-        ;; Only walk the scope when some binding captures a var, which few do.
-        (when (seq captures)
-          (let [redefs (dynamic-redefs (concat (map second pairs) body))]
-            ;; A redef can reach the capture through a later local, such as a replacement fn bound in this `let`.
-            (doseq [{:keys [local later-pairs init var-node captured]} captures
-                    :when (and (seq redefs)
-                               (redefined-while-used? redefs (dependent-locals local later-pairs) captured))]
-              (hooks/reg-finding!
-               (assoc (meta init)
-                      :message (message (hooks/sexpr var-node))
-                      :type    :metabase/dynamic-redefs-captured-proxy))))))))
+        ;; Only walk the scope when some binding captures a var.
+        (when-let [redefs (and (seq captures)
+                               (seq (dynamic-redefs (concat (map second pairs) body))))]
+          ;; A redef can reach the capture through a later local, such as a replacement fn bound in this `let`.
+          (doseq [{:keys [local later-pairs init var-node captured]} captures
+                  :when (redefined-while-used? redefs (dependent-locals local later-pairs) captured)]
+            (hooks/reg-finding!
+             (assoc (meta init)
+                    :message (message (hooks/sexpr var-node))
+                    :type    :metabase/dynamic-redefs-captured-proxy)))))))
   {:node node})

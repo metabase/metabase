@@ -18,18 +18,11 @@
           ;; The `seq` keeps an empty `:fixed-arities` set from counting as an arity.
           (or (seq (:fixed-arities v))
               (:varargs-min-arity v)))
-        ;; Kondo's `hooks/ns-analysis` strips each var's `:imported-ns`, so search every namespace this one re-exports
-        ;; from. Any of them could be the one the var was imported from, so all must be readable, and all that define
+        ;; Any namespace this one re-exports from could be the source, so all must be readable, and all that define
         ;; the name must be defns.
         ;; Only the namespaces on the current path are in `seen`, so a source reached by two routes is still followed.
-        (let [proxied (into {} (for [ns-sym (get-in analysis [:clj :proxied-namespaces])
-                                     :when  (not (seen ns-sym))]
-                                 [ns-sym (:clj (common/ns-analysis ns-sym))]))
-              ;; Skip private vars: a renamed import can share its name with an unrelated private var in a source.
-              sources (for [[ns-sym vars] proxied
-                            :let  [v (get vars var-sym)]
-                            :when (and v (not (:private v)))]
-                        ns-sym)]
+        (let [proxied (common/proxied-analyses analysis seen)
+              sources (common/reexport-sources proxied var-sym)]
           (and (every? some? (vals proxied))
                (seq sources)
                (every? #(defn-arity? {:clj (proxied %)} var-sym (conj seen %)) sources)))))))
