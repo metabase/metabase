@@ -1419,11 +1419,13 @@
        (with-open [^Statement stmt (.createStatement conn)]
          ;; mssql-jdbc runs the whole batch in one T-SQL scope, so DECLAREd
          ;; variable names must be unique across the batch entries.
+         ;; Table names come from the warehouse, so QUOTENAME them (it escapes `]`) rather than
+         ;; splicing them into the dynamic SQL between brackets.
          (doseq [sql [(format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
-                                   "SELECT @drop_tables_sql += 'DROP TABLE %s.[' + name + ']; ' "
+                                   "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
                                    "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
                                    "EXEC sp_executesql @drop_tables_sql")
-                              quoted-schema escaped-schema)
+                              escaped-schema)
                       (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA %s"
                               escaped-schema quoted-schema)
                       (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
