@@ -415,6 +415,10 @@
                        {:description (str "Number of tokens consumed by the given embedding model and provider. "
                                           "Not all providers track token use.")
                         :labels [:model :provider]})
+   (prometheus/counter :metabase-search/semantic-token-tracking-failures
+                       {:description (str "Number of embedding calls whose token-tracking row failed to save, "
+                                          "so semantic_search_token_tracking undercounts their tokens.")
+                        :labels [:model]})
    (prometheus/counter :metabase-search/semantic-permission-filter-ms
                        {:description "Total number of ms spent filtering readable docs"})
    (prometheus/counter :metabase-search/semantic-collection-filter-ms
