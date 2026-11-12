@@ -13,17 +13,11 @@ import S from "./Errors.module.css";
 export function Errors({
   error,
   source,
-  action,
-  note,
   content,
 }: {
   error?: ExpressionError | Error | null;
   source?: string;
-  /** Shown at the end of the bar, for example a button that fixes the error. */
-  action?: ReactNode;
-  /** Shown on its own line below the error. */
-  note?: ReactNode;
-  /** Shown instead of the error, the action and the note. */
+  /** Shown instead of the error. */
   content?: ReactNode;
 }) {
   if (!error) {
@@ -51,12 +45,6 @@ export function Errors({
           {t`Line ${position.line}, Column ${position.column}`}
         </Text>
       )}
-      {action != null && (
-        <Flex ml="auto" align="center" className={S.action}>
-          {action}
-        </Flex>
-      )}
-      {note != null && <div className={S.note}>{note}</div>}
     </Flex>
   );
 }

@@ -17,21 +17,6 @@ type GenerateExpressionResponse =
   /** The request is not possible with a custom expression. */
   | { message: string };
 
-type CompleteExpressionRequest = {
-  prefix: string;
-  suffix: string;
-  expression_mode: Lib.ExpressionMode;
-  columns: string[];
-  name?: string;
-};
-
-type ExplainExpressionRequest = {
-  source: string;
-  expression_mode: Lib.ExpressionMode;
-  columns: string[];
-  name?: string;
-};
-
 const generateExpressionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     generateExpression: builder.mutation<
@@ -44,31 +29,7 @@ const generateExpressionApi = Api.injectEndpoints({
         body,
       }),
     }),
-    explainExpression: builder.mutation<
-      { summary: string; details?: string },
-      ExplainExpressionRequest
-    >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/prototype/expression/explain",
-        body,
-      }),
-    }),
-    completeExpression: builder.mutation<
-      { completion: string },
-      CompleteExpressionRequest
-    >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/prototype/expression/complete",
-        body,
-      }),
-    }),
   }),
 });
 
-export const {
-  useGenerateExpressionMutation,
-  useCompleteExpressionMutation,
-  useExplainExpressionMutation,
-} = generateExpressionApi;
+export const { useGenerateExpressionMutation } = generateExpressionApi;

@@ -1,9 +1,23 @@
 import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 
-import { isInCode } from "./cursor-context";
-
 export const PROMPT_TRIGGER = "@";
+
+/** True when the text before the cursor ends in code, not in a text or a column name. */
+function isInCode(prefix: string) {
+  let close: string | null = null;
+  for (let i = 0; i < prefix.length; i++) {
+    const char = prefix[i];
+    if (close == null) {
+      close = char === "[" ? "]" : char === '"' || char === "'" ? char : null;
+    } else if (char === "\\") {
+      i++;
+    } else if (char === close) {
+      close = null;
+    }
+  }
+  return close == null;
+}
 
 const openPrompt = StateEffect.define<number>();
 const closePrompt = StateEffect.define<null>();

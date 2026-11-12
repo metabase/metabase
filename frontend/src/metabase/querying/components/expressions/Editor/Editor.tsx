@@ -48,7 +48,6 @@ import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
 import { ExpressionDiffControls } from "./ExpressionDiffControls";
-import { useFixErrorAction } from "./FixErrorAction";
 import { InlinePrompt } from "./InlinePrompt";
 import { InlineToolbar } from "./InlineToolbar";
 import type { Shortcut } from "./Shortcuts";
@@ -56,13 +55,10 @@ import { Shortcuts } from "./Shortcuts";
 import { useSqlHint } from "./SqlHint";
 import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
-import { describeCursor, getColumnType } from "./cursor-context";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
 import { closeInlinePrompt, inlinePrompt } from "./inline-prompt";
-import { getFunctionList } from "./on-device-completion";
 import { useParameterHints } from "./parameter-hints";
-import { useAiCompletion } from "./use-ai-completion";
 import { hasActiveSnippet, useInitialClause } from "./utils";
 
 export type EditorProps = {
@@ -91,7 +87,7 @@ export type EditorProps = {
 
   /** Rendered in the inline toolbar. */
   renderShortcutsMenu?: (helpers: ShortcutsMenuHelpers) => ReactNode;
-  /** The column name, which the AI completion uses as a hint. */
+  /** The column name, which the AI uses as a hint. */
   name?: string;
   /** True when the AI can suggest a new column name. */
   hasDefaultName?: boolean;
@@ -265,23 +261,6 @@ export function Editor(props: EditorProps) {
       availableMetrics,
     ],
   );
-
-  // A hook for the script that tests prompts for the on-device completion.
-  useEffect(() => {
-    const columns = availableColumns.map((column) => ({
-      name: formatIdentifier(
-        Lib.displayInfo(query, stageIndex, column).longDisplayName,
-      ),
-      type: getColumnType(column),
-    }));
-    const debug = {
-      validate,
-      functionList: getFunctionList({ expressionMode, database }),
-      columns,
-      describeCursor: (prefix: string) => describeCursor(prefix, columns),
-    };
-    Object.assign(window, { __expressionEditorDebug: debug });
-  }, [validate, expressionMode, database, availableColumns, query, stageIndex]);
 
   const compileSource = useCallback(
     (source: string) => {
@@ -459,26 +438,6 @@ export function Editor(props: EditorProps) {
     applySource,
   });
 
-  const fixError = useFixErrorAction({
-    error,
-    source,
-    isEnabled: canAssist,
-    generate,
-    proposeSource,
-    replacement: sqlHint,
-  });
-
-  const aiCompletionExtensions = useAiCompletion({
-    query,
-    stageIndex,
-    expressionMode,
-    availableColumns,
-    name,
-    database,
-    validate,
-    isEnabled: inline && !readOnly && !isProposing,
-  });
-
   const parameterHintsExtensions = useParameterHints();
 
   // A new list of extensions reconfigures the editor, which drops the fields
@@ -499,14 +458,12 @@ export function Editor(props: EditorProps) {
         : [
             ...baseExtensions,
             ...parameterHintsExtensions,
-            ...aiCompletionExtensions,
             ...inlinePromptExtensions,
           ],
     [
       diffOriginal,
       baseExtensions,
       diffControlsExtensions,
-      aiCompletionExtensions,
       inlinePromptExtensions,
       parameterHintsExtensions,
     ],
@@ -664,9 +621,7 @@ export function Editor(props: EditorProps) {
             isSnippetActive || isProposing || promptPos != null ? null : error
           }
           source={source}
-          action={fixError.action}
-          note={fixError.note}
-          content={fixError.content}
+          content={sqlHint}
         />
 
         {!inline && source.trim() === "" && !isFormatting && error == null && (

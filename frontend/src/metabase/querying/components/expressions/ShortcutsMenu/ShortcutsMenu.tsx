@@ -17,13 +17,12 @@ import {
   trackColumnExtractViaShortcut,
 } from "../../../analytics";
 import { CombineColumns, hasCombinations } from "../CombineColumns";
-import { ExplainExpression } from "../ExplainExpression";
 import { ExtractColumn, hasExtractions } from "../ExtractColumn";
 import { GenerateExpressionPrompt } from "../GenerateExpressionPrompt";
 
 const SCREEN_WIDTH = 472;
 
-type Screen = "generate" | "explain" | "combine" | "extract";
+type Screen = "generate" | "combine" | "extract";
 
 type ShortcutsMenuProps = {
   query: Lib.Query;
@@ -53,8 +52,6 @@ export function ShortcutsMenu({
   const [screen, setScreen] = useState<Screen | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
-  // The text to explain, taken when the user opens the explanation.
-  const [explainedSource, setExplainedSource] = useState("");
 
   // Mantine closes a popover on any click outside its own DOM, which includes
   // the portaled column pickers inside it. The overlay stack knows they are on top.
@@ -67,13 +64,6 @@ export function ShortcutsMenu({
   const items: { screen: Screen; name: string; icon: IconName }[] = [
     { screen: "generate", name: t`Generate with AI`, icon: "metabot" },
   ];
-  if (getSource().trim() !== "") {
-    items.push({
-      screen: "explain",
-      name: t`Explain this expression`,
-      icon: "info",
-    });
-  }
   if (expressionMode === "expression" && hasCombinations(availableColumns)) {
     items.push({
       screen: "combine",
@@ -153,12 +143,7 @@ export function ShortcutsMenu({
                 <Menu.Item
                   key={item.screen}
                   leftSection={<Icon name={item.icon} />}
-                  onClick={() => {
-                    if (item.screen === "explain") {
-                      setExplainedSource(getSource());
-                    }
-                    setScreen(item.screen);
-                  }}
+                  onClick={() => setScreen(item.screen)}
                 >
                   {item.name}
                 </Menu.Item>
@@ -181,17 +166,6 @@ export function ShortcutsMenu({
             validate={validate}
             onValueChange={setPrompt}
             onGenerate={handleGenerate}
-            onClose={close}
-          />
-        )}
-        {screen === "explain" && (
-          <ExplainExpression
-            query={query}
-            stageIndex={stageIndex}
-            expressionMode={expressionMode}
-            availableColumns={availableColumns}
-            name={name}
-            source={explainedSource}
             onClose={close}
           />
         )}
