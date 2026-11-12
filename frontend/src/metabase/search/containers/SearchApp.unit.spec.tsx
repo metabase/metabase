@@ -112,12 +112,14 @@ const setup = async ({
   searchItems = TEST_SEARCH_RESULTS,
   users = TEST_USER_LIST,
   hasContentVerification = false,
+  nativeQueryContents,
 }: {
   searchText: string;
   searchFilters?: SearchFilters;
   searchItems?: SearchResult[];
   users?: UserListResult[];
   hasContentVerification?: boolean;
+  nativeQueryContents?: ReadonlyMap<SearchResult["id"], string>;
 }) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
@@ -129,7 +131,7 @@ const setup = async ({
   }
 
   setupDatabasesEndpoints([TEST_DATABASE]);
-  setupSearchEndpoints(searchItems);
+  setupSearchEndpoints(searchItems, undefined, { nativeQueryContents });
   setupTableEndpoints(TEST_TABLE);
   setupUserRecipientsEndpoint({ users });
   setupCollectionByIdEndpoint({
@@ -547,21 +549,37 @@ describe("SearchApp", () => {
     });
 
     it("should hydrate the native query filter from the URL and turn it off", async () => {
+      const searchItems = [
+        createMockSearchResult({ id: 1, name: "Customer reviews" }),
+        createMockSearchResult({ id: 2, name: "Native query" }),
+        createMockSearchResult({ id: 3, name: "Unrelated question" }),
+      ];
       const { router } = await setup({
         searchText: "reviews",
         searchFilters: { search_native_query: true },
+        searchItems,
+        nativeQueryContents: new Map([[2, "select * from reviews"]]),
       });
+      const getResultNames = () =>
+        screen
+          .getAllByTestId("search-result-item-name")
+          .map((item) => item.textContent);
 
       expect(getNativeQuerySwitch()).toBeChecked();
       expectLastSearchRequestParam("search_native_query", ["true"]);
       expect(screen.getByText('Results for "reviews"')).toBeInTheDocument();
+      expect(getResultNames()).toEqual(["Customer reviews", "Native query"]);
 
       await userEvent.click(getNativeQuerySwitch());
 
       expectLocationParam(router, "search_native_query", []);
+      expectLocationParam(router, "q", ["reviews"]);
       await waitFor(() =>
         expectLastSearchRequestParam("search_native_query", []),
       );
+      expectLastSearchRequestParam("q", ["reviews"]);
+      await waitForLoaderToBeRemoved();
+      expect(getResultNames()).toEqual(["Customer reviews"]);
       expect(getNativeQuerySwitch()).not.toBeChecked();
     });
   });
