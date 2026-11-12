@@ -47,6 +47,13 @@
             (with-open [rs (.getTables md catalog schema "%" (into-array String ["TABLE"]))]
               (doall (resultset-seq rs)))))))
 
+(mu/defn matching-pks
+  "The primary keys of the rows of `model` that match `conditions`."
+  [model      :- :keyword
+   conditions :- [:schema {::mr/deliberately-open true, :description "what `t2/select` takes after the model"}
+                  [:sequential :any]]]
+  (apply t2/select-pks-vec model conditions))
+
 (mu/defn rows-where
   "The `columns` of the rows of `table-name` whose `column` is in `values`."
   [table-name :- :string

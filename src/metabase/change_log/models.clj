@@ -56,7 +56,7 @@
                         :any]]]
   (when (premium-features/enable-change-log?)
     (if (isa? (t2/resolve-model model) :hook/change-log)
-      (log! [[(table model) (apply t2/select-pks-vec model conditions) (name action)]])
+      (log! [[(table model) (change-log.db/matching-pks model (vec conditions)) (name action)]])
       (log/warnf "Not logging %s on %s to the change log: the model does not derive :hook/change-log."
                  (name action) model))))
 
