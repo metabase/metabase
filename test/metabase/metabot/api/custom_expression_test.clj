@@ -131,6 +131,21 @@
        (is (= "Nothing in this data matches that."
               (mt/user-http-request :rasta :post 422 endpoint (request-body {:prompt "???"}))))))))
 
+(deftest summary-formula-keeps-literal-entities-test
+  (testing "summary-formula returns entity-like text in references and strings unchanged"
+    (do-with-llm
+     {:expression "CountIf([R&amp;D spend] > 100 and [Note] = \"&lt;b&gt;\")" :name "R&amp;D orders"}
+     (fn [_calls]
+       (is (= {:expression "CountIf([R&amp;D spend] > 100 and [Note] = \"&lt;b&gt;\")" :name "R&amp;D orders"}
+              (mt/user-http-request :rasta :post 200 endpoint
+                                    (request-body {:columns [{:name "[R&amp;D spend]"} {:name "[Note]"}]}))))))))
+
+(deftest ^:parallel system-prompts-call-zero-argument-functions-test
+  (testing "the summary formula system prompts write zero-argument functions with parentheses, which the client requires"
+    (doseq [prompt-var [#'custom-expression/aggregation-system-prompt #'custom-expression/expression-system-prompt]]
+      (testing prompt-var
+        (is (nil? (re-find #"\b(?:Count|CumulativeCount|now)\b(?!\()" @prompt-var)))))))
+
 ;;; ------------------------------------------------- LLM input -------------------------------------------------
 
 (deftest summary-formula-llm-input-test
