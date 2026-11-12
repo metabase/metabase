@@ -12,8 +12,8 @@ import {
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import type { GlossaryItem } from "metabase/api";
 import { defer } from "metabase/utils/promise";
+import type { GlossaryItem } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { GlossaryContainer } from "./GlossaryContainer";

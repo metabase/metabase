@@ -629,4 +629,4 @@
 
 (defmethod remote-sync/spec :model/Transform
   [_model]
-  {})
+  {:synced-items transforms.db/synced-transform-items})
