@@ -1,7 +1,10 @@
 (ns metabase-enterprise.security-center.read-only-connections-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.read-only-connections :as read-only-connections]
+   [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.test :as mt]
@@ -33,33 +36,63 @@
                                                   :details            {:user "writer"}
                                                   :router_database_id router-id}
                  :model/Database {mysql-id :id}  {:name "rc mysql", :engine :mysql, :details {:user "updater"}}
-                 :model/Database {sqlite-id :id} {:name "rc sqlite", :engine :sqlite, :details {:db "birds.sqlite"}}
+                 :model/Database {h2-id :id}     {:name "rc h2", :engine :h2, :details {:db "mem:birds"}}
                  :model/Database _               {:name "rc audit", :engine :postgres, :is_audit true}]
-    (let [names   ["rc router" "rc destination" "rc mysql" "rc sqlite" "rc audit"]
+    (let [names   ["rc router" "rc destination" "rc mysql" "rc h2" "rc audit"]
           results (refresh-with! {"reader"  (privileges)
                                   "writer"  (privileges :insert true)
                                   "updater" (privileges :update true)}
                                  names)]
       (testing "one result per database in name order, routing destinations included, the audit database left out"
         (is (= [{:id dest-id, :name "rc destination", :engine "postgres", :result "writable"}
+                {:id h2-id, :name "rc h2", :engine "h2", :result "not-supported"}
                 {:id mysql-id, :name "rc mysql", :engine "mysql", :result "writable"}
-                {:id router-id, :name "rc router", :engine "postgres", :result "read-only"}
-                {:id sqlite-id, :name "rc sqlite", :engine "sqlite", :result "not-supported"}]
+                {:id router-id, :name "rc router", :engine "postgres", :result "read-only"}]
                results)))
       (testing "the result holds no connection details"
         (is (every? #(= #{:id :name :engine :result} (set (keys %))) results))))
     (testing "a database that lists no table privileges is not reported as read-only"
-      (is (= ["writable" "no-privileges" "read-only" "not-supported"]
+      (is (= ["writable" "not-supported" "no-privileges" "read-only"]
              (map :result (refresh-with! {"reader"  (privileges)
                                           "writer"  (privileges :delete true)
                                           "updater" []}
-                                         ["rc router" "rc destination" "rc mysql" "rc sqlite" "rc audit"])))))
+                                         ["rc router" "rc destination" "rc mysql" "rc h2" "rc audit"])))))
     (testing "a database that can't be asked gets an error result, and the other databases are still checked"
-      (is (= ["writable" "error" "read-only" "not-supported"]
+      (is (= ["writable" "not-supported" "error" "read-only"]
              (map :result (refresh-with! {"reader"  (privileges)
                                           "writer"  (privileges :delete true)
                                           "updater" #(throw (ex-info "Connection refused" {}))}
-                                         ["rc router" "rc destination" "rc mysql" "rc sqlite" "rc audit"])))))))
+                                         ["rc router" "rc destination" "rc mysql" "rc h2" "rc audit"])))))))
+
+(defn- do-with-sample-database-file!
+  "Calls `f` with the path of a temporary SQLite file that holds one table and is registered as the bundled Sample
+  Database. Restores the registered path and deletes the file."
+  [f]
+  (let [file       (java.io.File/createTempFile "read-only-connections" ".sqlite")
+        path       (.getAbsolutePath file)
+        registered @#'driver.settings/sqlite-sample-database-path
+        original   @registered]
+    (try
+      (jdbc/execute! {:classname "org.sqlite.JDBC", :subprotocol "sqlite", :subname path} ["CREATE TABLE t (x INTEGER)"])
+      (driver.settings/register-sqlite-sample-database-path! path)
+      (f path)
+      (finally
+        (reset! registered original)
+        (.delete file)))))
+
+(deftest sqlite-test
+  (driver/the-initialized-driver :sqlite)
+  (do-with-sample-database-file!
+   (fn [path]
+     (mt/with-temp [:model/Database _ {:name "rc sample", :engine :sqlite, :details {:db path, :read-only? true}}
+                    :model/Database _ {:name "rc sqlite", :engine :sqlite, :details {:db path}}]
+       (let [result (into {}
+                          (map (juxt :name :result))
+                          (:databases (read-only-connections/refresh)))]
+         (testing "the Sample Database passes: Metabase opens its file read-only"
+           (is (= "read-only" (get result "rc sample"))))
+         (testing "a SQLite database that an admin connects fails: its file is opened for writes"
+           (is (= "writable" (get result "rc sqlite")))))))))
 
 (deftest check-databases-test
   (let [check-databases #'read-only-connections/check-databases
@@ -151,19 +184,21 @@
                   (json/encode
                    {:databases [{:id 1, :name "Birds", :engine "postgres", :result "read-only"}
                                 {:id 2, :name "Sales", :engine "mysql", :result "writable"}
-                                {:id 3, :name "Sample Database", :engine "sqlite", :result "not-supported"}
+                                {:id 3, :name "Sample Database", :engine "sqlite", :result "read-only"}
                                 {:id 4, :name "Slow", :engine "oracle", :result "timed-out"}
                                 {:id 5, :name "Down", :engine "sqlserver", :result "error"}
                                 {:id 6, :name "Gone", :engine "no-such-engine", :result "not-supported"}
-                                {:id 7, :name "Empty", :engine "mysql", :result "no-privileges"}]}))
+                                {:id 7, :name "Empty", :engine "mysql", :result "no-privileges"}
+                                {:id 8, :name "Notes", :engine "sqlite", :result "writable"}]}))
           items  (read-only-connections/items stored)]
       (is (= [[:pass "The connection user of Birds can't write"]
               [:fail "The connection user of Sales can insert, update or delete"]
-              [:unknown "SQLite is not supported"]
+              [:pass "Metabase opens Sample Database read-only"]
               [:unknown "Timed out after 30 s"]
               [:unknown "Couldn't check Down. Check the server logs for the underlying error."]
               [:unknown "no-such-engine is not supported"]
-              [:unknown "Couldn't read the privileges of the connection user of Empty"]]
+              [:unknown "Couldn't read the privileges of the connection user of Empty"]
+              [:fail "SQLite has no read-only users. Move the data of Notes to another database engine."]]
              (map (juxt :status :message) items)))
       (is (= [[:database 1 "Birds"] [:database 2 "Sales"]]
              (map (juxt :entity_type :entity_id :entity_name) (take 2 items))))

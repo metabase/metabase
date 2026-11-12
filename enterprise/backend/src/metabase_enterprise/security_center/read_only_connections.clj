@@ -16,7 +16,7 @@
 (def ^:private supported-engines
   ;; an explicit set, not the driver feature `:table-privileges`: MySQL has the privileges method and declares the
   ;; feature false
-  #{:postgres :mysql :oracle :sqlserver})
+  #{:postgres :mysql :oracle :sqlserver :sqlite})
 
 (def ^:private timeout-ms
   "The limit for one database, and for the whole refresh."
@@ -119,9 +119,15 @@
 
 (defn- item
   [{db-id :id, db-name :name, :keys [engine result]}]
-  (let [[status message] (case result
-                           "read-only"     [:pass (tru "The connection user of {0} can''t write" db-name)]
-                           "writable"      [:fail (tru "The connection user of {0} can insert, update or delete" db-name)]
+  (let [;; SQLite has no users: a write works or fails by the mode the file is opened in
+        sqlite?          (= engine "sqlite")
+        [status message] (case result
+                           "read-only"     [:pass (if sqlite?
+                                                    (tru "Metabase opens {0} read-only" db-name)
+                                                    (tru "The connection user of {0} can''t write" db-name))]
+                           "writable"      [:fail (if sqlite?
+                                                    (tru "SQLite has no read-only users. Move the data of {0} to another database engine." db-name)
+                                                    (tru "The connection user of {0} can insert, update or delete" db-name))]
                            "no-privileges" [:unknown (tru "Couldn''t read the privileges of the connection user of {0}" db-name)]
                            "not-supported" [:unknown (tru "{0} is not supported" (engine-name engine))]
                            "timed-out"     [:unknown (tru "Timed out after 30 s")]
