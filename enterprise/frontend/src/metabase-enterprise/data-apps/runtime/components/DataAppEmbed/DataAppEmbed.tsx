@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -31,11 +31,21 @@ interface DataAppEmbedProps {
 export function DataAppEmbed({ store }: DataAppEmbedProps) {
   const slug = useMemo(() => readSlugFromUrl(), []);
 
-  const { embedSettings, parentOrigin, dataAppPathNavigationRequest } =
-    useSdkIframeEmbedEventBus({
-      store,
-      onSettingsChanged: installEmbedReferrerHeader,
-    });
+  const {
+    embedSettings,
+    parentOrigin,
+    dataAppPathNavigationRequest,
+    sendMessage,
+  } = useSdkIframeEmbedEventBus({
+    store,
+    onSettingsChanged: installEmbedReferrerHeader,
+  });
+
+  const reportPathChange = useCallback(
+    (path: string) =>
+      sendMessage({ type: "metabase.embed.dataAppPathChange", data: { path } }),
+    [sendMessage],
+  );
 
   // The bundle loads after auth and provides app settings,
   // such as app themes, to the provider above it.
@@ -124,6 +134,7 @@ export function DataAppEmbed({ store }: DataAppEmbedProps) {
         slug={slug}
         path={embedSettings.path}
         navigationRequest={dataAppPathNavigationRequest}
+        onPathChange={reportPathChange}
         onProviderPropsLoaded={setMetabaseProviderProps}
       />
     </ComponentProvider>

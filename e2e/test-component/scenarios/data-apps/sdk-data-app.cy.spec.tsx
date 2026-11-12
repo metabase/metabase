@@ -173,6 +173,40 @@ describe("scenarios > embedding-sdk > data app component", () => {
     appIframe().findByLabelText("Notes").should("have.value", "Keep this note");
   });
 
+  it("navigates back to the host's path after the user navigates inside the app", () => {
+    mockAuthProviderAndJwtSignIn();
+
+    cy.get<EmbeddedDataApp>("@app").then(({ slug }) => {
+      mountSdkContent(<HostWithNavigation slug={slug} />);
+
+      appIframe()
+        .findByLabelText("Order count", { timeout: 30_000 })
+        .should("have.text", "18760");
+
+      cy.log("user navigates inside the app");
+      appIframe().findByRole("button", { name: "Order details" }).click();
+
+      appIframe()
+        .findByTestId("current-pathname")
+        .should("have.text", "/orders/details");
+
+      cy.log("host path follows the app");
+      cy.findByTestId("host-path").should(
+        "have.text",
+        `${slug}/orders/details?tab=summary`,
+      );
+
+      cy.log("host navigates back to its previous path");
+      cy.findByRole("button", { name: "Host: orders" }).click();
+
+      appIframe()
+        .findByTestId("current-pathname")
+        .should("have.text", "/orders");
+
+      cy.findByTestId("host-path").should("have.text", `${slug}/orders`);
+    });
+  });
+
   function trackFrameSessionRequests() {
     const requests = new Set<MessageEventSource>();
 
@@ -221,7 +255,8 @@ function HostWithNavigation({ slug }: { slug: string }) {
         Host: order details
       </button>
 
-      <DataApp path={path} height={300} />
+      <p data-testid="host-path">{path}</p>
+      <DataApp path={path} onPathChange={setPath} height={300} />
     </>
   );
 }

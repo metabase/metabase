@@ -116,7 +116,14 @@ export type SdkIframeEmbedComponentTagMessage =
   | {
       type: "metabase.embed.navigatedEntityParametersChange";
       data: NavigatedEntityParameterChangePayload;
-    };
+    }
+  | SdkIframeEmbedTagDataAppPathChangeMessage;
+
+/** Sent when the user navigates inside a data app. */
+export type SdkIframeEmbedTagDataAppPathChangeMessage = {
+  type: "metabase.embed.dataAppPathChange";
+  data: { path: string };
+};
 
 // --- Embed Option Interfaces ---
 
