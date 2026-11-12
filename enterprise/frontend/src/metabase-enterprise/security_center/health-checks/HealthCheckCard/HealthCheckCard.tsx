@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -24,6 +25,7 @@ type HealthCheckCardProps = {
 };
 
 export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
+  const [isShowingDetails, setIsShowingDetails] = useState(false);
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(check.docs.page, {
     anchor: check.docs.anchor,
   });
@@ -33,23 +35,45 @@ export const HealthCheckCard = ({ check }: HealthCheckCardProps) => {
   return (
     <Card p="xxl" withBorder data-testid={`health-check-card-${check.id}`}>
       <Stack gap="lg">
-        <Group gap="sm">
-          <SeverityBadge severity={check.severity} isAffecting={isFailing} />
-          {isFailing && check.requires_restart && (
-            <Badge color="neutral" size="sm">{t`Requires a restart`}</Badge>
+        <Group
+          gap="lg"
+          justify="space-between"
+          align="flex-start"
+          wrap="nowrap"
+        >
+          <Stack gap="xs">
+            <Group gap="sm">
+              <Title order={4}>{check.title}</Title>
+              <SeverityBadge
+                severity={check.severity}
+                isAffecting={isFailing}
+                size="xs"
+              />
+            </Group>
+            <Text c="text-secondary">{check.description}</Text>
+          </Stack>
+          {check.items.length > 0 && (
+            <Button
+              variant="subtle"
+              onClick={() => setIsShowingDetails((isShowing) => !isShowing)}
+            >
+              {isShowingDetails ? t`Hide details` : t`Show details`}
+            </Button>
           )}
         </Group>
 
-        <Stack gap="sm">
-          <Title order={4}>{check.title}</Title>
-          <Text c="text-secondary">{check.description}</Text>
-        </Stack>
-
-        <HealthCheckItems check={check} />
+        {isShowingDetails && <HealthCheckItems check={check} />}
 
         {isFailing && (
           <Box>
-            <Text fw={700} mb="xxs">{t`How to fix`}</Text>
+            <Group gap="sm">
+              <Text fw={700}>{t`How to fix`}</Text>
+              {check.requires_restart && (
+                <Badge color="neutral" variant="light" size="xs">
+                  {t`Requires a restart`}
+                </Badge>
+              )}
+            </Group>
             <Text c="text-secondary">{check.remediation}</Text>
           </Box>
         )}

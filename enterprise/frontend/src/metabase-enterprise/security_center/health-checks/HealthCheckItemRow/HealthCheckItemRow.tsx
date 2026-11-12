@@ -23,7 +23,7 @@ export const HealthCheckItemRow = ({
     <Group
       gap="sm"
       wrap="nowrap"
-      align="flex-start"
+      align="stretch"
       px="lg"
       py="sm"
       data-testid="health-check-item"
@@ -44,14 +44,11 @@ export const HealthCheckItemRow = ({
         )}
       </Stack>
       {action && (
-        <Button
-          component={Link}
-          to={action.url}
-          variant="subtle"
-          size="compact-sm"
-        >
-          {action.label}
-        </Button>
+        <Flex align="center">
+          <Button component={Link} to={action.url} variant="subtle">
+            {action.label}
+          </Button>
+        </Flex>
       )}
     </Group>
   );

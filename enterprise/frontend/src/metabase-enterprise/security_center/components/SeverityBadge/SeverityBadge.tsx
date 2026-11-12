@@ -22,11 +22,13 @@ const getSeverityLabel = (severity: AdvisorySeverity) =>
 type SeverityBadgeProps = {
   severity: AdvisorySeverity;
   isAffecting: boolean;
+  size?: "xs" | "sm";
 };
 
 export const SeverityBadge = ({
   severity,
   isAffecting,
+  size = "sm",
 }: SeverityBadgeProps) => {
   const isCritical = isAffecting && severity === "critical";
 
@@ -34,7 +36,7 @@ export const SeverityBadge = ({
     <Badge
       color={isAffecting ? getSeverityColor(severity) : "neutral"}
       tt={isCritical ? "uppercase" : undefined}
-      size="sm"
+      size={size}
     >
       {getSeverityLabel(severity)}
     </Badge>

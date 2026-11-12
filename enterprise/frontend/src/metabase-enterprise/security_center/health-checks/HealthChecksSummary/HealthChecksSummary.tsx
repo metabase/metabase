@@ -1,7 +1,7 @@
 import { c, msgid, t } from "ttag";
 
 import ShieldImage from "assets/img/shield-96x96.svg";
-import { Card, Group, Icon, Stack, Text } from "metabase/ui";
+import { Alert, Card, Icon, Stack, Text } from "metabase/ui";
 import type { HealthCheck } from "metabase-types/api";
 
 import { getStatusInfo } from "../utils";
@@ -26,7 +26,7 @@ export const HealthChecksSummary = ({ checks }: HealthChecksSummaryProps) => {
     );
   }
 
-  const { icon, iconColor } = getStatusInfo(isFailing ? "fail" : "unknown");
+  const { icon } = getStatusInfo(isFailing ? "fail" : "unknown");
   const totalCount = checks.length;
   const summary = c(
     "{0} is the number of passing checks, {1} is the total number of checks",
@@ -37,11 +37,12 @@ export const HealthChecksSummary = ({ checks }: HealthChecksSummaryProps) => {
   );
 
   return (
-    <Card p="lg" withBorder>
-      <Group gap="sm">
-        <Icon name={icon} c={iconColor} />
-        <Text fw="bold">{summary}</Text>
-      </Group>
-    </Card>
+    <Alert
+      variant="default"
+      size="compact"
+      color={isFailing ? "error" : "warning"}
+      icon={<Icon name={icon} />}
+      title={summary}
+    />
   );
 };

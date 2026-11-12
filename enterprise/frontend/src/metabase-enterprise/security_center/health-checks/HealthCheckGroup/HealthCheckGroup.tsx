@@ -12,22 +12,20 @@ type HealthCheckGroupProps = {
 };
 
 export const HealthCheckGroup = ({ status, checks }: HealthCheckGroupProps) => {
-  if (checks.length === 0) {
-    return null;
-  }
-
   const { label, badgeColor } = getStatusInfo(status);
+  const isEmpty = checks.length === 0;
 
   return (
     <Accordion
-      defaultValue={status === "fail" ? status : null}
+      defaultValue={status === "fail" && !isEmpty ? status : null}
       transitionDuration={0}
       classNames={{ content: S.groupContent }}
     >
       <Accordion.Item value={status}>
         <Accordion.Control
+          disabled={isEmpty}
           icon={
-            <Badge color={badgeColor} size="sm">
+            <Badge color={badgeColor} size="xs">
               {checks.length}
             </Badge>
           }
