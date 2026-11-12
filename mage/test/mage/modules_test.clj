@@ -539,14 +539,64 @@
                   (catch clojure.lang.ExceptionInfo e e)))]
     [(:babashka/exit (ex-data error)) (str out)]))
 
+(def ^:private site-checks
+  "What the module-explorer site checks in each module, its stats and each cycle before it accepts an upload.
+  A copy of `MODULE_FIELDS`, `STATS_FIELDS` and `CYCLE_FIELDS` in `apps/module-explorer/worker/data.ts` of
+  metabase/micro-sites, so a field the site reads cannot be renamed or dropped here without a failing test."
+  (let [strings?   (every-pred sequential? #(every? string? %))
+        name?      (every-pred string? seq)
+        nil-or     (fn [check] (some-fn nil? check))
+        two-names? (every-pred strings? #(= 2 (count %)))]
+    {:module {:id                   string?
+              :path                 (every-pred sequential? seq #(every? name? %))
+              :team                 (nil-or name?)
+              :enterprise           boolean?
+              :source               (nil-or string?)
+              :ns-prefix            (nil-or string?)
+              :api-any              boolean?
+              :api                  strings?
+              :uses-any             boolean?
+              :uses                 strings?
+              :used-by              strings?
+              :friends              strings?
+              :module-exports       strings?
+              :model-exports        strings?
+              :model-imports-bypass boolean?
+              :model-imports        strings?}
+     :stats  {:namespaces number?
+              :loc        number?
+              :test-files number?
+              :tests      number?
+              :commits    number?}
+     :cycle  {:name           (nil-or name?)
+              :size           number?
+              :edges          number?
+              :density        number?
+              :cycle-rank     number?
+              :strong-bridges (every-pred sequential? #(every? two-names? %))
+              :modules        strings?}}))
+
+(defn- wrong-fields
+  "The fields of `kind` in [[site-checks]] that some value in `values` lacks, or holds a wrong value for."
+  [kind values]
+  (set (for [value          values
+             [field check] (site-checks kind)
+             :when          (not (and (contains? value field) (check (get value field))))]
+         field)))
+
 (deftest modules-tree-writes-json-test
   (fs/with-temp-dir [dir {}]
     (let [output (str (fs/path dir "modules.json"))]
-      (is (= 0 (first (modules-tree-exit {:json true, :no-stats true, :output output}))))
-      (let [data (json/parse-string (slurp output) true)]
-        (is (seq (:modules data)))
-        (is (vector? (:cycles data)))
-        (is (true? (:any-uses-resolved data)))))))
+      (is (= 0 (first (modules-tree-exit {:json true, :output output}))))
+      (let [{:keys [modules cycles] :as data} (json/parse-string (slurp output) true)]
+        (is (seq modules))
+        (is (vector? cycles))
+        (is (true? (:any-uses-resolved data)))
+        (testing "the data passes the module-explorer site's upload checks"
+          (is (= {:module #{}, :stats #{}, :cycle #{}}
+                 {:module (wrong-fields :module modules)
+                  :stats  (wrong-fields :stats (map :stats modules))
+                  :cycle  (wrong-fields :cycle cycles)})))))))
 
 (deftest modules-tree-refuses-conflicting-options-test
   (fs/with-temp-dir [dir {}]
