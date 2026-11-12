@@ -54,25 +54,16 @@
   [model alias]
   [:or (synced-filter-clause model alias {:include-archived? true}) (built-in-filter-clause model alias)])
 
-(mu/defn read-only-pks :- [:set ::remote-sync.schema/pk]
-  "The primary keys of the read-only rows of `model` (see [[read-only-filter-clause]])."
-  [model :- :keyword]
-  (into #{}
-        (map :pk)
-        (t2/query {:select [[(u/qualified-key :row (first (t2/primary-keys model))) :pk]]
-                   :from   [[(t2/table-name model) :row]]
-                   :where  (read-only-filter-clause model :row)})))
-
-(mu/defn read-only-row? :- :boolean
-  "Whether the row of `model` with the primary key `pk` is read-only (see [[read-only-filter-clause]])."
+(mu/defn read-only-pks-among :- [:set ::remote-sync.schema/pk]
+  "The primary keys among `pks` of the read-only rows of `model` (see [[read-only-filter-clause]])."
   [model :- :keyword
-   pk    :- ::remote-sync.schema/pk]
-  (boolean (seq (t2/query {:select [[[:inline 1] :one]]
-                           :from   [[(t2/table-name model) :row]]
-                           :where  [:and
-                                    [:= (u/qualified-key :row (first (t2/primary-keys model))) pk]
-                                    (read-only-filter-clause model :row)]
-                           :limit  1}))))
+   pks   :- [:sequential ::remote-sync.schema/pk]]
+  (let [pk (u/qualified-key :row (first (t2/primary-keys model)))]
+    (into #{}
+          (map :pk)
+          (t2/query {:select [[pk :pk]]
+                     :from   [[(t2/table-name model) :row]]
+                     :where  [:and [:in pk pks] (read-only-filter-clause model :row)]}))))
 
 (mu/defn writable-filter-clause :- [:fn vector?]
   "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows that aren't
