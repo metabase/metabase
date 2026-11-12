@@ -13,6 +13,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as card]
    [metabase.queries.schema :as queries.schema]
@@ -127,16 +128,24 @@
 ;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
 ;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
 ;; narrower than collection access.
+(defn- check-permission-keys
+  "Throws unless `document` has the columns its permission checks read."
+  [document]
+  (perms/check-instance-keys document [:collection_id]))
+
 (defmethod mi/can-read? :model/Document
   ([instance]
-   (and (mi/current-user-has-full-permissions? :read instance)
+   (check-permission-keys instance)
+   (and (perms/user-has-permission-for-collection? api/*current-user-id* :read (:collection_id instance))
         (content-visible? instance)))
   ([_model pk]
    (mi/can-read? (documents.db/document pk))))
 
 (defmethod mi/can-write? :model/Document
-  ([instance]
-   (and (mi/current-user-has-full-permissions? :write instance)
+  ([{collection-id :collection_id :as instance}]
+   (check-permission-keys instance)
+   (and (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id)
+        (remote-sync/collection-content-writable? collection-id)
         (content-visible? instance)))
   ([_model pk]
    (mi/can-write? (documents.db/document pk))))

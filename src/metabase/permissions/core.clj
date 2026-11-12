@@ -39,6 +39,7 @@
 
 (p/import-vars
  [metabase.permissions.collection-permissions
+  check-instance-keys
   collection-permission-filter-clause
   collection-permission-for-user
   some-collection-permission-for-user
@@ -91,6 +92,8 @@
  [metabase.permissions.models.permissions
   namespace-clause
   can-read-audit-helper
+  audit-content-hidden?
+  audit-content?
   can-read-via-parent-collection?
   collection-based-visibility-search-models
   collection-id-only-read-method

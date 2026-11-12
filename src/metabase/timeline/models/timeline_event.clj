@@ -1,6 +1,7 @@
 (ns metabase.timeline.models.timeline-event
   (:require
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
@@ -13,9 +14,7 @@
 (doto :model/TimelineEvent
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :hook/entity-id))
 
 ;;;; schemas
 
@@ -51,6 +50,25 @@
   (let [timeline (or (:timeline event)
                      (timeline.db/timeline (:timeline_id event)))]
     (mi/perms-objects-set timeline read-or-write)))
+
+(defn- event-timeline
+  "The Timeline of `event`, hydrated or by its `:timeline_id`."
+  [event]
+  (or (:timeline event)
+      (do (perms/check-instance-keys event [:timeline_id])
+          (timeline.db/timeline (:timeline_id event)))))
+
+(defmethod mi/can-read? :model/TimelineEvent
+  ([event]
+   (mi/can-read? (event-timeline event)))
+  ([_model pk]
+   (mi/can-read? (timeline.db/timeline-event pk))))
+
+(defmethod mi/can-write? :model/TimelineEvent
+  ([event]
+   (mi/can-write? (event-timeline event)))
+  ([_model pk]
+   (mi/can-write? (timeline.db/timeline-event pk))))
 
 (defmethod mi/can-create? :model/TimelineEvent
   [_ {:keys [timeline]}]

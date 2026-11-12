@@ -259,21 +259,17 @@
 
 (deftest perms-test
   (with-dash-in-collection! [_db collection dash]
-    (testing (str "Check that if a Dashboard is in a Collection, someone who would not be able to see it under the old "
-                  "artifact-permissions regime will be able to see it if they have permissions for that Collection")
-      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
-        (is (true?
-             (mi/can-read? dash)))))
-    (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
-                  "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "
-                  "that Collection")
-      (mt/with-full-data-perms-for-all-users!
-        (binding [api/*current-user-permissions-set* (atom #{})]
-          (is (= false
-                 (mi/can-read? dash))))))
-    (testing "Do we have *write* Permissions for a Dashboard if we have *write* Permissions for the Collection its in?"
-      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
-        (mi/can-write? dash)))))
+    (mt/with-test-user :rasta
+      (testing "without permissions for its Collection, a Dashboard is not readable, even with full data permissions"
+        (mt/with-full-data-perms-for-all-users!
+          (is (false? (mi/can-read? dash)))))
+      (testing "read permissions for its Collection make a Dashboard readable but not writable"
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+        (is (true? (mi/can-read? dash)))
+        (is (false? (mi/can-write? dash))))
+      (testing "write permissions for its Collection make a Dashboard writable"
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection)
+        (is (true? (mi/can-write? dash)))))))
 
 (deftest transient-dashboards-test
   (testing "test that we save a transient dashboard"

@@ -899,7 +899,7 @@
 (mr/def ::collection-grants
   "What a user holds on Collections beyond their groups' permission rows."
   [:map {:closed true}
-   [:user-id               ::lib.schema.id/user]
+   [:user-id               [:maybe ::lib.schema.id/user]]
    [:superuser?            :boolean]
    [:data-analyst?         :boolean]
    [:tenant-collection-ids [:sequential ms/PositiveInt]]])
@@ -919,11 +919,10 @@
                                       [:in :p.perm_value values]]}])
 
 (defn- own-collection-clause
-  "Whether the user of `grants` writes the Collection aliased `c` whatever their groups hold: the trash, their personal
-  Collection and its descendants, their tenant Collections, and the transforms namespace for a data analyst."
+  "Whether the user of `grants` writes the Collection aliased `c` whatever their groups hold: their personal Collection
+  and its descendants, their tenant Collections, and the transforms namespace for a data analyst."
   [{:keys [user-id data-analyst? tenant-collection-ids]}]
   [:or
-   [:= :c.type "trash"]
    [:= :c.personal_owner_id user-id]
    [:exists ^:allow-subquery {:select [1]
                               :from   [[(t2/table-name :model/Collection) :personal]]

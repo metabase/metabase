@@ -11,7 +11,8 @@
    [metabase.permissions.settings :as permissions.settings]
    [metabase.permissions.user :as permissions.user]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,7 +37,9 @@
   {:user-id               user-id
    :superuser?            (boolean (data-perms/is-superuser? user-id))
    :data-analyst?         (boolean (data-perms/is-data-analyst? user-id))
-   :tenant-collection-ids (vec (permissions.user/user->tenant-collection-and-descendant-ids user-id))})
+   :tenant-collection-ids (if user-id
+                            (vec (permissions.user/user->tenant-collection-and-descendant-ids user-id))
+                            [])})
 
 (defn- collection-permissions
   "The permission of the user with `user-id` on each of the Collections with `collection-ids`, as `{id permission}`."
@@ -47,12 +50,15 @@
                 (map (fn [{:keys [id rank]}] [id (rank->permission rank)])))
           (partition-all 1000 collection-ids))))
 
-(def ^:private CollectionNamespace
-  "The namespace of a root Collection, nil for the default one."
-  [:maybe [:or :keyword :string]])
+(def ^:private Options
+  "Options of the Collection getters: `:namespace` names the root Collection that a nil collection id stands for, the
+  default namespace when missing."
+  [:map {:closed true}
+   [:namespace {:optional true} [:maybe [:or :keyword :string]]]])
 
 (defn- root-collection-permission
-  "The permission of the User with `user-id` on the root Collection of `collection-namespace`."
+  "The permission of the User with `user-id` on the root Collection of `collection-namespace`: a superuser writes every
+  root, and a data analyst the transforms one."
   [user-id collection-namespace]
   (let [collection-namespace (some-> collection-namespace name)
         root                 {:metabase.collections.models.collection.root/is-root? true
@@ -61,39 +67,73 @@
                                (permissions.db/root-collection-rank user-id
                                                                     (permissions.path/collection-readwrite-path root)
                                                                     (permissions.path/collection-read-path root)))]
-    (if (use-cache? user-id)
+    (cond
+      (data-perms/is-superuser? user-id)
+      :read-and-write
+
+      (and (= collection-namespace "transforms") (data-perms/is-data-analyst? user-id))
+      :read-and-write
+
+      (use-cache? user-id)
       (perms.cache/cached [::root-collection collection-namespace] compute)
+
+      :else
       (compute))))
+
+(defn clear-cache!
+  "Forget the Collection permissions the request cache holds, after a change to them."
+  []
+  (when-let [cache perms.cache/*cache*]
+    (swap! cache dissoc ::collection ::root-collection ::some-collection))
+  nil)
 
 (mu/defn collection-permission-for-user :- [:enum :read-and-write :read :none]
   "The permission of the User with `user-id` on the Collection with `collection-id`, batched for the current user with
-  the Collections the request loaded, or, for a nil `collection-id`, on the root Collection of `collection-namespace`,
-  nil being the default namespace."
-  [user-id              :- ms/PositiveInt
-   collection-id        :- [:maybe ms/PositiveInt]
-   collection-namespace :- CollectionNamespace]
-  (cond
-    (data-perms/is-superuser? user-id)
-    :read-and-write
+  the Collections the request loaded, or, for a nil `collection-id`, on the root Collection of the `:namespace`
+  option."
+  ([user-id       :- [:maybe ms/PositiveInt]
+    collection-id :- [:maybe ms/PositiveInt]]
+   (collection-permission-for-user user-id collection-id {}))
+  ([user-id                         :- [:maybe ms/PositiveInt]
+    collection-id                   :- [:maybe ms/PositiveInt]
+    {collection-namespace :namespace} :- Options]
+   (cond
+     ;; without a user only a superuser context, such as `request/as-admin`, has permissions
+     (and (nil? user-id) (not (data-perms/is-superuser? user-id)))
+     :none
 
-    (nil? collection-id)
-    (root-collection-permission user-id collection-namespace)
+     (nil? collection-id)
+     (root-collection-permission user-id collection-namespace)
 
-    :else
-    (let [compute #(collection-permissions user-id %)]
-      (or (if (use-cache? user-id)
-            (perms.cache/cached-batch [::collection] :model/Collection collection-id compute)
-            (get (compute [collection-id]) collection-id))
-          :none))))
+     :else
+     (let [compute #(collection-permissions user-id %)]
+       (or (if (use-cache? user-id)
+             (perms.cache/cached-batch [::collection] :model/Collection collection-id compute)
+             (get (compute [collection-id]) collection-id))
+           :none)))))
 
 (mu/defn user-has-permission-for-collection? :- :boolean
   "Whether [[collection-permission-for-user]] is `permission` or more."
-  [user-id              :- ms/PositiveInt
-   permission           :- [:enum :read-and-write :read]
-   collection-id        :- [:maybe ms/PositiveInt]
-   collection-namespace :- CollectionNamespace]
-  (>= (permission->rank (collection-permission-for-user user-id collection-id collection-namespace))
-      (permission->rank permission)))
+  ([user-id       :- [:maybe ms/PositiveInt]
+    permission    :- [:enum :read-and-write :read]
+    collection-id :- [:maybe ms/PositiveInt]]
+   (user-has-permission-for-collection? user-id permission collection-id {}))
+  ([user-id       :- [:maybe ms/PositiveInt]
+    permission    :- [:enum :read-and-write :read]
+    collection-id :- [:maybe ms/PositiveInt]
+    options       :- Options]
+   (>= (permission->rank (collection-permission-for-user user-id collection-id options))
+       (permission->rank permission))))
+
+(mu/defn check-instance-keys :- :nil
+  "Throws unless `instance` has each of `ks`, the columns its permission checks read, so that an instance selected
+  without them isn't checked as if they were nil."
+  [instance :- [:fn map?]
+   ks       :- [:sequential :keyword]]
+  (when-let [missing (seq (remove #(contains? instance %) ks))]
+    (throw (ex-info (str "Cannot check permissions without " (vec missing))
+                    {:model (some-> instance t2/model) :missing (vec missing)})))
+  nil)
 
 (mu/defn some-collection-permission-for-user :- [:enum :read-and-write :read :none]
   "The best permission the User with `user-id` has on a Collection listed to them: not archived, not the trash and not a
@@ -107,16 +147,20 @@
 
 (mu/defn collection-permission-filter-clause :- [:fn vector?]
   "A HoneySQL where-clause holding when `collection-id-field`, qualified by its table, is a Collection listed to the
-  User with `user-id` on which they have `permission`, or nil when they have it on the root Collection of
-  `collection-namespace`. It checks each row's Collection on its own, so a query asking whether some such row exists
+  User with `user-id` on which they have `permission`, or nil when they have it on the root Collection of the
+  `:namespace` option. It checks each row's Collection on its own, so a query asking whether some such row exists
   stops at the first one."
-  [user-id              :- ms/PositiveInt
-   collection-id-field  :- :keyword
-   permission           :- [:enum :read-and-write :read]
-   collection-namespace :- CollectionNamespace]
-  (permissions.db/visible-collection-filter-clause
-   (grants user-id)
-   (boolean (permissions.settings/use-tenants))
-   collection-id-field
-   permission
-   (user-has-permission-for-collection? user-id permission nil collection-namespace)))
+  ([user-id             :- ms/PositiveInt
+    collection-id-field :- :keyword
+    permission          :- [:enum :read-and-write :read]]
+   (collection-permission-filter-clause user-id collection-id-field permission {}))
+  ([user-id             :- ms/PositiveInt
+    collection-id-field :- :keyword
+    permission          :- [:enum :read-and-write :read]
+    options             :- Options]
+   (permissions.db/visible-collection-filter-clause
+    (grants user-id)
+    (boolean (permissions.settings/use-tenants))
+    collection-id-field
+    permission
+    (user-has-permission-for-collection? user-id permission nil options))))

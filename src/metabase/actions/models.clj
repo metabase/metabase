@@ -312,21 +312,53 @@
     :else
     ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)))
 
+(defn- has-collection-permission?
+  "Whether the current user has `permission` on the Collection of `action`: its own, the default root for an Action of
+  a model outside one, and the data actions root for an Action of neither."
+  [{model-id :model_id, collection-id :collection_id} permission]
+  (perms/user-has-permission-for-collection? api/*current-user-id* permission collection-id
+                                             {:namespace (when-not (or model-id collection-id)
+                                                           collection/data-actions-ns)}))
+
+(defn- remote-sync-writable?
+  "Whether remote sync lets `action` be written: through its Collection, or, for an Action of neither a model nor a
+  Collection, through the Action itself."
+  [{model-id :model_id, collection-id :collection_id, id :id}]
+  (cond
+    collection-id (remote-sync/can-write? :model/Collection collection-id)
+    model-id      true
+    id            (remote-sync/can-write? :model/Action id)
+    :else         (not (remote-sync/read-only?))))
+
 (defn- collection-writable?
   "Whether the current user can write the Collection `action` goes in."
   [{model-id :model_id, :as action}]
   (let [action (assoc action :collection_id (effective-collection-id action))]
     (if model-id
       ((get-method mi/can-create? :perms/use-parent-collection-perms) :model/Action action)
-      (mi/current-user-has-full-permissions? ((get-method mi/perms-objects-set :model/Action) action :write)))))
+      (and (has-collection-permission? action :read-and-write)
+           (remote-sync-writable? action)))))
+
+(defn- check-permission-keys
+  "Throws unless `action` has the columns its permission checks read."
+  [action]
+  (perms/check-instance-keys action [:collection_id :model_id]))
+
+(defmethod mi/can-read? :model/Action
+  ([action]
+   (check-permission-keys action)
+   (has-collection-permission? action :read))
+  ([_model pk]
+   (mi/can-read? (actions.db/action pk))))
 
 (defmethod mi/can-write? :model/Action
   ([action]
+   (check-permission-keys action)
    (and (mi/superuser?)
-        (mi/current-user-has-full-permissions? :write action)))
-  ([model pk]
-   (and (mi/superuser?)
-        (mi/current-user-has-full-permissions? :write model pk))))
+        (has-collection-permission? action :read-and-write)
+        (remote-sync-writable? action)))
+  ([_model pk]
+   (mi/can-write? (actions.db/action pk))))
 
 (defmethod mi/can-create? :model/Action
   [_model action]
@@ -620,11 +652,12 @@
   "The ad-hoc `action`, built without saving it: an implicit one with its parameters derived from its Table, and a query
   one writing to the database of its query."
   [action :- ::actions.schema/action.adhoc]
-  (t2/instance :model/Action
-               (if (= :implicit (keyword (:type action)))
-                 (first (enrich-actions-with-implicit-params
-                         [(merge {:visualization_settings {}} action)]))
-                 (assoc action :database_id (get-in action [:dataset_query :database])))))
+  (let [action (merge {:model_id nil :collection_id nil} action)]
+    (t2/instance :model/Action
+                 (if (= :implicit (keyword (:type action)))
+                   (first (enrich-actions-with-implicit-params
+                           [(merge {:visualization_settings {}} action)]))
+                   (assoc action :database_id (get-in action [:dataset_query :database]))))))
 
 (mu/defn select-actions :- [:maybe [:sequential ::actions.schema/action]]
   "Find actions with given options and generate implicit parameters for execution. Also adds the `:database_id` of the

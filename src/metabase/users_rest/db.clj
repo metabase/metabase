@@ -59,7 +59,7 @@
   (t2/exists? :model/Card
               {:where (into [:and
                              [:= :archived false]
-                             (perms/collection-permission-filter-clause user-id :report_card.collection_id :read nil)
+                             (perms/collection-permission-filter-clause user-id :report_card.collection_id :read)
                              (mi/exclude-internal-content-hsql :model/Card)]
                             (when card-type [[:= :type card-type]]))}))
 
@@ -69,7 +69,7 @@
   (t2/exists? :model/Dashboard
               {:where [:and
                        [:= :archived false]
-                       (perms/collection-permission-filter-clause user-id :report_dashboard.collection_id :read nil)
+                       (perms/collection-permission-filter-clause user-id :report_dashboard.collection_id :read)
                        (mi/exclude-internal-content-hsql :model/Dashboard)]}))
 
 (mu/defn first-login

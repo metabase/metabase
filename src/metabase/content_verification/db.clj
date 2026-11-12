@@ -10,6 +10,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(mu/defn moderation-review
+  "The ModerationReview with `review-id`, or nil."
+  [review-id :- ms/PositiveInt]
+  (t2/select-one :model/ModerationReview :id review-id))
+
 (mu/defn moderation-reviews-for-items
   "The ModerationReviews of the items with `item-types` and `item-ids`, newest first."
   [item-types :- [:set :keyword]

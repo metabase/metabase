@@ -42,6 +42,13 @@
   (or (not (read-only?))
       (not (remote-sync.cache/read-only-row? model pk))))
 
+(mu/defn collection-content-writable? :- :boolean
+  "Whether content in the Collection with `collection-id` can be written, which content in a read-only Collection
+  can't on a read-only instance; content outside a Collection always can."
+  [collection-id :- [:maybe pos-int?]]
+  (or (nil? collection-id)
+      (can-write? :model/Collection collection-id)))
+
 (mu/defn can-write-filter-clause :- [:fn vector?]
   "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows that can be
   written (see [[can-write?]])."

@@ -15,6 +15,7 @@
   spec]
  [remote-sync.synced
   can-write-filter-clause
+  collection-content-writable?
   can-write?
   do-with-read-only-pks-cache
   read-only?

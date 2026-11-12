@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards.db :as dashboards.db]
@@ -54,15 +53,11 @@
   (derive :hook/dependencies))
 
 (defmethod mi/can-write? :model/Dashboard
-  ([instance]
-   ;; Dashboards in audit collection should be read only
-   (and (not (and
-              ;; We want to make sure there's an existing audit collection before doing the equality check below.
-              ;; If there is no audit collection, this will be nil:
-              (some? (:id (audit/default-audit-collection)))
-              ;; Is a direct descendant of audit collection
-              (= (:collection_id instance) (:id (audit/default-audit-collection)))))
-        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
+  ([{collection-id :collection_id :as dashboard}]
+   (perms/check-instance-keys dashboard [:collection_id])
+   (and (not (perms/audit-content? collection-id))
+        (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id)
+        (remote-sync/collection-content-writable? collection-id)))
   ([_ pk]
    (mi/can-write? (dashboards.db/dashboard pk))))
 

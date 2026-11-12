@@ -1,8 +1,11 @@
 (ns metabase.timeline.models.timeline
   (:require
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.cache :as models.cache]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
@@ -18,6 +21,26 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defn- check-permission-keys
+  "Throws unless `timeline` has the columns its permission checks read."
+  [timeline]
+  (perms/check-instance-keys timeline [:collection_id]))
+
+(defmethod mi/can-read? :model/Timeline
+  ([{collection-id :collection_id :as timeline}]
+   (check-permission-keys timeline)
+   (perms/user-has-permission-for-collection? api/*current-user-id* :read collection-id))
+  ([_model pk]
+   (mi/can-read? (timeline.db/timeline pk))))
+
+(defmethod mi/can-write? :model/Timeline
+  ([{collection-id :collection_id :as timeline}]
+   (check-permission-keys timeline)
+   (and (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id)
+        (remote-sync/collection-content-writable? collection-id)))
+  ([_model pk]
+   (mi/can-write? (timeline.db/timeline pk))))
 
 ;;;; transforms
 

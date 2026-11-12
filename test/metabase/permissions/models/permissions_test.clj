@@ -1,7 +1,6 @@
 (ns metabase.permissions.models.permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit.impl]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
@@ -320,17 +319,19 @@
             (is (false? (mi/can-write? instance)))
             (is (false? (mi/can-read? instance)))))))))
 
-(deftest ^:parallel can-read-via-parent-collection?-test
+(deftest can-read-via-parent-collection?-test
   (testing "read perm is true iff the current user has read on the parent collection"
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (is (true?  (boolean (perms/can-read-via-parent-collection? 42))))
-      (is (true?  (boolean (perms/can-read-via-parent-collection? nil)))))
-    (binding [api/*current-user-permissions-set* (atom #{})]
-      (is (false? (boolean (perms/can-read-via-parent-collection? 42))))
-      (is (false? (boolean (perms/can-read-via-parent-collection? nil)))))
-    (binding [api/*current-user-permissions-set* (atom #{"/collection/42/read/"})]
-      (is (true?  (boolean (perms/can-read-via-parent-collection? 42))))
-      (is (false? (boolean (perms/can-read-via-parent-collection? 99)))))))
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {readable :id} {}
+                     :model/Collection {hidden :id}   {}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
+        (mt/with-test-user :crowberto
+          (is (true? (perms/can-read-via-parent-collection? hidden)))
+          (is (true? (perms/can-read-via-parent-collection? nil))))
+        (mt/with-test-user :rasta
+          (is (true? (perms/can-read-via-parent-collection? readable)))
+          (is (false? (perms/can-read-via-parent-collection? hidden)))
+          (is (false? (perms/can-read-via-parent-collection? nil))))))))
 
 (deftest collection-id-only-read-methods-not-overridden-test
   (testing "no one has redefmethod'd mi/can-read? for a model registered as collection-id-only"
