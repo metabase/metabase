@@ -9,7 +9,7 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import CS from "metabase/css/core/index.css";
 import { FormSwitch } from "metabase/forms";
 import { isDefaultGroup } from "metabase/lib/groups";
-import { Icon, Text, Tooltip } from "metabase/ui";
+import { Box, Flex, Icon, Switch, Text, Tooltip } from "metabase/ui";
 
 import AddMappingRow from "./AddMappingRow";
 import {
@@ -54,6 +54,7 @@ export function GroupMappingsWidgetView({
   clearGroupMember,
   updateSetting,
   mappings,
+  groupSyncEnabled,
   ...props
 }) {
   const [showAddRow, setShowAddRow] = useState(false);
@@ -125,7 +126,10 @@ export function GroupMappingsWidgetView({
           <ToggleRoot>
             <span>{t`Synchronize Group Memberships`}</span>
             {typeof groupSyncSwitchValue === "string" ? (
-              <Text c="text-secondary">{t`Using ${groupSyncSwitchValue}`}</Text>
+              <EnvSetSettingState
+                groupSyncEnabled={groupSyncEnabled}
+                groupSyncSwitchValue={groupSyncSwitchValue}
+              />
             ) : (
               <FormSwitch
                 data-testid="group-sync-switch"
@@ -197,5 +201,30 @@ export function GroupMappingsWidgetView({
         </div>
       )}
     </WidgetAndErrorRoot>
+  );
+}
+
+function EnvSetSettingState({ groupSyncEnabled, groupSyncSwitchValue }) {
+  return (
+    <Flex align="center" gap="sm">
+      <Tooltip
+        label={
+          groupSyncEnabled
+            ? t`Enabled. This setting is defined by an environment variable.`
+            : t`Disabled. This setting is defined by an environment variable.`
+        }
+        events={{ hover: true, focus: true, touch: false }}
+      >
+        <Box tabIndex={0}>
+          <Switch
+            data-testid="group-sync-switch"
+            aria-label={t`Synchronize Group Memberships`}
+            checked={groupSyncEnabled}
+            disabled
+          />
+        </Box>
+      </Tooltip>
+      <Text c="text-secondary">{t`Using ${groupSyncSwitchValue}`}</Text>
+    </Flex>
   );
 }
