@@ -1645,6 +1645,9 @@
             e     (is (thrown? clojure.lang.ExceptionInfo (init! calls (java.sql.SQLException. "connection reset"))))]
         (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e)))
         (is (str/includes? (ex-message e) "batch failed"))
+        (testing "the rollback error is attached to the thrown error's cause chain as suppressed"
+          (is (some #(= "connection reset" (ex-message %))
+                    (mapcat #(.getSuppressed ^Throwable %) (take-while some? (iterate ex-cause e))))))
         (is (= [["rollback"] ["discard"]]
                (filterv (comp #{"rollback" "setAutoCommit" "commit" "discard"} first) (drop 1 @calls))))))))
 

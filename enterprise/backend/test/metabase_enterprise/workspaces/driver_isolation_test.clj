@@ -1022,9 +1022,11 @@
           ;; level, so grant it to user A — execution then reaches the
           ;; password-bearing CREATE USER, which fails with permission denied.
           ;; Elsewhere, pre-create ws-b's namespace so the leading
-          ;; `CREATE ... IF NOT EXISTS` can skip instead of failing. That only
-          ;; helps engines that check existence before privileges (SQL Server's
-          ;; guarded EXEC); MySQL and ClickHouse check privileges regardless,
+          ;; `CREATE ... IF NOT EXISTS` can skip instead of failing. SQL Server
+          ;; runs no such statement: init first looks for an existing login, user
+          ;; and schema (a 409 if the low-privilege login can see ws-b's schema),
+          ;; then its batch starts with the password-bearing CREATE LOGIN, which
+          ;; that login cannot run. MySQL and ClickHouse check privileges regardless,
           ;; so on those the batch dies on the namespace statement and never
           ;; reaches CREATE USER — the leak assertion still covers whatever
           ;; exception surfaces, it just can't prove the echo path there.
