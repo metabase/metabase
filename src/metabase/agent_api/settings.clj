@@ -52,5 +52,5 @@
   :deprecated "0.66.0"
   :export?    false
   :doc        false
-  :getter     (fn [] (throw (ex-info agent-api-enabled-removed-message {})))
+  :getter     (fn [] (throw (ex-info agent-api-enabled-removed-message {:status-code 410})))
   :setter     (fn [_] (log/warn agent-api-enabled-removed-message)))
