@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -15,7 +14,7 @@ import {
   useChangingAttributes,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Anchor, Select, Stack, Text } from "metabase/ui";
+import { Select, Stack, Text } from "metabase/ui";
 import type { Field, Table } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
@@ -43,8 +42,8 @@ type ChangeBehaviorSectionProps = {
 
 /**
  * PROTOTYPE: mocked. How an attribute behaves when it changes: overwritten,
- * or kept, and then which value other tables use. Where old values are kept
- * is worked out, and only asked for when it can't be.
+ * or kept, and then which value other tables use and where old values are
+ * kept. Their column is only asked for when it can't be matched by name.
  */
 export function ChangeBehaviorSection({
   field,
@@ -54,7 +53,6 @@ export function ChangeBehaviorSection({
   const history = useDimensionHistory(table);
   const isHistoryTable = useIsHistoryTable();
   const { getAttribute, setAttribute } = useChangingAttributes();
-  const [isStorageShown, { toggle: toggleStorage }] = useDisclosure(false);
   const attribute = getAttribute(field, table, history.tables);
   const valueUsedOptions = getValueUsedOptions();
   const attributeName = field.display_name.toLowerCase();
@@ -68,7 +66,10 @@ export function ChangeBehaviorSection({
   const storageTable = isKept
     ? history.tables.find((other) => other.id === attribute.historyTableId)
     : undefined;
-  const isStorageKnown = storageTable != null && attribute.valueFieldId != null;
+  const isColumnMatched =
+    storageTable != null &&
+    attribute.valueFieldId != null &&
+    findColumnByName(storageTable, field) != null;
   const usedBy = _.uniq(
     getReferencingFields(table, history.tables).map(
       ({ table: referencing }) => referencing.display_name,
@@ -144,7 +145,7 @@ export function ChangeBehaviorSection({
               }
             />
           )}
-          {isKept && (!isStorageKnown || isStorageShown) && (
+          {isKept && (
             <>
               <DetailsRow
                 label={t`Kept in`}
@@ -178,7 +179,7 @@ export function ChangeBehaviorSection({
                   />
                 }
               />
-              {storageTable != null && (
+              {storageTable != null && !isColumnMatched && (
                 <DetailsRow
                   label={t`Stored as`}
                   fillValue
@@ -203,18 +204,6 @@ export function ChangeBehaviorSection({
           <Text size="sm" c="text-secondary">
             {t`Used by ${usedBy.join(", ")}.`}
           </Text>
-        )}
-        {isKept && isStorageKnown && (
-          <Anchor
-            component="button"
-            size="sm"
-            w="fit-content"
-            onClick={toggleStorage}
-          >
-            {isStorageShown
-              ? t`Hide where old values are kept`
-              : t`Where old values are kept`}
-          </Anchor>
         )}
       </Stack>
     </SidebarSection>
