@@ -13,6 +13,10 @@ inputs:
     description: failure marks the thread as failed. warning does not block the release or change the thread reaction.
     required: false
     default: failure
+  needs:
+    description: The needs context as JSON (toJSON(needs)). The message then names the failed and cancelled jobs.
+    required: false
+    default: ""
   slack-channel:
     description: Slack release channel name
     required: true
@@ -31,23 +35,26 @@ runs:
         TITLE: ${{ inputs.title }}
         VERSION: ${{ inputs.version }}
         LEVEL: ${{ inputs.level }}
+        NEEDS: ${{ inputs.needs }}
         SLACK_RELEASE_CHANNEL: ${{ inputs.slack-channel }}
         SLACK_BOT_TOKEN: ${{ inputs.slack-bot-token }}
       with:
         script: | # js
-          const { sendReleaseSlackMessage, githubRunLink, getGenericVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const { sendReleaseSlackMessage, githubRunLink, getGenericVersion, formatJobResults } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const { owner, repo } = context.repo;
           const { TITLE: title, VERSION: version, LEVEL: level } = process.env;
           const label = version ? `${title} ${getGenericVersion(version)} failed` : `${title} failed`;
           const runLink = githubRunLink(label, context.runId.toString(), owner, repo);
+          const jobResults = formatJobResults(process.env.NEEDS);
+          const summary = jobResults ? `${runLink}. ${jobResults}` : runLink;
 
-          console.log(`sending Slack message: ${runLink}`);
+          console.log(`sending Slack message: ${summary}`);
 
           await sendReleaseSlackMessage({
             channelName: process.env.SLACK_RELEASE_CHANNEL,
             version: version || undefined,
             ...(level === 'warning'
-              ? { emoji: 'warning', message: `${runLink}. The release is not blocked.` }
-              : { emoji: 'x', message: runLink, status: 'failure' }),
+              ? { emoji: 'warning', message: `${summary}. The release is not blocked.` }
+              : { emoji: 'x', message: summary, status: 'failure' }),
           });
