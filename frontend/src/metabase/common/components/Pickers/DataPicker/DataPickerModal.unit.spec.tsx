@@ -16,7 +16,6 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
-  within,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type {
@@ -49,11 +48,11 @@ import {
   ROOT,
   createCardSearchResults,
   expectSearchResults,
+  findSearchResult,
   getCollectionItems,
   getLastSearchParams,
   getRootItem,
   getScopeRadio,
-  findSearchResult,
   getSearchScopeSelector,
   typeSearchText,
 } from "../tests/search";

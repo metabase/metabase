@@ -29,11 +29,11 @@ import {
   ROOT,
   createCardSearchResults,
   expectSearchResults,
+  findSearchResult,
   getCollectionItems,
   getLastSearchParams,
   getRootItem,
   getScopeRadio,
-  findSearchResult,
   getSearchScopeSelector,
   typeSearchText,
 } from "metabase/common/components/Pickers/tests/search";
