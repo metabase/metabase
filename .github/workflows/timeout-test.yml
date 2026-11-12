@@ -1,0 +1,15 @@
+name: Test timeout
+on: 
+  push:
+    branches: 
+      - dev-5165-motherduck-tests-appear-not-to-respect-quarantine
+
+jobs:
+  wait:
+    runs-on: ubuntu-latest
+    steps:
+      - name: timeout
+        timeout-minutes: 1
+        run: sleep 65
+      - name: run this also
+        run: echo "hello world!"
