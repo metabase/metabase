@@ -196,6 +196,52 @@
               card   (t2/select-one :model/Card :id (get-in result [:structured-output :card-id]))]
           (is (= :line (:display card))))))))
 
+(deftest curated-only-chart-test
+  (mt/with-additional-premium-features #{:content-verification :official-collections :library}
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection {official :id}   {:name "Official", :authority_level "official"}
+                     :model/Collection {coll :id}       {:name "Saved charts"}
+                     :model/Card       {curated-id :id} {:name          "Curated venues"
+                                                         :collection_id official
+                                                         :dataset_query (venues-query)}
+                     :model/Metabot    curated-metabot  {:name "curated", :use_verified_content true}
+                     :model/Metabot    open-metabot     {:name "open", :use_verified_content false}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [destination {:target_type "collection" :collection_id coll}
+                ;; A chart seeded from the viewing context holds the user's query as legacy MBQL.
+                seeded      (atom {:state   {:queries {}
+                                             :charts  {"c-1" {:chart_id     "c-1"
+                                                              :queries      [(lib/->legacy-MBQL (venues-query))]
+                                                              :chart_config {:display_type "bar"}}}}
+                                   :context {}})
+                as-metabot  (fn [metabot thunk]
+                              (binding [shared/*metabot*    metabot
+                                        shared/*profile-id* :internal]
+                                (thunk)))]
+            (testing "under curated-only, a chart that reads an uncurated table is refused, and nothing is saved"
+              (is (=? {:class :recoverable
+                       :code  ::recoverable.common/not-curated
+                       :text  #"(?s)`chart c-1` is not available: this Metabot only uses curated content.*"}
+                      (as-metabot curated-metabot
+                                  #(failure seeded (assoc chart-args :destination destination)))))
+              (is (not (t2/exists? :model/Card :collection_id coll))))
+            (testing "under curated-only, a chart that reads a curated question is saved"
+              (let [mp    (mt/metadata-provider)
+                    query (lib/query mp (lib.metadata/card mp curated-id))]
+                (as-metabot curated-metabot
+                            #(binding [shared/*memory-atom* (atom {:state   {:queries {"q-1" query}
+                                                                             :charts  {"c-1" {:chart_id "c-1"
+                                                                                              :query_id "q-1"
+                                                                                              :queries  [query]}}}
+                                                                   :context {}})]
+                               (call-save-entity (assoc chart-args :destination destination))))
+                (is (= 1 (t2/count :model/Card :collection_id coll)))))
+            (testing "with curation off, a chart that reads an uncurated table is saved"
+              (as-metabot open-metabot
+                          #(binding [shared/*memory-atom* seeded]
+                             (call-save-entity (assoc chart-args :destination destination))))
+              (is (= 2 (t2/count :model/Card :collection_id coll))))))))))
+
 (def ^:private document-ast
   {:type "doc"
    :content [{:type "paragraph" :content [{:type "text" :text "Intro"}]}

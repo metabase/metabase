@@ -11,8 +11,10 @@ import {
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
+  setupRevisionsEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
+  setupUserEndpoints,
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
@@ -22,14 +24,18 @@ import {
   act,
   renderWithProviders,
   screen,
+  waitFor,
   waitForDashboardToLoad,
 } from "__support__/ui";
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
+import { setSidebar } from "metabase/dashboard/actions";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { dashboardSaved } from "metabase/metabot/state";
 import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DashboardId } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -40,6 +46,7 @@ import {
   createMockHeadingDashboardCard,
   createMockTable,
   createMockTextDashboardCard,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 const TEST_COLLECTION = createMockCollection();
@@ -363,5 +370,61 @@ describe("DashboardApp", () => {
     await userEvent.paste("A".repeat(256));
 
     expect(input).toHaveValue("A".repeat(254));
+  });
+
+  describe("Metabot saves", () => {
+    const dashboardFetches = (dashboardId: DashboardId) =>
+      fetchMock.callHistory.calls(`path:/api/dashboard/${dashboardId}`).length;
+
+    const metabotSaves = (dashboardId: DashboardId) =>
+      dashboardSaved({ dashboardId, saveId: "call-1" });
+
+    it("reloads the dashboard when Metabot saves it", async () => {
+      const { dashboardId, store } = await setup();
+      const fetchesBefore = dashboardFetches(dashboardId);
+
+      act(() => {
+        store.dispatch(metabotSaves(dashboardId));
+      });
+
+      await waitFor(() =>
+        expect(dashboardFetches(dashboardId)).toBeGreaterThan(fetchesBefore),
+      );
+    });
+
+    it("keeps the open sidebar when it reloads", async () => {
+      const { dashboardId, store } = await setup();
+      // the info sidebar loads the dashboard's history and its last editor
+      setupRevisionsEndpoints([]);
+      setupUserEndpoints(createMockUser({ id: 1 }));
+      act(() => {
+        store.dispatch(setSidebar({ name: SIDEBAR_NAME.info }));
+      });
+      const fetchesBefore = dashboardFetches(dashboardId);
+
+      act(() => {
+        store.dispatch(metabotSaves(dashboardId));
+      });
+
+      await waitFor(() =>
+        expect(dashboardFetches(dashboardId)).toBeGreaterThan(fetchesBefore),
+      );
+      expect(store.getState().dashboard.sidebar.name).toBe(SIDEBAR_NAME.info);
+    });
+
+    it("doesn't reload a dashboard being edited", async () => {
+      const { dashboardId, store } = await setup();
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
+      const fetchesBefore = dashboardFetches(dashboardId);
+
+      act(() => {
+        store.dispatch(metabotSaves(dashboardId));
+      });
+
+      expect(dashboardFetches(dashboardId)).toBe(fetchesBefore);
+      expect(
+        screen.getByText(/You're editing this dashboard/),
+      ).toBeInTheDocument();
+    });
   });
 });

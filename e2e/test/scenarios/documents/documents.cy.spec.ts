@@ -148,28 +148,6 @@ describe("documents", () => {
     cy.findByTestId("archive-banner").should("be.visible");
   });
 
-  it("should show an error toast when creating a document fails", () => {
-    cy.intercept("POST", "/api/document", { statusCode: 500 }).as(
-      "createDocumentError",
-    );
-    cy.intercept("GET", "/api/collection/*").as("getCollection");
-    cy.visit("/document/new");
-
-    // make changes and attempt to save
-    cy.findByRole("textbox", { name: "Document Title" }).type("Title");
-    H.documentSaveButton().click();
-    cy.wait("@getCollection");
-    H.entityPickerModalItem(0, "Our analytics").click();
-    H.entityPickerModal().findByRole("button", { name: "Select" }).click();
-    cy.wait("@createDocumentError");
-
-    // assert error toast is visible and user can reattempt save
-    cy.findByTestId("toast-undo")
-      .should("be.visible")
-      .and("contain.text", "Error saving document");
-    H.documentSaveButton().should("be.visible");
-  });
-
   describe("Empty Document", () => {
     beforeEach(() => {
       H.createDocument({

@@ -3,13 +3,19 @@ title: Setting up Metabase
 summary: Walk through first-time setup. Create your admin account, connect a database, activate your license, and set your usage preferences.
 redirect_from:
   - /docs/latest/setting-up-metabase
+  - /docs/latest/configuring-metabase/setting-up-metabase
 ---
 
 # Setting up Metabase
 
-This guide will help you set up Metabase once you’ve gotten it installed. If you haven’t installed Metabase yet, you can [get Metabase here](https://www.metabase.com/pricing).
+This guide will help you set up Metabase once you’ve gotten it installed.
 
-Start Metabase up for the first time and you’ll see this screen:
+## Install Metabase
+
+If you don't have Metabase yet, you'll need to install it first. The easiest way to get going is [Metabase Cloud](https://www.metabase.com/cloud), where we run Metabase for you. If you'd rather host Metabase yourself, you can run it with Docker or as a JAR file. See [Installing Metabase](../installation-and-operation/installing-metabase.md) for all your options.
+
+Once Metabase is installed, start it up for the first time and you’ll see this screen:
+
 ![Welcome Screen](images/WelcomeScreen.png)
 
 Go ahead and click **Let’s get started**.
@@ -53,7 +59,7 @@ If you don't have this information handy, the person responsible for administeri
 
 Now that you have your database info you can connect to your database. Sweet, sweet data at last. Just go ahead and put your info into this form and click **Next**.
 
-![adddatabase](images/AddDatabaseInfo.png)
+![Add database form](images/AddDatabaseInfo.png)
 
 For more on connecting to databases, see [Adding and managing databases](../databases/connecting.md).
 
@@ -91,7 +97,7 @@ The providers you set up here power Metabase's built-in AI features. The [MCP se
 
 ## Getting started with Metabase
 
-For a tutorial on getting up and running with questions and dashboards, head over to [Learn Metabase](https://www.metabase.com/learn/metabase-basics/getting-started).
+For a tutorial on getting up and running with questions and dashboards, head over to [Getting started](./start.md).
 
 ---
 

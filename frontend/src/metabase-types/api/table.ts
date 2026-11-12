@@ -276,3 +276,13 @@ export interface BulkTableSelectionInfo {
 export interface PublishTablesResponse {
   target_collection: Collection | null;
 }
+
+export type TableUserSettings = {
+  table_id: TableId;
+  display_name: string | null;
+  description: string | null;
+  collection_id: CollectionId | null;
+  is_published: boolean;
+  table?: Table;
+  collection?: Collection | null;
+};
