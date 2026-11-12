@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  Box,
   Button,
   type ButtonProps,
   Modal,
@@ -52,8 +53,8 @@ export const ConfirmModal = ({
   return (
     <Modal title={title} onClose={onClose} size="lg" {...props}>
       <Stack gap="xl">
-        {content ? <Text c={getBodyColor(content)}>{content}</Text> : null}
-        <Text c={getBodyColor(message)}>{message}</Text>
+        {content ? <ConfirmModalBody>{content}</ConfirmModalBody> : null}
+        <ConfirmModalBody>{message}</ConfirmModalBody>
       </Stack>
       <Modal.Footer>
         {errorMessage && (
@@ -82,6 +83,11 @@ export const ConfirmModal = ({
 };
 
 // Plain-string copy is a short confirmation, which uses secondary text. JSX
-// keeps the default colour, as it may hold forms or mixed content.
-const getBodyColor = (node: ReactNode) =>
-  typeof node === "string" ? "text-secondary" : undefined;
+// may hold forms or mixed content, so it brings its own typography. The Box
+// keeps fragments as one item in the parent Stack.
+const ConfirmModalBody = ({ children }: { children: ReactNode }) =>
+  typeof children === "string" ? (
+    <Text c="text-secondary">{children}</Text>
+  ) : (
+    <Box>{children}</Box>
+  );
