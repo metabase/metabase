@@ -1,0 +1,25 @@
+name: tmp needs inner
+on:
+  workflow_call:
+    inputs:
+      mode:
+        type: string
+        required: true
+      should_fail:
+        type: boolean
+        required: true
+jobs:
+  work:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Work
+        run: |
+          if [[ "${{ inputs.should_fail }}" != "true" ]]; then echo ok; exit 0; fi
+          if [[ "${{ inputs.mode }}" == "timeout" ]]; then sleep 120; else exit 1; fi
+  inner-notify:
+    needs: [work]
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "INNER NOTIFY FIRED ${{ toJSON(needs) }}"

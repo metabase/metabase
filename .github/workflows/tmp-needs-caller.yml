@@ -1,0 +1,14 @@
+name: tmp needs caller
+on:
+  pull_request:
+    paths:
+      - .github/workflows/tmp-needs-*.yml
+jobs:
+  timeout-case:
+    uses: ./.github/workflows/tmp-needs-outer.yml
+    with:
+      mode: timeout
+  fail-case:
+    uses: ./.github/workflows/tmp-needs-outer.yml
+    with:
+      mode: fail

@@ -1,0 +1,70 @@
+name: tmp needs outer
+on:
+  workflow_call:
+    inputs:
+      mode:
+        type: string
+        required: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      kind: patch
+    steps:
+      - run: echo patch
+  nested:
+    needs: [check]
+    strategy:
+      matrix:
+        tag: [ok-tag, bad-tag]
+    uses: ./.github/workflows/tmp-needs-inner.yml
+    with:
+      mode: ${{ inputs.mode }}
+      should_fail: ${{ matrix.tag == 'bad-tag' }}
+  draft-notes:
+    if: ${{ github.repository == 'metabase/metabase' && needs.check.outputs.kind == 'minor' }}
+    needs: [nested, check]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo draft
+  draft-notes-minor:
+    if: ${{ github.repository == 'metabase/metabase' && needs.check.outputs.kind == 'patch' }}
+    needs: [nested, check]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo draft
+  complete-msg:
+    needs: [nested]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo complete
+  unrelated-skip:
+    if: ${{ needs.check.outputs.kind == 'minor' }}
+    needs: [check]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo never
+  report:
+    if: ${{ always() }}
+    needs: [check, nested, draft-notes, draft-notes-minor, complete-msg, unrelated-skip]
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "check=${{ needs.check.result }}"
+          echo "nested=${{ needs.nested.result }}"
+          echo "draft-notes=${{ needs.draft-notes.result }}"
+          echo "draft-notes-minor=${{ needs.draft-notes-minor.result }}"
+          echo "complete-msg=${{ needs.complete-msg.result }}"
+          echo "unrelated-skip=${{ needs.unrelated-skip.result }}"
+  notify-old:
+    needs: [check, unrelated-skip, draft-notes, complete-msg]
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "OLD TOP-LEVEL NOTIFY FIRED ${{ toJSON(needs) }}"
+  notify-new:
+    needs: [check, unrelated-skip]
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "NEW TOP-LEVEL NOTIFY FIRED ${{ toJSON(needs) }}"
