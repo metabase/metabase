@@ -344,7 +344,8 @@
   {:team "Security Engineering"
    :api  #{metabase.api-scope.core
            metabase.api-scope.data-app
-           metabase.api-scope.init}
+           metabase.api-scope.init
+           metabase.api-scope.workspace-manager}
    :uses #{util}}
 
   api.eid-translation
@@ -3628,8 +3629,7 @@
   {:team "Graphy"
    :api #{metabase.workspaces.core
           metabase.workspaces.table-remapping}
-   :uses #{premium-features
-           util}}
+   :uses #{premium-features}}
 
   xrays
   {:team "Graphy"
@@ -4872,10 +4872,12 @@
            metabase-enterprise.workspaces.core
            metabase-enterprise.workspaces.init}
    :uses #{api
+           api-scope
            app-db
            cache
            database-routing
            driver
+           events
            lib.metadata
            lib.schema
            models

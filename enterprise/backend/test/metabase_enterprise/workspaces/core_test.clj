@@ -3,9 +3,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [java-time.api :as t]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
-   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
@@ -113,10 +114,12 @@
                             (grant!   [_ _ _ _ _] nil)
                             (destroy! [_ _ _ _]   (swap! destroyed inc)))]
             (with-redefs [provisioning/dispatching-provisioner refusing]
-              (is (thrown-with-msg? ExceptionInfo #"user exists"
-                                    (ws/create-workspace! {:name         "Refused"
-                                                           :creator_id   (mt/user->id :crowberto)
-                                                           :database_ids [db-id]}))))
+              (let [e (is (thrown-with-msg? ExceptionInfo #"user exists"
+                                            (ws/create-workspace! {:name         "Refused"
+                                                                   :creator_id   (mt/user->id :crowberto)
+                                                                   :database_ids [db-id]})))]
+                (is (=? {:status-code 409 :cleanup_required false} (ex-data e))
+                    "the refused row is gone, so the teardown finds nothing and the 409 stands")))
             (is (zero? @destroyed)
                 "destroy would drop the user init refused, which may belong to another parent")
             (is (not (t2/exists? :model/Workspace :name "Refused")))
@@ -160,29 +163,6 @@
             (is (=? {:status :unprovisioned} (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
             (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
               (is (nil? (ws/delete-workspace! (:id ws)))))))
-        (testing "provisioning failure whose cleanup also fails keeps the workspace and returns it for retry"
-          (let [wedged (reify provisioning/Provisioner
-                         (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
-                         (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
-                         (grant!   [_ _ _ _ _] nil)
-                         (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
-            (with-redefs [provisioning/dispatching-provisioner wedged]
-              (is (=? {:name      "Wedged"
-                       :databases [{:status :unprovisioned}]}
-                      (ws/create-workspace! {:name         "Wedged"
-                                             :creator_id   (mt/user->id :crowberto)
-                                             :database_ids [db-id]}))
-                  "the created workspace is returned even though provisioning failed and cleanup could not finish"))
-            (let [ws (t2/select-one :model/Workspace :name "Wedged")]
-              (is (some? ws)
-                  "the workspace must be kept while any database row remains")
-              (is (=? [{:status :unprovisioned}]
-                      (t2/select :model/WorkspaceDatabase :workspace_id (:id ws)))
-                  "the row whose teardown failed is kept, forced :unprovisioned")
-              ;; retry the teardown via delete once the warehouse is back
-              (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-                (is (nil? (ws/delete-workspace! (:id ws)))))
-              (is (nil? (ws/get-workspace (:id ws)))))))
         (testing "success: the attached database comes back :provisioned"
           (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
             (let [ws (ws/create-workspace! {:name         "Provisioned"
@@ -221,6 +201,42 @@
                   (:databases (ws/create-workspace! {:name         "MySQL"
                                                      :creator_id   (mt/user->id :crowberto)
                                                      :database_ids [db-id]})))))))))
+
+(deftest create-workspace-cleanup-failure-test
+  ;; Committed `with-temp`: the teardown-failure bookkeeping writes on a fresh autocommit connection, which cannot
+  ;; see rows inside the default rollback-only `with-temp` transaction.
+  (mt/test-helpers-set-global-values!
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (testing "provisioning failure whose cleanup also fails keeps the workspace and throws, so that a later delete can retry"
+          (let [wedged (reify provisioning/Provisioner
+                         (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                         (init!    [_ _ _ _]   (throw (ex-info "boom" {:status-code 409})))
+                         (grant!   [_ _ _ _ _] nil)
+                         (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
+            (with-redefs [provisioning/dispatching-provisioner wedged]
+              (let [e (is (thrown? ExceptionInfo
+                                   (ws/create-workspace! {:name         "Wedged"
+                                                          :creator_id   (mt/user->id :crowberto)
+                                                          :database_ids [db-id]})))]
+                (is (=? {:status-code 500 :cleanup_required true :message #"boom.*warehouse down"}
+                        (ex-data e))
+                    "two failures are a 500, and the kept workspace still needs a delete")))
+            (let [ws (t2/select-one :model/Workspace :name "Wedged")]
+              (is (some? ws)
+                  "the workspace must be kept while any database row remains")
+              (is (=? [{:status           :teardown_failed
+                        :output_namespace "mb_iso_stub"
+                        :database_details {:user "stub_user"}}]
+                      (t2/select :model/WorkspaceDatabase :workspace_id (:id ws)))
+                  "the row whose teardown failed is kept as :teardown_failed, with the identifiers the teardown used")
+              ;; retry the teardown via delete once the warehouse is back
+              (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                (is (nil? (ws/delete-workspace! (:id ws)))))
+              (is (nil? (ws/get-workspace (:id ws)))))))))))
 
 (deftest refused-init-row-is-never-torn-down-by-a-concurrent-delete-test
   (testing "a DELETE that runs once a refused init has released the per-row lock destroys nothing"
@@ -263,6 +279,52 @@
           (is (zero? @destroyed)
               "destroy would drop the user init refused, which may belong to another parent"))))))
 
+(deftest create-workspace-failure-never-destroys-a-database-whose-init-never-ran-test
+  (mt/with-temp [:model/Database {db1-id :id} {:engine   :postgres
+                                               :details  {}
+                                               :settings {:database-enable-workspaces true}}
+                 :model/Table _ {:db_id db1-id :schema "public" :active true}
+                 :model/Database {db2-id :id} {:engine   :postgres
+                                               :details  {}
+                                               :settings {:database-enable-workspaces true}}
+                 :model/Table _ {:db_id db2-id :schema "public" :active true}]
+    (mt/with-model-cleanup [:model/Workspace]
+      (letfn [(refusing [refused-db-id inited destroyed]
+                (reify provisioning/Provisioner
+                  (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                  (init!    [_ _ db _]
+                    (swap! inited conj (:id db))
+                    (when (= refused-db-id (:id db))
+                      (throw (ex-info "user exists" {:status-code 409 :workspace/cleanup? false}))))
+                  (grant!   [_ _ _ _ _] nil)
+                  (destroy! [_ _ db _]  (swap! destroyed conj (:id db)))))
+              (create! [ws-name provisioner]
+                (with-redefs [provisioning/dispatching-provisioner provisioner]
+                  (try
+                    (ws/create-workspace! {:name         ws-name
+                                           :creator_id   (mt/user->id :crowberto)
+                                           :database_ids [db1-id db2-id]})
+                    nil
+                    (catch ExceptionInfo e (ex-data e)))))]
+        (testing "the second database refuses after the first one's init ran: the first is destroyed"
+          (let [inited    (atom #{})
+                destroyed (atom #{})]
+            (is (=? {:status-code 409 :cleanup_required false}
+                    (create! "Second refused" (refusing db2-id inited destroyed))))
+            (is (= #{db1-id db2-id} @inited))
+            (is (= #{db1-id} @destroyed))))
+        (testing "the first database refuses: the second one's init never ran, so nothing of it is destroyed"
+          (let [inited    (atom #{})
+                destroyed (atom #{})]
+            (is (=? {:status-code 409 :cleanup_required false}
+                    (create! "First refused" (refusing db1-id inited destroyed))))
+            (is (= #{db1-id} @inited)
+                "only the first database's init ran")
+            (is (= #{} @destroyed)
+                "destroy drops the role and schema of the computed names, which another parent may own")
+            (is (not (t2/exists? :model/Workspace :name "First refused")))
+            (is (not (t2/exists? :model/WorkspaceDatabase :database_id [:in [db1-id db2-id]])))))))))
+
 (defn- add-database!
   "Test helper: insert a WorkspaceDatabase row for `workspace-id` and provision it
    (blocking). Replaces the removed production add-database! for test setup."
@@ -294,7 +356,7 @@
         (is (nil? (ws/get-workspace (:id ws))))))))
 
 (deftest delete-workspace-with-pending-status-test
-  (testing "a workspace database still :provisioning/:deprovisioning is torn down like any other state"
+  (testing "a stale :provisioning/:deprovisioning row (left by a crashed instance) is torn down like any other state"
     (doseq [pending-status [:provisioning :deprovisioning]]
       (testing (str "status " pending-status)
         (mt/with-model-cleanup [:model/Workspace]
@@ -303,10 +365,12 @@
                 _      (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
                          (add-database! (:id ws) (mt/id) ["PUBLIC"]))
                 wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))]
-            ;; force the row into the pending state. :provisioning rows that crashed
-            ;; never stored their iso details, so clear them too.
+            ;; force the row into a pending state last touched long ago, as a crash
+            ;; leaves it. :provisioning rows that crashed never stored their iso
+            ;; details, so clear them too.
             (t2/update! :model/WorkspaceDatabase {:id wsd-id}
-                        (cond-> {:status pending-status}
+                        (cond-> {:status     pending-status
+                                 :updated_at (t/minus (t/offset-date-time) (t/hours 1))}
                           (= pending-status :provisioning)
                           (assoc :output_namespace "" :database_details {})))
             (let [destroyed? (atom false)
@@ -321,6 +385,39 @@
                   "pending rows get a real warehouse teardown, not an app-DB-only removal")
               (is (nil? (ws/get-workspace (:id ws))))
               (is (not (t2/exists? :model/WorkspaceDatabase :id wsd-id))))))))))
+
+(deftest delete-workspace-while-in-flight-test
+  (testing "a fresh :provisioning/:deprovisioning row means work is running: delete refuses with 409 and touches nothing"
+    (doseq [pending-status [:provisioning :deprovisioning]]
+      (testing (str "status " pending-status)
+        (mt/with-model-cleanup [:model/Workspace]
+          (let [ws         (ws/create-workspace! {:name       (str "Busy " (name pending-status))
+                                                  :creator_id (mt/user->id :crowberto)})
+                _          (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                             (add-database! (:id ws) (mt/id) ["PUBLIC"]))
+                wsd-id     (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))
+                _          (t2/update! :model/WorkspaceDatabase {:id wsd-id} {:status pending-status})
+                destroyed? (atom false)
+                recording  (reify provisioning/Provisioner
+                             (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                             (init!    [_ _ _ _]   nil)
+                             (grant!   [_ _ _ _ _] nil)
+                             (destroy! [_ _ _ _]   (reset! destroyed? true) nil))
+                e          (with-redefs [provisioning/dispatching-provisioner recording]
+                             (try
+                               (ws/delete-workspace! (:id ws))
+                               nil
+                               (catch ExceptionInfo e e)))]
+            (is (=? {:status-code 409 :error-code "workspace_busy"}
+                    (ex-data e)))
+            (is (false? @destroyed?)
+                "no teardown runs while the other operation holds the row")
+            (is (=? {:status pending-status}
+                    (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
+            (is (some? (ws/get-workspace (:id ws))))
+            (t2/update! :model/WorkspaceDatabase {:id wsd-id} {:status :provisioned})
+            (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+              (is (nil? (ws/delete-workspace! (:id ws)))))))))))
 
 (deftest delete-workspace-teardown-failure-test
   (testing "when teardown fails, nothing is deleted: the row and the workspace are kept for retry"
@@ -340,9 +437,13 @@
               "the combined teardown failure is thrown, carrying what the database returned"))
         (is (some? (ws/get-workspace (:id ws)))
             "the workspace must be kept when any teardown fails")
-        (is (=? {:status :unprovisioned}
+        (is (=? {:status           :teardown_failed
+                 :output_namespace "mb_iso_stub"}
                 (t2/select-one :model/WorkspaceDatabase :id wsd-id))
-            "the failed row is kept, forced :unprovisioned")
+            "the failed row is kept as :teardown_failed, with the identifiers of what may remain")
+        (is (thrown-with-msg? ExceptionInfo #"active workspace_database rows.*force=true"
+                              (workspace-database/reconcile-workspace-database-refs-before-delete! (mt/id)))
+            "a :teardown_failed row blocks deleting its Database, so the record of leftovers survives")
         (testing "retrying the delete once the warehouse is reachable finishes the job"
           (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
             (is (nil? (ws/delete-workspace! (:id ws)))))
@@ -393,64 +494,3 @@
                                        :to_table_name   "orders"})
     (let [remappings (ws/list-remappings)]
       (is (some #(= "orders" (:from_table_name %)) remappings)))))
-
-;;; ----------------------------------------- workspace-instance lock ------------------------------------------
-
-(defn- lock-atom
-  "Reach through the private var to the lock atom."
-  []
-  @#'ws/locked-by-config?*)
-
-(deftest workspace-locked-by-config?-baseline-test
-  (testing "default state (no atom flip, no env-var) is unlocked"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (is (false? (ws/workspace-locked-by-config?)))
-        (finally (reset! a prior))))))
-
-(deftest workspace-locked-by-config?-atom-flipped-test
-  (testing "after mark-locked-by-config!, the predicate returns true"
-    (workspaces.tu/with-workspace-locked-by-config
-      (fn [] (is (true? (ws/workspace-locked-by-config?)))))))
-
-(deftest mark-locked-by-config!-flips-the-atom-test
-  (testing "mark-locked-by-config! flips the atom to true"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (is (false? (ws/workspace-locked-by-config?)))
-        (ws/mark-locked-by-config!)
-        (is (true? @a))
-        (is (true? (ws/workspace-locked-by-config?)))
-        (finally (reset! a prior))))))
-
-(deftest env-var-presence-locks-test
-  (testing "MB_INSTANCE_WORKSPACE set => predicate true regardless of atom"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (mt/with-temp-env-var-value! [mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
-          (is (true? (ws/workspace-locked-by-config?))))
-        (testing "outside the binding, atom alone determines the lock"
-          (is (false? (ws/workspace-locked-by-config?))))
-        (finally (reset! a prior))))))
-
-(deftest env-var-empty-string-does-not-lock-test
-  (testing "MB_INSTANCE_WORKSPACE set to empty string does NOT lock (env-var-value treats blank as unset)"
-    (let [a     (lock-atom)
-          prior @a]
-      (try
-        (reset! a false)
-        (mt/with-temp-env-var-value! [mb-instance-workspace ""]
-          (is (false? (ws/workspace-locked-by-config?))))
-        (finally (reset! a prior))))))
-
-(deftest env-var-and-atom-both-lock-test
-  (testing "both sources set => still true; OR semantics"
-    (mt/with-temp-env-var-value! [mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
-      (workspaces.tu/with-workspace-locked-by-config
-        (fn [] (is (true? (ws/workspace-locked-by-config?))))))))

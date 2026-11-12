@@ -8,15 +8,13 @@
      [[create-workspace!]] and [[delete-workspace!]]. Provisioning operations are
      synchronous — the caller waits until the warehouse work completes.
 
-   - **Instance-side state.** When a Metabase boots in workspace mode, the
-     `:workspace` section loader (`metabase-enterprise.advanced-config.file.workspace`)
-     parses `config.yml` and stores the resulting workspace map in the
-     `instance-workspace` setting. Workspace-aware code (transform target
-     rewriting, table-remapping QP middleware) reads from the setting via
-     [[workspace-mode?]] / [[db-workspace-namespace]]. The setting lives in the
-     instance's own application database — child instances have their own app DB,
-     so storing it there persists the workspace across restarts without leaking
-     between parent and child.
+   - **Instance-side state.** An instance is a workspace when its `workspaces-enabled`
+     setting is on. Each database's database-local `database-workspace-schema` setting
+     names the schema its transforms write to. Both are ordinary settings: the settings
+     API, env vars, or `config.yml` set them (the `:workspace` section loader,
+     `metabase-enterprise.advanced-config.file.workspace`, translates the older form).
+     Workspace-aware code (transform target rewriting, table-remapping QP middleware)
+     reads them via [[workspace-mode?]] / [[db-workspace-namespace]].
 
    Per-database lifecycle for the manager-side rows:
 
@@ -29,20 +27,31 @@
          │                                                │
          │                                       failure  │
          │                                                ▼
-         └──────────────────────────────────────── provisioned"
+         └──────────────────────────────────────── provisioned
+
+   Deleting a workspace tears down each database from any state. A teardown that
+   fails leaves the row `teardown_failed`: warehouse objects may remain, the row
+   keeps blocking deletion of its Database, and a retried delete tears it down
+   again."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.app-db.core :as app-db]
+   [metabase.app-db.sql-errors :as sql-errors]
+   [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
-   [metabase.workspaces.core :as ws]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -78,83 +87,108 @@
      {:db (driver.sql/db-slot-value (:engine database) database)
       :schema (:schema table)})))
 
-(defn- coerce-database-id-key
-  "JSON round-trips through the `instance-workspace` setting return integer
-   `Database.id` keys as keywords (e.g. `:1`). Coerce them back to ints."
-  [k]
-  (cond
-    (int? k)     k
-    (keyword? k) (parse-long (name k))
-    (string? k)  (parse-long k)))
+(defn expand-output-namespace
+  "Expand a driver-opaque `output-namespace` string into the `{:db ?, :schema ?}`
+   namespace map QP middleware, transform_hooks, and table_remapping consume.
 
-(defn- normalize-database-keys
-  "Coerce the `:databases` map keys to ints. See [[coerce-database-id-key]]."
-  [config]
-  (some-> config
-          (update :databases #(update-keys % coerce-database-id-key))))
+   For 3-slot drivers (SQL Server, BigQuery) the `:db` slot is filled from
+   `Database.details`. For 2-slot drivers the namespace string lands in the
+   schema slot. For no-schema drivers (MySQL) it lands in the db slot.
 
-(mu/defn set-instance-workspace! :- :any
-  "Store the workspace config in the `instance-workspace` setting. Replaces any
-   prior value. The shape is validated against `::ws/workspace-instance-config`."
-  [config :- ::ws/workspace-instance-config]
-  (ws.settings/instance-workspace! config)
+   `output-namespace` blank → `:schema` is `nil`: the workspace database isn't
+   provisioned yet and QP/transform consumers treat it as having no output
+   mapping."
+  [db output-namespace]
+  (let [components (set (driver/qualified-name-components (:engine db)))
+        positions  (engine-namespace-positions db)
+        schema     (when-not (str/blank? output-namespace) output-namespace)]
+    (cond-> {}
+      (:db components)     (assoc :db (:db positions))
+      (:schema components) (assoc :schema schema)
+      (and (:db components) (not (:schema components)))
+      (assoc :db schema))))
+
+(defn- database-workspace-schema
+  "The trimmed, non-blank `database-workspace-schema` database-local setting of `database`,
+   or nil. `PUT /api/database/:id` stores the value untrimmed, so every reader trims here."
+  [database]
+  (some-> (get-in database [:settings :database-workspace-schema]) str/trim not-empty))
+
+(defn instance-workspace
+  "The workspace this instance is, as `{:databases {<db-id> <schema>}}`, or nil when
+   the `workspaces-enabled` setting is off."
+  []
+  (when (ws.settings/workspaces-enabled)
+    {:databases (into {}
+                      (keep (fn [database]
+                              (when-let [schema (database-workspace-schema database)]
+                                [(:id database) schema])))
+                      (ws.db/all-databases))}))
+
+(mu/defn set-instance-workspace! :- :nil
+  "Make this instance a workspace: set each database's `database-workspace-schema` from
+   `schemas`, a map of database id to schema, then turn `workspaces-enabled` on. Clears
+   the schema, and the remap rows, of every database not in `schemas`. One transaction,
+   flag last, so no transform sees workspace mode with a schema missing. Throws a 400
+   for an unknown database id, on a parent, or when `MB_WORKSPACES_ENABLED=false`.
+   Trims each schema, so a repeat call with `\" ws \"` matches the stored `\"ws\"`
+   and keeps the remap rows."
+  [schemas :- [:map-of ::lib.schema.id/database ms/NonBlankString]]
+  (t2/with-transaction [_conn]
+    (let [schemas   (update-vals schemas str/trim)
+          databases (ws.db/all-databases)]
+      (when-let [unknown (seq (remove (set (map :id databases)) (keys schemas)))]
+        (throw (ex-info (str "Unknown database ids: " (pr-str (vec unknown)))
+                        {:status-code 400 :database_ids (vec unknown)})))
+      (doseq [{:keys [id settings] :as database} databases
+              :let [schema (get schemas id)]
+              :when (not= schema (database-workspace-schema database))]
+        (ws.db/update-database-settings! id (if schema
+                                              (assoc settings :database-workspace-schema schema)
+                                              (dissoc settings :database-workspace-schema)))
+        ;; Rows pointing at the old schema would keep redirecting reads there.
+        (ws.db/delete-table-remappings-of-database! id))
+      (ws.settings/workspaces-enabled! true)
+      ;; A node outside workspace mode trusts its cache of the Databases with remappings; drop it once the new
+      ;; schemas and flag are visible to other readers.
+      (app-db/do-after-commit table-remapping/invalidate-database-ids!)))
+  nil)
+
+(defn delete-stale-table-remappings!
+  "Delete the remap rows of `database` when its `database-workspace-schema`
+   differs from that of `previous-database`, the same row before the write. Those rows
+   point at the old schema and would keep redirecting reads there. For writes that skip
+   [[set-instance-workspace!]]: `PUT /api/database/:id` and the `config.yml` loader."
+  [previous-database database]
+  (when (not= (database-workspace-schema previous-database) (database-workspace-schema database))
+    (ws.db/delete-table-remappings-of-database! (:id database))
+    (app-db/do-after-commit table-remapping/invalidate-database-ids!))
   nil)
 
 (defn clear-instance-workspace!
-  "Clear the `instance-workspace` setting."
+  "Turn `workspaces-enabled` off and delete every `:model/TableRemapping` row.
+   Leaves each database's `database-workspace-schema` in place; it has no effect
+   while the instance is not a workspace. Throws a 400 when `MB_WORKSPACES_ENABLED=true`,
+   since that value wins over the stored one."
   []
-  (ws.settings/instance-workspace! nil)
-  nil)
-
-;;; ------------------------------- Instance-workspace lock -------------------------------
-
-(defonce ^:private locked-by-config?* (atom false))
-
-(defn workspace-locked-by-config?
-  "True iff this instance's workspace was set by out-of-band deployment config —
-  a `:workspace` section in `config.yml` at boot, or the `MB_INSTANCE_WORKSPACE`
-  env var — and so must not be mutated through the workspace-instance API. The
-  lock is per-boot and not persisted: removing the config and restarting clears it.
-
-  Read at the HTTP boundary only. Do NOT consult it from `set-instance-workspace!`
-  or `clear-instance-workspace!` — internal callers and test fixtures rely on
-  those setters staying unconditional."
-  []
-  (or @locked-by-config?*
-      ;; Checked inline rather than captured at boot like the atom: nothing reads
-      ;; this env var at startup, and the lookup is cheap.
-      (some? (setting/env-var-value :instance-workspace))))
-
-(defn mark-locked-by-config!
-  "Called by the boot loader only; runtime code paths never flip the lock."
-  []
-  (reset! locked-by-config?* true))
-
-(defn clear-all-remappings!
-  "Delete every `:model/TableRemapping` row across all databases."
-  []
+  (ws.settings/workspaces-enabled! false)
+  ;; The setting's :on-change deletes them only when the value changes; delete them
+  ;; here too so stale rows from an earlier run go regardless.
   (ws.db/delete-all-table-remappings!)
   nil)
 
-(defn instance-workspace
-  "Return the workspace loaded on this instance, or nil if none."
-  []
-  (normalize-database-keys (ws.settings/instance-workspace)))
-
 (defenterprise workspace-mode?
-  "EE impl: true iff this instance is running in workspace mode (the
-   `instance-workspace` setting is populated — either from a `:workspace` section
-   of `config.yml` at boot or by a `POST /api/ee/advanced-config`). Single
-   source of truth for gating features that conflict with workspace remapping
-   (DB routing, impersonation, writeback, CSV upload, model persistence). Use
-   [[db-workspace-namespace]] when you need per-database scoping.
+  "EE impl: true iff this instance is a workspace (the `workspaces-enabled` setting
+   is on). Single source of truth for gating features that conflict with workspace
+   remapping (DB routing, impersonation, writeback, CSV upload, model persistence).
+   Use [[db-workspace-namespace]] when you need per-database scoping.
 
-   Deliberately ungated on premium features: a workspace child instance bootstraps
-   from `config.yml` *before* its token is installed; if the workspace map is
-   loaded, we refuse incompatible features regardless of token state."
+   Deliberately ungated on premium features: a workspace instance may boot from
+   `config.yml` or env vars *before* its token is installed; if it is a workspace,
+   we refuse incompatible features regardless of token state."
   :feature :none
   []
-  (some? (ws.settings/instance-workspace)))
+  (ws.settings/workspaces-enabled))
 
 (defenterprise workspace-database-exists?
   "EE impl: whether any WorkspaceDatabase row references the Database with `database-id`.
@@ -165,14 +199,15 @@
   (ws.db/database-has-workspace-databases? database-id))
 
 (defn db-workspace-namespace
-  "Return the workspace-isolated output namespace map for `db-id` on this
-   instance, or `nil` when this instance is not running a workspace or the
-   workspace has no entry for `db-id`. The namespace map is
-   `{:db ?, :schema ?}` - either or both keys may be absent depending on
-   the driver's `qualified-name-components`. Reads from the `workspace-instance`
-   setting."
+  "Return the workspace output namespace map `{:db ?, :schema ?}` for `db-id`, or
+   `nil` when this instance is not a workspace or the database has no
+   `database-workspace-schema`. Either key may be absent depending on the driver's
+   `qualified-name-components`."
   [db-id]
-  (get-in (instance-workspace) [:databases db-id :output]))
+  (when (ws.settings/workspaces-enabled)
+    (when-let [database (ws.db/database db-id)]
+      (some->> (database-workspace-schema database)
+               (expand-output-namespace database)))))
 
 (defn list-remappings
   "Return all TableRemapping rows, ordered by id."
@@ -185,6 +220,25 @@
   (when-not (ws.db/workspace-exists? workspace-id)
     (throw (ex-info "Workspace not found"
                     {:status-code 404 :workspace_id workspace-id}))))
+
+(def ^:private in-flight-stale-after
+  "How long after its last status change a `:provisioning` or `:deprovisioning`
+  row still counts as in flight. An older one is treated as left behind by a
+  crashed instance, so a delete tears it down instead of refusing."
+  (t/minutes 15))
+
+(defn- assert-workspace-not-busy
+  "Refuse (409, error code `workspace_busy`) while a create or deprovision is still
+  running on any of the workspace's databases. Without this, a delete waits on
+  the row lock that the running provisioning holds, then fails, or wins the lock
+  and makes the create fail."
+  [workspace-id]
+  (when (ws.db/workspace-has-in-flight-databases? workspace-id
+                                                  (t/minus (t/offset-date-time) in-flight-stale-after))
+    (throw (ex-info "Workspace is busy: a create or deprovision is still running on one of its databases. Retry once it finishes."
+                    {:status-code  409
+                     :error-code   "workspace_busy"
+                     :workspace_id workspace-id}))))
 
 (defn- assert-database-exists [database-id]
   (or (ws.db/database database-id)
@@ -247,10 +301,26 @@
 
 (defn- provision-workspace-databases!
   "Provision every WorkspaceDatabase of the hydrated workspace `ws` synchronously
-  (blocking), failing fast on the first error."
+  (blocking), stopping at the first error. Returns nil when every database is
+  provisioned, else `{:error t, :never-started ids}`: the error, and the ids of
+  the rows after the failed one, whose provisioning never started."
   [ws]
-  (doseq [{wsd-id :id} (:databases ws)]
-    (provisioning/provision-single! wsd-id)))
+  (loop [[wsd-id & more] (map :id (:databases ws))]
+    (when wsd-id
+      (if-let [t (try
+                   (provisioning/provision-single! wsd-id)
+                   nil
+                   (catch Throwable t t))]
+        {:error t, :never-started more}
+        (recur more)))))
+
+(defn- delete-never-started-workspace-database!
+  "Delete the row `wsd-id`, whose provisioning never started, under its per-row lock. Init never ran for it, so the
+  warehouse has nothing of its, and a teardown would drop a user and schema of its computed names that another
+  parent may own."
+  [wsd-id]
+  (provisioning/with-workspace-database-lock wsd-id
+    (ws.db/delete-workspace-database! wsd-id)))
 
 (defn- teardown-workspace-databases!
   "Tear down every WorkspaceDatabase of `workspace-id` — any state, blocking.
@@ -275,6 +345,45 @@
                                                      (:status-code (ex-data (first failures))))
                                                    500)})))))
 
+(defn- insert-workspace-or-find-retried!
+  "Insert the Workspace and its WorkspaceDatabase rows. Returns `{:created ws}`, or
+  `{:retried ws-id}` when the creator already has a Workspace with `idempotency_key`.
+  The unique index on (idempotency_key, creator_id) decides which of two concurrent
+  requests inserts; the other inserts nothing. Any other duplicate key, and a key
+  whose workspace a failed create deleted in the meantime, is rethrown as before."
+  [{:keys [creator_id idempotency_key] :as params}]
+  (try
+    {:created (workspace/create-workspace! params)}
+    (catch Throwable t
+      (if-let [ws-id (and idempotency_key
+                          (= :duplicate-key (sql-errors/error-kind t))
+                          (ws.db/workspace-id-by-idempotency-key creator_id idempotency_key))]
+        {:retried ws-id}
+        (throw t)))))
+
+(defn- retried-workspace
+  "The workspace `ws-id` that an earlier create with the same idempotency key made,
+  hydrated, for a retry of that create. Refuses (409, `workspace_busy`) while that
+  create is still provisioning. When the earlier create failed and kept the
+  workspace because its cleanup failed too, some database is not `:provisioned`:
+  the retry replays that failure as a 500 with `cleanup_required`, and the key stays
+  taken until the workspace is deleted. A kept workspace with no databases (cleanup
+  removed them, then deleting the Workspace row failed) is a failed create too."
+  [ws-id]
+  (assert-workspace-not-busy ws-id)
+  (let [ws (workspace/get-workspace ws-id)]
+    (when (or (empty? (:databases ws))
+              (not-every? #(= :provisioned (:status %)) (:databases ws)))
+      (let [message "An earlier create with this idempotency key failed, and its cleanup did not finish. Delete the workspace, then create it again with a new key."]
+        (throw (ex-info message
+                        {:status-code      500
+                         :message          message
+                         :errors           {:_error message}
+                         :workspace_id     ws-id
+                         :cleanup_required true
+                         :response/keys    #{:workspace_id :cleanup_required}}))))
+    ws))
+
 (defn create-workspace!
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
    exist (404) and be eligible for workspaces (400, see
@@ -288,12 +397,25 @@
    of warehouse resources that may (partially) exist, so they must survive an
    instance crash mid-provision; a rollback would erase them while the warehouse
    objects live on. Cleanup after a provisioning failure is therefore explicit:
-   every database is torn down; when the cleanup removes everything, the Workspace
-   row is deleted and the provisioning error is rethrown; when the cleanup itself
-   fails, the workspace is kept — and returned like a successful create — with the
-   failed rows (`:unprovisioned`) so the leak stays visible and the teardown can
-   be retried via delete. Callers detect that case from the databases' statuses."
-  [{:keys [name creator_id database_ids]}]
+   the rows whose provisioning never started are deleted, and every other
+   database is torn down. When the cleanup removes everything, the Workspace
+   row is deleted and the provisioning error is rethrown with its own
+   `:status-code` (500 when it has none). When the cleanup itself fails, the
+   workspace is kept with the failed rows (`:teardown_failed`, with the
+   identifiers the teardown used), so the leak stays
+   visible and the teardown can be retried via delete, and the error is a 500,
+   as it is when the cleanup succeeds but deleting the Workspace row fails.
+   Either way the error's `:cleanup_required` says whether the workspace was kept
+   and still needs that delete.
+
+   An optional `idempotency_key` makes the create safe to retry. It is stored on the
+   Workspace row, unique per creator. When the creator already has a workspace with
+   that key, nothing is provisioned: the call returns that workspace, refuses with
+   409 (`workspace_busy`) while it is still provisioning, or answers 500 with
+   `cleanup_required` when that create failed and kept the workspace. The rest of a retry's params
+   are not compared with the original's. A failed create whose cleanup deleted its
+   workspace frees the key."
+  [{:keys [name creator_id database_ids idempotency_key]}]
   (let [databases (mapv (fn [db-id]
                           (let [database (assert-database-exists db-id)]
                             (assert-database-eligible-for-workspaces database)
@@ -302,29 +424,54 @@
                                              database
                                              (workspace-database/database-input-schemas database))}))
                         database_ids)
-        ws        (workspace/create-workspace! {:name       name
-                                                :creator_id creator_id
-                                                :databases  databases})]
-    (try
-      (provision-workspace-databases! ws)
-      (catch Throwable t
-        (let [cleaned-up? (try
-                            (teardown-workspace-databases! (:id ws))
-                            true
-                            ;; Cleanup failed: the workspace and the failed rows are
-                            ;; kept — and returned — so the teardown can be retried
-                            ;; via delete. Both errors are deliberately swallowed,
-                            ;; not logged (raw warehouse errors are sensitive);
-                            ;; callers see the failure in the databases' statuses,
-                            ;; and a delete retry surfaces the teardown errors.
-                            (catch Throwable _ false))]
-          (when cleaned-up?
-            (try
-              (workspace/delete-workspace! (:id ws))
-              (catch Throwable delete-t
-                (.addSuppressed t delete-t)))
-            (throw (combined-exception [t] {:status-code 500}))))))
-    (workspace/get-workspace (:id ws))))
+        {ws :created retried-id :retried}
+        (insert-workspace-or-find-retried! {:name            name
+                                            :creator_id      creator_id
+                                            :idempotency_key idempotency_key
+                                            :databases       databases})]
+    (if retried-id
+      (retried-workspace retried-id)
+      (do
+        (when-let [{t :error, never-started :never-started} (provision-workspace-databases! ws)]
+          (let [cleanup-error (try
+                                (run! delete-never-started-workspace-database! never-started)
+                                (teardown-workspace-databases! (:id ws))
+                                nil
+                                ;; Cleanup failed: the workspace and the failed rows are
+                                ;; kept so the teardown can be retried via delete. The
+                                ;; errors are not logged (raw warehouse errors are
+                                ;; sensitive), but the caller gets them in the
+                                ;; response, as it does from a failed delete.
+                                (catch Throwable cleanup-t cleanup-t))
+                delete-error  (when-not cleanup-error
+                                (try
+                                  (workspace/delete-workspace! (:id ws))
+                                  nil
+                                  ;; a fixed message: a raw app-DB error can name tables
+                                  (catch Throwable delete-t
+                                    (ex-info "Could not delete the workspace row." {} delete-t))))
+                ;; either way the Workspace row survives, and only a delete removes it
+                kept-error    (or cleanup-error delete-error)]
+            ;; a single failure keeps its status, like a driver's 409 for a role it refuses
+            ;; a kept workspace's id goes to the client, which must delete it
+            (throw (combined-exception (cond-> [t] kept-error (conj kept-error))
+                                       (cond-> {:status-code      (if kept-error
+                                                                    500
+                                                                    (or (:status-code (ex-data t)) 500))
+                                                :cleanup_required (some? kept-error)
+                                                :response/keys    #{:cleanup_required}}
+                                         kept-error (-> (assoc :workspace_id (:id ws))
+                                                        (update :response/keys conj :workspace_id)))))))
+        (workspace/get-workspace (:id ws))))))
+
+(defn abandon-teardown-failed-databases!
+  "Delete every `:teardown_failed` WorkspaceDatabase of workspace `id` without a
+  warehouse teardown, logging the identifiers of what may remain (see
+  [[provisioning/abandon-teardown-failed-workspace-database!]]). Use it when the
+  warehouse is gone for good and the teardown can never succeed. Returns nil."
+  [id]
+  (assert-workspace-exists id)
+  (run! provisioning/abandon-teardown-failed-workspace-database! (ws.db/workspace-databases id)))
 
 (defn delete-workspace!
   "Tear down every database's warehouse isolation (any state, blocking), then
@@ -335,9 +482,13 @@
   exception combining all the failures is thrown, so the delete can be retried.
   Progress is persisted per row, so an instance crash midway loses nothing.
   App-DB `TableRemapping` rows are always cleared, so query routing is never
-  left dangling. Returns nil."
+  left dangling. Refuses with a 409 (`workspace_busy`) while a create or
+  deprovision is still running on any of its databases; a `:provisioning` or
+  `:deprovisioning` row left behind by a crashed instance is torn down once it
+  is older than [[in-flight-stale-after]]. Returns nil."
   [id]
   (assert-workspace-exists id)
+  (assert-workspace-not-busy id)
   (teardown-workspace-databases! id)
   (workspace/delete-workspace! id)
   nil)

@@ -68,12 +68,13 @@
   node does not see another node's write.
 
   Outside workspace mode the cache can miss rows that another node inserted, for at most one minute after this node
-  last filled it. Rows can exist outside workspace mode: a restart that drops `MB_INSTANCE_WORKSPACE`, which is
-  never stored in the app DB; a write of the `instance-workspace` setting through the settings API; a
-  `DELETE /current` that clears the setting and then fails to delete the rows; and a run that records its row while
-  `DELETE /current` runs. The same window applies while another node is in workspace mode and this one is not yet:
-  until this node's settings cache picks up a runtime change, or during a rolling restart that adds or removes
-  `MB_INSTANCE_WORKSPACE`. A change of the setting that this node sees drops the cache."
+  last filled it. Rows can exist outside workspace mode: a restart that drops `MB_WORKSPACES_ENABLED`, which is
+  never stored in the app DB; a `workspaces-enabled` change or a `DELETE /current` that turns the setting off and
+  then fails to delete the rows; and a run that records its row while `DELETE /current` runs. The same window
+  applies while another node is in workspace mode and this one is not yet: until this node's settings cache picks up
+  a runtime change, or during a rolling restart that adds or removes `MB_WORKSPACES_ENABLED`. A change of the
+  `workspaces-enabled` setting that this node sees drops the cache, and so does a change of a database's
+  `database-workspace-schema` made on this node."
   [db-id]
   (or (ws/workspace-mode?)
       (contains? (table-remapping/database-ids-with-remappings) db-id)))

@@ -959,6 +959,13 @@
             pending-db        (merge existing-database updates)]
         ;; pass in this predicate to break circular dependency
         (let [driver-supports? (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
+          ;; A database-local setting with `:visibility :admin` is hidden from non-superusers when the database is
+          ;; read, so only a superuser may change it. Clearing one (a nil value) counts as a change.
+          (doseq [[setting-kw new-value] settings
+                  :when                  (and (not= new-value (get existing-settings setting-kw))
+                                              (setting/registered? setting-kw)
+                                              (= :admin (:visibility (setting/resolve-setting setting-kw))))]
+            (api/check-superuser))
           ;; ensure we're not trying to set anything we should not be able to.
           ;; Note: it's also possible for existing settings to become invalid when changing things like the engine.
           ;; We skip validation for: unchanged values and nil values (resetting to default is always allowed).

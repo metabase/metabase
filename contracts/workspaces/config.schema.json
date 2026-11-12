@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "metabase/contracts/workspaces/config.schema.json",
+  "title": "Workspace config.yml (parent -> sidecar)",
+  "description": "What GET /api/ee/workspace-manager/{id}/config returns, and what a sidecar loads at boot from MB_CONFIG_FILE_PATH. The only artifact that carries a warehouse password. Also carries parent secrets that pass through `details`: an enabled tunnel's credential, `additional-options`; on master, client-cert fields. Treat it as a parent secret. The enabled tunnel's credential ships by design (decision \"tunnel-cred: ship it\"): the sidecar opens the same tunnel. The parent's file contains no template forms; templating is for sections the caller adds. master copies `details` as-is, so a parent value can hold `{{env X}}`, which the sidecar expands at boot; hardening (#86787): the parent answers 422 instead of emitting a value that contains `{{` or `[[`. Built by enterprise/backend/src/metabase_enterprise/workspaces/config.clj:112, loaded by enterprise/backend/src/metabase_enterprise/advanced_config/file/workspace.clj. x-status follows parent.openapi.yaml. A caller may add other config.yml sections (settings, ...) before boot; the parent emits only these.",
+  "x-status": "master",
+  "type": "object",
+  "required": ["version", "config"],
+  "properties": {
+    "version": { "const": 1 },
+    "config": {
+      "type": "object",
+      "required": ["databases", "workspace"],
+      "properties": {
+        "databases": {
+          "type": "array",
+          "description": "The workspace's databases with the workspace login, then every other database of the parent as a stub (except the sample database, the audit database and database-routing destinations), then the sample database if the parent has one.",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/workspaceDatabase" },
+              { "$ref": "#/$defs/stubDatabase" },
+              { "$ref": "#/$defs/sampleDatabase" }
+            ]
+          }
+        },
+        "workspace": { "$ref": "#/$defs/workspaceSection" },
+        "settings": {
+          "type": "object",
+          "x-status": "hardening",
+          "x-pr": 86735,
+          "description": "#86735: the settings form. `workspaces-enabled: true` here plus `settings.database-workspace-schema` on each workspace database does what the `workspace` section does. The parent still emits only the `workspace` section; switching it is a later PR, since mbcode checks for that section.",
+          "properties": {
+            "workspaces-enabled": { "type": "boolean" },
+            "workspace-id": {
+              "type": "integer",
+              "x-status": "hardening",
+              "x-pr": 86792,
+              "description": "Settings form of workspace.id, if the sidecar stores it as a setting (per #86792)."
+            },
+            "workspace-parent-url": {
+              "type": "string",
+              "x-status": "hardening",
+              "x-pr": 86792,
+              "description": "Settings form of workspace.parent_url, if the sidecar stores it as a setting (per #86792)."
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "workspaceDatabase": {
+      "type": "object",
+      "required": ["name", "engine", "details"],
+      "not": { "anyOf": [ { "required": ["is_stub"] }, { "required": ["is_sample"] } ] },
+      "properties": {
+        "name": { "type": "string", "description": "The parent's database name. Key into workspace.databases." },
+        "engine": { "type": "string" },
+        "details": { "$ref": "#/$defs/workspaceDetails" },
+        "settings": {
+          "type": "object",
+          "x-status": "hardening",
+          "x-pr": 86735,
+          "properties": {
+            "database-workspace-schema": { "type": "string", "minLength": 1, "description": "The schema this database's transforms write to (MySQL: a database name)." }
+          }
+        }
+      }
+    },
+    "workspaceDetails": {
+      "type": "object",
+      "description": "master: the parent database's own details, overlaid with the workspace login and a sync filter (enterprise/backend/src/metabase_enterprise/workspaces/config.clj:51). Any other parent field passes through. Engine-specific connection fields are open.",
+      "required": ["user", "let-user-control-scheduling"],
+      "properties": {
+        "user": { "type": "string", "description": "The workspace user, not the parent's login." },
+        "password": { "type": "string", "description": "Generated at provisioning. Absent on BigQuery (not eligible on master), where user is the workspace service account and impersonate-service-account is set to it." },
+        "let-user-control-scheduling": { "const": false },
+        "schema-filters-type": { "const": "inclusion", "description": "Engines with schemas that sync through metabase.driver.sync (Postgres, Redshift, SQL Server)." },
+        "schema-filters-patterns": {
+          "type": "string",
+          "x-pr": 86610,
+          "description": "Comma-separated input schemas. hardening (#86610): each name is escaped so it matches only itself (non-[A-Za-z0-9_] characters become \\x{HEX})."
+        },
+        "db-filters-type": { "const": "inclusion", "description": "ClickHouse." },
+        "db-filters-patterns": { "type": "string", "description": "ClickHouse: comma-separated input schemas, unescaped, also after #86610. ClickHouse does not read them as patterns: it splits the value on `,`, trims each entry, and reads `-` as `_`. So a name that holds `,` or `-`, or starts or ends with whitespace, does not select exactly itself." },
+        "dataset-filters-type": { "const": "inclusion", "description": "BigQuery." },
+        "dataset-filters-patterns": { "type": "string", "x-pr": 86610, "description": "BigQuery: comma-separated input datasets, escaped like schema-filters-patterns (#86610)." }
+      },
+      "x-hardening": [
+        {
+          "x-pr": 86584,
+          "description": "Fields that select or carry the parent's own login are removed. A config containing any of them breaks the contract once #86584 merges. Unused SSH tunnel secrets are removed too: all of them when tunnel-enabled is false, else those of the tunnel-auth-option not chosen (tunnel-pass for ssh-key; tunnel-private-key and tunnel-private-key-passphrase for password).",
+          "not": {
+            "anyOf": [
+              { "required": ["use-auth-provider"] },
+              { "required": ["auth-provider"] },
+              { "required": ["azure-managed-identity-client-id"] },
+              { "required": ["oauth-token-url"] },
+              { "required": ["oauth-token-headers"] },
+              { "required": ["auth-mode"] },
+              { "required": ["ad-client-id"] },
+              { "required": ["ad-client-secret"] },
+              { "required": ["ad-managed-identity-client-id"] },
+              { "required": ["ad-client-certificate-value"] },
+              { "required": ["ad-client-key-value"] },
+              { "required": ["ad-client-key-password-value"] },
+              { "required": ["ad-client-certificate-password-value"] }
+            ]
+          }
+        },
+        {
+          "x-pr": 86585,
+          "description": "Secrets ship as values, not as ids. An inlined Secret ships as `<secret>-value` with `<secret>-options: \"uploaded\"`: `ssl-root-cert-value` and, with the tunnel on, `tunnel-known-hosts-value`. A value is plain text when it is printable ASCII (a PEM certificate, known-hosts text), else a base64 `data:application/octet-stream;base64,...` URI (a DER certificate). No Secret `<secret>-id` key ships, nor the `-options` of a Secret that is not inlined. Only uploaded Secrets are inlined: a Secret given as a file path on the parent's server makes GET /config answer 422 instead, and the file is never read. On master the parent's Secret id is sent, which means nothing in the sidecar's app db."
+        },
+        {
+          "x-pr": 86584,
+          "description": "`additional-options` still ships, but never with an option that sets a login or carries a credential: GET /config answers 422 for such a database (see parent.openapi.yaml, GET /{id}/config). The enabled tunnel's credential (the one for the tunnel-auth-option in use) still ships, by design: it is a parent secret the sidecar needs to open the tunnel."
+        }
+      ]
+    },
+    "stubDatabase": {
+      "type": "object",
+      "required": ["name", "engine", "details", "is_stub"],
+      "properties": {
+        "name": { "type": "string" },
+        "engine": { "type": "string" },
+        "details": { "type": "object", "maxProperties": 0 },
+        "is_stub": { "const": true }
+      },
+      "description": "A parent database that is not in the workspace. No credentials."
+    },
+    "sampleDatabase": {
+      "type": "object",
+      "required": ["name", "engine", "details", "is_sample"],
+      "properties": {
+        "name": { "type": "string" },
+        "engine": { "const": "h2" },
+        "details": { "type": "object", "maxProperties": 0 },
+        "is_sample": { "const": true }
+      }
+    },
+    "workspaceSection": {
+      "type": "object",
+      "required": ["name", "databases"],
+      "x-pr": 86735,
+      "description": "Loaded into the sidecar's instance-workspace setting at boot. Its presence locks the workspace: POST/DELETE /api/ee/workspace-instance/current then return 400. #86735: translated into workspaces-enabled plus each database's database-workspace-schema (output.schema, or output.db on MySQL); name and input_schemas are accepted and ignored; no lock. Its absence does not turn `workspaces-enabled` off: a workspace stored by an earlier boot or by POST /current stays, with its remap rows. Use a fresh app DB or DELETE /current. `MB_WORKSPACES_ENABLED=false` leaves the remap rows.",
+      "properties": {
+        "name": { "type": "string", "pattern": "\\S" },
+        "id": {
+          "type": "integer",
+          "x-status": "hardening",
+          "x-pr": 86792,
+          "description": "The parent workspace's id (the {id} of /api/ee/workspace-manager/{id})."
+        },
+        "parent_url": {
+          "type": "string",
+          "x-status": "hardening",
+          "x-pr": 86792,
+          "description": "The parent Metabase's URL, so the sidecar can name the instance it came from."
+        },
+        "databases": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Keyed by database name (the sidecar resolves names to ids at boot). Parent database names are not unique: two workspace databases with one name collapse into one entry, and the sidecar updates one database with the other's details. master: may be empty (GET /config answers 200 for a workspace with no databases, e.g. after a failed row delete), which minProperties forbids and the sidecar refuses to boot.",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["input_schemas", "output"],
+            "properties": {
+              "input_schemas": { "type": "array", "items": { "type": "string", "pattern": "\\S" } },
+              "output": {
+                "type": "object",
+                "description": "At least one of db and schema is a non-null string.",
+                "additionalProperties": false,
+                "properties": {
+                  "db": { "type": ["string", "null"] },
+                  "schema": { "type": ["string", "null"] }
+                },
+                "anyOf": [
+                  { "required": ["db"], "properties": { "db": { "type": "string" } } },
+                  { "required": ["schema"], "properties": { "schema": { "type": "string" } } }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

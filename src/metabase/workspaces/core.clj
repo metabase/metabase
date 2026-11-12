@@ -3,19 +3,18 @@
 
    ## Three related-but-distinct concepts
 
-   1. **Workspace mode** — an *instance-level boot state*. True iff the instance
-      loaded a `:workspace` section from `config.yml` at boot. Set once, doesn't
-      change. The `workspace-mode?` predicate.
+   1. **Workspace mode** — an *instance-level state*. True iff the EE
+      `workspaces-enabled` setting is on. The `workspace-mode?` predicate.
 
    2. **Workspace-managed database** — a *database-scoped state*. True iff this
-      instance is in workspace mode AND the workspace's `:databases` map includes
-      this database. The `(ws/db-workspace-namespace db-id)` predicate (EE only).
+      instance is in workspace mode AND the database has a `database-workspace-schema`
+      database-local setting. The `(ws/db-workspace-namespace db-id)` predicate (EE only).
 
    3. **Table remapping engaged** — a *query-time data state*. True iff
       `:model/TableRemapping` rows exist for the database. The
       `(ws.remapping/enabled-for-db? db-id)` predicate. Today this implies
-      workspace-managed (transforms create the rows when the database is in
-      the workspace map), but the rewriting machinery responds purely to row
+      workspace-managed (transforms create the rows when the database has a
+      workspace schema), but the rewriting machinery responds purely to row
       existence — it doesn't check workspace mode.
 
    ## What this namespace gates
@@ -36,54 +35,18 @@
 
    The OSS jar has no workspace mode (`workspace-mode?` returns false), so
    the gates are no-ops. The EE impl in `metabase-enterprise.workspaces.core`
-   reads the `instance-workspace` setting."
+   reads the `workspaces-enabled` setting."
   (:require
-   [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.malli.registry :as mr]))
-
-;;; ----------------------------- Workspace config schemas ----------------------------------
-
-(mr/def ::table-namespace
-  "A `{:db ?, :schema ?}` namespace map. Either or both keys may be present
-   depending on the driver's `qualified-name-components`; at least one must
-   populate. Empty-string `\"\"` is reserved for the storage layer; the atom
-   carries `nil`/missing for absent slots."
-  [:and
-   [:map {:closed true}
-    [:db     {:optional true} [:maybe :string]]
-    [:schema {:optional true} [:maybe :string]]]
-   [:fn {:error/message "table namespace must populate at least one of :db or :schema"}
-    (fn [m] (or (some? (:db m)) (some? (:schema m))))]])
-
-(mr/def ::workspace-database-config
-  "Per-database workspace config: `:input_schemas` is a vector of driver-opaque
-   schema names (the source schemas the workspace reads from) — may be empty
-   on drivers with no schema layer (e.g. MySQL), where the bound DB itself acts
-   as the implicit input namespace; `:output` is a single namespace map (the
-   workspace's isolation schema, expanded with the warehouse catalog at boot)."
-  [:map {:closed true}
-   [:input_schemas [:vector :string]]
-   [:output        ::table-namespace]])
-
-(mr/def ::workspace-instance-config
-  "The shape stored in the EE `instance-workspace` setting after the `:workspace`
-   config.yml loader has resolved database names to ids. Database keys are integer
-   ids (post-resolution); the wire format with name keys lives in
-   `metabase-enterprise.advanced-config.file.workspace`."
-  [:map {:closed true}
-   [:name      [:string {:min 1}]]
-   [:databases [:map-of
-                {:decode/json #(update-keys % (fn [k] (cond-> k (keyword? k) (-> name parse-long))))}
-                :int ::workspace-database-config]]])
+   [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise workspace-mode?
-  "True if this instance is running in workspace mode — a `:workspace` section
-   was loaded from `config.yml` at boot. Instance-level state set once at boot.
+  "True if this instance is running in workspace mode — the EE `workspaces-enabled`
+   setting is on.
 
    For the per-database check, use the EE function
    `metabase-enterprise.workspaces.core/db-workspace-namespace` (returns the
    workspace-isolated output namespace map if this instance is in workspace mode
-   AND the workspace's `:databases` map includes this database).
+   AND the database has a `database-workspace-schema`).
 
    The OSS fallback returns false."
   metabase-enterprise.workspaces.core

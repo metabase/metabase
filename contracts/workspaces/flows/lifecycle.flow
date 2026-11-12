@@ -1,0 +1,7 @@
+# Lifecycle (master)
+// "Lifecycle" in the Linear doc "Workspaces API contract". Warehouse calls, the sidecar boot
+// (MB_CONFIG_FILE_PATH=config.yml) and transform runs are not API operations, so they are not steps.
+mbcode -> parent: createWorkspace {id, databases.database_id, databases.status, databases.output_namespace}
+mbcode -> parent: getWorkspaceConfig
+mbcode -> sidecar: getCurrentWorkspace {data}
+mbcode -> parent: deleteWorkspace

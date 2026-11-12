@@ -5,7 +5,6 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
-   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secrets]
@@ -309,30 +308,9 @@
                                        (schema-filter-entries db wsd)
                                        {:let-user-control-scheduling false})))})
 
-(defn- expand-output
-  "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`
-   namespace map QP middleware, transform_hooks, and table_remapping consume.
-
-   For 3-slot drivers (SQL Server, BigQuery) the `:db` slot is filled from
-   `Database.details`. For 2-slot drivers the namespace string lands in the
-   schema slot. For no-schema drivers (MySQL) it lands in the db slot.
-
-   `output_namespace` blank → `:schema` is `nil`: the workspace database isn't
-   provisioned yet and QP/transform consumers treat it as having no output
-   mapping."
-  [db output-namespace]
-  (let [components (set (driver/qualified-name-components (:engine db)))
-        positions  (ws/engine-namespace-positions db)
-        schema     (when-not (str/blank? output-namespace) output-namespace)]
-    (cond-> {}
-      (:db components)     (assoc :db (:db positions))
-      (:schema components) (assoc :schema schema)
-      (and (:db components) (not (:schema components)))
-      (assoc :db schema))))
-
 (defn- workspace-database-entry [wsd db]
   [(:name db) {:input_schemas (vec (:input_schemas wsd))
-               :output        (expand-output db (:output_namespace wsd))}])
+               :output        (ws/expand-output-namespace db (:output_namespace wsd))}])
 
 (defn- stub-database-entry [db]
   {:name    (:name db)
@@ -358,6 +336,53 @@
       :details   {}
       :is_sample true}]))
 
+(defn- template-form?
+  "True if `s` contains `{{` or `[[`. The sidecar parses every config.yml string for both forms at
+   boot: `{{` reads the environment, and a `[[` it cannot parse makes boot throw."
+  [s]
+  (boolean (re-find #"\{\{|\[\[" s)))
+
+(defn- template-paths
+  "Paths to every string in `x`, map keys included, that contains a template form (`{{` or `[[`)."
+  [path x]
+  (cond
+    (map? x)        (mapcat (fn [[k v]]
+                              (concat (when (and (string? k) (template-form? k))
+                                        [(conj path k)])
+                                      (template-paths (conj path k) v)))
+                            x)
+    (sequential? x) (mapcat (fn [i v] (template-paths (conj path i) v)) (range) x)
+    (string? x)     (when (template-form? x) [path])
+    :else           nil))
+
+(defn- path->str [path]
+  (str/join "." (map #(if (keyword? %) (name %) (str %)) path)))
+
+(defn- template-locations
+  "Describe where `config` carries a template form (`{{` or `[[`), by database and field path. Never includes
+   the value itself: it can be a secret."
+  [config]
+  (concat
+   (for [db   (-> config :config :databases)
+         path (template-paths [] db)]
+     (format "database %s field %s" (pr-str (:name db)) (path->str path)))
+   (for [path (template-paths [] (-> config :config :workspace))]
+     (str "workspace field " (path->str path)))))
+
+(defn- check-no-template-forms
+  "Throw a 422 if any string in `config` contains `{{` or `[[`. The sidecar expands `{{env X}}`
+   templates in every string of config.yml at boot, so a template the parent emits would read the
+   developer's environment, and a `[[` without a `{{` inside makes the sidecar's boot throw.
+   Templating is for sections the caller adds."
+  [workspace-id config]
+  (when-let [locations (seq (template-locations config))]
+    (throw (ex-info (str "Cannot build config: values contain a template form ({{ or [[), which the sidecar would parse at boot: "
+                         (str/join "; " locations))
+                    {:status-code  422
+                     :workspace_id workspace-id
+                     :locations    (vec locations)})))
+  config)
+
 (defn build-workspace-config
   "Return a downloadable config.yml-shaped map for `workspace-id`:
 
@@ -373,13 +398,14 @@
   (`drop-unused-tunnel-secrets`), replaces every Secret id with the value of the
   inlined secrets in use (`inline-secrets`), and adds `schema-filters-*` keys
   derived from `:input_schemas`. Per-database workspace entries carry the
-  expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
-  `instance-workspace` setting stores. Returns nil when the workspace does not
+  expanded `{:db ?, :schema ?}` namespace map directly — the shape
+  the sidecar's `workspace:` section loader translates into settings. Returns nil when the workspace does not
   exist. Throws a 409 `ex-info` when a workspace database is not `:provisioned`
   (waiting clears it), and a 422 when only an admin can clear the cause: its
   `:additional-options` set a login (`check-additional-options!`), it uses SSL
-  client-certificate auth, or an inlined secret in use can't ship
-  (`inlined-secret-entries`)."
+  client-certificate auth, an inlined secret in use can't ship
+  (`inlined-secret-entries`), or an emitted string contains a template form
+  (`{{` or `[[`)."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
@@ -398,12 +424,14 @@
             ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
             stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
             sample-entries   (sample-database-entries)]
-        {:version 1
-         :config  {:databases (-> ws-entries
-                                  (into stub-entries)
-                                  (into sample-entries))
-                   :workspace {:name      (:name ws)
-                               :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
+        (check-no-template-forms
+         workspace-id
+         {:version 1
+          :config  {:databases (-> ws-entries
+                                   (into stub-entries)
+                                   (into sample-entries))
+                    :workspace {:name      (:name ws)
+                                :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}})))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

@@ -30,6 +30,7 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
@@ -39,6 +40,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
@@ -107,11 +109,14 @@
                                            :input_schemas    input-schemas
                                            :database_details {}
                                            :output_namespace ""})]
-      ;; Postgres init refuses a cluster where PUBLIC can create objects in any database, the default in a cluster
-      ;; created before Postgres 15 or upgraded from one, and the shared test cluster is not this test's to change:
-      ;; metabase.driver.postgres.workspace-test covers that check against a database of its own
+      ;; Postgres and Redshift init refuse a cluster where PUBLIC can create objects in any database or schema, the
+      ;; default on both, and the shared test clusters are not this test's to change: metabase.driver.postgres.workspace-test
+      ;; and metabase.driver.redshift-test cover those checks
       (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
-        (provisioning/provision-single! wsd-id)))))
+        (if (= :redshift driver/*driver*)
+          (with-redefs-fn {(requiring-resolve 'metabase.driver.redshift/check-no-public-create-anywhere!) (constantly nil)}
+            #(provisioning/provision-single! wsd-id))
+          (provisioning/provision-single! wsd-id))))))
 
 ;;; -------------------- driver-branched helpers --------------------
 ;;;
@@ -264,7 +269,15 @@
                   (vec vs))))
          set)))
 
-;; `^:synchronized` because the `instance-workspace` setting is process-wide state
+(defn- load-sidecar-config!
+  "Load `config` as the sidecar would at boot. The parent and the sidecar share this
+   JVM and app DB, so the parent's own workspace rows would trip the
+   `workspaces-enabled` guard against parents; pretend they aren't there."
+  [config]
+  (mt/with-dynamic-fn-redefs [ws.db/any-workspace-exists? (constantly false)]
+    (advanced-config.file/initialize! config)))
+
+;; `^:synchronized` because the `workspaces-enabled` setting is process-wide state
 ;; backed by the shared test app DB; running concurrently with other workspace-mode
 ;; tests would cross-pollute.
 (defn- with-redshift-describe-filter-disabled
@@ -402,10 +415,10 @@
                           ;; `init-from-config-file!` for the `:databases` section (updates the
                           ;; existing Database row with merged workspace creds + schema-filters)
                           ;; and `apply-workspace-section!` for the `:workspace` section (resolves
-                          ;; db names → ids and writes the `instance-workspace` setting).
-                          (advanced-config.file/initialize! (yaml/parse-string yaml-str))
-                          ;; Diagnostic: the loader should have written the workspace-instance
-                          ;; setting and rewritten the Database row's :details to workspace-user creds.
+                          ;; db names → ids and writes the `workspaces-enabled` and
+                          ;; `database-workspace-schema` settings).
+                          (load-sidecar-config! (yaml/parse-string yaml-str))
+                          ;; Diagnostic: the loader should have turned on workspace mode and rewritten the Database row's :details to workspace-user creds.
                           (is (ws/workspace-mode?)
                               "loader did not put the instance into workspace-mode (atom not populated)")
                           ;; The Database row's `:details` was just rewritten by the loader. Re-read
@@ -668,7 +681,7 @@
                                       (is (= ::ok outcome)
                                           (str "deleting the transform output table failed; outcome=" (pr-str outcome))))))))))
                         (finally
-                          ;; Clear the `instance-workspace` setting (populated by `apply-workspace-section!`
+                          ;; Turn workspace mode off (turned on by `apply-workspace-section!`
                           ;; via `initialize!` above) and tear down the WorkspaceDatabase. The
                           ;; `:databases` initializer rewrote the `Database.details` to the workspace
                           ;; user's creds — but `destroy-workspace-isolation!` needs admin privileges
@@ -747,7 +760,7 @@
                   (let [cfg-map  (ws.config/build-workspace-config ws-id)
                         yaml-str (ws.config/config->yaml cfg-map)
                         reparsed (yaml/parse-string yaml-str)]
-                    (advanced-config.file/initialize! reparsed)
+                    (load-sidecar-config! reparsed)
                     (let [ws-db (t2/select-one :model/Database :id (:id ws-db))]
                       (mt/with-db ws-db
                         (sync/sync-database! (:id ws-db) {:scan :schema})
@@ -820,11 +833,15 @@
                                     (is (= [{:n 3}] (vec rows))
                                         "B's iso output reflects rewriter routing B's SELECT to A's iso table"))))))))))
                   (finally
-                    (ws/clear-instance-workspace!)
                     (t2/update! :model/Database :id (:id ws-db) {:details admin-details})
                     (try (ws/delete-workspace! ws-id)
                          (catch Throwable t
-                           (log/warn t "delete-workspace! failed during native-transform repro cleanup")))))))
+                           (log/warn t "delete-workspace! failed during native-transform repro cleanup")))
+                    ;; After deprovisioning, not before: this test runs inside the harness's app-DB
+                    ;; transaction, and clearing deletes every remap row on that connection.
+                    ;; Teardown then deletes the workspace's remap rows on another connection and
+                    ;; waits on those row locks until it times out (seen on MariaDB).
+                    (ws/clear-instance-workspace!)))))
             (finally
               (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name tgt-a-name)
                    (catch Throwable _ nil))
@@ -832,6 +849,95 @@
                                   [(format "DROP TABLE IF EXISTS %s"
                                            (qualified-table-sql admin-driver admin-details main-schema tgt-b-name))])
                    (catch Throwable _ nil)))))))))
+
+(deftest ^:synchronized failed-transform-run-leaves-remapping-state-unchanged-test
+  (mt/test-drivers #{:postgres :mysql}
+    (mt/with-premium-features #{:workspaces :config-text-file}
+      (testing "a transform run that fails at the warehouse leaves the TableRemapping rows as they were"
+        (let [admin-driver  driver/*driver*
+              admin-db      (mt/db)
+              admin-details (:details admin-db)
+              admin-spec    (admin-warehouse admin-driver admin-details)
+              run-id        (random-suffix)
+              main-schema   (canonical-schema-name admin-driver run-id admin-details)
+              tbl-schema    (table-row-schema-value admin-driver main-schema)
+              src-name      (str "x_input_" run-id)
+              tgt-name      (str "t_ok_" run-id)
+              new-tgt-name  (str "t_new_" run-id)]
+          (try
+            (create-canonical-schema! admin-driver admin-spec admin-details main-schema)
+            (create-source-table! admin-driver admin-spec admin-details main-schema src-name)
+            (mt/with-temp [:model/Database ws-db {:engine  admin-driver
+                                                  :details admin-details
+                                                  :name    (str "ws-failed-run-" run-id)}]
+              (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-failed-run-" run-id)
+                                                       :creator_id (mt/user->id :crowberto)})]
+                (try
+                  (add-database! ws-id (:id ws-db)
+                                 [(workspace-input-schema admin-driver admin-details main-schema)])
+                  (advanced-config.file/initialize!
+                   (yaml/parse-string (ws.config/config->yaml (ws.config/build-workspace-config ws-id))))
+                  (let [ws-db (t2/select-one :model/Database :id (:id ws-db))]
+                    (mt/with-db ws-db
+                      (sync/sync-database! (:id ws-db) {:scan :schema})
+                      (let [src-table   (t2/select-one :model/Table :db_id (:id ws-db) :schema tbl-schema :name src-name)
+                            mp          (mt/metadata-provider)
+                            failing-q   (lib/native-query mp (format "SELECT * FROM %s"
+                                                                     (qualified-table-sql admin-driver admin-details
+                                                                                          main-schema (str "missing_" run-id))))
+                            remap-rows  #(t2/select :model/TableRemapping :database_id (:id ws-db))
+                            run-failed? (fn [transform]
+                                          (try (transforms.execute/execute! transform {:run-method :manual})
+                                               false
+                                               (catch Throwable _ true)))]
+                        (is (some? src-table) "input source table is synced")
+                        (mt/with-temp [:model/Transform ok-transform
+                                       {:name   (str "transform-ok-" run-id)
+                                        :source {:type :query :query (lib/query mp (lib.metadata/table mp (:id src-table)))}
+                                        :target {:type :table :schema main-schema :name tgt-name}}
+                                       :model/Transform new-target-transform
+                                       {:name   (str "transform-new-" run-id)
+                                        :source {:type :query :query failing-q}
+                                        :target {:type :table :schema main-schema :name new-tgt-name}}]
+                          (transforms.execute/execute! ok-transform {:run-method :manual})
+                          (let [after-success (remap-rows)]
+                            (is (= 1 (count after-success)) "the successful run recorded its remapping")
+                            (testing "a failed run on a target with no remapping records none"
+                              (is (run-failed? new-target-transform))
+                              (is (= :failed (t2/select-one-fn :status :model/TransformRun
+                                                               :transform_id (:id new-target-transform)))
+                                  "the run was booked and then failed at the warehouse")
+                              (is (= after-success (remap-rows))))
+                            (testing "a failed run on a target an earlier run remapped keeps that row as it was"
+                              (t2/update! :model/Transform :id (:id ok-transform) {:source {:type :query :query failing-q}})
+                              (is (run-failed? (t2/select-one :model/Transform :id (:id ok-transform))))
+                              (is (= after-success (remap-rows))))
+                            (testing "the main table still reads the earlier run's output"
+                              (let [tgt-table (t2/select-one :model/Table :db_id (:id ws-db) :schema tbl-schema :name tgt-name)]
+                                (is (= 3 (count (mt/rows (qp/process-query
+                                                          (lib/query mp (lib.metadata/table mp (:id tgt-table)))))))))))))))
+                  (finally
+                    (ws/clear-instance-workspace!)
+                    (t2/update! :model/Database :id (:id ws-db) {:details admin-details})
+                    ;; On MySQL/MariaDB the teardown's app-DB delete of the TableRemapping rows waits on the locks
+                    ;; this test's rollback-only `with-temp` transaction holds, and times out. Force-clear the rows
+                    ;; on this connection, as [[workspace-full-e2e-test]] does, so the `with-temp` Database cleanup
+                    ;; is not refused for active workspace_database rows.
+                    (let [deleted? (try (ws/delete-workspace! ws-id)
+                                        true
+                                        (catch Throwable t
+                                          (log/warnf t "delete-workspace! left workspace %d behind; force-clearing WSD"
+                                                     ws-id)
+                                          false))]
+                      (when-not deleted?
+                        (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
+                        (t2/delete! :model/Workspace :id ws-id)))))))
+            (finally
+              (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name tgt-name)
+                   (catch Throwable _ nil)))))))))
+
+(comment
+  (workspace-full-e2e-test))
 
 (deftest input-schemas-sync-literally-test
   (mt/test-driver :postgres

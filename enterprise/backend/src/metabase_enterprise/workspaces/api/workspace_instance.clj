@@ -7,27 +7,22 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
-   [metabase.workspaces.core :as ws.oss]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
-(def ^:private TableNamespace
-  [:map
-   [:db     {:optional true} [:maybe :string]]
-   [:schema {:optional true} [:maybe :string]]])
-
-(def ^:private WorkspaceInstanceDatabase
-  [:map
-   [:input_schemas [:sequential :string]]
-   [:output        TableNamespace]])
-
 (def ^:private WorkspaceInstance
-  [:map
-   [:name      ms/NonBlankString]
-   [:databases [:map-of ::lib.schema.id/database WorkspaceInstanceDatabase]]
-   [:can_write :boolean]])
+  "Each database with a `database-workspace-schema`. A vector of closed maps, not a
+  `:map-of`: request decoding silently drops `:map-of` entries that fail validation,
+  which would turn a malformed body into a workspace with no databases."
+  [:map {:closed true}
+   [:databases [:sequential [:map {:closed true}
+                             [:database_id ::lib.schema.id/database]
+                             [:schema      ms/NonBlankString]]]]])
+
+(defn- present-workspace-instance [{:keys [databases]}]
+  {:databases (vec (for [[database-id schema] (sort databases)]
+                     {:database_id database-id :schema schema}))})
 
 (def ^:private TableRemapping
   [:map
@@ -49,74 +44,36 @@
                     :to_db :to_schema :to_table_name
                     :created_at]))
 
-(defn- present-workspace-instance-database [wsd]
-  (select-keys wsd [:input_schemas :output]))
-
-(defn- present-workspace-instance [workspace]
-  {:name      (:name workspace)
-   :databases (update-vals (:databases workspace) present-workspace-instance-database)
-   :can_write (not (ws/workspace-locked-by-config?))})
-
-;;; ------------------------------------------------ Guards ----------------------------------------------------
-
-(defn- check-workspace-writable!
-  "Throw a 400 if this instance's workspace is locked by deployment config (a
-  `config.yml` `:workspace` section or the `MB_INSTANCE_WORKSPACE` env var).
-  Call after `check-superuser`, so a non-admin still gets a 403 rather than this."
-  []
-  (when (ws/workspace-locked-by-config?)
-    (throw (ex-info (tru "This instance''s workspace is set by deployment config (`config.yml` or the `MB_INSTANCE_WORKSPACE` env var) and can''t be changed at runtime. Remove that config and restart this instance to enable workspace edits.")
-                    {:status-code 400
-                     :workspace-locked-by-config true}))))
-
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 
 (api.macros/defendpoint :get "/current" :- [:map [:data [:maybe WorkspaceInstance]]]
-  "Read-only summary of the workspace loaded on this instance, wrapped in a
-  `{:data ...}` envelope.
-
-  Reads from the `instance-workspace` setting populated at boot by the `:workspace`
-  section of `config.yml`, or at runtime by `POST /current`. `:data` is `null`
-  when no workspace was loaded — i.e. this is a manager-only instance, or no
-  `config.yml` was present at boot and `POST /current` hasn't been called.
-  The envelope avoids an empty JSON body for the `nil` case.
-
-  The workspace's `can_write` flag is `false` when it was set by deployment
-  config (`config.yml` or `MB_INSTANCE_WORKSPACE`); `POST`/`DELETE` are rejected
-  in that case."
+  "The workspace this instance is, wrapped in a `{:data ...}` envelope: `{:databases
+  [{:database_id :schema}]}`, each database that has a `database-workspace-schema`. `:data`
+  is `null` when the `workspaces-enabled` setting is off. The envelope avoids an empty
+  JSON body for the `nil` case."
   []
   (api/check-superuser)
   {:data (some-> (ws/instance-workspace) present-workspace-instance)})
 
 (api.macros/defendpoint :post "/current" :- WorkspaceInstance
-  "Install a workspace config on this instance at runtime. Accepts the same shape
-  `GET /current` returns and persists it via the `instance-workspace` setting so
-  it survives restarts. Use this on a running instance to enter workspace mode
-  without restarting from `config.yml`.
-
-  Returns 400 if the workspace was set by deployment config (`config.yml` or
-  `MB_INSTANCE_WORKSPACE`) and so is read-only."
+  "Make this instance a workspace: turn `workspaces-enabled` on and set each listed
+  database's `database-workspace-schema`, clearing it on every other database. The
+  same settings can be set through the settings API, env vars, or `config.yml`."
   [_route-params
    _query-params
-   body :- ::ws.oss/workspace-instance-config]
+   body :- WorkspaceInstance]
   (api/check-superuser)
-  (check-workspace-writable!)
-  (ws/set-instance-workspace! body)
+  (ws/set-instance-workspace! (into {} (map (juxt :database_id :schema)) (:databases body)))
   (present-workspace-instance (ws/instance-workspace)))
 
 (api.macros/defendpoint :delete "/current" :- :nil
-  "Clear the workspace config on this instance. After this returns, the instance
-  is no longer in workspace mode and `GET /current` returns `nil`. Also drops
-  every `TableRemapping` row, since stale mappings from the prior workspace
-  would otherwise keep rewriting queries on the now-unmanaged databases.
-
-  Returns 400 if the workspace was set by deployment config (`config.yml` or
-  `MB_INSTANCE_WORKSPACE`) and so is read-only."
+  "Turn `workspaces-enabled` off. After this returns, the instance is not a workspace
+  and `GET /current` returns `nil`. Also drops every `TableRemapping` row, since stale
+  mappings would otherwise keep rewriting queries once the instance is a workspace
+  again."
   []
   (api/check-superuser)
-  (check-workspace-writable!)
   (ws/clear-instance-workspace!)
-  (ws/clear-all-remappings!)
   nil)
 
 (api.macros/defendpoint :get "/table-remappings" :- [:sequential TableRemapping]

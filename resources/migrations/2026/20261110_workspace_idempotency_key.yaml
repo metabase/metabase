@@ -1,0 +1,36 @@
+## Adds workspace.idempotency_key: the client-chosen Idempotency-Key header of the POST that created the workspace, so
+## a retried create returns the workspace the first request made instead of provisioning a second one. The unique index
+## scopes a key to its creator. Rows without a key (NULL) never conflict: H2, PostgreSQL and MySQL/MariaDB all treat
+## NULLs as distinct in a unique index. The key column leads the index so that MySQL never uses it to back the
+## creator_id foreign key, which keeps the index droppable on rollback.
+
+databaseChangeLog:
+  - changeSet:
+      id: wk6itt
+      author: escherize
+      comment: Add workspace.idempotency_key
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: idempotency_key
+                  type: varchar(255)
+                  remarks: Idempotency-Key header of the request that created this workspace, unique per creator
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: pagsu9
+      author: escherize
+      comment: Unique index on workspace (idempotency_key, creator_id)
+      changes:
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_idempotency_key_creator_id
+            unique: true
+            columns:
+              - column:
+                  name: idempotency_key
+              - column:
+                  name: creator_id
