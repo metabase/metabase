@@ -1,5 +1,6 @@
 (ns metabase.global-system.test-util
   (:require
+   [mb.hawk.parallel]
    [metabase.global-system.mutable-component :as mc]
    [metabase.util :as u]))
 
@@ -19,10 +20,11 @@
   "Install `value` as the root of the component behind `handle` for the extent of `thunk`, then restore the root it
   replaced, or remove the root if there was none.
   Unlike a binding, the root is seen by threads that do not inherit this thread's bindings, such as Quartz workers
-  and the threads serving `mt/client`, so tests that call this must not be `^:parallel`.
+  and the threads serving `mt/client`, so this fails a `^:parallel` test.
   A thread that binds the component keeps reading its binding.
   Calls are serialized against each other."
   [handle value thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-root")
   (locking root-lock
     (let [before (at-root-locked handle #(u/prog1 (mc/root-entry handle)
                                            (mc/alter-root handle value)))]
