@@ -115,3 +115,27 @@
           (is (true? (mi/can-write? archived)))
           (is (true? (mi/can-write? card)))
           (is (true? (mi/can-update? snippet {:archived false}))))))))
+
+(deftest loaded-rows-write-check-cost-test
+  (testing "write checks of the collections of Cards loaded in one request cost one query, whatever their number"
+    (mt/with-temp [:model/Collection c1 {:name "Synced 1" :is_remote_synced true :location "/"}
+                   :model/Collection c2 {:name "Unsynced 2" :location "/"}
+                   :model/Collection c3 {:name "Synced 3" :is_remote_synced true :location "/"}
+                   :model/Collection c4 {:name "Unsynced 4" :location "/"}
+                   :model/Collection c5 {:name "Synced 5" :is_remote_synced true :location "/"}
+                   :model/Card       k1 {:collection_id (:id c1)}
+                   :model/Card       k2 {:collection_id (:id c2)}
+                   :model/Card       k3 {:collection_id (:id c3)}
+                   :model/Card       k4 {:collection_id (:id c4)}
+                   :model/Card       k5 {:collection_id (:id c5)}]
+      (remote-sync.tu/with-remote-sync [url :read-only]
+        (let [card-ids  (map :id [k1 k2 k3 k4 k5])
+              check     (fn [n]
+                          (remote-sync/do-with-read-only-pks-cache
+                           (fn []
+                             (let [cards (t2/select :model/Card :id [:in (take n card-ids)] {:order-by [[:id :asc]]})]
+                               (t2/with-call-count [call-count]
+                                 [(mapv #(remote-sync/can-write? :model/Collection (:collection_id %)) cards)
+                                  (call-count)])))))]
+          (is (= [[false] 1] (check 1)))
+          (is (= [[false true false true false] 1] (check 5))))))))
