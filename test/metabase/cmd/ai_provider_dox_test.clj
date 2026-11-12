@@ -229,7 +229,7 @@
              (str/index-of markdown "Supported models:")
              (str/index-of markdown "Credentials:")))
       (testing "the facts and the per-field environment variable both come off the registry entry"
-        (is (str/includes? markdown "Default model: `claude-sonnet-4-6`"))
+        (is (str/includes? markdown "Default model: `claude-haiku-5-5`"))
         (is (str/includes? markdown
                            "You can also set it with the environment variable `MB_LLM_ANTHROPIC_API_KEY`.")))))
   (testing "a field's references to its siblings are rendered as labels, not keys"

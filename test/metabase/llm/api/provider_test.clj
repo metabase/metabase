@@ -74,7 +74,7 @@
                :label         "Anthropic"
                :managed       false
                :available     true
-               :default_model "claude-sonnet-4-6"
+               :default_model "claude-haiku-5-5"
                :fields        [{:key      "api-key"
                                 :label    "API key"
                                 :type     "password"
@@ -276,13 +276,13 @@
 
 (deftest create-selects-a-model-for-the-first-connection-test
   (mt/with-dynamic-fn-redefs [metabot.self/list-models
-                              (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]})]
+                              (fn [& _] {:models [{:id "claude-haiku-5-5" :display_name "Claude Haiku 5.5"}]})]
     (testing "connecting the first provider leaves Metabot pointed at one of its models"
       (mt/with-temporary-setting-values [llm-providers []]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
           (mt/user-http-request :crowberto :post 200 "llm/providers"
                                 {:type "anthropic" :config {:api-key "sk-ant-valid"}})
-          (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))
+          (is (= "anthropic/claude-haiku-5-5" (metabot.settings/llm-metabot-provider)))
           (is (true? (metabot.settings/llm-metabot-configured?))))))
     (testing "an explicitly requested model wins over the provider type's default"
       (mt/with-temporary-setting-values [llm-providers []]
@@ -304,14 +304,14 @@
   (testing "a connection whose listing includes its type's mini model runs quick tasks on it"
     (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                 (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
-                                                    {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]})]
+                                                    {:id "claude-haiku-5-5" :display_name "Claude Haiku 5.5"}]})]
       (mt/with-temporary-setting-values [llm-providers []]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil
                                                llm-mini-model nil]
           (mt/user-http-request :crowberto :post 200 "llm/providers"
                                 {:type "anthropic" :config {:api-key "sk-ant-valid"}})
-          (is (= {:api-key "sk-ant-valid" :mini-model "claude-haiku-4-5-20251001"} (stored-config "anthropic")))
-          (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model)))))))
+          (is (= {:api-key "sk-ant-valid" :mini-model "claude-haiku-5-5"} (stored-config "anthropic")))
+          (is (= "anthropic/claude-haiku-5-5" (metabot.settings/llm-mini-model)))))))
   (testing "one whose listing leaves it out runs them on the Metabot model, not on a guess the account cannot serve"
     (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                 (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]})]
@@ -319,7 +319,9 @@
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil
                                                llm-mini-model nil]
           (mt/user-http-request :crowberto :post 200 "llm/providers"
-                                {:type "anthropic" :config {:api-key "sk-ant-valid"}})
+                                {:type   "anthropic"
+                                 :model  "claude-sonnet-4-6"
+                                 :config {:api-key "sk-ant-valid"}})
           (is (= {:api-key "sk-ant-valid"} (stored-config "anthropic")))
           (is (nil? (setting/db-stored-value :llm-mini-model)))
           (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-mini-model))))))))
@@ -330,25 +332,25 @@
                                 (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]})]
       (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
                                                                     {:api-key    "sk-ant-stored"
-                                                                     :mini-model "claude-haiku-4-5-20251001"})]]
+                                                                     :mini-model "claude-haiku-5-5"})]]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"
                                                llm-mini-model nil]
           (is (= [:api-key]
                  (keys (:config (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
                                                       {:config {:api-key    "sk-ant-rotated"
-                                                                :mini-model "claude-haiku-4-5-20251001"}})))))
+                                                                :mini-model "claude-haiku-5-5"}})))))
           (is (= {:api-key "sk-ant-rotated"} (stored-config "anthropic")))
           (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-mini-model)))))))
   (testing "and records the mini model once the account serves it"
     (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                 (fn [& _] {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
-                                                    {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]})]
+                                                    {:id "claude-haiku-5-5" :display_name "Claude Haiku 5.5"}]})]
       (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})]]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"
                                                llm-mini-model nil]
           (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic" {:name "Anthropic (prod)"})
-          (is (= {:api-key "sk-ant-stored" :mini-model "claude-haiku-4-5-20251001"} (stored-config "anthropic")))
-          (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))))))
+          (is (= {:api-key "sk-ant-stored" :mini-model "claude-haiku-5-5"} (stored-config "anthropic")))
+          (is (= "anthropic/claude-haiku-5-5" (metabot.settings/llm-mini-model))))))))
 
 (deftest create-vllm-connection-adopts-the-model-its-probe-exercised-test
   (testing (str "A vLLM server serves whatever the operator loaded, so there is no default model to select: "
