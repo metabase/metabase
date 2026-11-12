@@ -1,6 +1,6 @@
 import {
   getDataAppEmbedUrl,
-  getEmbeddedAppNameFromPath,
+  getEmbeddedAppSlugFromPath,
   isEmbeddedDataAppPath,
   normalizeDataAppPath,
   validateDataAppPath,
@@ -25,16 +25,16 @@ describe("embedded data app route", () => {
     window.MetabaseRoot = originalRoot;
   });
 
-  it("reads the app name from nested routes with query and hash", () => {
+  it("reads the app slug from nested routes with query and hash", () => {
     expect(
-      getEmbeddedAppNameFromPath("/sales/orders?active=true#details"),
+      getEmbeddedAppSlugFromPath("/sales/orders?active=true#details"),
     ).toBe("sales");
   });
 
   it.each(["New York", "New%20York"])(
     "allows spaces in nested routes: %s",
     (region) => {
-      expect(getEmbeddedAppNameFromPath(`/sales/regions/${region}`)).toBe(
+      expect(getEmbeddedAppSlugFromPath(`/sales/regions/${region}`)).toBe(
         "sales",
       );
     },
@@ -56,7 +56,7 @@ describe("embedded data app route", () => {
   );
 
   it.each(UNSAFE_PATHS)("rejects unsafe paths: %s", (path) => {
-    expect(getEmbeddedAppNameFromPath(path)).toBeUndefined();
+    expect(getEmbeddedAppSlugFromPath(path)).toBeUndefined();
   });
 });
 

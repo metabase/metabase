@@ -86,7 +86,7 @@
   (let [detailed-keys (or detailed-keys concise-keys)
         project-fn    (fn [ks]
                         (if compact?
-                          #(m/remove-vals nil? (select-keys % ks))
+                          #(u/select-non-nil-keys % ks)
                           #(select-keys % ks)))]
     (register-projection!
      type
@@ -150,7 +150,7 @@
 ;; The one canonical card projection. Shared by browse_collection's model list and get_content's
 ;; question/model reads — registered here (the namespace both load) so it has a single definition
 ;; rather than one tool silently overwriting another's at load time. `query_summary`/`template_tags`
-;; are enrichments get_content computes; browse rows lack them and `compact` drops them.
+;; are enrichments get_content computes; browse rows lack them and `:compact?` drops them.
 (def ^:private question-concise-keys
   [:id :name :type :description :display :collection_id :collection_path :database_id :database_name
    :table_id :source_card_id :archived :query_summary :template_tags :parameters])
@@ -246,7 +246,7 @@
     :size_x            (:size_x dc)
     :size_y            (:size_y dc)
     :series            (not-empty
-                        (mapv #(m/remove-vals nil? (select-keys % [:id :name])) (:series dc)))
+                        (mapv #(u/select-non-nil-keys % [:id :name]) (:series dc)))
     :inline_parameters (not-empty (:inline_parameters dc))}))
 
 (defn parameter-dashcard-ids
@@ -333,12 +333,12 @@
 
 (defn- notification-recipient-row
   [recipient]
-  (m/remove-vals nil?
-                 {:type                 (some-> (:type recipient) u/qualified-name)
-                  :user_id              (:user_id recipient)
-                  :email                (or (get-in recipient [:user :email])
-                                            (get-in recipient [:details :value]))
-                  :permissions_group_id (:permissions_group_id recipient)}))
+  (u/remove-nils
+   {:type                 (some-> (:type recipient) u/qualified-name)
+    :user_id              (:user_id recipient)
+    :email                (or (get-in recipient [:user :email])
+                              (get-in recipient [:details :value]))
+    :permissions_group_id (:permissions_group_id recipient)}))
 
 (defn- notification-handler-rows
   "Projected handler rows. Recipients are projected as given: redaction happens before the
@@ -366,12 +366,11 @@
     :created_at    (:created_at notification)
     :updated_at    (:updated_at notification)
     :payload       (not-empty
-                    (m/remove-vals nil? (select-keys (:payload notification)
-                                                     [:card_id :send_condition :send_once])))
-    :subscriptions (mapv #(m/remove-vals nil?
-                                         {:type            (some-> (:type %) u/qualified-name)
-                                          :cron_schedule   (:cron_schedule %)
-                                          :ui_display_type (some-> (:ui_display_type %) u/qualified-name)})
+                    (u/select-non-nil-keys (:payload notification) [:card_id :send_condition :send_once]))
+    :subscriptions (mapv #(u/remove-nils
+                           {:type            (some-> (:type %) u/qualified-name)
+                            :cron_schedule   (:cron_schedule %)
+                            :ui_display_type (some-> (:ui_display_type %) u/qualified-name)})
                          (:subscriptions notification))
     :handlers      (notification-handler-rows (:handlers notification))}))
 
@@ -398,19 +397,15 @@
 
 ;;; ------------------------------------------------ subscription --------------------------------------------------
 
-(defn- compact
-  [m]
-  (m/remove-vals nil? m))
-
 (defn subscription-row
   "The projection row for `pulse-row`, a Pulse already hydrated and redacted. Both `get_content`
    and `subscription_write` return this shape."
   [pulse-row]
-  (compact
+  (u/remove-nils
    (-> (select-keys pulse-row [:id :name :dashboard_id :skip_if_empty :parameters :collection_id
                                :entity_id :creator_id :archived :created_at :updated_at])
        (assoc :channels (mapv (fn [channel]
-                                (compact
+                                (u/remove-nils
                                  (-> (select-keys channel [:id :channel_type :schedule_type
                                                            :schedule_hour :schedule_day
                                                            :schedule_frame :enabled :details])
@@ -422,11 +417,11 @@
                                      (m/dissoc-in [:details :emails])
                                      (assoc :recipients
                                             (some->> (:recipients channel)
-                                                     (mapv #(compact (select-keys % [:id :email]))))))))
+                                                     (mapv #(u/select-non-nil-keys % [:id :email])))))))
                               (:channels pulse-row))
               :cards (some->> (:cards pulse-row)
-                              (mapv #(compact (select-keys % [:id :name :include_csv :include_xls
-                                                              :format_rows]))))))))
+                              (mapv #(u/select-non-nil-keys % [:id :name :include_csv :include_xls
+                                                               :format_rows])))))))
 
 (def ^:private subscription-pulse-concise-keys
   [:id :name :dashboard_id :channels :cards :skip_if_empty :archived :creator_id])
@@ -448,12 +443,12 @@
  :subscription
  {:concise  (fn [row]
               (if (:handlers row)
-                (compact (select-keys row alert-concise-keys))
-                (compact (select-keys row subscription-pulse-concise-keys))))
+                (u/select-non-nil-keys row alert-concise-keys)
+                (u/select-non-nil-keys row subscription-pulse-concise-keys)))
   :detailed (fn [row]
               (if (:handlers row)
-                (compact (select-keys row alert-detailed-keys))
-                (compact (select-keys row subscription-pulse-detailed-keys))))
+                (u/select-non-nil-keys row alert-detailed-keys)
+                (u/select-non-nil-keys row subscription-pulse-detailed-keys)))
   :sample   subscription-sample
   ;; The projection dispatches on row shape (pulse-backed vs. notification-backed), so no single
   ;; sample captures it — the `fields` catalog is the union of both shapes' detailed paths.

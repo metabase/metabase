@@ -24,8 +24,8 @@
 
 (def ^:private demo-app
   "The attributes of the app the endpoint tests serve."
-  {:name          "demo"
-   :display_name  "Demo app"
+  {:slug          "demo"
+   :name          "Demo app"
    :bundle_path   "dist/index.js"
    :allowed_hosts ["https://api.example.com"]
    :enabled       true
@@ -61,21 +61,36 @@
         (is (not (some #(= (:resource_collection_id app) (:id %))
                        (mt/user-http-request :rasta :get 200 "collection"))))
         (testing "a superuser can list, read metadata, and serve the bundle"
-          (is (=? [{:name (:name app)}]
+          (is (=? [{:slug (:slug app)}]
                   (mt/user-http-request :crowberto :get 200 "ee/apps")))
-          (is (=? {:name (:name app) :resource_collection_id (:resource_collection_id app)}
+          (is (=? {:slug (:slug app) :resource_collection_id (:resource_collection_id app)}
                   (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app))))
           (is (str/includes? (str (mt/user-real-request :crowberto :get 200 (data-apps.tu/app-url app "bundle")))
                              "BUNDLE")))))))
 
-(deftest read-only-remote-sync-allows-enabling-test
+(deftest read-only-remote-sync-blocks-data-app-changes-test
   (mt/with-premium-features #{:data-apps :remote-sync}
-    (mt/with-temp [:model/DataApp app {}]
-      (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
-                                         remote-sync-type :read-only]
-        (testing "enabling and disabling an app is allowed on a read-only instance"
-          (is (=? {:enabled false}
-                  (mt/user-http-request :crowberto :put 200 (data-apps.tu/app-url app) {:enabled false}))))))))
+    (mt/with-temp [:model/DataApp app {:name "Demo app"}]
+      (let [url (data-apps.tu/app-url app)]
+        (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
+                                           remote-sync-type :read-only]
+          (testing "a read-only instance refuses to create, change, or delete an app"
+            (mt/user-http-request :crowberto :post 403 "ee/apps" {:slug "other"})
+            (is (not (t2/exists? :model/DataApp :slug "other")))
+            (mt/user-http-request :crowberto :put 403 url {:name "Renamed"})
+            (mt/user-http-request :crowberto :put 403 url {:enabled false :name "Renamed"})
+            (mt/user-http-request :crowberto :put 403 (data-apps.tu/app-url app "bundle") {:bundle "NEW"})
+            (mt/user-http-request :crowberto :delete 403 url)
+            (is (=? {:name "Demo app" :enabled true :bundle_hash (:bundle_hash app)}
+                    (t2/select-one :model/DataApp :id (:id app)))))
+          (testing "enabling and disabling stays allowed"
+            (is (=? {:enabled false}
+                    (mt/user-http-request :crowberto :put 200 url {:enabled false})))))
+        (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
+                                           remote-sync-type :read-write]
+          (testing "a read-write instance allows changes"
+            (is (=? {:name "Renamed"}
+                    (mt/user-http-request :crowberto :put 200 url {:name "Renamed"})))))))))
 
 (deftest data-app-write-endpoints-require-feature-token-test
   (mt/with-premium-features #{}
@@ -122,7 +137,7 @@
           (group-access/add-groups! app [group-id]))
         (with-redefs [data-app.config/supported-app-version 2]
           (testing "a regular user is never told about the outdated app in a list"
-            (is (= [{:id (:id current) :name (:name current) :display_name (:display_name current) :enabled true :outdated false}]
+            (is (= [{:id (:id current) :slug (:slug current) :name (:name current) :enabled true :outdated false}]
                    (mt/user-http-request :rasta :get 200 "ee/apps"))))
           (testing "for a regular user, opening an outdated app is a 409 that says what to do"
             (doseq [url [(data-apps.tu/app-url old) (data-apps.tu/app-url old "bundle")]]
@@ -130,22 +145,22 @@
                        :message    #"This app was built for version 1 of data apps.*"}
                       (mt/user-http-request :rasta :get 409 url)))))
           (testing "the current app still opens"
-            (is (= {:id (:id current) :name (:name current) :display_name (:display_name current) :enabled true :outdated false}
+            (is (= {:id (:id current) :slug (:slug current) :name (:name current) :enabled true :outdated false}
                    (mt/user-http-request :rasta :get 200 (data-apps.tu/app-url current))))
             (is (str/includes? (str (mt/user-real-request :crowberto :get 200 (data-apps.tu/app-url current "bundle")))
                                "BUNDLE")))
           (testing "an admin sees the outdated app flagged, and can still read it to manage its groups"
-            (is (=? #{{:name (:name current) :version 2 :outdated false}
-                      {:name (:name old) :version 1 :outdated true}}
-                    (set (map #(select-keys % [:name :version :outdated])
+            (is (=? #{{:slug (:slug current) :version 2 :outdated false}
+                      {:slug (:slug old) :version 1 :outdated true}}
+                    (set (map #(select-keys % [:slug :version :outdated])
                               (mt/user-http-request :crowberto :get 200 "ee/apps")))))
-            (is (=? {:name (:name old) :version 1 :outdated true}
+            (is (=? {:slug (:slug old) :version 1 :outdated true}
                     (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url old)))))
           (testing "nobody gets an outdated bundle"
             (is (=? {:error-code "data-app-outdated"}
                     (mt/user-http-request :crowberto :get 409 (data-apps.tu/app-url old "bundle")))))
           (testing "a management response carries the flag too"
-            (is (=? {:name (:name old) :outdated true}
+            (is (=? {:slug (:slug old) :outdated true}
                     (mt/user-http-request :crowberto :put 200 (data-apps.tu/app-url old) {:enabled false})))))))))
 
 (deftest bundle-includes-allowed-hosts-header-test
@@ -162,16 +177,16 @@
                    :model/DataApp without-hosts {}]
       (testing "the list endpoint returns allowed_hosts, always a list, also for an app stored with NULL (→ [])"
         (let [by-name (->> (mt/user-http-request :crowberto :get 200 "ee/apps")
-                           (into {} (map (juxt :name identity))))]
-          (is (= ["https://api.example.com"] (get-in by-name [(:name with-hosts) :allowed_hosts])))
-          (is (= [] (get-in by-name [(:name without-hosts) :allowed_hosts]))))))))
+                           (into {} (map (juxt :slug identity))))]
+          (is (= ["https://api.example.com"] (get-in by-name [(:slug with-hosts) :allowed_hosts])))
+          (is (= [] (get-in by-name [(:slug without-hosts) :allowed_hosts]))))))))
 
 ;;; ---------------------------------------------------- Update ----------------------------------------------------
 
 (deftest update-endpoint-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp app {:display_name "Demo app"}]
+      (mt/with-temp [:model/DataApp app {:name "Demo app"}]
         (let [url (data-apps.tu/app-url app)]
           (testing "a non-superuser cannot update an app"
             (is (= "You don't have permissions to do that."
@@ -179,11 +194,131 @@
           (testing "a superuser enables and disables an app"
             (is (=? {:enabled false} (mt/user-http-request :crowberto :put 200 url {:enabled false})))
             (is (=? {:enabled true} (mt/user-http-request :crowberto :put 200 url {:enabled true}))))
-          (testing "anything else about an app changes only through an import"
-            (mt/user-http-request :crowberto :put 400 url {:display_name "Renamed"})
-            (is (= "Demo app" (t2/select-one-fn :display_name :model/DataApp :id (:id app)))))
+          (testing "a superuser updates manifest fields"
+            (is (=? {:name "Renamed" :description "What it does" :allowed_hosts []}
+                    (mt/user-http-request :crowberto :put 200 url {:name          "Renamed"
+                                                                   :description   "  What it does  "
+                                                                   :allowed_hosts []}))))
+          (testing "invalid manifest fields are refused"
+            (mt/user-http-request :crowberto :put 400 url {:bundle_path "/abs.js"})
+            (is (= "dist/index.js" (t2/select-one-fn :bundle_path :model/DataApp :id (:id app)))))
+          (testing "the bundle is ignored, since only PUT /:id/bundle replaces it"
+            (let [before (t2/select-one-fn :bundle_hash :model/DataApp :id (:id app))]
+              (mt/user-http-request :crowberto :put 200 url {:bundle "NEWBUNDLE"})
+              (is (= before (t2/select-one-fn :bundle_hash :model/DataApp :id (:id app))))))
+          (testing "the slug and entity ID are ignored"
+            (mt/user-http-request :crowberto :put 200 url {:slug "renamed" :entity_id "renamedEntityIdXxxxxx"})
+            (is (=? {:slug (:slug app) :entity_id (:entity_id app)}
+                    (t2/select-one :model/DataApp :id (:id app)))))
           (testing "updating a missing app 404s"
             (mt/user-http-request :crowberto :put 404 "ee/apps/missing" {:enabled false})))))))
+
+;;; ---------------------------------------------------- Create ----------------------------------------------------
+
+(def ^:private app-request
+  {:slug          "demo"
+   :name          "Demo app"
+   :bundle_path   "dist/index.js"
+   :allowed_hosts ["https://api.example.com"]
+   :enabled       true})
+
+(deftest create-endpoint-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection]
+      (testing "a non-superuser cannot create an app"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "ee/apps" app-request))))
+      (testing "a superuser creates an app with its manifest fields"
+        (is (=? {:id                     pos-int?
+                 :slug                   "demo"
+                 :name                   "Demo app"
+                 :bundle_path            "dist/index.js"
+                 :allowed_hosts          ["https://api.example.com"]
+                 :version                1
+                 :enabled                true
+                 :resource_collection_id pos-int?}
+                (mt/user-http-request :crowberto :post 200 "ee/apps" (assoc app-request :bundle_path "./dist/index.js"))))
+        (testing "with an empty bundle"
+          (is (= 0 (alength ^bytes (t2/select-one-fn :bundle :model/DataApp :slug "demo")))))
+        (testing "with its own collection in the data-apps namespace, which no group but Administrators reads"
+          (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :slug "demo")]
+            (is (=? {:name "Data App: demo" :namespace :data-apps :location "/"}
+                    (t2/select-one :model/Collection :id collection-id)))
+            (is (= #{} (perms/collection-read-access-group-ids collection-id))))))
+      (testing "a taken slug is refused"
+        (is (= "A data app with this slug already exists."
+               (mt/user-http-request :crowberto :post 409 "ee/apps" app-request))))
+      (testing "invalid manifest fields are refused"
+        (doseq [bad [{:slug "Not A Slug"}
+                     {:bundle_path "../escape.js"}
+                     {:allowed_hosts ["ftp://example.com"]}
+                     {:version 0}]]
+          (mt/user-http-request :crowberto :post 400 "ee/apps" (merge app-request {:slug "other"} bad))
+          (is (not (t2/exists? :model/DataApp :slug "other")) (str "should refuse: " (pr-str bad))))))))
+
+(deftest create-defaults-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection]
+      (testing "an app created from its slug alone is enabled, with its slug as its name and an empty bundle"
+        (let [{:keys [id] :as app} (mt/user-http-request :crowberto :post 200 "ee/apps" {:slug "demo"})]
+          (is (=? {:slug "demo" :name "demo" :bundle_path "dist/index.js" :enabled true} app))
+          (is (=? {:id id :slug "demo"} (mt/user-http-request :crowberto :get 200 "ee/apps/demo")))))
+      (testing "an app created disabled stays disabled"
+        (is (=? {:slug "draft" :enabled false}
+                (mt/user-http-request :crowberto :post 200 "ee/apps" {:slug "draft" :enabled false})))))))
+
+;;; ---------------------------------------------------- Bundle ----------------------------------------------------
+
+(deftest replace-bundle-endpoint-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-temp [:model/DataApp app {:bundle app-bundle}]
+        (let [url (data-apps.tu/app-url app "bundle")]
+          (testing "a non-superuser cannot replace the bundle"
+            (mt/user-http-request :rasta :put 403 url {:bundle "MINE"}))
+          (testing "the new bundle is what the app serves"
+            (let [{:keys [bundle_hash]} (mt/user-http-request :crowberto :put 200 url {:bundle "V1"})]
+              (is (str/includes? (str (mt/user-real-request :crowberto :get 200 url)) "V1"))
+              (is (not= bundle_hash
+                        (:bundle_hash (mt/user-http-request :crowberto :put 200 url {:bundle "V2"}))))
+              (is (str/includes? (str (mt/user-real-request :crowberto :get 200 url)) "V2"))))
+          (testing "a missing app 404s"
+            (mt/user-http-request :crowberto :put 404 "ee/apps/missing/bundle" {:bundle "V1"})))))))
+
+;;; ---------------------------------------------------- Delete ----------------------------------------------------
+
+(deftest delete-endpoint-requires-superuser-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/DataApp                    app            {}
+                   :model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:user_id  (mt/user->id :rasta)
+                                                                     :group_id group-id}]
+      (group-access/add-groups! app [group-id])
+      (testing "a user with access can open the app but cannot delete it"
+        (mt/user-http-request :rasta :get 200 (data-apps.tu/app-url app))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :delete 403 (data-apps.tu/app-url app))))
+        (is (t2/exists? :model/DataApp :id (:id app)))))))
+
+(deftest delete-endpoint-404s-for-missing-app-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/user-http-request :crowberto :delete 404 "ee/apps/missing")))
+
+(deftest delete-endpoint-deletes-collection-and-keeps-groups-test
+  (mt/with-premium-features #{:data-apps}
+    (data-apps.tu/with-published-tables! [(mt/id :venues)]
+      (mt/with-temp [:model/DataApp          app            {}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/Card             {card-id :id}  {:collection_id (:resource_collection_id app)
+                                                             :dataset_query (data-apps.tu/venues-query)}]
+        (group-access/add-groups! app [group-id])
+        (mt/user-http-request :crowberto :delete 204 (data-apps.tu/app-url app))
+        (is (not (t2/exists? :model/DataApp :id (:id app))))
+        (is (not (t2/exists? :model/Collection :id (:resource_collection_id app))))
+        (is (not (t2/exists? :model/Card :id card-id)))
+        (is (not (t2/exists? :model/Permissions :group_id group-id
+                             :object (perms/collection-read-path (:resource_collection_id app)))))
+        (is (t2/exists? :model/PermissionsGroup :id group-id))))))
 
 ;;; ----------------------------------------------------- API -----------------------------------------------------
 
@@ -192,7 +327,7 @@
     (mt/with-premium-features #{:data-apps}
       (mt/with-temp [:model/DataApp _ demo-app]
         (testing "GET / lists the apps"
-          (is (=? [{:name "demo" :display_name "Demo app"
+          (is (=? [{:slug "demo" :name "Demo app"
                     :bundle_path "dist/index.js" :enabled true}]
                   (mt/user-http-request :crowberto :get 200 "ee/apps"))))
         (testing "GET /:slug/bundle serves the cached bytes"
@@ -216,20 +351,20 @@
     (mt/with-premium-features #{:data-apps}
       (mt/with-temp [:model/DataApp _ demo-app]
         (testing "PUT /:slug can disable an app"
-          (is (=? {:name "demo" :enabled false}
+          (is (=? {:slug "demo" :enabled false}
                   (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled false}))))
         (testing "a disabled app is not served to a user with access"
-          (group-access/add-groups! (t2/select-one :model/DataApp :name "demo") [(:id (perms/all-users-group))])
+          (group-access/add-groups! (t2/select-one :model/DataApp :slug "demo") [(:id (perms/all-users-group))])
           (mt/user-http-request :rasta :get 403 "ee/apps/demo")
           (mt/user-real-request :rasta :get 403 "ee/apps/demo/bundle"))
         (testing "a superuser still reads a disabled app's metadata and bundle"
-          (is (=? {:name "demo" :enabled false}
+          (is (=? {:slug "demo" :enabled false}
                   (mt/user-http-request :crowberto :get 200 "ee/apps/demo")))
           (mt/user-real-request :crowberto :get 200 "ee/apps/demo/bundle"))
         (testing "re-enabling restores serving"
           (is (=? {:enabled true}
                   (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled true})))
-          (is (=? {:name "demo"} (mt/user-http-request :crowberto :get 200 "ee/apps/demo"))))))))
+          (is (=? {:slug "demo"} (mt/user-http-request :crowberto :get 200 "ee/apps/demo"))))))))
 
 (deftest admins-write-the-resource-collection-through-the-api-test
   (mt/with-premium-features #{:data-apps}
@@ -262,24 +397,24 @@
 
 (deftest disabled-apps-are-listed-only-to-superusers-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp app {:name "demo" :enabled false}]
+    (mt/with-temp [:model/DataApp app {:slug "demo" :enabled false}]
       (group-access/add-groups! app [(:id (perms/all-users-group))])
       (testing "a user with access doesn't see the disabled app"
-        (is (not-any? #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))
+        (is (not-any? #(= "demo" (:slug %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))
       (testing "a superuser does"
-        (is (some #(= "demo" (:name %)) (mt/user-http-request :crowberto :get 200 "ee/apps"))))
+        (is (some #(= "demo" (:slug %)) (mt/user-http-request :crowberto :get 200 "ee/apps"))))
       (testing "a user with access sees it once it's enabled"
         (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled true})
-        (is (some #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps")))))))
+        (is (some #(= "demo" (:slug %)) (mt/user-http-request :rasta :get 200 "ee/apps")))))))
 
 (deftest apps-are-listed-only-to-users-who-can-read-their-collection-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp _ {:name "demo"}]
+    (mt/with-temp [:model/DataApp _ {:slug "demo"}]
       (testing "a user without a grant on the app's collection doesn't see the app"
-        (is (not-any? #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))
+        (is (not-any? #(= "demo" (:slug %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))
       (testing "a user sees it once their group can read the collection"
-        (group-access/add-groups! (t2/select-one :model/DataApp :name "demo") [(:id (perms/all-users-group))])
-        (is (some #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps")))))))
+        (group-access/add-groups! (t2/select-one :model/DataApp :slug "demo") [(:id (perms/all-users-group))])
+        (is (some #(= "demo" (:slug %)) (mt/user-http-request :rasta :get 200 "ee/apps")))))))
 
 ;;; --------------------------------------------------- Generate ---------------------------------------------------
 

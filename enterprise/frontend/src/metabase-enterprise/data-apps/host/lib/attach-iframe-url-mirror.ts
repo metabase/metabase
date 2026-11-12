@@ -23,8 +23,8 @@ function resolvePathname(path: string): string {
 }
 
 /**
- * Puts the route of the app's iframe path (`/embed/apps/<name>/<route>`) into the
- * parent's URL as `/apps/<name>/<route>`, keeping the parent's own query and hash.
+ * Puts the route of the app's iframe path (`/embed/apps/<slug>/<route>`) into the
+ * parent's URL as `/apps/<slug>/<route>`, keeping the parent's own query and hash.
  * Uses `replaceState` (not `pushState`) so iframe-internal navigations don't clutter
  * the parent's back-history with one entry each. A path outside the app puts the
  * app's root there.

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
-import { assocIn } from "icepick";
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
@@ -34,7 +33,9 @@ export function computeQuestionPivotTable(options: Options) {
       const key = "pivot_table.column_split";
 
       if (rawSeries) {
-        const series = assocIn(rawSeries, [0, "card"], question.card());
+        const series = rawSeries.map((s, i) =>
+          i === 0 ? { ...s, card: question.card() } : s,
+        );
         const setting = getQuestionWithDefaultVisualizationSettings(
           question,
           series,

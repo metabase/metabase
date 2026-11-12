@@ -7,34 +7,43 @@ import type {
 
 import type { SettingsFormValues, SyncableCollection } from "../../types";
 
-export const getInitialValues = (
+export function getInitialValues(
   settings: EnterpriseSettings,
   collections: SyncableCollection[],
-): SettingsFormValues => ({
-  url: settings["remote-sync-url"] ?? "",
-  token: settings["remote-sync-token"] ?? "",
-  type: settings["remote-sync-type"] ?? "read-write",
-  branch: settings["remote-sync-branch"] ?? "",
-  autoImport: Boolean(settings["remote-sync-auto-import"]),
-  collections: Object.fromEntries(
-    collections.map((collection) => [collection.id, collection.isRemoteSynced]),
-  ),
-});
+): SettingsFormValues {
+  return {
+    url: settings["remote-sync-url"] ?? "",
+    token: settings["remote-sync-token"] ?? "",
+    type: settings["remote-sync-type"] ?? "read-write",
+    branch: settings["remote-sync-branch"] ?? "",
+    autoImport: Boolean(settings["remote-sync-auto-import"]),
+    collections: Object.fromEntries(
+      collections.map((collection) => [
+        collection.id,
+        collection.isRemoteSynced,
+      ]),
+    ),
+  };
+}
 
-export const getConnectionRequest = (
+export function getConnectionRequest(
   values: SettingsFormValues,
-): TestRemoteSyncConnectionRequest => ({
-  "remote-sync-url": values.url,
-  "remote-sync-token": values.token || undefined,
-});
+): TestRemoteSyncConnectionRequest {
+  return {
+    "remote-sync-url": values.url,
+    "remote-sync-token": values.token || undefined,
+  };
+}
 
-export const getSettingsRequest = (
+export function getSettingsRequest(
   values: SettingsFormValues,
   collections: Record<RegularCollectionId, boolean> | null,
-): UpdateRemoteSyncSettingsRequest => ({
-  ...getConnectionRequest(values),
-  "remote-sync-type": values.type,
-  "remote-sync-branch": values.branch || null,
-  "remote-sync-auto-import": values.autoImport,
-  collections,
-});
+): UpdateRemoteSyncSettingsRequest {
+  return {
+    ...getConnectionRequest(values),
+    "remote-sync-type": values.type,
+    "remote-sync-branch": values.branch || null,
+    "remote-sync-auto-import": values.autoImport,
+    collections,
+  };
+}

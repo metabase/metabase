@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
-import { dissoc } from "icepick";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -43,7 +42,7 @@ function CollectionCopyEntityModal({
   };
 
   const handleCopy = async (values: Record<string, any>) => {
-    const overrides = dissoc(values, "id");
+    const { id: _id, ...overrides } = values;
 
     if (entityObject.model === "dashboard") {
       const { is_shallow_copy, ...rest } = overrides;

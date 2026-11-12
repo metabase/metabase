@@ -4923,3 +4923,33 @@
         (testing "rollback drops the column and keeps the workspaces"
           (is (not (contains? (t2/select-one :workspace :id existing) :idempotency_key)))
           (is (= 5 (t2/count :workspace))))))))
+
+(deftest data-app-slug-and-name-columns-migration-test
+  (impl/test-migrations ["rwnbah"] [migrate!]
+    (let [app-id (t2/insert-returning-pk! :data_app
+                                          {:entity_id    "migration-birds-appxx"
+                                           :name         "birds"
+                                           :display_name "Birds"
+                                           :bundle_path  "birds.js"
+                                           :created_at   :%now
+                                           :updated_at   :%now})
+          app    #(t2/select-one :data_app :id app-id)]
+      (testing "the slug moves to slug and the display name to name"
+        (migrate!)
+        (is (=? {:slug "birds" :name "Birds"} (app)))
+        (is (not (contains? (app) :display_name))))
+      (testing "both columns stay required"
+        (is (thrown? Exception (t2/insert! :data_app {:entity_id    "migration-bees-appxxx"
+                                                      :name         "Bees"
+                                                      :bundle_path  "bees.js"
+                                                      :created_at   :%now
+                                                      :updated_at   :%now})))
+        (is (thrown? Exception (t2/insert! :data_app {:entity_id    "migration-bees-appxxx"
+                                                      :slug         "bees"
+                                                      :bundle_path  "bees.js"
+                                                      :created_at   :%now
+                                                      :updated_at   :%now}))))
+      (testing "rollback restores the old columns"
+        (migrate! :down 64)
+        (is (=? {:name "birds" :display_name "Birds"} (app)))
+        (is (not (contains? (app) :slug)))))))

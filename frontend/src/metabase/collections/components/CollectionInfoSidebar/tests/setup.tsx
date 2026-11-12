@@ -1,27 +1,36 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
-import type { Collection } from "metabase-types/api";
+import { Route } from "metabase/router";
+import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
+  createMockCollectionItem,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { CollectionInfoSidebar } from "../CollectionInfoSidebar";
 
-export const setup = ({
-  collection,
-  enableEnterprisePlugins,
-  enableOfficialCollections = false,
-  enableSerialization = false,
-}: {
+export type SetupOpts = {
   collection: Collection;
+  collectionItems?: CollectionItem[];
   enableEnterprisePlugins?: boolean;
   enableOfficialCollections: boolean;
   enableSerialization?: boolean;
-}) => {
+  withFilterByType?: boolean;
+};
+
+export const setup = ({
+  collection,
+  collectionItems = defaultCollectionItems,
+  enableEnterprisePlugins,
+  enableOfficialCollections = false,
+  enableSerialization = false,
+  withFilterByType = true,
+}: SetupOpts) => {
   const state = createMockState({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
@@ -33,19 +42,29 @@ export const setup = ({
   if (enableEnterprisePlugins) {
     setupEnterprisePlugins();
   }
-  return renderWithProviders(
-    <>
-      {collection.name}
-      <CollectionInfoSidebar
-        collection={collection}
-        onClose={jest.fn()}
-        onUpdateCollection={jest.fn()}
-      />
-    </>,
-    {
-      storeInitialState: state,
-    },
+  setupCollectionItemsEndpoint({ collection, collectionItems });
+  const onClose = jest.fn();
+  const onFilterByType = jest.fn();
+
+  const view = renderWithProviders(
+    <Route
+      path="*"
+      element={
+        <>
+          {collection.name}
+          <CollectionInfoSidebar
+            collection={collection}
+            onClose={onClose}
+            onUpdateCollection={jest.fn()}
+            onFilterByType={withFilterByType ? onFilterByType : undefined}
+          />
+        </>
+      }
+    />,
+    { storeInitialState: state, withRouter: true },
   );
+
+  return { ...view, onClose, onFilterByType };
 };
 
 export const regularCollection = createMockCollection({
@@ -61,3 +80,10 @@ export const officialCollection = createMockCollection({
   entity_id: createMockEntityId("entity_id_of_trusted_collection"),
   authority_level: "official",
 });
+
+export const defaultCollectionItems: CollectionItem[] = [
+  createMockCollectionItem({ id: 1, model: "dashboard", name: "Dashboard A" }),
+  createMockCollectionItem({ id: 2, model: "dashboard", name: "Dashboard B" }),
+  createMockCollectionItem({ id: 3, model: "card", name: "Question A" }),
+  createMockCollectionItem({ id: 4, model: "collection", name: "Child" }),
+];

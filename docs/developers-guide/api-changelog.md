@@ -7,9 +7,46 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- The Agent API (`/api/agent`) is deprecated and will be removed in Metabase 67. Use the MCP server for your agents
+  instead. The Agent API is now off by default: every endpoint answers `403 Forbidden` until an admin turns it on in
+  **Admin > AI > MCP**, or the instance starts with `MB_DEPRECATED_AGENT_API_ENABLED=true`.
+
+- The setting `agent-api-enabled?`, which turned the Agent API on and off, no longer has an effect, with no
+  deprecation period. Its value does not carry over: an instance that had the Agent API on has it off after the
+  upgrade. To turn the Agent API on, use the opt-in described above, the setting `deprecated-agent-api-enabled?`.
+  The old setting stays defined as a stub, so that a client, a config file or a serialization export that still
+  holds it does not fail.
+  - `GET /api/session/properties` and `GET /api/setting` no longer return `agent-api-enabled?`.
+  - `PUT /api/setting/:key` with the key `agent-api-enabled?`, and `PUT /api/setting` with that key, still answer
+    an admin with `204 No Content`. They store nothing, and the server log says to use
+    `deprecated-agent-api-enabled?`.
+  - `GET /api/setting/:key` with the key `agent-api-enabled?` answers an admin with `410 Gone` and the
+    removal message, and any other user with `403 Forbidden`.
+  - The environment variable `MB_AGENT_API_ENABLED` is ignored. An `agent-api-enabled?` key in a config file stores
+    nothing and logs the same message. An instance that held the Agent API off with `MB_AGENT_API_ENABLED=false`
+    holds it off with `MB_DEPRECATED_AGENT_API_ENABLED=false` instead: the environment variable takes precedence
+    over the value that an admin sets.
+  - A serialization export no longer lists `agent-api-enabled?`. An export made by Metabase 65 lists it and still
+    imports; the key has no effect.
+
+- `POST /api/ee/transform-test/run`, which ran a transform test that wasn't saved, has been removed. Save the test and
+  run it with `POST /api/ee/transform-test/:id/run`.
+
+- `POST /api/ee/remote-sync/create-branch` has been removed. `POST /api/ee/remote-sync/stash` creates the branch
+  `new_branch` at the version of the last sync, pushes the synced content of the instance to it and syncs with it.
+
+- The items of `GET /api/ee/remote-sync/dirty` are closed maps with `id`, `name`, `model` and `sync_status`, and, when
+  they apply, `collection` (the collection the change is in, with its `effective_ancestors`) and `parent` (the entity the
+  change shows within, such as the table of a segment). They no longer have `collection_id`, `created_at`, `updated_at`,
+  `authority_level`, `display`, `query_type`, `description`, `table_id`, `table_name` or `card_id`.
+
 - `POST /api/revision/revert` with `entity` `transform-test` needs the Transforms Testing premium feature, as the
   `/api/ee/transform-test` endpoints do. Without it, it returns `402 Payment Required`. The revision history endpoints
   `GET /api/revision?entity=transform-test` and `GET /api/revision/transform-test/:id` do not need it.
+
+- Data apps name their slug and their display name as their `data_app.yaml` does: `slug` holds the slug that
+  `name` held, and `name` holds the display name that `display_name` held. The `/api/ee/apps` endpoints return `slug` and
+  `name`, and a data app node of the dependency endpoints has `slug` and `name`.
 
 - `POST /api/ee/transform-test/:id/run` answers a query under test that fails to run with the `error-code`
   `transform-test.query-failed` in place of `transform-test.transform-failed`. The status stays `422`.

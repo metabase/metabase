@@ -178,6 +178,56 @@ describe("ExplorationTreeNode", () => {
       );
     });
 
+    it("hides every page of a multi-page group and restores them all from the toast's Undo", async () => {
+      fetchMock.put("path:/api/exploration/pages/hidden", 204);
+      const ordersQueries = [
+        createQuery({ id: 21, name: "Orders by state", status: "done" }),
+        createQuery({ id: 22, name: "Orders by source", status: "done" }),
+      ];
+      setup({
+        queries: ordersQueries,
+        blocks: [
+          createBlock({
+            id: 80,
+            name: "Count of orders",
+            pages: [
+              createPage({ id: 901, name: "Orders by state", query_ids: [21] }),
+              createPage({
+                id: 902,
+                name: "Orders by source",
+                position: 1,
+                query_ids: [22],
+              }),
+            ],
+          }),
+        ],
+        withUndos: true,
+      });
+      const hiddenRequestBodies = () =>
+        fetchMock.callHistory
+          .calls("path:/api/exploration/pages/hidden", { method: "PUT" })
+          .map((call): unknown => JSON.parse(String(call.options?.body)));
+
+      await openGroupMenu(/Count of orders/);
+      await userEvent.click(screen.getByRole("menuitem", { name: /Hide/ }));
+
+      expect(
+        await screen.findByText("Count of orders hidden"),
+      ).toBeInTheDocument();
+      expect(hiddenRequestBodies()).toEqual([
+        { page_ids: [901, 902], hidden: true },
+      ]);
+
+      await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+      await waitFor(() => {
+        expect(hiddenRequestBodies()).toEqual([
+          { page_ids: [901, 902], hidden: true },
+          { page_ids: [901, 902], hidden: false },
+        ]);
+      });
+    });
+
     it("offers Hide for thread and metric-group headings", async () => {
       setup({ queries: [revenueQuery], blocks: [revenueBlock] });
 

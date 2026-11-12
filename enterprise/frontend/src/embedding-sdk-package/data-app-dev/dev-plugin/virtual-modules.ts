@@ -57,11 +57,13 @@ export const resolveDataAppVirtualId = (id: string): string | undefined =>
 export interface DataAppVirtualConfig {
   appSlug: string;
   allowedHosts: string[];
+  /** `DATA_APP_MB_URL`, for display: the page reaches the instance only through the dev server's relay. */
+  instanceUrl: string | null;
 }
 
 export const loadDataAppVirtualModule = (
   id: string,
-  { appSlug, allowedHosts }: DataAppVirtualConfig,
+  { appSlug, allowedHosts, instanceUrl }: DataAppVirtualConfig,
 ): string | undefined => {
   if (id === RESOLVED_PREFIX + DATA_APP_DEV_ENTRY_VIRTUAL_ID) {
     return fs.readFileSync(DEV_ENTRY_SOURCE_PATH, "utf8");
@@ -71,6 +73,7 @@ export const loadDataAppVirtualModule = (
     return [
       `export const allowedHosts = ${JSON.stringify(allowedHosts)};`,
       `export const appSlug = ${JSON.stringify(appSlug)};`,
+      `export const instanceUrl = ${JSON.stringify(instanceUrl)};`,
       `export const bundleUrl = ${JSON.stringify(DATA_APP_BUNDLE_URL)};`,
       `export const buildIdHeader = ${JSON.stringify(DATA_APP_BUILD_ID_HEADER)};`,
       `export const rebuiltEvent = ${JSON.stringify(DATA_APP_REBUILT_EVENT)};`,

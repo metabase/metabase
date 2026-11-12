@@ -3,16 +3,25 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn synced-transform-tests-clause :- [:fn vector?]
   "The clause over the TransformTest table aliased `alias` selecting the tests of the transforms remote sync syncs."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :transform_id :model/Transform))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :transform_id :model/Transform opts))
+
+(mu/defn synced-card-tests-clause :- [:fn vector?]
+  "The clause over the CardTest table aliased `alias` selecting the tests of the cards remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :card_id :model/Card opts))
 
 (mu/defn transform-tests :- [:sequential ::data-testing.schema/transform-test]
   "The TransformTests in name order, only those of the Transform with `:transform-id` when it is given."
@@ -221,3 +230,19 @@
   "The TransformTest with `entity-id`, or nil."
   [entity-id :- :string]
   (t2/select-one :model/TransformTest :entity_id entity-id))
+
+(mu/defn synced-transform-test-items :- [:sequential ::data-testing.schema/transform-test]
+  "The TransformTests with `ids`, with their Transform and its Collection and ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection :transforms)]
+    (-> (t2/select [:model/TransformTest :id :name :transform_id] :id [:in ids])
+        (t2/hydrate [:transform [:collection :effective_ancestors]])
+        (->> (mapv (fn [row] (update row :transform #(some-> % (collection.root/hydrate-root-collection root)))))))))
+
+(mu/defn synced-card-test-items :- [:sequential ::data-testing.schema/card-test]
+  "The CardTests with `ids`, with their Card and its Collection and ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/CardTest :id :name :card_id] :id [:in ids])
+        (t2/hydrate [:card [:collection :effective_ancestors]])
+        (->> (mapv (fn [row] (update row :card #(some-> % (collection.root/hydrate-root-collection root)))))))))
