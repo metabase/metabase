@@ -258,6 +258,7 @@ export function InlineExpressionEditor({
         onChange={handleChange}
         onEdit={handleEdit}
         onProposalChange={handleProposalChange}
+        onGenerated={showPreview}
         query={query}
         stageIndex={stageIndex}
         expressionIndex={expressionIndex}

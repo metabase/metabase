@@ -56,6 +56,7 @@ import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
 import { useSqlHint } from "./SqlHint";
 import { Tooltip } from "./Tooltip";
+import { caseCounts, useCaseCounts } from "./case-counts";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
@@ -115,6 +116,12 @@ export type EditorProps = {
    * Called when a proposed change shows as a diff, or changes, or goes, with
    * the clause when the proposed text is valid, and the proposed name.
    */
+  /** Called when an AI text goes into the code without a diff to confirm. */
+  onGenerated?: (run: {
+    source: string;
+    clause: Lib.ExpressionClause;
+    name?: string;
+  }) => void;
   onProposalChange?: (
     proposal: {
       source: string;
@@ -185,12 +192,14 @@ export function Editor(props: EditorProps) {
     hasDefaultName = false,
     onAcceptName,
     onProposalChange,
+    onGenerated,
     showErrors = true,
     validateRef,
     generateRef,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
+  const getEditorView = useCallback(() => ref.current?.view, []);
   const databaseId = Lib.databaseID(query);
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
@@ -332,6 +341,41 @@ export function Editor(props: EditorProps) {
 
   // Shows a diff to confirm only a large change to a long expression. Other
   // suggestions go into the code at once.
+  // After an AI text goes into the code, the cursor goes to its end, and no
+  // autocomplete opens for the text.
+  // The editor gets the text a few frames later, so wait for it.
+  const focusEnd = useCallback((text: string) => {
+    let frames = 10;
+    const run = () => {
+      const view = ref.current?.view;
+      if (view == null) {
+        return;
+      }
+      if (view.state.doc.toString() !== text && frames-- > 0) {
+        requestAnimationFrame(run);
+        return;
+      }
+      view.focus();
+      view.dispatch({
+        selection: { anchor: view.state.doc.length },
+        scrollIntoView: true,
+      });
+      closeCompletion(view);
+    };
+    requestAnimationFrame(run);
+  }, []);
+
+  // A valid AI text runs in the preview, like a diff does.
+  const reportGenerated = useCallback(
+    (source: string, name?: string) => {
+      const clause = compileSource(source);
+      if (clause != null) {
+        onGenerated?.({ source, clause, name: name || undefined });
+      }
+    },
+    [compileSource, onGenerated],
+  );
+
   const proposeSource = useCallback(
     async (source: string, name?: string) => {
       const formatted = await formatProposedSource(source);
@@ -342,16 +386,29 @@ export function Editor(props: EditorProps) {
           onAcceptName?.(name.trim());
         }
         acceptSource(formatted);
+        reportGenerated(formatted, name?.trim());
       }
-      requestAnimationFrame(() => ref.current?.view?.focus());
+      focusEnd(formatted);
     },
-    [formatProposedSource, acceptSource, onAcceptName],
+    [
+      formatProposedSource,
+      acceptSource,
+      onAcceptName,
+      focusEnd,
+      reportGenerated,
+    ],
   );
 
   // Text from a fix that the user already chose: no diff to confirm it.
   const applySource = useCallback(
-    async (source: string) => acceptSource(await formatProposedSource(source)),
-    [acceptSource, formatProposedSource],
+    async (source: string) => {
+      const formatted = await formatProposedSource(source);
+      const result = acceptSource(formatted);
+      reportGenerated(formatted);
+      focusEnd(formatted);
+      return result;
+    },
+    [acceptSource, formatProposedSource, focusEnd, reportGenerated],
   );
 
   useReportProposal(proposal, compileSource, onProposalChange);
@@ -370,7 +427,8 @@ export function Editor(props: EditorProps) {
       onAcceptName?.(name);
     }
     acceptSource(proposal.source);
-  }, [proposal, acceptSource, onAcceptName]);
+    focusEnd(proposal.source);
+  }, [proposal, acceptSource, onAcceptName, focusEnd]);
 
   const handleRejectProposed = useCallback(() => {
     setProposal(null);
@@ -489,6 +547,16 @@ export function Editor(props: EditorProps) {
 
   const parameterHintsExtensions = useParameterHints();
 
+  useCaseCounts({
+    getView: getEditorView,
+    source,
+    query,
+    stageIndex,
+    expressionIndex,
+    expressionMode,
+    compile: compileSource,
+  });
+
   // A new list of extensions reconfigures the editor, which drops the fields
   // of an active snippet (CodeMirror adds their state with appendConfig). So
   // the list depends on the text only while the diff shows, and the text does
@@ -501,12 +569,14 @@ export function Editor(props: EditorProps) {
         ? [
             ...baseExtensions,
             ...parameterHintsExtensions,
+            caseCounts,
             unifiedMergeView({ original: diffOriginal, mergeControls: false }),
             ...diffControlsExtensions,
           ]
         : [
             ...baseExtensions,
             ...parameterHintsExtensions,
+            caseCounts,
             ...inlinePromptExtensions,
           ],
     [

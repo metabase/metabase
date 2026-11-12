@@ -36,6 +36,15 @@ export const EXPRESSION_SQL_FIXES_SETTING: BooleanPrototypeSetting = {
   defaultValue: true,
 };
 
+export const EXPRESSION_CASE_COUNTS_SETTING: BooleanPrototypeSetting = {
+  key: "expression-case-counts",
+  type: "boolean",
+  label: "Row counts of case branches in custom expressions",
+  description:
+    "Chips with the number of rows that each condition of a case() or if() matches. Each change runs a count query.",
+  defaultValue: true,
+};
+
 /**
  * The settings of the current prototype, in the order the prototype settings
  * submenu shows them. Each prototype branch lists its own settings here and
@@ -45,4 +54,5 @@ export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   EXPRESSION_PARAMETER_HINTS_SETTING,
   EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
   EXPRESSION_SQL_FIXES_SETTING,
+  EXPRESSION_CASE_COUNTS_SETTING,
 ];

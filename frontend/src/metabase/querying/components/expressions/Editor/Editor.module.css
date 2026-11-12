@@ -161,6 +161,19 @@
   pointer-events: none;
 }
 
+/* The number of rows of a branch of a case(), after its condition. */
+.caseCount {
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background-color: var(--mb-color-background_page-highlighted);
+  color: var(--mb-color-text-brand-strong);
+  font-family: var(--mb-default-font-family);
+  font-size: 0.85em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 /* The argument names of a function that the user did not type into yet. */
 .editor :global(.cm-content .cm-snippetField) {
   font-style: normal;

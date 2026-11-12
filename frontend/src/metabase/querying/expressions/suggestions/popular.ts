@@ -3,6 +3,7 @@ import {
   completionStatus,
   startCompletion,
 } from "@codemirror/autocomplete";
+import type { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { t } from "ttag";
 
@@ -53,17 +54,24 @@ export function suggestPopular({
 export function openWhenEmpty() {
   return EditorView.updateListener.of((update) => {
     const { view, state } = update;
+    const canOpen = (state: EditorState) =>
+      view.hasFocus &&
+      state.doc.toString().trim() === "" &&
+      completionStatus(state) == null;
     if (
       (update.docChanged ||
         update.focusChanged ||
         update.startState.readOnly !== update.state.readOnly ||
         update.transactions.some((transaction) => transaction.reconfigured)) &&
-      view.hasFocus &&
-      state.doc.toString().trim() === "" &&
-      completionStatus(state) == null
+      canOpen(state)
     ) {
-      // A view cannot dispatch while it applies an update.
-      setTimeout(() => startCompletion(view));
+      // A view cannot dispatch while it applies an update. The text can
+      // change before then, for example when an AI text goes in.
+      setTimeout(() => {
+        if (canOpen(view.state)) {
+          startCompletion(view);
+        }
+      });
     }
   });
 }
