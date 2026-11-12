@@ -382,6 +382,30 @@
                         (deliver resume true)
                         (deref create 10000 nil))))))))))))))
 
+(deftest create-idempotency-retry-while-database-turns-provisioning-test
+  (testing "a same-key retry whose database turns provisioning right after the retry's first status query still gets 409, never the failed-create 500"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+         (let [{ws-id :id} (create-with-key 200 "retry-turns-provisioning" "Racing" db-id)
+               exists?     t2/exists?
+               advanced?   (atom false)]
+           ;; the first create has committed the row but not yet reached it
+           (t2/update! :model/WorkspaceDatabase {:workspace_id ws-id}
+                       {:status :unprovisioned :updated_at (t/offset-date-time)})
+           ;; the create's `provision-single!` commits `:provisioning` just after the retry's
+           ;; first WorkspaceDatabase status query
+           (with-redefs [t2/exists? (fn [model & args]
+                                      (let [result (apply exists? model args)]
+                                        (when (and (= :model/WorkspaceDatabase model)
+                                                   (compare-and-set! advanced? false true))
+                                          (t2/update! :model/WorkspaceDatabase {:workspace_id ws-id}
+                                                      {:status :provisioning}))
+                                        result))]
+             (is (=? {:error-code "workspace_busy"}
+                     (create-with-key 409 "retry-turns-provisioning" "Racing" db-id))))
+           (is (true? @advanced?) "the row advanced during the retry")))))))
+
 (deftest create-idempotency-retry-of-stale-workspace-test
   (testing "a retry whose workspace has only rows older than 15 minutes that are not provisioned answers the failed-create 500"
     (doseq [status [:provisioning :unprovisioned]]

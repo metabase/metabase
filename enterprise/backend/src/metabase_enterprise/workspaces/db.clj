@@ -196,24 +196,14 @@
   [workspace-id :- ms/PositiveInt]
   (t2/exists? :model/WorkspaceDatabase :workspace_id workspace-id :status [:not= :unprovisioned]))
 
-(mu/defn workspace-has-in-flight-databases?
-  "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is `:provisioning` or `:deprovisioning` and
-  was last updated after `since`."
+(mu/defn workspace-has-unfinished-databases-since?
+  "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is `:unprovisioned`, `:provisioning` or
+  `:deprovisioning` and was last updated after `since`."
   [workspace-id :- ms/PositiveInt
    since        :- (ms/InstanceOfClass java.time.OffsetDateTime)]
   (t2/exists? :model/WorkspaceDatabase
               :workspace_id workspace-id
-              :status       [:in [:provisioning :deprovisioning]]
-              :updated_at   [:> since]))
-
-(mu/defn workspace-has-unprovisioned-databases-since?
-  "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is `:unprovisioned` and was last updated
-  after `since`."
-  [workspace-id :- ms/PositiveInt
-   since        :- (ms/InstanceOfClass java.time.OffsetDateTime)]
-  (t2/exists? :model/WorkspaceDatabase
-              :workspace_id workspace-id
-              :status       :unprovisioned
+              :status       [:in [:unprovisioned :provisioning :deprovisioning]]
               :updated_at   [:> since]))
 
 (mu/defn database-has-workspace-databases?

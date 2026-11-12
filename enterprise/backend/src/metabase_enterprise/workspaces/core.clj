@@ -189,21 +189,10 @@
                     {:status-code 404 :workspace_id workspace-id}))))
 
 (def ^:private in-flight-stale-after
-  "How long after its last status change a `:provisioning` or `:deprovisioning`
-  row still counts as in flight. An older one is treated as left behind by a
+  "How long after its last status change an `:unprovisioned`, `:provisioning` or
+  `:deprovisioning` row still counts as in flight. An older one is treated as left behind by a
   crashed instance."
   (t/minutes 15))
-
-(defn- assert-workspace-not-busy
-  "Refuse (409, error code `workspace_busy`) while a create or deprovision is still
-  running on any of the workspace's databases."
-  [workspace-id]
-  (when (ws.db/workspace-has-in-flight-databases? workspace-id
-                                                  (t/minus (t/offset-date-time) in-flight-stale-after))
-    (throw (ex-info "Workspace is busy: a create or deprovision is still running on one of its databases. Retry once it finishes."
-                    {:status-code  409
-                     :error-code   "workspace_busy"
-                     :workspace_id workspace-id}))))
 
 (defn- assert-database-exists [database-id]
   (or (ws.db/database database-id)
@@ -311,14 +300,16 @@
         {:retried ws-id}
         (throw t)))))
 
-(defn- assert-create-not-pending
+(defn- assert-create-not-running
   "Refuse (409, error code `workspace_busy`) while a database of workspace `ws-id` is
-  `:unprovisioned` and changed within [[in-flight-stale-after]]. A create commits all
-  its rows `:unprovisioned`, then provisions them one at a time, so such a row means
-  that the create has not yet reached that database."
+  `:unprovisioned`, `:provisioning` or `:deprovisioning` and changed within
+  [[in-flight-stale-after]]. A create commits all its rows `:unprovisioned`, then
+  provisions them one at a time. One query checks all three statuses: with one query
+  per status, a row that moves from `:unprovisioned` to `:provisioning` between the
+  queries is seen by neither."
   [ws-id]
-  (when (ws.db/workspace-has-unprovisioned-databases-since? ws-id
-                                                            (t/minus (t/offset-date-time) in-flight-stale-after))
+  (when (ws.db/workspace-has-unfinished-databases-since? ws-id
+                                                         (t/minus (t/offset-date-time) in-flight-stale-after))
     (throw (ex-info "A create with this idempotency key is still running. Retry once it finishes."
                     {:status-code  409
                      :error-code   "workspace_busy"
@@ -334,8 +325,7 @@
   stopped (a crash) more than [[in-flight-stale-after]] ago. The key stays taken
   until the workspace is deleted."
   [ws-id]
-  (assert-workspace-not-busy ws-id)
-  (assert-create-not-pending ws-id)
+  (assert-create-not-running ws-id)
   (let [ws (workspace/get-workspace ws-id)]
     (when (or (empty? (:databases ws))
               (not-every? #(= :provisioned (:status %)) (:databases ws)))
