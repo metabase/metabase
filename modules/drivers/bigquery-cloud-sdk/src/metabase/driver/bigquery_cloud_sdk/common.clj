@@ -91,6 +91,8 @@
   (case (:auth-mode details)
     ;; default here if auth-mode isn't set for backwards-compatibility
     ("service-account" nil) (service-account-json->service-account-credential service-account-json)
+    ;; this is currently disabled in metabase-plugin.yaml because we haven't been
+    ;; able to confirm it actually works.
     "credential-config" (credential-config-json->credentials credential-config-json)
     "application-default" (application-default-credentials)))
 

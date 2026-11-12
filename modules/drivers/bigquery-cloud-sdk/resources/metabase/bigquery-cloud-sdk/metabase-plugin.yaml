@@ -25,7 +25,9 @@ driver:
       required: true
       options:
         - {name: "Service Account JSON", value: "service-account"}
-        - {name: "Credential configuration file", value: "credential-config"}
+        # Disabled this for now as we haven't been able to successfully test it.
+        # If we can confirm it's working, we can bring it back.
+        # - {name: "Credential configuration file", value: "credential-config"}
         - {name: "Application Default Credentials", value: "application-default"}
     - name: service-account-json
       display-name: Service account JSON file
@@ -33,12 +35,12 @@ driver:
       visible-if:
         auth-mode: service-account
       type: textFile
-    - name: credential-config-json
-      display-name: Credential configuration file
-      helper-text: Workload Identity Federation configuration from `gcloud iam workload-identity-pools create-cred-config`.
-      visible-if:
-        auth-mode: credential-config
-      type: textFile
+    # - name: credential-config-json
+    #   display-name: Credential configuration file
+    #   helper-text: Workload Identity Federation configuration from `gcloud iam workload-identity-pools create-cred-config`.
+    #   visible-if:
+    #     auth-mode: credential-config
+    #   type: textFile
     - name: dataset-filters
       type: schema-filters
       display-name: Datasets
