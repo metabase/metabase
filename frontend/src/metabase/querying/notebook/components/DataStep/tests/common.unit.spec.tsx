@@ -280,7 +280,11 @@ describe("DataStep", () => {
         collection: createMockCollection(ROOT_COLLECTION),
         dashboard:
           card.dashboard_id != null
-            ? { id: card.dashboard_id, name: "Orders in a dashboard" }
+            ? {
+                id: card.dashboard_id,
+                name: "Orders in a dashboard",
+                moderation_status: null,
+              }
             : null,
       }),
     );

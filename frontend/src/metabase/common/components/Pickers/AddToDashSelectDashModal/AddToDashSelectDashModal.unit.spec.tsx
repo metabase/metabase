@@ -677,69 +677,58 @@ describe("AddToDashSelectDashModal search", () => {
     collection_id: null,
   });
 
-  const createDashboardSearchResults = (
+  type DashboardFixture = { id: number; name: string; collection: Collection };
+
+  const createDashboardFixtures = (
     namePrefix: string,
     collection: Collection,
     firstId: number,
-  ) =>
-    ["1", "2"].map((suffix, index) =>
-      createMockSearchResult({
-        id: firstId + index,
-        name: `${namePrefix} ${suffix}`,
-        model: "dashboard",
-        can_write: true,
-        collection,
-      }),
-    );
+  ): DashboardFixture[] =>
+    ["1", "2"].map((suffix, index) => ({
+      id: firstId + index,
+      name: `${namePrefix} ${suffix}`,
+      collection,
+    }));
 
-  const SEARCH_RESULTS = [
-    ...createDashboardSearchResults(
-      "Root dashboard",
-      ROOT_WITH_WRITE_ACCESS,
-      100,
-    ),
-    ...createDashboardSearchResults("Regular dashboard", FIRST_COLLECTION, 200),
-    ...createDashboardSearchResults(
+  const DASHBOARDS = [
+    ...createDashboardFixtures("Root dashboard", ROOT_WITH_WRITE_ACCESS, 100),
+    ...createDashboardFixtures("Regular dashboard", FIRST_COLLECTION, 200),
+    ...createDashboardFixtures(
       "Normal personal dashboard",
       NORMAL_PERSONAL_COLLECTION,
       300,
     ),
   ];
 
-  const ADMIN_SEARCH_RESULTS = [
-    ...createDashboardSearchResults(
+  const ADMIN_DASHBOARDS = [
+    ...createDashboardFixtures(
       "Admin personal dashboard",
       ADMIN_PERSONAL_COLLECTION,
       400,
     ),
-    ...createDashboardSearchResults(
+    ...createDashboardFixtures(
       "Normal personal dashboard",
       NORMAL_PERSONAL_COLLECTION,
       300,
     ),
-    ...createDashboardSearchResults(
+    ...createDashboardFixtures(
       "No collection personal dashboard",
       NO_COLLECTION_PERSONAL_COLLECTION,
       500,
     ),
   ];
 
-  const toCollectionItem = (result: SearchResult) =>
-    createMockCollectionItem({
-      id: result.id,
-      name: result.name,
-      model: result.model,
-      can_write: true,
-    });
+  const toCollectionItem = ({ id, name }: DashboardFixture) =>
+    createMockCollectionItem({ id, name, model: "dashboard", can_write: true });
 
   type SearchSetupOpts = {
     currentUser?: User;
-    searchResults?: SearchResult[];
+    dashboards?: DashboardFixture[];
   };
 
   const setupSearch = async ({
     currentUser = NORMAL_USER,
-    searchResults = SEARCH_RESULTS,
+    dashboards = DASHBOARDS,
   }: SearchSetupOpts = {}) => {
     process.env.OVERSCAN = "20";
     mockGetBoundingClientRect();
@@ -774,13 +763,25 @@ describe("AddToDashSelectDashModal search", () => {
                 }),
               ]
             : []),
-          ...searchResults
-            .filter((result) => result.collection.id === collection.id)
+          ...dashboards
+            .filter((dashboard) => dashboard.collection.id === collection.id)
             .map(toCollectionItem),
         ],
       }),
     );
-    setupSearchEndpoints(searchResults, undefined, { filterByScope: true });
+    setupSearchEndpoints(
+      dashboards.map(({ id, name, collection }) =>
+        createMockSearchResult({
+          id,
+          name,
+          model: "dashboard",
+          can_write: true,
+          collection,
+        }),
+      ),
+      undefined,
+      { filterByScope: true },
+    );
     fetchMock.get("path:/api/user/recipients", { data: [] });
 
     const onChangeLocation = jest.fn();
@@ -881,7 +882,7 @@ describe("AddToDashSelectDashModal search", () => {
   it("should only search everywhere from all personal collections", async () => {
     await setupSearch({
       currentUser: ADMIN_USER,
-      searchResults: ADMIN_SEARCH_RESULTS,
+      dashboards: ADMIN_DASHBOARDS,
     });
 
     await userEvent.click(await screen.findByText("All personal collections"));
