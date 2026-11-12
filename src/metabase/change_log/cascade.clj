@@ -57,8 +57,10 @@
 
 (def ^:private foreign-keys*
   (mdb/memoize-for-application-db
-   (fn [table->pk]
-     (to-logged-tables (cascades (change-log.db/foreign-keys)) table->pk))))
+   ;; cached by the hook's descendants, so that a model that loads later gets a new entry
+   (fn [_descendants]
+     (to-logged-tables (cascades (change-log.db/foreign-keys))
+                       (update-vals (logged-models) #(first (t2/primary-keys %)))))))
 
 (defn foreign-keys
   "The cascade and set-null foreign keys that lead to the tables of the [[logged-models]], by the table they
@@ -69,7 +71,7 @@
 
   `:child-pk` is nil for a child that is not logged."
   []
-  (foreign-keys* (update-vals (logged-models) #(first (t2/primary-keys %)))))
+  (foreign-keys* (descendants :hook/change-log)))
 
 (defn referenced-columns
   "The columns of `table-name` that the [[foreign-keys]] `fks` point to."
