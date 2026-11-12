@@ -1192,6 +1192,18 @@
           updated (#'agent/extract-queries memory parts)]
       (is (empty? (:queries (memory/get-state updated)))))))
 
+(deftest extract-charts-uses-the-query-memory-holds-test
+  (testing "a chart shows the query memory holds under its id, as edited later in the same response"
+    (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          edited (lib/query meta/metadata-provider (meta/table-metadata :products))
+          parts  [{:type     :tool-output
+                   :id       "t1"
+                   :function "create_chart"
+                   :result   {:structured-output {:chart-id "c-456" :query-id "q-123" :query query :chart-type :bar}}}]
+          memory {:state {:queries {"q-123" edited} :charts {}}}]
+      (is (= [edited]
+             (get-in (memory/get-state (#'agent/extract-charts memory parts)) [:charts "c-456" :queries]))))))
+
 (deftest extract-charts-test
   (testing "extracts charts from tool output parts"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))

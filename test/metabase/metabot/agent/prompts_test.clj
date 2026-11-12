@@ -356,7 +356,9 @@
       (doseq [template ["natural-language-querying-only.selmer" "natural-language-querying-fallback.selmer"]]
         (testing template
           (is (str/includes? (render template {"write_dashboard" nil})
-                             (str "\n- Dashboards: create, edit and trash them with `write_dashboard`. Changes save"
-                                  " immediately, so don't ask the user to confirm them.\n- SQL queries:")))
+                             (str "\n- Dashboards: create, edit and trash them with `write_dashboard`. Build all of a"
+                                  " new dashboard's charts in a single response, one tool call per chart, since each"
+                                  " response is a step and a turn has a limited number. Changes save immediately, so"
+                                  " don't ask the user to confirm them.\n- SQL queries:")))
           (is (str/includes? (render template {})
                              "\n- Dashboards: direct the user to the dashboard builder.\n- SQL queries:")))))))
