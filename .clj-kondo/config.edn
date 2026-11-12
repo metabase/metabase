@@ -63,6 +63,7 @@
   :metabase/check-def-no-underscores                         {:level :warning}
   :metabase/check-me-humanize                                {:level :warning}
   :metabase/check-testing-not-empty                          {:level :warning}
+  :metabase/collection-permission-check                      {:level :error}
   :metabase/component-handle-own-key                         {:level :warning}
   :metabase/defsetting-must-specify-export                   {:level :warning}
   :metabase/defsetting-namespace                             {:level :warning}
@@ -654,6 +655,8 @@
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase-enterprise.transforms-python.drivers-test/with-test-table                                                        hooks.common/with-two-bindings
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
+   metabase.api.common/read-check                                                                                            hooks.metabase.collections.permission-check/lint-permission-check
+   metabase.api.common/write-check                                                                                           hooks.metabase.collections.permission-check/lint-permission-check
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
    metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations!
    metabase.channel.render.js.pool/with-static-viz-context                                                                   hooks.common/with-one-top-level-binding
@@ -743,6 +746,8 @@
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
    metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
    metabase.model-persistence.test-util/with-persistence-enabled!                                                            hooks.metabase.model-persistence.test-util/with-persistence-enabled!
+   metabase.models.interface/can-read?                                                                                       hooks.metabase.collections.permission-check/lint-permission-check
+   metabase.models.interface/can-write?                                                                                      hooks.metabase.collections.permission-check/lint-permission-check
    metabase.mq.core/with-queue                                                                                               hooks.common/let-second
    metabase.mq.test-util/with-test-mq                                                                                        hooks.common/with-one-binding
    metabase.mq.core/def-listener!                                                                                            hooks.metabase.mq.impl/def-listener
