@@ -4,7 +4,7 @@
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
    [metabase.test :as mt]

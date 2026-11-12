@@ -36,7 +36,7 @@
 
 (defenterprise enforced-sandboxes-for-user
   "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is cached
-  for the duration of a request in [[metabase.permissions.models.data-permissions/*sandboxes-for-user*]].
+  for the duration of a request in [[metabase.permissions.data-permissions/*sandboxes-for-user*]].
 
   WARNING: This should NOT be used directly for sandboxing enforcement. Use `*sandboxes-for-user*` or
   `enforced-sandboxes-for-tables` below, so that the cache is used."

@@ -21,7 +21,7 @@
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.oauth-server.test-util :as oauth-server.tu]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]

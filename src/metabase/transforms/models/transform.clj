@@ -66,13 +66,13 @@
   (or (not (transforms-base.u/native-query-transform? instance))
       (and source-db-id
            (= :query-builder-and-native
-              (perms/full-database-permission-for-user api/*current-user-id* :perms/create-queries source-db-id)))))
+              (perms/every-table-in-database-permission-for-user api/*current-user-id* :perms/create-queries source-db-id)))))
 
 (mu/defn- transform-database-permissions? :- :boolean
   [instance :- ::instance]
   (let [source-db-id (or (transforms-base.i/source-db-id instance) (:source_database_id instance))
         target-db-id (transforms-base.i/target-db-id instance)]
-    (every? #(perms/has-db-transforms-permission? api/*current-user-id* %)
+    (every? #(perms/user-has-transforms-permission-for-database? api/*current-user-id* %)
             (distinct (keep identity [source-db-id target-db-id])))))
 
 (mu/defn- transform-writable? :- [:maybe :boolean]
@@ -126,7 +126,7 @@
 (defmethod mi/can-create? :model/Transform
   [_model instance]
   ;; Inline can-write? logic since instance is a plain map without model metadata.
-  ;; can-write? requires: not a read-only remote sync instance, can-read? and has-db-transforms-permission?
+  ;; can-write? requires: not a read-only remote sync instance, can-read? and user-has-transforms-permission-for-database?
   ;; can-read? requires: is-superuser? OR (entitled-data-analyst? AND source-tables-readable?)
   (and (not (remote-sync/read-only?))
        (transforms.u/check-feature-enabled (transforms.u/->definition instance))

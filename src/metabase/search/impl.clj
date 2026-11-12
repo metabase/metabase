@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -81,8 +82,8 @@
   (let [user-id (:current-user-id search-ctx)
         db-id   (:database_id instance)]
     (and
-     (= :query-builder-and-native (perms/full-database-permission-for-user user-id :perms/create-queries db-id))
-     (= :unrestricted (perms/full-database-permission-for-user user-id :perms/view-data db-id)))))
+     (= :query-builder-and-native (perms/every-table-in-database-permission-for-user user-id :perms/create-queries db-id))
+     (= :unrestricted (perms/every-table-in-database-permission-for-user user-id :perms/view-data db-id)))))
 
 (defmethod check-permissions-for-model :metric
   [search-ctx instance]
@@ -107,26 +108,6 @@
   (if (:archived? search-ctx)
     (can-write? search-ctx instance)
     (can-read? search-ctx instance)))
-
-(defn- prime-perms!
-  "Load the permissions that the per-result checks are about to read.
-
-  Only the `table` and `indexed-entity` methods of [[check-permissions-for-model]] consult them; the rest are answered
-  in SQL or from the collection. A `table` result is checked with `can-query?`, which reads both the table's own grant
-  and its database's, so this primes the table cache -- which covers the database cache too. `indexed-entity` needs
-  only the database half.
-
-  Results are consumed as a stream, so there is no point at which the databases they span are known -- and a search
-  ranges over all of them anyway, so prime every database. Passing only `:db-ids` is what makes that affordable: the
-  table cache holds `data_permissions` rows with a `table_id`, so the load is bounded by how many table-level grants
-  the user's groups actually have, not by how many tables exist.
-
-  Destination databases are skipped -- they are reachable only through their router and never carry
-  `data_permissions` rows of their own, so priming them would just widen the load for nothing."
-  [search-ctx]
-  (when (and (not (:is-superuser? search-ctx))
-             (some #{"table" "indexed-entity"} (:models search-ctx)))
-    (perms/prime-table-perms-cache {:db-ids (search.db/non-destination-database-ids)})))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."
@@ -436,6 +417,23 @@
         ;; key instead — one extra query per result row.
         (cond-> (t2/instance-of? :model/Card instance) (assoc :document_id nil)))))
 
+(def ^:private permission-check-batch-size
+  "How many results are permission-checked together, so that one load answers the Tables among them."
+  500)
+
+(defn- register-result-rows!
+  "Remembers the Tables and Databases of `results`, so that checking one of them answers them all, and returns the
+  results."
+  [results]
+  (run! (fn [{:keys [model id database_id]}]
+          (case model
+            "table"    (models.cache/register-loaded! :model/Table id)
+            "database" (models.cache/register-loaded! :model/Database id)
+            nil)
+          (models.cache/register-loaded! :model/Database database_id))
+        results)
+  results)
+
 (defn check-result-permissions
   "Run the post-query permission check on a single raw engine result map (the rehydrated shape an engine's
   `results` produces). Returns a boolean. Public for the search debug API."
@@ -526,12 +524,13 @@
   Hydration is the expensive part, so it should only ever run on the rows actually returned.
   Pass the result to [[search-results]] for the API response shape; [[search]] composes the two."
   [search-ctx :- SearchContext]
-  (prime-perms! search-ctx)
   (let [reducible-results (search.engine/results search-ctx)
         scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
         xf                (comp
                            (take search.config/*db-max-results*)
                            (map normalize-result)
+                           (partition-all permission-check-batch-size)
+                           (mapcat register-result-rows!)
                            (filter (partial check-permissions-for-model search-ctx))
                            (map (partial normalize-result-more search-ctx))
                            (keep #(search.engine/score scoring-ctx %)))]

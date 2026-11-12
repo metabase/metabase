@@ -50,7 +50,6 @@
   (perms/check-has-application-permission :monitoring)
   (let [db-ids (model-persistence.db/persisted-database-ids)
         writable-db-ids (when (seq db-ids)
-                          (perms/prime-database-perms-cache {:db-ids db-ids})
                           (->> (model-persistence.db/databases db-ids)
                                (filter mi/can-write?)
                                (map :id)

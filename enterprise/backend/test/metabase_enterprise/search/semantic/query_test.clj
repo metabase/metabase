@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.search.semantic.index :as semantic.index]
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]

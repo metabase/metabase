@@ -1,7 +1,7 @@
 (ns metabase.permissions.user
   (:require
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
-   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.path :as permissions.path]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -40,7 +40,7 @@
   "Returns a map with `:can-create-queries` and `:can-create-native-queries` for the given user,
    based on their create-queries permissions across all databases."
   [user-id]
-  (let [best (data-perms/most-permissive-database-permission-for-user user-id :perms/create-queries)]
+  (let [best (data-perms/some-table-permission-for-user user-id :perms/create-queries)]
     {:can-create-queries        (boolean
                                  (or (data-perms/at-least-as-permissive? :perms/create-queries best :query-builder)
                                      (published-tables/user-has-any-published-table-permission?)))

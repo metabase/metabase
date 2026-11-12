@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]

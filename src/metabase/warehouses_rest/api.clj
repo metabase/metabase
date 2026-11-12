@@ -61,7 +61,6 @@
   "Hydrate tables for each database. An optional `can-query?` filter keeps only the tables the user can query."
   [dbs & {:keys [can-query?]}]
   (let [all-tables (warehouses-rest.db/active-visible-tables-for-databases (map :id dbs))
-        _ (perms/prime-table-perms-cache {:db-ids (into #{} (map :id) dbs)})
         filtered-tables (cond->> (filter mi/can-read? all-tables)
                           can-query?          (filter mi/can-query?))
         db-id->tables (group-by :db_id filtered-tables)]
@@ -83,7 +82,6 @@
                          (fn [m {:keys [db_id schema]}]
                            (update m db_id (fnil conj []) schema))
                          {} rows)]
-      (perms/prime-schema-perms-cache {:db-ids db-ids})
       (for [db dbs]
         (let [db-id       (:id db)
               raw-schemas (get schemas-by-db db-id [])
@@ -112,7 +110,7 @@
     (assoc db
            :native_permissions
            (if (= :query-builder-and-native
-                  (perms/full-database-permission-for-user
+                  (perms/every-table-in-database-permission-for-user
                    api/*current-user-id*
                    :perms/create-queries
                    (u/the-id db)))
@@ -189,9 +187,7 @@
                                         filter-on-router-database-id))
         dbs (warehouses-rest.db/databases-where api/*current-user-id* (mi/superuser?) api/*is-data-analyst?*
                                                 filter-by-data-access? filter-on-router-database-id
-                                                include-analytics? include-stubs?)
-        ;; everything below walks the list one database at a time
-        _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
+                                                include-analytics? include-stubs?)]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query?)
       include-schemas?             add-schemas
@@ -396,7 +392,6 @@
                ((if skip-fields?
                   #(t2/hydrate % [:tables :segments :metrics])
                   #(t2/hydrate % [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics]))))
-        _ (perms/prime-table-perms-cache {:db-ids #{id}})
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -585,7 +580,6 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (warehouses/get-database id)
-  (perms/prime-table-perms-cache {:db-ids #{id}})
   (let [fields (filter mi/can-read? (-> (warehouses-rest.db/non-sensitive-fields-for-tables (warehouses-rest.db/table-ids-for-database id))
                                         (t2/hydrate :table)))]
     (for [{:keys [id name display_name table table_id base_type semantic_type]} fields]
@@ -1130,7 +1124,7 @@
                     [:id ms/PositiveInt]]]
   (let [db (warehouses/get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
-                       (perms/has-db-transforms-permission? api/*current-user-id* (:id db))
+                       (perms/user-has-transforms-permission-for-database? api/*current-user-id* (:id db))
                        (and (mi/can-write? db)
                             (mi/can-read? db))))
     (->> (driver.u/lib-database (:id db))

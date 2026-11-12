@@ -5,7 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.request.session :as session]
    [metabase.test :as mt]
    [toucan2.core :as t2]))

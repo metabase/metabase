@@ -121,7 +121,7 @@
      :else (or
             ;; Has query builder access
             (contains? #{:query-builder :query-builder-and-native}
-                       (perms/most-permissive-database-permission-for-user
+                       (perms/some-table-in-database-permission-for-user
                         api/*current-user-id*
                         :perms/create-queries
                         database-id))
@@ -132,7 +132,7 @@
              :yes
              database-id)
             ;; Has manage-table-metadata permission for any table in the database
-            (= :yes (perms/most-permissive-database-permission-for-user
+            (= :yes (perms/some-table-in-database-permission-for-user
                      api/*current-user-id*
                      :perms/manage-table-metadata
                      database-id))
@@ -153,7 +153,7 @@
      :else (or
             ;; Has query builder access
             (contains? #{:query-builder :query-builder-and-native}
-                       (perms/most-permissive-database-permission-for-user
+                       (perms/some-table-in-database-permission-for-user
                         api/*current-user-id*
                         :perms/create-queries
                         database-id))

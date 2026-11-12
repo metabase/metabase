@@ -5,7 +5,7 @@
    [metabase.api.response :as api.response]
    [metabase.driver.util :as driver.util]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]

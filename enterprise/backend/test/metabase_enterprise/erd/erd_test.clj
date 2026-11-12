@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util :as u]))
 

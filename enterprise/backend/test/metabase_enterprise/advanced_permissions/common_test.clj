@@ -4,7 +4,7 @@
    [metabase-enterprise.advanced-permissions.common :as advanced-permissions.common]
    [metabase-enterprise.impersonation.util-test :as advanced-perms.api.tu]
    [metabase.driver :as driver]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -1045,7 +1045,7 @@
                          "uploaded table in the granted schema must stay :unrestricted")
                      (testing "so the user's effective schema permission stays :unrestricted and they can upload again"
                        (is (= :unrestricted
-                              (data-perms/full-schema-permission-for-user
+                              (data-perms/every-table-in-schema-permission-for-user
                                (mt/user->id :rasta) :perms/view-data db-id uploaded-schema)))))))))))))))
 
 (deftest update-csv-data-perms-test

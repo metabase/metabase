@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.request.session :as session]
    [metabase.test :as mt]
    [metabase.util.json :as json]

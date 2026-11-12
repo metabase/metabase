@@ -54,7 +54,7 @@
 
 (defn- database-unrestricted?
   [db-id]
-  (and (= :unrestricted (perms/full-database-permission-for-user api/*current-user-id* :perms/view-data db-id))
+  (and (= :unrestricted (perms/every-table-in-database-permission-for-user api/*current-user-id* :perms/view-data db-id))
        (not (perms/sandboxed-user-for-db? db-id))
        (let [{:keys [impersonation routing]} (perms/data-access-token {:database-id db-id :table-ids #{}})]
          (not (or impersonation routing)))))

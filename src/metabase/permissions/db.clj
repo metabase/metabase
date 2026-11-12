@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
   and transactions."
   (:require
+   [clojure.string :as str]
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -13,129 +14,177 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;;; --------------------------------------------- DataPermissions ---------------------------------------------
 
-(defn- perm-rows-query-base
-  "The FROM/JOIN/WHERE shared by every rank-rows query below: one user's groups' rows for every permission type,
-  excluding rows for deactivated tables. `db-ids` of nil means every database."
-  [user-id db-ids]
-  ^:allow-subquery {:from [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
-                    :join [[(t2/table-name :model/PermissionsGroup) :pg] [:= :pg.id :pgm.group_id]
-                           [(t2/table-name :model/DataPermissions) :p] [:= :p.group_id :pg.id]]
+(mr/def ::scope
+  "Which `perm-type` rows count, never those of inactive Tables: within `:db-id`, outside `:exclude-db-ids`, and of the
+  Database itself plus the Tables in one `:schema-name`, nil and the empty string being one schema."
+  [:map {:closed true}
+   [:db-id          {:optional true} ::lib.schema.id/database]
+   [:exclude-db-ids {:optional true} [:maybe [:sequential ::lib.schema.id/database]]]
+   [:schema-name    {:optional true} [:maybe :string]]])
+
+(defn- scope-clauses
+  "The WHERE clauses for the `perm-type` rows in `scope` of `p` left-joined to its table `mt`, see [[::scope]]."
+  [perm-type {:keys [db-id exclude-db-ids] :as scope}]
+  [[:= :p.perm_type (u/qualified-name perm-type)]
+   [:or [:= :p.table_id nil] [:= :mt.active true]]
+   (when db-id
+     [:= :p.db_id db-id])
+   (when (seq exclude-db-ids)
+     [:not-in :p.db_id exclude-db-ids])
+   (when (contains? scope :schema-name)
+     [:or
+      [:= :p.table_id nil]
+      (if (str/blank? (:schema-name scope))
+        [:or [:= :p.schema_name nil] [:= :p.schema_name ""]]
+        [:= :p.schema_name (:schema-name scope)])])])
+
+(defn- user-group-ids-query
+  "The ids of the groups of the User with `user-id`."
+  [user-id]
+  ^:allow-subquery {:select [:group_id]
+                    :from   [(t2/table-name :model/PermissionsGroupMembership)]
+                    :where  [:= :user_id user-id]})
+
+(defn- user-rows-query
+  "The `perm-type` rows in `scope` of the User with `user-id`'s groups."
+  [user-id perm-type scope]
+  ^:allow-subquery {:from      [[(t2/table-name :model/DataPermissions) :p]]
                     :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
-                    :where [:and
-                            [:= :pgm.user_id user-id]
-                            (when (seq db-ids)
-                              [:in :p.db_id db-ids])
-                            [:or
-                             [:= :p.table_id nil]
-                             [:= :mt.active true]]]})
+                    :where     (into [:and [:in :p.group_id (user-group-ids-query user-id)]]
+                                     (scope-clauses perm-type scope))})
 
-(def ^:private value-rank-case
-  "A HoneySQL CASE expression mapping a data_permissions row's (perm_type, perm_value) to the value's rank in its
-  permission type's ordering — 0 = most permissive. MIN/MAX aggregates of this rank are what let SQL collapse
-  groups, tables and duplicate values."
-  (into [:case]
-        cat
-        (for [[perm-type {:keys [values]}] permissions.schema/data-permissions
-              [i v] (map-indexed vector values)]
-          [[:and
-            [:= :p.perm_type (u/qualified-name perm-type)]
-            [:= :p.perm_value (u/qualified-name v)]]
-           [:inline i]])))
+(mu/defn user-has-perm-value?
+  "Whether a `perm-type` row in `scope` of the User with `user-id`'s groups has exactly `perm-value`."
+  [user-id    :- [:maybe ::lib.schema.id/user]
+   perm-type  :- ::permissions.schema/data-permission-type
+   perm-value :- ::permissions.schema/data-permission-value
+   scope      :- ::scope]
+  (some? (t2/query-one (-> (user-rows-query user-id perm-type scope)
+                           (assoc :select [[[:inline 1] :one]]
+                                  :limit  [:inline 1])
+                           (update :where conj [:= :p.perm_value (u/qualified-name perm-value)])))))
 
-(def ^:private db-row-rank-case
-  "[[value-rank-case]] but only for database-level rows — NULL for rows that name a table, so MIN/MAX ignore them."
-  [:case [:= :p.table_id nil] value-rank-case :else nil])
-
-(def ^:private table-level-case
-  "0 for a database-level row, 1 for a table-level row."
-  [:case [:= :p.table_id nil] [:inline 0] :else [:inline 1]])
-
-(mu/defn database-permission-rank-rows
-  "For each `(perm-type, db-id)` of the DataPermissions rows of the User with `user-id`'s groups (narrowed to
-  `db-ids`, or every database when nil), the `[min max]` value rank pairs needed to reconstruct the `:database`,
-  `:every-table`, and `:any-table` whole-database permission values."
-  [user-id :- [:maybe ::lib.schema.id/user]
-   db-ids  :- [:maybe [:or [:set ::lib.schema.id/database] [:sequential ::lib.schema.id/database]]]]
-  (let [per-group (-> (perm-rows-query-base user-id db-ids)
-                      (assoc :select   [:p.perm_type :p.db_id :p.group_id
-                                        [[:min value-rank-case] :gmin]
-                                        [[:max value-rank-case] :gmax]
-                                        [[:min db-row-rank-case] :dbmin]
-                                        [[:max db-row-rank-case] :dbmax]]
-                             :group-by [:p.perm_type :p.db_id :p.group_id]))]
-    (t2/query {:select   [:i.perm_type :i.db_id
-                          [[:min :i.gmin] :any_mn]   [[:max :i.gmax] :any_mx]
-                          [[:min :i.gmax] :every_mn] [[:max :i.gmax] :every_mx]
-                          [[:min :i.dbmin] :db_mn]   [[:max :i.dbmax] :db_mx]]
-               :from     [[per-group :i]]
-               :group-by [:i.perm_type :i.db_id]})))
-
-(mu/defn schema-permission-rank-rows
-  "For each `(perm-type, db-id, schema-name, table-level)` of the DataPermissions rows of the User with `user-id`'s
-  groups (narrowed to `db-ids`, or every database when nil), the `[min max]` value rank pair."
-  [user-id :- ::lib.schema.id/user
-   db-ids  :- [:maybe [:sequential ::lib.schema.id/database]]]
-  (t2/query (assoc (perm-rows-query-base user-id db-ids)
-                   :select   [:p.perm_type :p.db_id :p.schema_name
-                              [table-level-case :table_level]
-                              [[:min value-rank-case] :mn]
-                              [[:max value-rank-case] :mx]]
-                   :group-by [:p.perm_type :p.db_id :p.schema_name table-level-case])))
-
-(mu/defn table-permission-rank-rows
-  "For each `(perm-type, db-id, table-id)` of the table-granular DataPermissions rows of the User with `user-id`'s
-  groups, the `[min max]` value rank pair. Scoped to `table-ids` when given (ignoring `db-ids`), otherwise to
-  `db-ids` (or every database when both are nil)."
+(mu/defn database-best-value-indexes :- [:sequential [:map [:db_id :int] [:i [:maybe :int]]]]
+  "The index in `values` of the first value that a `perm-type` row of the User with `user-id`'s groups holds on each of
+  the Databases with `db-ids`, probed in the order of `values`."
   [user-id   :- [:maybe ::lib.schema.id/user]
-   db-ids    :- [:maybe [:set ::lib.schema.id/database]]
-   table-ids :- [:maybe [:set ms/IntGreaterThanOrEqualToZero]]]
-  (t2/query (-> (perm-rows-query-base user-id (when-not (seq table-ids) db-ids))
-                (assoc :select   [:p.perm_type :p.db_id :p.table_id
-                                  [[:min value-rank-case] :mn]
-                                  [[:max value-rank-case] :mx]]
-                       :group-by [:p.perm_type :p.db_id :p.table_id])
-                (update :where conj [:not= :p.table_id nil])
-                (cond-> (seq table-ids) (update :where conj [:in :p.table_id table-ids])))))
+   perm-type :- ::permissions.schema/data-permission-type
+   values    :- [:sequential ::permissions.schema/data-permission-value]
+   db-ids    :- [:sequential ::lib.schema.id/database]]
+  (let [holds (fn [v]
+                [:exists (-> (user-rows-query user-id perm-type {})
+                             (assoc :select [[[:inline 1] :one]])
+                             (update :where conj [:= :p.db_id :d.id] [:= :p.perm_value (u/qualified-name v)]))])]
+    (t2/query {:select [[:d.id :db_id]
+                        [(into [:case] cat (for [[i v] (map-indexed vector values)] [(holds v) [:inline i]])) :i]]
+               :from   [[(t2/table-name :model/Database) :d]]
+               :where  [:in :d.id db-ids]})))
 
-(mu/defn schema-permission-rank-pair
-  "The `[min max]` value rank pair summarizing the DataPermissions rows of the User with `user-id`'s groups for
-  `perm-type` on the Database with `database-id`, restricted to rows naming the schema `schema-name` or no schema at
-  all (database-level rows), or nil when there are no matching rows."
-  [user-id     :- ::lib.schema.id/user
-   perm-type   :- [:or :keyword :string]
-   database-id :- ::lib.schema.id/database
-   schema-name :- [:maybe :string]]
-  (let [per-group (-> (perm-rows-query-base user-id [database-id])
-                      (assoc :select   [:p.group_id [[:max value-rank-case] :gmax]]
-                             :group-by [:p.group_id])
-                      (update :where conj [:= :p.perm_type (u/qualified-name perm-type)])
-                      (update :where conj [:or
-                                           [:= :p.table_id nil]
-                                           [:= :p.schema_name schema-name]]))]
-    (first (t2/query {:select [[[:min :i.gmax] :mn] [[:max :i.gmax] :mx]]
-                      :from   [[per-group :i]]}))))
+(defn- worst-rank-case
+  "A CASE giving the rank of the most restrictive `perm-type` value of the group `pgm` on the rows of `p` that match
+  `clauses`, probing values from the least permissive."
+  [perm-type clauses]
+  (let [has-value (fn [v]
+                    [:exists ^:allow-subquery
+                     {:select    [1]
+                      :from      [[(t2/table-name :model/DataPermissions) :p]]
+                      :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
+                      :where     (into [:and
+                                        [:= :p.group_id :pgm.group_id]
+                                        [:= :p.perm_value (u/qualified-name v)]]
+                                       clauses)}])]
+    (into [:case]
+          cat
+          (reverse (for [[i v] (map-indexed vector (-> permissions.schema/data-permissions perm-type :values))]
+                     [(has-value v) [:inline i]])))))
 
-(mu/defn table-permission-values-for-groups
-  "The set of `perm-type` values `group-ids` hold for the Table with `table-id` or for its whole Database."
-  [group-ids   :- [:set ms/PositiveInt]
-   perm-type   :- [:or :keyword :string]
-   database-id :- ::lib.schema.id/database
-   table-id    :- [:maybe ms/IntGreaterThanOrEqualToZero]]
-  (t2/select-fn-set :value :model/DataPermissions
-                    {:select [[:p.perm_value :value]]
-                     :from   [[:data_permissions :p]]
-                     :where  [:and
-                              [:in :p.group_id group-ids]
-                              [:= :p.perm_type perm-type]
-                              [:= :p.db_id database-id]
-                              [:or
-                               [:= :table_id table-id]
-                               [:= :table_id nil]]]}))
+(mu/defn most-restrictive-rank-pair :- [:map [:mn [:maybe :int]] [:mx [:maybe :int]]]
+  "The lowest and highest, across the User with `user-id`'s groups, of each group's most restrictive value rank among
+  its `perm-type` rows in `scope`."
+  [user-id   :- [:maybe ::lib.schema.id/user]
+   perm-type :- ::permissions.schema/data-permission-type
+   scope     :- ::scope]
+  (t2/query-one {:select [[[:min :i.worst] :mn] [[:max :i.worst] :mx]]
+                 :from   [[^:allow-subquery
+                           {:select [[(worst-rank-case perm-type (scope-clauses perm-type scope)) :worst]]
+                            :from   [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                            :where  [:= :pgm.user_id user-id]}
+                           :i]]}))
+
+(mu/defn database-most-restrictive-rank-pairs :- [:sequential [:map [:db_id :int] [:mn [:maybe :int]] [:mx [:maybe :int]]]]
+  "[[most-restrictive-rank-pair]] of the scope of each of the Databases with `db-ids`, probed for all of them at once."
+  [user-id   :- [:maybe ::lib.schema.id/user]
+   perm-type :- ::permissions.schema/data-permission-type
+   db-ids    :- [:sequential ::lib.schema.id/database]]
+  (t2/query {:select   [:i.db_id [[:min :i.worst] :mn] [[:max :i.worst] :mx]]
+             :from     [[^:allow-subquery
+                         {:select [[:d.id :db_id] [(worst-rank-case perm-type (conj (scope-clauses perm-type {}) [:= :p.db_id :d.id])) :worst]]
+                          :from   [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                          :join   [[(t2/table-name :model/Database) :d] [:in :d.id db-ids]]
+                          :where  [:= :pgm.user_id user-id]}
+                         :i]]
+             :group-by [:i.db_id]}))
+
+(defn- database-level-values-query
+  "The distinct Database and value of the database-level `perm-type` rows of the groups `group-ids-clause` selects on
+  the Databases with `db-ids`."
+  [group-ids-clause perm-type db-ids]
+  {:select-distinct [:p.db_id :p.perm_value]
+   :from            [[(t2/table-name :model/DataPermissions) :p]]
+   :where           [:and
+                     [:= :p.perm_type (u/qualified-name perm-type)]
+                     [:in :p.db_id db-ids]
+                     [:= :p.table_id nil]
+                     [:in :p.group_id group-ids-clause]]})
+
+(mu/defn user-database-level-values :- [:sequential [:map [:db_id :int] [:perm_value :string]]]
+  "The distinct Database and value of the database-level `perm-type` rows of the User with `user-id`'s groups on the
+  Databases with `db-ids`."
+  [user-id   :- [:maybe ::lib.schema.id/user]
+   perm-type :- ::permissions.schema/data-permission-type
+   db-ids    :- [:sequential ::lib.schema.id/database]]
+  (t2/query (database-level-values-query (user-group-ids-query user-id) perm-type db-ids)))
+
+(mu/defn groups-database-level-values :- [:sequential [:map [:db_id :int] [:perm_value :string]]]
+  "The distinct Database and value of the database-level `perm-type` rows of the groups with `group-ids` on the
+  Databases with `db-ids`."
+  [group-ids :- [:set ms/PositiveInt]
+   perm-type :- ::permissions.schema/data-permission-type
+   db-ids    :- [:sequential ::lib.schema.id/database]]
+  (t2/query (database-level-values-query group-ids perm-type db-ids)))
+
+(mu/defn user-table-level-values :- [:sequential [:map [:table_id :int] [:db_id :int] [:perm_value :string]]]
+  "The distinct Table, Database and value of the `perm-type` rows of the User with `user-id`'s groups on the active
+  Tables among `table-ids`."
+  [user-id   :- [:maybe ::lib.schema.id/user]
+   perm-type :- ::permissions.schema/data-permission-type
+   table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/query {:select-distinct [:p.table_id :mt.db_id :p.perm_value]
+             :from            [[(t2/table-name :model/DataPermissions) :p]]
+             :join            [[(t2/table-name :model/Table) :mt] [:and [:= :mt.id :p.table_id] [:= :mt.active true]]]
+             :where           [:and
+                               [:= :p.perm_type (u/qualified-name perm-type)]
+                               [:in :p.table_id table-ids]
+                               [:in :p.group_id (user-group-ids-query user-id)]]}))
+
+(mu/defn groups-table-level-values :- [:sequential [:map [:table_id :int] [:db_id :int] [:perm_value :string]]]
+  "The distinct Table, Database and value of the `perm-type` rows of the groups with `group-ids` on the Tables among
+  `table-ids`, active or not."
+  [group-ids :- [:set ms/PositiveInt]
+   perm-type :- ::permissions.schema/data-permission-type
+   table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/query {:select-distinct [:p.table_id :p.db_id :p.perm_value]
+             :from            [[(t2/table-name :model/DataPermissions) :p]]
+             :where           [:and
+                               [:= :p.perm_type (u/qualified-name perm-type)]
+                               [:in :p.table_id table-ids]
+                               [:in :p.group_id group-ids]]}))
 
 (mu/defn user-data-permissions
   "The permission type, group, value, database, and table of every DataPermissions row of the groups the User with
@@ -741,7 +790,7 @@
   "The ID, Database ID, schema, and data source of the Table with `table-id`.
 
   `:data_source` is included because new-table permission defaults branch on whether the table came from an upload;
-  see [[metabase.permissions.models.data-permissions/set-default-table-permissions!]]."
+  see [[metabase.permissions.data-permissions/set-default-table-permissions!]]."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :id :db_id :schema :data_source] :id table-id))
 

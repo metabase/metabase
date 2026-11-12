@@ -192,7 +192,7 @@
   [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)
-   (and (= (perms/full-database-permission-for-user *current-user-id* :perms/create-queries database-id)
+   (and (= (perms/every-table-in-database-permission-for-user *current-user-id* :perms/create-queries database-id)
            :query-builder-and-native)
         ;; the compiled SQL of a sandboxed user's query exposes the sandbox definition
         (not (perms/sandboxed-user-for-db? database-id)))))

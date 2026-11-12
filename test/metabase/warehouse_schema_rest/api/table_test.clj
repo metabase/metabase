@@ -14,7 +14,7 @@
    [metabase.events.core :as events]
    [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib.core :as lib]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]

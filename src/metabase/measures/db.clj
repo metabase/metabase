@@ -43,11 +43,6 @@
   []
   (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn table-database-ids
-  "The set of Database ids of the Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
-
 (mu/defn update-measure!
   "Apply `changes` to the Measure with `id`."
   [id      :- ::lib.schema.id/measure

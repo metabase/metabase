@@ -12,7 +12,7 @@
    [metabase.lib.test-util.notebook-helpers :as nb]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]

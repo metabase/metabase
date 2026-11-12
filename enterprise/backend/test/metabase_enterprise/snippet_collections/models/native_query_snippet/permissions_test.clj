@@ -7,7 +7,7 @@
    [metabase.collections.test-utils :as collections.tu]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]

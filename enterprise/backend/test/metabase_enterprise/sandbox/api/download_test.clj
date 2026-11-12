@@ -4,7 +4,7 @@
    [clojure.data.csv :as csv]
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util :as u]))
 

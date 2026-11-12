@@ -9,7 +9,7 @@
    [metabase.permissions-rest.api-test-util :as perm-test-util]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
