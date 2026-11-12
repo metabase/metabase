@@ -320,6 +320,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               version: '${{ inputs.version }}',
+              commit: '${{ inputs.commit }}',
               runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
             }).catch(console.error);
@@ -347,6 +348,7 @@ jobs:
         with:
           title: Pre-release tests for
           version: ${{ inputs.version }}
+          commit: ${{ inputs.commit }}
           needs: ${{ toJSON(needs) }}
           slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
           slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

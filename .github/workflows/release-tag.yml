@@ -8,6 +8,11 @@ on:
         description: Metabase version (e.g. v0.46.3)
         type: string
         required: true
+      commit:
+        description: Release commit SHA. It finds the Slack release thread.
+        type: string
+        required: false
+        default: ""
       tag_name:
         description: Tag name to apply to this release
         type: choice
@@ -31,6 +36,10 @@ on:
       version:
         type: string
         required: true
+      commit:
+        type: string
+        required: false
+        default: ""
       tag_name:
         type: string
         # options:
@@ -368,6 +377,7 @@ jobs:
         with:
           title: Setting the ${{ inputs.tag_name }} tag for
           version: ${{ inputs.version }}
+          commit: ${{ inputs.commit }}
           needs: ${{ toJSON(needs) }}
           slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
           slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

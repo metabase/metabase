@@ -12,12 +12,22 @@ on:
         description: 'Metabase version (e.g. v0.46.3)'
         type: string
         required: true
+      commit:
+        description: Release commit SHA. It finds the Slack release thread.
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
     inputs:
       version:
         description: 'Metabase version (e.g. v0.46.3)'
         type: string
         required: true
+      commit:
+        description: Release commit SHA. It finds the Slack release thread.
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -70,6 +80,7 @@ jobs:
       with:
         title: Milestone management for
         version: ${{ inputs.version }}
+        commit: ${{ inputs.commit }}
         level: warning
         slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
         slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
