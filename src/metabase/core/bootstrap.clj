@@ -2,6 +2,7 @@
   (:gen-class)
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.tools.cli :as cli]))
 
 (set! *warn-on-reflection* true)
@@ -26,6 +27,31 @@
 
 ;; ensure the [[clojure.tools.logging]] logger factory is the log4j2 version (slf4j is far slower and identified first)
 (System/setProperty "clojure.tools.logging.factory" "clojure.tools.logging.impl/log4j2-factory")
+
+(defn- use-bundled-truffle-resource!
+  "Set Truffle resource root `property` to `dir` if it holds `file` built for this jar's Truffle version. An explicit
+  -D wins. Must run before the first polyglot Engine is built."
+  [property dir file]
+  (when (and (nil? (System/getProperty property))
+             (.exists (io/file dir file)))
+    (let [version-file (io/file dir "VERSION")
+          dir-version  (when (.exists version-file) (str/trim (slurp version-file)))
+          jar-version  (some-> (io/resource "META-INF/graalvm/org.graalvm.truffle/version") slurp str/trim)]
+      (if (and jar-version (= jar-version dir-version))
+        (System/setProperty property dir)
+        ;; logging isn't set up yet
+        (.println System/err (format "Not using %s: it was built for Truffle %s, but metabase.jar has %s"
+                                     dir dir-version jar-version))))))
+
+;; The Alpine image ships a musl build of the static-viz JS isolate, see bin/docker/js-isolate.
+(let [arch (System/getProperty "os.arch")]
+  ;; only a musl JVM can load it
+  (when (.exists (io/file (str "/lib/ld-musl-" (get {"amd64" "x86_64"} arch arch) ".so.1")))
+    (use-bundled-truffle-resource! (str "polyglot.engine.resourcePath.engine.js-isolate-linux-" arch)
+                                   "/app/js-isolate" "libpolyglotisolate.so"))
+  ;; otherwise unpacked into $HOME/.cache, which may not be writable
+  (use-bundled-truffle-resource! "polyglot.engine.resourcePath.engine.libtruffleattach"
+                                 "/app/truffle-attach" "bin/libtruffleattach.so"))
 
 ;;; ===========================================================================
 ;;; Standalone modes

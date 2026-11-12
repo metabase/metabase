@@ -115,6 +115,25 @@
         (.dispose ^Pool pool :test worker))
       (is (thrown? Exception (with-worker pool identity)) "Generator failure should propagate"))))
 
+(deftest pool-recovers-from-generator-errors-test
+  (testing "A generator throwing an Error (not an Exception) doesn't leave the pool counting a worker it never got"
+    (let [attempts (atom 0)
+          pool     (u.pool/create-pool (fn []
+                                         (when (= 1 (swap! attempts inc))
+                                           (throw (UnsatisfiedLinkError. "native library failed to load")))
+                                         (mock-worker @attempts))
+                                       (fn [_worker])
+                                       {:max-size 1, :idle-minutes 1})]
+      (is (thrown-with-msg? Exception #"native library failed to load" (with-worker pool identity))
+          "The generator's error propagates from acquire")
+      (let [acquisition (future (with-worker pool identity))]
+        (try
+          (let [worker (deref acquisition 5000 ::timed-out)]
+            (when (is (not= ::timed-out worker) "The next acquire doesn't block forever")
+              (is (= 2 (:worker-id worker)) "The next acquire generates a fresh worker")))
+          (finally
+            (future-cancel acquisition)))))))
+
 ;;; ------------------------------------------- Concurrent Access Tests ----------------------------------------------
 
 (deftest pool-handles-concurrent-access-safely-test
