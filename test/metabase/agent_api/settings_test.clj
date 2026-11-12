@@ -30,8 +30,8 @@
       (is (thrown-with-msg? Exception #"agent-api-enabled\? has been removed"
                             (setting/get :agent-api-enabled?)))
       (testing "through the API: an admin gets the message, any other user the generic 403"
-        (is (=? {:message #"agent-api-enabled\? has been removed.*"}
-                (mt/user-http-request :crowberto :get 500 "setting/agent-api-enabled%3F")))
+        (is (=? #"agent-api-enabled\? has been removed.*"
+                (mt/user-http-request :crowberto :get 410 "setting/agent-api-enabled%3F")))
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 "setting/agent-api-enabled%3F")))))))
 

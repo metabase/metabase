@@ -20,8 +20,8 @@ summary: Breaking changes to the Metabase API, listed by release.
   - `PUT /api/setting/:key` with the key `agent-api-enabled?`, and `PUT /api/setting` with that key, still answer
     an admin with `204 No Content`. They store nothing, and the server log says to use
     `deprecated-agent-api-enabled?`.
-  - `GET /api/setting/:key` with the key `agent-api-enabled?` answers an admin with `500 Internal Server Error` and
-    any other user with `403 Forbidden`.
+  - `GET /api/setting/:key` with the key `agent-api-enabled?` answers an admin with `410 Gone` and the
+    removal message, and any other user with `403 Forbidden`.
   - The environment variable `MB_AGENT_API_ENABLED` is ignored. An `agent-api-enabled?` key in a config file stores
     nothing and logs the same message. An instance that held the Agent API off with `MB_AGENT_API_ENABLED=false`
     holds it off with `MB_DEPRECATED_AGENT_API_ENABLED=false` instead: the environment variable takes precedence
