@@ -11,13 +11,12 @@ import {
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
-  setupListSubscriptionsEndpoint,
-  setupNotificationChannelsEndpoints,
+  setupRevisionsEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
-  setupUserRecipientsEndpoint,
+  setupUserEndpoints,
 } from "__support__/server-mocks";
-import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import { createMockDashboardState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
@@ -29,26 +28,25 @@ import {
   waitForDashboardToLoad,
 } from "__support__/ui";
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
+import { setSidebar } from "metabase/dashboard/actions";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { getIsSharing } from "metabase/dashboard/selectors";
+import { dashboardSaved } from "metabase/metabot/state";
 import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DashboardId } from "metabase-types/api";
 import {
   createMockCard,
-  createMockChannel,
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
-  createMockDashboardCard,
   createMockDashboardQueryMetadata,
-  createMockDashboardSubscription,
   createMockDatabase,
-  createMockDataset,
   createMockHeadingDashboardCard,
   createMockTable,
   createMockTextDashboardCard,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 const TEST_COLLECTION = createMockCollection();
@@ -73,14 +71,12 @@ interface Options {
   slug?: string;
   /** Holds the query metadata response until `resolveQueryMetadata` is called. */
   deferQueryMetadata?: boolean;
-  channels?: Parameters<typeof setupNotificationChannelsEndpoints>[0];
 }
 
 function renderDashboardApp({
   dashboard,
   slug,
   deferQueryMetadata = false,
-  channels = {},
 }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
@@ -89,7 +85,7 @@ function renderDashboardApp({
   });
   const queryMetadataRequest = defer();
 
-  setupNotificationChannelsEndpoints(channels);
+  setupNotificationChannelsEndpoints({});
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);
@@ -310,99 +306,6 @@ describe("DashboardApp", () => {
     );
   });
 
-  describe("subscriptions hash", () => {
-    const subscription = createMockDashboardSubscription({
-      id: 12,
-      channels: [createMockChannel({ schedule_type: "hourly" })],
-    });
-    const channels: Options["channels"] = {
-      email: {
-        type: "email",
-        name: "Email",
-        configured: true,
-        allows_recipients: true,
-        recipients: ["user", "email"],
-        schedules: ["hourly", "daily", "weekly", "monthly"],
-      },
-    };
-    const dashcard = createMockDashboardCard({ card: TEST_CARD });
-    const dashboard: Options["dashboard"] = { dashcards: [dashcard] };
-
-    beforeEach(() => {
-      setupDashcardQueryEndpoints(
-        createMockDashboard().id,
-        dashcard,
-        createMockDataset(),
-      );
-      setupListSubscriptionsEndpoint([subscription]);
-      setupUserRecipientsEndpoint({ users: [] });
-    });
-
-    afterEach(() => {
-      window.location.hash = "";
-    });
-
-    it("opens the subscriptions sidebar when the URL asks for it", async () => {
-      // DashboardApp reads hash options from window.location, which the memory router does not set
-      window.location.hash = "#subscriptions";
-      const { router } = await setup({ dashboard, channels });
-
-      expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();
-      expect(router.location.hash).toBe("");
-    });
-
-    it("opens the edit form of the subscription named in the URL", async () => {
-      window.location.hash = "#subscriptions=12";
-      await setup({ dashboard, channels });
-
-      expect(
-        await screen.findByText("Email this dashboard"),
-      ).toBeInTheDocument();
-    });
-
-    it("opens the subscriptions list when the subscription id in the URL is not a number", async () => {
-      window.location.hash = "#subscriptions=abc";
-      await setup({ dashboard, channels });
-
-      expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();
-      expect(
-        screen.queryByText("Email this dashboard"),
-      ).not.toBeInTheDocument();
-    });
-
-    it.each<{ name: string; options: Options }>([
-      {
-        name: "no email or Slack is set up for a non-admin",
-        options: { dashboard, channels: {} },
-      },
-      {
-        name: "the dashboard has no card with data to send",
-        options: {
-          dashboard: { dashcards: [createMockTextDashboardCard()] },
-          channels,
-        },
-      },
-    ])(
-      "keeps the sidebar closed and drops the hash when $name",
-      async ({ options }) => {
-        window.location.hash = "#subscriptions=12";
-        const { router, store } = await setup(options);
-
-        await waitFor(() => expect(router.location.hash).toBe(""));
-        expect(getIsSharing(store.getState())).toBe(false);
-        expect(
-          screen.queryByText("Email this dashboard"),
-        ).not.toBeInTheDocument();
-      },
-    );
-
-    it("keeps the subscriptions sidebar closed otherwise", async () => {
-      const { store } = await setup({ dashboard, channels });
-
-      expect(getIsSharing(store.getState())).toBe(false);
-    });
-  });
-
   it("should show the error page instead of an endless loader for a non-numeric slug (metabase#78725)", async () => {
     const { store } = await setup({ slug: "thisisinvalid" });
 
@@ -467,5 +370,61 @@ describe("DashboardApp", () => {
     await userEvent.paste("A".repeat(256));
 
     expect(input).toHaveValue("A".repeat(254));
+  });
+
+  describe("Metabot saves", () => {
+    const dashboardFetches = (dashboardId: DashboardId) =>
+      fetchMock.callHistory.calls(`path:/api/dashboard/${dashboardId}`).length;
+
+    const metabotSaves = (dashboardId: DashboardId) =>
+      dashboardSaved({ dashboardId, saveId: "call-1" });
+
+    it("reloads the dashboard when Metabot saves it", async () => {
+      const { dashboardId, store } = await setup();
+      const fetchesBefore = dashboardFetches(dashboardId);
+
+      act(() => {
+        store.dispatch(metabotSaves(dashboardId));
+      });
+
+      await waitFor(() =>
+        expect(dashboardFetches(dashboardId)).toBeGreaterThan(fetchesBefore),
+      );
+    });
+
+    it("keeps the open sidebar when it reloads", async () => {
+      const { dashboardId, store } = await setup();
+      // the info sidebar loads the dashboard's history and its last editor
+      setupRevisionsEndpoints([]);
+      setupUserEndpoints(createMockUser({ id: 1 }));
+      act(() => {
+        store.dispatch(setSidebar({ name: SIDEBAR_NAME.info }));
+      });
+      const fetchesBefore = dashboardFetches(dashboardId);
+
+      act(() => {
+        store.dispatch(metabotSaves(dashboardId));
+      });
+
+      await waitFor(() =>
+        expect(dashboardFetches(dashboardId)).toBeGreaterThan(fetchesBefore),
+      );
+      expect(store.getState().dashboard.sidebar.name).toBe(SIDEBAR_NAME.info);
+    });
+
+    it("doesn't reload a dashboard being edited", async () => {
+      const { dashboardId, store } = await setup();
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
+      const fetchesBefore = dashboardFetches(dashboardId);
+
+      act(() => {
+        store.dispatch(metabotSaves(dashboardId));
+      });
+
+      expect(dashboardFetches(dashboardId)).toBe(fetchesBefore);
+      expect(
+        screen.getByText(/You're editing this dashboard/),
+      ).toBeInTheDocument();
+    });
   });
 });

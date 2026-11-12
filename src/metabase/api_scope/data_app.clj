@@ -19,9 +19,9 @@
   What gets tagged: a route is tagged when the SDK actually calls it from inside a data app.
   Untagged is the default and is not a judgement that a route is dangerous — most untagged
   routes are writes, admin or auth surfaces, and the rest simply have no SDK caller. Where the
-  omission is genuinely surprising — a read route sitting next to a tagged sibling, such as
-  `GET /api/action/:action-id` beside the tagged execute routes — the reason is written at the
-  endpoint itself, so \"why isn't this one tagged?\" is answered where the question is asked.
+  omission is genuinely surprising, such as a read route sitting next to a tagged sibling, the
+  reason is written at the endpoint itself, so \"why isn't this one tagged?\" is answered where
+  the question is asked.
 
   Declared here (loaded early by [[metabase.api-scope.init]]) so the scope is registered before
   any endpoint namespace resolves the tag, mirroring how metabot declares its `agent:*` scopes

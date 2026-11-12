@@ -5,6 +5,8 @@
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.api :as deps.api]
+   [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.hooks :as deps.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.collections.models.collection :as collection]
@@ -243,7 +245,7 @@
                                                          :definition (-> (lib/query mp products)
                                                                          (lib/aggregate (lib/sum price)))}
                            :model/Transform _ {:name   "Transform on products"
-                                               :source {:type "query" :query (lib/query mp products)}
+                                               :source {:type :query :query (lib/query mp products)}
                                                :target {:type "table" :name (mt/random-name)}}]
               (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
               (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)})
@@ -445,10 +447,11 @@
                        :model/Transform {transform-id :id} {:name "Transform - inactivetabletest"
                                                             :source {:type :query
                                                                      :query (lib/query mp products)}
-                                                            :target {:schema "PUBLIC"
-                                                                     :name "inactive_transform_table"}}]
+                                                            :target {:type   "table"
+                                                                     :schema "PUBLIC"
+                                                                     :name   "inactive_transform_table"}}]
           ;; Simulate the transform having been run: link it to its (now inactive) target table
-          (t2/update! :model/Transform transform-id {:target_table_id table-id})
+          (t2/update! :model/Transform :id transform-id {:target_table_id table-id})
           (deps.hooks/after-transform-run transform-id table-id)
           (deps.test/synchronously-run-dependency-job!)
           (testing "GET /graph/dependents returns the inactive table as a child"
@@ -1244,16 +1247,18 @@
                        :model/Transform {unreffed-transform-id :id} {:name "Unreferenced Transform - unreftest"
                                                                      :source {:type :query
                                                                               :query (lib/query mp products)}
-                                                                     :target {:schema "PUBLIC"
-                                                                              :name "unreferenced_transform_table"}}
+                                                                     :target {:type   "table"
+                                                                              :schema "PUBLIC"
+                                                                              :name   "unreferenced_transform_table"}}
                        :model/Transform {referenced-transform-id :id} {:name "Referenced Transform - unreftest"
                                                                        :source {:type :query
                                                                                 :query (lib/query mp products)}
-                                                                       :target {:schema "PUBLIC"
-                                                                                :name "referenced_transform_table"}}]
+                                                                       :target {:type   "table"
+                                                                                :schema "PUBLIC"
+                                                                                :name   "referenced_transform_table"}}]
           ;; Simulate the referenced transform having been run: link it to its target table
           ;; so the table→transform dep is visible in the dependency graph.
-          (t2/update! :model/Transform referenced-transform-id {:target_table_id referenced-table-id})
+          (t2/update! :model/Transform :id referenced-transform-id {:target_table_id referenced-table-id})
           (deps.hooks/after-transform-run referenced-transform-id referenced-table-id)
           (deps.test/synchronously-run-dependency-job!)
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
@@ -1479,7 +1484,7 @@
                   (let [internal-model (create-model-card! user "Internal Model - intbreaking")
                         dependent-card (create-dependent-card-on-model! user internal-model "Dependent - intbreaking")]
                     [internal-model dependent-card]))]
-            (t2/update! :model/Card (:id internal-model) {:creator_id config/internal-mb-user-id})
+            (t2/update! :model/Card :id (:id internal-model) {:creator_id config/internal-mb-user-id})
             (lib-be/with-metadata-provider-cache
               (break-model-card! (t2/select-one :model/Card :id (:id internal-model))))
             (lib-be/with-metadata-provider-cache
@@ -1875,7 +1880,7 @@
                                              :creator_id    (:id user)}
                            :model/Dependency _dep {:from_entity_type "card",  :from_entity_id (:id card)
                                                    :to_entity_type   "table", :to_entity_id   (:id table)}]
-              (t2/update! :model/Table (:id table) {:active false})
+              (t2/update! :model/Table :id (:id table) {:active false})
               (lib-be/with-metadata-provider-cache
                 (run-analysis-for-card! (:id card)))
               (testing "the dependent card's analysis is now broken, attributing the inactive table as the source"
@@ -2228,9 +2233,9 @@
             {mid-id :id} (create-dependent! base-card user "Mid")
             {high-id :id} (create-dependent! base-card user "High")]
         (deps.test/synchronously-run-dependency-job!)
-        (t2/update! :model/Card low-id {:view_count 10})
-        (t2/update! :model/Card mid-id {:view_count 50})
-        (t2/update! :model/Card high-id {:view_count 100})
+        (t2/update! :model/Card :id low-id {:view_count 10})
+        (t2/update! :model/Card :id mid-id {:view_count 50})
+        (t2/update! :model/Card :id high-id {:view_count 100})
         (is (=? [{:data {:view_count 10}} {:data {:view_count 50}} {:data {:view_count 100}}]
                 (get-dependents base-card-id :sort-column :view-count :sort-direction :asc)))
         (is (=? [{:data {:view_count 100}} {:data {:view_count 50}} {:data {:view_count 10}}]
@@ -2247,8 +2252,8 @@
                                               :row 0 :col 0 :size_x 4 :size_y 4})
             (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard :id dashboard-id) :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-dependency-job!)
-            (t2/update! :model/Card low-id {:view_count 10})
-            (t2/update! :model/Card high-id {:view_count 100})
+            (t2/update! :model/Card :id low-id {:view_count 10})
+            (t2/update! :model/Card :id high-id {:view_count 100})
             (is (=? [{:data {:view_count 10}} {:data {:view_count 100}} {:data {:view_count 200}}]
                     (get-dependents base-card-id :sort-column :view-count :sort-direction :asc)))
             (is (=? [{:data {:view_count 200}} {:data {:view_count 100}} {:data {:view_count 10}}]
@@ -2344,8 +2349,8 @@
                         archived-dep-b (create-dependent-card-on-model! user model-card-b "Archived Dep B - errvistest")]
                     [model-card-a model-card-b visible-dep-a visible-dep-b archived-dep-a archived-dep-b]))]
             ;; Archive the archived dependents
-            (t2/update! :model/Card (:id archived-dep-a) {:archived true})
-            (t2/update! :model/Card (:id archived-dep-b) {:archived true})
+            (t2/update! :model/Card :id (:id archived-dep-a) {:archived true})
+            (t2/update! :model/Card :id (:id archived-dep-b) {:archived true})
             ;; Break both models
             (lib-be/with-metadata-provider-cache
               (break-model-card! model-card-a)
@@ -2441,8 +2446,8 @@
                         archived-dep-a-2 (create-dependent-card-on-model! user model-card-a "Archived Dep A2 - sortviserr")]
                     [model-card-a model-card-b visible-dep-a visible-dep-b archived-dep-a-1 archived-dep-a-2]))]
             ;; Archive model-a's extra dependents
-            (t2/update! :model/Card (:id archived-dep-a-1) {:archived true})
-            (t2/update! :model/Card (:id archived-dep-a-2) {:archived true})
+            (t2/update! :model/Card :id (:id archived-dep-a-1) {:archived true})
+            (t2/update! :model/Card :id (:id archived-dep-a-2) {:archived true})
             ;; Insert errors directly to ensure we control exactly what's in the DB
             ;; Model A: 1 visible error, 2 archived errors = 3 total
             ;; Model B: 2 visible errors = 2 total
@@ -2819,13 +2824,13 @@
                                                                :owner_user_id (mt/user->id :crowberto)
                                                                :source        {:type  :query
                                                                                :query (lib/query mp products)}
-                                                               :target        {:schema "PUBLIC"
+                                                               :target        {:type "table" :schema "PUBLIC"
                                                                                :name   "user_owned_transform_table"}}
                          :model/Transform {transform2-id :id} {:name        "Email Owned Transform - ownertest"
                                                                :owner_email "external@example.com"
                                                                :source      {:type  :query
                                                                              :query (lib/query mp products)}
-                                                               :target      {:schema "PUBLIC"
+                                                               :target      {:type "table" :schema "PUBLIC"
                                                                              :name   "email_owned_transform_table"}}]
             (deps.test/synchronously-run-dependency-job!)
             (let [response (mt/user-http-request :crowberto :get 200
@@ -3141,6 +3146,22 @@
       (is (=? {:complete boolean?}
               (mt/user-http-request :crowberto :get 200 "ee/dependencies/backfill-status"))))))
 
+(deftest ^:synchronized backfill-status-failed-test
+  (testing "GET /api/ee/dependencies/backfill-status lists an entity the job gave up on, which `complete` doesn't count"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {card-id :id} (basic-card "Broken" :venues)]
+        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+          (mt/with-dynamic-fn-redefs [deps.calculation/calculate-deps (fn [& _] (throw (ex-info "boom" {})))]
+            (deps.test/synchronously-run-dependency-job!))
+          (let [{:keys [complete failed]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/backfill-status")]
+            (is (true? complete))
+            (is (some #{{:type "card" :id card-id}} failed)))
+          (testing "a write gives the entity fresh attempts, so it is no longer failed"
+            (dependencies.db/mark-dependency-statuses-stale! {:card #{card-id}})
+            (deps.test/synchronously-run-dependency-job!)
+            (is (not (some #{{:type "card" :id card-id}}
+                           (:failed (mt/user-http-request :crowberto :get 200 "ee/dependencies/backfill-status")))))))))))
+
 (defn- data-app-card
   "A question on venues in the data app resource collection with `collection-id`."
   [collection-id]
@@ -3151,7 +3172,7 @@
     (mt/with-premium-features #{:dependencies :data-apps}
       (data-apps.tu/with-published-tables! [(mt/id :venues)]
         (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                       {:name "birds" :display_name "Birds" :description "Sightings" :bundle_path "birds.js"}
+                       {:slug "birds" :name "Birds" :description "Sightings" :bundle_path "birds.js"}
                        :model/Card {card-id :id} (data-app-card collection-id)]
           (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
             (deps.test/synchronously-run-dependency-job!)
@@ -3160,7 +3181,7 @@
                                                               :type "data-app")
                   node (fn [node-type node-id]
                          (m/find-first #(= [node-type node-id] ((juxt :type :id) %)) nodes))]
-              (is (=? {:data {:name "birds" :display_name "Birds" :description "Sightings"}}
+              (is (=? {:data {:slug "birds" :name "Birds" :description "Sightings"}}
                       (node "data-app" app-id)))
               (is (=? {:dependents_count {:data-app 1}}
                       (node "card" card-id)))
@@ -3174,7 +3195,7 @@
   (testing "GET /api/ee/dependencies/graph/dependents lists the data apps a user can read"
     (data-apps.tu/with-published-tables! [(mt/id :venues)]
       (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                     {:name "birds" :display_name "Birds" :bundle_path "birds.js" :enabled false}
+                     {:slug "birds" :name "Birds" :bundle_path "birds.js" :enabled false}
                      :model/Card {card-id :id} (data-app-card collection-id)]
         (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
           (deps.test/synchronously-run-dependency-job!)
@@ -3190,7 +3211,7 @@
                 (is (= #{app-id} (dependent-ids :crowberto))))
               (testing "a user sees the enabled apps whose collection they can read"
                 (is (= #{} (dependent-ids :rasta)))
-                (t2/update! :model/DataApp app-id {:enabled true})
+                (t2/update! :model/DataApp :id app-id {:enabled true})
                 (is (= #{app-id} (dependent-ids :rasta)))))
             (mt/with-premium-features #{:dependencies}
               (testing "without the data apps feature, the dependents list has no data apps, even for an admin"
@@ -3200,7 +3221,7 @@
   (testing "GET /api/ee/dependencies/graph gives a non-admin only a data app's names, as the data-app API does"
     (mt/with-premium-features #{:dependencies :data-apps}
       (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                     {:name "birds" :display_name "Birds" :description "Sightings" :bundle_path "birds.js"}
+                     {:slug "birds" :name "Birds" :description "Sightings" :bundle_path "birds.js"}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
         (perms/grant-collection-read-permissions! group-id collection-id)
@@ -3209,7 +3230,7 @@
                               :nodes
                               (m/find-first #(= ["data-app" app-id] ((juxt :type :id) %)))
                               :data))]
-          (is (= {:name "birds" :display_name "Birds"}
+          (is (= {:slug "birds" :name "Birds"}
                  (app-data :rasta)))
           (testing "an admin also gets the description and creation time"
             (is (=? {:description "Sightings" :created_at some?}
@@ -3219,7 +3240,7 @@
   (testing "GET /api/ee/dependencies/graph refuses a data app start node without the data apps feature"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                     {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                     {:slug "birds" :name "Birds" :bundle_path "birds.js"}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
         (perms/grant-collection-read-permissions! group-id collection-id)
@@ -3233,7 +3254,7 @@
   (testing "GET /api/ee/dependencies/graph/unreferenced lists data apps, finds them by their display name, and sorts them
            by location"
     (mt/with-premium-features #{:dependencies :data-apps}
-      (mt/with-temp [:model/DataApp {app-id :id} {:name "birds" :display_name "Bird sightings unreftest" :bundle_path "birds.js"}]
+      (mt/with-temp [:model/DataApp {app-id :id} {:slug "birds" :name "Bird sightings unreftest" :bundle_path "birds.js"}]
         (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
           (deps.test/synchronously-run-dependency-job!)
           (let [unreferenced (fn [& params]
@@ -3241,7 +3262,7 @@
                                            :query "unreftest"
                                            params)
                                     :data
-                                    (into #{} (map (juxt :type :id (comp :display_name :data))))))]
+                                    (into #{} (map (juxt :type :id (comp :name :data))))))]
             (is (= #{["data-app" app-id "Bird sightings unreftest"]}
                    (unreferenced :types "data-app" :sort-column "location")))
             (testing "without a types filter"
@@ -3251,12 +3272,12 @@
 (deftest graph-data-app-read-check-skips-the-bundle-test
   (testing "the graph endpoints check a data app start node without reading its bundle"
     (mt/with-premium-features #{:dependencies :data-apps}
-      (mt/with-temp [:model/DataApp {app-id :id} {:name         "birds"
-                                                  :display_name "Birds"
+      (mt/with-temp [:model/DataApp {app-id :id} {:slug         "birds"
+                                                  :name         "Birds"
                                                   :bundle_path  "birds.js"
                                                   :bundle       (byte-array [1 2 3])}]
         (testing "a full row read counts"
-          (is (seq (deps.test/data-app-bundle-reads #(t2/select-one :model/DataApp app-id)))))
+          (is (seq (deps.test/data-app-bundle-reads #(t2/select-one :model/DataApp :id app-id)))))
         (doseq [endpoint ["ee/dependencies/graph" "ee/dependencies/graph/dependents" "ee/dependencies/graph/broken"]]
           (testing endpoint
             (is (= [] (deps.test/data-app-bundle-reads

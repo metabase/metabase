@@ -538,12 +538,12 @@
                        :notification      {:creator_id (mt/user->id :crowberto)}
                        :notification-card {:send_condition :goal_above}
                        :handlers          []}]
-        (t2/update! :model/NotificationCard (:payload_id notification) {:card_id card-id})
+        (t2/update! :model/NotificationCard :id (:payload_id notification) {:card_id card-id})
         (testing "the fixture really stored a goal condition — with anything else stored, the
                   assertions below pass even against code that re-checks the goal on every update,
                   and this test guards nothing"
           (is (= :goal_above (t2/select-one-fn :send_condition :model/NotificationCard
-                                               (:payload_id notification)))))
+                                               :id (:payload_id notification)))))
         (is (false? (:active (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                                       (wire {:method "update" :id (:id notification)
                                                              :active false}))))))

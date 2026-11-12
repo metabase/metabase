@@ -10,7 +10,7 @@ import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
 import type { ExportFormat, TableExportFormat } from "./export-format";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { ConcreteTableId, SchemaName } from "./table";
+import type { SchemaName, TableId } from "./table";
 
 export type UserId = number;
 export type UserAttributeKey = string;
@@ -90,6 +90,7 @@ export interface User extends BaseUser {
     | "oidc"
     | "slack"
     | null;
+  has_used_password?: boolean;
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;
@@ -275,7 +276,7 @@ export type UserKeyValue =
       namespace: "schema_viewer";
       key: `${DatabaseId}__${SchemaName}`;
       value: {
-        table_ids: ConcreteTableId[];
+        table_ids: TableId[];
       };
     };
 

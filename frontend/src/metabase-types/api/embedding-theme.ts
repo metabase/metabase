@@ -47,13 +47,13 @@ export interface MetabaseColors {
   /** Lightest variation of the brand color. Used for hover and accented elements. */
   "brand-hover-light"?: string;
 
-  /** Text color on dark elements. Should be a lighter color for readability. */
+  /** Main text color. Should have the most contrast with the background. */
   "text-primary"?: string;
 
   /** Lighter variation of dark text on light elements. */
   "text-secondary"?: string;
 
-  /** Text color on light elements. Should be a darker color for readability. */
+  /** Muted text color for placeholders and disabled elements. */
   "text-tertiary"?: string;
 
   /** Default background color. */

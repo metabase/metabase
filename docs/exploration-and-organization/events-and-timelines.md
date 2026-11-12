@@ -1,5 +1,6 @@
 ---
 title: Events and timelines
+summary: Record what happened and when, like a product launch, and see those events marked on your charts.
 redirect_from:
   - /docs/latest/users-guide/events-and-timelines
 ---

@@ -62,7 +62,6 @@ export const cardApi = Api.injectEndpoints({
           invalidateTags(error, [
             listTag("card"),
             idTag("card", id),
-            idTag("table", `card__${id}`),
             ...additionalTags,
           ]),
       });
@@ -202,7 +201,6 @@ export const cardApi = Api.injectEndpoints({
           const tags = [
             listTag("card"),
             idTag("card", payload.id),
-            idTag("table", `card__${payload.id}`),
             listTag("revision"),
             listTag("table"), // table listings include information about published models
             // updating a card resolves any content-diagnostics finding for it
@@ -226,11 +224,7 @@ export const cardApi = Api.injectEndpoints({
           url: `/api/card/${id}`,
         }),
         invalidatesTags: (_, error, id) =>
-          invalidateTags(error, [
-            listTag("card"),
-            idTag("card", id),
-            idTag("table", `card__${id}`),
-          ]),
+          invalidateTags(error, [listTag("card"), idTag("card", id)]),
       }),
       copyCard: builder.mutation<Card, CardId>({
         query: (id) => ({
@@ -388,6 +382,7 @@ export const {
   useGetCardQuery,
   useLazyGetCardQuery,
   useGetCardQueryMetadataQuery,
+  useLazyGetCardQueryMetadataQuery,
   useGetCardQueryQuery,
   useLazyGetCardQueryQuery,
   useGetCardQueryPivotQuery,

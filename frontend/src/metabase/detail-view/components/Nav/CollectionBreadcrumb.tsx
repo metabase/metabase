@@ -9,7 +9,7 @@ interface Props {
 
 export const CollectionBreadcrumb = ({ collectionId }: Props) => (
   <>
-    <CollectionBadge collectionId={collectionId} />
+    <CollectionBadge collectionId={collectionId} showTooltip />
 
     <Separator />
   </>

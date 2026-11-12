@@ -133,7 +133,7 @@
               (is (thrown-with-msg?
                    Exception
                    #"You are not allowed to change the owner of a Tenant Collection."
-                   (t2/update! :model/Collection tenant-collection-id
+                   (t2/update! :model/Collection :id tenant-collection-id
                                {:personal_owner_id user-id}))))))))))
 
 (deftest cannot-change-namespace-after-creation-test
@@ -145,7 +145,7 @@
             (is (thrown-with-msg?
                  Exception
                  #"cannot move a Collection to a different namespace"
-                 (t2/update! :model/Collection tenant-collection-id
+                 (t2/update! :model/Collection :id tenant-collection-id
                              {:namespace nil})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -172,10 +172,10 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"You don't have permissions to do that"
                                   (collection/maybe-localize-tenant-collection-names
-                                   [(t2/select-one :model/Collection tenant2-coll-id)])))
+                                   [(t2/select-one :model/Collection :id tenant2-coll-id)])))
             (is (= ["Our data"
                     "Regular Collection"]
-                   (map :name (collection/maybe-localize-tenant-collection-names [(t2/select-one :model/Collection tenant1-coll-id)
+                   (map :name (collection/maybe-localize-tenant-collection-names [(t2/select-one :model/Collection :id tenant1-coll-id)
                                                                                   regular-coll]))))))))))
 
 (deftest maybe-localize-tenant-collection-name-single-test

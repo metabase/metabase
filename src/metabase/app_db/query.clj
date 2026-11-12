@@ -263,7 +263,8 @@
       (if-let [existing (apply t2/select-one model select-kvs)]
         (let [pk (pk-of existing)]
           (if-let [updated (update-fn existing)]
-            (do (t2/update! model pk updated)
+            ;; `model` is any model, so match on its own primary key, which may not be `:id` or may be composite.
+            (do (t2/update! model :toucan/pk pk updated)
                 ;; the primary key may have been changed by the update, and this is OK.
                 (pk-of (merge existing updated)))
             ;; update-fn returned nil — no update needed, return existing pk.

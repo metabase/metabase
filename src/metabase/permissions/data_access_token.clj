@@ -34,6 +34,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli.registry :as mr]))
@@ -77,10 +78,27 @@
     (sequential? x) (into [::seq] (map canonical) x)
     :else           x))
 
-(defn- digest
+(defn digest
   "SHA-256 hex of `x`'s canonical printed form."
   ^String [x]
   (codecs/bytes->hex (buddy-hash/sha256 (.getBytes (pr-str (canonical x)) "UTF-8"))))
+
+(defn- token-with
+  "[[data-access-token]], reading each contributor through `(read-contributor k f)`."
+  [read-contributor {:keys [database-id table-ids]}]
+  (let [sandbox (into {}
+                      (keep (fn [table-id]
+                              (when-let [t (read-contributor [:sandbox table-id] #(sandbox-token-for-table table-id))]
+                                [table-id (digest t)])))
+                      table-ids)
+        imp     (when database-id
+                  (read-contributor [:impersonation database-id] #(impersonation-token-for-db database-id)))
+        routing (when database-id
+                  (read-contributor [:routing database-id] #(routing-token-for-db database-id)))]
+    (cond-> {}
+      (seq sandbox) (assoc :sandbox sandbox)
+      imp           (assoc :impersonation {database-id (digest imp)})
+      routing       (assoc :routing {database-id (digest routing)}))))
 
 (defn data-access-token
   "Compute the current user's effective-data-access token over `table-ids` in `database-id`.
@@ -89,18 +107,24 @@
 
   Each contributor's raw value is [[digest]]ed here, so a raw sandbox attribute / role never reaches
   a caller and never lands in `stored_result.data_access_token`."
-  [{:keys [database-id table-ids]}]
-  (let [sandbox (into {}
-                      (keep (fn [table-id]
-                              (when-let [t (sandbox-token-for-table table-id)]
-                                [table-id (digest t)])))
-                      table-ids)
-        imp     (when database-id (impersonation-token-for-db database-id))
-        routing (when database-id (routing-token-for-db database-id))]
-    (cond-> {}
-      (seq sandbox) (assoc :sandbox sandbox)
-      imp           (assoc :impersonation {database-id (digest imp)})
-      routing       (assoc :routing {database-id (digest routing)}))))
+  [target]
+  (token-with (fn [_k f] (f)) target))
+
+(defn data-access-token-reader
+  "Memoizing [[data-access-token]]: shares contributor reads across its calls. Build one per batch of checks; its
+  reads go stale when routing or the viewer's permissions change."
+  []
+  (let [memo (atom {})]
+    (fn [target]
+      (token-with (fn [k f]
+                    (let [k [api/*current-user-id* k]]
+                      (if-let [[_ v] (find @memo k)]
+                        v
+                        ;; a throw is not memoized: a later call throws again rather than reading as a value
+                        (let [v (f)]
+                          (swap! memo assoc k v)
+                          v))))
+                  target))))
 
 (defn data-access-compatible?
   "True when a viewer holding `viewer-token` may be served a blob computed under `creator-token`:

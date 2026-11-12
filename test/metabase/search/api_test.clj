@@ -117,7 +117,7 @@
   [action-id]
   {:action_id     action-id
    :database_id   (mt/id)
-   :dataset_query (mt/query venues)})
+   :dataset_query (mt/native-query {:query "SELECT * FROM venues"})})
 
 (def ^:private test-collection (make-result "collection test collection"
                                             :bookmark false
@@ -1222,7 +1222,7 @@
             (is (= nil (search-for-pulses pulse))))
           (testing "Even as a dashboard subscription, the pulse is not found."
             (mt/with-temp [:model/Dashboard dashboard {}]
-              (t2/update! :model/Pulse (:id pulse) {:dashboard_id (:id dashboard)})
+              (t2/update! :model/Pulse :id (:id pulse) {:dashboard_id (:id dashboard)})
               (is (= nil (search-for-pulses pulse))))))))))
 
 (deftest filter-by-creator-test
@@ -1676,12 +1676,28 @@
         (is (= #{["dashboard" dash-public]
                  ["dashboard" dash-sub-public]
                  ["collection" coll-sub-public]}
-               (search :rasta "exclude"))))
+               (search :crowberto "exclude"))))
       (testing "non-admin exclude"
         (is (= #{["dashboard" dash-public]
                  ["dashboard" dash-sub-public]
                  ["collection" coll-sub-public]}
                (search :rasta "exclude"))))
+      (testing "non-admin `all` is not exposed to other users' personal collection items"
+        (let [rasta-all     (search :rasta "all")
+              crowberto-all (search :crowberto "all")
+              crowberto-items #{["dataset" model-crowberto]
+                                ["dataset" model-sub-crowberto]
+                                ["collection" coll-sub-crowberto]}
+              rasta-items   #{["card" card-rasta]
+                              ["card" card-sub-rasta]
+                              ["collection" coll-sub-rasta]}
+              public-items  #{["dashboard" dash-public]
+                              ["dashboard" dash-sub-public]
+                              ["collection" coll-sub-public]}]
+          (is (= (into rasta-items public-items) rasta-all)
+              "rasta sees only their own personal items plus public items, none of crowberto's")
+          (testing "positive control: admin with `all` sees everyone's items"
+            (is (= (into (into rasta-items crowberto-items) public-items) crowberto-all)))))
       (testing "getting models should return only models that are applied"
         (is (= #{"dashboard" "collection"}
                (get-available-models :q search-term :filter_items_in_personal_collection "exclude"))))
@@ -2253,7 +2269,7 @@
                    :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
       (mt/with-no-data-perms-for-all-users!
         (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-        (perms/set-table-permission! group-id (t2/select-one :model/Table table-id) :perms/create-queries :query-builder)
+        (perms/set-table-permission! group-id (t2/select-one :model/Table :id table-id) :perms/create-queries :query-builder)
         (is (=? [{:name "test measure" :model "measure"}]
                 (binding [*search-request-results-database-id* db-id]
                   (search-request-data :rasta :q "test measure"))))))))
@@ -2267,13 +2283,13 @@
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))
         (testing "after archiving, measure disappears from default results"
-          (t2/update! :model/Measure measure-id {:archived true})
+          (t2/update! :model/Measure :id measure-id {:archived true})
           (is (= [] (search-request-data :crowberto :q measure-name))))
         (testing "archived measure appears in archived=true results"
           (is (=? [{:name measure-name :model "measure" :archived true}]
                   (search-request-data :crowberto :q measure-name :archived "true"))))
         (testing "after unarchiving, measure returns to default results"
-          (t2/update! :model/Measure measure-id {:archived false})
+          (t2/update! :model/Measure :id measure-id {:archived false})
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))))))
 

@@ -283,6 +283,10 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
   (v2.queries/check-execute-sql-enabled! "execute_sql")
   (when-not (mi/can-read? :model/Database database-id)
     (common/throw-not-found :model/Database database-id))
+  ;; For an admin, this check says yes on the audit database. The QP refuses SQL there for all users
+  ;; (`check-audit-db-permissions` in EE `audit-app.permissions`), so the caller gets that refusal later. Metabot's
+  ;; `run_query` (`check-sql-runnable!`) copies the rule to refuse early. To refuse early here too, copy it as well,
+  ;; or move the rule into the permissions layer and remove the copy.
   (when-not (qp.perms/current-user-has-adhoc-native-query-perms? {:database database-id})
     (common/throw-teaching-error
      (message/msg ["You do not have permission to run native queries against this database."])

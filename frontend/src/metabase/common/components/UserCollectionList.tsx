@@ -33,6 +33,11 @@ export const UserCollectionList = () => {
     }));
 
   return (
-    <CollectionListView crumbs={crumbs} loading={isLoading} items={items} />
+    <CollectionListView
+      crumbs={crumbs}
+      loading={isLoading}
+      items={items}
+      itemOrder="column"
+    />
   );
 };

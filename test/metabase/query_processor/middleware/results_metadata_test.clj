@@ -539,14 +539,14 @@
                   :result_metadata nil}]
     (let [run-with-filter!
           (fn [product-id]
-            (t2/update! :model/Card card-id
+            (t2/update! :model/Card :id card-id
                         {:dataset_query (mt/mbql-query orders
                                           {:aggregation [[:count] [:sum $total]]
                                            :breakout    [$product_id]
                                            :filter      [:= $product_id product-id]})})
             (mt/as-admin
               (qp/process-query-for-card
-               (t2/select-one :model/Card card-id) :api
+               (t2/select-one :model/Card :id card-id) :api
                :make-run (constantly
                           (fn [query info]
                             (qp/process-query (assoc query :info info))))))
@@ -624,11 +624,11 @@
       (query-processor.db/set-card-result-metadata! card-id baseline)
       (mt/as-admin
         (qp/process-query-for-card
-         (t2/select-one :model/Card card-id) :api
+         (t2/select-one :model/Card :id card-id) :api
          :parameters [{:id "_pid_" :type :number :target [:variable [:template-tag "pid"]] :value "50"}]
          :make-run (constantly
                     (fn [query info]
                       (qp/process-query (assoc query :info info))))))
-      (let [after (t2/select-one-fn :result_metadata :model/Card card-id)]
+      (let [after (t2/select-one-fn :result_metadata :model/Card :id card-id)]
         (is (= #{"product_id" "cnt"} (into #{} (map (comp u/lower-case-en :name)) after))
             "parameter-independent schema change should persist despite the parameter skip")))))

@@ -18,7 +18,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
-   [metabase.util.string :as string]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -60,7 +59,7 @@
        (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
                      driver.settings/*allow-testing-h2-connections*          true]
          (testing "API response should return a Session UUID"
-           (is (=? {:id string/valid-uuid?}
+           (is (=? {:id u/uuid-string?}
                    (client/client :post 200 "setup" request-body))))
          ;; reset our setup token
          (setup/create-token!)
@@ -101,7 +100,7 @@
        body
        (fn []
          (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
-           (is (=? {:id string/valid-uuid?}
+           (is (=? {:id u/uuid-string?}
                    (client/client :post 200 "setup" body)))
            (testing "the now-unusable token is cleared out of Settings"
              (is (nil? (setup/setup-token))))))))))
@@ -224,7 +223,7 @@
                    :errors          {:user {:password "password is too common."}}}
                   (setup! m/dissoc-in [:user :password]))))
         (testing "invalid"
-          (is (=? {:specific-errors {:user {:password ["valid password that is not too common, received: \"anything\""]}}}
+          (is (=? {:specific-errors {:user {:password ["valid password that is not too common, received: \"<< REDACTED SECRET >>\""]}}}
                   (setup! assoc-in [:user :password] "anything"))))))))
 
 (deftest setup-with-empty-cache-test
@@ -284,8 +283,8 @@
            (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
                          driver.settings/*allow-testing-h2-connections* true
                          api.setup/setup-set-settings! (let [orig @#'api.setup/setup-set-settings!]
-                                                         (fn [& args]
-                                                           (apply orig args)
+                                                         (fn [settings]
+                                                           (orig settings)
                                                            (throw (ex-info "Oops!" {}))))]
              (is (=? {:message "Oops!"}
                      (client/client :post 500 "setup" body))))

@@ -9,6 +9,8 @@
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
+(set! *warn-on-reflection* true)
+
 (deftest successful-repair-reports-current-metric-snapshot-test
   (let [reported    (atom [])
         snapshot-at ::snapshot-at]

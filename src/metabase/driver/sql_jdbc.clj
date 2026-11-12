@@ -76,10 +76,6 @@
   (driver/validate-db-details! driver details)
   (sql-jdbc.conn/can-connect? driver details))
 
-(defmethod driver/validate-impersonated-query :sql-jdbc
-  [driver query]
-  (driver.sql/validate-impersonated-query* driver query))
-
 (defmethod driver/table-rows-seq :sql-jdbc
   [driver database table]
   (query driver database table {:select [:*]}))
@@ -449,3 +445,9 @@
      (->> (.getMetaData conn)
           sql-jdbc.describe-database/all-schemas
           (m/find-first #(= % schema))))))
+
+(defmethod driver/workspace-isolation-details :sql-jdbc
+  [_driver _database workspace]
+  {:schema           (driver.u/workspace-isolation-namespace-name workspace)
+   :database_details {:user     (driver.u/workspace-isolation-user-name workspace)
+                      :password (driver.u/random-workspace-password)}})

@@ -536,7 +536,7 @@
                                       :id           "_date_"
                                       :type         "dimension"
                                       :default      "Q1-2014"
-                                      :dimension    [:field (mt/id :checkins :date) nil]
+                                      :field-id     (mt/id :checkins :date)
                                       :widget-type  "date/quarter-year"}}}}})
 
 (deftest default-value-card-query-test
@@ -587,7 +587,7 @@
                                                         :display-name "Date"
                                                         :id           "_date_"
                                                         :type         "dimension"
-                                                        :dimension    [:field (mt/id :checkins :date) nil]
+                                                        :field-id     (mt/id :checkins :date)
                                                         :widget-type  "date/quarter-year"}}}}
    :enable_embedding true
    :embedding_params {:date :enabled}})
@@ -719,7 +719,7 @@
                                                                     :name         "category"
                                                                     :display-name "Category"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                    :field-id     (mt/id :venues :category_id)
                                                                     :widget-type  :id}}))}]
           (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
                                 :table_id           (mt/id :venues)
@@ -772,25 +772,25 @@
                                                                     :name         "category"
                                                                     :display-name "Category"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                    :field-id     (mt/id :venues :category_id)
                                                                     :widget-type  :id}
                                                         "id"       {:id           "_ID_"
                                                                     :name         "id"
                                                                     :display-name "ID"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                                                    :field-id     (mt/id :venues :id)
                                                                     :widget-type  :id}
                                                         "name"     {:id           "_NAME_"
                                                                     :name         "name"
                                                                     :display-name "Name"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :name)))
+                                                                    :field-id     (mt/id :venues :name)
                                                                     :widget-type  :id}
                                                         "price"    {:id           "_PRICE_"
                                                                     :name         "price"
                                                                     :display-name "Price"
                                                                     :type         :dimension
-                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                                                                    :field-id     (mt/id :venues :price)
                                                                     :widget-type  :id}}))}]
           (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
                                 :table_id           (mt/id :venues)
@@ -849,7 +849,7 @@
                                                          :name         "category"
                                                          :display-name "Category"
                                                          :type         :dimension
-                                                         :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                         :field-id     (mt/id :venues :category_id)
                                                          :widget-type  :id}}))}
             dash-with (fn [status]
                         {:enable_embedding true
@@ -1268,11 +1268,11 @@
       (mt/with-temporary-setting-values [enable-embedding-modular true]
         (with-new-secret-key!
           (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
-            (t2/update! :model/Card (:id field-filter-card)
+            (t2/update! :model/Card :id (:id field-filter-card)
                         {:enable_embedding true
                          :embedding_params (zipmap (map :slug (:parameters field-filter-card))
                                                    (repeat "enabled"))})
-            (t2/update! :model/Card (:id card)
+            (t2/update! :model/Card :id (:id card)
                         {:enable_embedding true
                          :embedding_params (zipmap (map :slug (:parameters card))
                                                    (repeat "enabled"))})
@@ -1348,19 +1348,19 @@
                                                :display-name "Price"
                                                :type         :dimension
                                                :widget-type  :number/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))}
+                                               :field-id     (mt/id :venues :price)}
                                       "cat"   {:id           "c1"
                                                :name         "cat"
                                                :display-name "Cat"
                                                :type         :dimension
                                                :widget-type  :number/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))}
+                                               :field-id     (mt/id :venues :category_id)}
                                       "name"  {:id           "n1"
                                                :name         "name"
                                                :display-name "Name"
                                                :type         :dimension
                                                :widget-type  :string/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :name)))}}))
+                                               :field-id     (mt/id :venues :name)}}))
                                :parameters [{:id "p1" :type :number/= :slug "price" :name "Price"
                                              :target [:dimension [:template-tag "price"]]}
                                             {:id "c1" :type :number/= :slug "cat" :name "Cat"
@@ -1399,13 +1399,13 @@
                                                :display-name "Price"
                                                :type         :dimension
                                                :widget-type  :number/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))}
+                                               :field-id     (mt/id :venues :price)}
                                       "cat"   {:id           "c1"
                                                :name         "cat"
                                                :display-name "Cat"
                                                :type         :dimension
                                                :widget-type  :number/=
-                                               :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))}}))
+                                               :field-id     (mt/id :venues :category_id)}}))
                                :parameters [{:id "p1" :type :number/= :slug "price_v2" :name "Price"
                                              :target [:dimension [:template-tag "price"]]}
                                             {:id "c1" :type :number/= :slug "cat" :name "Cat"
@@ -1433,13 +1433,13 @@
                                                                 :display-name "Total"
                                                                 :type         :dimension
                                                                 :widget-type  :number/>=
-                                                                :dimension    [:field (mt/id :orders :total) nil]}
+                                                                :field-id     (mt/id :orders :total)}
                                                        "state" {:id           "s1"
                                                                 :name         "state"
                                                                 :display-name "State"
                                                                 :type         :dimension
                                                                 :widget-type  :string/=
-                                                                :dimension    [:field (mt/id :people :state) nil]}}}}}]
+                                                                :field-id     (mt/id :people :state)}}}}}]
         (let [token (card-token card {:params {:total []}})]
           (is (seq (:values (client/client :get 200 (format "embed/card/%s/params/s1/values" token))))))))))
 
@@ -1450,7 +1450,7 @@
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions :impersonation}
     (with-embedding-enabled-and-new-secret-key!
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard], :as m}]
-        (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding true})
+        (t2/update! :model/Dashboard :id (u/the-id dashboard) {:enable_embedding true})
         (letfn [(token [params]
                   (dash-token dashboard (when params {:params params})))
                 (values-url [& [params param-key]]
@@ -1470,7 +1470,7 @@
 (deftest chain-filter-embedding-disabled-test
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (testing "without embedding enabled for dashboard"
-      (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false})
+      (t2/update! :model/Dashboard :id (u/the-id dashboard) {:enable_embedding false})
       (testing "GET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= "Embedding is not enabled for this object."
                (client/client :get 400 (values-url)))))
@@ -1491,7 +1491,7 @@
 (deftest params-with-static-list-test
   (testing "embedding with parameter that has source is a static list"
     (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
-      (t2/update! :model/Dashboard (:id dashboard)
+      (t2/update! :model/Dashboard :id (:id dashboard)
                   {:embedding_params {"static_category" "enabled", "static_category_label" "enabled"}})
       (testing "Should work if the param we're fetching values for is enabled"
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
@@ -1506,7 +1506,7 @@
 (deftest embed-dashboard-card-source-param-values-test
   (testing "GET /api/embed/dashboard/:token/params/:key/values works for a card-source parameter"
     (with-chain-filter-fixtures! [{:keys [dashboard values-url]}]
-      (t2/update! :model/Dashboard (u/the-id dashboard)
+      (t2/update! :model/Dashboard :id (u/the-id dashboard)
                   {:parameters       (mapv (fn [p] (cond-> p (= (:id p) "_CARD_") (assoc :slug "card")))
                                            (:parameters dashboard))
                    :embedding_params {"card" "enabled"}})
@@ -1514,7 +1514,7 @@
 
 (deftest chain-filter-enabled-params-test
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
-    (t2/update! :model/Dashboard (:id dashboard)
+    (t2/update! :model/Dashboard :id (:id dashboard)
                 {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
     (testing "Should work if the param we're fetching values for is enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
@@ -1555,7 +1555,7 @@
     (mt/with-temp-copy-of-db
       (mt/with-no-data-perms-for-all-users!
         (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
-          (t2/update! :model/Dashboard (:id dashboard)
+          (t2/update! :model/Dashboard :id (:id dashboard)
                       {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
           (testing "Should work if the param we're fetching values for is enabled"
             (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
@@ -1570,14 +1570,14 @@
 (deftest chain-filter-locked-params-test
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is locked"
-      (t2/update! :model/Dashboard (:id dashboard)
+      (t2/update! :model/Dashboard :id (:id dashboard)
                   {:embedding_params {"category_id" "locked", "category_name" "locked"}})
       (doseq [url [(values-url) (search-url)]]
         (testing (str "\n" url)
           (is (re= #"Cannot search for values: \"category_(?:(?:name)|(?:id))\" is not an enabled parameter."
                    (client/client :get 400 url))))))
     (testing "Search param enabled\n"
-      (t2/update! :model/Dashboard (:id dashboard)
+      (t2/update! :model/Dashboard :id (:id dashboard)
                   {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "locked"}})
       (testing "Requests should fail if the token is missing a locked parameter"
         (doseq [url [(values-url) (search-url)]]
@@ -1603,14 +1603,14 @@
 (deftest chain-filter-disabled-params-test
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is disabled"
-      (t2/update! :model/Dashboard (:id dashboard)
+      (t2/update! :model/Dashboard :id (:id dashboard)
                   {:embedding_params {"category_id" "disabled", "category_name" "disabled"}})
       (doseq [url [(values-url) (search-url)]]
         (testing (str "\n" url)
           (is (re= #"Cannot search for values: \"category_(?:(?:name)|(?:id))\" is not an enabled parameter\."
                    (client/client :get 400 url))))))
     (testing "Search param enabled\n"
-      (t2/update! :model/Dashboard (:id dashboard)
+      (t2/update! :model/Dashboard :id (:id dashboard)
                   {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "disabled"}})
       (testing "Requests should fail if the token has a disabled parameter"
         (doseq [url-fn [values-url search-url]
@@ -1891,7 +1891,7 @@
                                                                                                  :name         "NAME"
                                                                                                  :display-name "Name"
                                                                                                  :type         :dimension
-                                                                                                 :dimension    [:field (mt/id :people :name) nil]
+                                                                                                 :field-id     (mt/id :people :name)
                                                                                                  :widget-type  :string/=
                                                                                                  :default      nil}}})
                                                             :enable_embedding true
@@ -2099,7 +2099,7 @@
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true
                                               :last_viewed_at #t "2000-01-01"}}]
           (let [dashboard-id (t2/select-one-fn :id :model/Dashboard :id (:dashboard_id dashcard))
-                original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
+                original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)]
             (mt/with-temporary-setting-values [synchronous-batch-updates true]
               (client/client :get 202 (dashcard-url dashcard))
               (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))))
@@ -2205,13 +2205,13 @@
                                                                             :name         "NAME"
                                                                             :display_name "Name"
                                                                             :type         :dimension
-                                                                            :dimension    [:field (mt/id :venues :name) nil]
+                                                                            :field-id     (mt/id :venues :name)
                                                                             :required     true}
                                                                     "PRICE" {:id           param-not-enabled
                                                                              :name         "PRICE"
                                                                              :display_name "Price"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :venues :price) nil]
+                                                                             :field-id     (mt/id :venues :price)
                                                                              :required     true}}}}
                                         :name       "native card with field filter"
                                         :parameters [{:id     param-field-values
@@ -2235,7 +2235,7 @@
                                                                          :name         "ID"
                                                                          :display_name "Id"
                                                                          :type         :dimension
-                                                                         :dimension    [:field (mt/id :people :id) nil]
+                                                                         :field-id     (mt/id :people :id)
                                                                          :required     true}}}}
                                        :name       "native card with named field filter"
                                        :parameters [{:id     param-labeled-field-values
@@ -2394,9 +2394,9 @@
                   :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
                   :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))
 
+;; Regression test for metabase#29371 - Case-sensitive field filters in embedded dashboards.
+;; Embedded dashboards should apply case-insensitive default options for string operators.
 (deftest embedded-string-parameter-case-sensitivity-regression-test
-  "Regression test for metabase#29371 - Case-sensitive field filters in embedded dashboards.
-   Embedded dashboards should apply case-insensitive default options for string operators."
   (mt/dataset test-data
     (mt/with-temp
       [:model/Card card {:database_id (mt/id)
@@ -2412,7 +2412,7 @@
                                                             :card_id (:id card)
                                                             :target [:dimension (mt/$ids venues $name)]}]}]
       (with-embedding-enabled-and-new-secret-key!
-        (t2/update! :model/Dashboard (:id dashboard)
+        (t2/update! :model/Dashboard :id (:id dashboard)
                     {:enable_embedding true
                      :embedding_params {"name_contains" "enabled"}})
         (letfn [(dashcard-query-url [params]

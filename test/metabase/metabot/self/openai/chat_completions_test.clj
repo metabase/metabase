@@ -231,11 +231,12 @@
 
 (deftest ^:parallel request-body-tool-choice-passthrough-test
   (testing "an explicit tool_choice passes through when tools are present"
-    (is (=? {:tool_choice "required"}
-            (chat-completions/request-body {:model       "some/model"
-                                            :input       [{:role :user :content "hi"}]
-                                            :tools       [(metabot.tu/get-time-tool)]
-                                            :tool_choice "required"})))))
+    (doseq [tool-choice ["required" "none"]]
+      (is (=? {:tool_choice tool-choice}
+              (chat-completions/request-body {:model       "some/model"
+                                              :input       [{:role :user :content "hi"}]
+                                              :tools       [(metabot.tu/get-time-tool)]
+                                              :tool_choice tool-choice}))))))
 
 (deftest ^:parallel request-body-schema-forces-structured-output-test
   (testing "a schema forces a structured_output tool call"

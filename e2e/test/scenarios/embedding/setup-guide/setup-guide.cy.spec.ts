@@ -17,6 +17,11 @@ describe("scenarios - setup guide", () => {
     it('"Create a dashboard" card should save the x-ray and show a success toast without leaving the guide', () => {
       cy.visit("/embedding/get-started");
 
+      cy.log("the permissions card is unlocked on Pro Cloud");
+      cy.findByTestId("embedding-hub-main")
+        .findByRole("link", { name: "Configure data permissions and tenants" })
+        .should("have.attr", "href", "/embedding/get-started/permissions");
+
       cy.log("Find and click on 'Create a dashboard' card");
       cy.findByTestId("embedding-hub-main")
         .findByText("Create a dashboard")
@@ -171,28 +176,6 @@ describe("scenarios - setup guide", () => {
         .should("be.visible");
     });
 
-    it("embedding checklist should show up on the embedding homepage", () => {
-      cy.request("PUT", "/api/setting/embedding-homepage", {
-        value: "visible",
-      });
-
-      cy.visit("/");
-
-      cy.findAllByText("Get started with modular embedding")
-        .first()
-        .should("be.visible");
-
-      cy.get("main").within(() => {
-        cy.findByText("Create a dashboard").should("be.visible");
-        cy.findByText("Connect a database").should("be.visible").click();
-      });
-
-      cy.log("Sanity check: add data modal should open");
-      cy.findByRole("dialog").within(() => {
-        cy.findByRole("heading", { name: "Add data" }).should("be.visible");
-      });
-    });
-
     it("overflow menu > customize homepage opens a modal and dismiss guide hides the embedding homepage", () => {
       cy.log("embedding checklist should not show up if not enabled");
       cy.visit("/");
@@ -213,6 +196,17 @@ describe("scenarios - setup guide", () => {
       cy.get("main")
         .findByText("Get started with modular embedding")
         .should("be.visible");
+      cy.get("main").within(() => {
+        cy.findByText("Create a dashboard").should("be.visible");
+        cy.findByText("Connect a database").should("be.visible").click();
+      });
+
+      cy.log("Sanity check: add data modal should open");
+      cy.findByRole("dialog").within(() => {
+        cy.findByRole("heading", { name: "Add data" }).should("be.visible");
+      });
+      cy.realPress("Escape");
+      cy.findByRole("dialog").should("not.exist");
 
       cy.log("Click overflow menu button on the embedding homepage");
       cy.get("main").within(() => {
@@ -240,31 +234,6 @@ describe("scenarios - setup guide", () => {
       cy.get("main")
         .findByText("Get started with modular embedding")
         .should("not.exist");
-    });
-
-    it('"Configure data permissions and tenants" card should navigate to permissions onboarding page', () => {
-      cy.visit("/embedding/security");
-
-      cy.log("open the setup guide from the hub nav");
-      cy.findByRole("navigation", { name: "Embedding hub" })
-        .findByRole("link", { name: "Get started" })
-        .should("exist")
-        .click();
-
-      cy.findByTestId("embedding-hub-main")
-        .findByRole("heading", { name: "Get started with Metabase Embedding" })
-        .should("exist");
-
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Configure data permissions and tenants")
-        .click();
-
-      cy.url().should("include", "/embedding/get-started/permissions");
-
-      H.main()
-        .findByText("Configure data permissions and enable tenants")
-        .scrollIntoView()
-        .should("be.visible");
     });
   });
 

@@ -29,12 +29,12 @@
 (mu/defn dashboard-parameters
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :parameters] dashboard-id))
+  (t2/select-one [:model/Dashboard :id :parameters] :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-name-columns
   "The name, description, and creator of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id))
+  (t2/select-one [:model/Dashboard :name :description :creator_id] :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-public-uuid
   "The public uuid of the Dashboard with `dashboard-id`, or nil."
@@ -60,7 +60,7 @@
   "Apply `changes` to the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard dashboard-id changes))
+  (t2/update! :model/Dashboard :id dashboard-id changes))
 
 (mu/defn delete-dashboard!
   "Delete the Dashboard with `dashboard-id`."
@@ -82,14 +82,14 @@
 
 (mu/defn dashboard-item-cards
   "The card items of the Dashboard with `dashboard-id`, for the `/:id/items` endpoint: id, name, description, entity
-  id, collection position, display, collection preview, last-used-at, collection id, archived flags, database id,
-  and moderated status. Paged by `limit`/`offset` when `paged?`."
+  id, collection position, display, last-used-at, collection id, archived flags, database id, and moderated status.
+  Paged by `limit`/`offset` when `paged?`."
   [dashboard-id :- ::lib.schema.id/dashboard
    paged?       :- :boolean
    limit        :- [:maybe ms/PositiveInt]
    offset       :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (app-db/query
-   (cond-> {:select [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+   (cond-> {:select [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display
                      :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
                      :c.dashboard_id
                      [nil :location]
@@ -181,7 +181,7 @@
 (mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard dashcard-id))
+  (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id]))
 
 (mu/defn dashcard-in-dashboard
   "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
@@ -209,7 +209,7 @@
 (mu/defn user-name-and-email
   "The name and email of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :first_name :last_name :email] user-id))
+  (t2/select-one [:model/User :first_name :last_name :email] :id [:auto/param user-id]))
 
 (mu/defn user-names-and-emails
   "The names and emails of the Users with `user-ids`."

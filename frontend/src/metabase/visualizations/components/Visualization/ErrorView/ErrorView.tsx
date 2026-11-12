@@ -8,14 +8,13 @@ import { StateView } from "../StateView";
 interface ErrorViewProps {
   error: ReactNode;
   icon?: IconName;
-  isDashboard?: boolean;
   isSmall?: boolean;
 }
 
 export const ErrorView = forwardRef<HTMLDivElement, ErrorViewProps>(
-  function ErrorView({ error, icon = "warning", isDashboard, isSmall }, ref) {
+  function ErrorView({ error, icon = "warning", isSmall }, ref) {
     return (
-      <StateView ref={ref} c={isDashboard ? "text-secondary" : "text-disabled"}>
+      <StateView ref={ref} c="text-secondary">
         <Tooltip label={error} disabled={!isSmall}>
           <Icon name={icon} size={50} mb="lg" />
         </Tooltip>

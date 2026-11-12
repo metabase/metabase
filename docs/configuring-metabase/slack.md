@@ -1,5 +1,6 @@
 ---
 title: Set up Slack
+summary: Connect Metabase to Slack to send alerts and dashboard subscriptions to your channels, and to ask Metabot questions from Slack.
 redirect_from:
   - /docs/latest/administration-guide/09-setting-up-slack
 ---

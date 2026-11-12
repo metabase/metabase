@@ -129,20 +129,45 @@
       [(str scheme more) credentials])
     [base {}]))
 
+(def ^:private credential-params
+  "The URL params that carry credentials. They go to pgjdbc as connection properties, not on the URL."
+  #{"user" "password" "sslpassword"})
+
 (defn- check-no-stray-at!
   "Throw if an `@` is left in `url` or `pairs` once the credentials are off, without quoting either."
   [^String url pairs]
   ;; An `@` left on `url` means a password with an unencoded `/`, or an `@` that pgjdbc requires encoded anyway.
-  ;; An unencoded `?` in a password ends the host part early, before the `/` pgjdbc requires after a host, and
-  ;; moves the `@` into `pairs`.
-  ;; Any other `@` in `pairs` is a plain value that pgjdbc accepts, such as Azure's `user=name@server`.
+  ;; An unencoded `/` or `?` in a password ends the host part early and moves the `@` into `pairs`.
+  ;; A credential value may hold a plain `@`, such as Azure's `user=name@server`; any other `@` must be encoded.
+  ;; A URL with hosts but no path can't have its query `@` checked that way: the `?` that ended its host part
+  ;; may belong to the credentials, so every `@` there must be encoded.
   ;; Refuse a stray `@` before an error or the URL can quote the part of the password it may hold.
   (when (or (str/includes? url "@")
-            (and (re-matches #"[^/]*//[^/]+" url)
-                 (some (fn [[k v]] (str/includes? (str k v) "@")) pairs)))
+            (some (fn [[k v]]
+                    (or (str/includes? k "@")
+                        (and (str/includes? v "@")
+                             (or (not (credential-params k))
+                                 (re-matches #"[^/]*//[^/]+" url)))))
+                  pairs))
     (throw (ex-info (str "MB_PGVECTOR_DB_URL has an unencoded @ outside its credentials. "
                          "Percent-encode reserved characters, e.g. @ as %40, / as %2F and ? as %3F.")
                     {}))))
+
+(def ^:private host-list-re
+  "An empty host list, or comma-separated hosts, each a name or a bracketed IPv6 address with an optional port."
+  (let [host "(?:[A-Za-z0-9._-]+|\\[[0-9A-Za-z:.%_~-]+\\])(?::[0-9]+)?"]
+    (re-pattern (format "(?:%s(?:,%s)*)?" host host))))
+
+(defn- check-host-list!
+  "Throw if the host part of `url` isn't a host list, without quoting it."
+  [^String url]
+  ;; An unencoded `/` or `?` in the credentials ends the host part early, before their `@`.
+  ;; Read only the host part, so nothing after it can make the check skip.
+  (when-let [[_ host-list] (re-find #"^[^/]*//([^/]*)" url)]
+    (when-not (re-matches host-list-re host-list)
+      (throw (ex-info (str "MB_PGVECTOR_DB_URL has a malformed host list. Percent-encode reserved characters "
+                           "in its credentials, e.g. @ as %40, / as %2F and ? as %3F.")
+                      {})))))
 
 (defn- parse-db-url
   "Parse a pgvector JDBC URL into {:jdbc-url ... :credentials ... :pool-props ...}, or throw if it is
@@ -152,6 +177,7 @@
   (let [[base pairs]                (split-query url)
         [base-url host-credentials] (split-userinfo base)
         _                           (check-no-stray-at! base-url pairs)
+        _                           (check-host-list! base-url)
         default-pool                (merge fixed-pool-props
                                            (update-vals tunable-pool-props first))
         {:keys [pool conn credentials]}
@@ -166,16 +192,17 @@
              ;; credentials: passed to pgjdbc as connection properties, off the URL, because the URL gets
              ;; printed -- pgjdbc logs it at DEBUG on every connection, and DriverManager quotes it in its
              ;; "No suitable driver" error
-             (contains? #{"user" "password" "sslpassword"} k)
+             (contains? credential-params k)
              (assoc-in acc [:credentials (keyword k)] (url-decode raw-v))
 
              ;; a c3p0 knob: coerce and apply to the pool (pgjdbc can't read these off the URL)
+             ;; Errors name only known params and never quote a value.
              (contains? tunable-pool-props k)
              (let [parse  (second (tunable-pool-props k))
                    parsed (parse (url-decode raw-v))]
                (when (nil? parsed)
-                 (throw (ex-info (format "Invalid value for pgvector pool parameter %s: %s" k raw-v)
-                                 {:param k, :value raw-v})))
+                 (throw (ex-info (format "Invalid value for pgvector pool parameter %s" k)
+                                 {:param k})))
                (assoc-in acc [:pool k] parsed))
 
              ;; a recognized pgjdbc connection property: leave it on the URL for the driver
@@ -184,10 +211,10 @@
 
              ;; pgjdbc would silently ignore anything else, so treat it as a typo and fail loudly
              :else
-             (throw (ex-info (format (str "Unknown pgvector URL parameter %s. Expected a c3p0 pool knob "
+             (throw (ex-info (format (str "Unknown pgvector URL parameter. Expected a c3p0 pool knob "
                                           "(%s) or a Postgres connection property.")
-                                     k (str/join ", " (sort (keys tunable-pool-props))))
-                             {:param k}))))
+                                     (str/join ", " (sort (keys tunable-pool-props))))
+                             {}))))
          {:pool default-pool, :conn [], :credentials host-credentials}
          pairs)]
     {:jdbc-url    (cond-> base-url (seq conn) (str "?" (str/join "&" conn)))

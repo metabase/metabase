@@ -7,14 +7,14 @@ import * as Urls from "metabase/urls";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 
 export function useRouteDataAppAction() {
-  const params = useParams<{ name: string; actionId: string }>();
-  const name = params.name ?? "";
+  const params = useParams<{ slug: string; actionId: string }>();
+  const slug = params.slug ?? "";
   const actionId = Urls.extractEntityId(params.actionId);
   const {
     data: app,
     isLoading: isLoadingApp,
     error: appError,
-  } = useGetDataAppQuery(name);
+  } = useGetDataAppQuery(slug);
   const {
     currentData,
     isFetching: isFetchingAction,
@@ -26,7 +26,10 @@ export function useRouteDataAppAction() {
     error: databasesError,
   } = useActionDatabases();
 
-  const action = currentData?.type === "query" ? currentData : undefined;
+  const action =
+    currentData?.type === "query" || currentData?.type === "implicit"
+      ? currentData
+      : undefined;
   const isLoadingAction = currentData === undefined && isFetchingAction;
   const isActionNotFound =
     !isLoadingAction && actionFetchError === undefined && action === undefined;

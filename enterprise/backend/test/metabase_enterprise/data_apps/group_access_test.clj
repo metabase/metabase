@@ -66,7 +66,7 @@
         (mt/with-current-user (mt/user->id :rasta)
           (list-apps {} {})
           (testing "a disabled app isn't listed to a non-superuser"
-            (is (= [{:id (:id app) :name (:name app) :display_name (:display_name app) :enabled true :outdated false}]
+            (is (= [{:id (:id app) :slug (:slug app) :name (:name app) :enabled true :outdated false}]
                    (list-apps {} {})))))))))
 
 (deftest read-access-agrees-across-entry-points-test
@@ -74,17 +74,20 @@
     (mt/with-temporary-setting-values [use-tenants true]
       (mt/with-temp [:model/Tenant tenant {:name "Tenant"}
                      :model/User tenant-user {:tenant_id (:id tenant)}
+                     :model/PermissionsGroup tenant-group {:is_tenant_group true}
                      :model/DataApp app {:bundle (.getBytes "BUNDLE" "UTF-8")}
                      :model/PermissionsGroup group {}]
         (group-access/add-groups! app [(:id group)])
         (perms/add-user-to-group! (mt/user->id :rasta) (:id group))
+        (group-access/add-groups! app [(:id tenant-group)])
+        (perms/add-user-to-group! (:id tenant-user) (:id tenant-group))
         (doseq [[user-id admin? allowed?] [[(mt/user->id :crowberto) true true]
                                            [(mt/user->id :rasta) false true]
                                            [(mt/user->id :lucky) false false]
-                                           [(:id tenant-user) false false]]]
+                                           [(:id tenant-user) false true]]]
           (testing (str "read access for user " user-id)
-            (is (= (if allowed? [(:name app)] [])
-                   (mapv :name (mt/user-http-request user-id :get 200 "ee/apps"))))
+            (is (= (if allowed? [(:slug app)] [])
+                   (mapv :slug (mt/user-http-request user-id :get 200 "ee/apps"))))
             (mt/user-http-request user-id :get (if allowed? 200 403) (data-apps.tu/app-url app))
             (mt/user-http-request user-id :get (if allowed? 200 403) (data-apps.tu/app-url app "bundle"))
             (mt/with-current-user user-id
@@ -102,11 +105,12 @@
                    :model/PermissionsGroup tenant {:is_tenant_group true}]
       (is (= [] (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "groups"))))
       (doseq [ids [[(:id finches) (:id (perms/admin-group))]
-                   [(:id finches) (:id tenant)]
                    []
                    (vec (range 1 102))]]
         (mt/user-http-request :crowberto :post 400 (data-apps.tu/app-url app "groups") {:group_ids ids})
         (is (empty? (access-group-ids app))))
+      (mt/user-http-request :crowberto :post 402 (data-apps.tu/app-url app "groups") {:group_ids [(:id finches) (:id tenant)]})
+      (is (empty? (access-group-ids app)))
       (mt/user-http-request :crowberto :post 404 (data-apps.tu/app-url app "groups") {:group_ids [(:id finches) Integer/MAX_VALUE]})
       (is (=? [{:id (:id finches) :name "Finches" :member_count 0}
                {:id (:id owls) :name "Owls" :member_count 0}]
@@ -249,7 +253,7 @@
     (mt/with-temp [:model/DataApp app {}
                    :model/PermissionsGroup group {}]
       (group-access/add-groups! app [(:id group)])
-      (t2/update! :model/PermissionsGroup (:id group) {:is_tenant_group true})
+      (t2/update! :model/PermissionsGroup :id (:id group) {:is_tenant_group true})
       (mt/user-http-request :rasta :delete 403 (data-apps.tu/app-url app "groups" (:id group)))
       (is (= [(:id group)] (mapv :id (group-access/assigned-groups app))))
       (mt/user-http-request :crowberto :delete 204 (data-apps.tu/app-url app "groups" (:id group)))
@@ -292,7 +296,7 @@
         (testing "a grant made on the collection is listed and admits the group's members"
           (perms/grant-collection-read-permissions! group-id collection-id)
           (is (= #{group-id} (access-group-ids app)))
-          (is (= {:id (:id app) :name (:name app) :display_name (:display_name app) :enabled true :outdated false}
+          (is (= {:id (:id app) :slug (:slug app) :name (:name app) :enabled true :outdated false}
                  (mt/user-http-request :rasta :get 200 (data-apps.tu/app-url app)))))))))
 
 (deftest tenant-users-cannot-inherit-app-access-test
@@ -316,3 +320,74 @@
       (sso/sync-group-memberships! (:id user) [])
       (mt/with-current-user (:id user)
         (is (not (mi/can-read? app)))))))
+
+(deftest tenant-group-assignment-lifecycle-test
+  (mt/with-premium-features #{:data-apps :tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (mt/with-temp [:model/Tenant tenant {:name "Tenant"}
+                     :model/User user {:tenant_id (:id tenant)}
+                     :model/Database _ {}
+                     :model/PermissionsGroup group {:is_tenant_group true}
+                     :model/PermissionsGroup other-group {:is_tenant_group true}
+                     :model/DataApp app {:slug "birds" :name "Birds" :bundle_path "birds.js"}]
+        (perms/add-user-to-group! (:id user) (:id group))
+        (mt/user-http-request (:id user) :get 403 "ee/apps/birds")
+        (let [data-permissions (t2/select :model/DataPermissions :group_id (:id group))]
+          (is (seq data-permissions))
+          (is (=? [{:id (:id group) :is_tenant_group true :member_count 1}]
+                  (mt/user-http-request :crowberto :post 200 "ee/apps/birds/groups" {:group_ids [(:id group)]})))
+          (is (= data-permissions (t2/select :model/DataPermissions :group_id (:id group))))
+          (mt/user-http-request (:id user) :get 200 "ee/apps/birds")
+          (mt/user-http-request :rasta :get 403 "ee/apps/birds")
+          (group-access/add-groups! app [(:id other-group)])
+          (let [collection-id (:resource_collection_id app)]
+            (is (t2/exists? :model/Permissions :group_id (:id group)
+                            :object (perms/collection-read-path collection-id)))
+            (mt/with-premium-features #{:data-apps}
+              (mt/user-http-request (:id user) :get 401 "ee/apps/birds")
+              (mt/with-current-user (:id user)
+                (is (not (mi/can-read? app))))
+              (mt/user-http-request :crowberto :delete 204 (str "ee/apps/birds/groups/" (:id group))))
+            (is (= data-permissions (t2/select :model/DataPermissions :group_id (:id group))))
+            (is (not (t2/exists? :model/Permissions :group_id (:id group)
+                                 :object (perms/collection-read-path collection-id)))))
+          (mt/user-http-request (:id user) :get 403 "ee/apps/birds")
+          (is (= [(:id other-group)] (mapv :id (group-access/assigned-groups app)))))))))
+
+(deftest tenant-collection-grants-stay-with-owned-app-collections-test
+  (mt/with-premium-features #{:data-apps :tenants}
+    (mt/with-temp [:model/DataApp app {:slug "birds" :name "Birds" :bundle_path "birds.js"}
+                   :model/PermissionsGroup group {:is_tenant_group true}
+                   :model/Collection ordinary {}
+                   :model/Collection unowned {:namespace "data-apps"}]
+      (let [collection-id (:resource_collection_id app)]
+        (perms/grant-collection-read-permissions! (:id group) collection-id)
+        (is (t2/exists? :model/Permissions :group_id (:id group)
+                        :object (perms/collection-read-path collection-id)))
+        (doseq [collection [ordinary unowned]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"non-tenant collections"
+                                (perms/grant-collection-read-permissions! group collection))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"write access"
+                              (perms/grant-collection-readwrite-permissions! group collection-id)))))))
+
+(deftest stale-memberships-cannot-cross-app-tenancy-test
+  (mt/with-premium-features #{:data-apps :tenants}
+    (mt/with-temp [:model/Tenant tenant {}
+                   :model/User tenant-user {:tenant_id (:id tenant)}
+                   :model/PermissionsGroup internal-group {}
+                   :model/PermissionsGroup tenant-group {:is_tenant_group true}
+                   :model/DataApp internal-app {:slug "birds" :name "Birds" :bundle_path "birds.js"}
+                   :model/DataApp tenant-app {:slug "owls" :name "Owls" :bundle_path "owls.js"}]
+      (group-access/add-groups! internal-app [(:id internal-group)])
+      (group-access/add-groups! tenant-app [(:id tenant-group)])
+      ;; Bypass membership validation to represent stale rows from an earlier configuration.
+      (t2/query {:insert-into (t2/table-name :model/PermissionsGroupMembership)
+                 :values [{:user_id (:id tenant-user) :group_id (:id internal-group)}
+                          {:user_id (mt/user->id :rasta) :group_id (:id tenant-group)}]})
+      (mt/with-current-user (:id tenant-user)
+        (is (not (mi/can-read? internal-app))))
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (not (mi/can-read? tenant-app))))
+      (perms/add-user-to-group! (:id tenant-user) (:id tenant-group))
+      (mt/with-current-user (:id tenant-user)
+        (is (mi/can-read? tenant-app))))))

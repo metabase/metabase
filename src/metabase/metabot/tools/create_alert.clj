@@ -5,9 +5,11 @@
   (:require
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.notification.api :as notification.api]
    [metabase.util.cron :as u.cron]
@@ -80,27 +82,33 @@
                                        :details {:value channel}}]}]})))
 
 (def schedule-schema
-  "Schedule schema shared with create-dashboard-subscription tool."
-  [:or
-   [:map {:closed true}
-    [:frequency [:= "hourly"]]]
-   [:map {:closed true}
-    [:frequency [:= "daily"]]
-    [:hour [:int {:min 0 :max 23}]]]
-   [:map {:closed true}
-    [:frequency [:= "weekly"]]
-    [:day_of_week [:enum "sunday" "monday" "tuesday" "wednesday" "thursday" "friday" "saturday"]]
-    [:hour [:int {:min 0 :max 23}]]]
-   [:map {:closed true}
-    [:frequency [:= "monthly"]]
-    [:day_of_month [:enum "first-calendar-day"
-                    "first-sunday" "first-monday" "first-tuesday" "first-wednesday"
-                    "first-thursday" "first-friday" "first-saturday"
-                    "middle-of-month"
-                    "last-calendar-day"
-                    "last-sunday" "last-monday" "last-tuesday" "last-wednesday"
-                    "last-thursday" "last-friday" "last-saturday"]]
-    [:hour [:int {:min 0 :max 23}]]]])
+  "Schedule schema shared with create-dashboard-subscription tool.
+  It dispatches on `frequency`, so a schedule missing a field is told which one, not every field of every frequency."
+  [:multi {:dispatch      :frequency
+           :error/message "should be either \"hourly\", \"daily\", \"weekly\" or \"monthly\""}
+   ["hourly"
+    [:map {:closed true}
+     [:frequency [:= "hourly"]]]]
+   ["daily"
+    [:map {:closed true}
+     [:frequency [:= "daily"]]
+     [:hour [:int {:min 0 :max 23}]]]]
+   ["weekly"
+    [:map {:closed true}
+     [:frequency [:= "weekly"]]
+     [:day_of_week [:enum "sunday" "monday" "tuesday" "wednesday" "thursday" "friday" "saturday"]]
+     [:hour [:int {:min 0 :max 23}]]]]
+   ["monthly"
+    [:map {:closed true}
+     [:frequency [:= "monthly"]]
+     [:day_of_month [:enum "first-calendar-day"
+                     "first-sunday" "first-monday" "first-tuesday" "first-wednesday"
+                     "first-thursday" "first-friday" "first-saturday"
+                     "middle-of-month"
+                     "last-calendar-day"
+                     "last-sunday" "last-monday" "last-tuesday" "last-wednesday"
+                     "last-thursday" "last-friday" "last-saturday"]]
+     [:hour [:int {:min 0 :max 23}]]]]])
 
 (def ^:private alert-schema
   [:map {:closed true}
@@ -132,15 +140,18 @@
 (defrecord CreateAlertTool []
   tools/Tool
   (declaration [_]
-    {:name        "create_alert"
-     :description tool-description
-     :scope       scope/agent-alert-create
-     :args        alert-schema})
+    {:name            "create_alert"
+     :description     tool-description
+     :scope           scope/agent-alert-create
+     :args            alert-schema
+     :metabot/writes? true})
 
   (handle [_ {:keys [card_id send_condition schedule send_once]} ctx]
     (let [channel (current-slack-channel ctx)
           card    (tools/with-entity {:kind :card :id card_id}
                     (api/read-check (metabot.db/card card_id)))
+          _       (when (shared/curated-only?)
+                    (curation/check-curated-subject! (str "card " card_id) ["card" card_id]))
           alert   (create-alert! {:card-id        card_id
                                   :channel        channel
                                   :schedule       schedule

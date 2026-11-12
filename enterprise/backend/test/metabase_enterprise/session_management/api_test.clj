@@ -159,7 +159,7 @@
           (testing "the default population includes internal and external sessions"
             (is (= {:active (+ live-before 2), :ended ended-before}
                    (mt/user-http-request :crowberto :get 200 "ee/session-management/counts"))))
-          (t2/update! :model/Tenant tenant-id {:is_active false})
+          (t2/update! :model/Tenant :id tenant-id {:is_active false})
           (testing "an inactive tenant's sessions move to ended"
             (is (= {:active (inc live-before), :ended (inc ended-before)}
                    (mt/user-http-request :crowberto :get 200 "ee/session-management/counts")))))))))
@@ -279,7 +279,7 @@
         ;; `:event/user-credentials-revoked`, whose handler deletes the user's sessions outright (SEC-863). Going
         ;; through the model would leave no row for the liveness predicate to reject, so this test would pass even
         ;; with `[:= :user.is_active true]` deleted from `live-session-conditions`.
-        (t2/update! (t2/table-name :model/User) user-id {:is_active false})
+        (t2/update! (t2/table-name :model/User) :id user-id {:is_active false})
         (is (t2/exists? (t2/table-name :model/Session) :id session-id)
             "the session row survives deactivation; it is the predicate that must reject it")
         (let [response (list-sessions user-id)]
@@ -519,7 +519,7 @@
            (testing "tenancy=external shows only them"
              (is (= #{ext-session} (listed :tenancy "external"))))
            (testing "a session belonging to a deactivated tenant is not live at all"
-             (t2/update! :model/Tenant tenant-id {:is_active false})
+             (t2/update! :model/Tenant :id tenant-id {:is_active false})
              (is (= #{int-session} (listed))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

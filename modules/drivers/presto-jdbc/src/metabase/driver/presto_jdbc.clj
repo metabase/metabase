@@ -70,6 +70,7 @@
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
                               :set-timezone                     true
+                              :stage-ctes                       true
                               :standard-deviation-aggregations  true}]
   (defmethod driver/database-supports? [:presto-jdbc feature] [_driver _feature _db] supported?))
 
@@ -111,10 +112,6 @@
     (cond-> [:date_add (h2x/literal unit) amount expr]
       (h2x/database-type expr)
       (h2x/with-database-type-info (h2x/database-type expr)))))
-
-(defmethod sql.qp/use-ctes-for-stages? :presto-jdbc
-  [_driver]
-  true)
 
 (defmethod sql.qp/add-interval-honeysql-form :presto-jdbc
   [_driver expr amount unit]
@@ -541,6 +538,11 @@
 
     :else
     (str c "/" s)))
+
+;; `jdbc-spec` splices the schema into the URL path after the catalog
+(defmethod driver/url-building-detail-keys :presto-jdbc
+  [driver]
+  (conj ((get-method driver/url-building-detail-keys :default) driver) :schema))
 
 (defn- jdbc-spec
   "Creates a spec for `clojure.java.jdbc` to use for connecting to Presto via JDBC, from the given `opts`."

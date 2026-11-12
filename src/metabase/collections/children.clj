@@ -37,7 +37,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -64,6 +63,25 @@
                                  (personal-ids first-parent-collection-id)))]
     (remove personal-descendant? collections)))
 
+(def CollectionType
+  "Collection types that the root/items endpoint can filter on"
+  [:enum "remote-synced"])
+
+(def ^:private FilterableCollectionType
+  "Collection types that [[collection-children]] and [[select-collections]] can filter on: remote-synced collections,
+  or those of a Library type."
+  (into [:enum "remote-synced"] (sort collection/library-collection-types)))
+
+(defn- collection-types-clause
+  "A HoneySQL clause that keeps the collections of one of `collection-types`, \"remote-synced\" meaning the
+  remote-synced ones, or nil when there are none."
+  [collection-types]
+  (when (seq collection-types)
+    (into [:or] (for [collection-type (sort collection-types)]
+                  (if (= collection-type "remote-synced")
+                    [:= :is_remote_synced true]
+                    [:= :type collection-type])))))
+
 (defn select-collections
   "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
@@ -77,8 +95,11 @@
   This will select only collections where `personal_owner_id` is not `nil`.
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
-  By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
+  By default, library-type collections are excluded.
+
+  To select only collections of some types, pass them as the set `collection-types`. "
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
+           collection-types]}]
   (cond->>
    (collections.db/collections-matching
     {:where [:and
@@ -94,6 +115,7 @@
                (location-from-collection-id-clause collection-id))
              (when personal-only
                [:!= :personal_owner_id nil])
+             (collection-types-clause collection-types)
              (when exclude-other-user-collections
                [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
              (when-not include-library?
@@ -193,16 +215,12 @@
   [w]
   (when w (keyword (str/replace w #"_" "-"))))
 
-(def CollectionType
-  "Collection types that the root/items endpoint can filter on"
-  [:enum "remote-synced"])
-
 (def CollectionChildrenOptions
   "The `options` map accepted by [[collection-children]] and [[collection-filter-metadata]]."
   [:map {:closed true}
    [:show-dashboard-questions?     :boolean]
    [:show-exploration-documents?   {:optional true} [:maybe :boolean]]
-   [:collection-type {:optional true} [:maybe CollectionType]]
+   [:collection-types {:optional true} [:maybe [:set FilterableCollectionType]]]
    [:archived?                     :boolean]
    [:include-library?               {:optional true} [:maybe :boolean]]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
@@ -447,7 +465,7 @@
   (for [row rows]
     (dissoc row
             :description :display :authority_level :moderated_status :icon :personal_owner_id :namespace
-            :collection_preview :dataset_query :table_id :query_type :is_upload :collection_namespace)))
+            :dataset_query :table_id :query_type :is_upload :collection_namespace)))
 
 (defenterprise snippets-collection-children-query
   "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
@@ -501,7 +519,7 @@
   (for [row rows]
     (-> (dissoc row
                 :collection_position :display :authority_level :moderated_status :icon :personal_owner_id
-                :collection_preview :dataset_query :table_id :query_type :is_upload :namespace)
+                :dataset_query :table_id :query_type :is_upload :namespace)
         (update :archived api/bit->boolean)
         (update :archived_directly api/bit->boolean)
         (assoc :collection_namespace (some-> (:namespace collection) name)))))
@@ -511,20 +529,20 @@
   (for [row rows]
     (dissoc row
             :description :display :collection_position :authority_level :moderated_status
-            :collection_preview :dataset_query :table_id :query_type :is_upload :namespace)))
+            :dataset_query :table_id :query_type :is_upload :namespace)))
 
 (defmethod post-process-collection-children :snippet
   [_ _options _collection rows]
   (for [row rows]
     (-> (dissoc row
                 :description :collection_position :display :authority_level
-                :moderated_status :icon :personal_owner_id :collection_preview
+                :moderated_status :icon :personal_owner_id
                 :dataset_query :table_id :query_type :is_upload :namespace)
         (assoc :collection_namespace "snippets"))))
 
 (defn- card-query [card-type collection {:keys [archived? pinned-state show-dashboard-questions? created-by-id]}]
   (-> {:select    (cond->
-                   [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                   [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display
                     :dashboard_id
                     :last_used_at
                     :c.collection_id
@@ -603,7 +621,6 @@
       ;; pad, and out of the response body.
       (assoc :document_id nil)
       (update :dataset_query (:out lib-be/transform-query))
-      (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)))
 
@@ -695,7 +712,7 @@
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)
-      (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
+      (dissoc :display :authority_level :icon :personal_owner_id
               :dataset_query :table_id :query_type :is_upload)))
 
 (defmethod post-process-collection-children :dashboard
@@ -714,16 +731,13 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library?]}]
+  [collection {:keys [archived? collection-namespace pinned-state collection-types include-library?]}]
   (-> (assoc
        (collection/effective-children-query
         collection
         {:cte-name :visible_collection_ids}
         [:and
-         (when collection-type
-           (if (= collection-type "remote-synced")
-             [:= :is_remote_synced true]
-             [:= :type collection-type]))
+         (collection-types-clause collection-types)
          (when-not include-library?
            [:or [:= nil :type]
             [:not [:in :type (vec collection/library-collection-types)]]])
@@ -774,7 +788,7 @@
             [:t.db_id :database_id]
             [[:!= :t.archived_at nil] :archived]
             [(h2x/literal "table") :model]]
-   :from   [(warehouse-schema-overlay/table-query {:alias :t})]
+   :from   [[(t2/table-name :model/Table) :t]]
    :where  [:and
             [:= :t.is_published true]
             (poison-when-pinned-clause pinned-state)
@@ -888,7 +902,7 @@
             (update :is_remote_synced api/bit->boolean)
             (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
             (dissoc :collection_position :display :moderated_status :icon
-                    :collection_preview :dataset_query :table_id :query_type :is_upload)
+                    :dataset_query :table_id :query_type :is_upload)
             (assoc :type type-value)
             update-personal-collection)))))
 
@@ -982,7 +996,7 @@
   "All columns that need to be present for the union-all. Generated with the comment form below. Non-text columns that
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
-  [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
+  [:id :name :description :entity_id :display :dataset_query
    :collection_id
    [:dashboard_id :integer]
    [:archived_directly :boolean]

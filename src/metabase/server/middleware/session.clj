@@ -39,8 +39,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.password :as u.password]
-   [metabase.util.string :as string]))
+   [metabase.util.password :as u.password]))
 
 (set! *warn-on-reflection* true)
 
@@ -100,7 +99,7 @@
   "Validates that the given session-key looks like a session key (a UUID string). Session keys are only ever compared
   against `core_session.key_hashed`; this check short-circuits obviously-invalid values before we hash them."
   [session-key]
-  (or (not session-key) (string/valid-uuid? session-key)))
+  (or (not session-key) (u/uuid-string? session-key)))
 
 (mu/defn- current-user-info-for-session :- [:maybe [:merge
                                                     ::request.schema/current-user-info
@@ -128,15 +127,6 @@
             (assoc :metabase/authed-session-key-hash session-key-hash
                    :embedding/auth-method            (or auth-provider "session")))))))
 
-(def ^:private api-key-that-should-never-match (str (random-uuid)))
-(def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
-
-(defn do-useless-hash
-  "Password check that will always fail, used to avoid exposing any info about existing users or API keys via timing
-  attacks."
-  []
-  (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
-
 (defn- matching-api-key?
   "Whether `passed-api-key` matches the hash stored in `user-data`. The stored bcrypt hash is encrypted at rest and this
   path reads the raw column (bypassing the model's decrypting transform), so it is decrypted before the bcrypt compare;
@@ -147,7 +137,7 @@
   (if-let [stored-hash (when api-key
                          (u/ignore-exceptions (encryption/maybe-decrypt api-key)))]
     (u.password/verify-password passed-api-key "" stored-hash)
-    (do-useless-hash)))
+    (u.password/do-useless-hash)))
 
 (mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
   "Return User ID and superuser status for an API Key with `api-key-id"

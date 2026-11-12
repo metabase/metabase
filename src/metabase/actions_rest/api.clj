@@ -8,6 +8,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -56,11 +57,7 @@
       (t2/hydrate :creator :can_write)
       api/read-check))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:action-id"
+(api.macros/defendpoint :delete "/:action-id" :- ::api/generic-204-no-content
   "Delete an Action."
   [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]]
@@ -150,12 +147,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id/public_link"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :delete "/:id/public_link" :- ::api/generic-204-no-content
   "Delete the publicly-accessible link to this Dashboard."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ::actions.schema/id]]]
@@ -176,7 +169,9 @@
                            [:action-id ms/PositiveInt]]
    _query-params
    {:keys [parameters]} :- [:map {:closed true}
-                            [:parameters ::actions.schema/prefetch-parameter-values]]]
+                            [:parameters ::actions.schema/prefetch-parameter-values]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-action action-id))
   (actions/check-actions-enabled action-id)
   (-> (actions/select-action :id action-id :archived false)
       api/read-check
@@ -206,6 +201,20 @@
                      (contains? slug->id k)  (get slug->id k)
                      :else                   k)))))
 
+(api.macros/defendpoint :post "/execute" :- :map
+  "Execute the ad-hoc `action`, without saving it. Superusers only."
+  {:scope api-scope/data-app}
+  [_route-params
+   _query-params
+   {:keys [action parameters]} :- [:map {:closed true}
+                                   [:action ::actions.schema/action.adhoc]
+                                   [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]
+   request]
+  (api/check-superuser)
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-action action))
+  (let [action (actions/adhoc-action action)]
+    (actions/execute-action! action (remap-parameter-keys action (update-keys parameters name)))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -219,8 +228,10 @@
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map {:closed true}
-                                               [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]]
+                                               [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]
+   request]
   (let [resolved-id (eid-translation/->id-or-404 :action id)
+        _           (some-> (data-apps/request-data-app request) (data-apps/check-action resolved-id))
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
     (analytics/track-event! :snowplow/action
                             {:event     :action-executed

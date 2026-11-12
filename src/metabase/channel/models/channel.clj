@@ -8,8 +8,8 @@
    [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -95,21 +95,15 @@
       ;; Limit to 254 characters to avoid hitting character limit
       (assoc :name (u/truncate (format "DEACTIVATED_%d %s" (:id instance) (:name instance)) 254)))))
 
-(defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
+(defmethod serialization/storage-paths :model/Channel [_ entities _ctx]
+  (mapv (fn [channel]
+          [{:label "channels"} {:label (:name channel) :key (:name channel)}])
+        entities))
 
-(defmethod serdes/load-find-local "Channel"
-  [path]
-  (channel.db/channel-by-name (:id (last path))))
-
-(defmethod serdes/generate-path "Channel" [_ channel]
-  [(serdes/infer-self-path "Channel" channel)])
-
-(defmethod serdes/storage-path "Channel" [channel _ctx]
-  [{:label "channels"} {:label (:name channel) :key (serdes/entity-id "Channel" channel)}])
-
-(defmethod serdes/make-spec "Channel"
-  [_model-name _opts]
-  {:copy           [:name :description :type :details :active]
+(defmethod serialization/spec :model/Channel [_]
+  {:schema   ::channel.schema/external-channel
+   :identity [:name]
+   :copy     [:name :description :type :details :active]
    :defaults {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -124,7 +118,7 @@
   "Entries every channel template has, whatever its `:channel_type`."
   [[:id           {:optional true} ms/PositiveInt]
    [:name         {:optional true} ms/NonBlankString]
-   [:channel_type                  [:fn #(= "channel" (-> % keyword namespace))]]])
+   [:channel_type                  [:fn {:json-schema {:type "string"}} #(= "channel" (-> % keyword namespace))]]])
 
 (def ^:private channel-template-row-entries
   "[[channel-template-entries]] plus the timestamps a stored template carries. Kept out of the user-provided schema

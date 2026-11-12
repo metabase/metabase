@@ -126,7 +126,7 @@
                         :name          "Grandchild via Native"}
 
                        :model/Transform {transform-id :id}
-                       {:source {:type  "query"
+                       {:source {:type  :query
                                  :query (lib/query mp (lib.metadata/card mp old-id))}
                         :name   "acceptance_transform"
                         :target {:database (mt/id) :type "table" :name "acceptance_transform"}}
@@ -369,7 +369,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:dependencies}
         (let [mp     (mt/metadata-provider)
-              schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+              schema (t2/select-one-fn :schema :model/Table :id (mt/id :orders))]
           (with-transform-cleanup! [target {:type   "table"
                                             :schema schema
                                             :name   "model_transform"}]
@@ -459,7 +459,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :left-join)
       (mt/with-premium-features #{:dependencies}
         (let [mp     (mt/metadata-provider)
-              schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+              schema (t2/select-one-fn :schema :model/Table :id (mt/id :orders))]
           (with-transform-cleanup! [target {:type   "table"
                                             :schema schema
                                             :name   "model_transform_shapes"}]

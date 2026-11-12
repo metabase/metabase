@@ -421,7 +421,7 @@
         options         {:archived?                   (boolean archived)
                          :show-dashboard-questions?   (boolean show-dashboard-questions)
                          :show-exploration-documents? (boolean show-exploration-documents)
-                         :collection-type             collection-type
+                         :collection-types            (some-> collection-type hash-set)
                          :include-library?            include-library
                          :models                      (if-not (contains? collections.children/namespaces-holding-non-collection-types namespace)
                                                         #{:collection}
@@ -463,7 +463,7 @@
                                {:archived?                   (boolean archived)
                                 :show-dashboard-questions?   (boolean show-dashboard-questions)
                                 :show-exploration-documents? (boolean show-exploration-documents)
-                                :collection-type             collection-type
+                                :collection-types            (some-> collection-type hash-set)
                                 :include-library?            include-library
                                 :pinned-state                (keyword pinned-state)
                                 :sort-info                   {:sort-column                 :name
@@ -544,8 +544,8 @@
   [:multi {:dispatch map?}
    [true  [:map-of RequestId [:multi {:dispatch map?}
                               [true  [:map-of [:or [:= :root] RequestId] (ms/enum-keywords-and-strings :write :read :none)]]
-                              [false [:fn {:error/message "map"} map?]]]]]
-   [false [:fn {:error/message "map"} map?]]])
+                              [false (mu/never {:error/message "map"})]]]]
+   [false (mu/never {:error/message "map"})]])
 
 (def ^:private graph-decoder
   "Building it this way is a lot faster then calling mc/decode <value> <schema> <transformer>"

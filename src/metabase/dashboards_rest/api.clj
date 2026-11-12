@@ -8,13 +8,11 @@
    [metabase.actions.core :as actions]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
-   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.render.core :as channel.render]
    [metabase.collections.children :as collections.children]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards-rest.db :as dashboards-rest.db]
@@ -30,6 +28,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
@@ -47,6 +46,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
@@ -469,14 +469,6 @@
              :discard []}
             (filter :card_id dashcards))))
 
-(defn- reference-metrics
-  "Moves the metrics in `cards`' `:copy` to `:reference`, since a dashboards-only collection can't hold copies of them."
-  [{:keys [copy] :as cards}]
-  (let [metric? (fn [[_ card]] (= :metric (keyword (:type card))))]
-    (-> cards
-        (assoc :copy (into {} (remove metric?) copy))
-        (update :reference merge (into {} (filter metric?) copy)))))
-
 (defn- maybe-duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
 
@@ -485,18 +477,14 @@
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        dashboards-only?                 (collections/library-dashboards-collection? dest-coll-id)
-        {:keys [copy discard reference]} (cond-> (cards-to-copy deep-copy? (:dashcards old-dashboard))
-                                           dashboards-only? reference-metrics)]
+        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
     {:copied     (into {} (for [[id to-copy] copy]
                             [id (queries/with-copy-source-card to-copy
                                   (queries/create-card!
                                    (cond-> to-copy
                                      true                    (assoc :collection_id dest-coll-id)
                                      same-collection?        (update :name #(str % " - " (tru "Duplicate")))
-                                     (or (:dashboard_id to-copy)
-                                         dashboards-only?)   (-> (assoc :dashboard_id (u/the-id new-dashboard))
-                                                                 (dissoc :collection_position)))
+                                     (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
                                    @api/*current-user*
                                    ;; creating cards from a transaction. wait until tx complete to signal event
                                    true
@@ -636,12 +624,9 @@
                                                                             id->referenced-card
                                                                             id->new-tab-id))]
                              (api/check-500 (dashboard/add-dashcards! dash dashcards)))
-                           (u/prog1 (cond-> dash
-                                      (seq uncopied)
-                                      (assoc :uncopied uncopied))
-                             (when (collections/moving-into-remote-synced? (:collection_id existing-dashboard)
-                                                                           collection_id)
-                               (collections/check-non-remote-synced-dependencies <>)))))]
+                           (cond-> dash
+                             (seq uncopied)
+                             (assoc :uncopied uncopied))))]
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
                              :dashboard-id (u/the-id dashboard)})
@@ -688,11 +673,11 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get Dashboard with ID."
-  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
-                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
+                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]
+   _body]
   (with-dashboard-load-id dashboard-load-id
     (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
           dashboard (get-dashboard resolved-id)]
@@ -762,11 +747,7 @@
     (embedding.validation/check-embedding-enabled)
     (api/check-superuser)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Hard delete a Dashboard. To soft delete, use `PUT /api/dashboard/:id`
 
   This will remove also any questions/models/segments/metrics that use this database."
@@ -899,7 +880,7 @@
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe int?]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series                 {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]])
 
@@ -1063,7 +1044,7 @@
              (when parameters
                (handle-broken-subscriptions id original-params)))
            (when update-dashcards-and-tabs?
-             (when (not (false? (:archived false)))
+             (when (not (false? (:archived dash-updates)))
                (api/check-not-archived current-dash))
              (let [{current-dashcards :dashcards
                     current-tabs      :tabs
@@ -1098,8 +1079,7 @@
                (reset! changes-stats
                        (merge
                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
-                        (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
-           (collections/check-for-remote-sync-update current-dash))
+                        (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
          true))
       (let [dashboard (dashboards-rest.db/dashboard id)]
         ;; skip publishing the event if it's just a change in its collection position
@@ -1189,11 +1169,11 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
-  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
-                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
+                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]
+   _body]
   (with-dashboard-load-id dashboard-load-id
     (perms/with-relevant-permissions-for-user api/*current-user-id*
       (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
@@ -1234,12 +1214,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:dashboard-id/public_link"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :delete "/:dashboard-id/public_link" :- ::api/generic-204-no-content
   "Delete the publicly-accessible link to this Dashboard."
   [{:keys [dashboard-id]} :- [:map {:closed true}
                               [:dashboard-id ms/PositiveInt]]]
@@ -1275,7 +1251,7 @@
    [:description            {:optional true} [:maybe :string]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
    [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]])
 
 (def ^:private TransientDashboardCard
   [:map {:closed true}
@@ -1287,7 +1263,7 @@
    [:size_y                 {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/Int]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]])
 
 (def ^:private TransientDashboard
   [:map {:closed true}
@@ -1344,11 +1320,11 @@
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
-  {:scope api-scope/data-app}
   [{:keys [id param-key]}      :- [:map {:closed true}
                                    [:id ms/PositiveInt]
                                    [:param-key ms/NonBlankString]]
-   constraint-param-key->value :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])]
+   constraint-param-key->value :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])
+   _body]
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
@@ -1367,12 +1343,12 @@
      GET /api/dashboard/1/params/abc/search/Cam?def=100
 
   Currently limited to first 1000 results."
-  {:scope api-scope/data-app}
   [{:keys [id param-key query]} :- [:map {:closed true}
                                     [:id    ms/PositiveInt]
                                     [:param-key ms/NonBlankString]
                                     [:query ms/NonBlankString]]
-   constraint-param-key->value  :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])]
+   constraint-param-key->value  :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])
+   _body]
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true
@@ -1388,11 +1364,11 @@
 
     ;; fetch the remapped value for Dashboard 1 parameter 'abc' for value 100
     GET /api/dashboard/1/params/abc/remapping?value=100"
-  {:scope api-scope/data-app}
   [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ms/PositiveInt]
                               [:param-key ms/NonBlankString]]
-   {:keys [value]}        :- [:map {:closed true} [:value :string]]]
+   {:keys [value]}        :- [:map {:closed true} [:value :string]]
+   _body]
   (let [dashboard (api/read-check :model/Dashboard id)]
     (binding [qp.perms/*param-values-query* true]
       (parameters.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
@@ -1422,11 +1398,11 @@
   Results are returned as a map of
 
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
-  {:scope api-scope/data-app}
   [_route-params
    {:keys [filtered filtering]} :- [:map {:closed true}
                                     [:filtered  (ms/QueryVectorOf ::lib.schema.id/field)]
-                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ::lib.schema.id/field)]]]]
+                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ::lib.schema.id/field)]]]
+   _body]
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
         filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
     (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]
@@ -1440,7 +1416,6 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
-  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
@@ -1462,7 +1437,6 @@
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
-  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
@@ -1475,13 +1449,9 @@
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
+  :- ::qp.streaming/query-result-response
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
-  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
@@ -1508,7 +1478,6 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id export-format]} :- [:map {:closed true}
                                                                 [:dashboard-id  ms/PositiveInt]
                                                                 [:dashcard-id   ms/PositiveInt]
@@ -1540,13 +1509,9 @@
                              :pivot?                 pivot-results?
                              :js-int-to-string?      false}}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
+  :- ::qp.streaming/query-result-response
   "Run a pivot table query for a specific DashCard."
-  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]

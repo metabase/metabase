@@ -183,7 +183,7 @@ You can have multiple shared collections and nested shared collections. You can 
 
 _Admin settings > Remote Sync_
 
-You can set up [Remote sync](../installation-and-operation/remote-sync.md) for shared collections. This means you'll be able to develop shared content in one Metabase, push it to a GitHub repo, and then have the shared content in your production Metabase always synced with that repo. See [Remote sync docs](../installation-and-operation/remote-sync.md) for more details.
+You can set up [Remote sync](../data-modeling/semantic-layer/remote-sync.md) for shared collections. This means you'll be able to develop shared content in one Metabase, push it to a GitHub repo, and then have the shared content in your production Metabase always synced with that repo. See [Remote sync docs](../data-modeling/semantic-layer/remote-sync.md) for more details.
 
 ## Tenant attributes
 

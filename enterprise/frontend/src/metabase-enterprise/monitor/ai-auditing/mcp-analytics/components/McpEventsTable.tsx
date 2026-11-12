@@ -314,6 +314,7 @@ function McpEventsTableInner({
             />
             <TreeTable
               instance={treeTableInstance}
+              static
               hierarchical={false}
               ariaLabel={t`Tool calls`}
               emptyState={<MonitorEmptyState label={t`No tool calls found`} />}

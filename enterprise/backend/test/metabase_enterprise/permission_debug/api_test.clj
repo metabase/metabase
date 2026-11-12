@@ -114,7 +114,19 @@
              (mt/user-http-request :crowberto :get "ee/permission_debug"
                                    :user_id "invalid"
                                    :model_id "999"
-                                   :action_type "card/read"))))))
+                                   :action_type "card/read"))))
+    (testing "should reject a non-numeric model_id"
+      (is (=? {:errors {:model_id string?}}
+              (mt/user-http-request :crowberto :get 400 "ee/permission_debug"
+                                    :user_id "1"
+                                    :model_id "abc"
+                                    :action_type "card/read"))))
+    (testing "should reject a model_id with a trailing newline"
+      (is (=? {:errors {:model_id string?}}
+              (mt/user-http-request :crowberto :get 400 "ee/permission_debug"
+                                    :user_id "1"
+                                    :model_id "123\n"
+                                    :action_type "card/read"))))))
 
 (deftest permission-debug-response-schema-test
   (testing "GET /api/ee/permission_debug response schema validation"

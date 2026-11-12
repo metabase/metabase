@@ -167,9 +167,9 @@
             (let [router-id (u/the-id router-db)
                   table     (t2/select-one :model/Table :db_id router-id :name "acct")
                   owner     (t2/select-one :model/Field :table_id (:id table) :name "owner")]
-              (t2/update! :model/Field (:id owner) {:has_field_values "list"})
-              (field-values/create-or-update-full-field-values! (t2/select-one :model/Field (:id owner)))
-              (t2/update! :model/Database router-id {:is_on_demand true})
+              (t2/update! :model/Field :id (:id owner) {:has_field_values "list"})
+              (field-values/create-or-update-full-field-values! (t2/select-one :model/Field :id (:id owner)))
+              (t2/update! :model/Database :id router-id {:is_on_demand true})
               (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}]
                 (mt/with-current-user (mt/user->id :rasta)
                   (sync.field-values/update-field-values-for-on-demand-dbs! [(:id owner)]))

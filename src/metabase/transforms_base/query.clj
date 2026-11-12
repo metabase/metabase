@@ -9,10 +9,10 @@
    [metabase.indexes.schema :as indexes.schema]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms-base.workspace-hooks :as transforms-base.workspace-hooks]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -51,7 +51,15 @@
 
 ;;; ------------------------------------------------- Helpers -------------------------------------------------
 
-(defn- transform-opts [transform-type transform]
+(mu/defn- transform-opts :- [:or
+                             [:map {:closed true} [:overwrite? :boolean]]
+                             [:map {:closed true}
+                              [:merge [:map {:closed true}
+                                       [:unique-key [:maybe [:sequential :string]]]
+                                       [:columns    [:maybe [:sequential :string]]]]]]
+                             [:map {:closed true}]]
+  [transform-type :- [:enum :table :table-incremental]
+   transform      :- ::transforms-base.schema/transform]
   (case transform-type
     :table {:overwrite? true}
     :table-incremental
@@ -94,19 +102,24 @@
     (when (and cancelled? (cancelled?))
       (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
     (let [db (get-in source [:query :database])
-          {driver :engine :as database} (when (and db (transforms-base.db/database-exists? db))
-                                          (driver.u/lib-database db))
-          _ (when-not database
-              (throw (ex-info "Source database for this transform has been deleted."
-                              {:transform-id (:id transform)
-                               :source-database-id db})))
+          {driver :engine :as database} (driver.u/lib-database db)
           _ (transforms-base.u/throw-if-db-routing-enabled! transform database)
           ;; Full incremental runs (no watermark — either the first ever, or one that follows a
           ;; checkpoint-config reset) drop and recreate the table rather than appending.
           effective-transform-type (if (transforms-base.u/full-incremental-run? transform)
                                      :table
                                      (keyword (:type target)))
-          compiled-query (transforms-base.u/compile-source transform source-range-params)
+          ;; Workspace SQL rewrite. Transforms route through `driver/run-transform!`
+          ;; with pre-compiled SQL -- they don't go through `qp.execute/run`, so the
+          ;; Phase 2 rewriter (which lives in the execute middleware chain) NEVER
+          ;; fires for transforms. Both MBQL and native sources need their compiled
+          ;; SQL rewritten here so canonical refs resolve to workspace-isolation
+          ;; tables. No-op when no workspace is active. See
+          ;; `metabase.transforms-base.workspace-hooks`.
+          compiled-query (-> (transforms-base.u/compile-source transform source-range-params)
+                             (update :query
+                                     #(transforms-base.workspace-hooks/rewrite-native-sql-for-workspace
+                                       driver db %)))
           transform-details {:db-id db
                              :database database
                              :transform-id   id
@@ -116,7 +129,7 @@
                              :output-schema (:schema target)
                              ;; Cross-DB write target qualifier. Populated when the driver's
                              ;; `qualified-name-components` includes `:db` (MySQL/Snowflake/
-                             ;; SQL Server/BigQuery) AND a cross-DB rewriter put a different
+                             ;; SQL Server/BigQuery) AND the workspace remap put a different
                              ;; DB into the target's `:db` slot. Compilation prepends this to
                              ;; the CTAS table name. See
                              ;; `metabase.driver.sql.query-processor/compile-transform :sql`.

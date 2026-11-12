@@ -13,6 +13,7 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -70,7 +71,7 @@
   [parts]
   (let [outputs (into {}
                       (comp (filter #(= :tool-output (:type %)))
-                            (map (juxt :id identity)))
+                            (u/index-by :id))
                       parts)]
     (->> parts
          (remove #(= :tool-output (:type %)))
@@ -102,8 +103,10 @@
                              ;; failure — the table that was missing, the argument to repair — on
                              ;; every replay. One field, two audiences; the model wins, because the
                              ;; live SSE channel has its own and the whole point of the text is that
-                             ;; the agent can act on it.
-                             (assoc :errorText (str (get-in output [:result :output])))))
+                             ;; the agent can act on it. A failure that no tool declared is stored as
+                             ;; the neutral sentence `tools.runtime/replay-text` gives it, because its
+                             ;; live text tells the model what to do in a turn that will have ended.
+                             (assoc :errorText (str (tools.runtime/replay-text (:result output))))))
                          :data {:type (str "data-" (or (:data-type part) "data"))
                                 :data (:data part)}
                          (do (log/warn "Dropping internal part with no v2 storage representation"
@@ -571,7 +574,7 @@
   [messages]
   (some (fn [turn-rows]
           (when-let [{:keys [rows]} (replayable-turn turn-rows)]
-            (when-let [user-row (first (filter user-row? rows))]
+            (when-let [user-row (u/seek user-row? rows)]
               (let [content (message-text user-row)]
                 (when-not (str/blank? content)
                   {:content content :profile-id (:profile_id user-row)})))))
@@ -580,7 +583,7 @@
 (defn- turn->llm-messages
   [turn-rows]
   (when-let [{:keys [rows reply]} (replayable-turn turn-rows)]
-    (let [user-row (first (filter user-row? rows))]
+    (let [user-row (u/seek user-row? rows)]
       (concat (when user-row [(user-row->llm-message user-row)])
               (assistant-row->llm-messages reply)))))
 

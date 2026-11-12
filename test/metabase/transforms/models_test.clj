@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.models.job-run :as transforms.job-run]
@@ -164,27 +166,21 @@
                                                       :name "other_table"}
                    ;; Create transforms targeting these tables
                    :model/Transform transform1 {:name "Transform with schema"
-                                                :source {:type "query"
-                                                         :query {:database db-id
-                                                                 :type "native"
-                                                                 :native {:query "SELECT 1"
-                                                                          :template-tags {}}}}
+                                                :source {:type :query
+                                                         :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")}
                                                 :target {:type "table"
                                                          :schema "public"
                                                          :name "test_table_with_schema"
-                                                         :db_id db-id}}
+                                                         :database db-id}}
                    :model/Transform transform2 {:name "Transform with NULL schema"
-                                                :source {:type "query"
-                                                         :query {:database db-id
-                                                                 :type "native"
-                                                                 :native {:query "SELECT 2"
-                                                                          :template-tags {}}}}
+                                                :source {:type :query
+                                                         :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 2")}
                                                 :target {:type "table"
                                                          :schema nil
                                                          :name "test_table_null_schema"
-                                                         :db_id db-id}}]
-      (t2/update! :model/Transform (:id transform1) {:target_table_id table-with-schema-id})
-      (t2/update! :model/Transform (:id transform2) {:target_table_id table-null-schema-id})
+                                                         :database db-id}}]
+      (t2/update! :model/Transform :id (:id transform1) {:target_table_id table-with-schema-id})
+      (t2/update! :model/Transform :id (:id transform2) {:target_table_id table-null-schema-id})
       (let [transform1 (t2/select-one :model/Transform :id (:id transform1))
             transform2 (t2/select-one :model/Transform :id (:id transform2))]
         (testing "Hydrates table with non-NULL schema"
@@ -225,27 +221,21 @@
                      :model/Database {db-id :id} {}
                      :model/Transform transform1 {:name       "Transform with creator"
                                                   :creator_id user1-id
-                                                  :source     {:type  "query"
-                                                               :query {:database db-id
-                                                                       :type     "native"
-                                                                       :native   {:query         "SELECT 1"
-                                                                                  :template-tags {}}}}
+                                                  :source     {:type  :query
+                                                               :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")}
                                                   :target     {:type   "table"
                                                                :schema "public"
                                                                :name   "test_table"
-                                                               :db_id  db-id}}
+                                                               :database  db-id}}
                      :model/User {user2-id :id} user2-data
                      :model/Transform transform2 {:name       "Second transform"
                                                   :creator_id user2-id
-                                                  :source     {:type  "query"
-                                                               :query {:database db-id
-                                                                       :type     "native"
-                                                                       :native   {:query         "SELECT 2"
-                                                                                  :template-tags {}}}}
+                                                  :source     {:type  :query
+                                                               :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 2")}
                                                   :target     {:type   "table"
                                                                :schema "public"
                                                                :name   "test_table2"
-                                                               :db_id  db-id}}]
+                                                               :database  db-id}}]
         (testing "Hydrates creator with user details"
           (is (=? (assoc user1-data :id user1-id)
                   (:creator (t2/hydrate transform1 :creator)))))
@@ -316,45 +306,37 @@
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Transform {transform-id :id}
-                     {:source {:type "query"
-                               :query {:database db-id
-                                       :type "native"
-                                       :native {:query "SELECT 1"
-                                                :template-tags {}}}
+                     {:source {:type :query
+                               :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
                                :source-incremental-strategy {:type "checkpoint"
                                                              :checkpoint-filter-field-id 100}}
                       :target {:type "table-incremental"
                                :schema "public"
                                :name "test_incr"
-                               :db_id db-id}
+                               :database db-id
+                               :target-incremental-strategy {:type "append"}}
                       :last_checkpoint_value "42"}]
         (testing "checkpoint is present before update"
-          (let [t (t2/select-one :model/Transform transform-id)]
+          (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (= "42" (:last_checkpoint_value t)))))
         (testing "changing checkpoint-filter-field-id resets checkpoint"
-          (t2/update! :model/Transform transform-id
-                      {:source {:type "query"
-                                :query {:database db-id
-                                        :type "native"
-                                        :native {:query "SELECT 1"
-                                                 :template-tags {}}}
+          (t2/update! :model/Transform :id transform-id
+                      {:source {:type :query
+                                :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
                                 :source-incremental-strategy {:type "checkpoint"
                                                               :checkpoint-filter-field-id 200}}})
-          (let [t (t2/select-one :model/Transform transform-id)]
+          (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (nil? (:last_checkpoint_value t)))))
         (testing "updating without changing checkpoint-filter-field-id preserves checkpoint"
           ;; Set checkpoint again
-          (t2/update! :model/Transform transform-id
+          (t2/update! :model/Transform :id transform-id
                       {:last_checkpoint_value "99"})
-          (t2/update! :model/Transform transform-id
-                      {:source {:type "query"
-                                :query {:database db-id
-                                        :type "native"
-                                        :native {:query "SELECT 2"
-                                                 :template-tags {}}}
+          (t2/update! :model/Transform :id transform-id
+                      {:source {:type :query
+                                :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 2")
                                 :source-incremental-strategy {:type "checkpoint"
                                                               :checkpoint-filter-field-id 200}}})
-          (let [t (t2/select-one :model/Transform transform-id)]
+          (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (= "99" (:last_checkpoint_value t)))))))))
 
 (deftest lookback-round-trips-with-keyword-keys-test
@@ -362,20 +344,18 @@
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Transform {transform-id :id}
-                     {:source {:type "query"
-                               :query {:database db-id
-                                       :type "native"
-                                       :native {:query "SELECT 1"
-                                                :template-tags {}}}
+                     {:source {:type :query
+                               :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
                                :source-incremental-strategy {:type "checkpoint"
                                                              :checkpoint-filter-field-id 100
                                                              :lookback {:value 4 :unit "day"}}}
                       :target {:type "table-incremental"
                                :schema "public"
                                :name "test_lookback"
-                               :db_id db-id}}]
+                               :database db-id
+                               :target-incremental-strategy {:type "append"}}}]
         (is (= {:value 4 :unit "day"}
-               (get-in (t2/select-one :model/Transform transform-id)
+               (get-in (t2/select-one :model/Transform :id transform-id)
                        [:source :source-incremental-strategy :lookback])))))))
 
 (deftest start-run-stores-job-run-id-test

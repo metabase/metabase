@@ -706,7 +706,7 @@
   [action context inputs]
   (table-row-delete! action context inputs))
 
-;;;; `bulk/update`
+;;;; `:table.row/update`
 
 (mu/defn- check-row-has-all-pk-columns
   "Return a 400 if `row` doesn't have all the required PK columns."

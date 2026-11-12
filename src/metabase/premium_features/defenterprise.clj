@@ -9,6 +9,8 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.malli :as mu]))
 
+(set! *warn-on-reflection* true)
+
 (defn- in-ee?
   "Is the current namespace an Enterprise Edition namespace?"
   []

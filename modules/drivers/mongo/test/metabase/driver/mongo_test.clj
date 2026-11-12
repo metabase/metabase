@@ -34,6 +34,8 @@
   (:import
    (org.bson.types Binary ObjectId)))
 
+(set! *warn-on-reflection* true)
+
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
 (def ^:private table-names
@@ -803,6 +805,7 @@
                            :collection  "venues"}})))))))
 
 (defn- create-database-from-row-maps! [database-name collection-name row-maps]
+  (mt/initialize-if-needed! :db)
   (or (t2/select-one :model/Database :engine "mongo", :name database-name)
       (let [dbdef {:database-name database-name}]
         ;; destroy Mongo database if it already exists.
@@ -924,16 +927,17 @@
   (mt/test-driver :mongo
     (mt/with-db (missing-fields-db)
       (sync/sync-database! (:id (missing-fields-db)))
-      (testing "Objects are formatted correctly as JSON in downloads"
-        (mt/with-temp [:model/Card card {:display       :table
-                                         :dataset_query {:database (mt/id)
-                                                         :type     :query
-                                                         :query    {:source-table (mt/id :coll)
-                                                                    :fields [(mt/id :coll :id)
-                                                                             (mt/id :coll :a)
-                                                                             (mt/id :coll :b)
-                                                                             (mt/id :coll :c)]}}}]
-          (let [results (downloads-test/card-download card {:export-format :csv :format-rows true})]
+      (let [dataset-query {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :coll)
+                                      :fields [(mt/id :coll :id)
+                                               (mt/id :coll :a)
+                                               (mt/id :coll :b)
+                                               (mt/id :coll :c)]}}]
+        ;; object fields sync as details-only, which the table viz hides and a table export therefore drops (#70909);
+        ;; object detail shows them, so its export keeps them
+        (testing "Objects are formatted correctly as JSON in downloads"
+          (mt/with-temp [:model/Card card {:display :object, :dataset_query dataset-query}]
             (is (= [["ID" "A" "B" "C"]
                     ["1"
                      "a string"
@@ -945,7 +949,15 @@
                      ""]
                     ["3" "a string" "{\"b_e\":{}}" ""]
                     ["4" "a string" "null" ""]]
-                   results))))))))
+                   (downloads-test/card-download card {:export-format :csv :format-rows true})))))
+        (testing "A table export leaves object columns out, like the table viz does"
+          (mt/with-temp [:model/Card card {:display :table, :dataset_query dataset-query}]
+            (is (= [["ID" "A" "C"]
+                    ["1" "a string" ""]
+                    ["2" "a string" ""]
+                    ["3" "a string" ""]
+                    ["4" "a string" ""]]
+                   (downloads-test/card-download card {:export-format :csv :format-rows true})))))))))
 
 (deftest ^:parallel mongo-uuid-test
   (testing "mongo binData fields can be filtered and are readable"

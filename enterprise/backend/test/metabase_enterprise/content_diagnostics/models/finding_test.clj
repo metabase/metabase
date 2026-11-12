@@ -31,7 +31,7 @@
                  :invalidated_at nil}
                 row)))
       (testing "stamping invalidated_at round-trips (the active-set filter's column)"
-        (t2/update! :model/ContentDiagnosticsFinding fid {:invalidated_at (t/offset-date-time)})
+        (t2/update! :model/ContentDiagnosticsFinding :id fid {:invalidated_at (t/offset-date-time)})
         (is (some? (:invalidated_at (t2/select-one :model/ContentDiagnosticsFinding :id fid))))))))
 
 (deftest stale-threshold-setting-default-test

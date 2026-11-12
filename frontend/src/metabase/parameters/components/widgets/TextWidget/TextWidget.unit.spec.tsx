@@ -80,6 +80,19 @@ describe("TextWidget", () => {
     expect(textbox).toHaveValue("0");
   });
 
+  it("should keep the full precision of a big integer", async () => {
+    const onChangeSpy = jest.fn();
+
+    render(<TextInputWithStateWrapper onChange={onChangeSpy} />);
+
+    const textbox = screen.getByRole("textbox");
+
+    await userEvent.type(textbox, "9223372036854775807{enter}");
+
+    expect(textbox).toHaveValue("9223372036854775807");
+    expect(onChangeSpy).toHaveBeenCalledWith("9223372036854775807");
+  });
+
   it("should not call setValue twice when pressing enter", async () => {
     const onChangeSpy = jest.fn();
 

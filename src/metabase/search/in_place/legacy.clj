@@ -20,7 +20,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private honeysql-registry
@@ -141,6 +140,7 @@
    :data_authority      :text
    :data_layer          :text
    ;; returned for DataApp
+   :slug                :text
    :data_app_slug       :text))
 
 (def ^:private SearchColumn
@@ -295,7 +295,7 @@
                                (map first)
                                ;; data_authority/data_layer are curation signals, not name/text fields —
                                ;; exclude them from exact-match ranking (and to keep in-place ordering stable).
-                               ;; data_app_slug repeats a data app's name.
+                               ;; data_app_slug repeats a data app's slug.
                                (remove #{:collection_authority_level :moderated_status
                                          :initial_sync_status :pk_ref :location
                                          :collection_location :data_authority
@@ -359,6 +359,7 @@
         [:collection.type :collection_type]
         [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
+        [:card.database_id :database_id]
         :dashboard_id
         bookmark-col dashboardcard-count-col
         [:display :display_type]))
@@ -459,7 +460,7 @@
 
 (defmethod columns-for-model "data-app"
   [_]
-  [:id :name :display_name :description :created_at :updated_at [:name :data_app_slug]])
+  [:id :name :description :created_at :updated_at :slug [:slug :data_app_slug]])
 
 (mu/defn- select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
@@ -618,12 +619,12 @@
 (defmethod search-query-for-model "measure"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join (warehouse-schema-overlay/table-query {:alias :table}) [:= :measure.table_id :table.id])))
+      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :measure.table_id :table.id])))
 
 (defmethod search-query-for-model "segment"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join (warehouse-schema-overlay/table-query {:alias :table}) [:= :segment.table_id :table.id])))
+      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :segment.table_id :table.id])))
 
 (defmethod search-query-for-model "table"
   [model {:keys [current-user-perms table-db-id], :as search-ctx}]

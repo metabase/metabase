@@ -29,6 +29,7 @@ The dependency graph tracks the relationships between Metabase entities:
 - [Metrics](../../data-modeling/semantic-layer/metrics.md)
 - [Dashboards](../../dashboards/introduction.md)
 - [Documents](../../documents/introduction.md)
+- [Data apps](../../data-apps/start.md)
 
 Dependency graph will also show the dependencies of Metabase entities on the tables that serve as data sources for those entities.
 
@@ -43,7 +44,7 @@ To open the full dependency graph:
 
 This opens a canvas view where you can search for and visualize the dependencies of any item across your entire Metabase instance.
 
-You can also view an item's dependencies from its page in Data Studio. Published tables, metrics, snippets, segments, measures, and transforms have a **Dependencies** tab. For tables in **Connected data**, click the **Dependency graph** button on the table's **Details** tab.
+You can also view an item's dependencies from its page in Data Studio. Published tables, metrics, snippets, segments, measures, transforms, and [data actions](../data-actions.md) have a **Dependencies** tab. For tables in **Connected data**, click the **Dependency graph** button on the table's **Details** tab.
 
 ## What the dependency graph shows
 

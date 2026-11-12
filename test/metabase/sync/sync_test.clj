@@ -325,13 +325,13 @@
       (testing "New values come in after sync"
         (binding [*execute-response* (fn [_query respond] (respond {:cols [{:name "field"}]}
                                                                    (partition-all 1 ["d" "e" "f"])))]
-          (sync/sync-database! (:id (t2/select-one :model/Database (u/the-id db)))))
+          (sync/sync-database! (:id (t2/select-one :model/Database :id (u/the-id db)))))
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["d" "e" "f"] :has_more_values false}}
                 (query-field-and-values))))
       (testing "After setting to search it should stay search and sync removes field-values"
-        (t2/update! :model/Field (:id field) {:has_field_values "search"})
-        (sync/sync-database! (:id (t2/select-one :model/Database (u/the-id db))))
+        (t2/update! :model/Field :id (:id field) {:has_field_values "search"})
+        (sync/sync-database! (:id (t2/select-one :model/Database :id (u/the-id db))))
         (get-or-create-vals ["x" "y" "z"])
         (is (=? {:f {:name "title" :has_field_values :search}
                  :fv nil}
@@ -362,7 +362,7 @@
           (is (= ["metadata" "analyze"]
                  (map :name (sync/sync-database! (:id db))))))
         (testing "a later sync of the Database, with its initial sync complete, runs it"
-          (let [synced-db (t2/select-one :model/Database (u/the-id db))]
+          (let [synced-db (t2/select-one :model/Database :id (u/the-id db))]
             (is (= "complete" (:initial_sync_status synced-db)))
             (is (= ["metadata" "analyze" "field-values"]
                    (map :name (sync/sync-database! (:id synced-db)))))))))))

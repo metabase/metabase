@@ -5,6 +5,7 @@
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.data-apps.core :as data-apps]
    [metabase.embedding.util :as embedding.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -207,7 +208,9 @@
                                                             [:description     {:optional true} [:maybe :string]]]]]]
    [:buffers         {:optional true} [:maybe [:sequential CodeEditorBufferSchema]]]
    [:query           {:optional true} ItemQuerySchema]
-   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]])
+   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]
+   ;; The open tab, sent with a dashboard
+   [:tab_id          {:optional true} [:maybe :int]]])
 
 (def DefaultItemSchema
   "Default schema of viewing context item."
@@ -281,7 +284,7 @@
   [request]
   (boolean (and request
                 (or (embedding.util/is-modular-embedding-request? request)
-                    (embedding.util/has-data-app-header? request)))))
+                    (data-apps/data-app-header? request)))))
 
 (defn- query-for-sql-parsing
   "Return the native query in a viewing-context item, or nil."

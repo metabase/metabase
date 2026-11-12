@@ -12,6 +12,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -35,10 +36,8 @@
 (deftest table-schema-rows-read-published-state-test
   (testing "Rows carry a table's published state, which is stored with the user's table settings"
     (collections.tu/with-library [{data :data}]
-      (mt/with-temp [:model/Table            {table-id :id} {:db_id (mt/id), :name "metabot published", :active true}
-                     :model/TableUserSettings _             {:table_id      table-id
-                                                             :is_published  true
-                                                             :collection_id (:id data)}]
+      (mt/with-temp [:model/Table {table-id :id :as table} {:db_id (mt/id), :name "metabot published", :active true}]
+        (table-user-settings/upsert-table-user-settings! table {:is_published true :collection_id (:id data)})
         (is (=? [{:id table-id, :is_published true, :collection_id (:id data)}]
                 (metabot.db/table-schema-rows [table-id])))))))
 

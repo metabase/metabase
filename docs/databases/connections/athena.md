@@ -1,5 +1,6 @@
 ---
 title: Amazon Athena
+summary: Connect Metabase to Amazon Athena, including every connection and sync setting and the IAM permissions Metabase needs.
 ---
 
 # Amazon Athena
@@ -212,10 +213,6 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
 ## Writable connection
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
-
-## Model features
-
-There aren't (yet) any model features available for Athena.
 
 ## Database routing
 

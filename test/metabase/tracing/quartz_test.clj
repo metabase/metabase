@@ -58,7 +58,8 @@
       (swap! stmt-calls-atom conj :rollback))
     (commit [_]
       (swap! stmt-calls-atom conj :commit))
-    (close [_])
+    (close [_]
+      (swap! stmt-calls-atom conj :close-connection))
     (isClosed [_] false)))
 
 (defn- mock-job-execution-context
@@ -114,8 +115,7 @@
             traced (#'tracing.quartz/traced-connection conn)]
         (testing "close delegates to original"
           (.close ^Connection traced)
-          ;; no exception means the method was delegated
-          (is true))
+          (is (= [:close-connection] @calls)))
         (testing "isClosed delegates to original"
           (is (false? (.isClosed ^Connection traced)))))
       (finally

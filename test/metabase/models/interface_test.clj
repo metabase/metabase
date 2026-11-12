@@ -94,11 +94,11 @@
       (let [updated-at (:updated_at table)
             new-name   (u/qualified-name ::a-new-name)]
         (is (= 1
-               (t2/update! table (u/the-id table) {:name new-name})))
+               (t2/update! table :id (u/the-id table) {:name new-name})))
         (is (=? {:id         (:id table)
                  :name       new-name
                  :updated_at (partial not= updated-at)}
-                (t2/select-one [:model/Table :id :name :updated_at] (u/the-id table))))))))
+                (t2/select-one [:model/Table :id :name :updated_at] :id (u/the-id table))))))))
 
 (deftest ^:parallel timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
@@ -128,7 +128,7 @@
     (let [now (mi/current-timestamp)]
       (mt/with-temp [:model/Field field {:created_at now}]
         (is (= (u.date/format now)
-               (u.date/format (t2/select-one-fn :created_at :model/Field (:id field)))))))))
+               (u.date/format (t2/select-one-fn :created_at :model/Field :id (:id field)))))))))
 
 (defmethod mi/non-timestamped-fields :test-model/updated-at-tester [_]
   #{:non_timestamped :other})
@@ -211,58 +211,6 @@
                             (map (juxt :id (comp even? :id))))
                    things)
             :id)))))
-
-(deftest ^:parallel normalize-mbql-clause-impostor-in-visualization-settings-test
-  (let [viz-settings
-        {"table.pivot_column" "TAX"
-         "graph.metrics" ["expression"]
-         "pivot_table.column_split"
-         {"rows"
-          ["CREATED_AT" "expression" "TAX"]
-          "columns" []
-          "values" ["sum"]}
-         "pivot_table.column_widths" {"leftHeaderWidths" [141 99 80], "totalLeftHeaderWidths" 320, "valueHeaderWidths" {}}
-         "table.cell_column" "expression"
-         "table.column_formatting"
-         [{"columns" ["expression" nil "TAX" "count"]
-           "type" "single"
-           "operator" "is-null"
-           "value" 10
-           "color" "#EF8C8C"
-           "highlight_row" false
-           "id" 0}]
-         "column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {"number_style" "currency"}}
-         "series_settings" {"expression" {"line.interpolate" "step-after", "line.style" "dotted"}}
-         "graph.dimensions" ["CREATED_AT"]}]
-    (is (= {:table.pivot_column "TAX"
-            :graph.metrics ["expression"]
-            :pivot_table.column_split
-            {:rows ["CREATED_AT" "expression" "TAX"]
-             :columns []
-             :values ["sum"]}
-            :pivot_table.column_widths {:leftHeaderWidths [141 99 80], :totalLeftHeaderWidths 320, :valueHeaderWidths {}}
-            :table.cell_column "expression"
-            :table.column_formatting
-            [{:columns ["expression" nil "TAX" "count"]
-              :type "single"
-              :operator "is-null"
-              :value 10
-              :color "#EF8C8C"
-              :highlight_row false
-              :id 0}]
-            :column_settings {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "currency"}}
-            :series_settings {:expression {:line.interpolate "step-after", :line.style "dotted"}}
-            :graph.dimensions ["CREATED_AT"]}
-           (mi/normalize-visualization-settings viz-settings)))))
-
-(deftest ^:parallel normalize-invalid-visualization-settings-test
-  (testing "Unknown keys in `:column_settings` should be removed rather than causing normalization to fail (#69626)"
-    (let [viz-settings {"column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}
-                                           "[\"REF\",[\"expression\",\"expression\"]]" {:number_style "y"}
-                                           "[\"bad-clause\",\"a\"]"                    {:number_style "z"}}}]
-      (is (= {:column_settings
-              {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}}}
-             (mi/normalize-visualization-settings viz-settings))))))
 
 (deftest ^:parallel json-in-with-eliding
   (is (= "{}" (#'mi/json-in-with-eliding {})))

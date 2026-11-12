@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useUserKeyValue } from "metabase/current-user";
@@ -36,10 +36,7 @@ export function useRedirectToLastDatabase({
 
   const { data: databasesResponse, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();
-  const databases = useMemo(
-    () => databasesResponse?.data?.filter((db) => !db.is_saved_questions),
-    [databasesResponse],
-  );
+  const databases = databasesResponse?.data;
 
   // Redirect to last opened database only on initial load (not when user
   // clears selection).

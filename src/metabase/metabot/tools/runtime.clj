@@ -14,18 +14,22 @@
   checks it.
 
   Codes come in two flavours. Tool code uses qualified keywords, so a code says which namespace
-  raised it. The runtime's own codes are a closed, unqualified vocabulary — [[runtime-codes]] — and
-  the agent loop adds one more (`:repeated-error`)."
+  raised it. The runtime's own codes are a closed, unqualified vocabulary, [[runtime-codes]].
+  Every unrecoverable failure ends the turn except `:internal`, the code of an ordinary exception no
+  tool declared: the agent loop lets a turn survive one of those, or none when its profile requires
+  a tool call. A tool that writes gets none either: its undeclared failure is an [[unconfirmed-write]]."
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
+   [malli.util :as mut]
    [metabase.api-scope.core :as api-scope]
    [metabase.config.core :as config]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -43,11 +47,32 @@
   "Every error code the runtime itself produces, with the class each one takes.
 
   Written down as data so the agent loop, the adapters and the tests share one list rather than
-  three sets of literal keywords. `:repeated-error` is the agent loop's and is not raised here."
+  three sets of literal keywords."
   {:unknown-tool       :validation
    :invalid-arguments  :validation
    :scope-denied       :unrecoverable
-   :internal           :unrecoverable})
+   :internal           :unrecoverable
+   :jvm-error          :unrecoverable
+   :interrupted        :unrecoverable
+   :unconfirmed-write  :unrecoverable})
+
+(defn undeclared?
+  "Whether `code` is `:internal`, the code of an ordinary exception that no tool declared."
+  [code]
+  (= :internal code))
+
+(defn- unconfirmed-write
+  "The ToolError to report for `error` from a tool whose declaration sets `:metabot/writes?`.
+
+  A failure that no tool declared, coded by `tools.error/classify`, may have come after the write. It
+  becomes `:unconfirmed-write`, which ends the turn and tells the user to check before trying again,
+  so the model can't write a second time. A declared error passes through unchanged."
+  [{:keys [code] :as error}]
+  (if (#{:internal :jvm-error :interrupted} code)
+    {:class        :unrecoverable
+     :code         :unconfirmed-write
+     :user-message (tru "Something went wrong. The change may have been saved, so check before you try again.")}
+    error))
 
 ;;; ------------------------------------------------ Schemas -------------------------------------------------------
 
@@ -127,42 +152,189 @@
     (sequential? v) "an array"
     :else           "an unsupported value"))
 
-(defn- argument-error-text
-  [arguments field messages]
-  (let [texts (->> (tree-seq coll? seq messages) (filter string?) distinct vec)]
-    (condp = texts
-      ["disallowed key"]       (str "`" (name field) "` is not a supported argument.")
-      ["missing required key"] (str "`" (name field) "` is required.")
-      (str "`" (name field) "` " (str/join "; " texts)
-           (when (every? string? messages)
-             (str "; received " (json-type-name (get arguments field))))
-           "."))))
+(defn- argument-path
+  "The path `in` into a tool's arguments, written the way the model would name it, such as `ops[1].card_id`."
+  [in]
+  (reduce (fn [text k]
+            (if (int? k)
+              (str text "[" k "]")
+              (str text (when (seq text) ".") (u/qualified-name k))))
+          ""
+          in))
+
+(defn- code
+  "The argument path `in`, written as [[argument-path]] does, in backticks."
+  [in]
+  (str "`" (argument-path in) "`"))
+
+(defn- compare-paths
+  "Orders two argument paths part by part, so that list indexes compare as numbers: `ops[2]` comes before `ops[10]`."
+  [a b]
+  (or (some (fn [[x y]]
+              (let [c (if (and (int? x) (int? y))
+                        (compare x y)
+                        (compare (str x) (str y)))]
+                (when-not (zero? c) c)))
+            (map vector a b))
+      (compare (count a) (count b))))
+
+(defn- field-names
+  "The fields below the argument at the path `in` that `errors` are about, such as `` `hour`, `day_of_week` ``."
+  [in errors]
+  (str/join ", " (for [error-in (distinct (map :in errors))]
+                   (code (subvec error-in (count in))))))
+
+(defn- agreeing
+  "The predicate `text` for one argument as `:one`, and its form for several as `:many`."
+  [text]
+  {:one text, :many (str/replace-first text #"^is " "are ")})
+
+(defn- clause
+  "The predicate `text` after the verb `one` for one argument and `many` for several."
+  [one many text]
+  {:one (str one " " text), :many (str many " " text)})
+
+(defn- problem
+  "What is wrong with the argument at the path `in`, given the Malli `errors` reported under it, as a predicate for one
+  argument (`:one`) and for several (`:many`), such as \"is required.\" and \"are required.\"."
+  [arguments in errors]
+  ;; Errors reported deeper than `in` come from inside a value of the right type, under an `:or`.
+  (let [about-value? (every? #(= in (:in %)) errors)
+        texts        (distinct (map :text errors))]
+    (cond
+      (and about-value? (= texts ["disallowed key"]))
+      {:one "is not a supported argument.", :many "are not supported arguments."}
+
+      (and about-value? (= texts ["missing required key"]))
+      {:one "is required.", :many "are required."}
+
+      about-value?
+      (agreeing (str (str/join "; " texts) "; received " (json-type-name (get-in arguments in)) "."))
+
+      :else
+      ;; One clause per kind of error, naming the fields that missing and unsupported keys are about.
+      (let [clauses (for [text texts
+                          :let [text-errors (filter #(= text (:text %)) errors)]]
+                      (case text
+                        ;; The alternatives of an `:or` each need some of these fields, not all of them.
+                        "missing required key"
+                        (clause "is" "are" (str "missing required fields, from among " (field-names in text-errors)))
+
+                        "disallowed key"
+                        (clause "has" "have" (str "unsupported fields: " (field-names in text-errors)))
+
+                        (agreeing text)))]
+        {:one  (str (str/join "; " (map :one clauses)) ".")
+         :many (str (str/join "; " (map :many clauses)) ".")}))))
+
+(defn- enumerate
+  "Two or more `labels` written as a list, such as \"a, b and c\".
+  Past three, it names the first three and counts the rest: \"a, b, c and 4 more\"."
+  [labels]
+  (let [n (count labels)]
+    (if (< 3 n)
+      (str (str/join ", " (take 3 labels)) " and " (- n 3) " more")
+      (str (str/join ", " (butlast labels)) " and " (last labels)))))
+
+(defn- problem-sentences
+  "One sentence per problem in `problems`, each a map of an argument path `:in` and its [[problem]].
+
+  The same problem at the same place in several elements of a list is one sentence, such as \"`ids[0]`, `[1]`, `[2]`
+  and 7 more should be an integer; received a string.\" or \"`ops[0].card_id`, `ops[1].card_id` and `ops[4].card_id`
+  should be an integer; received a string.\", so a mistake the model repeated across a long list does not crowd out
+  the others."
+  [problems]
+  (let [group-key (fn [{:keys [in problem]}]
+                    (if (some int? in)
+                      [(mapv #(if (int? %) ::index %) in) problem]
+                      [in]))]
+    (for [[{:keys [in problem]} & more :as group] (sort-by (comp :in first) compare-paths
+                                                           (vals (group-by group-key problems)))]
+      (if (empty? more)
+        (str (code in) " " (:one problem))
+        ;; The first by its full path. The rest by index alone when they are elements of the same list, and by full
+        ;; path when the problem is inside each element.
+        (let [same-list? (and (int? (peek in)) (apply = (map (comp pop :in) group)))]
+          (str (enumerate (cons (code in)
+                                (for [{other :in} more]
+                                  (if same-list?
+                                    (str "`[" (peek other) "]`")
+                                    (code other)))))
+               " " (:many problem)))))))
+
+(def ^:private max-sentences-per-argument
+  "How many sentences the errors of one top-level argument get, so that one bad argument cannot push the others past
+  [[max-output-length]]."
+  5)
+
+(defn- capped-sentences
+  "The [[problem-sentences]] for `problems`, which are all about one top-level argument.
+  Those past [[max-sentences-per-argument]] are counted instead."
+  [problems]
+  (let [[kept dropped] (split-at max-sentences-per-argument (problem-sentences problems))]
+    (cond-> (vec kept)
+      (seq dropped) (conj (str "And " (count dropped) (if (= 1 (count dropped)) " more problem" " more problems")
+                               " in " (code [(-> problems first :in first)]) ".")))))
+
+(defn- reported-path
+  "The argument path to report the Malli `error` under: the data path of the outermost `:or` the error is inside, with
+  the error's own list indexes, or else the error's own path."
+  [schema {:keys [in path]}]
+  ;; An `:or` that fails reports the errors of every alternative, which contradict each other below it, so they all
+  ;; go under the `:or`'s own path.
+  (let [in   (vec in)
+        path (vec path)]
+    (or (some (fn [n]
+                (let [prefix (subvec path 0 n)]
+                  (when (#{:or :orn} (some-> (mut/get-in schema prefix) mc/type))
+                    ;; The schema path has no list indexes, so the error's own data path is cut to the `:or`'s depth.
+                    (subvec in 0 (min (count in) (count (mut/path->in schema prefix)))))))
+              (range (inc (count path))))
+        in)))
+
+(defn- problems
+  "The problems in `arguments` that the Malli `explanation` describes, one per argument path, sorted by path. Each is a
+  map of the path `:in` and its [[problem]]."
+  [arguments {:keys [schema errors]}]
+  (let [by-path (group-by :reported
+                          (for [error errors]
+                            {:reported (reported-path schema error)
+                             :in       (vec (:in error))
+                             :text     (or (me/error-message error {:unknown false}) "is not valid")}))]
+    (for [in (sort compare-paths (keys by-path))]
+      {:in in, :problem (problem arguments in (by-path in))})))
 
 (defn- invalid-arguments-message
-  "A repair-oriented message describing how `arguments` violate `schema`, or nil when they match."
+  "A repair-oriented message describing how `arguments` violate `schema`, or nil when they match.
+  Each problem names the argument it is about by its full path, such as `ops[1].card_id`."
   [schema arguments]
-  (when-let [error (mr/explain schema arguments)]
-    (let [humanized (me/humanize error)]
-      (str "Invalid tool arguments: "
-           (if (map? humanized)
-             (str/join " " (for [[field messages] (sort-by (comp name key) humanized)]
-                             (argument-error-text arguments field messages)))
-             (str "expected an object of named arguments; received "
-                  (json-type-name arguments) "."))))))
+  (when-let [explanation (mr/explain schema arguments)]
+    (str "Invalid tool arguments: "
+         (if (map? arguments)
+           (str/join " " (mapcat capped-sentences
+                                 (partition-by (comp first :in) (problems arguments explanation))))
+           (str "expected an object of named arguments; received " (json-type-name arguments) ".")))))
 
 ;;; ------------------------------------------------ Rendering -----------------------------------------------------
 
-(defn- unrecoverable-output
-  "What the model is told about an unrecoverable failure: the code, and not to retry.
+(def ^:private undeclared-failure-sentence
+  "How the model's text about an ordinary exception that no tool declared starts, and all that a later
+  turn replays of it (see [[replay-text]])."
+  "This call failed with an unexpected error.")
 
-  Nothing else. The user is being shown the real error on another channel, so the model's job here
-  is to stop rather than to explain. The code is safe to include because it is ours — a closed
-  vocabulary we wrote — and it gives the model something stable to refer to if it says anything at
-  all. Note that the model only ever sees this *within the turn*, to pair the remaining tool calls
-  of the iteration with results; a turn that ends in an error event is dropped from history whole,
-  so later turns never read it."
+(defn- unrecoverable-output
+  "What the model is told about an unrecoverable failure, which never includes the failure's own text.
+
+  `:internal` is an ordinary exception that no tool declared. The agent loop can carry on after one,
+  so the model is told to try another way rather than make the same call again.
+
+  For any other code the user is shown the real error on another channel, so the model's job is to
+  stop rather than to explain. The code is safe to include because it is ours, a closed vocabulary
+  we wrote, and it gives the model something stable to refer to if it says anything at all."
   [code]
-  (str "This call failed and the user was shown the error (" code "). Don't retry it."))
+  (if (undeclared? code)
+    (str undeclared-failure-sentence " Don't retry the same call. Try another approach, or tell the user it failed.")
+    (str "This call failed and the user was shown the error (" code "). Don't retry it.")))
 
 (def ^:private leak-patterns
   "Shapes that mean a raw exception or EDN dump reached agent-bound text: a stack-trace frame,
@@ -189,7 +361,7 @@
   | ---------------- | --------------------------------------------------------- |
   | `:validation`    | the message                                               |
   | `:recoverable`   | the message, then each kept recovery step on its own line  |
-  | `:unrecoverable` | a fixed sentence carrying only the code                    |
+  | `:unrecoverable` | a fixed sentence, with the code unless it is `:internal`  |
 
   Failure text is capped at [[max-output-length]] characters.
 
@@ -217,6 +389,17 @@
                (< max-output-length (count output)) (subs 0 max-output-length))
      :error  (cond-> {:class class :code code}
                user-message (assoc :user-message user-message))}))
+
+(defn replay-text
+  "The text that a later turn replays to the model for the failure [[::outcome]] `outcome`.
+
+  An ordinary exception that no tool declared replays as one neutral sentence. Its live text also
+  tells the model not to make the same call again, and that holds only for the turn that failed: by a
+  later turn the cause may be gone. Every other failure replays the text the model read live."
+  [{:keys [output error]}]
+  (if (undeclared? (:code error))
+    undeclared-failure-sentence
+    output))
 
 ;;; ------------------------------------------------ Invocation ----------------------------------------------------
 
@@ -331,7 +514,8 @@
   3. the scope is checked, and a denial is unrecoverable;
   4. the tool runs with the dynamic vars bound from `ctx`, through `tools.core/call`;
   5. its result is validated against `tools.core/result` and its `:output` rendered to a string;
-  6. any exception is classified, logged in full, and rendered for its audience."
+  6. any exception is classified, logged in full, and rendered for its audience; a tool that writes
+     has a failure no tool declared reported as an [[unconfirmed-write]]."
   [entries ctx tool-name args]
   (let [tool-names (:tool-names ctx)]
     (try
@@ -343,6 +527,7 @@
             (->> (checked-result tool-name))
             rendered-output))
       (catch Throwable e
-        (let [error (tools.error/classify e)]
+        (let [error (cond-> (tools.error/classify e)
+                      (get-in entries [tool-name :declaration :metabot/writes?]) unconfirmed-write)]
           (log-failure! tool-name error e)
           (render error tool-names))))))

@@ -31,28 +31,36 @@
 
 ;;; ------------------------------------------------- Merge target helpers -------------------------------------------------
 
+(defn- transform-with-target
+  [target]
+  {:source {:type :python :body "pass" :source-tables []}
+   :target (merge {:name "target_table"} target)})
+
 (deftest merge-target?-test
   (testing "true only for a table-incremental target with a merge strategy"
     (is (transforms-base.u/merge-target?
-         {:target {:type "table-incremental"
-                   :target-incremental-strategy {:type "merge" :unique-key [{:name "id"}]}}}))
+         (transform-with-target {:type "table-incremental"
+                                 :target-incremental-strategy {:type "merge" :unique-key [{:name "id"}]}})))
     (is (not (transforms-base.u/merge-target?
-              {:target {:type "table-incremental"
-                        :target-incremental-strategy {:type "append"}}})))
-    (is (not (transforms-base.u/merge-target? {:target {:type "table"}})))))
+              (transform-with-target {:type "table-incremental"
+                                      :target-incremental-strategy {:type "append"}}))))
+    (is (not (transforms-base.u/merge-target? (transform-with-target {:type "table"}))))))
 
 (deftest merge-target-unique-key-test
   (testing "returns the physical column names of the merge key"
     (is (= ["id"]
            (transforms-base.u/merge-target-unique-key
-            {:target {:target-incremental-strategy {:type "merge" :unique-key [{:name "id"}]}}})))
+            (transform-with-target {:type "table-incremental"
+                                    :target-incremental-strategy {:type "merge" :unique-key [{:name "id"}]}}))))
     (is (= ["order_id" "region"]
            (transforms-base.u/merge-target-unique-key
-            {:target {:target-incremental-strategy
-                      {:type "merge" :unique-key [{:name "order_id"} {:name "region"}]}}}))))
+            (transform-with-target {:type "table-incremental"
+                                    :target-incremental-strategy
+                                    {:type "merge" :unique-key [{:name "order_id"} {:name "region"}]}})))))
   (testing "nil when the target isn't a merge target"
     (is (nil? (transforms-base.u/merge-target-unique-key
-               {:target {:target-incremental-strategy {:type "append"}}})))))
+               (transform-with-target {:type "table-incremental"
+                                       :target-incremental-strategy {:type "append"}}))))))
 
 (deftest validate-merge-unique-key!-test
   (testing "returns the key when every column is present in the target columns"
@@ -75,7 +83,7 @@
   (testing "on OSS (no :database-routing premium feature) the check is a no-op"
     (mt/with-premium-features #{}
       (is (nil? (transforms-base.u/throw-if-db-routing-enabled!
-                 {:name "OSS transform"}
+                 (assoc (transform-with-target {:type "table"}) :name "OSS transform")
                  (lib.metadata/database (mt/metadata-provider)))))))
   (when config/ee-available?
     (testing "with :database-routing premium feature enabled, the check throws on a routing-enabled database"
@@ -86,7 +94,7 @@
                clojure.lang.ExceptionInfo
                #".*database routing turned on"
                (transforms-base.u/throw-if-db-routing-enabled!
-                {:name "Routing transform"}
+                (assoc (transform-with-target {:type "table"}) :name "Routing transform")
                 (lib.metadata/database (mt/metadata-provider))))))))))
 
 (deftest activate-table-syncs-despite-disable-auto-sync-test
@@ -107,80 +115,84 @@
 (deftest ^:parallel full-incremental-run?-test
   (testing "true for an incremental transform with no checkpoint yet"
     (is (true? (transforms-base.u/full-incremental-run?
-                {:target {:type "table-incremental"} :last_checkpoint_value nil}))))
+                (assoc (transform-with-target {:type "table-incremental"}) :last_checkpoint_value nil)))))
   (testing "false for an incremental transform that has already recorded a watermark"
     (is (false? (transforms-base.u/full-incremental-run?
-                 {:target {:type "table-incremental"} :last_checkpoint_value "42"}))))
+                 (assoc (transform-with-target {:type "table-incremental"}) :last_checkpoint_value "42")))))
   (testing "false for non-incremental targets regardless of checkpoint value"
     (is (false? (transforms-base.u/full-incremental-run?
-                 {:target {:type "table"} :last_checkpoint_value nil})))
+                 (assoc (transform-with-target {:type "table"}) :last_checkpoint_value nil))))
     (is (false? (transforms-base.u/full-incremental-run?
-                 {:target {:type :table} :last_checkpoint_value nil}))))
+                 (assoc (transform-with-target {:type :table}) :last_checkpoint_value nil)))))
   (testing "accepts both string and keyword target types"
     (is (true? (transforms-base.u/full-incremental-run?
-                {:target {:type :table-incremental} :last_checkpoint_value nil})))))
+                (assoc (transform-with-target {:type :table-incremental}) :last_checkpoint_value nil))))))
+
+(defn- column
+  [m]
+  (merge {:lib/type :metadata/column :name "checkpoint"} m))
 
 (deftest ^:parallel supported-checkpoint-column?-test
   (testing "numeric and date/datetime columns are supported"
-    (is (transforms-base.u/supported-checkpoint-column? {:base-type :type/Integer}))
-    (is (transforms-base.u/supported-checkpoint-column? {:base-type :type/Float}))
-    (is (transforms-base.u/supported-checkpoint-column? {:base-type :type/Date}))
-    (is (transforms-base.u/supported-checkpoint-column? {:base-type :type/DateTime}))
-    (is (transforms-base.u/supported-checkpoint-column? {:base-type :type/DateTimeWithTZ}))
-    (is (transforms-base.u/supported-checkpoint-column? {:base-type :type/Instant})))
+    (is (transforms-base.u/supported-checkpoint-column? (column {:base-type :type/Integer})))
+    (is (transforms-base.u/supported-checkpoint-column? (column {:base-type :type/Float})))
+    (is (transforms-base.u/supported-checkpoint-column? (column {:base-type :type/Date})))
+    (is (transforms-base.u/supported-checkpoint-column? (column {:base-type :type/DateTime})))
+    (is (transforms-base.u/supported-checkpoint-column? (column {:base-type :type/DateTimeWithTZ})))
+    (is (transforms-base.u/supported-checkpoint-column? (column {:base-type :type/Instant}))))
   (testing "coerced columns count via their effective type"
-    (is (transforms-base.u/supported-checkpoint-column? {:base-type      :type/BigInteger
-                                                         :effective-type :type/Instant})))
+    (is (transforms-base.u/supported-checkpoint-column? (column {:base-type      :type/BigInteger
+                                                                 :effective-type :type/Instant}))))
   (testing "time-only and non-orderable columns are not supported"
-    (is (not (transforms-base.u/supported-checkpoint-column? {:base-type :type/Time})))
-    (is (not (transforms-base.u/supported-checkpoint-column? {:base-type :type/TimeWithTZ})))
-    (is (not (transforms-base.u/supported-checkpoint-column? {:base-type :type/Text})))
-    (is (not (transforms-base.u/supported-checkpoint-column? {:base-type :type/Boolean})))))
+    (is (not (transforms-base.u/supported-checkpoint-column? (column {:base-type :type/Time}))))
+    (is (not (transforms-base.u/supported-checkpoint-column? (column {:base-type :type/TimeWithTZ}))))
+    (is (not (transforms-base.u/supported-checkpoint-column? (column {:base-type :type/Text}))))
+    (is (not (transforms-base.u/supported-checkpoint-column? (column {:base-type :type/Boolean}))))))
 
 (deftest ^:parallel apply-lookback-test
   (let [apply-lookback @#'transforms-base.u/apply-lookback]
     (testing "temporal checkpoints are pushed back by value units"
       (is (= (t/local-date-time 2026 1 27 21 0 4)
-             (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value 4 :unit "day"})))
+             (apply-lookback (t/local-date-time 2026 1 31 21 0 4) (column {:base-type :type/DateTime}) {:value 4 :unit "day"})))
       (is (= (t/local-date-time 2026 1 31 19 0 4)
-             (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value 2 :unit "hour"})))
+             (apply-lookback (t/local-date-time 2026 1 31 21 0 4) (column {:base-type :type/DateTime}) {:value 2 :unit "hour"})))
       (is (= (t/local-date 2026 1 24)
-             (apply-lookback (t/local-date 2026 1 31) {:base-type :type/Date} {:value 1 :unit "week"}))))
+             (apply-lookback (t/local-date 2026 1 31) (column {:base-type :type/Date}) {:value 1 :unit "week"}))))
     (testing "a coerced numeric column (e.g. a unix timestamp) is temporal via its effective type"
       (is (= (u.date/parse "2026-01-30T21:00:04Z")
              (apply-lookback (u.date/parse "2026-01-31T21:00:04Z")
-                             {:base-type :type/BigInteger :effective-type :type/Instant}
+                             (column {:base-type :type/BigInteger :effective-type :type/Instant})
                              {:value 1 :unit "day"}))))
     (testing "a lookback on a non-temporal checkpoint throws a user-facing error"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"only supported for date or datetime"
-           (apply-lookback (biginteger 42) {:base-type :type/Integer} {:value 4 :unit "day"}))))
+           (apply-lookback (biginteger 42) (column {:base-type :type/Integer}) {:value 4 :unit "day"}))))
     (testing "a lookback on a time-only checkpoint throws a user-facing error"
       ;; time-only watermarks wrap at midnight, and day-based units would throw inside u.date/add
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"only supported for date or datetime"
-           (apply-lookback (t/local-time 21 0 4) {:base-type :type/Time} {:value 2 :unit "hour"})))
+           (apply-lookback (t/local-time 21 0 4) (column {:base-type :type/Time}) {:value 2 :unit "hour"})))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"only supported for date or datetime"
-           (apply-lookback (t/offset-time 21 0 4) {:base-type :type/TimeWithTZ} {:value 1 :unit "day"}))))
+           (apply-lookback (t/offset-time 21 0 4) (column {:base-type :type/TimeWithTZ}) {:value 1 :unit "day"}))))
     (testing "a lookback without a unit throws a user-facing error"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"requires a unit"
-           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value 4}))))
+           #"Invalid input"
+           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) (column {:base-type :type/DateTime}) {:value 4}))))
     (testing "a lookback with a non-positive value throws instead of silently skipping data"
       ;; a negative window would move `lo` forward past the watermark, permanently skipping rows
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"positive integer value"
-           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value 0 :unit "day"})))
+           #"Invalid input"
+           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) (column {:base-type :type/DateTime}) {:value 0 :unit "day"})))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"positive integer value"
-           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value -4 :unit "day"}))))))
+           #"Invalid input"
+           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) (column {:base-type :type/DateTime}) {:value -4 :unit "day"}))))))
 
 (deftest ^:parallel checkpoint-compare-test
   (let [checkpoint-compare @#'transforms-base.u/checkpoint-compare]
@@ -200,18 +212,21 @@
     (is (= {} (transforms-base.u/checkpoint-span-attrs nil))))
   (testing "field-id only (no lo/hi) yields just :transform/checkpoint-field-id"
     (is (= {:transform/checkpoint-field-id 42}
-           (transforms-base.u/checkpoint-span-attrs {:checkpoint-filter-field-id 42}))))
+           (transforms-base.u/checkpoint-span-attrs {:column (column {:base-type :type/Integer})
+                                                     :checkpoint-filter-field-id 42}))))
   (testing "numeric lo/hi are encoded as strings"
     (is (= {:transform/checkpoint-field-id 7
             :transform/checkpoint-lo       "10"
             :transform/checkpoint-hi       "100"}
            (transforms-base.u/checkpoint-span-attrs
-            {:checkpoint-filter-field-id 7
+            {:column (column {:base-type :type/Integer})
+             :checkpoint-filter-field-id 7
              :lo {:value 10}
              :hi {:value 100}}))))
   (testing "temporal hi is formatted as an ISO string"
     (let [attrs (transforms-base.u/checkpoint-span-attrs
-                 {:checkpoint-filter-field-id 9
+                 {:column (column {:base-type :type/DateTime})
+                  :checkpoint-filter-field-id 9
                   :hi {:value (t/local-date-time 2024 1 16 10 0 0)}})]
       (is (= 9 (:transform/checkpoint-field-id attrs)))
       (is (string? (:transform/checkpoint-hi attrs)))

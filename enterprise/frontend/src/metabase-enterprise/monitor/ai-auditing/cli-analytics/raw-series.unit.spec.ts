@@ -1,9 +1,11 @@
-import type { DatasetQuery } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
 import { toCountBreakoutRawSeries } from "./raw-series";
 
-// Unjustified type cast. FIXME
-const jsQuery = { database: 1, type: "query", query: {} } as DatasetQuery;
+const jsQuery = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
 
 const opts = {
   display: "row" as const,

@@ -1,10 +1,10 @@
 (ns metabase-enterprise.data-apps.config
   "Constants of a data app's manifest, which a serialized app keeps in the `data_app.yaml` in its own directory
    under `data_apps/`; the columns' schemas are in
-   [[metabase-enterprise.data-apps.schema]]:
+   [[metabase.data-apps.schema]]:
 
-     slug: sales                # the slug the app is served at (column `name`)
-     name: Sales dashboard      # display name (column `display_name`)
+     slug: sales                # the slug the app is served at
+     name: Sales dashboard      # display name
      description: Pipeline …    # optional — one line on what the app does
      version: 1                 # optional — data app contract version, 1 when absent
      path: dist/index.js        # bundle path, relative to this app's directory (column `bundle_path`)

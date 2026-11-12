@@ -69,7 +69,7 @@
       (let [code (verification/set-email-otp! user-id)]
         ;; back-date the expiry
         (let [ai (t2/select-one :model/AuthIdentity :id ai-id)]
-          (t2/update! :model/AuthIdentity ai-id
+          (t2/update! :model/AuthIdentity :id ai-id
                       {:credentials (assoc-in (:credentials ai) [:email_otp :exp]
                                               (dec (quot (System/currentTimeMillis) 1000)))}))
         (is (false? (boolean (verification/verify-attempt! user-id code (fresh-jti)))))))))

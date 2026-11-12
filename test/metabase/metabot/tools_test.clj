@@ -17,6 +17,7 @@
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -122,6 +123,8 @@
                                                     #{:permission-write-sql-queries}))]
     (is (map? tools))
     (is (contains? tools "list_available_data_sources"))
+    (is (contains? tools "read_resource")
+        "the model can find a database and its tables, which list_available_data_sources does not list")
     (is (contains? tools "list_available_fields"))
     (is (contains? tools "get_field_values"))
     (is (contains? tools "document_construct_model_chart"))
@@ -230,39 +233,54 @@
                  (-> sent lib/normalize :stages first :filters))))))))
 
 (deftest construct-notebook-query-tool-show-chart-test
-  (let [construct! (fn [tool-names show-chart-arg]
-                     (let [chart-created? (atom false)]
-                       (mt/with-dynamic-fn-redefs [construct/execute-representations-query
-                                                   (fn [_ & _]
-                                                     {:structured-output {:query-id       "q-1"
-                                                                          :query          {:database 1}
-                                                                          :result-columns []}})
-                                                   create-chart-tools/create-chart
-                                                   (fn [_]
-                                                     (reset! chart-created? true)
-                                                     {:chart-id "c-1", :chart-type :table})]
-                         (let [result (binding [shared/*profile-id*  :nlq
-                                                shared/*memory-atom* (atom {:tool-names tool-names})]
-                                        (test-util/call-tool
-                                         agent-tools/construct-notebook-query-tool
-                                         (merge {:query       {:lib/type "mbql/query", :stages []}
-                                                 :title       "Seat check"
-                                                 :description "Total order count."}
-                                                show-chart-arg)))]
-                           {:chart?   @chart-created?
-                            :shown?   (boolean (seq (:data-parts result)))
-                            :query-id (get-in result [:structured-output :query-id])
-                            :run-it?  (boolean (re-find #"call `run_query` with `query_id` `q-1`"
-                                                        (:output result)))}))))]
-    (testing "with run_query offered, the query is built and the user is shown nothing"
-      (is (= {:chart? false, :shown? false, :query-id "q-1", :run-it? true}
-             (construct! #{"construct_notebook_query" "run_query"} {:show_chart false}))))
-    (testing "with run_query offered and the argument left out, the chart is shown and points at run_query"
-      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? true}
-             (construct! #{"construct_notebook_query" "run_query"} {}))))
-    (testing "without run_query the chart is shown whatever the argument says"
-      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false}
-             (construct! #{"construct_notebook_query"} {:show_chart false}))))))
+  (mt/with-temp [:model/MetabotConversation {own :id}    {:user_id (mt/user->id :rasta)}
+                 :model/MetabotConversation {thread :id} {:user_id (mt/user->id :rasta), :slack_thread_ts "1.2"}]
+    (let [construct! (fn [conversation-id tool-names show-chart-arg]
+                       (let [chart-created? (atom false)]
+                         (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                                     (fn [_ & _]
+                                                       {:structured-output {:query-id       "q-1"
+                                                                            :query          {:database 1}
+                                                                            :result-columns []}})
+                                                     create-chart-tools/create-chart
+                                                     (fn [_]
+                                                       (reset! chart-created? true)
+                                                       {:chart-id "c-1", :chart-type :table})]
+                           (let [result (mt/with-current-user (mt/user->id :rasta)
+                                          (binding [shared/*profile-id*  :nlq
+                                                    shared/*memory-atom* (atom {:tool-names      tool-names
+                                                                                :conversation-id conversation-id})]
+                                            (test-util/call-tool
+                                             agent-tools/construct-notebook-query-tool
+                                             (merge {:query       {:lib/type "mbql/query", :stages []}
+                                                     :title       "Seat check"
+                                                     :description "Total order count."}
+                                                    show-chart-arg))))]
+                             {:chart?   @chart-created?
+                              :shown?   (boolean (seq (:data-parts result)))
+                              :query-id (get-in result [:structured-output :query-id])
+                              :run-it?  (boolean (re-find #"call `run_query` with `query_id` `q-1`"
+                                                          (:output result)))
+                              :unsaved? (str/includes? (:output result) instructions/not-saved-instruction)
+                              :link?    (boolean (re-find #"\(metabase://query/q-1\)" (:output result)))}))))
+          readable   #{"construct_notebook_query" "run_query"}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (testing "with run_query offered, the query is built and the user is shown nothing"
+          (is (= {:chart? false, :shown? false, :query-id "q-1", :run-it? true, :unsaved? true, :link? true}
+                 (construct! own readable {:show_chart false}))))
+        (testing "with run_query offered and the argument left out, the chart is shown and points at run_query"
+          (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? true, :unsaved? true, :link? false}
+                 (construct! own readable {}))))
+        (testing "without run_query the chart is shown whatever the argument says"
+          (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false, :unsaved? true, :link? false}
+                 (construct! own #{"construct_notebook_query"} {:show_chart false}))))
+        (testing "in a conversation others can read, which run_query refuses, the chart is shown"
+          (is (=? {:chart? true, :shown? true}
+                  (construct! thread readable {:show_chart false})))))
+      (testing "with query execution turned off, which run_query refuses, the chart is shown"
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+          (is (=? {:chart? true, :shown? true}
+                  (construct! own readable {:show_chart false}))))))))
 
 (defn- source-field-query-without-validation! [construct!]
   (let [resolved (atom nil)]
@@ -282,7 +300,7 @@
             (str "QP accepted the rejected query: " (select-keys result [:status :row_count]))))))
 
 (deftest construct-notebook-query-tool-wrong-source-field-test
-  (let [db          (t2/select-one-fn :name :model/Database (mt/id))
+  (let [db          (t2/select-one-fn :name :model/Database :id (mt/id))
         fk          (fn [table column] [db "PUBLIC" table column])
         venue-id    (fk "CHECKINS" "VENUE_ID")
         venues-join {:alias      "Venues"
@@ -371,7 +389,7 @@
                   (assoc-in [0 :source-table] [db "PUBLIC" "CHECKINS"]))}))
 
 (deftest construct-notebook-query-summary-fields-test
-  (let [db       (t2/select-one-fn :name :model/Database (mt/id))
+  (let [db       (t2/select-one-fn :name :model/Database :id (mt/id))
         fk       (fn [table column] [db "PUBLIC" table column])
         wrong    ["field" {:source-field (fk "CHECKINS" "VENUE_ID")} (fk "CATEGORIES" "NAME")]
         non-fk   ["field" {:source-field (fk "CHECKINS" "DATE")} (fk "VENUES" "NAME")]
@@ -391,7 +409,7 @@
               (is (= [[1000]] (mt/rows actual))))))))))
 
 (deftest construct-notebook-query-supported-source-fields-test
-  (let [db          (t2/select-one-fn :name :model/Database (mt/id))
+  (let [db          (t2/select-one-fn :name :model/Database :id (mt/id))
         fk          (fn [table column] [db "PUBLIC" table column])
         venue-id    (fk "CHECKINS" "VENUE_ID")
         category-id (fk "VENUES" "CATEGORY_ID")
@@ -424,7 +442,7 @@
                                                    (get-in (construct-checkins-query db corrected) [:structured-output :query])))))))))))))))
 
 (deftest construct-notebook-query-wrong-source-field-context-test
-  (let [db        (t2/select-one-fn :name :model/Database (mt/id))
+  (let [db        (t2/select-one-fn :name :model/Database :id (mt/id))
         correct   ["field" {:source-field [db "PUBLIC" "VENUES" "CATEGORY_ID"]
                             :source-field-join-alias "Venues"}
                    [db "PUBLIC" "CATEGORIES" "NAME"]]
@@ -445,7 +463,7 @@
                                   (str "but its `source-field` " (pr-str (get-in correct [1 :source-field])))))))))))
 
 (deftest construct-notebook-query-direct-source-field-hint-test
-  (let [db       (t2/select-one-fn :name :model/Database (mt/id))
+  (let [db       (t2/select-one-fn :name :model/Database :id (mt/id))
         fk       (fn [table column] [db "PUBLIC" table column])
         user-id  (fk "CHECKINS" "USER_ID")
         query    (fn [source-field]
@@ -463,7 +481,7 @@
         (is (seq (mt/rows (qp/process-query (get-in (query user-id) [:structured-output :query])))))))))
 
 (deftest construct-notebook-query-hidden-parent-key-hint-test
-  (let [db (t2/select-one-fn :name :model/Database (mt/id))]
+  (let [db (t2/select-one-fn :name :model/Database :id (mt/id))]
     (mt/with-temp [:model/Field parent {:table_id (mt/id :venues)
                                         :name "HIDDEN_PAYLOAD"
                                         :base_type :type/JSON
@@ -539,7 +557,7 @@
 (deftest construct-notebook-query-category-hints-test
   (mt/with-current-user (mt/user->id :rasta)
     (let [mp (mt/metadata-provider)
-          db (t2/select-one-fn :name :model/Database (mt/id))
+          db (t2/select-one-fn :name :model/Database :id (mt/id))
           fk (fn [table field] [db "PUBLIC" table field])
           venues (checkins-venues-join db)
           checkins (assoc-in (join-on-field db "Checkins" "CHECKINS" ["field" {} (fk "USERS" "ID")])
@@ -594,9 +612,9 @@
 (deftest construct-notebook-query-model-source-field-hint-test
   (mt/with-current-user (mt/user->id :rasta)
     (let [mp              (mt/metadata-provider)
-          db              (t2/select-one-fn :name :model/Database (mt/id))
+          db              (t2/select-one-fn :name :model/Database :id (mt/id))
           key-id          (mt/id :checkins :venue_id)
-          original-target (t2/select-one-fn :fk_target_field_id :model/Field key-id)
+          original-target (t2/select-one-fn :fk_target_field_id :model/Field :id key-id)
           key-path        [db "PUBLIC" "CHECKINS" "VENUE_ID"]
           target-path     [db "PUBLIC" "VENUES" "NAME"]
           query           (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
@@ -605,7 +623,7 @@
       (is (= :completed (:status result)))
       (mt/with-temp [:model/Card {eid :entity_id card-id :id}
                      {:name "Stored venue key" :type :model :dataset_query query :result_metadata (get-in result [:data :cols])}]
-        (let [metadata-before (t2/select-one-fn :result_metadata :model/Card card-id)
+        (let [metadata-before (t2/select-one-fn :result_metadata :model/Card :id card-id)
               build!          #(construct/execute-representations-query
                                 {:lib/type "mbql/query"
                                  :stages [{:lib/type "mbql.stage/mbql" :source-card eid
@@ -616,7 +634,7 @@
                                                 {:fk_target_field_id (mt/id :users :id)})
                   error   (try (build!) (catch clojure.lang.ExceptionInfo e e))]
               (is (= (mt/id :users :id) (:id (:target updated))))
-              (is (= metadata-before (t2/select-one-fn :result_metadata :model/Card card-id)))
+              (is (= metadata-before (t2/select-one-fn :result_metadata :model/Card :id card-id)))
               (is (= :wrong-source-field (:error (ex-data error))))
               (assert-source-field-qp-failure! build!)
               (is (not (str/includes? (or (ex-message error) "")
@@ -635,7 +653,7 @@
                                     {:fk_target_field_id original-target}))))))))
 
 (deftest construct-notebook-query-source-field-join-alias-hint-test
-  (let [db            (t2/select-one-fn :name :model/Database (mt/id))
+  (let [db            (t2/select-one-fn :name :model/Database :id (mt/id))
         fk            (fn [table column] [db "PUBLIC" table column])
         checkins-join {:alias      "Checkins"
                        :strategy   "left-join"
@@ -673,7 +691,7 @@
           (is (= (set (first rows)) (set (second rows)))))))))
 
 (deftest construct-notebook-query-dependent-implicit-joins-test
-  (let [db (t2/select-one-fn :name :model/Database (mt/id))
+  (let [db (t2/select-one-fn :name :model/Database :id (mt/id))
         fk (fn [table field] [db "PUBLIC" table field])
         build! #(construct-checkins-query
                  db [{:aggregation [["count" {}]]
@@ -692,7 +710,7 @@
           native (lib/native-query mp "SELECT VENUE_ID FROM CHECKINS")
           result (qp/process-query native)
           columns (get-in result [:data :cols])
-          db (t2/select-one-fn :name :model/Database (mt/id))]
+          db (t2/select-one-fn :name :model/Database :id (mt/id))]
       (is (seq columns))
       (is (every? (comp nil? :id) columns))
       (mt/with-temp [:model/Card {eid :entity_id} {:name "Native venue keys" :dataset_query native :result_metadata columns}]
@@ -707,7 +725,7 @@
           (is (= (set control) (set (mt/rows (qp/process-query (get-in (build!) [:structured-output :query])))))))))))
 
 (deftest construct-notebook-query-joined-key-propagation-test
-  (let [db     (t2/select-one-fn :name :model/Database (mt/id))
+  (let [db     (t2/select-one-fn :name :model/Database :id (mt/id))
         stages [{:fields [["field" {} [db "PUBLIC" "CHECKINS" "ID"]]]
                  :joins  [(assoc (checkins-venues-join db) :fields "none")]}
                 {:aggregation [["count" {}]]
@@ -722,7 +740,7 @@
 
 (deftest construct-notebook-query-source-card-key-propagation-test
   (let [mp       (mt/metadata-provider)
-        db       (t2/select-one-fn :name :model/Database (mt/id))
+        db       (t2/select-one-fn :name :model/Database :id (mt/id))
         raw      (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
                    [(lib.metadata/field mp (mt/id :checkins :id))])
         run!     (fn [card-eid]
@@ -740,7 +758,7 @@
 
 (deftest construct-notebook-query-source-card-field-permissions-test
   (let [mp (mt/metadata-provider)
-        db (t2/select-one-fn :name :model/Database (mt/id))
+        db (t2/select-one-fn :name :model/Database :id (mt/id))
         query (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                 [(lib.metadata/field mp (mt/id :venues :name))])]
     (mt/with-temp [:model/Card {card-eid :entity_id} {:name "Venue names" :dataset_query query}]
@@ -760,7 +778,7 @@
 
 (deftest construct-notebook-query-source-card-hint-permissions-test
   (let [mp       (mt/metadata-provider)
-        db       (t2/select-one-fn :name :model/Database (mt/id))
+        db       (t2/select-one-fn :name :model/Database :id (mt/id))
         category [db "PUBLIC" "VENUES" "CATEGORY_ID"]
         target   [db "PUBLIC" "VENUES" "NAME"]
         query    (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
@@ -824,7 +842,7 @@
       (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
       (is (str/includes? text "No table found matching portable FK"))
       (is (str/includes? text "metabase://database/<numeric id>/tables"))))
-  (testing "An exception without a declared `:error` code ends the turn, even if `:agent-error?` is true."
+  (testing "An exception without a declared `:error` code is `:internal`, even if `:agent-error?` is true."
     (doseq [[what e] {"stamped by the pipeline, no :error code"
                       (ex-info "No matching clause: :metabase.lib.schema/bogus" {:agent-error? true})
 
@@ -837,7 +855,7 @@
 (deftest construct-notebook-query-tool-malformed-clauses-test
   (testing "the model can retry after a malformed stage or clause"
     (let [orders   {:lib/type     "mbql.stage/mbql"
-                    :source-table [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]}
+                    :source-table [(t2/select-one-fn :name :model/Database :id (mt/id)) "PUBLIC" "ORDERS"]}
           post-agg (assoc orders :aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]])]
       (mt/with-current-user (mt/user->id :rasta)
         (doseq [[label stages] {"a number as `aggregation`"
@@ -862,7 +880,7 @@
                                              :description "Orders by count."})))))))))
 
 (deftest construct-notebook-query-tool-post-aggregation-errors-test
-  (let [source [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]]
+  (let [source [(t2/select-one-fn :name :model/Database :id (mt/id)) "PUBLIC" "ORDERS"]]
     (mt/with-current-user (mt/user->id :rasta)
       (doseq [[error cases] {:post-agg-filter-with-trailing-clauses
                              [{:limit 5}

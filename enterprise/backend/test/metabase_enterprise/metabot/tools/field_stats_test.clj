@@ -49,7 +49,7 @@
         (try
           ;; Clear the fingerprint -- pre-#436 (and pre this fix, for this call site) this would have
           ;; forced an unsandboxed on-demand refingerprint via get-or-create-fingerprint!.
-          (t2/update! :model/Field field-id {:fingerprint nil :fingerprint_version 0})
+          (t2/update! :model/Field :id field-id {:fingerprint nil :fingerprint_version 0})
           (let [result (metabot.tools.field-stats/field-values
                         {:entity-type "table", :entity-id table-id, :field-id field-id})]
             (testing "no fingerprint statistics are returned to the sandboxed user"
@@ -57,7 +57,7 @@
             (testing "no fingerprint was computed or saved to the shared Field row"
               (is (nil? (t2/select-one-fn :fingerprint :model/Field :id field-id)))))
           (finally
-            (t2/update! :model/Field field-id {:fingerprint original-fp})))))))
+            (t2/update! :model/Field :id field-id {:fingerprint original-fp})))))))
 
 (deftest fingerprint-withheld-for-sandboxed-user-test
   (testing "An existing global fingerprint is withheld from a sandboxed user, even though it's already
@@ -117,12 +117,12 @@
               (is (nil? (get-in result [:structured-output :value_metadata :statistics])))))
           (testing "a missing fingerprint is not computed or saved"
             (try
-              (t2/update! :model/Field field-id {:fingerprint nil :fingerprint_version 0})
+              (t2/update! :model/Field :id field-id {:fingerprint nil :fingerprint_version 0})
               (metabot.tools.field-stats/field-values
                {:entity-type "table", :entity-id table-id, :field-id field-id})
               (is (nil? (t2/select-one-fn :fingerprint :model/Field :id field-id)))
               (finally
-                (t2/update! :model/Field field-id {:fingerprint original-fp})))))))))
+                (t2/update! :model/Field :id field-id {:fingerprint original-fp})))))))))
 
 (deftest fingerprint-withheld-for-routed-user-test
   (testing "A database-routed user gets no fingerprint statistics, and no on-demand refingerprint is
@@ -140,7 +140,7 @@
                           {:entity-type "table", :entity-id (:id table), :field-id (:id field)})]
               (is (nil? (get-in result [:structured-output :value_metadata :statistics])))))
           (testing "a missing fingerprint is not computed or saved"
-            (t2/update! :model/Field (:id field) {:fingerprint nil :fingerprint_version 0})
+            (t2/update! :model/Field :id (:id field) {:fingerprint nil :fingerprint_version 0})
             (metabot.tools.field-stats/field-values
              {:entity-type "table", :entity-id (:id table), :field-id (:id field)})
             (is (nil? (t2/select-one-fn :fingerprint :model/Field :id (:id field))))))))))
@@ -212,12 +212,13 @@
       (doseq [profile [:document-generate-content :slackbot]]
         (let [unrestricted (mt/as-admin (card-field-metadata profile card-id "count"))
               user-result (card-field-metadata profile card-id "count")]
-          (is (= {:result-type :field-metadata :field_id "count"
+          (is (= {:result-type :field-metadata :field_id "count" :reference_name "count"
                   :value_metadata {:statistics (merge {:distinct-count 1 :percent-null 0.0}
                                                       (get-in fingerprint [:type :type/Number]))}}
                  (:structured-output unrestricted)))
           (if restricted?
-            (is (= {:result-type :field-metadata :field_id "count" :value_metadata nil}
+            (is (= {:result-type :field-metadata :field_id "count" :reference_name "count"
+                    :value_metadata nil}
                    (:structured-output user-result)))
             (is (= unrestricted user-result))))))))
 
@@ -264,7 +265,8 @@
           (is (= (merge {:distinct-count 1 :percent-null 0.0} (get-in fingerprint [:type :type/Number]))
                  (get-in (mt/with-test-user :crowberto (card-field-metadata profile card-id "count"))
                          [:structured-output :value_metadata :statistics])))
-          (is (= {:result-type :field-metadata :field_id "count" :value_metadata nil}
+          (is (= {:result-type :field-metadata :field_id "count" :reference_name "count"
+                  :value_metadata nil}
                  (:structured-output (mt/with-test-user :rasta (card-field-metadata profile card-id "count"))))))))))
 
 (deftest virtual-column-fingerprint-returned-for-unrestricted-user-test
@@ -288,5 +290,6 @@
                 (let [unrestricted (mt/as-admin (card-field-metadata profile card-id field-id))
                       result (card-field-metadata profile card-id field-id)]
                   (is (pos? (get-in unrestricted [:structured-output :value_metadata :statistics :distinct-count])))
-                  (is (= {:result-type :field-metadata :field_id field-id :value_metadata nil}
+                  (is (= {:result-type :field-metadata :field_id field-id :reference_name field-id
+                          :value_metadata nil}
                          (:structured-output result))))))))))))

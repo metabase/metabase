@@ -4,14 +4,14 @@ import * as Urls from "metabase/urls";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 
 export function useRouteDataAppQuestion() {
-  const params = useParams<{ name: string; cardId: string }>();
-  const name = params.name ?? "";
+  const params = useParams<{ slug: string; cardId: string }>();
+  const slug = params.slug ?? "";
   const cardId = Urls.extractEntityId(params.cardId);
   const {
     data: app,
     isLoading: isLoadingApp,
     error: appError,
-  } = useGetDataAppQuery(name);
+  } = useGetDataAppQuery(slug);
   const {
     data: card,
     isLoading: isLoadingCard,

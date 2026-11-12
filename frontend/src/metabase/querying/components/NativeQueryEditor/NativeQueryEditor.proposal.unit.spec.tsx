@@ -15,13 +15,20 @@ import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { NativeQueryEditor } from "./NativeQueryEditor";
 import { formatQuery } from "./utils";
 
-function setup({ text = "SELECT 1", proposedText = "SELECT 2" } = {}) {
+type SetupOpts = {
+  text?: string;
+  proposedText?: string | null;
+};
+
+function setup({
+  text = "SELECT 1",
+  proposedText = "SELECT 2",
+}: SetupOpts = {}) {
   setupNativeQuerySnippetEndpoints();
   setupCollectionsEndpoints({ collections: [] });
   const database = createSampleDatabase();
@@ -34,10 +41,13 @@ function setup({ text = "SELECT 1", proposedText = "SELECT 2" } = {}) {
   const initialQuestion = Question.create({ metadata }).setQuery(
     Lib.createTestNativeQuery(provider, { query: text }),
   );
-  const proposedQuestion = initialQuestion.setQuery(
-    Lib.withNativeQuery(initialQuestion.query(), proposedText),
-  );
-  const setDatasetQuery = jest.fn<void, [NativeQuery]>();
+  const proposedQuestion =
+    proposedText === null
+      ? undefined
+      : initialQuestion.setQuery(
+          Lib.withNativeQuery(initialQuestion.query(), proposedText),
+        );
+  const setQuery = jest.fn<void, [Lib.Query]>();
   const onAcceptProposed = jest.fn();
   const onRejectProposed = jest.fn();
 
@@ -46,12 +56,11 @@ function setup({ text = "SELECT 1", proposedText = "SELECT 2" } = {}) {
     return (
       <NativeQueryEditor
         question={question}
-        query={checkNotNull(question.legacyNativeQuery())}
         proposedQuestion={proposedQuestion}
         isNativeEditorOpen
-        setDatasetQuery={(query) => {
-          setDatasetQuery(query);
-          setQuestion(question.setDatasetQuery(query.datasetQuery()));
+        setQuery={(query) => {
+          setQuery(query);
+          setQuestion(question.setQuery(query));
         }}
         onAcceptProposed={onAcceptProposed}
         onRejectProposed={onRejectProposed}
@@ -66,7 +75,7 @@ function setup({ text = "SELECT 1", proposedText = "SELECT 2" } = {}) {
   renderWithProviders(<Editor />);
 
   return {
-    setDatasetQuery,
+    setQuery,
     onAcceptProposed,
     onRejectProposed,
     proposedQuestion,
@@ -90,18 +99,18 @@ describe("native query proposals", () => {
   });
 
   it("applies the proposed SQL before accepting it", async () => {
-    const { setDatasetQuery, onAcceptProposed, proposedQuestion } = setup();
+    const { setQuery, onAcceptProposed, proposedQuestion } = setup();
 
     await userEvent.click(screen.getByRole("button", { name: /Accept/ }));
 
-    expect(setDatasetQuery).toHaveBeenCalledTimes(1);
-    expect(checkNotNull(setDatasetQuery.mock.calls[0]?.[0]).queryText()).toBe(
+    expect(setQuery).toHaveBeenCalledTimes(1);
+    expect(Lib.rawNativeQuery(checkNotNull(setQuery.mock.calls[0]?.[0]))).toBe(
       "SELECT 2",
     );
     expect(onAcceptProposed).toHaveBeenCalledWith(
-      proposedQuestion.datasetQuery(),
+      checkNotNull(proposedQuestion).datasetQuery(),
     );
-    expect(setDatasetQuery.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(setQuery.mock.invocationCallOrder[0]).toBeLessThan(
       onAcceptProposed.mock.invocationCallOrder[0],
     );
   });
@@ -112,5 +121,22 @@ describe("native query proposals", () => {
     await userEvent.click(screen.getByRole("button", { name: /Reject/ }));
 
     expect(onRejectProposed).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("native query formatting", () => {
+  it("formats the query with Shift+Ctrl+F", async () => {
+    const { setQuery } = setup({
+      text: "SELECT COUNT(*) FROM ORDERS",
+      proposedText: null,
+    });
+
+    await userEvent.click(screen.getByRole("textbox"));
+    await userEvent.keyboard("{Shift>}{Control>}f{/Control}{/Shift}");
+
+    await waitFor(() => expect(setQuery).toHaveBeenCalledTimes(1));
+    expect(Lib.rawNativeQuery(checkNotNull(setQuery.mock.calls[0]?.[0]))).toBe(
+      "SELECT\n  COUNT(*)\nFROM\n  ORDERS",
+    );
   });
 });

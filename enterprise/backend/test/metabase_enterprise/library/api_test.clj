@@ -1,10 +1,16 @@
 (ns metabase-enterprise.library.api-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [without-library]]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest create-library-endpoint-test
   (mt/with-premium-features #{:library}
@@ -50,13 +56,75 @@
                (is (= "Library" (:name response)))
                (is (= ["metric" "table"] (:below response)))
                (is (= ["collection"] (:here response))))))
-         (testing "Dashboards and their questions show up as dashboards"
-           (let [dashboards-id (t2/select-one-pk :model/Collection :type collection/library-dashboards-collection-type)]
-             (mt/with-temp [:model/Dashboard dashboard {:collection_id dashboards-id}
-                            :model/Card      _         {:collection_id dashboards-id
-                                                        :dashboard_id  (:id dashboard)
-                                                        :type          :question}]
-               (is (= ["dashboard"] (:below (mt/user-http-request :crowberto :get 200 "ee/library"))))))))))))
+         (testing "Dashboards and questions in a Dashboards collection show up"
+           (mt/with-temp [:model/Collection dashboards {:name     "Dashboards"
+                                                        :type     collection/library-dashboards-collection-type
+                                                        :location (str "/" (t2/select-one-pk :model/Collection :type collection/library-collection-type) "/")}
+                          :model/Dashboard  _          {:collection_id (:id dashboards)}
+                          :model/Card       _          {:collection_id (:id dashboards) :type :question}]
+             (is (= ["card" "dashboard"] (:below (mt/user-http-request :crowberto :get 200 "ee/library")))))))))))
+
+(deftest get-library-below-excludes-trash-test
+  (mt/with-premium-features #{:library}
+    (mt/with-discard-model-updates! [:model/Collection]
+      (without-library
+       (collection/create-library-collection!)
+       (let [data-folder   (t2/select-one :model/Collection :type collection/library-data-collection-type)
+             metrics-id    (t2/select-one-pk :model/Collection :type collection/library-metrics-collection-type)
+             dashboards-id (t2/select-one-pk :model/Collection :type collection/library-dashboards-collection-type)
+             below         #(:below (mt/user-http-request :crowberto :get 200 "ee/library"))]
+         (testing "A metric in the trash doesn't count"
+           (mt/with-temp [:model/Card _ {:collection_id metrics-id
+                                         :type          :metric
+                                         :archived      true}]
+             (is (= [] (below)))))
+         (testing "A dashboard in the trash doesn't count"
+           (mt/with-temp [:model/Dashboard _ {:collection_id dashboards-id
+                                              :archived      true}]
+             (is (= [] (below)))))
+         (testing "A table published into a subfolder in the trash doesn't count"
+           (mt/with-temp [:model/Collection {subfolder-id :id} {:type     collection/library-data-collection-type
+                                                                :location (collection/children-location data-folder)
+                                                                :archived true}
+                          :model/Table      _                 {:collection_id subfolder-id
+                                                               :is_published  true}]
+             (is (= [] (below)))))
+         (testing "A published table archived by sync doesn't count"
+           (mt/with-temp [:model/Table _ {:collection_id (:id data-folder)
+                                          :is_published  true
+                                          :archived_at   (t/offset-date-time)}]
+             (is (= [] (below))))))))))
+
+(deftest get-library-below-respects-permissions-test
+  (mt/with-premium-features #{:library}
+    (perms.test-util/with-restored-perms!
+      (mt/with-discard-model-updates! [:model/Collection]
+        (without-library
+         (collection/create-library-collection!)
+         (let [data-folder    (t2/select-one :model/Collection :type collection/library-data-collection-type)
+               metrics-folder (t2/select-one :model/Collection :type collection/library-metrics-collection-type)
+               below          (fn [user] (:below (mt/user-http-request user :get 200 "ee/library")))]
+           (mt/with-temp [:model/Collection {client-a-id :id} {:type     collection/library-data-collection-type
+                                                               :location (collection/children-location data-folder)}
+                          :model/Table      _                 {:collection_id client-a-id
+                                                               :is_published  true}
+                          :model/Collection {team-a-id :id}   {:type     collection/library-metrics-collection-type
+                                                               :location (collection/children-location metrics-folder)}
+                          :model/Card       _                 {:collection_id team-a-id
+                                                               :type          :metric}]
+             ;; The subfolders inherit All Users' read from Data and Metrics: revoke it so rasta can read neither
+             (perms/revoke-collection-permissions! (perms/all-users-group) client-a-id)
+             (perms/revoke-collection-permissions! (perms/all-users-group) team-a-id)
+             (testing "A table and a metric in collections the user can't read don't count"
+               (is (= [] (below :rasta))))
+             (testing "An admin sees all of them"
+               (is (= ["metric" "table"] (below :crowberto))))
+             (testing "Only the content of collections the user can read counts"
+               (perms/grant-collection-read-permissions! (perms/all-users-group) client-a-id)
+               (is (= ["table"] (below :rasta))))
+             (testing "A collection the user can read counts when its parent Data folder is unreadable"
+               (perms/revoke-collection-permissions! (perms/all-users-group) (:id data-folder))
+               (is (= ["table"] (below :rasta)))))))))))
 
 (deftest disallow-cross-type-collection-move-via-api-test
   (mt/with-premium-features #{:library}

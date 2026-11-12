@@ -94,6 +94,21 @@ describe("MetabotSystemPromptsPage", () => {
       expect(screen.getByText(title)).toBeInTheDocument();
       expect(textarea).toHaveValue("Existing value");
     });
+
+    it("saves the prompt to its own setting on blur", async () => {
+      const { textarea } = await setup({ Component, settingKey, title });
+
+      await userEvent.type(textarea, "Always use uppercase SQL keywords.");
+      fireEvent.blur(textarea);
+
+      await waitFor(() =>
+        expect(getUpdateCallsFor(settingKey)).toHaveLength(1),
+      );
+      const [call] = getUpdateCallsFor(settingKey);
+      expect(await call?.request?.json()).toEqual({
+        value: "Always use uppercase SQL keywords.",
+      });
+    });
   });
 
   describe("MetabotChatPromptPage save behavior", () => {

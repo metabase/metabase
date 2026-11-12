@@ -25,7 +25,7 @@
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)
-   (java.net URL)
+   (java.net URI)
    (java.nio.charset StandardCharsets)
    (java.util.zip Inflater InflaterInputStream)
    (org.apache.commons.io IOUtils)
@@ -167,7 +167,7 @@
   (assert (string? uri-str))
   (into
    {}
-   (for [^BasicNameValuePair pair (-> (URL. uri-str) .getQuery (URLEncodedUtils/parse StandardCharsets/UTF_8))]
+   (for [^BasicNameValuePair pair (-> (URI. uri-str) .getRawQuery (URLEncodedUtils/parse StandardCharsets/UTF_8))]
      [(keyword (.getName pair)) (.getValue pair)])))
 
 (deftest ^:parallel uri->params-map-test
@@ -534,6 +534,7 @@
                                                  {:request-options {:redirect-strategy :none}}
                                                  :redirect redirect-url)]
                  (testing (format "\n%s should not redirect" redirect-url)
+                   ;; The rejection is returned as a plain-text body, so the whole body is the message.
                    (is (= "Invalid redirect URL" get-response))))))))))))
 
 (deftest login-create-account-test

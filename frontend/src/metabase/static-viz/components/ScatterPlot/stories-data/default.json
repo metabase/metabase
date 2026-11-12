@@ -106,7 +106,6 @@
       "include_csv": false,
       "display": "scatter",
       "entity_id": "OgpYMsK-7z2bTc3CFYA7T",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": ["avg"],
         "graph.series_order_dimension": null,

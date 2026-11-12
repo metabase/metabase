@@ -106,7 +106,6 @@ const HYDRATION_RULES: HydrationRule[] = [
     (schemaNames, databaseId) => toNormalizedSchemas(databaseId, schemaNames),
   ),
   hydrates(databaseApi.endpoints.listDatabaseSchemaTables, [TableSchema]),
-  hydrates(databaseApi.endpoints.listVirtualDatabaseTables, [TableSchema]),
   hydrates(databaseApi.endpoints.listDatabaseIdFields, [FieldSchema]),
   hydrates(databaseApi.endpoints.createDatabase, DatabaseSchema),
 

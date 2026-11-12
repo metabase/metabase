@@ -28,22 +28,22 @@
       (testing "can update channel name"
         (mt/user-http-request :crowberto :put 200 (str "channel/" (:id channel))
                               {:name "New Name"})
-        (is (= "New Name" (t2/select-one-fn :name :model/Channel (:id channel)))))
+        (is (= "New Name" (t2/select-one-fn :name :model/Channel :id (:id channel)))))
       (testing "can update channel details even if it fails to connect"
         (mt/user-http-request :crowberto :put 200 (str "channel/" (:id channel))
                               {:details {:return-type  "return-value"
                                          :return-value false}})
         (is (= {:return-type "return-value"
                 :return-value false}
-               (t2/select-one-fn :details :model/Channel (:id channel)))))
+               (t2/select-one-fn :details :model/Channel :id (:id channel)))))
       (testing "can update channel description"
         (mt/user-http-request :crowberto :put 200 (str "channel/" (:id channel))
                               {:description "New description"})
-        (is (= "New description" (t2/select-one-fn :description :model/Channel (:id channel)))))
+        (is (= "New description" (t2/select-one-fn :description :model/Channel :id (:id channel)))))
       (testing "can disable a channel"
         (mt/user-http-request :crowberto :put 200 (str "channel/" (:id channel))
                               {:active false})
-        (is (= false (t2/select-one-fn :active :model/Channel (:id channel))))))))
+        (is (= false (t2/select-one-fn :active :model/Channel :id (:id channel))))))))
 
 (deftest create-channel-with-existing-name-error-test
   (mt/with-temp [:model/Channel _chn default-test-channel]

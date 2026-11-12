@@ -68,9 +68,9 @@
           (is (= 0 (:view_count document))
               "view_count should be 0 before the event is published")
           (events/publish-event! :event/document-read {:object-id (:id document) :user-id (:id user)})
-          (is (= 1 (t2/select-one-fn :view_count :model/Document (:id document))))
+          (is (= 1 (t2/select-one-fn :view_count :model/Document :id (:id document))))
           (events/publish-event! :event/document-read {:object-id (:id document) :user-id (:id user)})
-          (is (= 2 (t2/select-one-fn :view_count :model/Document (:id document)))))))))
+          (is (= 2 (t2/select-one-fn :view_count :model/Document :id (:id document)))))))))
 
 (deftest update-document-last-viewed-at-test
   (let [now (-> (t/offset-date-time)
@@ -88,7 +88,7 @@
         (#'documents.view-log/update-document-last-viewed-at!* [{:id (:id document) :timestamp one-hour-ago}
                                                                 {:id (:id document) :timestamp two-hours-ago}])
         (is (= one-hour-ago
-               (-> (t2/select-one-fn :last_viewed_at :model/Document (:id document))
+               (-> (t2/select-one-fn :last_viewed_at :model/Document :id (:id document))
                    t/offset-date-time
                    (.withNano 0))))))
     (testing "if the existing last_viewed_at is greater than the updating values, do not override it"
@@ -101,7 +101,7 @@
                                                :last_viewed_at now}]
         (#'documents.view-log/update-document-last-viewed-at!* [{:id (:id document) :timestamp one-hour-ago}])
         (is (= now
-               (-> (t2/select-one-fn :last_viewed_at :model/Document (:id document))
+               (-> (t2/select-one-fn :last_viewed_at :model/Document :id (:id document))
                    t/offset-date-time
                    (.withNano 0))))))))
 

@@ -1,1 +1,1 @@
-To read a saved question or model, including one the user is viewing, write SQL that reads it, with the reference syntax the `create-sql-query` skill gives, and run that.
+To read a saved question or model, write SQL that reads it, with the reference syntax the `create-sql-query` skill gives, and run that. To read the SQL query on the user's screen, run it by its query ID.

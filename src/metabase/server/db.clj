@@ -11,6 +11,8 @@
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
 
+(set! *warn-on-reflection* true)
+
 ;; These session/API-key/OAuth-token lookup queries run on every single authenticated API request, so it's worth it
 ;; to optimize a bit and only compile each one to SQL once (keyed by its boolean/enum arguments) rather than every
 ;; time.

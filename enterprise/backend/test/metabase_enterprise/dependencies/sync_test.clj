@@ -47,7 +47,7 @@
             ;; NOTE: The metadata provider caches must be small here - if the cache spans a sync it will see
             ;; old values after the sync!
             (lib-be/with-metadata-provider-cache
-              (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Card card-id)))
+              (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Card :id card-id)))
             (testing "Initial analysis succeeds"
               (is (true? (t2/select-one-fn :result :model/AnalysisFinding
                                            :entity_type :card :entity_id card-id)))

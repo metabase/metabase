@@ -1,9 +1,11 @@
 (ns metabase.explorations.models.exploration-thread
   (:require
    [metabase.explorations.db :as explorations.db]
+   [metabase.explorations.models.exploration :as exploration]
    [metabase.explorations.schema :as explorations.schema]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.query-permissions.core :as query-perms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -17,7 +19,8 @@
 (t2/deftransforms :model/ExplorationThread
   {:query_plan_transcript (mi/transform-json-with-schema "exploration_thread.query_plan_transcript"
                                                          ::explorations.schema/exploration-thread.query-plan-transcript)
-   :data_access_token     perms/data-access-token-transform})
+   :data_access_token     perms/data-access-token-transform
+   :resolved_source_ids   query-perms/resolved-source-ids-transform})
 
 (defmethod mi/can-read? :model/ExplorationThread
   ([instance]
@@ -32,6 +35,11 @@
   ([_model pk]
    (when-let [thread (explorations.db/thread-exploration-id-row pk)]
      (mi/can-write? :model/Exploration (:exploration_id thread)))))
+
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :can_write]
+  "Add whether the current user can write each ExplorationThread, which is whether they can write its parent."
+  [_model k instances]
+  (exploration/hydrate-can-write-from-parents k instances :exploration_id :model/Exploration))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :timelines]
   [_model k threads]

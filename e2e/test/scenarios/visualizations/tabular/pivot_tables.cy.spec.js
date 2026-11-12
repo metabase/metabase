@@ -642,7 +642,7 @@ WHERE NOT (
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column title");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Style");
+    cy.findByText("Format");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Separator style");
 
@@ -650,9 +650,9 @@ WHERE NOT (
     H.popover().findByText("Sort order").should("not.exist");
 
     cy.log("Change the value formatting");
-    cy.findByDisplayValue("Normal").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Percent").click();
+    cy.findByTestId("chart-settings-widget-number_style")
+      .findByText("123%")
+      .click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
     cy.findByTestId("query-visualization-root").within(() => {

@@ -23,7 +23,6 @@ import {
   type PreviewType,
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
@@ -343,7 +342,7 @@ function DataModelContent() {
                        * Make sure internal component state is reset when changing fields.
                        * This is to avoid state mix-up with optimistic updates.
                        */
-                      key={getRawTableFieldId(field)}
+                      key={field.id}
                       field={field}
                       parent={parentField}
                       table={table}

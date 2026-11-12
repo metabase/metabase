@@ -4,13 +4,17 @@ import type { PillTab } from "metabase/common/components/PillTabNavigation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import type { StackProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { DataApp, WritebackQueryAction } from "metabase-types/api";
+import type {
+  DataApp,
+  WritebackImplicitQueryAction,
+  WritebackQueryAction,
+} from "metabase-types/api";
 
 import { DataAppItemHeader } from "../DataAppItemHeader";
 
 type DataAppActionHeaderProps = {
   app: DataApp;
-  action: WritebackQueryAction;
+  action: WritebackQueryAction | WritebackImplicitQueryAction;
 } & Omit<StackProps, "title">;
 
 export function DataAppActionHeader({
@@ -18,11 +22,11 @@ export function DataAppActionHeader({
   action,
   ...stackProps
 }: DataAppActionHeaderProps) {
-  const fieldsUrl = Urls.dataStudioDataAppActionFields(app.name, action.id);
+  const fieldsUrl = Urls.dataStudioDataAppActionFields(app.slug, action.id);
   const tabs: PillTab[] = [
     {
       label: t`Definition`,
-      to: Urls.dataStudioDataAppAction(app.name, action.id),
+      to: Urls.dataStudioDataAppAction(app.slug, action.id),
     },
     {
       label: t`Fields`,
@@ -33,7 +37,7 @@ export function DataAppActionHeader({
       ? [
           {
             label: t`Dependencies`,
-            to: Urls.dataStudioDataAppActionDependencies(app.name, action.id),
+            to: Urls.dataStudioDataAppActionDependencies(app.slug, action.id),
           },
         ]
       : []),
@@ -45,7 +49,7 @@ export function DataAppActionHeader({
       name={action.name}
       icon="bolt"
       sectionName={t`Actions`}
-      sectionUrl={Urls.dataStudioDataAppActions(app.name)}
+      sectionUrl={Urls.dataStudioDataAppActions(app.slug)}
       tabs={tabs}
       data-testid="data-app-action-header"
       {...stackProps}

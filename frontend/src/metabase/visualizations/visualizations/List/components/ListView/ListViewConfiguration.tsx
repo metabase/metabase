@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import {
   DndContext,
   DragOverlay,
@@ -275,7 +276,7 @@ export const ListViewConfiguration = ({
                           iconConfig.entityIconEnabled
                             ? // Unjustified type cast. FIXME
                               (iconConfig.selectedIconColor as ColorName)
-                            : "text-disabled"
+                            : "text-secondary"
                         }
                       />
                     )}

@@ -32,15 +32,15 @@ export const revisionApi = Api.injectEndpoints({
         const tags = [listTag("revision")];
         // Also invalidate the entity that was reverted so it refetches
         if (entity === "card") {
-          tags.push(idTag("card", id));
+          tags.push(idTag("card", id), listTag("card"));
         } else if (entity === "dashboard") {
-          tags.push(idTag("dashboard", id));
+          tags.push(idTag("dashboard", id), listTag("dashboard"));
         } else if (entity === "document") {
-          tags.push(idTag("document", id));
+          tags.push(idTag("document", id), listTag("document"));
         } else if (entity === "segment") {
-          tags.push(idTag("segment", id));
+          tags.push(idTag("segment", id), listTag("segment"));
         } else if (entity === "transform") {
-          tags.push(idTag("transform", id));
+          tags.push(idTag("transform", id), listTag("transform"));
         }
         return invalidateTags(error, tags);
       },

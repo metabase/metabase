@@ -57,20 +57,23 @@
     - sandboxing context.
     - impersonation context.
     - linked-filter constraints (optionally provided).
-    - database routing context
+    - database routing context.
+    - `extra`, if any — a caller-supplied map whose entries affect query shape but aren't part of
+      constraints (e.g. chain-filter's `:via-path`/`:fk-pairs` hints from the card's joins).
 
   This ensures that any difference in these elements results in a distinct cache key.
 
   Returns a map suitable for hashing into a cache key, or nil when a restriction applies to the current user but can't
   be keyed, because its premium feature is unavailable or it can't be resolved. No cached FieldValues may be served to
   or created for such a user."
-  [field & [constraints]]
+  [field & [constraints extra]]
   (let [hash-input (merge
                     {:field-id (u/the-id field)}
                     (field-values/hash-input-for-sandbox field)
                     (field-values/hash-input-for-impersonation field)
                     (field-values/hash-input-for-linked-filters field constraints)
-                    (field-values/hash-input-for-database-routing field))]
+                    (field-values/hash-input-for-database-routing field)
+                    (when (seq extra) {:extra extra}))]
     (when (every? some? (vals hash-input))
       hash-input)))
 
@@ -109,13 +112,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- fetch-advanced-field-values
-  [field constraints]
+  [field constraints extra]
   (let [{:keys [values has_more_values]}
         (if (seq constraints)
           (do
             (classloader/require 'metabase.parameters.chain-filter)
             ((resolve 'metabase.parameters.chain-filter/unremapped-chain-filter)
-             (:id field) constraints {}))
+             (:id field) constraints (or extra {})))
           ;; No constraints: pull the raw distinct values. `distinct-values` row-caps at
           ;; `*distinct-limit*`; we treat hitting that as `has_more_values`.
           (let [rows (-> (field-values/distinct-values field) :values)]
@@ -130,24 +133,27 @@
 (defn prepare-advanced-field-values
   "Fetch and construct the FieldValues for `field` with type `fv-type`. This does not do any insertion.
    The human_readable_values of Advanced FieldValues will be automatically fixed up based on the
-   list of values and human_readable_values of the full FieldValues of the same field."
-  [field hash-key constraints]
-  (let [{wrapped-values :values :keys [has_more_values]}
-        (fetch-advanced-field-values field constraints)
-        ;; each value in `wrapped-values` is a 1-tuple, so unwrap the raw values for storage
-        values                (map first wrapped-values)
-        ;; If the full FieldValues of this field have human-readable-values, ensure that we reuse them
-        full-field-values     (field-values/get-latest-full-field-values (:id field))
-        human-readable-values (field-values/fixup-human-readable-values full-field-values values)]
-    {:field_id              (:id field)
-     :type                  :advanced
-     :hash_key              hash-key
-     :has_more_values       has_more_values
-     :human_readable_values human-readable-values
-     :values                values}))
+   list of values and human_readable_values of the full FieldValues of the same field. `extra`, when
+   supplied, is caller-side material (e.g. chain-filter's join hints) forwarded to the fetch."
+  ([field hash-key constraints]
+   (prepare-advanced-field-values field hash-key constraints nil))
+  ([field hash-key constraints extra]
+   (let [{wrapped-values :values :keys [has_more_values]}
+         (fetch-advanced-field-values field constraints extra)
+         ;; each value in `wrapped-values` is a 1-tuple, so unwrap the raw values for storage
+         values                (map first wrapped-values)
+         ;; If the full FieldValues of this field have human-readable-values, ensure that we reuse them
+         full-field-values     (field-values/get-latest-full-field-values (:id field))
+         human-readable-values (field-values/fixup-human-readable-values full-field-values values)]
+     {:field_id              (:id field)
+      :type                  :advanced
+      :hash_key              hash-key
+      :has_more_values       has_more_values
+      :human_readable_values human-readable-values
+      :values                values})))
 
 (defn- get-or-create-advanced-field-values!
-  [field constraints hash-input]
+  [field constraints hash-input extra]
   (let [hash-key (str (hash hash-input))
         ;; look first on this thread: a hit is one SELECT, and handing that to a background
         ;; thread costs more than it saves. Only a miss is worth detaching, because only a
@@ -157,28 +163,33 @@
                 [:advanced (:id field) hash-key]
                 (fn []
                   (parameters.db/find-or-insert-advanced-field-values!
-                   (:id field) hash-key #(prepare-advanced-field-values field hash-key constraints)))))]
+                   (:id field) hash-key #(prepare-advanced-field-values field hash-key constraints extra)))))]
     ;; If it's expired, delete then try to re-create it
     (if (some-> fv field-values/advanced-field-values-expired?)
       (do
         ;; It's possible another process has already recalculated this, but spurious recalculations are OK.
         (parameters.db/delete-field-values! (:id fv))
-        (recur field constraints hash-input))
+        (recur field constraints hash-input extra))
       fv)))
 
 (defn- get-or-create-field-values-with-hash-input!
-  [field constraints hash-input]
-  (when (and hash-input (field-values/field-should-have-field-values? field))
-    (if (not= hash-input {:field-id (u/the-id field)})
-      (get-or-create-advanced-field-values! field constraints hash-input)
-      (field-values/get-or-create-full-field-values! field))))
+  ([field constraints hash-input]
+   (get-or-create-field-values-with-hash-input! field constraints hash-input nil))
+  ([field constraints hash-input extra]
+   (when (and hash-input (field-values/field-should-have-field-values? field))
+     (if (not= hash-input {:field-id (u/the-id field)})
+       (get-or-create-advanced-field-values! field constraints hash-input extra)
+       (field-values/get-or-create-full-field-values! field)))))
 
 (defn get-or-create-field-values!
   "Gets or creates field values. Returns nil when `field` shouldn't have any, or when [[hash-input-for-field-values]]
   can't key the current user's access."
-  ([field] (get-or-create-field-values! field nil))
-  ([field constraints]
-   (get-or-create-field-values-with-hash-input! field constraints (hash-input-for-field-values field constraints))))
+  ([field] (get-or-create-field-values! field nil nil))
+  ([field constraints] (get-or-create-field-values! field constraints nil))
+  ([field constraints extra]
+   (get-or-create-field-values-with-hash-input! field constraints
+                                                (hash-input-for-field-values field constraints extra)
+                                                extra)))
 
 (defn get-or-create-field-values-by-field-id!
   "Calls [[get-or-create-field-values!]] for each of `fields`, resolving the current user's restrictions once per table.
@@ -221,8 +232,9 @@
 (defn get-or-create-linked-filter-field-values!
   "Fetch linked-filter FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These are
   filtered as appropriate for the current User, depending on MB version (e.g. EE sandboxing will filter these values).
-  If the Field has a human-readable values remapping (see documentation at the top of
-  [[metabase.parameters.chain-filter]] for an explanation of what this means), values are returned in the format
+  `extra`, if supplied, is any caller-side material (e.g. chain-filter's join hints) that must participate in the
+  cache key but isn't part of the constraints map. If the Field has a human-readable values remapping (see documentation
+  at the top of [[metabase.parameters.chain-filter]] for an explanation of what this means), values are returned in the format
     {:values           [[original-value human-readable-value]]
      :field_id         field-id
      :has_field_values boolean}
@@ -230,6 +242,7 @@
     {:values           [[value]]
      :field_id         field-id
      :has_field_values boolean}"
-  [field constraints]
-  (-> (get-or-create-field-values! field constraints)
-      (postprocess-field-values field)))
+  ([field constraints] (get-or-create-linked-filter-field-values! field constraints nil))
+  ([field constraints extra]
+   (-> (get-or-create-field-values! field constraints extra)
+       (postprocess-field-values field))))

@@ -6,6 +6,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -56,7 +57,7 @@
    [:offset     {:optional true} [:maybe :int]]
    [:middleware {:optional true} [:ref ::lib.schema.middleware-options/middleware-options]]
    [:info       {:optional true} [:maybe [:ref ::lib.schema.info/info]]]
-   [:viz-settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:viz-settings {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    [:action     {:optional true} [:or :string :keyword]]
    [:database   {:optional true} [:maybe pos-int?]]
    [:scope      {:optional true} ::internal-query.scope]
@@ -73,3 +74,8 @@
            :description (deferred-tru "value must be a valid MBQL query, or an empty query.")}
    [true  ::empty-query]
    [false ::maybe-legacy-query]])
+
+(def external-registry
+  "[[lib.schema/external-registry]] for a stored query as serialization writes it, which has portable references the
+  app DB normalization of [[::maybe-legacy-query]] cannot resolve, so it is normalized as a plain query."
+  (assoc lib.schema/external-registry ::maybe-legacy-query [:ref ::lib.schema/query]))

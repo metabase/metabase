@@ -11,6 +11,8 @@
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]))
 
+(set! *warn-on-reflection* true)
+
 (events/derive! ::exploration-read :metabase/event)
 (events/derive! :event/exploration-read ::exploration-read)
 

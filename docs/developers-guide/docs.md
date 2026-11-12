@@ -1,5 +1,6 @@
 ---
 title: Developing Metabase documentation
+summary: Preview docs as you write them, check for broken links, and regenerate the pages that are built from source.
 ---
 
 # Developing Metabase documentation
@@ -28,6 +29,18 @@ bun run lint-docs-links
 
 You can view both commands in the [package.json](https://github.com/metabase/metabase/blob/master/package.json) file under `scripts`.
 
+## Preview docs as you write them
+
+You'll need [Bun](https://bun.sh) and a checkout of the private `metabase-dot-com` repo at `~/metabase-dot-com`. Then run:
+
+```
+./bin/mage docs-preview
+```
+
+Your browser opens `http://localhost:4000/docs/latest/`, and your edits show up as you save them. Only `/docs/latest/` pages work.
+
+To preview a worktree or another checkout, pass its path. If `metabase-dot-com` is somewhere else, pass `--site DIR` or set `METABASE_DOT_COM_DIR`.
+
 ## Regenerate docs built from source
 
 Some docs pages are generated from the source code. A scheduled GitHub workflow regenerates them every weekday and opens a PR with any changes.
@@ -41,16 +54,16 @@ bun install
 Then run:
 
 ```
-./bin/mage generate-docs
+./bin/mage docs-generate
 ```
 
 To regenerate one group of pages, pass its suite name. For example:
 
 ```
-./bin/mage generate-docs backend
+./bin/mage docs-generate backend
 ```
 
-To list the suites, run `./bin/mage generate-docs -h`. If any suite fails, the last line of output lists it.
+To list the suites, run `./bin/mage docs-generate -h`. If any suite fails, the last line of output lists it.
 
 ## Updating API docs
 
@@ -64,4 +77,4 @@ clojure -M:ee:doc api-documentation
 
 ## Style guide
 
-Ancient [style guide](<https://github.com/metabase/metabase/wiki/Writing-style-guide-for-documentation-and-blog-posts-(WIP)>) that needs an update.
+Follow the [Metabase documentation style guide](https://github.com/metabase/metabase/blob/master/.claude/skills/_shared/metabase-style-guide.md).

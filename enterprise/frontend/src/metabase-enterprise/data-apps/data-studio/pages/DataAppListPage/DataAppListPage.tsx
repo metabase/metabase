@@ -24,9 +24,10 @@ import * as Urls from "metabase/urls";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
+import { getDataAppStatusLabel } from "../../../utils";
 import { DataAppMoreMenu } from "../../components/DataAppMoreMenu";
-import { getDataAppStatusLabel } from "../../utils";
 
+import { DataAppBuildGuide } from "./DataAppBuildGuide";
 import { DataAppListEmptyState } from "./DataAppListEmptyState";
 
 export function DataAppListPage() {
@@ -36,7 +37,7 @@ export function DataAppListPage() {
 
   const handleRowActivate = useCallback(
     (row: { original: DataApp }) => {
-      navigate(Urls.dataStudioDataApp(row.original.name));
+      navigate(Urls.dataStudioDataApp(row.original.slug));
     },
     [navigate],
   );
@@ -45,20 +46,18 @@ export function DataAppListPage() {
     () => [
       {
         id: "name",
-        accessorKey: "display_name",
+        accessorKey: "name",
         header: t`Name`,
         minWidth: 160,
-        cell: ({ row }) => (
-          <Ellipsified>{row.original.display_name}</Ellipsified>
-        ),
+        cell: ({ row }) => <Ellipsified>{row.original.name}</Ellipsified>,
       },
       {
         id: "address",
-        accessorFn: (app) => Urls.dataApp(app.name),
+        accessorFn: (app) => Urls.dataApp(app.slug),
         header: t`Address`,
         minWidth: 160,
         cell: ({ row }) => (
-          <Ellipsified>{Urls.dataApp(row.original.name)}</Ellipsified>
+          <Ellipsified>{Urls.dataApp(row.original.slug)}</Ellipsified>
         ),
       },
       {
@@ -88,7 +87,7 @@ export function DataAppListPage() {
   const treeTableInstance = useTreeTableInstance({
     data: apps,
     columns,
-    getNodeId: (app) => app.name,
+    getNodeId: (app) => app.slug,
     globalFilter: searchQuery,
     onGlobalFilterChange: setSearchQuery,
     onRowActivate: handleRowActivate,
@@ -111,6 +110,7 @@ export function DataAppListPage() {
         <DataAppListEmptyState />
       ) : (
         <Stack style={{ overflow: "hidden" }}>
+          {!isLoading && <DataAppBuildGuide />}
           <TextInput
             placeholder={t`Search...`}
             leftSection={<Icon name="search" />}

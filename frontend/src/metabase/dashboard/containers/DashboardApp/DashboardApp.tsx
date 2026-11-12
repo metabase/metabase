@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
@@ -7,8 +8,9 @@ import { useFavicon } from "metabase/common/hooks/use-favicon";
 import CS from "metabase/css/core/index.css";
 import {
   addCardToDashboard,
+  fetchDashboard,
+  fetchDashboardCardData,
   navigateToNewCardFromDashboard,
-  openSubscriptionsSidebarIfAllowed,
   setEditingDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
@@ -30,6 +32,7 @@ import {
   usePageTitle,
   usePageTitleWithLoadingTime,
 } from "metabase/hooks/use-page-title";
+import { useOnMetabotDashboardSave } from "metabase/metabot";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { Location } from "metabase/router";
@@ -43,7 +46,7 @@ import {
 import type { Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
-import { getDocumentTitle, getFavicon } from "../../selectors";
+import { getDocumentTitle, getFavicon, getIsEditing } from "../../selectors";
 
 import { useDashboardLocationSync } from "./use-dashboard-location-sync";
 import { useSlowCardNotification } from "./use-slow-card-notification";
@@ -93,6 +96,28 @@ export const DashboardApp = () => {
   const dashboardId = Urls.extractEntityId(params.slug);
 
   useRegisterDashboardMetabotContext();
+
+  // Metabot saves dashboards on the server, so the page reloads them in place: open sidebars and
+  // filter values stay, and only cards whose query changed run again. An edit in progress isn't
+  // reloaded, since that would drop the user's unsaved changes.
+  const isEditing = useSelector(getIsEditing);
+  const reloadDashboard = useCallback(async () => {
+    if (isEditing || dashboardId == null) {
+      return;
+    }
+    await dispatch(
+      fetchDashboard({
+        dashId: dashboardId,
+        queryParams: parameterQueryParams,
+        options: { preserveParameters: true },
+      }),
+    );
+    await dispatch(
+      fetchDashboardCardData({ reload: false, clearCache: false }),
+    );
+  }, [dispatch, isEditing, dashboardId, parameterQueryParams]);
+  useOnMetabotDashboardSave(dashboardId, reloadDashboard);
+
   useDashboardUrlQuery(location);
 
   const extractHashOption = async (
@@ -108,24 +133,12 @@ export const DashboardApp = () => {
       window.location.hash,
     );
     const editingOnLoad = options.edit;
-    const subscriptionsOnLoad = options.subscriptions;
     const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
 
     try {
       if (editingOnLoad) {
         dispatch(setEditingDashboard(dashboard));
         options = await extractHashOption("edit", options);
-      }
-
-      if (subscriptionsOnLoad) {
-        dispatch(
-          openSubscriptionsSidebarIfAllowed(
-            dashboard,
-            // a numeric hash value is parsed into a number, whatever its type says
-            Urls.extractEntityId(String(subscriptionsOnLoad)),
-          ),
-        );
-        options = await extractHashOption("subscriptions", options);
       }
 
       if (addCardOnLoad != null && dashboardId != null) {

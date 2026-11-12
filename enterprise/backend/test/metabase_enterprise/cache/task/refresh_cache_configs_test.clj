@@ -684,7 +684,7 @@
             (@#'task.cache/refresh-cache-configs!)
             (is (= 0 @call-count))
             (mt/with-additional-premium-features #{:cache-preemptive}
-              (t2/update! :model/CacheConfig (:id cc) (assoc cc :next_run_at nil))
+              (t2/update! :model/CacheConfig :id (:id cc) (assoc cc :next_run_at nil))
               (is (true? (premium-features/enable-preemptive-caching?)))
               (@#'task.cache/refresh-cache-configs!)
               (is (= 2 @call-count)))))))))

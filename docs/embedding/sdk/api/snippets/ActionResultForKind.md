@@ -5,11 +5,9 @@ type ActionResultForKind<TKind> = TKind extends "create"
     ? ActionResultForUpdate
     : TKind extends "delete"
       ? ActionResultForDelete
-      : TKind extends "bulk"
-        ? ActionResultForBulk
-        : TKind extends "sql"
-          ? ActionResultForSql
-          : AnyActionResult;
+      : TKind extends "sql"
+        ? ActionResultForSql
+        : AnyActionResult;
 ```
 
 Maps an `ActionKind` literal to the discriminated `result` shape. Omit

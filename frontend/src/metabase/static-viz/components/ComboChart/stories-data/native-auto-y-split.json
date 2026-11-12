@@ -19,7 +19,6 @@
         "graph.dimensions": ["x"],
         "graph.metrics": ["m1", "m2"]
       },
-      "collection_preview": true,
       "entity_id": "WGi4e84chXhmvEz3NtPb2",
       "display": "bar",
       "parameter_mappings": [],

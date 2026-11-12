@@ -1,6 +1,8 @@
 (ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms-python.ordering-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as ordering]
@@ -21,7 +23,7 @@
   (let [name (or name (mt/random-name))
         schema (or schema (transforms.tu/default-schema-or-public))
         target-db (or target-db (mt/id))]
-    {:source {:type "python"
+    {:source {:type :python
               :source-tables source-tables
               :body "# Python code here\nresult = df"}
      :name (str "python_transform_" name)
@@ -51,7 +53,7 @@
                        :model/Field     _            {:table_id table1  :name "foo"}
                        :model/Transform {t1 :id}     (py-tx [(transforms.tu/source-table-entry "orders" (mt/id :orders))] "output_1")
                        :model/Transform {t2 :id}     (py-tx [(transforms.tu/source-table-entry "output_1" table1)] "output_2")]
-          (t2/update! :model/Transform t1 {:target_table_id table1})
+          (t2/update! :model/Transform :id t1 {:target_table_id table1})
           (is (= {t1 #{}
                   t2 #{t1}}
                  (:dependencies (ordering/transform-ordering #{t1 t2} (t2/select :model/Transform :id [:in [t1 t2]]))))))))))
@@ -69,8 +71,8 @@
                        :model/Transform {t3 :id}     (py-tx [(transforms.tu/source-table-entry "output_1" table1)
                                                              (transforms.tu/source-table-entry "output_2" table2)]
                                                             "final_output")]
-          (t2/update! :model/Transform t1 {:target_table_id table1})
-          (t2/update! :model/Transform t2 {:target_table_id table2})
+          (t2/update! :model/Transform :id t1 {:target_table_id table1})
+          (t2/update! :model/Transform :id t2 {:target_table_id table2})
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
@@ -85,18 +87,15 @@
                        :model/Table     {table2 :id} {:schema   schema  :name "python_output"}
                        :model/Field     _            {:table_id table2  :name "bar"}
                        ;; SQL transform that depends on orders table
-                       :model/Transform {t1 :id}     (sql-tx {:database (mt/id)
-                                                              :type     "query"
-                                                              :query    {:source-table (mt/id :orders)}}
+                       :model/Transform {t1 :id}     (sql-tx (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
                                                              "sql_output")
                        ;; Python transform that depends on the SQL transform's output
                        :model/Transform {t2 :id}     (py-tx [(transforms.tu/source-table-entry "sql_output" table1)] "python_output")
                        ;; Another SQL transform that depends on the Python transform's output
-                       :model/Transform {t3 :id}     (sql-tx {:database (mt/id)
-                                                              :type     "query"
-                                                              :query    {:source-table table2}}      "final_output")]
-          (t2/update! :model/Transform t1 {:target_table_id table1})
-          (t2/update! :model/Transform t2 {:target_table_id table2})
+                       :model/Transform {t3 :id}     (sql-tx (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) table2))
+                                                             "final_output")]
+          (t2/update! :model/Transform :id t1 {:target_table_id table1})
+          (t2/update! :model/Transform :id t2 {:target_table_id table2})
           (is (= {t1 #{}
                   t2 #{t1}
                   t3 #{t2}}

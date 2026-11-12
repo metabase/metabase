@@ -21,7 +21,7 @@ The [Metabase Representation Format](https://github.com/metabase/representations
 ## Serialization use cases
 
 - **Staging environments**. Enable a staging-to-production workflow for important dashboards by exporting from a staging instance of Metabase and then importing them into your production instance(s).
-- **Version control**. Check the exported files into version control and audit changes to them, as the YAML files contained within the export are pretty readable. For a built-in Git workflow with push/pull from the Metabase UI, see [Remote Sync](./remote-sync.md).
+- **Version control**. Check the exported files into version control and audit changes to them, as the YAML files contained within the export are pretty readable. For a built-in Git workflow with push/pull from the Metabase UI, see [Remote Sync](../data-modeling/semantic-layer/remote-sync.md).
 - **Duplicating assets to other Metabases**. Export the "template" data from a source Metabase and import them to one or more target instances.
 
 Check out our guides for:
@@ -267,7 +267,7 @@ Examples:
 CLI (include collections 1, 2, and 3):
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export export_name --collection 1,2,3
+java -jar metabase.jar export export_name --collection 1,2,3
 ```
 
 API (include collections 1 and 2):
@@ -462,7 +462,7 @@ See [How export works](#how-export-works), [How import works](#how-import-works)
 To export the contents of a Metabase instance, change into the directory where you're running the Metabase JAR and run:
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export dir_name
+java -jar metabase.jar export dir_name
 ```
 
 Where `dir_name` can be whatever you want to call the directory.
@@ -472,13 +472,13 @@ Where `dir_name` can be whatever you want to call the directory.
 To customize what's included in an export, add flags after the `export` command. See [Export options](#export-options) for the full list. You can combine multiple flags:
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export my_export -S -D --include-field-values
+java -jar metabase.jar export my_export -S -D --include-field-values
 ```
 
 You can also print all available flags with the `help` command:
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help export
+java -jar metabase.jar help export
 ```
 
 ### Importing with CLI
@@ -486,7 +486,7 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help export
 To import exported artifacts into a Metabase instance, go to the directory where you're running your target Metabase (the Metabase you want to import into) and use the following command, where `path_to_export` is the path to the export that you want to import:
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar import path_to_export
+java -jar metabase.jar import path_to_export
 ```
 
 ### `import` options
@@ -494,7 +494,7 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar import path_to
 Most options are defined when exporting data from a Metabase. To view a list of import flags, run:
 
 ```
-java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help import
+java -jar metabase.jar help import
 ```
 
 Which prints out:
@@ -636,7 +636,7 @@ We're interested in how we can improve serialization to suit your workflow. [Upv
 
 ## Further reading
 
-- [Remote Sync](./remote-sync.md)
+- [Remote Sync](../data-modeling/semantic-layer/remote-sync.md)
 - [Serialization tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/serialization)
 - [Database routing](../permissions/database-routing.md)
 - [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env)

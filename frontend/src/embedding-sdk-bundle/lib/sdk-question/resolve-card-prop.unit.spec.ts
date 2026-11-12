@@ -1,14 +1,20 @@
-import type { MetabaseCard } from "embedding-sdk-bundle/types/question";
+import type {
+  MetabaseCard,
+  MetabaseQueryObject,
+} from "embedding-sdk-bundle/types/question";
 import { utf8_to_b64url } from "metabase/utils/encoding";
-import type { DatasetQuery } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { resolveCardProp } from "./resolve-card-prop";
 
-const DATASET_QUERY: DatasetQuery = {
-  database: 1,
-  type: "query",
-  query: { "source-table": 2 },
-};
+// MetabaseQueryObject is the public structural mirror of the opaque internal query type
+const DATASET_QUERY = Lib.toLegacyQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+  }),
+) as unknown as MetabaseQueryObject;
 
 const serialize = (card: object) => utf8_to_b64url(JSON.stringify(card));
 

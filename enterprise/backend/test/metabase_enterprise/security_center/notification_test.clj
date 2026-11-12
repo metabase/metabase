@@ -25,7 +25,7 @@
           :title             "Test Advisory"
           :description       "A test advisory"
           :remediation       "Upgrade to latest"
-          :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+          :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
           :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
           :match_status      "not_affected"
           :published_at      #t "2026-03-24T00:00:00Z"
@@ -230,6 +230,25 @@
           (is (= :event/security-advisory-match (:topic (first @published))))
           (is (= "SC-EVENT-001" (get-in (first @published) [:info :object :advisory_id]))))))))
 
+(deftest notify-advisory-audit-log-test
+  (testing "notify-advisory! records which advisory matched in the audit log"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     (advisory-fixture {:advisory_id  "SC-AUDIT-001"
+                                        :severity     "high"
+                                        :match_status "active"})]
+        (mt/with-dynamic-fn-redefs [channel.settings/email-configured?   (constantly true)
+                                    notification.send/send-notification! (constantly nil)]
+          (notification/notify-advisory! advisory)
+          (is (=? {:topic   :security-advisory-match
+                   :user_id nil
+                   :model   "SecurityAdvisory"
+                   :details {:advisory_id  "SC-AUDIT-001"
+                             :title        "Test Advisory"
+                             :severity     "high"
+                             :match_status "active"}}
+                  (mt/latest-audit-log-entry :security-advisory-match))))))))
+
 (deftest notify-advisory-updates-last-notified-at-test
   (testing "notify-advisory! sets last_notified_at on the advisory"
     (mt/with-temp [:model/SecurityAdvisory advisory
@@ -239,7 +258,7 @@
       (is (nil? (:last_notified_at advisory)))
       (with-send-redef (constantly nil)
         (notification/notify-advisory! advisory))
-      (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory))))))))
+      (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
 
 (deftest notify-advisory-does-not-update-on-send-failure-test
   (testing "last_notified_at is NOT set when send-notification! throws"
@@ -250,7 +269,7 @@
       (with-send-redef (fn [& _] (throw (ex-info "boom" {})))
         (is (thrown-with-msg? Exception #"boom"
                               (notification/notify-advisory! advisory))))
-      (is (nil? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory))))))))
+      (is (nil? (:last_notified_at (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
 
 ;;; -------------------------------------------- Recipient resolution -------------------------------------------------
 
@@ -476,7 +495,7 @@
           (with-send-redef (fn [& _] (throw (delivery-failure :channel/slack)))
             (is (= {"email" "success" "slack" "failure"}
                    (tracked-results! #(notification/notify-advisory! advisory))))))
-        (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory)))))))))
+        (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory :id (:id advisory)))))))))
 
 (deftest notify-advisory-every-channel-failed-test
   (testing "when no channel delivers, notify-advisory! throws and last_notified_at stays unset, so the next sync retries"
@@ -490,7 +509,7 @@
             (is (= {"email" "failure" "slack" "failure"}
                    (tracked-results! #(is (thrown-with-msg? Exception #"Failed to deliver"
                                                             (notification/notify-advisory! advisory)))))))))
-      (is (nil? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory))))))))
+      (is (nil? (:last_notified_at (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
 
 (deftest notify-advisory-partial-delivery-through-the-pipeline-test
   (testing "the real send: email delivers, the Slack post fails, and the advisory counts as notified"
@@ -511,4 +530,4 @@
                                                                (swap! sent conj channel-type))]
               (notification/notify-advisory! advisory))
             (is (= [:channel/email] @sent)))))
-      (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory))))))))
+      (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))

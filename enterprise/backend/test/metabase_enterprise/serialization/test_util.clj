@@ -7,12 +7,11 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.serialization :as serdes]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.impl :as data.impl]
-   [metabase.util :as u]
    [metabase.util.files :as u.files]
    [next.jdbc]
    [toucan2.connection :as t2.conn]
@@ -321,7 +320,7 @@
                                                                                                     :name         "category-id"
                                                                                                     :display-name "Category ID"
                                                                                                     :type         "dimension"
-                                                                                                    :dimension    [:field category-field-id nil]
+                                                                                                    :field-id     category-field-id
                                                                                                     :widget-type  "id"
                                                                                                     :required     true
                                                                                                     :default      40}}}}}
@@ -533,25 +532,24 @@
       ~@body)))
 
 (defn extract-one
-  "Extract the first serialized `model-name` entity matching `where`: its primary key, its entity id, a Honey SQL
-  clause, or nil for the first entity of the model. `extract-all` filters by primary key, so a clause is resolved to
-  primary keys here first."
+  "The first exported `model-name` entity matching `where`: its primary key, its entity id, a Honey SQL clause, or nil."
   [model-name where]
   (let [model (keyword "model" model-name)
         pk    (first (t2/primary-keys model))
-        ids   (cond
-                (nil? where)    nil
-                (number? where) [where]
-                (string? where) (t2/select-fn-vec pk [model pk] :entity_id where)
-                :else           (t2/select-fn-vec pk [model pk] {:where where}))]
-    (u/rfirst (serdes/extract-all model-name (cond-> {}
-                                               ids (assoc :filter-column pk :filter-ids ids))))))
+        rows  (t2/select model {:where    (cond
+                                            (nil? where)    nil
+                                            (number? where) [:= pk where]
+                                            (string? where) [:= :entity_id where]
+                                            :else           where)
+                                :order-by [[pk :asc]]
+                                :limit    1})]
+    (first (into [] (serialization/export model rows)))))
 
 (defn ingestion-in-memory
-  "An Ingestable serving the extracted `entities`, in order, under their label-free paths as the YAML ingestion does."
+  "An Ingestable serving the exported `entities` under their keys."
   [entities]
-  (let [by-path (u/index-by (comp serdes.ingest/strip-labels serdes/path) entities)]
+  (let [by-key (into {} (map (juxt serialization/key-of identity)) entities)]
     (reify serdes.ingest/Ingestable
-      (ingest-list [_] (map (comp serdes.ingest/strip-labels serdes/path) entities))
-      (ingest-one [_ path] (by-path (serdes.ingest/strip-labels path)))
+      (ingest-list [_] (map serialization/key-of entities))
+      (ingest-many [_ ks] (mapv by-key ks))
       (ingest-errors [_] []))))

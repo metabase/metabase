@@ -7,7 +7,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
-   [metabase.api.test-util :as api.test-util]
+   [metabase.collections.core :as collections]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
@@ -15,7 +15,6 @@
    [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -24,7 +23,6 @@
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema-rest.api.table :as api.table]
    [toucan2.core :as t2])
   (:import
@@ -37,11 +35,9 @@
 ;; authentication test on every single individual endpoint
 
 (defn- user-table-fn
-  "The value of `column` on the Table with `table-id` as users see it: what they set, else what sync wrote. A bare
-  `t2/select :model/Table` shows sync's values only."
+  "The value of `column` on the Table with `table-id`."
   [column table-id]
-  (t2/select-one-fn column :model/Table :id table-id
-                    {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one-fn column :model/Table :id table-id))
 
 (deftest ^:parallel unauthenticated-test
   (is (= (get api.response/response-unauthentic :body)
@@ -260,7 +256,7 @@
     (testing "GET api/table/:id/query_metadata?include_sensitive_fields"
       (testing "Sensitive fields are included"
         (is (= (merge
-                (update (table-defaults) :db merge {:details nil, :write_data_details nil, :initial_sync_error nil})
+                (update (table-defaults) :db merge {:details nil, :write_data_details nil, :admin_details nil, :initial_sync_error nil})
                 (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                                            :id (mt/id :users))
                             :collection)
@@ -432,9 +428,9 @@
 (deftest query-metadata-transform-hydration-test
   (testing "GET /api/table/:id/query_metadata hydrates the source :transform based on transforms availability (GDGT-2523)"
     (mt/with-temp [:model/Transform transform {:name   "My transform"
-                                               :source {:type  "query"
+                                               :source {:type  :query
                                                         :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
-                                               :target {:database (mt/id) :table "my_transform_table"}}
+                                               :target {:type "table" :database (mt/id) :name "my_transform_table"}}
                    :model/Table     {table-id :id} {:db_id        (mt/id)
                                                     :transform_id (:id transform)}]
       (testing "self-hosted (not hosted) without :transforms-basic still hydrates the source transform"
@@ -481,7 +477,7 @@
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :measures :updated_at)
-                  (update :db merge (select-keys (mt/db) [:details :write_data_details :initial_sync_error])))
+                  (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details :initial_sync_error])))
               (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
                           :pk_field :collection)
               {:description     "What a nice table!"
@@ -573,7 +569,7 @@
   (testing "PUT /api/table/:id"
     (testing "Table should get synced when it gets unhidden"
       (mt/with-temp [:model/Database db    {:details (:details (mt/db))}
-                     :model/Table    table (-> (t2/select-one :model/Table (mt/id :venues))
+                     :model/Table    table (-> (t2/select-one :model/Table :id (mt/id :venues))
                                                (dissoc :id :entity_id)
                                                (assoc :db_id (:id db)))]
         (let [called (atom 0)
@@ -690,10 +686,7 @@
                                                                 :name         "USERS"
                                                                 :display_name "Users"
                                                                 :entity_type  "entity/UserTable"})))}]
-               (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :users)))))))
-    (testing "should just return nothing for 'virtual' tables"
-      (is (= []
-             (mt/user-http-request :crowberto :get 200 "table/card__1000/fks"))))))
+               (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :users)))))))))
 
 (deftest ^:parallel basic-query-metadata-test
   (mt/with-premium-features #{}
@@ -778,219 +771,7 @@
         (is (=? {:segments [{:definition_description "Filtered by Price is equal to 4"}]}
                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))))))))
 
-(defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
-  (assoc field :id ["field" field-name {:base-type base-type}]))
-
-(defn- default-card-field-for-venues [table-id]
-  {:table_id      table-id
-   :semantic_type nil})
-
 ;; Make sure metadata for 'virtual' tables comes back as expected
-(deftest ^:parallel virtual-table-metadata-test
-  (testing "GET /api/table/:id/query_metadata"
-    (testing "Make sure metadata for 'virtual' tables comes back as expected"
-      (mt/with-temp [:model/Card card {:name          "Go Dubs!"
-                                       :database_id   (mt/id)
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES"}}}]
-        ;; run the Card which will populate its result_metadata column
-        (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
-        ;; Now fetch the metadata for this "table"
-        (is (=? (let [card-virtual-table-id (str "card__" (u/the-id card))]
-                  {:display_name      "Go Dubs!"
-                   :schema            "Everything else"
-                   :db_id             (:database_id card)
-                   :db                {:id (:database_id card)}
-                   :id                card-virtual-table-id
-                   :entity_id         (:entity_id card)
-                   :type              "question"
-                   :moderated_status  nil
-                   :metrics           nil
-                   :description       nil
-                   :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
-                                                 with-field-literal-id)
-                                           (let [id->fingerprint   (t2/select-pk->fn :fingerprint :model/Field :table_id (mt/id :venues))
-                                                 name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
-                                             [{:name           "NAME"
-                                               :display_name   "NAME"
-                                               :base_type      "type/Text"
-                                               :effective_type "type/Text"
-                                               :database_type  "CHARACTER VARYING"
-                                               :semantic_type  "type/Name"
-                                               :fingerprint    (name->fingerprint :name)
-                                               :field_ref      ["field" "NAME" {:base-type "type/Text"}]}
-                                              {:name           "ID"
-                                               :display_name   "ID"
-                                               :base_type      "type/BigInteger"
-                                               :effective_type "type/BigInteger"
-                                               :database_type  "BIGINT"
-                                               :semantic_type  nil
-                                               :fingerprint    (name->fingerprint :id)
-                                               :field_ref      ["field" "ID" {:base-type "type/BigInteger"}]}
-                                              {:name           "PRICE"
-                                               :display_name   "PRICE"
-                                               :base_type      "type/Integer"
-                                               :effective_type "type/Integer"
-                                               :database_type  "INTEGER"
-                                               :semantic_type  nil
-                                               :fingerprint    (name->fingerprint :price)
-                                               :field_ref      ["field" "PRICE" {:base-type "type/Integer"}]}
-                                              {:name           "LATITUDE"
-                                               :display_name   "LATITUDE"
-                                               :base_type      "type/Float"
-                                               :effective_type "type/Float"
-                                               :database_type  "DOUBLE PRECISION"
-                                               :semantic_type  "type/Latitude"
-                                               :fingerprint    (name->fingerprint :latitude)
-                                               :field_ref      ["field" "LATITUDE" {:base-type "type/Float"}]}]))})
-                (->> card
-                     u/the-id
-                     (format "table/card__%d/query_metadata")
-                     (mt/user-http-request :crowberto :get 200))))))))
-
-(deftest virtual-table-metadata-permission-test
-  (testing "GET /api/table/card__:id/query_metadata"
-    (testing "Make sure we do not leak the database info when the user does not have data perms"
-      (mt/with-temp [:model/Card card {:database_id   (mt/id)
-                                       :dataset_query {:query    {:source-table (mt/id :venues)}
-                                                       :type     :query
-                                                       :database (mt/id)}}]
-        (mt/with-full-data-perms-for-all-users!
-          (is (=? {:id     (str "card__" (u/the-id card))
-                   :schema "Everything else"
-                   :db_id  (:database_id card)
-                   :db     {:id (:database_id card)}}
-                  (->> card
-                       u/the-id
-                       (format "table/card__%d/query_metadata")
-                       (mt/user-http-request :rasta :get 200)))))
-        (mt/with-no-data-perms-for-all-users!
-          (is (=? {:id     (str "card__" (u/the-id card))
-                   :db_id  (:database_id card)
-                   :schema "Everything else"
-                   :db     nil}
-                  (->> card
-                       u/the-id
-                       (format "table/card__%d/query_metadata")
-                       (mt/user-http-request :rasta :get 200)))))))))
-
-(deftest ^:parallel virtual-table-metadata-deleted-cards-test
-  (testing "GET /api/table/card__:id/query_metadata for deleted cards (#48461)"
-    (mt/with-temp
-      [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       :model/Card {card-id-2 :id} {:dataset_query {:database (mt/id)
-                                                    :type     :query
-                                                    :query    {:source-table (str "card__" card-id-1)}}}]
-      (letfn [(query-metadata [expected-status card-id]
-                (->> (format "table/card__%d/query_metadata" card-id)
-                     (mt/user-http-request :crowberto :get expected-status)))]
-        (api.test-util/before-and-after-deleted-card
-         card-id-1
-         #(testing "Before delete"
-            (doseq [card-id [card-id-1 card-id-2]]
-              (is (=? {:db_id             (mt/id)
-                       :id                (str "card__" card-id)
-                       :type              "question"}
-                      (query-metadata 200 card-id)))))
-         #(testing "After delete"
-            ;; card-id-1 is deleted, so it returns 204 empty
-            (is (empty? (query-metadata 204 card-id-1)))
-            ;; card-id-2 still exists, so it returns 200 with metadata
-            (is (=? {:db_id (mt/id)
-                     :id (str "card__" card-id-2)
-                     :type "question"}
-                    (query-metadata 200 card-id-2)))))))))
-
-(deftest ^:parallel include-date-dimensions-in-nested-query-test
-  (testing "GET /api/table/:id/query_metadata"
-    (testing "Test date dimensions being included with a nested query"
-      (mt/with-temp [:model/Card card {:name          "Users"
-                                       :database_id   (mt/id)
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "SELECT NAME, LAST_LOGIN FROM USERS"}}}]
-        (let [card-virtual-table-id (str "card__" (u/the-id card))]
-          ;; run the Card which will populate its result_metadata column
-          (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
-          ;; Now fetch the metadata for this "table" via the API
-          (let [[name-metadata last-login-metadata] (t2/select-one-fn :result_metadata :model/Card :id (u/the-id card))]
-            (is (=? {:display_name      "Users"
-                     :schema            "Everything else"
-                     :db_id             (:database_id card)
-                     :id                card-virtual-table-id
-                     :entity_id         (:entity_id card)
-                     :type              "question"
-                     :description       nil
-                     :moderated_status  nil
-                     :metrics           nil
-                     :fields            [{:name                     "NAME"
-                                          :display_name             "NAME"
-                                          :base_type                "type/Text"
-                                          :effective_type           "type/Text"
-                                          :database_type            "CHARACTER VARYING"
-                                          :table_id                 card-virtual-table-id
-                                          :id                       ["field" "NAME" {:base-type "type/Text"}]
-                                          :semantic_type            "type/Name"
-                                          :fingerprint              (:fingerprint name-metadata)
-                                          :field_ref                ["field" "NAME" {:base-type "type/Text"}]}
-                                         {:name                     "LAST_LOGIN"
-                                          :display_name             "LAST_LOGIN"
-                                          :base_type                "type/DateTime"
-                                          :effective_type           "type/DateTime"
-                                          :database_type            "TIMESTAMP"
-                                          :table_id                 card-virtual-table-id
-                                          :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
-                                          :semantic_type            nil
-                                          :fingerprint              (:fingerprint last-login-metadata)
-                                          :field_ref                ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]}]}
-                    (mt/user-http-request :crowberto :get 200
-                                          (format "table/card__%d/query_metadata" (u/the-id card)))))))))))
-
-(deftest include-metrics-for-card-test
-  (testing "GET /api/table/:id/query_metadata"
-    (mt/with-temp [:model/Card model {:name          "Venues model"
-                                      :database_id   (mt/id)
-                                      :type          :model
-                                      :dataset_query (mt/mbql-query venues)}]
-      (let [card-virtual-table-id (str "card__" (:id model))
-            metric-query          {:database (mt/id)
-                                   :type     "query"
-                                   :query    {:source-table card-virtual-table-id
-                                              :aggregation  [["count"]]}}]
-        (mt/with-temp [:model/Collection coll   {:name "My Collection"}
-                       :model/Card       metric {:name          "Venues metric"
-                                                 :database_id   (mt/id)
-                                                 :collection_id (:id coll)
-                                                 :type          :metric
-                                                 :dataset_query metric-query}]
-          (perms/revoke-collection-permissions! (perms-group/all-users) (:id coll))
-          (testing "Test metrics being included with cards"
-            (is (=? {:display_name "Venues model"
-                     :db_id        (mt/id)
-                     :id           card-virtual-table-id
-                     :type         "model"
-                     :metrics      [{:source_card_id (:id model)
-                                     :table_id       (:table_id model)
-                                     :database_id    (mt/id)
-                                     :name           "Venues metric"
-                                     :type           "metric"
-                                     :dataset_query  {:database (mt/id)
-                                                      :lib/type "mbql/query"
-                                                      :stages   [{:source-card (:id model)
-                                                                  :aggregation [["count" {}]]}]}
-                                     :id             (:id metric)}]}
-                    (mt/user-http-request :crowberto :get 200
-                                          (format "table/card__%d/query_metadata" (u/the-id model))))))
-          (testing "Test metrics not being included with cards from inaccessible collections"
-            (is (=? {:display_name "Venues model"
-                     :db_id        (mt/id)
-                     :id           card-virtual-table-id
-                     :type         "model"
-                     :metrics      nil}
-                    (mt/user-http-request :lucky :get 200
-                                          (format "table/card__%d/query_metadata" (u/the-id model)))))))))))
-
 (defn- narrow-fields [category-names api-response]
   (for [field (:fields api-response)
         :when (contains? (set category-names) (:name field))]
@@ -1069,25 +850,6 @@
                 (fn []
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
                                  (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))))
-
-(deftest ^:parallel card-type-and-dataset-query-are-returned-with-metadata
-  (testing "GET /api/table/card__:id/query_metadata returns card type"
-    (let [dataset-query (mt/mbql-query venues
-                          {:aggregation  [:sum $price]
-                           :filter       [:> $price 1]
-                           :source-table $$venues})
-          base-card     {:database_id   (mt/id)
-                         :dataset_query dataset-query}]
-      (mt/with-temp [:model/Card question base-card
-                     :model/Card model    (assoc base-card :type :model)
-                     :model/Card metric   (assoc base-card :type :metric)]
-        (are [card expected-type] (=? expected-type
-                                      (->> (format "table/card__%d/query_metadata" (:id card))
-                                           (mt/user-http-request :crowberto :get 200)
-                                           ((juxt :type :dataset_query))))
-          question ["question" nil]
-          model    ["model"    nil]
-          metric   ["metric"   some?])))))
 
 (deftest ^:parallel related-test
   (testing "GET /api/table/:id/related"
@@ -1526,7 +1288,7 @@
         []]]
       (let [db (mt/db)
             db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
-            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field (mt/id :country :continent_id))]
+            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field :id (mt/id :country :continent_id))]
         ;; 1. add FK relationship in the database targeting continent_1
         (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent(id);")
         (sync/sync-database! (:id db) {:scan :schema})
@@ -1608,6 +1370,55 @@
                             {:ids [t1 t2] :visibility_type nil})
       (is (= [nil nil]
              (map #(user-table-fn :visibility_type %) [t1 t2]))))))
+
+(deftest bulk-update-tables-collection-id-persists-test
+  (testing "PUT /api/table with an ids vector sets collection_id on every listed table"
+    (mt/with-temp [:model/Collection {coll-id :id} {:type collections/library-data-collection-type}
+                   :model/Table      {t1 :id}      {:db_id (mt/id)}
+                   :model/Table      {t2 :id}      {:db_id (mt/id)}]
+      (mt/user-http-request :crowberto :put 200 "table"
+                            {:ids [t1 t2] :collection_id coll-id})
+      (is (= [coll-id coll-id]
+             (map #(user-table-fn :collection_id %) [t1 t2])))
+      (testing "and leaves is_published as it was, as PUT /api/table/:id does"
+        (is (= [false false]
+               (map #(user-table-fn :is_published %) [t1 t2])))))))
+
+(deftest bulk-update-tables-collection-id-checks-test
+  (mt/with-temp [:model/Collection {plain-coll-id :id} {}
+                 :model/Collection {library-coll-id :id} {:type collections/library-data-collection-type}
+                 :model/Table      {t1 :id}            {:db_id (mt/id)}
+                 :model/Table      {t2 :id}            {:db_id (mt/id)}]
+    (doseq [[desc user status coll-id] [["a missing collection is a 404" :crowberto 404 Integer/MAX_VALUE]
+                                        ["a collection outside the Library is a 400" :crowberto 400 plain-coll-id]
+                                        ["a non-admin is a 403" :rasta 403 library-coll-id]]]
+      (testing (str "PUT /api/table with collection_id: " desc)
+        (mt/user-http-request user :put status "table"
+                              {:ids [t1 t2] :collection_id coll-id})
+        (is (= [nil nil]
+               (map #(user-table-fn :collection_id %) [t1 t2])))))))
+
+(deftest bulk-update-tables-field-order-persists-test
+  (testing "PUT /api/table with an ids vector sets field_order on every listed table"
+    (mt/with-temp [:model/Table {t1 :id} {:db_id (mt/id)}
+                   :model/Table {t2 :id} {:db_id (mt/id)}
+                   :model/Field _        {:table_id t1 :name "b" :database_position 0 :position 0}
+                   :model/Field _        {:table_id t1 :name "a" :database_position 1 :position 1}
+                   :model/Field _        {:table_id t2 :name "d" :database_position 0 :position 0}
+                   :model/Field _        {:table_id t2 :name "c" :database_position 1 :position 1}]
+      (let [response (mt/user-http-request :crowberto :put 200 "table"
+                                           {:ids [t1 t2] :field_order "alphabetical"})]
+        (is (= [:alphabetical :alphabetical]
+               (map #(user-table-fn :field_order %) [t1 t2])))
+        (testing "the response lists each table's fields in the new order"
+          (is (= {t1 ["a" "b"] t2 ["c" "d"]}
+                 (into {} (map (juxt :id #(map :name (:fields %)))) response))))
+        (testing "the new positions are stored"
+          (is (= [["a" "b"] ["c" "d"]]
+                 (for [table-id [t1 t2]]
+                   (->> (t2/hydrate (t2/select-one :model/Table :id table-id) :fields)
+                        :fields
+                        (map :name))))))))))
 
 ;;; ---------------------------------- #83937 dimension-backfill canary -----------------------------------
 

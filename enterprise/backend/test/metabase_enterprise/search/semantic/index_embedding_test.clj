@@ -24,6 +24,7 @@
       (doseq [name-func [#'semantic.index/hnsw-index-name
                          #'semantic.index/fts-index-name
                          #'semantic.index/fts-native-index-name
+                         #'semantic.index/content-index-name
                          :table-name]]
         (testing (str name-func)
           (testing "long"
@@ -31,12 +32,12 @@
                                                                         :model-name        test-long-model-name
                                                                         :vector-dimensions test-vector-dimensions})))))
             (testing "remains unique"
-              (not= (name-func (semantic.index/default-index {:provider          test-provider
-                                                              :model-name        (str test-long-model-name "a")
-                                                              :vector-dimensions test-vector-dimensions}))
-                    (name-func (semantic.index/default-index {:provider          test-provider
-                                                              :model-name        (str test-long-model-name "aa")
-                                                              :vector-dimensions test-vector-dimensions})))))
+              (is (not= (name-func (semantic.index/default-index {:provider          test-provider
+                                                                  :model-name        (str test-long-model-name "a")
+                                                                  :vector-dimensions test-vector-dimensions}))
+                        (name-func (semantic.index/default-index {:provider          test-provider
+                                                                  :model-name        (str test-long-model-name "aa")
+                                                                  :vector-dimensions test-vector-dimensions}))))))
           (testing "short"
             (is (>= 63 (count (name-func (semantic.index/default-index {:provider          test-provider
                                                                         :model-name        test-short-model-name

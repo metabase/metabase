@@ -17,6 +17,7 @@ export const TaskPicker = ({ value, onChange, ...props }: Props) => {
   return (
     <Select
       comboboxProps={{
+        keepMounted: false,
         middlewares: {
           flip: true,
           size: {

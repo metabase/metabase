@@ -4,8 +4,8 @@
 
 (p/defprotocol+ ExportWriter
   "Protocol for serialization export writer."
-  (store-entity! [this entity]
-    "Store a single serialized entity. Returns its `:serdes/meta`.")
+  (store-entities! [this batch]
+    "Store a batch of serialized entities, each `[resolved entity]` with its `resolved` storage path.")
   (store-settings! [this settings]
     "Store accumulated settings as a single settings.yaml entry.")
   (store-log! [this ^bytes content]

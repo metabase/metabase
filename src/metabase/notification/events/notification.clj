@@ -33,7 +33,8 @@
                                       (if (map? x)
                                         (reduce-kv
                                          (fn [acc k {:keys [key model] :as _hydrate-prop}]
-                                           (assoc acc key (notification.db/instance model (get x k))))
+                                           (cond-> acc
+                                             (contains? x k) (assoc key (notification.db/instance model (get x k)))))
                                          x
                                          hydrates)
                                         x)))))}}}))

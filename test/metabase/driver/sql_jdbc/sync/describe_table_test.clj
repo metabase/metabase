@@ -28,6 +28,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- uses-default-describe-table? [driver]
   (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
        (not (driver.u/supports? driver :describe-fields nil))))
@@ -293,7 +295,7 @@
      nil
      (fn [conn]
        (is (= ["id"]
-              (sql-jdbc.describe-table/get-table-pks driver/*driver* conn "test-data" (t2/select-one :model/Table (mt/id :venues)))))))))
+              (sql-jdbc.describe-table/get-table-pks driver/*driver* conn "test-data" (t2/select-one :model/Table :id (mt/id :venues)))))))))
 
 ;;; ------------------------------------------- Tests for netsed field columns --------------------------------------------
 
@@ -509,14 +511,24 @@
                        {:short_json {"b" "y"}, :long_json nil}}
                      (sample)))
               (testing "If driver.sql/json-field-length is not implemented for the driver don't omit the long value"
-                (letfn [(do-with-removed-method [thunk]
-                          (let [original-method (get-method driver.sql/json-field-length driver/*driver*)]
-                            (if (= original-method (get-method driver.sql/json-field-length :default))
-                              (thunk)
-                              (do (remove-method driver.sql/json-field-length driver/*driver*)
-                                  (thunk)
-                                  (defmethod driver.sql/json-field-length driver/*driver* [driver field]
-                                    (original-method driver field))))))]
+                (letfn [(registered-dispatch-value [driver]
+                          ;; remove-method needs the registered dispatch value. A child such as
+                          ;; :motherduck can inherit its method from :postgres. Search the driver
+                          ;; and then its parents, returning nil if no method is registered there.
+                          (loop [dispatch-values [driver]]
+                            (when (seq dispatch-values)
+                              (or (m/find-first #(contains? (methods driver.sql/json-field-length) %) dispatch-values)
+                                  (recur (into [] (mapcat #(parents driver/hierarchy %)) dispatch-values))))))
+                        (do-with-removed-method [thunk]
+                          (if-let [dispatch-value (registered-dispatch-value driver/*driver*)]
+                            (let [original-method (get-method driver.sql/json-field-length dispatch-value)]
+                              (remove-method driver.sql/json-field-length dispatch-value)
+                              (try
+                                (thunk)
+                                (finally
+                                  (defmethod driver.sql/json-field-length dispatch-value [driver field]
+                                    (original-method driver field)))))
+                            (thunk)))]
                   (do-with-removed-method
                    (fn []
                      (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
@@ -668,14 +680,14 @@
       (testing "single column indexes are synced correctly"
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "indexed"}}
-               (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
+               (describe-table-indexes (t2/select-one :model/Table :id (mt/id :single_index))))))
       (testing "for composite indexes, we only care about the 1st column"
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
         (sync/sync-database! (mt/id))
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "first"}}
-               (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index)))))))))
+               (describe-table-indexes (t2/select-one :model/Table :id (mt/id :composite_index)))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::unique-index]
   [_driver _feature _database]
@@ -698,7 +710,7 @@
                        (sql.tx/create-index-sql driver/*driver* "unique_index" ["column"] {:method "hash"}))
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "column"}}
-               (describe-table-indexes (t2/select-one :model/Table (mt/id :unique_index)))))))))
+               (describe-table-indexes (t2/select-one :model/Table :id (mt/id :unique_index)))))))))
 
 (deftest describe-table-indexes-hashed-index-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
@@ -712,7 +724,7 @@
                        (sql.tx/create-index-sql driver/*driver* "hashed_index" ["column"] {:unique? true}))
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "column"}}
-               (describe-table-indexes (t2/select-one :model/Table (mt/id :hashed_index)))))))))
+               (describe-table-indexes (t2/select-one :model/Table :id (mt/id :hashed_index)))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::clustered-index]
   [_driver _feature _database]
@@ -736,7 +748,7 @@
                        "CLUSTER clustered_index USING idx_clustered_index_column;")
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "column"}}
-               (describe-table-indexes (t2/select-one :model/Table (mt/id :clustered_index)))))))))
+               (describe-table-indexes (t2/select-one :model/Table :id (mt/id :clustered_index)))))))))
 
 ;; FIXME: sqlsever supports conditional index too, but the sqlserver jdbc does not return filter_condition
 ;; for those indexes so we can't filter those out.
@@ -759,7 +771,7 @@
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/create-index-sql driver/*driver* "conditional_index" ["column"] {:condition "id > 2"}))
         (is (= #{{:type :normal-column-index :value "id"}}
-               (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index)))))))))
+               (describe-table-indexes (t2/select-one :model/Table :id (mt/id :conditional_index)))))))))
 
 (deftest describe-fields-are-sorted-test
   (mt/test-drivers (mt/normal-drivers-with-feature :describe-fields)

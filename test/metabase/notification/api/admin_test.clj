@@ -977,8 +977,8 @@
                                          {:notification_ids [(:id n1) (:id n2)]
                                           :action           "archive"})]
           (is (= 2 (:updated resp)))
-          (is (false? (t2/select-one-fn :active :model/Notification (:id n1))))
-          (is (false? (t2/select-one-fn :active :model/Notification (:id n2))))
+          (is (false? (t2/select-one-fn :active :model/Notification :id (:id n1))))
+          (is (false? (t2/select-one-fn :active :model/Notification :id (:id n2))))
           (testing "publishes :event/notification-update per notification so the admin action is audited"
             (doseq [n [n1 n2]]
               (is (= {:topic    :notification-update
@@ -1001,7 +1001,7 @@
                             {:notification_ids [(:id n1)]
                              :action           "change-creator"
                              :creator_id       new-owner})
-      (is (= new-owner (t2/select-one-fn :creator_id :model/Notification (:id n1)))))))
+      (is (= new-owner (t2/select-one-fn :creator_id :model/Notification :id (:id n1)))))))
 
 (deftest bulk-change-owner-requires-owner-id-test
   (testing "POST /bulk with action=change-creator and no creator_id returns 400"
@@ -1588,14 +1588,14 @@
           (mt/user-http-request :rasta :put 403 (format "notification/%d" nid)
                                 (assoc notification :creator_id (mt/user->id :lucky)))
           (is (= (mt/user->id :rasta)
-                 (t2/select-one-fn :creator_id :model/Notification nid))
+                 (t2/select-one-fn :creator_id :model/Notification :id nid))
               "owner unchanged after non-superuser attempt")))
       (testing "superuser can reassign owner"
         (let [notification (mt/user-http-request :crowberto :get 200 (format "notification/%d" nid))]
           (mt/user-http-request :crowberto :put 200 (format "notification/%d" nid)
                                 (assoc notification :creator_id (mt/user->id :lucky)))
           (is (= (mt/user->id :lucky)
-                 (t2/select-one-fn :creator_id :model/Notification nid))
+                 (t2/select-one-fn :creator_id :model/Notification :id nid))
               "owner reassigned after superuser PUT"))))))
 
 ;; ---------------------------------------------------------------------------------------------

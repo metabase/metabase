@@ -167,7 +167,7 @@
                                                                              {:type    :notification-recipient/user
                                                                               :user_id (mt/user->id :lucky)}]}]}]
                               (mt/user-http-request user :delete status (format "alert/%d/subscription" noti-id))
-                              (thunk (models.notification/hydrate-notification (t2/select-one :model/Notification noti-id)))))
+                              (thunk (models.notification/hydrate-notification (t2/select-one :model/Notification :id noti-id)))))
           email-recipients (fn [notification]
                              (->> notification :handlers (m/find-first #(= :channel/email (:channel_type %))) :recipients))]
       (testing "creator can unsubscribe themselves"

@@ -88,7 +88,6 @@
       "include_csv": false,
       "display": "waterfall",
       "entity_id": "DQabRxU82T2T5AXpGoINS",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": ["category"],
         "graph.metrics": ["Change Inverted"]

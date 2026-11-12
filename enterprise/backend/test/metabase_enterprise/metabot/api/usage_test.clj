@@ -1,6 +1,8 @@
 (ns metabase-enterprise.metabot.api.usage-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.metabot.usage :as ee.usage]
+   [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -40,7 +42,15 @@
         (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 1000}]
           (is (= {:max_usage nil}
                  (mt/user-http-request :crowberto :put 200 "ee/ai-controls/usage/instance" {:max_usage nil})))
-          (is (nil? (t2/select-one :model/MetabotInstanceLimit :tenant_id nil))))))))
+          (is (nil? (t2/select-one :model/MetabotInstanceLimit :tenant_id nil)))))
+      (testing "stores a limit of 0"
+        (t2/delete! :model/MetabotInstanceLimit :tenant_id nil)
+        (try
+          (is (= {:max_usage 0}
+                 (mt/user-http-request :crowberto :put 200 "ee/ai-controls/usage/instance" {:max_usage 0})))
+          (is (= 0 (t2/select-one-fn :max_usage :model/MetabotInstanceLimit :tenant_id nil)))
+          (finally
+            (t2/delete! :model/MetabotInstanceLimit :tenant_id nil)))))))
 
 ;;; ------------------------------------------------- Tenant limits --------------------------------------------------
 
@@ -107,6 +117,27 @@
                                        (format "ee/ai-controls/usage/tenant/%d" tenant-id)
                                        {:max_usage nil})))
           (is (nil? (t2/select-one :model/MetabotInstanceLimit :tenant_id tenant-id))))))))
+
+(deftest put-tenant-limit-applies-to-tenant-users-test
+  (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
+    (mt/with-temporary-setting-values [metabot-quota-reached-message "test limit reached"]
+      (mt/with-temp [:model/Tenant {tenant-id :id} {}
+                     :model/User   {user-id :id}   {:tenant_id tenant-id}]
+        (try
+          (mt/with-current-user user-id
+            (testing "a tenant user with no tenant limit passes"
+              (is (nil? (usage/check-usage-limits! "request-1"))))
+            (testing "an admin sets the tenant limit to 0"
+              (is (= {:tenant_id tenant-id :max_usage 0}
+                     (mt/user-http-request :crowberto :put 200
+                                           (format "ee/ai-controls/usage/tenant/%d" tenant-id)
+                                           {:max_usage 0})))
+              (is (= 0 (t2/select-one-fn :max_usage :model/MetabotInstanceLimit :tenant_id tenant-id))))
+            (testing "the PUT clears the cached result, so the same check now returns the quota message"
+              (is (= "test limit reached" (usage/check-usage-limits! "request-1")))))
+          (finally
+            (t2/delete! :model/MetabotInstanceLimit :tenant_id tenant-id)))))))
 
 ;;; -------------------------------------------------- Group limits ---------------------------------------------------
 

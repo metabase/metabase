@@ -1,8 +1,17 @@
 import { render, screen } from "@testing-library/react";
 
+import { getSpanCenter, getStaticLegendGeometry } from "__support__/static-viz";
+import {
+  DEFAULT_LEGEND_LINE_HEIGHT,
+  LEGEND_PADDING,
+} from "metabase/static-viz/components/Legend/constants";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
-import type { RawSeries, VisualizationSettings } from "metabase-types/api";
+import type {
+  CardDisplayType,
+  RawSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -122,11 +131,13 @@ const metricColumns = [
 
 const createGroupedRowSeries = ({
   metricCount,
+  display = "row",
   settings = {},
   getValue = (rowIndex, metricIndex) => 100 * (rowIndex + metricIndex + 1),
   categories = ["Doohickey", "Gadget", "Gizmo", "Widget"],
 }: {
   metricCount: 1 | 2;
+  display?: CardDisplayType;
   settings?: VisualizationSettings;
   getValue?: (rowIndex: number, metricIndex: number) => number;
   categories?: string[];
@@ -135,7 +146,7 @@ const createGroupedRowSeries = ({
   return [
     {
       card: createMockCard({
-        display: "row",
+        display,
         visualization_settings: {
           "graph.dimensions": ["CATEGORY"],
           "graph.metrics": metrics.map((column) => column.name),
@@ -374,4 +385,83 @@ describe("static row chart", () => {
       expect(countRendered(SOURCE_B_VALUES)).toBe(0);
     },
   );
+});
+
+describe("static cartesian legend", () => {
+  const LEGEND_HEIGHT = DEFAULT_LEGEND_LINE_HEIGHT + LEGEND_PADDING * 2;
+
+  const renderWithLegend = ({
+    width,
+    height,
+    fitWithinBounds,
+    settings,
+    categories,
+  }: {
+    width?: number;
+    height?: number;
+    fitWithinBounds?: boolean;
+    settings?: VisualizationSettings;
+    categories?: string[];
+  }) => {
+    const { container } = render(
+      <StaticVisualization
+        rawSeries={createGroupedRowSeries({
+          metricCount: 2,
+          display: "bar",
+          settings: { ...settings, "graph.dimensions": ["CATEGORY"] },
+          categories,
+        })}
+        renderingContext={createStaticRenderingContext()}
+        width={width}
+        height={height}
+        fitWithinBounds={fitWithinBounds}
+      />,
+    );
+    return getStaticLegendGeometry(container);
+  };
+
+  it("sits below the plot, centered on it, and extends the image", () => {
+    const { svgHeight, chartHeight, legendTop, plot, rows, itemNames } =
+      renderWithLegend({ width: 540, height: 360 });
+
+    expect(itemNames).toEqual(["Count", "Sum of Total"]);
+    expect(chartHeight).toBe(360);
+    expect(legendTop).toBe(360);
+    expect(svgHeight).toBe(360 + LEGEND_HEIGHT);
+    expect(rows).toHaveLength(1);
+    expect(getSpanCenter(rows[0])).toBeCloseTo(getSpanCenter(plot), 0);
+  });
+
+  it("reverses the items when the legend is reversed", () => {
+    const { itemNames } = renderWithLegend({
+      width: 540,
+      height: 360,
+      settings: { "legend.is_reversed": true },
+    });
+
+    expect(itemNames).toEqual(["Sum of Total", "Count"]);
+  });
+
+  it("gives the legend's height to the chart when fitting within bounds", () => {
+    const { svgHeight, chartHeight, legendTop } = renderWithLegend({
+      width: 540,
+      height: 360,
+      fitWithinBounds: true,
+    });
+
+    expect(svgHeight).toBe(360);
+    expect(chartHeight).toBe(360 - LEGEND_HEIGHT);
+    expect(legendTop).toBe(chartHeight);
+  });
+
+  it("wraps the items onto rows that stay inside a narrow plot", () => {
+    const { plot, rows } = renderWithLegend({ width: 200, height: 240 });
+
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect(row.left).toBeGreaterThanOrEqual(plot.left - 1);
+      expect(row.right).toBeLessThanOrEqual(plot.right + 1);
+      expect(getSpanCenter(row)).toBeCloseTo(getSpanCenter(plot), 0);
+    }
+  });
 });

@@ -38,6 +38,9 @@
   TokenStatus
   clear-cache!
   clear-local-cache!
+  refresh-at-startup!
+  start-refresher!
+  stop-refresher!
   token-check-url
   transform-metered-as
   transform-stats]
@@ -95,6 +98,7 @@
   enable-python-transforms?
   enable-transform-testing?
   enable-upload-management?
+  enable-workspaces?
   enable-whitelabeling?
   enable-writable-connection?
   has-attached-dwh?
