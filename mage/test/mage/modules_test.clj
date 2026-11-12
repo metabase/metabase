@@ -3,6 +3,7 @@
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
    [babashka.fs :as fs]
+   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
@@ -526,6 +527,90 @@
 (deftest explorer-git-failure-test
   (is (thrown-with-msg? Exception #"Git failed:"
                         (#'module-explorer/git-output! "not-a-real-git-subcommand"))))
+
+(defn- modules-tree-exit
+  "The exit code and printed text of `modules-tree` run with `options`."
+  [options]
+  (let [out   (java.io.StringWriter.)
+        error (binding [*out* out]
+                (try
+                  (mage.modules/cli-print-module-tree {:options options})
+                  nil
+                  (catch clojure.lang.ExceptionInfo e e)))]
+    [(:babashka/exit (ex-data error)) (str out)]))
+
+(def ^:private site-checks
+  "What the module-explorer site checks in each module, its stats and each cycle before it accepts an upload.
+  A copy of `MODULE_FIELDS`, `STATS_FIELDS` and `CYCLE_FIELDS` in `apps/module-explorer/worker/data.ts` of
+  metabase/micro-sites, so a field the site reads cannot be renamed or dropped here without a failing test."
+  (let [strings?   (every-pred sequential? #(every? string? %))
+        name?      (every-pred string? seq)
+        nil-or     (fn [check] (some-fn nil? check))
+        two-names? (every-pred strings? #(= 2 (count %)))]
+    {:module {:id                   string?
+              :path                 (every-pred sequential? seq #(every? name? %))
+              :team                 (nil-or name?)
+              :enterprise           boolean?
+              :source               (nil-or string?)
+              :ns-prefix            (nil-or string?)
+              :api-any              boolean?
+              :api                  strings?
+              :uses-any             boolean?
+              :uses                 strings?
+              :used-by              strings?
+              :friends              strings?
+              :module-exports       strings?
+              :model-exports        strings?
+              :model-imports-bypass boolean?
+              :model-imports        strings?}
+     :stats  {:namespaces number?
+              :loc        number?
+              :test-files number?
+              :tests      number?
+              :commits    number?}
+     :cycle  {:name           (nil-or name?)
+              :size           number?
+              :edges          number?
+              :density        number?
+              :cycle-rank     number?
+              :strong-bridges (every-pred sequential? #(every? two-names? %))
+              :modules        strings?}}))
+
+(defn- wrong-fields
+  "The fields of `kind` in [[site-checks]] that some value in `values` lacks, or holds a wrong value for."
+  [kind values]
+  (set (for [value          values
+             [field check] (site-checks kind)
+             :when          (not (and (contains? value field) (check (get value field))))]
+         field)))
+
+(deftest modules-tree-writes-json-test
+  (fs/with-temp-dir [dir {}]
+    (let [output (str (fs/path dir "modules.json"))]
+      (is (= 0 (first (modules-tree-exit {:json true, :output output}))))
+      (let [{:keys [modules cycles] :as data} (json/parse-string (slurp output) true)]
+        (is (seq modules))
+        (is (vector? cycles))
+        (is (true? (:any-uses-resolved data)))
+        (testing "the data passes the module-explorer site's upload checks"
+          (is (= {:module #{}, :stats #{}, :cycle #{}}
+                 {:module (wrong-fields :module modules)
+                  :stats  (wrong-fields :stats (map :stats modules))
+                  :cycle  (wrong-fields :cycle cycles)})))))))
+
+(deftest modules-tree-refuses-conflicting-options-test
+  (fs/with-temp-dir [dir {}]
+    (let [output (str (fs/path dir "explorer"))]
+      (testing "--html with --json"
+        (is (= [1 "Give only one of --html, --json.\n"]
+               (modules-tree-exit {:html true, :json true, :output output})))
+        (is (not (fs/exists? output))))
+      (testing "--output or --no-stats without --html or --json"
+        (are [options] (= [1 "Give --output and --no-stats only with --html or --json.\n"]
+                          (modules-tree-exit options))
+          {:output output}
+          {:no-stats true})
+        (is (not (fs/exists? output)))))))
 
 (deftest explorer-state-codec-test
   (let [{:keys [exit out err]} (shell/sh "node" "mage/test/mage/module_explorer_state_test.js")]
