@@ -50,18 +50,18 @@
           (partition-all 1000 collection-ids))))
 
 (def ^:private Options
-  "Options of the Collection getters: `:namespace` names the root Collection that a nil collection id stands for, the
-  default namespace when missing."
+  "Options of the Collection getters: `:root-namespace` names the namespace of the root Collection that a nil collection
+  id stands for, the default namespace when missing."
   [:map {:closed true}
-   [:namespace {:optional true} [:maybe [:or :keyword :string]]]])
+   [:root-namespace {:optional true} [:maybe [:or :keyword :string]]]])
 
 (defn- root-collection-permission
-  "The permission of the User with `user-id` on the root Collection of `collection-namespace`: a superuser writes every
+  "The permission of the User with `user-id` on the root Collection of `root-namespace`: a superuser writes every
   root, and a data analyst the transforms one."
-  [user-id collection-namespace]
-  (let [collection-namespace (some-> collection-namespace name)
+  [user-id root-namespace]
+  (let [root-namespace (some-> root-namespace name)
         root                 {:metabase.collections.models.collection.root/is-root? true
-                              :namespace                                           collection-namespace}
+                              :namespace                                           root-namespace}
         compute              #(rank->permission
                                (permissions.db/root-collection-rank user-id
                                                                     (permissions.path/collection-readwrite-path root)
@@ -70,11 +70,11 @@
       (data-perms/is-superuser? user-id)
       :read-and-write
 
-      (and (= collection-namespace "transforms") (data-perms/is-data-analyst? user-id))
+      (and (= root-namespace "transforms") (data-perms/is-data-analyst? user-id))
       :read-and-write
 
       (use-cache? user-id)
-      (perms.cache/cached [::root-collection collection-namespace] compute)
+      (perms.cache/cached [::root-collection root-namespace] compute)
 
       :else
       (compute))))
@@ -88,21 +88,21 @@
 
 (mu/defn collection-permission-for-user :- [:enum :read-and-write :read :none]
   "The permission of the User with `user-id` on the Collection with `collection-id`, batched for the current user with
-  the Collections the request loaded, or, for a nil `collection-id`, on the root Collection of the `:namespace`
-  option."
+  the Collections the request loaded, or, for a nil `collection-id`, on the root Collection of the
+  `:root-namespace` option."
   ([user-id       :- [:maybe ms/PositiveInt]
     collection-id :- [:maybe ms/PositiveInt]]
    (collection-permission-for-user user-id collection-id {}))
-  ([user-id                         :- [:maybe ms/PositiveInt]
-    collection-id                   :- [:maybe ms/PositiveInt]
-    {collection-namespace :namespace} :- Options]
+  ([user-id                              :- [:maybe ms/PositiveInt]
+    collection-id                        :- [:maybe ms/PositiveInt]
+    {root-namespace :root-namespace} :- Options]
    (cond
      ;; without a user only a superuser context, such as `request/as-admin`, has permissions
      (and (nil? user-id) (not (data-perms/is-superuser? user-id)))
      :none
 
      (nil? collection-id)
-     (root-collection-permission user-id collection-namespace)
+     (root-collection-permission user-id root-namespace)
 
      :else
      (let [compute #(collection-permissions user-id %)]
@@ -137,7 +137,7 @@
 (mu/defn collection-permission-filter-clause :- [:fn vector?]
   "A HoneySQL where-clause holding when `collection-id-field`, qualified by its table, is a Collection listed to the
   User with `user-id` on which they have `permission`, or nil when they have it on the root Collection of the
-  `:namespace` option. It checks each row's Collection on its own, so a query asking whether some such row exists
+  `:root-namespace` option. It checks each row's Collection on its own, so a query asking whether some such row exists
   stops at the first one."
   ([user-id             :- ms/PositiveInt
     collection-id-field :- :keyword

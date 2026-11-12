@@ -317,8 +317,8 @@
   a model outside one, and the data actions root for an Action of neither."
   [{model-id :model_id, collection-id :collection_id} permission]
   (perms/user-has-permission-for-collection? api/*current-user-id* permission collection-id
-                                             {:namespace (when-not (or model-id collection-id)
-                                                           collection/data-actions-ns)}))
+                                             {:root-namespace (when-not (or model-id collection-id)
+                                                                collection/data-actions-ns)}))
 
 (defn- collection-writable?
   "Whether the current user can write the Collection `action` goes in, with the Collection's own `can-write?`: its own

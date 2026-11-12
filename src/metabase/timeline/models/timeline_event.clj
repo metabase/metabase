@@ -52,16 +52,10 @@
     (mi/perms-objects-set timeline read-or-write)))
 
 (defn- check-read-keys
-  "Throws unless `event` has the columns its read check reads."
+  "Throws unless `event` has the columns its permission checks read."
   [event]
   (api/check-500 (or (contains? event :timeline) (contains? event :timeline_id))
                  "No :timeline_id is set for a TimelineEvent."))
-
-(defn- check-write-keys
-  "Throws unless `event` is saved and has the columns its write check reads."
-  [event]
-  (check-read-keys event)
-  (api/check-500 (some? (:id event)) "No :id is set for a TimelineEvent."))
 
 (defn- event-timeline
   "The Timeline of `event`, hydrated or by its `:timeline_id`."
@@ -78,9 +72,8 @@
 
 (defmethod mi/can-write? :model/TimelineEvent
   ([event]
-   (check-write-keys event)
-   (and (mi/can-write? (event-timeline event))
-        (remote-sync/can-write? :model/TimelineEvent (:id event))))
+   (check-read-keys event)
+   (mi/can-write? (event-timeline event)))
   ([_model pk]
    (mi/can-write? (timeline.db/timeline-event pk))))
 

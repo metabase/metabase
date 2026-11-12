@@ -41,7 +41,7 @@
           (is (= (collection/should-display-root-collection? {:permission-level       level
                                                               :include-archived-items :exclude
                                                               :root-namespace         root-namespace})
-                 (perms/user-has-permission-for-collection? user-id permission nil {:namespace root-namespace}))))))))
+                 (perms/user-has-permission-for-collection? user-id permission nil {:root-namespace root-namespace}))))))))
 
 (deftest collection-permissions-match-visible-collection-filter-clause-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -92,7 +92,7 @@
         (doseq [root-namespace [nil :data-actions :snippets :transforms]]
           (is (= (perms/set-has-full-permissions? perm-set (path-fn (assoc collection/root-collection
                                                                            :namespace root-namespace)))
-                 (perms/user-has-permission-for-collection? user-id permission nil {:namespace root-namespace}))
+                 (perms/user-has-permission-for-collection? user-id permission nil {:root-namespace root-namespace}))
               (str "root of " root-namespace)))))))
 
 (deftest collection-permissions-match-permission-set-test
