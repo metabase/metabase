@@ -1,8 +1,10 @@
 import { unifiedMergeView } from "@codemirror/merge";
 import { EditorSelection, type EditorState } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
 import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
 import {
+  type MutableRefObject,
   type ReactNode,
   useCallback,
   useEffect,
@@ -58,6 +60,7 @@ import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
 import { closeInlinePrompt, inlinePrompt } from "./inline-prompt";
+import { showErrors as showErrorMarks } from "./language";
 import { useParameterHints } from "./parameter-hints";
 import { hasActiveSnippet, useInitialClause } from "./utils";
 
@@ -85,8 +88,9 @@ export type EditorProps = {
    */
   inline?: boolean;
 
-  /** Rendered in the inline toolbar. */
-  renderShortcutsMenu?: (helpers: ShortcutsMenuHelpers) => ReactNode;
+  /** Rendered in the inline toolbar, before and after the docs button. */
+  toolbarStart?: ReactNode;
+  toolbarEnd?: ReactNode;
   /** The column name, which the AI uses as a hint. */
   name?: string;
   /** True when the AI can suggest a new column name. */
@@ -117,17 +121,19 @@ export type EditorProps = {
     } | null,
   ) => void;
   shortcuts?: Shortcut[];
+  /**
+   * False hides the errors, the SQL hint and the error marks in the code, so
+   * that the user can type without distraction. True by default.
+   */
+  showErrors?: boolean;
+  /** Set to a function that checks the current text at once, without the delay. */
+  validateRef?: MutableRefObject<ValidateNow | null>;
 };
 
-export type ShortcutsMenuHelpers = {
-  getSource: () => string;
-  /** Returns the error for `source`, or null when it is valid. */
-  validate: (source: string) => string | null;
-  /**
-   * Show `source` as a diff against the current text, to accept or reject.
-   * `name` is a suggested column name that the user can change.
-   */
-  proposeSource: (source: string, name?: string) => void;
+export type ValidateNow = () => {
+  source: string;
+  clause: Lib.ExpressionClause | null;
+  error: ExpressionError | null;
 };
 
 type Proposal = { source: string; name?: string };
@@ -137,6 +143,13 @@ export type EditorChangeMeta = {
   hasSourceChanged: boolean;
   /** The raw text, which a caller can stash to restore later. */
   source: string;
+};
+
+// The editor on the page has no line numbers or code folding.
+const INLINE_BASIC_SETUP = {
+  lineNumbers: false,
+  foldGutter: false,
+  highlightActiveLineGutter: false,
 };
 
 const EDITOR_WIDGET_HEIGHT = 220;
@@ -160,11 +173,14 @@ export function Editor(props: EditorProps) {
     onCloseEditor,
     initialExpressionClause,
     inline = false,
-    renderShortcutsMenu,
+    toolbarStart,
+    toolbarEnd,
     name,
     hasDefaultName = false,
     onAcceptName,
     onProposalChange,
+    showErrors = true,
+    validateRef,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -196,6 +212,7 @@ export function Editor(props: EditorProps) {
     isFormatting,
     isValidated,
     acceptSource,
+    validateNow,
   } = useExpression({
     ...props,
     database,
@@ -237,7 +254,16 @@ export function Editor(props: EditorProps) {
 
   const sourceRef = useRef(source);
   sourceRef.current = source;
-  const getSource = useCallback(() => sourceRef.current, []);
+
+  if (validateRef) {
+    validateRef.current = validateNow;
+  }
+  useEffect(() => {
+    const view = ref.current?.view;
+    if (view) {
+      showErrorMarks(view, showErrors);
+    }
+  }, [showErrors]);
 
   const validate = useCallback(
     (source: string) =>
@@ -427,7 +453,7 @@ export function Editor(props: EditorProps) {
 
   // A hint on SQL in the expression replaces the error.
   const sqlHint = useSqlHint({
-    hasError: error != null,
+    hasError: showErrors && error != null,
     source,
     query,
     stageIndex,
@@ -529,6 +555,15 @@ export function Editor(props: EditorProps) {
   const applyInitialSnippet = useInitialClause({
     initialExpressionClause,
   });
+  const handleCreateEditor = useCallback(
+    (view: EditorView) => {
+      showErrorMarks(view, showErrors);
+      applyInitialSnippet(view);
+    },
+    // Only for the first value: the effect above applies later changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [applyInitialSnippet],
+  );
 
   const [isSnippetActive, setIsSnippetActive] = useState(false);
   const handleUpdate = useCallback((update: ViewUpdate) => {
@@ -559,6 +594,41 @@ export function Editor(props: EditorProps) {
       />
     );
 
+  const codeMirror = (
+    <CodeMirror
+      id={id}
+      ref={ref}
+      data-testid="custom-expression-query-editor"
+      placeholder={
+        promptPos != null
+          ? undefined
+          : inline
+            ? t`Type “@” for AI, or expression, SQL code, Excel formula...`
+            : t`Type your expression, press '[' for columns…`
+      }
+      className={S.editor}
+      extensions={extensions}
+      readOnly={readOnly || isFormatting}
+      value={proposedSource ?? source}
+      onChange={handleSourceChange}
+      onBlur={isProposing ? undefined : onBlur}
+      basicSetup={inline ? INLINE_BASIC_SETUP : undefined}
+      height={inline ? undefined : "100%"}
+      width="100%"
+      indentWithTab={false}
+      autoFocus
+      onCreateEditor={handleCreateEditor}
+      onUpdate={handleUpdate}
+      autoCorrect="off"
+      tabIndex={0}
+      onFormat={
+        error === null && isValidated && !isSnippetActive && !isProposing
+          ? formatExpression
+          : undefined
+      }
+    />
+  );
+
   return (
     <>
       <LayoutMain
@@ -567,35 +637,19 @@ export function Editor(props: EditorProps) {
           [S.inline]: inline,
         })}
       >
-        <CodeMirror
-          id={id}
-          ref={ref}
-          data-testid="custom-expression-query-editor"
-          placeholder={
-            promptPos == null
-              ? t`Type your expression, press '[' for columns…`
-              : undefined
-          }
-          className={S.editor}
-          extensions={extensions}
-          readOnly={readOnly || isFormatting}
-          value={proposedSource ?? source}
-          onChange={handleSourceChange}
-          onBlur={isProposing ? undefined : onBlur}
-          height="100%"
-          width="100%"
-          indentWithTab={false}
-          autoFocus
-          onCreateEditor={applyInitialSnippet}
-          onUpdate={handleUpdate}
-          autoCorrect="off"
-          tabIndex={0}
-          onFormat={
-            error === null && isValidated && !isSnippetActive && !isProposing
-              ? formatExpression
-              : undefined
-          }
-        />
+        {inline ? (
+          <div className={S.inlineRow}>
+            {codeMirror}
+            <InlineToolbar
+              openSidebar={openSidebar}
+              start={toolbarStart}
+              end={toolbarEnd}
+              onToggleSidebar={toggleSidebar}
+            />
+          </div>
+        ) : (
+          codeMirror
+        )}
         {promptPos != null &&
           createPortal(
             <InlinePrompt
@@ -618,7 +672,9 @@ export function Editor(props: EditorProps) {
         )}
         <Errors
           error={
-            isSnippetActive || isProposing || promptPos != null ? null : error
+            !showErrors || isSnippetActive || isProposing || promptPos != null
+              ? null
+              : error
           }
           source={source}
           content={sqlHint}
@@ -628,25 +684,7 @@ export function Editor(props: EditorProps) {
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
         )}
 
-        {inline ? (
-          <InlineToolbar
-            canFormat={
-              source.trim() !== "" &&
-              error == null &&
-              (isValidated || !hasSourceChanged) &&
-              !isFormatting &&
-              !isProposing
-            }
-            openSidebar={openSidebar}
-            shortcutsMenu={renderShortcutsMenu?.({
-              getSource,
-              validate,
-              proposeSource,
-            })}
-            onFormat={formatExpression}
-            onToggleSidebar={toggleSidebar}
-          />
-        ) : (
+        {!inline && (
           <Flex
             className={S.toolbar}
             gap="sm"
@@ -800,7 +838,7 @@ function useExpression({
         debouncedOnChange.cancel();
         onEdit?.(source, null);
         handleChange(null, null, meta);
-        return;
+        return { clause: null, error: null };
       }
 
       const { error, expressionClause: clause } = diagnoseAndCompile({
@@ -820,6 +858,7 @@ function useExpression({
       } else {
         debouncedOnChange(clause, error, meta);
       }
+      return { clause: clause ?? null, error };
     },
     [
       query,
@@ -908,6 +947,13 @@ function useExpression({
     [handleUpdate],
   );
 
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
+  const validateNow = useCallback(() => {
+    const source = sourceRef.current;
+    return { source, ...handleUpdate(source, true) };
+  }, [handleUpdate]);
+
   return {
     source,
     initialSource,
@@ -918,6 +964,7 @@ function useExpression({
     isFormatting,
     isValidated,
     acceptSource,
+    validateNow,
   };
 }
 

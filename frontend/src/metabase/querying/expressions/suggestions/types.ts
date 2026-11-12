@@ -14,6 +14,10 @@ export type ExpressionSuggestion = CodeMirrorCompletion & {
   aliases?: string[];
   /** Why the option matches, when its label does not show it. */
   hint?: string;
+  /** The clause of a function, which gives its description. */
+  clauseName?: string;
+  /** The heading of the group that starts with this option. */
+  heading?: string;
 };
 
 export type CompletionResult = CodeMirrorCompletionResult & {

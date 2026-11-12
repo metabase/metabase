@@ -1,5 +1,6 @@
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
+import cx from "classnames";
 import {
   type RefObject,
   useCallback,
@@ -95,7 +96,9 @@ export function Tooltip({
       </Popover.Target>
       <Popover.Dropdown
         data-testid="custom-expression-editor-suggestions"
-        className={S.dropdown}
+        className={cx(S.dropdown, {
+          [S.completions]: shouldShowCompletions,
+        })}
         data-ignore-editor-clicks="true"
       >
         <div className={S.tooltip} ref={tooltipRef}>
@@ -113,6 +116,8 @@ export function Tooltip({
               view={view}
               query={query}
               stageIndex={stageIndex}
+              database={database}
+              reportTimezone={reportTimezone}
             />
           )}
         </div>

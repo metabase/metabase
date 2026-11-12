@@ -11,6 +11,8 @@ import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
+import { POPULAR_FUNCTIONS } from "../ExpressionSidePanel/content";
+
 import S from "./Editor.module.css";
 import { customExpression } from "./language";
 
@@ -70,6 +72,7 @@ export function useExtensions(options: Options): Extension[] {
         availableMetrics,
         database,
         columnsOutsideBrackets: hasColumnsOutsideBrackets,
+        popularFunctions: POPULAR_FUNCTIONS[expressionMode],
       }),
       tooltips({
         position: "fixed",

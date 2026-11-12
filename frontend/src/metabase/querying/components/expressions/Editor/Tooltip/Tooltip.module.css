@@ -9,6 +9,17 @@
   }
 }
 
+/* The autocomplete is wider, with the description of each function. */
+.dropdown.completions {
+  border-radius: 12px;
+  box-shadow: var(--mantine-shadow-sm_outline);
+
+  .tooltip {
+    width: 760px;
+    max-width: calc(100vw - 2rem);
+  }
+}
+
 .target {
   /**
    * The target needs to have a size for Mantine to be able to position the

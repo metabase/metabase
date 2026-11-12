@@ -7,6 +7,10 @@
   &.formatting {
     background-color: var(--mb-color-background_page-tertiary);
   }
+
+  &.inline {
+    border-bottom: none;
+  }
 }
 
 .error {
@@ -21,13 +25,29 @@
   right: 0;
 }
 
-.inlineToolbar {
-  position: absolute;
-  top: 0;
-  right: 0;
+/* One line of code by default, which grows with the text. The toolbar stays
+   next to the first line. */
+.inlineRow {
   display: flex;
-  gap: var(--mantine-spacing-sm);
-  padding: var(--mantine-spacing-sm);
+  align-items: flex-start;
+  gap: var(--mantine-spacing-md);
+  padding-right: var(--mantine-spacing-xl);
+}
+
+.inlineToolbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--mantine-spacing-md);
+  height: 24px;
+
+  /* Lines up with the first line of code. */
+  margin-top: 20px;
+}
+
+.toolbarButton {
+  padding-inline: var(--mantine-spacing-sm);
+  font-size: 12px;
 }
 
 .editor {
@@ -38,7 +58,27 @@
   margin-right: calc(28px + var(--mantine-spacing-sm));
 
   .inline & {
-    margin-right: calc(4 * 32px + 4 * var(--mantine-spacing-sm));
+    flex: 1;
+    min-width: 0;
+    margin-right: 0;
+    height: auto;
+    max-height: 20rem;
+
+    :global(.cm-editor),
+    :global(.cm-content) {
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* On the content, not the editor, so that a click in the padding puts
+       the cursor in the code. */
+    :global(.cm-content) {
+      padding: 21.5px 0 21.5px var(--mantine-spacing-xl);
+    }
+
+    :global(.cm-line) {
+      padding: 0;
+    }
   }
 
   :global(.cm-gutters) {

@@ -26,6 +26,7 @@ export function expressionClauseCompletion(
   return {
     ...completion,
     icon: "function",
+    clauseName: clause.name,
     matches,
     aliases: FUNCTION_ALIASES[clause.name],
   };

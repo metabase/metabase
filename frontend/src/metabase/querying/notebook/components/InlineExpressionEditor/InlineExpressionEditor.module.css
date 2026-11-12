@@ -1,11 +1,12 @@
 .panel {
   background-color: var(--mb-color-background_page-primary);
-  border: 1px solid var(--mb-color-border-neutral);
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
   border-radius: 8px;
+  box-shadow: var(--mantine-shadow-xs);
   overflow: hidden;
 }
 
-/* The preview takes the row above the footer. */
-.footer {
-  grid-row: 4;
+.toolbarButton {
+  padding-inline: var(--mantine-spacing-sm);
+  font-size: 12px;
 }

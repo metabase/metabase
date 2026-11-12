@@ -2,14 +2,16 @@ import { type KeyboardEvent, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import type { ExpressionError } from "metabase/querying/expressions";
-import { Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Button, Icon, Tooltip } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import type * as Lib from "metabase-lib";
 
 import { Editor } from "../../../components/expressions/Editor";
-import type { EditorChangeMeta } from "../../../components/expressions/Editor/Editor";
-import { Layout, LayoutFooter } from "../../../components/expressions/Layout";
-import { ShortcutsMenu } from "../../../components/expressions/ShortcutsMenu";
+import type {
+  EditorChangeMeta,
+  ValidateNow,
+} from "../../../components/expressions/Editor/Editor";
+import { Layout } from "../../../components/expressions/Layout";
 
 import { ExpressionPreview } from "./ExpressionPreview";
 import S from "./InlineExpressionEditor.module.css";
@@ -72,10 +74,9 @@ export function InlineExpressionEditor({
   onDiscard,
 }: InlineExpressionEditorProps) {
   const [error, setError] = useState<ExpressionError | null>(null);
-  // The text in the editor, and the last valid expression. The editor
-  // reports the opened expression when it validates it.
+  // The text in the editor. The editor reports the opened expression when it
+  // validates it.
   const [editedSource, setEditedSource] = useState<string>();
-  const [lastValid, setLastValid] = useState<PreviewRun>();
   // The expression in the preview. The preview runs only on request, so it
   // can be outdated.
   const [previewRun, setPreviewRun] = useState<PreviewRun>();
@@ -89,8 +90,26 @@ export function InlineExpressionEditor({
     setPreviewRun(run);
     setPreviewRefreshKey((key) => key + 1);
   }, []);
+  // Errors show only after the user asks for a check: preview, refresh or
+  // save. The next edit hides them.
+  const [isErrorShown, setIsErrorShown] = useState(false);
+  const validateRef = useRef<ValidateNow | null>(null);
+
+  /** Checks the text now. Returns it when it is valid, or shows its errors. */
+  const checkNow = (): PreviewRun | null => {
+    const result = validateRef.current?.();
+    if (result == null) {
+      return null;
+    }
+    if (result.error != null || result.clause == null) {
+      setIsErrorShown(true);
+      return null;
+    }
+    return { source: result.source, clause: result.clause };
+  };
+
   const runPreview = () => {
-    const run = proposal ?? lastValid;
+    const run = proposal ?? checkNow();
     if (run != null) {
       showPreview(run);
     }
@@ -131,15 +150,15 @@ export function InlineExpressionEditor({
     [showPreview],
   );
 
-  const handleEdit = useCallback(
-    (source: string, clause: Lib.ExpressionClause | null) => {
+  // A check also reports the text, so only a new text hides the errors.
+  const editedSourceRef = useRef<string | undefined>(undefined);
+  const handleEdit = useCallback((source: string) => {
+    if (source !== editedSourceRef.current) {
+      editedSourceRef.current = source;
       setEditedSource(source);
-      if (clause != null) {
-        setLastValid({ source, clause });
-      }
-    },
-    [],
-  );
+      setIsErrorShown(false);
+    }
+  }, []);
 
   // Cmd/Ctrl+Enter opens the preview, or runs it again. The capture phase
   // comes before the keymap of the code editor.
@@ -151,14 +170,6 @@ export function InlineExpressionEditor({
     event.stopPropagation();
     runPreview();
   };
-  const [hasExpression, setHasExpression] = useState(clause != null);
-
-  // Used to remount the editor, which re-formats from `editorClause`.
-  const [revertCount, setRevertCount] = useState(0);
-
-  // A combine or extract result, shown before the query prop catches up.
-  const [shortcutClause, setShortcutClause] = useState<Lib.ExpressionClause>();
-  const editorClause = shortcutClause ?? clause;
 
   // The name of an accepted AI suggestion, which the next valid edit commits.
   const acceptedNameRef = useRef<string | undefined>(undefined);
@@ -173,11 +184,7 @@ export function InlineExpressionEditor({
       { hasSourceChanged, source }: EditorChangeMeta,
     ) => {
       const isValid = !error && clause != null;
-      if (isValid) {
-        setLastValid({ source, clause });
-      }
       setError(error);
-      setHasExpression(clause != null);
       onSourceChange?.(source, isValid);
 
       if (isValid && hasSourceChanged) {
@@ -189,28 +196,12 @@ export function InlineExpressionEditor({
     [onCommit, onSourceChange],
   );
 
-  const handleRevert = useCallback(() => {
-    setShortcutClause(undefined);
-    setError(null);
-    setHasExpression(true);
-    onSourceChange?.("", true);
-    setRevertCount((count) => count + 1);
-  }, [onSourceChange]);
-
-  const applyShortcut = useCallback(
-    (clause: Lib.ExpressionClause, name: string) => {
-      onCommit(clause, name);
-      setShortcutClause(clause);
-      setError(null);
-      setHasExpression(true);
-      onSourceChange?.("", true);
-      setRevertCount((count) => count + 1);
-    },
-    [onCommit, onSourceChange],
-  );
-
-  const isValid = error == null && hasExpression;
-  const isSaved = clause != null;
+  const isEmpty = (editedSource ?? "").trim() === "";
+  const handleSave = () => {
+    if (proposal == null && checkNow() != null) {
+      onDone();
+    }
+  };
 
   return (
     <Layout
@@ -222,12 +213,11 @@ export function InlineExpressionEditor({
       onKeyDownCapture={handleKeyDownCapture}
     >
       <Editor
-        key={revertCount}
         id="expression-content"
         expressionMode={expressionMode}
-        clause={editorClause}
-        initialClause={editorClause}
-        initialSource={revertCount === 0 ? initialSource : undefined}
+        clause={clause}
+        initialClause={clause}
+        initialSource={initialSource}
         onChange={handleChange}
         onEdit={handleEdit}
         onProposalChange={handleProposalChange}
@@ -238,24 +228,47 @@ export function InlineExpressionEditor({
         availableMetrics={availableMetrics}
         reportTimezone={reportTimezone}
         error={error}
+        showErrors={isErrorShown}
+        validateRef={validateRef}
         readOnly={readOnly}
-        renderShortcutsMenu={
-          readOnly
-            ? undefined
-            : ({ getSource, validate, proposeSource }) => (
-                <ShortcutsMenu
-                  query={query}
-                  stageIndex={stageIndex}
-                  expressionMode={expressionMode}
-                  availableColumns={availableColumns}
-                  name={name}
-                  hasDefaultName={hasDefaultName}
-                  getSource={getSource}
-                  validate={validate}
-                  onSubmit={applyShortcut}
-                  onGenerate={proposeSource}
-                />
-              )
+        toolbarStart={
+          !readOnly &&
+          previewRun == null && (
+            <Tooltip label={t`Preview (${PREVIEW_SHORTCUT})`}>
+              <Button
+                size="sm"
+                variant="subtle"
+                color="neutral"
+                className={S.toolbarButton}
+                disabled={isEmpty}
+                onClick={runPreview}
+              >{t`Preview`}</Button>
+            </Tooltip>
+          )
+        }
+        toolbarEnd={
+          readOnly ? undefined : (
+            <>
+              <Button
+                size="sm"
+                variant="subtle"
+                className={S.toolbarButton}
+                disabled={isEmpty}
+                onClick={handleSave}
+              >{t`Save`}</Button>
+              <Tooltip label={t`Close`}>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  color="neutral"
+                  aria-label={t`Close`}
+                  onClick={onDiscard}
+                >
+                  <Icon name="close" size={12} />
+                </ActionIcon>
+              </Tooltip>
+            </>
+          )
         }
         name={name}
         hasDefaultName={hasDefaultName}
@@ -276,41 +289,6 @@ export function InlineExpressionEditor({
           onRun={runPreview}
           onClose={() => setPreviewRun(undefined)}
         />
-      )}
-
-      {!readOnly && (
-        <LayoutFooter className={S.footer}>
-          <Flex p="sm" gap="sm" justify="end" align="center">
-            {previewRun == null && (
-              <Tooltip label={t`Preview (${PREVIEW_SHORTCUT})`}>
-                <Button
-                  variant="subtle"
-                  mr="auto"
-                  leftSection={<Icon name="play" />}
-                  disabled={lastValid == null}
-                  onClick={runPreview}
-                >{t`Preview`}</Button>
-              </Tooltip>
-            )}
-            {!isValid &&
-              (isSaved ? (
-                <Button
-                  variant="subtle"
-                  color="neutral"
-                  onClick={handleRevert}
-                >{t`Revert to saved`}</Button>
-              ) : (
-                <Button
-                  variant="subtle"
-                  color="neutral"
-                  onClick={onDiscard}
-                >{t`Discard`}</Button>
-              ))}
-            <Button variant="filled" disabled={!isValid} onClick={onDone}>
-              {t`Done`}
-            </Button>
-          </Flex>
-        </LayoutFooter>
       )}
     </Layout>
   );
