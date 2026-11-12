@@ -104,7 +104,7 @@
         (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "public" :from_table_name "t"
                                            :to_db "" :to_schema "ws" :to_table_name "public__t"}))
       (ws/set-instance-workspace! {db-b "ws_b"})
-      (is (= [db-b] (t2/select-fn-vec :database_id :model/TableRemapping))))))
+      (is (= [db-b] (t2/select-fn-vec :database_id :model/TableRemapping :database_id [:in [db-a db-b]]))))))
 
 (deftest put-database-schema-change-deletes-remappings-test
   (testing "PUT /api/database/:id changing database-workspace-schema deletes that database's remap rows"
@@ -149,7 +149,7 @@
                       " runtime.")
                  (mt/user-http-request :crowberto :put 400 "setting/workspaces-enabled" {:value value})))
           (testing "and the remap rows survive"
-            (is (= 1 (t2/count :model/TableRemapping))))))
+            (is (= 1 (t2/count :model/TableRemapping :database_id (mt/id)))))))
       (testing "writing the env var's own value is allowed, in any case"
         (mt/user-http-request :crowberto :put 204 "setting/workspaces-enabled" {:value true})
         (mt/user-http-request :crowberto :put 204 "setting/workspaces-enabled" {:value "TRUE"}))
@@ -157,7 +157,7 @@
         (mt/user-http-request :crowberto :put 204 "setting/workspaces-enabled" {:value nil})
         (is (true? (ws/workspace-mode?)))
         (testing "and the remap rows survive"
-          (is (= 1 (t2/count :model/TableRemapping))))))))
+          (is (= 1 (t2/count :model/TableRemapping :database_id (mt/id)))))))))
 
 (deftest config-file-conflicting-with-workspaces-enabled-env-var-stops-boot-test
   (testing "a config.yml settings value that conflicts with MB_WORKSPACES_ENABLED throws, so boot stops on purpose"

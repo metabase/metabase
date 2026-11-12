@@ -120,6 +120,19 @@
       (mt/user-http-request :crowberto :delete 204 "ee/workspace-instance/current")
       (is (not (t2/exists? :model/TableRemapping :database_id (mt/id)))))))
 
+(deftest delete-current-drops-table-remappings-when-flag-already-off-test
+  (testing "DELETE /ee/workspace-instance/current drops TableRemapping rows when workspaces-enabled is already off"
+    (mt/with-model-cleanup [:model/TableRemapping]
+      (let [remapping-id (t2/insert-returning-pk! :model/TableRemapping {:database_id     (mt/id)
+                                                                         :from_schema     "public"
+                                                                         :from_table_name "orders"
+                                                                         :to_schema       "mb_iso"
+                                                                         :to_table_name   "orders"})]
+        (is (false? (ws.settings/workspaces-enabled)))
+        (mt/user-http-request :crowberto :delete 204 "ee/workspace-instance/current")
+        (is (false? (ws.settings/workspaces-enabled)))
+        (is (not (t2/exists? :model/TableRemapping :id remapping-id)))))))
+
 (deftest post-current-repeat-with-padded-schema-keeps-table-remappings-test
   (testing "A repeat POST /ee/workspace-instance/current with a padded schema stores it trimmed and keeps the remap rows"
     (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {}}
