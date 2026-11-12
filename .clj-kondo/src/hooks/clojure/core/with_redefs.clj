@@ -80,6 +80,7 @@
            (assoc (meta node)
                   :message (str "Every binding here redefines a defn-style var — prefer "
                                 "metabase.test/with-dynamic-fn-redefs for thread-safe "
-                                "redefs. [:metabase/prefer-with-dynamic-fn-redefs]")
+                                "redefs. If a replacement calls the original, capture it with "
+                                "(mt/original-fn #'the/var). [:metabase/prefer-with-dynamic-fn-redefs]")
                   :type    :metabase/prefer-with-dynamic-fn-redefs))))))
   {:node node})
