@@ -607,12 +607,13 @@
   "Print the module tree, nesting enterprise extensions under their OSS module.
 
   Marks modules whose namespace prefix differs from their name.
-  With `--html`, writes the interactive explorer instead, and with `--json` the data it shows."
+  With `--html`, writes the interactive explorer instead, and with `--json` the data it shows.
+  Exits with an error when given both."
   [{:keys [options] :as _parsed}]
-  (when (and (:html options) (:json options))
-    (u/exit "Give only one of --html, --json." 1))
-  (when (or (:html options) (:json options))
-    (write-explorer! (read-modules-config) options))
+  (let [{:keys [html json]} options]
+    (cond
+      (and html json) (u/exit "Give only one of --html, --json." 1)
+      (or html json)  (write-explorer! (read-modules-config) options)))
   (let [modules-config (read-modules-config)
         tree           (module-display-tree modules-config)
         roots          (cond->> (sorted-children tree)
