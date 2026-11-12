@@ -3628,8 +3628,7 @@
   {:team "Graphy"
    :api #{metabase.workspaces.core
           metabase.workspaces.table-remapping}
-   :uses #{premium-features
-           util}}
+   :uses #{premium-features}}
 
   xrays
   {:team "Graphy"
@@ -4876,6 +4875,7 @@
            cache
            database-routing
            driver
+           events
            lib.metadata
            lib.schema
            models

@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
+   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase-enterprise.workspaces.transform-hooks :as ws.transform-hooks]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -41,18 +42,20 @@
         (is (= {:db nil :schema "ws_alice" :name "public__orders" :type :table} result)
             "schema and collision-resistant name come from the to-spec; other target keys are preserved")))))
 
+(deftest workspace-transform-target-fails-closed-test
+  (testing "on a workspace instance, a database with no workspace schema refuses the transform"
+    (mt/with-dynamic-fn-redefs [ws/workspace-mode?          (constantly true)
+                                ws/db-workspace-namespace  (constantly nil)
+                                ws.table-remapping/add-transform-target-mapping!
+                                (fn [& _] (throw (ex-info "must not record a remap" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"refusing to write the transform's output to production"
+                            (ws.transform-hooks/workspace-transform-target 42 {:schema "public" :name "orders" :type :table}))))))
+
 (defn- with-instance-workspace-for-db!
-  "Set the `instance-workspace` setting so that `db-workspace-namespace` returns
-   `{:schema output-schema}` for the test database, run `body-fn`, clear it on
-   the way out."
+  "Make the test database write to `output-schema`, so `db-workspace-namespace`
+   returns `{:schema output-schema}` for it, run `body-fn`, undo it on the way out."
   [output-schema body-fn]
-  (try
-    (ws/set-instance-workspace! {:name "test-ws"
-                                 :databases {(mt/id) {:input_schemas ["_"]
-                                                      :output        {:schema output-schema}}}})
-    (body-fn)
-    (finally
-      (ws/clear-instance-workspace!))))
+  (workspaces.tu/with-workspace-db! (mt/id) output-schema body-fn))
 
 (deftest workspace-target-end-to-end-test
   (testing "end-to-end against the test app DB"

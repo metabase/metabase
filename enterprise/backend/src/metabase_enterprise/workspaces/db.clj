@@ -40,6 +40,16 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
+(defn all-databases
+  "Every Database."
+  []
+  (t2/select :model/Database))
+
+(defn update-database-settings!
+  "Replace the `:settings` of the Database with `database-id`."
+  [database-id settings]
+  (t2/update! :model/Database :id database-id {:settings settings}))
+
 (mu/defn database-engine
   "The `:engine` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
@@ -83,6 +93,11 @@
   "Whether a Workspace with `workspace-id` exists."
   [workspace-id :- ms/PositiveInt]
   (t2/exists? :model/Workspace :id workspace-id))
+
+(defn any-workspace-exists?
+  "Whether any Workspace exists."
+  []
+  (t2/exists? :model/Workspace))
 
 (mu/defn workspace
   "The Workspace with `workspace-id`, or nil."
