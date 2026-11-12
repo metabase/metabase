@@ -144,10 +144,12 @@
      formatter
      funnysql
      geojson
+     indexed-entities
      interestingness
      lib.types
      measures
      metabot
+     mq
      notification
      permissions
      premium-features
@@ -175,7 +177,8 @@
      util
      warehouses.schema
      warehouses.secrets
-     workspaces})
+     workspaces
+     xrays})
 
 (def driver-test-opt-ins
   "Submodules of [[driver-test-exemptions]] that their exemption doesn't cover, so their changes count again.
