@@ -40,7 +40,7 @@
 
 (comment collection.root/keep-me)
 
-(p/import-vars [collection.root root-collection root-collection-with-ui-details])
+(p/import-vars [collection.root can-read-collection-or-root? can-write-collection-or-root? root-collection root-collection-with-ui-details])
 
 (def ^:private RootCollection
   "Schema for things that are instances of [[metabase.collections.models.collection.root.RootCollection]]."
@@ -347,13 +347,15 @@
         (mi/current-user-has-full-permissions? :write instance)
         (remote-sync/can-write? :model/Collection (:id instance))))
   ([_model pk]
+   (api/check-500 (some? pk) "No Collection id: use `can-write-collection-or-root?` for a root Collection.")
    (mi/can-write? (collections.db/collection pk))))
 
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
    (or (is-trash? instance)
        (perms/can-read-audit-helper :model/Collection (t2/instance :model/Collection (select-keys instance [:id :namespace])))))
-  ([_model pk :- pos-int?]
+  ([_model pk :- [:maybe pos-int?]]
+   (api/check-500 (some? pk) "No Collection id: use `can-read-collection-or-root?` for a root Collection.")
    (or (is-trash? pk)
        (mi/can-read? (collections.db/collection pk)))))
 
@@ -1976,29 +1978,21 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn check-allowed-to-change-collection
-  "If we're changing the `collection_id` of an object, make sure we have write permissions for both the old and new
-  Collections, or throw a 403 if not. If `collection_id` isn't present in `object-updates`, or the value is the same
-  as the original, this check is a no-op.
-
-  As usual, an `collection-id` of `nil` represents the Root Collection.
-
-  Intended for use with `PUT` or `PATCH`-style operations. Usage should look something like:
-
-    ;; `object-before-update` is the object as it currently exists in the application DB
-    ;; `object-updates` is a map of updated values for the object
-    (check-allowed-to-change-collection (t2/select-one Card :id 100) http-request-body)"
+  "Throws a 403 unless the current user can write both the old and the new Collection when `object-updates` change the
+  `collection_id` of `object-before-update`, and a 400 when the new one is archived. For models without their own
+  `mi/can-update?`."
   [object-before-update object-updates]
-  ;; if collection_id is set to change...
   (when (api/column-will-change? (:collection_id object-before-update) (get object-updates :collection_id ::api/not-provided))
-    ;; check that we're allowed to modify the old Collection
-    (if-let [coll-id (:collection_id object-before-update)]
-      (api/write-check :model/Collection coll-id)
-      (api/write-check root-collection))
-    ;; check that we're allowed to modify the new Collection
-    (if-let [coll-id (:collection_id object-updates)]
-      (api/write-check :model/Collection coll-id)
-      (api/write-check root-collection))
-    ;; check that the new location is not archived. the root can't be archived.
+    (api/check-403 (can-write-collection-or-root? (:collection_id object-before-update) nil))
+    (api/check-403 (can-write-collection-or-root? (:collection_id object-updates) nil))
+    (when-let [collection-id (:collection_id object-updates)]
+      (api/check-400 (collections.db/unarchived-collection-exists? collection-id)))))
+
+(defn check-move-target-unarchived
+  "Throws a 400 when `object-updates` move an object into a Collection that doesn't exist or is archived. Write
+  permission on both the old and the new Collection is the object's `mi/can-update?`."
+  [object-before-update object-updates]
+  (when (api/column-will-change? (:collection_id object-before-update) (get object-updates :collection_id ::api/not-provided))
     (when-let [collection-id (:collection_id object-updates)]
       (api/check-400 (collections.db/unarchived-collection-exists? collection-id)))))
 

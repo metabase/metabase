@@ -67,6 +67,22 @@
                 ;; within the shared-tenant-collection namespace can be toggled individually.
                 :is_remote_synced false))
 
+(defn can-read-collection-or-root?
+  "Whether the current user can read the Collection with `collection-id`, or, for nil, the root Collection of
+  `collection-namespace`, nil being the default namespace."
+  [collection-id collection-namespace]
+  (if collection-id
+    (mi/can-read? :model/Collection collection-id)
+    (mi/can-read? (root-collection-with-ui-details collection-namespace))))
+
+(defn can-write-collection-or-root?
+  "Whether the current user can write the Collection with `collection-id`, or, for nil, the root Collection of
+  `collection-namespace`, nil being the default namespace."
+  [collection-id collection-namespace]
+  (if collection-id
+    (mi/can-write? :model/Collection collection-id)
+    (mi/can-write? (root-collection-with-ui-details collection-namespace))))
+
 (defn hydrated-root-collection
   "Return the root collection entity for the given namespace.
   By default, returns the root collection for the non-namespaced collection subtree."

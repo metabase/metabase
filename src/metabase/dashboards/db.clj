@@ -202,6 +202,11 @@
   [dashcard-id :- ::lib.schema.id/dashcard]
   (t2/select-one :model/DashboardCard :id dashcard-id))
 
+(mu/defn dashcard-series
+  "The DashboardCardSeries with `series-id`, or nil."
+  [series-id :- ms/PositiveInt]
+  (t2/select-one :model/DashboardCardSeries :id series-id))
+
 (mu/defn multi-cards-for-dashcard
   "The unarchived Cards added to the DashboardCard with `dashcard-id` as series (the 'add series' feature)."
   [dashcard-id :- [:maybe ::lib.schema.id/dashcard]]

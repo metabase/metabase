@@ -320,43 +320,42 @@
                                              {:namespace (when-not (or model-id collection-id)
                                                            collection/data-actions-ns)}))
 
-(defn- remote-sync-writable?
-  "Whether remote sync lets `action` be written: through its Collection, or, for an Action of neither a model nor a
-  Collection, through the Action itself."
-  [{model-id :model_id, collection-id :collection_id, id :id}]
-  (cond
-    collection-id (remote-sync/can-write? :model/Collection collection-id)
-    model-id      true
-    id            (remote-sync/can-write? :model/Action id)
-    :else         (not (remote-sync/read-only?))))
-
 (defn- collection-writable?
-  "Whether the current user can write the Collection `action` goes in."
+  "Whether the current user can write the Collection `action` goes in, with the Collection's own `can-write?`: its own
+  or its model's, the default root for an Action of a model outside one, and otherwise the data actions root, whose
+  Actions remote sync keeps read-only on a read-only instance."
   [{model-id :model_id, :as action}]
-  (let [action (assoc action :collection_id (effective-collection-id action))]
-    (if model-id
-      ((get-method mi/can-create? :perms/use-parent-collection-perms) :model/Action action)
-      (and (has-collection-permission? action :read-and-write)
-           (remote-sync-writable? action)))))
+  (let [collection-id (effective-collection-id action)]
+    (if (or model-id collection-id)
+      (collection/can-write-collection-or-root? collection-id nil)
+      (and (collection/can-write-collection-or-root? nil collection/data-actions-ns)
+           (not (remote-sync/read-only?))))))
 
-(defn- check-permission-keys
-  "Throws unless `action` has the columns its permission checks read."
+(defn- check-read-keys
+  "Throws unless `action` has the columns its read check reads."
   [action]
-  (perms/check-instance-keys action [:collection_id :model_id]))
+  (api/check-500 (contains? action :collection_id) "No :collection_id is set for an Action.")
+  (api/check-500 (contains? action :model_id) "No :model_id is set for an Action."))
+
+(defn- check-write-keys
+  "Throws unless `action` is saved and has the columns its write check reads."
+  [action]
+  (check-read-keys action)
+  (api/check-500 (some? (:id action)) "No :id is set for an Action."))
 
 (defmethod mi/can-read? :model/Action
   ([action]
-   (check-permission-keys action)
+   (check-read-keys action)
    (has-collection-permission? action :read))
   ([_model pk]
    (mi/can-read? (actions.db/action pk))))
 
 (defmethod mi/can-write? :model/Action
   ([action]
-   (check-permission-keys action)
+   (check-write-keys action)
    (and (mi/superuser?)
         (has-collection-permission? action :read-and-write)
-        (remote-sync-writable? action)))
+        (remote-sync/can-write? :model/Action (:id action))))
   ([_model pk]
    (mi/can-write? (actions.db/action pk))))
 
@@ -365,10 +364,13 @@
   (and (mi/superuser?)
        (collection-writable? action)))
 
+;; Moving to another Collection or model also needs write on both the old and the new Collection.
 (defmethod mi/can-update? :model/Action
   [action changes]
   (and (mi/can-write? action)
-       (collection-writable? (merge action changes))))
+       (or (not (or (contains? changes :collection_id) (contains? changes :model_id)))
+           (and (collection-writable? action)
+                (collection-writable? (merge action changes))))))
 
 (def ^:private action-columns
   "The columns that are common to all Action types."

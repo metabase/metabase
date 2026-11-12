@@ -22,25 +22,39 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defn- check-permission-keys
-  "Throws unless `timeline` has the columns its permission checks read."
+(defn- check-read-keys
+  "Throws unless `timeline` has the columns its read check reads."
   [timeline]
-  (perms/check-instance-keys timeline [:collection_id]))
+  (api/check-500 (contains? timeline :collection_id) "No :collection_id is set for a Timeline."))
+
+(defn- check-write-keys
+  "Throws unless `timeline` is saved and has the columns its write check reads."
+  [timeline]
+  (check-read-keys timeline)
+  (api/check-500 (some? (:id timeline)) "No :id is set for a Timeline."))
 
 (defmethod mi/can-read? :model/Timeline
   ([{collection-id :collection_id :as timeline}]
-   (check-permission-keys timeline)
+   (check-read-keys timeline)
    (perms/user-has-permission-for-collection? api/*current-user-id* :read collection-id))
   ([_model pk]
    (mi/can-read? (timeline.db/timeline pk))))
 
 (defmethod mi/can-write? :model/Timeline
-  ([{collection-id :collection_id :as timeline}]
-   (check-permission-keys timeline)
+  ([{id :id, collection-id :collection_id :as timeline}]
+   (check-write-keys timeline)
    (and (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id)
-        (remote-sync/collection-content-writable? collection-id)))
+        (remote-sync/can-write? :model/Timeline id)))
   ([_model pk]
    (mi/can-write? (timeline.db/timeline pk))))
+
+;; Moving to another Collection also needs write on both the old and the new one.
+(defmethod mi/can-update? :model/Timeline
+  [timeline changes]
+  (and (mi/can-write? timeline)
+       (or (not (contains? changes :collection_id))
+           (and (collection/can-write-collection-or-root? (:collection_id timeline) nil)
+                (collection/can-write-collection-or-root? (:collection_id changes) nil)))))
 
 ;;;; transforms
 

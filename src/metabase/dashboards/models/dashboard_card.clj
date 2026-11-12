@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.core :as lib]
@@ -23,8 +24,6 @@
 
 (doto :model/DashboardCard
   (derive :metabase/model)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies)
@@ -85,6 +84,25 @@
     dashcard))
 
 (declare series)
+
+(defn- check-read-keys
+  "Throws unless `dashcard` has the columns its permission checks read."
+  [dashcard]
+  (api/check-500 (contains? dashcard :dashboard_id) "No :dashboard_id is set for a DashboardCard."))
+
+(defmethod mi/can-read? :model/DashboardCard
+  ([dashcard]
+   (check-read-keys dashcard)
+   (mi/can-read? :model/Dashboard (:dashboard_id dashcard)))
+  ([_model pk]
+   (mi/can-read? (dashboards.db/dashcard pk))))
+
+(defmethod mi/can-write? :model/DashboardCard
+  ([dashcard]
+   (check-read-keys dashcard)
+   (mi/can-write? :model/Dashboard (:dashboard_id dashcard)))
+  ([_model pk]
+   (mi/can-write? (dashboards.db/dashcard pk))))
 
 ;;; Return the set of permissions required to `read-or-write` this DashboardCard. If `:card` and `:series` are already
 ;;; hydrated this method doesn't need to make any DB calls.

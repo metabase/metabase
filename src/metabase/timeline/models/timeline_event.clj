@@ -1,7 +1,7 @@
 (ns metabase.timeline.models.timeline-event
   (:require
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
@@ -51,24 +51,46 @@
                      (timeline.db/timeline (:timeline_id event)))]
     (mi/perms-objects-set timeline read-or-write)))
 
+(defn- check-read-keys
+  "Throws unless `event` has the columns its read check reads."
+  [event]
+  (api/check-500 (or (contains? event :timeline) (contains? event :timeline_id))
+                 "No :timeline_id is set for a TimelineEvent."))
+
+(defn- check-write-keys
+  "Throws unless `event` is saved and has the columns its write check reads."
+  [event]
+  (check-read-keys event)
+  (api/check-500 (some? (:id event)) "No :id is set for a TimelineEvent."))
+
 (defn- event-timeline
   "The Timeline of `event`, hydrated or by its `:timeline_id`."
   [event]
   (or (:timeline event)
-      (do (perms/check-instance-keys event [:timeline_id])
-          (timeline.db/timeline (:timeline_id event)))))
+      (timeline.db/timeline (:timeline_id event))))
 
 (defmethod mi/can-read? :model/TimelineEvent
   ([event]
+   (check-read-keys event)
    (mi/can-read? (event-timeline event)))
   ([_model pk]
    (mi/can-read? (timeline.db/timeline-event pk))))
 
 (defmethod mi/can-write? :model/TimelineEvent
   ([event]
-   (mi/can-write? (event-timeline event)))
+   (check-write-keys event)
+   (and (mi/can-write? (event-timeline event))
+        (remote-sync/can-write? :model/TimelineEvent (:id event))))
   ([_model pk]
    (mi/can-write? (timeline.db/timeline-event pk))))
+
+;; Moving to another Timeline also needs write on both the old and the new one.
+(defmethod mi/can-update? :model/TimelineEvent
+  [event changes]
+  (and (mi/can-write? event)
+       (or (not (contains? changes :timeline_id))
+           (and (mi/can-write? :model/Timeline (:timeline_id event))
+                (mi/can-write? :model/Timeline (:timeline_id changes))))))
 
 (defmethod mi/can-create? :model/TimelineEvent
   [_ {:keys [timeline]}]

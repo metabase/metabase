@@ -11,8 +11,7 @@
    [metabase.permissions.settings :as permissions.settings]
    [metabase.permissions.user :as permissions.user]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -124,16 +123,6 @@
     options       :- Options]
    (>= (permission->rank (collection-permission-for-user user-id collection-id options))
        (permission->rank permission))))
-
-(mu/defn check-instance-keys :- :nil
-  "Throws unless `instance` has each of `ks`, the columns its permission checks read, so that an instance selected
-  without them isn't checked as if they were nil."
-  [instance :- [:fn map?]
-   ks       :- [:sequential :keyword]]
-  (when-let [missing (seq (remove #(contains? instance %) ks))]
-    (throw (ex-info (str "Cannot check permissions without " (vec missing))
-                    {:model (some-> instance t2/model) :missing (vec missing)})))
-  nil)
 
 (mu/defn some-collection-permission-for-user :- [:enum :read-and-write :read :none]
   "The best permission the User with `user-id` has on a Collection listed to them: not archived, not the trash and not a

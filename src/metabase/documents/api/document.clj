@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.core :as collections]
    [metabase.documents.db :as documents.db]
    [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -133,15 +134,14 @@
   [{:keys [document-id]} :- [:map {:closed true}
                              [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [collection_id] :as body} :- DocumentUpdateOptions]
+   body :- DocumentUpdateOptions]
   ;; Use a lightweight fetch for the guard: we only need the raw row for the archived, permission, and collection-move
   ;; checks below. Calling `m.document/get-document` here would hydrate unused display fields and record a view.
   (let [existing-document (api/check-404 (documents.db/document document-id))]
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
-    (api/write-check existing-document)
-    (when (api/column-will-change? (:collection_id existing-document) (get body :collection_id ::api/not-provided))
-      (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
+    (collections/check-move-target-unarchived existing-document body)
+    (api/update-check existing-document (select-keys body [:collection_id]))
     (m.document/update-document! existing-document body)))
 
 (api.macros/defendpoint :delete "/:document-id" :- ::api/generic-204-no-content

@@ -32,7 +32,6 @@
   get-document
   register-doc-content-visibility-fn!
   update-document!
-  validate-collection-move-permissions
   with-content-gate-cache]
  [metabase.documents.prose-mirror
   insert-card-embed

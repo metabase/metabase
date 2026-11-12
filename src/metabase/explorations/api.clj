@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.events.core :as events]
    [metabase.explorations.blocks :as explorations.blocks]
@@ -43,19 +42,6 @@
 
 (defn- get-exploration-or-404 [id]
   (api/check-404 (explorations.db/exploration id)))
-
-(defn- check-destination-collection-perms!
-  "When `updates` moves the exploration to a different `collection_id`, verify the current
-  user has write perms on the destination (collection or root). Source-side perms are already
-  enforced by the parent `api/write-check` against the exploration itself, which via
-  `:perms/use-parent-collection-perms` requires write on the source collection."
-  [{old-coll :collection_id} updates]
-  (when (and (contains? updates :collection_id)
-             (not= old-coll (:collection_id updates)))
-    (let [new-coll (:collection_id updates)]
-      (if new-coll
-        (api/write-check :model/Collection new-coll)
-        (api/write-check collection/root-collection)))))
 
 (def ^:private summary-document-name
   "Name for the auto-created Summary document on each exploration."
@@ -803,8 +789,7 @@
   (let [existing (get-exploration-or-404 id)
         allowed  (select-keys updates updatable-columns)
         updates' (api/updates-with-archived-directly existing allowed)]
-    (api/write-check existing)
-    (check-destination-collection-perms! existing updates')
+    (api/update-check existing updates')
     (t2/with-transaction [_]
       (when (seq updates')
         (explorations.db/update-exploration! id updates')

@@ -115,7 +115,8 @@
                                                [:archived      {:optional true} [:maybe :boolean]]]]
   (let [existing (api/write-check :model/Timeline id)
         current-archived (:archived (timeline.db/timeline id))]
-    (collection/check-allowed-to-change-collection existing timeline-updates)
+    (collection/check-move-target-unarchived existing timeline-updates)
+    (api/update-check existing timeline-updates)
     (timeline.db/update-timeline! id
                                   (u/select-keys-when timeline-updates
                                                       :present #{:description :icon :collection_id :default :archived}

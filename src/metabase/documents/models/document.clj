@@ -128,27 +128,41 @@
 ;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
 ;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
 ;; narrower than collection access.
-(defn- check-permission-keys
-  "Throws unless `document` has the columns its permission checks read."
+(defn- check-read-keys
+  "Throws unless `document` has the columns its read check reads."
   [document]
-  (perms/check-instance-keys document [:collection_id]))
+  (api/check-500 (contains? document :collection_id) "No :collection_id is set for a Document."))
+
+(defn- check-write-keys
+  "Throws unless `document` is saved and has the columns its write check reads."
+  [document]
+  (check-read-keys document)
+  (api/check-500 (some? (:id document)) "No :id is set for a Document."))
 
 (defmethod mi/can-read? :model/Document
   ([instance]
-   (check-permission-keys instance)
+   (check-read-keys instance)
    (and (perms/user-has-permission-for-collection? api/*current-user-id* :read (:collection_id instance))
         (content-visible? instance)))
   ([_model pk]
    (mi/can-read? (documents.db/document pk))))
 
 (defmethod mi/can-write? :model/Document
-  ([{collection-id :collection_id :as instance}]
-   (check-permission-keys instance)
+  ([{id :id, collection-id :collection_id :as instance}]
+   (check-write-keys instance)
    (and (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id)
-        (remote-sync/collection-content-writable? collection-id)
+        (remote-sync/can-write? :model/Document id)
         (content-visible? instance)))
   ([_model pk]
    (mi/can-write? (documents.db/document pk))))
+
+;; Moving to another Collection also needs write on both the old and the new one.
+(defmethod mi/can-update? :model/Document
+  [document changes]
+  (and (mi/can-write? document)
+       (or (not (contains? changes :collection_id))
+           (and (collection/can-write-collection-or-root? (:collection_id document) nil)
+                (collection/can-write-collection-or-root? (:collection_id changes) nil)))))
 
 (def DocumentName
   "Validations for the name of a document"
@@ -161,22 +175,6 @@
      {:error/message "invalid document name"}
      (complement str/blank?)]]
    (deferred-tru "value must be a non-blank string between 1 and 254 characters.")))
-
-(defn validate-collection-move-permissions
-  "Validates that the current user has write permissions for both old and new collections
-   when moving a document. Uses the same permission pattern as check-allowed-to-change-collection.
-   Throws 403 exception if permissions are insufficient."
-  [old-collection-id new-collection-id]
-  (if old-collection-id
-    (api/write-check :model/Collection old-collection-id)
-    (api/write-check collection/root-collection))
-  (if new-collection-id
-    (do
-      (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
-      (api/write-check :model/Collection new-collection-id))
-    (api/write-check collection/root-collection)))
-
-;;; ------------------------------------------------ Write orchestration -------------------------------------------
 
 (def CardCreateSchema
   "Schema for a card created inline with a document (the `cards` map on create/update). The

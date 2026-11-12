@@ -52,14 +52,33 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
+(defn- check-read-keys
+  "Throws unless `dashboard` has the columns its read check reads."
+  [dashboard]
+  (api/check-500 (contains? dashboard :collection_id) "No :collection_id is set for a Dashboard."))
+
+(defn- check-write-keys
+  "Throws unless `dashboard` is saved and has the columns its write check reads."
+  [dashboard]
+  (check-read-keys dashboard)
+  (api/check-500 (some? (:id dashboard)) "No :id is set for a Dashboard."))
+
 (defmethod mi/can-write? :model/Dashboard
-  ([{collection-id :collection_id :as dashboard}]
-   (perms/check-instance-keys dashboard [:collection_id])
+  ([{id :id, collection-id :collection_id :as dashboard}]
+   (check-write-keys dashboard)
    (and (not (perms/audit-content? collection-id))
         (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id)
-        (remote-sync/collection-content-writable? collection-id)))
+        (remote-sync/can-write? :model/Dashboard id)))
   ([_ pk]
    (mi/can-write? (dashboards.db/dashboard pk))))
+
+;; Moving to another Collection also needs write on both the old and the new one.
+(defmethod mi/can-update? :model/Dashboard
+  [dashboard changes]
+  (and (mi/can-write? dashboard)
+       (or (not (contains? changes :collection_id))
+           (and (collection/can-write-collection-or-root? (:collection_id dashboard) nil)
+                (collection/can-write-collection-or-root? (:collection_id changes) nil)))))
 
 (perms/define-collection-based-visibility! :model/Dashboard)
 

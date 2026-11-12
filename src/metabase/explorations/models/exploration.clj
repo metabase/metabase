@@ -2,12 +2,12 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
    [metabase.models.cache :as models.cache]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -51,25 +51,32 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defn- check-permission-keys
-  "Throws unless `exploration` has the columns its permission checks read."
+(defn- check-read-keys
+  "Throws unless `exploration` has the columns its read check reads."
   [exploration]
-  (perms/check-instance-keys exploration [:collection_id]))
+  (api/check-500 (contains? exploration :collection_id) "No :collection_id is set for an Exploration."))
 
 (defmethod mi/can-read? :model/Exploration
   ([{collection-id :collection_id :as exploration}]
-   (check-permission-keys exploration)
+   (check-read-keys exploration)
    (perms/user-has-permission-for-collection? api/*current-user-id* :read collection-id))
   ([_model pk]
    (mi/can-read? (explorations.db/exploration pk))))
 
 (defmethod mi/can-write? :model/Exploration
   ([{collection-id :collection_id :as exploration}]
-   (check-permission-keys exploration)
-   (and (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id)
-        (remote-sync/collection-content-writable? collection-id)))
+   (check-read-keys exploration)
+   (perms/user-has-permission-for-collection? api/*current-user-id* :read-and-write collection-id))
   ([_model pk]
    (mi/can-write? (explorations.db/exploration pk))))
+
+;; Moving to another Collection also needs write on both the old and the new one.
+(defmethod mi/can-update? :model/Exploration
+  [exploration changes]
+  (and (mi/can-write? exploration)
+       (or (not (contains? changes :collection_id))
+           (and (collection/can-write-collection-or-root? (:collection_id exploration) nil)
+                (collection/can-write-collection-or-root? (:collection_id changes) nil)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
   [_model k explorations]

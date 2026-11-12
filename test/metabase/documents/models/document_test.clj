@@ -171,122 +171,39 @@
               (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
               (is (= regular-collection-id (:collection_id (t2/select-one :model/Card :id card-id)))))))))))
 
-(deftest validate-collection-move-permissions-allows-move-with-both-permissions-test
-  (testing "allows move when user has write permissions for both collections"
+(deftest can-update-move-test
+  (testing "moving a Document needs write on both the old and the new Collection"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/Collection {new-collection-id :id} {:name "New Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; Grant write permissions to both collections
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
-          ;; Should not throw any exception
-          (is (some? (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
-
-(deftest validate-collection-move-permissions-throws-403-missing-old-permission-test
-  (testing "throws 403 when user lacks write permission for old collection"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/Collection {new-collection-id :id} {:name "New Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; Grant write permission only to new collection
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
-          ;; Should throw 403 exception
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
-
-(deftest validate-collection-move-permissions-throws-403-missing-new-permission-test
-  (testing "throws 403 when user lacks write permission for new collection"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/Collection {new-collection-id :id} {:name "New Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; Grant write permission only to old collection
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-          ;; Should throw 403 exception
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
-
-(deftest validate-collection-move-permissions-throws-403-no-permissions-test
-  (testing "throws 403 when user lacks write permissions for both collections"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/Collection {new-collection-id :id} {:name "New Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; No permissions granted
-
-          ;; Should throw 403 exception
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
-
-(deftest validate-collection-move-permissions-move-from-root-test
-  (testing "moving from root (old collection nil) requires write permission on root"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {new-collection-id :id} {:name "New Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                (document/validate-collection-move-permissions nil new-collection-id)))
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
-          (is (some? (document/validate-collection-move-permissions nil new-collection-id))))))))
-
-(deftest validate-collection-move-permissions-move-to-root-test
-  (testing "moving to root (new collection nil) requires write permission on root"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                (document/validate-collection-move-permissions old-collection-id nil)))
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
-          (is (some? (document/validate-collection-move-permissions old-collection-id nil))))))))
-
-(deftest validate-collection-move-permissions-allows-move-both-nil-test
-  (testing "allows move when both collections are nil and the user can write root"
-    (mt/with-temp [:model/User {user-id :id} {}]
-      (mt/with-current-user user-id
-        (is (some? (document/validate-collection-move-permissions nil nil)))))))
-
-(deftest validate-collection-move-permissions-throws-400-nonexistent-collection-test
-  (testing "throws 400 when new collection does not exist"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; Grant write permission to old collection
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-          ;; Use a non-existent collection ID
-          (let [non-existent-id 999999]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Request."
-                                  (document/validate-collection-move-permissions old-collection-id non-existent-id)))))))))
-
-(deftest validate-collection-move-permissions-throws-400-archived-collection-test
-  (testing "throws 400 when new collection is archived"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                     :model/Collection {archived-collection-id :id} {:name "Archived Collection" :archived true}
-                     :model/User {user-id :id} {}]
-        (mt/with-current-user user-id
-          ;; Grant write permissions to both collections
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) archived-collection-id)
-          ;; Should throw 400 exception for archived collection
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid"
-                                (document/validate-collection-move-permissions old-collection-id archived-collection-id))))))))
-
-(deftest validate-collection-move-permissions-superuser-test
-  (testing "superuser can move between any collections"
-    (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
-                   :model/Collection {new-collection-id :id} {:name "New Collection"}]
-      (mt/with-current-user (mt/user->id :crowberto)
-        ;; Superuser should be able to move without explicit permissions
-        (is (some? (document/validate-collection-move-permissions old-collection-id new-collection-id)))))))
+      (mt/with-temp [:model/Collection {old-id :id}      {:name "Old Collection"}
+                     :model/Collection {new-id :id}      {:name "New Collection"}
+                     :model/Collection {archived-id :id} {:name "Archived Collection" :archived true}
+                     :model/Document   document          {:collection_id old-id}
+                     :model/Document   root-document     {:collection_id nil}]
+        (let [can-move? (fn [doc collection-id] (mi/can-update? doc {:collection_id collection-id}))]
+          (mt/with-test-user :rasta
+            (testing "without permissions"
+              (is (false? (can-move? document new-id))))
+            (testing "with write on the new Collection only"
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-id)
+              (is (false? (can-move? document new-id))))
+            (testing "with write on both"
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-id)
+              (is (true? (can-move? document new-id))))
+            (testing "into an archived Collection, or one that doesn't exist, is a bad request"
+              (doseq [target [archived-id Integer/MAX_VALUE]]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid"
+                                      (collection/check-move-target-unarchived document {:collection_id target})))))
+            (testing "to and from the root Collection need write on the root"
+              (is (false? (can-move? document nil)))
+              (is (false? (can-move? root-document new-id)))
+              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
+              (is (true? (can-move? document nil)))
+              (is (true? (can-move? root-document new-id))))
+            (testing "without a :collection_id change, only the Document itself"
+              (is (true? (mi/can-update? document {:name "Renamed"})))))
+          (mt/with-test-user :crowberto
+            (testing "a superuser moves between any Collections"
+              (is (true? (can-move? document new-id))))))))))
 
 (deftest hydrate-document-creator-test
   (testing "hydrates document creator correctly"

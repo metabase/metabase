@@ -39,7 +39,6 @@
 
 (p/import-vars
  [metabase.permissions.collection-permissions
-  check-instance-keys
   collection-permission-filter-clause
   collection-permission-for-user
   some-collection-permission-for-user

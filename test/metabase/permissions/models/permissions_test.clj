@@ -309,9 +309,10 @@
 
 (deftest content-of-a-data-apps-collection-is-admin-only-test
   (testing "Only administrators write what takes its permissions from a collection of the data apps namespace"
+    ;; a data app's collection can't hold Dashboards or Timelines, so these are unsaved instances with an id
     (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}]
       (doseq [model [:model/Dashboard :model/Timeline]
-              :let  [instance (t2/instance model {:collection_id collection-id})]]
+              :let  [instance (t2/instance model {:id Integer/MAX_VALUE :collection_id collection-id})]]
         (testing model
           (mt/with-test-user :crowberto
             (is (true? (mi/can-write? instance))))

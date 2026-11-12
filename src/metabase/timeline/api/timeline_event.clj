@@ -4,7 +4,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
@@ -93,9 +92,7 @@
   (let [existing (api/write-check :model/TimelineEvent id)
         timeline-event-updates (cond-> timeline-event-updates
                                  (boolean timestamp) (update :timestamp u.date/parse))]
-    (collection/check-allowed-to-change-collection existing timeline-event-updates)
-    (when (api/column-will-change? (:timeline_id existing) (get timeline-event-updates :timeline_id ::api/not-provided))
-      (api/write-check :model/Timeline (:timeline_id timeline-event-updates)))
+    (api/update-check existing timeline-event-updates)
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
     (timeline.db/update-timeline-event! id
                                         (u/select-keys-when timeline-event-updates
