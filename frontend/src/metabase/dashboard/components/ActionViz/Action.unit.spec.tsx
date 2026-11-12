@@ -592,6 +592,7 @@ type StoreSetupOpts = {
   prefetchValues?: (parameters: unknown) => Record<string, unknown>;
   withQuestionDashcard?: boolean;
   executeResponse?: object;
+  prefetchDelayMs?: number;
 };
 
 /**
@@ -617,6 +618,7 @@ function setupWithStore({
   prefetchValues,
   withQuestionDashcard = false,
   executeResponse = { "rows-updated": [1] },
+  prefetchDelayMs = 0,
 }: StoreSetupOpts = {}) {
   const dashcard = createMockActionDashboardCard({
     action,
@@ -637,6 +639,7 @@ function setupWithStore({
     async (call) => {
       return prefetchValues?.(getRequestParameters(call.options.body)) ?? {};
     },
+    { name: "prefetch", delay: prefetchDelayMs },
   );
   fetchMock.post(ACTION_EXEC_MOCK_PATH, executeResponse);
   fetchMock.post(
@@ -796,6 +799,26 @@ describe("Actions > ActionViz > Action (dashboard state)", () => {
     );
     await submitActionEditor(editorModal);
 
+    const putBody: unknown = JSON.parse(
+      String(
+        fetchMock.callHistory.lastCall(`action-${ACTION.id}-put`)?.options.body,
+      ),
+    );
+    expect(putBody).toMatchObject({
+      dataset_query: {
+        stages: [
+          {
+            native:
+              "UPDATE many_data_types SET timestamp = {{ Timestamp }} WHERE id = {{ ID }}",
+            "template-tags": expect.arrayContaining([
+              expect.objectContaining({ name: "ID", type: "number" }),
+              expect.objectContaining({ name: "Timestamp", type: "date" }),
+            ]),
+          },
+        ],
+      },
+    });
+
     const storedDashcard = store.getState().dashboard.dashcards[DASHCARD_ID];
     const editedAction = checkNotNull(
       "action" in storedDashcard ? storedDashcard.action : undefined,
@@ -891,6 +914,30 @@ describe("Actions > ActionViz > Action (dashboard state)", () => {
   });
 
   describe("implicit update actions", () => {
+    /** Answers the prefetch request with the row whose primary key was requested. */
+    function prefetchRow(
+      primaryKeyName: string,
+      names: Record<string, string>,
+    ) {
+      return (parameters: unknown) => {
+        const key =
+          typeof parameters === "object" &&
+          parameters !== null &&
+          primaryKeyName in parameters
+            ? String(Reflect.get(parameters, primaryKeyName))
+            : "";
+        return key in names
+          ? { [primaryKeyName]: Number(key), name: names[key] }
+          : {};
+      };
+    }
+
+    function getLastPrefetchParameters() {
+      return getRequestParameters(
+        fetchMock.callHistory.lastCall("prefetch")?.options.body,
+      );
+    }
+
     function createUpdateAction(primaryKeyName: string) {
       const primaryKey = createMockActionParameter({
         id: primaryKeyName,
@@ -926,8 +973,11 @@ describe("Actions > ActionViz > Action (dashboard state)", () => {
           parameterMappings: [
             { parameter_id: "dash-pk", target: primaryKey.target },
           ],
-          parameterValues: { "dash-pk": "1" },
-          prefetchValues: () => ({ [primaryKeyName]: 1, name: "Foo" }),
+          parameterValues: { "dash-pk": "2" },
+          prefetchValues: prefetchRow(primaryKeyName, {
+            "1": "Foo",
+            "2": "Bar",
+          }),
         });
 
         await userEvent.click(await screen.findByText("Click me"));
@@ -935,7 +985,8 @@ describe("Actions > ActionViz > Action (dashboard state)", () => {
           "action-parameters-input-modal",
         );
         const nameInput = await within(modal).findByLabelText("Name");
-        await waitFor(() => expect(nameInput).toHaveValue("Foo"));
+        await waitFor(() => expect(nameInput).toHaveValue("Bar"));
+        expect(getLastPrefetchParameters()).toEqual({ [primaryKeyName]: "2" });
         await userEvent.type(nameInput, " Baz");
         await userEvent.click(
           within(modal).getByRole("button", { name: "Update" }),
@@ -945,33 +996,24 @@ describe("Actions > ActionViz > Action (dashboard state)", () => {
           await screen.findByText("Successfully updated"),
         ).toBeInTheDocument();
         expect(getLastExecuteParameters()).toEqual({
-          [primaryKeyName]: 1,
-          name: "Foo Baz",
+          [primaryKeyName]: 2,
+          name: "Bar Baz",
         });
       },
     );
 
     it("refetches the form values when the dashboard filter changes the row id (metabase#33084)", async () => {
       const { action, primaryKey } = createUpdateAction("id");
-      const rows: Record<string, string> = {
-        "5": "Energetic Elephants",
-        "10": "Jolly Jellyfish",
-      };
       const { store } = setupWithStore({
         action,
         parameterMappings: [
           { parameter_id: "dash-pk", target: primaryKey.target },
         ],
         parameterValues: { "dash-pk": "5" },
-        prefetchValues: (parameters) => {
-          const id =
-            typeof parameters === "object" &&
-            parameters !== null &&
-            "id" in parameters
-              ? String(parameters.id)
-              : "";
-          return { id, name: rows[id] };
-        },
+        prefetchValues: prefetchRow("id", {
+          "5": "Energetic Elephants",
+          "10": "Jolly Jellyfish",
+        }),
       });
 
       await userEvent.click(await screen.findByText("Click me"));
@@ -1014,7 +1056,12 @@ describe("Actions > ActionViz > Action (dashboard state)", () => {
           { parameter_id: "dash-pk", target: primaryKey.target },
         ],
         parameterValues: { "dash-pk": "10" },
-        prefetchValues: () => ({ id: 10, name: "Jolly Jellyfish" }),
+        prefetchValues: prefetchRow("id", {
+          "5": "Energetic Elephants",
+          "10": "Jolly Jellyfish",
+        }),
+        // The form fields only appear once the row values arrive
+        prefetchDelayMs: 200,
         executeResponse: {
           status: 400,
           body: {
@@ -1025,7 +1072,7 @@ describe("Actions > ActionViz > Action (dashboard state)", () => {
       });
       await userEvent.click(await screen.findByText("Click me"));
       const modal = await screen.findByTestId("action-parameters-input-modal");
-      const nameInput = within(modal).getByLabelText("Name");
+      const nameInput = await within(modal).findByLabelText("Name");
       await waitFor(() => expect(nameInput).toHaveValue("Jolly Jellyfish"));
       await userEvent.clear(nameInput);
       await userEvent.type(nameInput, "Kind Koalas");
