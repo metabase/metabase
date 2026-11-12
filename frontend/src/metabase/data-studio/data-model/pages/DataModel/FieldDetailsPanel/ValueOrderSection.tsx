@@ -1,7 +1,6 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { t } from "ttag";
 
-import { SidebarSection } from "metabase/common/components/DetailSidebar";
 import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import {
   ENUM_KINDS,
@@ -17,7 +16,16 @@ import {
   useValueOrder,
 } from "metabase/metadata/lifecycle";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Card, Group, Icon, Loader, Select, Stack, Text } from "metabase/ui";
+import {
+  Card,
+  Group,
+  Icon,
+  Loader,
+  Radio,
+  Select,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type { Field, Table } from "metabase-types/api";
 
 import { InferredIcon } from "../TableSection/InferenceReview";
@@ -60,9 +68,10 @@ export function ValueOrderSection({ field, table }: ValueOrderSectionProps) {
 
   const saveOrder = (values: OrderedValue[]) => setValueOrder(fieldId, values);
 
+  // The tab names the section, so it has no heading of its own
   return (
-    <SidebarSection title={t`Values`}>
-      <EnumKindSelect
+    <Stack gap="xl">
+      <EnumKindRadioGroup
         kind={enumKind}
         isInferred={
           overrides.enumKind == null && kindInference.kind !== "nominal"
@@ -79,15 +88,15 @@ export function ValueOrderSection({ field, table }: ValueOrderSectionProps) {
           onConfirm={() => saveOrder(order.values)}
         />
       )}
-    </SidebarSection>
+    </Stack>
   );
 }
 
 /**
- * How the values relate. Each option explains itself in the dropdown; a
- * guess carries the AI icon, and picking any option, even the guess, saves it.
+ * How the values relate, each option explained. Sync's guess carries the AI
+ * icon, which confirms it; picking any other option saves that one.
  */
-function EnumKindSelect({
+function EnumKindRadioGroup({
   kind,
   isInferred,
   inference,
@@ -101,52 +110,44 @@ function EnumKindSelect({
   onChange: (kind: EnumKind) => void;
 }) {
   return (
-    <Select
-      label={t`Kind`}
-      data={ENUM_KINDS.map((value) => ({
-        value,
-        label: getEnumKindLabel(value),
-      }))}
+    <Radio.Group
+      label={t`What kind of values are these?`}
       value={kind}
-      allowDeselect={false}
-      disabled={disabled}
-      leftSection={
-        isInferred ? (
-          <InferredIcon
-            description={inference}
-            onConfirm={disabled ? undefined : () => onChange(kind)}
-          />
-        ) : undefined
-      }
-      // "all" lets the AI icon be clicked and show its tooltip
-      leftSectionPointerEvents="all"
-      renderOption={({ option }) => {
-        const optionKind = ENUM_KINDS.find((known) => known === option.value);
-        return (
-          <Stack gap={2} py={2}>
-            <Text>{option.label}</Text>
-            {optionKind && (
-              <Text size="sm" c="text-secondary">
-                {getEnumKindDescription(optionKind)}
-              </Text>
-            )}
-          </Stack>
-        );
-      }}
-      // Fires for the current value too, so picking sync's guess confirms it
-      onOptionSubmit={(value) => {
+      onChange={(value) => {
         const option = ENUM_KINDS.find((known) => known === value);
         if (option) {
           onChange(option);
         }
       }}
-      data-testid="field-enum-kind-select"
-    />
+      data-testid="field-enum-kind-radio-group"
+    >
+      <Stack gap="md" mt="sm">
+        {ENUM_KINDS.map((option) => (
+          <Radio
+            key={option}
+            value={option}
+            disabled={disabled}
+            label={
+              <Group gap="xs" wrap="nowrap">
+                {getEnumKindLabel(option)}
+                {isInferred && option === kind && (
+                  <InferredIcon
+                    description={inference}
+                    onConfirm={disabled ? undefined : () => onChange(kind)}
+                  />
+                )}
+              </Group>
+            }
+            description={getEnumKindDescription(option)}
+          />
+        ))}
+      </Stack>
+    </Radio.Group>
   );
 }
 
 /**
- * The values in lifecycle order, right under the Kind row. While it's sync's
+ * The values in lifecycle order, right under the kinds. While it's sync's
  * guess, a line below says so, with the AI icon to confirm it; dragging a
  * value or changing a bucket also saves it.
  */
@@ -164,6 +165,7 @@ function ValueOrder({
   const hasValues = order.values.length > 0;
   return (
     <Stack gap="sm">
+      <Text fw="bold">{t`Values order`}</Text>
       {order.isLoading ? (
         <Loader size="xs" />
       ) : !hasValues ? (

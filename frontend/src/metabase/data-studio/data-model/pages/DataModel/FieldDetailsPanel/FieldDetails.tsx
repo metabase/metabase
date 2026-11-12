@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -21,7 +21,7 @@ import {
   canCoerceFieldType,
   getFieldRawName,
 } from "metabase/metadata/utils/field";
-import { Code, Stack, Switch, Tabs, Text } from "metabase/ui";
+import { Box, Code, Stack, Switch, Tabs, Text } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
@@ -29,6 +29,7 @@ import { trackMetadataChange } from "../../../analytics";
 import { DetailsEditableText } from "../DetailPanel";
 
 import { CustomFieldSection } from "./CustomFieldSection";
+import S from "./FieldDetails.module.css";
 import {
   FieldCorrectionInput,
   FieldHistoryRoleInput,
@@ -39,35 +40,55 @@ import { FieldSemanticsSection } from "./FieldSemanticsSection";
 import { GroupingsSection, useCanHaveGroupings } from "./GroupingsSection";
 import { ValueOrderSection, useHasValueKind } from "./ValueOrderSection";
 
-type FieldTab = "details" | "values" | "behavior" | "formatting";
+type FieldTab = "details" | "order" | "values" | "behavior" | "formatting";
 
-const FIELD_TABS: FieldTab[] = ["details", "values", "behavior", "formatting"];
+const FIELD_TABS: FieldTab[] = [
+  "details",
+  "order",
+  "values",
+  "behavior",
+  "formatting",
+];
+
+// The last tab picked, so the next field opens on it; resets on reload
+let lastPickedTab: FieldTab = "details";
 
 interface FieldDetailsProps {
   field: Field;
   table: Table;
   getFieldHref: (fieldId: FieldId) => string;
+  /**
+   * Shown above the tabs; with it, the header and tabs stick to the top of
+   * a scrolling panel
+   */
+  header?: ReactNode;
 }
 
 /**
  * A field's settings in the drawer, in tabs: its details and metadata, how
  * its values relate and group, and the shared behavior and formatting.
  */
-export function FieldDetails({ field, table }: FieldDetailsProps) {
+export function FieldDetails({ field, table, header }: FieldDetailsProps) {
   const readOnly = !table.can_write;
   const isHistoryTable = useIsHistoryTable(table);
   const isHistoryAttribute = useIsHistoryAttribute(field, table);
   const { handleNameChange, handleDescriptionChange } = useFieldUpdateHandlers({
     field,
   });
-  // PROTOTYPE: the tab lives in state, not the URL, and carries over when
-  // another field opens
-  const [tab, setTab] = useState<FieldTab>("details");
+  // PROTOTYPE: the tab lives in state, not the URL. Each field remounts this,
+  // so it starts on the last tab picked for any field
+  const [tab, setTab] = useState<FieldTab>(() => lastPickedTab);
   const hasValueKind = useHasValueKind(field);
   const canHaveGroupings = useCanHaveGroupings(field, table);
-  const hasValuesTab = hasValueKind || canHaveGroupings;
-  // A field with nothing on Values falls back to Details
-  const visibleTab = tab === "values" && !hasValuesTab ? "details" : tab;
+  // A field without the picked tab falls back to Details
+  const isTabShown: Record<FieldTab, boolean> = {
+    details: true,
+    order: hasValueKind,
+    values: canHaveGroupings,
+    behavior: true,
+    formatting: true,
+  };
+  const visibleTab = isTabShown[tab] ? tab : "details";
   const saveName = (value: string) => {
     const name = value.trim();
     if (name.length > 0 && name !== field.display_name) {
@@ -82,30 +103,41 @@ export function FieldDetails({ field, table }: FieldDetailsProps) {
     }
   };
 
+  const tabList = (
+    // Bleeds into the panel's padding so the border spans the drawer
+    <Tabs.List mx="-xl" px="xl">
+      <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
+      {hasValueKind && <Tabs.Tab value="order">{t`Values`}</Tabs.Tab>}
+      {canHaveGroupings && <Tabs.Tab value="values">{t`Buckets`}</Tabs.Tab>}
+      <Tabs.Tab value="behavior">{t`Behavior`}</Tabs.Tab>
+      <Tabs.Tab value="formatting">{t`Formatting`}</Tabs.Tab>
+    </Tabs.List>
+  );
+
   return (
     <Tabs
       value={visibleTab}
       onChange={(value) => {
         const next = FIELD_TABS.find((known) => known === value);
         if (next) {
+          lastPickedTab = next;
           setTab(next);
         }
       }}
       data-testid="field-section"
     >
-      {/* Bleeds into the panel's padding so the border spans the drawer */}
-      <Tabs.List mb="xl" mx="-xl" px="xl">
-        <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
-        {hasValuesTab && (
-          <Tabs.Tab value="values">{t`Value grouping`}</Tabs.Tab>
-        )}
-        <Tabs.Tab value="behavior">{t`Behavior`}</Tabs.Tab>
-        <Tabs.Tab value="formatting">{t`Formatting`}</Tabs.Tab>
-      </Tabs.List>
+      {header != null ? (
+        <Stack className={S.stickyHeader} gap="xl" pt="xl" mb="xl">
+          {header}
+          {tabList}
+        </Stack>
+      ) : (
+        <Box mb="xl">{tabList}</Box>
+      )}
 
       <Tabs.Panel value="details">
         <Stack gap="xxl">
-          <SidebarSection title={t`Details`}>
+          <SidebarSection title={t`About`}>
             <DetailsTable>
               <DetailsRow
                 label={t`Display name`}
@@ -140,6 +172,10 @@ export function FieldDetails({ field, table }: FieldDetailsProps) {
                   />
                 }
               />
+            </DetailsTable>
+          </SidebarSection>
+          <SidebarSection title={t`Structure`}>
+            <DetailsTable>
               <DetailsRow
                 label={t`Data type`}
                 value={<Code>{field.database_type}</Code>}
@@ -187,12 +223,15 @@ export function FieldDetails({ field, table }: FieldDetailsProps) {
         </Stack>
       </Tabs.Panel>
 
-      {hasValuesTab && (
+      {hasValueKind && (
+        <Tabs.Panel value="order">
+          <ValueOrderSection field={field} table={table} />
+        </Tabs.Panel>
+      )}
+
+      {canHaveGroupings && (
         <Tabs.Panel value="values">
-          <Stack gap="xxl">
-            <ValueOrderSection field={field} table={table} />
-            <GroupingsSection field={field} table={table} />
-          </Stack>
+          <GroupingsSection field={field} table={table} />
         </Tabs.Panel>
       )}
 

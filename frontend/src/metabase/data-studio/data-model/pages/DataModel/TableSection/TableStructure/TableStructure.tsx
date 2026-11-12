@@ -80,9 +80,12 @@ export function TableStructure({
   table,
   readOnly,
   hasTitle = true,
+  getFieldUrl,
 }: TableStructureProps & {
   /** Off drops the "Structure" heading, for a page that names the section */
   hasTitle?: boolean;
+  /** Where a grain column links; Connected data's field page by default */
+  getFieldUrl?: (fieldId: FieldId) => string;
 }) {
   const {
     getTableStructure,
@@ -147,7 +150,11 @@ export function TableStructure({
       <DetailsRow
         label={t`Grain`}
         value={
-          <GrainFields table={table} grainFields={structure.grainFields} />
+          <GrainFields
+            table={table}
+            grainFields={structure.grainFields}
+            getFieldUrl={getFieldUrl}
+          />
         }
       />
       <DetailsRow
@@ -409,9 +416,11 @@ function getMainDateInference({
 function GrainFields({
   table,
   grainFields,
+  getFieldUrl,
 }: {
   table: Table;
   grainFields: Field[];
+  getFieldUrl?: (fieldId: FieldId) => string;
 }) {
   if (grainFields.length === 0) {
     return (
@@ -428,13 +437,16 @@ function GrainFields({
           <Link
             key={fieldId}
             className={S.grainLink}
-            to={Urls.dataStudioData({
-              databaseId: table.db_id,
-              schemaName: table.schema,
-              tableId: table.id,
-              tab: "field",
-              fieldId,
-            })}
+            to={
+              getFieldUrl?.(fieldId) ??
+              Urls.dataStudioData({
+                databaseId: table.db_id,
+                schemaName: table.schema,
+                tableId: table.id,
+                tab: "field",
+                fieldId,
+              })
+            }
             aria-label={t`Open ${field.display_name}`}
           >
             <Pill size="md" className={S.grainPill}>

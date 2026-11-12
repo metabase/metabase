@@ -3,7 +3,6 @@ import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
-import { SidebarSection } from "metabase/common/components/DetailSidebar";
 import {
   type Grouping,
   type GroupingInferenceContext,
@@ -95,59 +94,55 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
     resolved.isDefaultInferred && resolved.defaultInference
       ? t`Inferred: ${resolved.defaultInference.signal}`
       : null;
-  const isBuiltInDefault = resolved.builtIns.some(
-    ({ name }) => name === defaultName,
-  );
-  // The default leads; the rest keep their order
-  const groupings = [
-    ...resolved.groupings.filter(({ name }) => name === defaultName),
-    ...resolved.groupings.filter(({ name }) => name !== defaultName),
+  // The default leads; then built-ins, then sync's and an admin's
+  const all = [
+    ...resolved.builtIns.map((grouping) => ({
+      grouping: { ...grouping, isInferred: false },
+      isBuiltIn: true,
+    })),
+    ...resolved.groupings.map((grouping) => ({ grouping, isBuiltIn: false })),
   ];
-  const builtInCard = resolved.builtIns.length > 0 && (
-    <BuiltInGroupingsCard
-      builtIns={resolved.builtIns}
-      defaultName={isBuiltInDefault ? defaultName : undefined}
-      defaultInference={defaultInference}
-      readOnly={readOnly}
-      onMakeDefault={(name) => setDefaultGrouping(fieldId, name)}
-    />
-  );
+  const listed = [
+    ...all.filter(({ grouping }) => grouping.name === defaultName),
+    ...all.filter(({ grouping }) => grouping.name !== defaultName),
+  ];
 
+  // The tab names the section, so only its description and action show
   return (
-    <SidebarSection
-      title={t`Field value groupings`}
-      titleAside={
-        !readOnly && (
+    <Stack gap="lg">
+      <Flex justify="space-between" align="center" gap="md">
+        <Text size="sm" c="text-secondary">
+          {t`In the query builders, users can select these in the Group By section.`}
+        </Text>
+        {!readOnly && (
           <Button
             size="compact-sm"
             variant="subtle"
             leftSection={<Icon name="add" />}
             onClick={() => setEditor({ grouping: undefined })}
           >
-            {t`Add grouping`}
+            {t`Add bucket`}
           </Button>
-        )
-      }
-      description={t`In the query builders, users can select these in the Group By section.`}
-    >
+        )}
+      </Flex>
       <Stack gap={rem(12)} role="list">
-        {isBuiltInDefault && builtInCard}
-        {groupings.map((grouping) => (
+        {listed.map(({ grouping, isBuiltIn }) => (
           <GroupingCard
-            key={grouping.name}
+            key={`${isBuiltIn ? "built-in" : "custom"}:${grouping.name}`}
             field={field}
             grouping={grouping}
             context={resolved.context}
             isDefault={grouping.name === defaultName}
             defaultInference={defaultInference}
             readOnly={readOnly}
+            isBuiltIn={isBuiltIn}
             onOpen={() => setEditor({ grouping })}
             onMakeDefault={() => setDefaultGrouping(fieldId, grouping.name)}
+            onRemove={() => removeGrouping(fieldId, grouping.name)}
             onConfirm={() => confirmGrouping(fieldId, grouping.name)}
           />
         ))}
-        {!isBuiltInDefault && builtInCard}
-        {resolved.groupings.length === 0 && resolved.builtIns.length === 0 && (
+        {listed.length === 0 && (
           <ListEmptyItem>{t`No groupings yet`}</ListEmptyItem>
         )}
       </Stack>
@@ -175,7 +170,7 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
           onClose={() => setEditor(null)}
         />
       )}
-    </SidebarSection>
+    </Stack>
   );
 }
 
@@ -197,8 +192,10 @@ function GroupingCard({
   isDefault,
   defaultInference,
   readOnly,
+  isBuiltIn,
   onOpen,
   onMakeDefault,
+  onRemove,
   onConfirm,
 }: {
   field: Field;
@@ -208,8 +205,11 @@ function GroupingCard({
   /** Why sync picked the default, while it's still a guess */
   defaultInference: string | null;
   readOnly: boolean;
+  /** Every column of its type has it; it can be the default, not edited */
+  isBuiltIn: boolean;
   onOpen: () => void;
   onMakeDefault: () => void;
+  onRemove: () => void;
   onConfirm: () => void;
 }) {
   const isProcess =
@@ -235,23 +235,26 @@ function GroupingCard({
       : t`Segment group not found`);
   const bucketCount = getGroupingBucketCount(grouping, descriptionContext);
   const isDefaultGuess = isDefault && defaultInference != null;
-  // Confirming is the AI icons' job; the menu only makes it the default
-  const hasActions = !readOnly && !isDefault;
+  // Built-ins can't be edited, so only the others open
+  const isEditable = !readOnly && !isBuiltIn;
+  // Confirming is the AI icons' job; the menu makes it the default, and
+  // removes it unless it's built in
+  const hasActions = !readOnly && (!isDefault || !isBuiltIn);
 
   return (
     <Card
-      className={readOnly ? undefined : S.card}
-      role={readOnly ? "listitem" : "button"}
-      tabIndex={readOnly ? undefined : 0}
+      className={isEditable ? S.card : undefined}
+      role={isEditable ? "button" : "listitem"}
+      tabIndex={isEditable ? 0 : undefined}
       aria-label={grouping.name}
       px="lg"
       py={rem(12)}
       radius="lg"
       shadow="none"
       withBorder
-      onClick={readOnly ? undefined : onOpen}
+      onClick={isEditable ? onOpen : undefined}
       onKeyDown={(event) => {
-        if (!readOnly && event.key === "Enter") {
+        if (isEditable && event.key === "Enter") {
           onOpen();
         }
       }}
@@ -263,11 +266,18 @@ function GroupingCard({
             <Text fw="bold" truncate>
               {grouping.name}
             </Text>
-            {grouping.isInferred && grouping.signal != null && (
-              <InferredIcon
-                description={t`Inferred: ${grouping.signal}`}
-                onConfirm={readOnly ? undefined : onConfirm}
-              />
+            {isBuiltIn ? (
+              <Badge variant="light" color="neutral" flex="0 0 auto">
+                {t`Built-in`}
+              </Badge>
+            ) : (
+              grouping.isInferred &&
+              grouping.signal != null && (
+                <InferredIcon
+                  description={t`Inferred: ${grouping.signal}`}
+                  onConfirm={readOnly ? undefined : onConfirm}
+                />
+              )
             )}
             {isDefault && (
               <DefaultBadge
@@ -294,12 +304,23 @@ function GroupingCard({
                 </ActionIcon>
               </Menu.Target>
               <Menu.Dropdown>
-                <Menu.Item
-                  leftSection={<Icon name="star" />}
-                  onClick={onMakeDefault}
-                >
-                  {t`Make default`}
-                </Menu.Item>
+                {!isDefault && (
+                  <Menu.Item
+                    leftSection={<Icon name="star" />}
+                    onClick={onMakeDefault}
+                  >
+                    {t`Make default`}
+                  </Menu.Item>
+                )}
+                {!isBuiltIn && (
+                  <Menu.Item
+                    leftSection={<Icon name="trash" />}
+                    c="feedback-negative"
+                    onClick={onRemove}
+                  >
+                    {t`Remove`}
+                  </Menu.Item>
+                )}
               </Menu.Dropdown>
             </Menu>
           </Box>
@@ -309,92 +330,11 @@ function GroupingCard({
   );
 }
 
-/**
- * The time units and bins every column of its type has: not editable, but
- * one of them can be the default.
- */
-function BuiltInGroupingsCard({
-  builtIns,
-  defaultName,
-  defaultInference,
-  readOnly,
-  onMakeDefault,
-}: {
-  builtIns: Grouping[];
-  /** Set when the default is one of these */
-  defaultName: string | undefined;
-  defaultInference: string | null;
-  readOnly: boolean;
-  onMakeDefault: (name: string) => void;
-}) {
-  const isDefaultGuess = defaultName != null && defaultInference != null;
-  return (
-    <Card
-      role="listitem"
-      aria-label={t`Built-in groupings`}
-      px="lg"
-      py={rem(12)}
-      radius="lg"
-      shadow="none"
-      withBorder
-    >
-      <Group justify="space-between" wrap="nowrap" gap="md">
-        <Stack gap="xxs" miw={0}>
-          <Flex align="center" gap="sm">
-            <Icon name="list" c="text-secondary" />
-            <Text fw="bold">{t`Built-in`}</Text>
-            {defaultName != null && (
-              <DefaultBadge
-                label={t`Default: ${defaultName}`}
-                inference={isDefaultGuess ? defaultInference : null}
-                onConfirm={
-                  readOnly ? undefined : () => onMakeDefault(defaultName)
-                }
-              />
-            )}
-          </Flex>
-          <Text size="sm" c="text-secondary">
-            {builtIns.map(({ name }) => name).join(", ")}
-          </Text>
-        </Stack>
-        {!readOnly && (
-          <Menu position="bottom-end">
-            <Menu.Target>
-              <ActionIcon
-                variant="subtle"
-                aria-label={t`Make a built-in grouping the default`}
-              >
-                <Icon name="ellipsis" />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown mah={320} style={{ overflowY: "auto" }}>
-              <Menu.Label>{t`Make default`}</Menu.Label>
-              {builtIns.map(({ name }) => (
-                <Menu.Item
-                  key={name}
-                  rightSection={
-                    name === defaultName ? <Icon name="check" /> : null
-                  }
-                  onClick={() => onMakeDefault(name)}
-                >
-                  {name}
-                </Menu.Item>
-              ))}
-            </Menu.Dropdown>
-          </Menu>
-        )}
-      </Group>
-    </Card>
-  );
-}
-
 /** Marks the grouping Group by uses unless someone picks another */
 function DefaultBadge({
-  label = t`Default`,
   inference,
   onConfirm,
 }: {
-  label?: string;
   /** Why sync picked it, while it's still a guess */
   inference: string | null;
   /** Confirms sync's pick, from its AI icon */
@@ -402,7 +342,7 @@ function DefaultBadge({
 }) {
   return (
     <Group gap="xs" wrap="nowrap" flex="0 0 auto">
-      <Badge variant="light">{label}</Badge>
+      <Badge variant="light">{t`Default`}</Badge>
       {inference != null && (
         <InferredIcon description={inference} onConfirm={onConfirm} />
       )}

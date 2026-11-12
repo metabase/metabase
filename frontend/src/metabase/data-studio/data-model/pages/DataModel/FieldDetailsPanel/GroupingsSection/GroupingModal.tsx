@@ -159,13 +159,22 @@ export function GroupingModal({
     <Modal
       opened
       size="lg"
-      title={grouping ? t`Edit grouping` : t`New grouping`}
+      title={grouping ? t`Edit bucket` : t`New bucket`}
       onClose={onClose}
     >
       <Stack gap="xl">
         <TextInput
           label={t`Name`}
           description={t`People see this name in Group by.`}
+          placeholder={getNamePlaceholder({
+            field,
+            fields: table.fields ?? [],
+            kind,
+            timeDraft,
+            binsDraft,
+            partitionDraft,
+            context,
+          })}
           value={name}
           required
           autoFocus
@@ -213,7 +222,7 @@ export function GroupingModal({
             mr="auto"
             onClick={onRemove}
           >
-            {t`Remove this group`}
+            {t`Remove this bucket`}
           </Button>
         )}
         <Button onClick={onClose}>{t`Cancel`}</Button>
@@ -333,6 +342,86 @@ function getPartitionDraft(
           ),
         ),
       };
+  }
+}
+
+const QUANTILE_NAMES: Record<number, () => string> = {
+  4: () => t`quartile`,
+  5: () => t`quintile`,
+  10: () => t`decile`,
+};
+
+/** An example name for what the drafts describe, like "Amount quartile" */
+function getNamePlaceholder({
+  field,
+  fields,
+  kind,
+  timeDraft,
+  binsDraft,
+  partitionDraft,
+  context,
+}: {
+  field: Field;
+  fields: Field[];
+  kind: Grouping["kind"];
+  timeDraft: TimeDraft;
+  binsDraft: BinsDraft;
+  partitionDraft: PartitionDraft;
+  context: GroupingInferenceContext;
+}): string {
+  const fieldName = field.display_name;
+  if (kind === "time") {
+    switch (timeDraft.mode) {
+      case "unit":
+        return `${fieldName} ${getTimeUnitLabel(timeDraft.unit).toLowerCase()}`;
+      case "extract":
+        return `${fieldName} ${getTimeExtractLabel(timeDraft.extract).toLowerCase()}`;
+      case "elapsed": {
+        if (timeDraft.elapsedTo === "now") {
+          return t`Age in ${getElapsedUnitLabel(timeDraft.elapsedUnit)}`;
+        }
+        const other = fields.find(
+          (known) => String(getRawTableFieldId(known)) === timeDraft.elapsedTo,
+        );
+        return other
+          ? t`Time to ${other.display_name.toLowerCase()}`
+          : t`Time between dates`;
+      }
+    }
+  }
+  if (kind === "bins") {
+    switch (binsDraft.mode) {
+      case "count":
+        return t`${fieldName} range`;
+      case "quantile": {
+        const count = binsDraft.quantileCount;
+        const quantile =
+          count != null && QUANTILE_NAMES[count]
+            ? QUANTILE_NAMES[count]()
+            : t`quantile`;
+        return `${fieldName} ${quantile}`;
+      }
+      case "edges":
+        return t`${fieldName} band`;
+    }
+  }
+  // A key's name without its "ID": "Account ID" groups by "Account …"
+  const baseName = fieldName.replace(/\s+ID$/i, "");
+  switch (partitionDraft.mode) {
+    case "related":
+      return t`${baseName} type`;
+    case "segment-group":
+      return (
+        context.segmentGroups.find(
+          ({ id }) => id === partitionDraft.segmentGroupId,
+        )?.name ?? t`${fieldName} group`
+      );
+    case "process":
+      return partitionDraft.processLevel === "order"
+        ? t`${fieldName} stage`
+        : t`${fieldName} outcome`;
+    case "value-map":
+      return t`${fieldName} group`;
   }
 }
 

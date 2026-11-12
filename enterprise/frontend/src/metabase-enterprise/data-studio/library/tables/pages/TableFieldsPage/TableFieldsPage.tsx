@@ -106,34 +106,10 @@ export function TableFieldsPage() {
               maw={680}
               mih={0}
               px="xl"
+              pb="xl"
               gap="xl"
               pos="relative"
             >
-              <Box
-                pt="xl"
-                pos="sticky"
-                top={0}
-                className={S.header}
-                bg="background_page-primary"
-              >
-                <DetailPanelHeader
-                  icon={getColumnIcon(Lib.legacyColumnTypeInfo(field))}
-                  label={t`Field`}
-                  title={field.display_name}
-                  isLoading={false}
-                  actions={
-                    <FieldActionsMenu
-                      fieldId={getRawTableFieldId(field)}
-                      onPreviewClick={togglePreview}
-                    />
-                  }
-                  onClose={() => {
-                    closePreview();
-                    navigate(Urls.dataStudioTableFields(table.id));
-                  }}
-                  data-testid="field-section-header"
-                />
-              </Box>
               <FieldDetails
                 /**
                  * Make sure internal component state is reset when changing fields.
@@ -144,6 +120,25 @@ export function TableFieldsPage() {
                 table={table}
                 getFieldHref={(fieldId) =>
                   Urls.dataStudioTableFields(tableId, fieldId)
+                }
+                header={
+                  <DetailPanelHeader
+                    icon={getColumnIcon(Lib.legacyColumnTypeInfo(field))}
+                    label={t`Field`}
+                    title={field.display_name}
+                    isLoading={false}
+                    actions={
+                      <FieldActionsMenu
+                        fieldId={getRawTableFieldId(field)}
+                        onPreviewClick={togglePreview}
+                      />
+                    }
+                    onClose={() => {
+                      closePreview();
+                      navigate(Urls.dataStudioTableFields(table.id));
+                    }}
+                    data-testid="field-section-header"
+                  />
                 }
               />
             </Stack>

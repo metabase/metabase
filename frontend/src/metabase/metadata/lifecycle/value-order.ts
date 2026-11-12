@@ -45,11 +45,11 @@ export type ValueOrderInference = {
 export function getEnumKindLabel(kind: EnumKind): string {
   switch (kind) {
     case "nominal":
-      return t`Unordered`;
+      return t`Categories with no order`;
     case "ordinal":
-      return t`Ordered`;
+      return t`Ordered steps or levels`;
     case "cyclic":
-      return t`Cyclic`;
+      return t`A repeating cycle`;
     case "boolean":
       return t`Yes or no`;
   }
@@ -59,11 +59,11 @@ export function getEnumKindLabel(kind: EnumKind): string {
 export function getEnumKindDescription(kind: EnumKind): string {
   switch (kind) {
     case "nominal":
-      return t`No order, like countries or colors.`;
+      return t`Like countries or colors.`;
     case "ordinal":
-      return t`A set order, like deal stages or priorities.`;
+      return t`Like deal stages or priorities.`;
     case "cyclic":
-      return t`An order that loops back, like days of the week.`;
+      return t`Like days of the week.`;
     case "boolean":
       return t`Two values: true and false.`;
   }
