@@ -4367,6 +4367,8 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/ConnectionImpersonation
+                    :model/Dashboard
+                    :model/DashboardCard
                     :model/DataPermissions
                     :model/Database
                     :model/DatabaseRouter
