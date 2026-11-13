@@ -145,24 +145,47 @@
          (mc/into-schema (mc/type node) props children (mc/options node))
          node)))))
 
+(def ^:private annotation-keys
+  "JSON Schema keywords that describe a value without constraining it."
+  #{:$comment :default :deprecated :description :examples :readOnly :title :writeOnly})
+
+(def ^:private null-neutral-keys
+  "JSON Schema keywords that never reject a `null`: annotations, and assertions that apply only to another type."
+  (into annotation-keys
+        #{:additionalProperties :contains :contentEncoding :contentMediaType :contentSchema :dependentRequired
+          :dependentSchemas :exclusiveMaximum :exclusiveMinimum :format :items :maxContains :maxItems :maxLength
+          :maxProperties :maximum :minContains :minItems :minLength :minProperties :minimum :multipleOf :pattern
+          :patternProperties :prefixItems :properties :propertyNames :required :uniqueItems}))
+
 (defn- nullable
   "The JSON Schema accepting `null` or whatever JSON Schema `schema` accepts.
-  Where `schema` has one plain `:type`, returns it with `null` added to that type and to any `:enum`.
+  Where `schema` has one non-null `:type` and otherwise only [[null-neutral-keys]], returns it with `null` added to
+  that type and to any `:enum`.
   Otherwise returns `{:anyOf [schema {:type \"null\"}]}`, with `schema`'s description moved up beside the `anyOf`."
   [schema]
   (let [{:keys [type description]} schema]
-    ;; a type array cannot express a `const`, and `null` must join an `enum` or the enum rejects it
+    ;; any other keyword (`const`, `not`, `$ref`, a branch or a conditional) may reject the `null` a type array admits
     (if (and (string? type)
-             (not-any? #(contains? schema %) [:oneOf :anyOf :allOf :const]))
+             (not= "null" type)
+             (every? (conj null-neutral-keys :type :enum) (keys schema)))
       (cond-> (assoc schema :type [type "null"])
-        (:enum schema) (update :enum #(conj (vec %) nil)))
+        ;; an enum rejects a `null` it does not list
+        (:enum schema) (update :enum #(vec (distinct (conj (vec %) nil)))))
       (cond-> {:anyOf [(dissoc schema :description) {:type "null"}]}
         description (assoc :description description)))))
 
+(defn- one-of-replacement
+  "What replaces the `oneOf` `branches`: [[nullable]] X for `[X {:type \"null\"}]`, Malli's rendering of `[:maybe X]`,
+  and otherwise an `anyOf` of the same branches."
+  [[x y :as branches]]
+  (if (and (= 2 (count branches)) (= {:type "null"} y))
+    (nullable x)
+    {:anyOf branches}))
+
 (defn- without-one-of
-  "Rewrite every `oneOf` in a JSON Schema.
-  A `{:oneOf [X {:type \"null\"}]}`, Malli's rendering of `[:maybe X]`, becomes [[nullable]] X.
-  Any other `oneOf`, such as a `:multi`'s, becomes an `anyOf` of the same branches."
+  "Rewrite every `oneOf` in a JSON Schema as its [[one-of-replacement]].
+  Keywords beside the `oneOf` stay; where one of them would clash with the replacement's, the replacement joins
+  them under `allOf` instead."
   [json-schema]
   ;; A client validator that coerces types turns `false`, `0` and `""` into `null`, so they match both branches of a
   ;; nullable `oneOf` and fail it, where an `anyOf` or a type array passes them.
@@ -170,18 +193,16 @@
   ;; OpenAI's strict tool mode rejects `oneOf` anywhere in a tool schema.
   ;; Only subschemas are visited: a `oneOf` key inside a `const`, `enum` or `default` value is data, and stays.
   (mu.json-schema/postwalk-schemas
-   (fn [{[x y :as branches] :oneOf :as node}]
-     (cond
-       ;; [:maybe X]; whatever sits beside the `oneOf` (a description on the `[:maybe]` itself, say) stays
-       (and (= 2 (count branches)) (= {:type "null"} y))
-       (merge (nullable x) (dissoc node :oneOf))
-
-       ;; any other branching, such as a :multi
-       branches
-       (-> node (dissoc :oneOf) (update :anyOf #(into (vec %) branches)))
-
-       :else
-       node))
+   (fn [{branches :oneOf :as node}]
+     (if-not branches
+       node
+       (let [siblings    (dissoc node :oneOf)
+             replacement (one-of-replacement branches)]
+         ;; a sibling `anyOf` or `type` constrains the value as well, so merging into it would change the schema;
+         ;; a sibling annotation (the `[:maybe]`'s own description, say) wins over the replacement's
+         (if (some #(contains? siblings %) (remove annotation-keys (keys replacement)))
+           (update siblings :allOf (fnil conj []) replacement)
+           (merge replacement siblings)))))
    json-schema))
 
 (defn malli->json-schema
