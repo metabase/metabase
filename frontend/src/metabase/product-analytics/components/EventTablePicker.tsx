@@ -20,8 +20,7 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import { isConcreteTableId } from "metabase-types/api";
-import type { ConcreteTableId, Table, TableId } from "metabase-types/api";
+import type { Table, TableId } from "metabase-types/api";
 
 import S from "./EventTablePicker.module.css";
 import { getEventTablePickerOptions } from "./event-table-picker-options";
@@ -42,10 +41,10 @@ const matchesSearch = (table: Table, searchQuery: string) => {
 };
 
 type EventTablePickerProps = {
-  tableId: ConcreteTableId | undefined;
+  tableId: TableId | undefined;
   /** Opens the picker on mount, for a page that has no table yet. */
   isInitiallyOpened?: boolean;
-  onChange: (tableId: ConcreteTableId) => void;
+  onChange: (tableId: TableId) => void;
 };
 
 /**
@@ -67,10 +66,7 @@ export const EventTablePicker = ({
   );
   const tables = useListTablesQuery({ "entity-type": EVENT_TABLE_ENTITY_TYPE });
   const setUpTables = useMemo(
-    () =>
-      (tables.data ?? []).filter(
-        (item) => isConcreteTableId(item.id) && isEventTableSetUp(item),
-      ),
+    () => (tables.data ?? []).filter((item) => isEventTableSetUp(item)),
     [tables.data],
   );
   const isSearching = searchQuery.trim().length > 0;
@@ -97,9 +93,7 @@ export const EventTablePicker = ({
   };
 
   const handleChange = (id: TableId) => {
-    if (isConcreteTableId(id)) {
-      onChange(id);
-    }
+    onChange(id);
     setIsOpened(false);
     setIsBrowsing(false);
     setSearchQuery("");
@@ -196,7 +190,11 @@ export const EventTablePicker = ({
           models={["table"]}
           shouldDisableItem={pickerOptions.shouldDisableItem}
           options={pickerOptions.options}
-          onChange={handleChange}
+          onChange={(item) => {
+            if (item.model === "table") {
+              handleChange(item.id);
+            }
+          }}
           onClose={() => {
             setIsBrowsing(false);
             setIsOpened(false);

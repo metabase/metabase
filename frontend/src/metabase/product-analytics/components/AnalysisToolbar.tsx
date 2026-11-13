@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import type { SettingKey, SettingWidget } from "metabase/event-tables";
 import { ActionIcon, Badge, Button, Group, Icon, Tooltip } from "metabase/ui";
-import type { ConcreteTableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import type { CommonSettings } from "../analyses/types";
 import { useSegmentDrag, useSegmentDropTarget } from "../segments/drag-context";
@@ -21,10 +21,10 @@ const findSetting = (
 
 type AnalysisToolbarProps = {
   widgets: SettingWidget[];
-  tableId: ConcreteTableId | undefined;
+  tableId: TableId | undefined;
   tableName: string | undefined;
   /** Absent when the table is fixed, as it is for a saved analysis. */
-  onTableChange?: (tableId: ConcreteTableId) => void;
+  onTableChange?: (tableId: TableId) => void;
   isSegmentsOpen: boolean;
   onToggleSegments: () => void;
   /** The segments button is hovered, so the segments panel can show it's the one. */

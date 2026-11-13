@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useUpdateCardMutation } from "metabase/api";
@@ -13,10 +12,10 @@ import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import { ActivityTimeline } from "metabase/common/data-studio/components/ActivityTimelineCard";
 import { useToast } from "metabase/common/hooks";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { QuestionDetails } from "metabase/questions/components/QuestionDetails";
 import { Stack } from "metabase/ui";
-import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
 type AnalysisInfoSidesheetProps = {
@@ -38,7 +37,7 @@ export const AnalysisInfoSidesheet = ({
 }: AnalysisInfoSidesheetProps) => {
   const [updateCard] = useUpdateCardMutation();
   const [sendToast] = useToast();
-  const question = useMemo(() => new Question(card), [card]);
+  const question = useQuestionFromCard(card);
   const canWrite = card.can_write && !card.archived;
 
   const handleDescriptionChange = async (description: string | null) => {

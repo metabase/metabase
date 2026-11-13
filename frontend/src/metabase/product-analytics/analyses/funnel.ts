@@ -5,7 +5,7 @@ import { SegmentedControl } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { SeriesSettings, VisualizationSettings } from "metabase-types/api";
 
 import { EventSegmentsToggle } from "../components/events/EventSegmentsToggle";
 import { DisqualifierListWidget } from "../components/settings/DisqualifierListWidget";
@@ -337,7 +337,7 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
           // One line per step after the first, keyed by its label.
           series_settings: Object.fromEntries(
             getStepLabels(settings)
-              .map((label, index) => [
+              .map((label, index): [string, SeriesSettings] => [
                 label,
                 { color: getStepColor(view, index, colors) },
               ])

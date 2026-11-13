@@ -10,7 +10,7 @@ import {
   getUsersTableLink,
   isEventTableSetUp,
 } from "metabase/event-tables";
-import type { ConcreteTableId, Table } from "metabase-types/api";
+import type { Table, TableId } from "metabase-types/api";
 
 import { getColumnRoles } from "./analyses/common-settings";
 import { getAnalysisConfig } from "./analyses/config";
@@ -32,7 +32,7 @@ const SUPPORTED_ENGINE = "clickhouse";
 
 type UseAnalysisArgs<K extends AnalysisKind> = {
   kind: K;
-  tableId: ConcreteTableId | undefined;
+  tableId: TableId | undefined;
   stored: StoredSettings;
   onChangeSettings: (changes: Partial<AnalysisSettingsByKind[K]>) => void;
   /** Colors picked in the display panel. */

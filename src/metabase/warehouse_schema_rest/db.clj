@@ -6,6 +6,7 @@
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -80,7 +81,7 @@
    :- [:map {:closed true}
        [:term                       {:optional true} [:maybe :string]]
        [:visibility-type            {:optional true} [:maybe :string]]
-       [:entity-type                {:optional true} [:maybe :string]]
+       [:entity-type                {:optional true} [:maybe [:or :keyword :string]]]
        [:data-layer                 {:optional true} [:maybe [:or :keyword :string]]]
        [:data-source                {:optional true} [:maybe [:or :keyword :string]]]
        [:owner-user-id              {:optional true} [:maybe :int]]
@@ -111,7 +112,7 @@
                                                     ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
                                                     (like :display_name #(str "% " %))])
                      visibility-type         (conj [:= :visibility_type visibility-type])
-                     entity-type             (conj [:= :entity_type     entity-type])
+                     entity-type             (conj [:= :entity_type     (u/qualified-name entity-type)])
                      data-layer              (conj [:= :data_layer      (name data-layer)])
                      data-source             (conj [:= :data_source     (name data-source)])
                      owner-user-id           (conj [:= :owner_user_id   owner-user-id])

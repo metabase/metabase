@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -31,7 +31,10 @@ import type { QuestionSharingModalType } from "metabase/embedding/components/Sha
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useSharingModal } from "metabase/embedding/hooks/use-sharing-modal";
 import { trackPublicLinkCopied } from "metabase/embedding/lib/analytics";
-import { useMetadataProvider } from "metabase/metadata-store";
+import {
+  useMetadataProvider,
+  useQuestionFromCard,
+} from "metabase/metadata-store";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
 import {
@@ -48,7 +51,7 @@ import { useSetting } from "metabase/settings";
 import { Box, CopyButton, Flex, Icon, Menu, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   Card,
   Dataset,
@@ -101,16 +104,10 @@ export const AnalysisActionsMenu = ({
 }: AnalysisActionsMenuProps) => {
   const [modal, setModal] = useState<ModalType>();
   const [isInfoOpen, setIsInfoOpen] = useState(false);
-  const savedQuestion = useMemo(
-    () => (savedCard !== undefined ? new Question(savedCard) : undefined),
-    [savedCard],
-  );
+  const savedQuestion = useQuestionFromCard(savedCard);
   // The chart's own card, so a PNG or a chart copy finds the chart by its id.
   const resultCard = rawSeries?.[0].card;
-  const resultQuestion = useMemo(
-    () => (resultCard !== undefined ? new Question(resultCard) : undefined),
-    [resultCard],
-  );
+  const resultQuestion = useQuestionFromCard(resultCard);
   const siteUrl = useSetting("site-url");
   // The analysis page itself, rather than the query builder's URL, which
   // would redirect here.
@@ -424,6 +421,7 @@ type ManageSectionsProps = {
  */
 const ManageSections = ({ card, onOpenModal }: ManageSectionsProps) => {
   const metadataProvider = useMetadataProvider(card.dataset_query.database);
+  const question = useQuestionFromCard(card);
   const moderationItems = PLUGIN_MODERATION.useCardMenuItems(card);
   const canWrite = card.can_write;
   const canDuplicate = Lib.queryDisplayInfo(
@@ -432,7 +430,7 @@ const ManageSections = ({ card, onOpenModal }: ManageSectionsProps) => {
   const canEditCaching =
     canWrite &&
     PLUGIN_CACHING.isGranularCachingEnabled() &&
-    PLUGIN_CACHING.hasQuestionCacheSection(new Question(card));
+    PLUGIN_CACHING.hasQuestionCacheSection(question);
 
   return (
     <>

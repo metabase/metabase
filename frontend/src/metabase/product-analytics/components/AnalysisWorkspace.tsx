@@ -10,11 +10,7 @@ import type { StoredSettings } from "metabase/event-tables";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { useNavigate } from "metabase/router";
 import { Group, Stack } from "metabase/ui";
-import type {
-  Card,
-  ConcreteTableId,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { Card, TableId, VisualizationSettings } from "metabase-types/api";
 
 import { withBreakoutSegment } from "../analyses/breakout";
 import { pickSettingsForKind } from "../analyses/config";
@@ -58,11 +54,11 @@ const TIMELINE_SETTING_KEYS = [
 
 type AnalysisWorkspaceProps<K extends AnalysisKind> = {
   kind: K;
-  tableId: ConcreteTableId | undefined;
+  tableId: TableId | undefined;
   savedCard?: Card;
   savedSettings?: StoredSettings;
   /** For a new analysis, where the toolbar's picker picks the table. */
-  onTableChange?: (tableId: ConcreteTableId) => void;
+  onTableChange?: (tableId: TableId) => void;
 };
 
 /**

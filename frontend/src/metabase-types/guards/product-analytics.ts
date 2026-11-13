@@ -4,7 +4,6 @@ import {
   type ProductAnalyticsDefinition,
   type ProductAnalyticsKind,
   type VisualizationSettings,
-  isConcreteTableId,
 } from "metabase-types/api";
 
 import { isRecord } from "./common";
@@ -24,7 +23,6 @@ export function getProductAnalyticsDefinition(
     definition.version !== 1 ||
     !isProductAnalyticsKind(definition.kind) ||
     typeof definition.table_id !== "number" ||
-    !isConcreteTableId(definition.table_id) ||
     !isRecord(definition.settings)
   ) {
     return undefined;

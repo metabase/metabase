@@ -648,6 +648,8 @@ export type VisualizationSettings = {
   /** Draw timeline events on time series charts. */
   "timeline_events.enabled"?: boolean;
 
+  "cohort.color"?: string;
+
   [key: string]: any;
 } & EmbedVisualizationSettings;
 

@@ -1,19 +1,21 @@
 import { act } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardCreateEndpoint,
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
 import { renderHookWithProviders } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
-  createMockNativeDatasetQuery,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -25,7 +27,9 @@ const ANALYSIS_CARD: AnalysisCard = {
   name: "Funnel analysis",
   type: "question",
   display: "funnel",
-  dataset_query: createMockNativeDatasetQuery(),
+  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: "SELECT 1",
+  }),
   visualization_settings: {},
 };
 
@@ -182,7 +186,10 @@ describe("useSaveAnalysis", () => {
 
       await act(() =>
         result.current.handleCreate(
-          new Question({ ...ANALYSIS_CARD, collection_id: 3 }),
+          new Question(
+            { ...ANALYSIS_CARD, collection_id: 3 },
+            createMockMetadata(),
+          ),
         ),
       );
 
@@ -204,7 +211,10 @@ describe("useSaveAnalysis", () => {
 
       await act(() =>
         result.current.handleCreate(
-          new Question({ ...ANALYSIS_CARD, dashboard_id: 7 }),
+          new Question(
+            { ...ANALYSIS_CARD, dashboard_id: 7 },
+            createMockMetadata(),
+          ),
           { dashboardTabId: 9 },
         ),
       );

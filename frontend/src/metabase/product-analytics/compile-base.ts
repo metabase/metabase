@@ -1,5 +1,5 @@
 import * as Lib from "metabase-lib";
-import type { DatasetQuery } from "metabase-types/api";
+import type { DatabaseId, DatasetQuery } from "metabase-types/api";
 
 /**
  * `/api/dataset/native` body for a Lib query, with the default row cap off.
@@ -15,3 +15,11 @@ export const nativeCompileRequest = (query: Lib.Query): DatasetQuery => {
     middleware: { "disable-max-results?": true },
   }) as unknown as DatasetQuery;
 };
+
+/** An `/api/dataset` query that runs `sql` as is. */
+export const nativeDatasetQuery = (
+  metadataProvider: Lib.MetadataProvider,
+  databaseId: DatabaseId,
+  sql: string,
+): DatasetQuery =>
+  Lib.toJsQuery(Lib.nativeQuery(databaseId, metadataProvider, sql));

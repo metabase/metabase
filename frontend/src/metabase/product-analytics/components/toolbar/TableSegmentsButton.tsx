@@ -2,15 +2,15 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { Button, Icon, Tooltip } from "metabase/ui";
-import type { ConcreteTableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import { EventTablePicker } from "../EventTablePicker";
 
 type TableSegmentsButtonProps = {
-  tableId: ConcreteTableId | undefined;
+  tableId: TableId | undefined;
   tableName: string | undefined;
   /** Absent when the table is fixed, as it is for a saved analysis. */
-  onTableChange?: (tableId: ConcreteTableId) => void;
+  onTableChange?: (tableId: TableId) => void;
   isSegmentsOpen: boolean;
   onToggleSegments: () => void;
   /** The segments button is hovered, so the open panel can show it's the one. */

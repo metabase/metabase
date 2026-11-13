@@ -2,11 +2,8 @@ import { createMockMetadata } from "__support__/metadata";
 import type { UsersTableLink } from "metabase/event-tables";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import { SAMPLE_DATABASE } from "metabase-lib/test-helpers";
-import {
-  createMockSegment,
-  createMockStructuredDatasetQuery,
-} from "metabase-types/api/mocks";
+import { SAMPLE_DATABASE, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { createMockSegment } from "metabase-types/api/mocks";
 import { PEOPLE, PEOPLE_ID } from "metabase-types/api/mocks/presets";
 
 import { createFlagAllocator } from "../events/allocate-flags";
@@ -27,11 +24,22 @@ const PROVIDER = Lib.metadataProvider(
         id: SEGMENT_ID,
         name: "Californians",
         table_id: PEOPLE_ID,
-        definition: createMockStructuredDatasetQuery({
-          query: {
-            "source-table": PEOPLE_ID,
-            filter: ["=", ["field", PEOPLE.STATE, null], "CA"],
-          },
+        definition: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: PEOPLE_ID },
+              filters: [
+                {
+                  type: "operator",
+                  operator: "=",
+                  args: [
+                    { type: "column", fieldId: PEOPLE.STATE },
+                    { type: "literal", value: "CA" },
+                  ],
+                },
+              ],
+            },
+          ],
         }),
       }),
     ],

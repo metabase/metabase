@@ -22,8 +22,10 @@ export const getEventTablePickerOptions = ({
   setUpTableIds,
   canSetUpTables,
 }: EventTablePickerOptionsArgs) => {
+  const isSetUp = (item: OmniPickerItem) =>
+    typeof item.id === "number" && setUpTableIds.has(item.id);
   const isUnavailable = (item: OmniPickerItem) =>
-    !canSetUpTables && item.model === "table" && !setUpTableIds.has(item.id);
+    !canSetUpTables && item.model === "table" && !isSetUp(item);
   const options: EntityPickerOptions = {
     hasRootCollection: false,
     hasPersonalCollections: false,

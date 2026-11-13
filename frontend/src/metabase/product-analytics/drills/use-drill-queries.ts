@@ -13,6 +13,7 @@ import { getActorGrain } from "../analyses/setting-helpers";
 import type { CommonSettings, UsersTable } from "../analyses/types";
 import { buildFilteredQuery, getTableMetadata } from "../base-query";
 import { DRILL_MEMBERS_CTE, buildMembersSql } from "../build-sql";
+import { nativeDatasetQuery } from "../compile-base";
 import {
   type AnalysisFilters,
   COLUMN_ROLE_FOR_GRAIN,
@@ -44,12 +45,6 @@ type UseDrillQueriesArgs = {
   usersTable: UsersTable | undefined;
   settings: CommonSettings;
 };
-
-const runNative = (databaseId: number, sql: string): DatasetQuery => ({
-  type: "native",
-  database: databaseId,
-  native: { query: sql },
-});
 
 /** RTK rejects with the response, not an `Error`; the modals show `.message`. */
 const rethrowApiError = (error: unknown): never => {
@@ -117,10 +112,12 @@ export const useDrillQueries = ({
       if (sql === null) {
         throw new Error(t`This part of the chart can't be traced back yet.`);
       }
-      const dataset = await run(runNative(compiledBase.databaseId, sql));
+      const dataset = await run(
+        nativeDatasetQuery(metadataProvider, compiledBase.databaseId, sql),
+      );
       return dataset.data.rows.map(([id]) => String(id));
     },
-    [spec, compiledBase, run],
+    [spec, compiledBase, metadataProvider, run],
   );
 
   /** People drills land on the users table when there is one. */

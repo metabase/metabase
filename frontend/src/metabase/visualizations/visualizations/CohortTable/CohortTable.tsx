@@ -37,7 +37,7 @@ const CohortTableComponent = ({
   const [{ data }] = rawSeries;
   const period = toPeriod(settings["cohort.period"]);
   const valueFormat = toValueFormat(settings["cohort.value_format"]);
-  const baseColor: string = settings["cohort.color"];
+  const baseColor = settings["cohort.color"]!;
   const isColumnScale = settings["cohort.color_scale"] === "column";
   const showInitialCount = settings["cohort.initial_count"] !== "hide";
   const isCompact = settings["cohort.density"] === "compact";

@@ -1,4 +1,4 @@
-import type { ConcreteTableId } from "./table";
+import type { TableId } from "./table";
 
 /**
  * The `visualization_settings` key that marks a card as a product analytics
@@ -20,7 +20,7 @@ export type ProductAnalyticsKind = (typeof PRODUCT_ANALYTICS_KINDS)[number];
 export type ProductAnalyticsDefinition = {
   version: 1;
   kind: ProductAnalyticsKind;
-  table_id: ConcreteTableId;
+  table_id: TableId;
   /** The settings the user changed. Untrusted: the builder validates them. */
   settings: Record<string, unknown>;
 };

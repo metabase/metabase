@@ -1,8 +1,11 @@
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import type {
+  OmniPickerItem,
+  OmniPickerTableItem,
+} from "metabase/common/components/Pickers";
 
 import { getEventTablePickerOptions } from "./event-table-picker-options";
 
-const SET_UP_TABLE: OmniPickerItem = {
+const SET_UP_TABLE: OmniPickerTableItem = {
   model: "table",
   id: 1,
   database_id: 1,

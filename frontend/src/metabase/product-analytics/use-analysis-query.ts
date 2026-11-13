@@ -10,12 +10,7 @@ import {
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataProvider } from "metabase/metadata-store";
 import type * as Lib from "metabase-lib";
-import type {
-  ConcreteTableId,
-  Dataset,
-  DatasetQuery,
-  NativeDatasetQuery,
-} from "metabase-types/api";
+import type { Dataset, DatasetQuery, TableId } from "metabase-types/api";
 
 import { type BaseQueryInput, buildBaseQuery } from "./base-query";
 import {
@@ -24,7 +19,7 @@ import {
   buildSql,
 } from "./build-sql";
 import type { ProjectedColumn } from "./columns";
-import { nativeCompileRequest } from "./compile-base";
+import { nativeCompileRequest, nativeDatasetQuery } from "./compile-base";
 import { COLUMN_ROLE_FOR_GRAIN } from "./filters";
 import { buildPeopleSegmentsQuery } from "./segments/people-segments";
 import type { AnalysisSpec } from "./spec/types";
@@ -32,7 +27,7 @@ import type { AnalysisSpec } from "./spec/types";
 export type AnalysisQueryArgs = {
   /** Undefined while the settings are incomplete. Nothing is compiled or run. */
   spec: AnalysisSpec | undefined;
-  tableId: ConcreteTableId | undefined;
+  tableId: TableId | undefined;
   /** Must keep its identity while unchanged; see the comment in `useCompiledBase`. */
   base: BaseQueryInput;
 };
@@ -59,7 +54,7 @@ export type CompiledBase = {
 
 type CompiledBaseArgs = {
   isReady: boolean;
-  tableId: ConcreteTableId | undefined;
+  tableId: TableId | undefined;
   /** Must keep its identity while unchanged. */
   base: BaseQueryInput;
 };
@@ -242,34 +237,6 @@ const useCompiledPeopleSegments = ({
   };
 };
 
-type NativeQueryWithConstraints = NativeDatasetQuery & {
-  constraints: { "max-results": number; "max-results-bare-rows": number };
-};
-
-/**
- * A native query for `/api/dataset`. `maxRows` raises the default row limit
- * for results that are known to be bounded.
- */
-const toNativeDatasetQuery = (
-  sql: string,
-  databaseId: number,
-  maxRows?: number,
-): DatasetQuery => {
-  const query: NativeDatasetQuery = {
-    type: "native",
-    database: databaseId,
-    native: { query: sql },
-  };
-  if (maxRows === undefined) {
-    return query;
-  }
-  const constrained: NativeQueryWithConstraints = {
-    ...query,
-    constraints: { "max-results": maxRows, "max-results-bare-rows": maxRows },
-  };
-  return constrained;
-};
-
 /** The error a query result carries, from the request or the query itself. */
 export const getDatasetError = (result: {
   error?: unknown;
@@ -297,10 +264,16 @@ export const useAnalysisQuery = ({
       ? buildSql(spec, compiled.sql, compiled.columns)
       : undefined;
 
-  const datasetQuery: DatasetQuery | undefined =
-    built && compiled
-      ? toNativeDatasetQuery(built.sql, compiled.databaseId)
-      : undefined;
+  const metadataProvider = useMetadataProvider(compiled?.databaseId ?? null);
+  const sql = built?.sql;
+  const databaseId = compiled?.databaseId;
+  const datasetQuery = useMemo(
+    (): DatasetQuery | undefined =>
+      sql !== undefined && databaseId !== undefined
+        ? nativeDatasetQuery(metadataProvider, databaseId, sql)
+        : undefined,
+    [metadataProvider, databaseId, sql],
+  );
 
   const adhoc = useGetAdhocQueryQuery(datasetQuery ?? skipToken);
 

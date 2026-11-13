@@ -1,6 +1,5 @@
 import { useLocation, useNavigate, useSearchParams } from "metabase/router";
-import { isConcreteTableId } from "metabase-types/api";
-import type { ConcreteTableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 import { isAnalysisKind } from "../analyses/config";
 import { AnalysisWorkspace } from "../components/AnalysisWorkspace";
@@ -8,12 +7,11 @@ import type { AnalysisKind } from "../spec/types";
 
 const DEFAULT_KIND: AnalysisKind = "funnel";
 
-const parseTableId = (value: string | null): ConcreteTableId | undefined => {
+const parseTableId = (value: string | null): TableId | undefined => {
   if (value === null || !/^\d+$/.test(value)) {
     return undefined;
   }
-  const id = Number(value);
-  return isConcreteTableId(id) ? id : undefined;
+  return Number(value);
 };
 
 /**
@@ -29,7 +27,7 @@ export const NewAnalysisPage = () => {
   const kind = isAnalysisKind(kindParam) ? kindParam : DEFAULT_KIND;
   const tableId = parseTableId(searchParams.get("table"));
 
-  const handleTableChange = (id: ConcreteTableId) => {
+  const handleTableChange = (id: TableId) => {
     const next = new URLSearchParams(searchParams);
     next.set("table", String(id));
     navigate(

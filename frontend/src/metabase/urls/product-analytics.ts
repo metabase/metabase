@@ -1,8 +1,4 @@
-import type {
-  CardId,
-  ConcreteTableId,
-  ProductAnalyticsKind,
-} from "metabase-types/api";
+import type { CardId, ProductAnalyticsKind, TableId } from "metabase-types/api";
 
 /** A new analysis of a kind, which starts by picking its table. */
 export function newEventAnalysis(kind: ProductAnalyticsKind): string {
@@ -13,7 +9,7 @@ export function newEventAnalysis(kind: ProductAnalyticsKind): string {
 /** A new analysis opened on a kind's tab, for a table. */
 export function eventAnalysis(
   kind: ProductAnalyticsKind,
-  tableId: ConcreteTableId,
+  tableId: TableId,
 ): string {
   const params = new URLSearchParams({ kind, table: String(tableId) });
   return `/product-analysis/new?${params.toString()}`;

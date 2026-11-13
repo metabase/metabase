@@ -23,7 +23,7 @@ export const isTableColumnGroup = (
 ): boolean => {
   const fieldIds = new Set((table.fields ?? []).map((field) => field.id));
   return columns.some((column) => {
-    const { fieldId } = Lib.fieldValuesSearchInfo(query, column);
+    const { fieldId } = Lib.fieldSearchInfo(query, column);
     return fieldId !== null && fieldIds.has(fieldId);
   });
 };

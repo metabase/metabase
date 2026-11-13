@@ -1,11 +1,11 @@
 import type { StoredSettings } from "metabase/event-tables";
 import {
   type CardDisplayType,
-  type ConcreteTableId,
   type CreateCardRequest,
   type DatasetQuery,
   PRODUCT_ANALYTICS_SETTINGS_KEY,
   type ProductAnalyticsDefinition,
+  type TableId,
   type VisualizationSettings,
 } from "metabase-types/api";
 
@@ -13,13 +13,13 @@ import type { AnalysisKind } from "./spec/types";
 
 export type AnalysisCard = Pick<
   CreateCardRequest,
-  "name" | "type" | "display" | "dataset_query" | "visualization_settings"
->;
+  "name" | "type" | "dataset_query" | "visualization_settings"
+> & { display: CardDisplayType };
 
 type BuildAnalysisCardArgs = {
   name: string;
   kind: AnalysisKind;
-  tableId: ConcreteTableId;
+  tableId: TableId;
   stored: StoredSettings;
   display: CardDisplayType;
   vizSettings: VisualizationSettings;

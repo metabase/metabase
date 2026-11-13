@@ -9,11 +9,15 @@ import {
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { getUserCanWriteToCollections } from "metabase/current-user";
+import {
+  type CardQuestionBuilder,
+  useQuestionFromCardBuilder,
+} from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { getRegisteredDefaultSize } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   Card,
   CardDisplayType,
@@ -62,10 +66,13 @@ export const useSaveAnalysis = ({
   // happens in the same tick as the save finishing.
   const isLeavingAfterSaveRef = useRef(false);
 
+  const buildQuestion = useQuestionFromCardBuilder();
   const saveModal = useMemo(
     () =>
-      saveRequest !== undefined ? getSaveModalProps(saveRequest) : undefined,
-    [saveRequest],
+      saveRequest !== undefined
+        ? getSaveModalProps(saveRequest, buildQuestion)
+        : undefined,
+    [saveRequest, buildQuestion],
   );
 
   const canRename =
@@ -196,13 +203,16 @@ type SaveRequest = {
   savedCard: Card | undefined;
 };
 
-const getSaveModalProps = ({ card, savedCard }: SaveRequest) =>
+const getSaveModalProps = (
+  { card, savedCard }: SaveRequest,
+  buildQuestion: CardQuestionBuilder,
+) =>
   savedCard !== undefined
     ? {
-        question: new Question({ ...savedCard, ...card }),
-        originalQuestion: new Question(savedCard),
+        question: buildQuestion({ ...savedCard, ...card }),
+        originalQuestion: buildQuestion(savedCard),
       }
-    : { question: new Question(card), originalQuestion: null };
+    : { question: buildQuestion(card), originalQuestion: null };
 
 const getDashcardSize = (
   display: CardDisplayType,
