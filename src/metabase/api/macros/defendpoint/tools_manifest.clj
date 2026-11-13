@@ -11,13 +11,13 @@
   - `annotations` — MCP ToolAnnotations (readOnlyHint, destructiveHint, etc.)"
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.json-schema :as mjs]
    [malli.util :as mut]
    [metabase.api.macros :as api.macros]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -145,44 +145,39 @@
          (mc/into-schema (mc/type node) props children (mc/options node))
          node)))))
 
-(def ^:private json-null {:type "null"})
-
 (defn- nullable
-  "The nullable form of JSON Schema `schema`, for one `[:maybe ...]`.
-
-  Malli publishes `[:maybe X]` as `{:oneOf [X {:type \"null\"}]}`. A client validator that coerces types turns
-  `false`, `0` and `\"\"` into `null`, so the value matches both branches and `oneOf` rejects it. OpenAI's strict
-  tool mode does not accept `oneOf` at all. Where `X` has one plain `:type`, `null` joins that type instead, and
-  joins any `:enum`, which would otherwise reject it. Otherwise the branches become `anyOf`, which a value matching
-  both still passes, and the description moves up to the property, where clients look for it."
+  "The JSON Schema accepting `null` or whatever JSON Schema `schema` accepts.
+  Where `schema` has one plain `:type`, returns it with `null` added to that type and to any `:enum`.
+  Otherwise returns `{:anyOf [schema {:type \"null\"}]}`, with `schema`'s description moved up beside the `anyOf`."
   [schema]
+  ;; Malli publishes `[:maybe X]` as `oneOf`, which this replaces.
+  ;; A client validator that coerces types turns `false`, `0` and `""` into `null`, so they match both branches of a
+  ;; `oneOf` and fail it, where an `anyOf` or a type array passes them.
+  ;; OpenAI's strict tool mode does not accept `oneOf` at all.
   (let [{:keys [type description]} schema]
+    ;; a type array cannot express a `const`, and `null` must join an `enum` or the enum rejects it
     (if (and (string? type)
              (not-any? #(contains? schema %) [:oneOf :anyOf :allOf :const]))
       (cond-> (assoc schema :type [type "null"])
         (:enum schema) (update :enum #(conj (vec %) nil)))
-      (cond-> {:anyOf [(dissoc schema :description) json-null]}
+      (cond-> {:anyOf [(dissoc schema :description) {:type "null"}]}
         description (assoc :description description)))))
 
 (defn- maybe->nullable
   "Rewrite every `{:oneOf [X {:type \"null\"}]}` in a JSON Schema, Malli's rendering of `[:maybe X]`, with
   [[nullable]]."
   [json-schema]
-  (walk/postwalk
-   (fn [node]
-     (let [[a b :as branches] (when (map? node) (:oneOf node))]
-       (if (and (= 2 (count branches)) (= json-null b) (map? a))
-         ;; whatever sits beside the `oneOf` (a property-level description, say) stays
-         (merge (nullable a) (dissoc node :oneOf))
-         node)))
-   json-schema))
+  (match/replace-all json-schema
+    {:oneOf [x {:type "null"}]}
+    ;; whatever sits beside the `oneOf` (a description on the `[:maybe]` itself, say) stays
+    (merge (nullable x) (dissoc &match :oneOf))))
 
 (defn malli->json-schema
   "Transform a malli schema to JSON Schema with all refs inlined (no `$ref` or `$defs`).
-   Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`,
-   `:multi`) into a single `:map`, applies tool-description preferences, transforms
-   to JSON Schema, then publishes `[:maybe ...]` as a nullable type rather than `oneOf`
-   (see [[nullable]]). Nested `anyOf`/`allOf` within properties are preserved."
+  Inlines registered-schema refs, flattens root-level composite schemas (`:or`, `:and`, `:multi`) into a single
+  `:map`, applies tool-description preferences, and transforms to JSON Schema.
+  Publishes `[:maybe ...]` as a nullable type rather than `oneOf` (see [[nullable]]).
+  Nested `anyOf`/`allOf` within properties are preserved."
   [malli-schema]
   (let [prepared (-> malli-schema inline-malli-refs flatten-root-schema prefer-tool-descriptions)]
     (maybe->nullable (mjs/transform prepared))))

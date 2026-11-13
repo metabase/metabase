@@ -95,9 +95,10 @@
 (deftest ^:parallel maybe-publishes-nullable-type-test
   (testing "[:maybe X] publishes without `oneOf`, which a type-coercing client validator fails for false, 0 and \"\""
     (is (= {:type                 "object"
-            :properties           {:flag   {:type ["boolean" "null"] :description "A flag."}
-                                   :limit  {:type ["integer" "null"] :minimum 1}
-                                   :mode   {:type ["string" "null"] :enum ["a" "b" nil]}
+            :properties           {:flag   {:type ["boolean" "null"], :description "A flag."}
+                                   :limit  {:type ["integer" "null"], :minimum 1}
+                                   :mode   {:type ["string" "null"], :enum ["a" "b" nil]}
+                                   :pick   {:anyOf [{:type "string", :const "x"} {:type "null"}], :description "Pick."}
                                    :filter {:type                 ["object" "null"]
                                             :properties           {:x {:type "string"}}
                                             :required             [:x]
@@ -106,7 +107,7 @@
                                                           {:type "null"}]
                                             :description "A string or an id."}
                                    :value  {:anyOf [{} {:type "null"}]}}
-            :required             [:flag :limit :mode :filter :either :value]
+            :required             [:flag :limit :mode :pick :filter :either :value]
             :additionalProperties false}
            (tools-manifest/strict-tool-input-schema
             (tools-manifest/malli->json-schema
@@ -114,6 +115,7 @@
               [:flag {:optional true} [:maybe [:boolean {:description "A flag."}]]]
               [:limit {:optional true} [:maybe [:int {:min 1}]]]
               [:mode {:optional true} [:maybe [:enum "a" "b"]]]
+              [:pick {:optional true} [:maybe {:description "Pick."} [:= {:json-schema/type "string"} "x"]]]
               [:filter {:optional true} [:maybe [:map [:x :string]]]]
               [:either {:optional true} [:maybe [:or {:description "A string or an id."} :string :int]]]
               [:value {:optional true} [:maybe :any]]]))))))
