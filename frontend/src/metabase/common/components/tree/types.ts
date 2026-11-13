@@ -3,6 +3,8 @@ import type { IconName } from "metabase-types/api";
 export interface ITreeNodeItem<TData = unknown> {
   id: string | number;
   name: string;
+  /** A second, dimmer line under the name. */
+  secondaryText?: string;
   icon: IconName | IconProps;
   children?: ITreeNodeItem<TData>[];
   data?: TData;

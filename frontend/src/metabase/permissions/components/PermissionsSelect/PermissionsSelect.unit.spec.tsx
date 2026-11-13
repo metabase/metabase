@@ -139,4 +139,27 @@ describe("PermissionSelect", () => {
 
     expect(await screen.findByText(WARNING)).toBeInTheDocument();
   });
+
+  it("calls onValueClick instead of opening the options when the value is read-only", async () => {
+    const onValueClick = jest.fn();
+    render(
+      <PermissionsSelect
+        options={options}
+        value={DataPermissionValue.ALL}
+        onChange={jest.fn()}
+        onValueClick={onValueClick}
+        isDisabled={false}
+        disabledTooltip={"disabled"}
+        permission={DataPermission.VIEW_DATA}
+        type={DataPermissionType.ACCESS}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "check icon Allowed" }),
+    );
+
+    expect(onValueClick).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
 });

@@ -100,6 +100,10 @@ export type PermissionSectionConfig = {
   confirmations?: (
     newValue: DataPermissionValue,
   ) => (PermissionConfirmationProps | undefined)[];
+  /** Makes the value read-only: clicking it calls this instead of opening the options. */
+  onValueClick?: () => void;
+  /** Shown on hovering a read-only value (one with `onValueClick`). */
+  valueTooltip?: ReactNode;
 };
 
 // most entity ids are numbers, and many call sites expect a number, so here's a helper

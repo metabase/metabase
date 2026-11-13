@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -13,6 +13,7 @@ import {
   Flex,
   Icon,
   Input,
+  Text,
   TextInput,
   type TextInputProps,
 } from "metabase/ui";
@@ -26,6 +27,11 @@ interface FilterableTreeProps {
   selectedId?: ITreeNodeItem["id"];
   placeholder: string;
   itemGroups: ITreeNodeItem[][];
+  /** A heading per group, shown in place of the dividers. */
+  itemGroupTitles?: (string | undefined)[];
+  rightSection?: (item: ITreeNodeItem) => ReactNode;
+  /** What the search matches, the name by default. */
+  getSearchText?: (item: ITreeNodeItem) => string;
   emptyState?: {
     text: string;
     icon: IconName;
@@ -36,6 +42,9 @@ interface FilterableTreeProps {
 export const FilterableTree = ({
   placeholder,
   itemGroups,
+  itemGroupTitles,
+  rightSection,
+  getSearchText,
   selectedId,
   emptyState,
   onSelect,
@@ -50,8 +59,8 @@ export const FilterableTree = ({
       return null;
     }
 
-    return searchItems(itemGroups.flat(), trimmedFilter);
-  }, [itemGroups, debouncedFilter]);
+    return searchItems(itemGroups.flat(), trimmedFilter, getSearchText);
+  }, [itemGroups, debouncedFilter, getSearchText]);
 
   const handleFilterChange: TextInputProps["onChange"] = (e) =>
     setFilter(e.target.value);
@@ -82,6 +91,7 @@ export const FilterableTree = ({
             selectedId={selectedId}
             onSelect={onSelect}
             TreeNode={AdminTreeNode}
+            rightSection={rightSection}
             emptyState={
               <Box mt="6.25rem">
                 <EmptyState
@@ -95,15 +105,24 @@ export const FilterableTree = ({
         {!filteredList &&
           itemGroups.map((items, index) => {
             const isLastGroup = index === itemGroups.length - 1;
+            const title = itemGroupTitles?.[index];
             return (
               <Fragment key={index}>
+                {title && (
+                  <Text fw={700} c="text-secondary" px="xl" pt="md" pb="xs">
+                    {title}
+                  </Text>
+                )}
                 <Tree
                   data={items}
                   selectedId={selectedId}
                   onSelect={onSelect}
                   TreeNode={AdminTreeNode}
+                  rightSection={rightSection}
                 />
-                {!isLastGroup && <Divider my="lg" mx="xl" />}
+                {!isLastGroup && !itemGroupTitles && (
+                  <Divider my="lg" mx="xl" />
+                )}
               </Fragment>
             );
           })}

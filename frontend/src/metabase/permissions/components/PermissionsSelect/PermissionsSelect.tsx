@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { memo, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Icon, Popover, Switch, Tooltip } from "metabase/ui";
@@ -41,9 +41,12 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   disabledTooltip,
   warning,
   isHighlighted,
+  onValueClick,
+  valueTooltip,
 }: PermissionSelectProps) {
   const [toggleState, setToggleState] = useState(toggleDefaultValue ?? null);
   const [opened, setOpened] = useState(false);
+  const [valueTooltipOpened, valueTooltipHandlers] = useRestingHover();
   let selectedOption = options.find((option) => option.value === value);
   if (!selectedOption) {
     console.warn(`${value} is not a valid option`);
@@ -59,6 +62,38 @@ export const PermissionsSelect = memo(function PermissionsSelect({
 
   const actionsForCurrentValue = actions?.[selectedOption.value] || [];
   const hasActions = actionsForCurrentValue.length > 0;
+
+  if (onValueClick) {
+    return (
+      <Tooltip
+        label={valueTooltip}
+        disabled={valueTooltip == null}
+        opened={valueTooltipOpened}
+        position="bottom-start"
+        transitionProps={{ duration: 0 }}
+      >
+        <Flex
+          component="button"
+          className={CS.cursorPointer}
+          align="center"
+          miw="11.25rem"
+          data-testid="permissions-select"
+          onClick={onValueClick}
+          {...valueTooltipHandlers}
+        >
+          <PermissionsSelectOption
+            {...selectedOption}
+            className={S.selectedOption}
+          />
+          {warning && (
+            <Tooltip label={warning}>
+              <Icon name="warning" size={18} mr="xxs" c="text-secondary" />
+            </Tooltip>
+          )}
+        </Flex>
+      </Tooltip>
+    );
+  }
 
   const triggerContent = (
     <Flex
@@ -174,3 +209,36 @@ export const PermissionsSelect = memo(function PermissionsSelect({
     </Popover>
   );
 });
+
+const RESTING_HOVER_DELAY_MS = 400;
+
+/** Opens once the mouse rests on the cell and stays until it leaves, so a sweep across the rows opens nothing. */
+function useRestingHover() {
+  const [opened, setOpened] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+
+  useEffect(() => () => clearTimeout(timeoutRef.current), []);
+
+  function restart() {
+    if (opened) {
+      return;
+    }
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(
+      () => setOpened(true),
+      RESTING_HOVER_DELAY_MS,
+    );
+  }
+
+  function stop() {
+    clearTimeout(timeoutRef.current);
+    setOpened(false);
+  }
+
+  return [
+    opened,
+    { onMouseEnter: restart, onMouseMove: restart, onMouseLeave: stop },
+  ] as const;
+}

@@ -5,6 +5,7 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_APPLICATION_PERMISSIONS,
+  PLUGIN_PERMISSION_PREVIEW,
 } from "metabase/plugins";
 import { Route, redirect } from "metabase/router";
 
@@ -82,6 +83,8 @@ const getRoutes = () => (
           {PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES}
         </Route>
       ))}
+
+      {PLUGIN_PERMISSION_PREVIEW.getDataRoutes()}
     </Route>
 
     <Route path="collections" lazy={collectionPermissions}>
@@ -90,6 +93,7 @@ const getRoutes = () => (
 
     {PLUGIN_ADMIN_PERMISSIONS_TABS.getRoutes()}
     {PLUGIN_APPLICATION_PERMISSIONS.getRoutes()}
+    {PLUGIN_PERMISSION_PREVIEW.getTabRoutes()}
   </Route>
 );
 
