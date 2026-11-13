@@ -574,6 +574,11 @@ describe("nav > containers > MainNavbar", () => {
         activeUsersCount: 1,
       });
       expect(
+        await screen.findByRole("treeitem", {
+          name: /Your personal collection/i,
+        }),
+      ).toBeVisible();
+      expect(
         screen.queryByText(/Other users' personal collections/i),
       ).not.toBeInTheDocument();
     });
