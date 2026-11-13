@@ -32,6 +32,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -1274,6 +1275,12 @@
       (testing "a statement that is not a query is still refused"
         (is (thrown-with-msg? Exception #"must be a SELECT statement"
                               (compile! "UPDATE t SET a = 1"))))
+      (testing "with the Macaw parser, a set operation also takes the INTO in its first SELECT"
+        (binding [sql-tools.settings/*parser-backend-override* :macaw]
+          (is (= "SELECT 1 AS id INTO \"#mb_test_1\" UNION ALL SELECT 2 AS id"
+                 (compile! "SELECT 1 AS id UNION ALL SELECT 2 AS id")))
+          (is (thrown-with-msg? Exception #"must be a SELECT statement"
+                                (compile! "(SELECT 1 AS id) UNION ALL SELECT 2")))))
       (testing "a transform whose query is a set operation compiles the same way"
         (is (= ["SELECT 1 AS id INTO [t] UNION ALL SELECT 2 AS id" nil]
                (driver/compile-transform :sqlserver {:query        {:query "SELECT 1 AS id UNION ALL SELECT 2 AS id"}
