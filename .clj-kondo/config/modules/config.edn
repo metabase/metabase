@@ -4376,6 +4376,7 @@
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/Sandbox
+                    :model/Session
                     :model/Table
                     :model/Tenant
                     :model/User}}

@@ -407,25 +407,23 @@
 
 (mu/defn insert-preview-session!
   "Insert a `core_session` row for the User with `user-id`: `key-hashed` (a preview-only derivation of its key, so no
-  ordinary session lookup matches it), `token` in `anti_csrf_token` (nil on the preview host), and `expires-at`."
+  ordinary session lookup matches it), and `expires-at`."
   [session-id :- :string
    user-id    :- ::lib.schema.id/user
    key-hashed :- :string
-   token      :- [:maybe :string]
    expires-at :- (ms/InstanceOfClass java.time.OffsetDateTime)]
   (t2/query-one {:insert-into (t2/table-name :model/Session)
                  :values      [{:id              session-id
                                 :user_id         user-id
                                 :key_hashed      key-hashed
-                                :anti_csrf_token token
                                 :created_at      :%now
                                 :expires_at      expires-at}]}))
 
 (mu/defn preview-session
-  "The `:id`, `:user_id`, `:anti_csrf_token`, `:expires_at` and `:ended_at` of the Session whose `key_hashed` is
+  "The `:id`, `:user_id`, `:expires_at` and `:ended_at` of the Session whose `key_hashed` is
   `key-hashed`, or nil."
   [key-hashed :- :string]
-  (t2/select-one [:model/Session :id :user_id :anti_csrf_token :expires_at :ended_at]
+  (t2/select-one [:model/Session :id :user_id :expires_at :ended_at]
                  {:where [:= :key_hashed [:auto/param key-hashed]]}))
 
 (mu/defn renew-preview-session!

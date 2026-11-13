@@ -99,10 +99,7 @@
    [:embedding/auth-method   {:optional true} [:maybe :string]]
    [:metabase/authed-session-key-hash {:optional true} [:maybe :string]]
    ;; a permission preview's session (EE), which `metabase.server.middleware.session` resolves on its own
-   [:metabase/preview-session {:optional true} [:map {:closed true}
-                                                [:session-key [:maybe :string]]
-                                                [:token {:optional true} :string]
-                                                [:host? :boolean]]]
+   [:metabase/preview-session {:optional true} [:map {:closed true} [:session-key :string]]]
    ;; only API-key auth resolves these two — see `::current-user-info`.
    [:api-key-id              {:optional true} [:maybe :int]]
    [:api-key-creator-id      {:optional true} [:maybe :int]]

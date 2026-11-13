@@ -69,10 +69,19 @@
     (when (seq session)
       (assoc request :metabase-session-key session :metabase-session-type :normal))))
 
+(def ^:private preview-session-token-prefix
+  "What a permission preview's session token starts with (EE `permission-debug.preview-session`)."
+  "mb_preview_")
+
 (defmethod wrap-session-key-with-strategy :header
   [_ {:keys [headers], :as request}]
   (when-let [session (get headers metabase-session-header)]
-    (when (seq session)
+    (cond
+      ;; never an ordinary session key: resolved in [[bind-current-user]] (EE)
+      (str/starts-with? session preview-session-token-prefix)
+      (assoc request :metabase/preview-session {:session-key (subs session (count preview-session-token-prefix))})
+
+      (seq session)
       (assoc request :metabase-session-key session))))
 
 (defmethod wrap-session-key-with-strategy :best
