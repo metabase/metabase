@@ -169,8 +169,8 @@ function getInferenceDescription({
     return null;
   }
   return replacedType != null
-    ? t`Inferred: ${inference.signal}. Sync had ${getFieldTypeLabel(replacedType)}.`
-    : t`Inferred: ${inference.signal}`;
+    ? t`${inference.signal}. Sync had ${getFieldTypeLabel(replacedType)}.`
+    : inference.signal;
 }
 
 function getMarkedType(

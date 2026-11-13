@@ -276,7 +276,7 @@ function inferDefaultScope(
     .join(", ");
   return {
     conditions: members.flatMap(({ inference }) => inference.conditions),
-    signal: t`Combines ${memberLabels}`,
+    signal: t`it combines ${memberLabels}`,
     confidence: members.some(({ inference }) => inference.confidence === "low")
       ? "low"
       : "high",

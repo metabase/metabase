@@ -75,7 +75,6 @@ export {
   filtersCurrentRows,
   getHistoryKind,
   getHistoryKindOptions,
-  getHistorySignalLabel,
   getScdTypeLabel,
   isScdType,
 } from "./history-source";

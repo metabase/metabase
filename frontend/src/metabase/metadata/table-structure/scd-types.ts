@@ -216,7 +216,7 @@ export function resolveHistoryScdType(
   if (source.isScdTypeOverridden) {
     return {
       scdType: source.scdType,
-      signal: t`Set by an admin`,
+      signal: t`it was set by an admin`,
       isOverridden: true,
       confidence: "high",
     };
@@ -252,7 +252,7 @@ export function resolveCurrentTableScdType(
   if (source.isScdTypeOverridden) {
     return {
       scdType: source.scdType,
-      signal: t`Set by an admin`,
+      signal: t`it was set by an admin`,
       isOverridden: true,
       confidence: "high",
     };
@@ -267,7 +267,7 @@ export function resolveCurrentTableScdType(
   }
   return {
     scdType: 1,
-    signal: t`No history or previous-value columns, so changes overwrite`,
+    signal: t`there are no history or previous-value columns, so changes overwrite`,
     isOverridden: false,
     confidence: "high",
   };

@@ -401,8 +401,8 @@ function getTypeInference(property: RegistryProperty) {
   const hasUntypedDefinition =
     property.definition != null && property.definition.declaredType == null;
   return hasUntypedDefinition
-    ? t`Its definition has no type, so it's inferred: most values read as ${inferredTypeLabel}.`
-    : t`Inferred: most values read as ${inferredTypeLabel}. Values are stored as text.`;
+    ? t`its definition has no type, and most values read as ${inferredTypeLabel}`
+    : t`most values read as ${inferredTypeLabel}. Values are stored as text.`;
 }
 
 function PropertyTypeRow({

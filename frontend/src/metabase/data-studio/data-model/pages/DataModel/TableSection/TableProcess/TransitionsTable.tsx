@@ -158,7 +158,7 @@ function ExpectednessSelect({
       leftSection={
         isGuess ? (
           <InferredIcon
-            description={t`Inferred: ${row.signal}`}
+            description={row.signal}
             onConfirm={disabled ? undefined : () => onChange(row.resolvedKind)}
           />
         ) : undefined

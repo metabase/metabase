@@ -189,7 +189,7 @@ export function HierarchyList({ table, getFieldHref }: HierarchyListProps) {
         hierarchyId: hierarchy.id,
         badges: inference != null && (
           <InferredIcon
-            description={t`Inferred: ${inference}`}
+            description={inference}
             onConfirm={canEdit ? () => save(hierarchy) : undefined}
           />
         ),

@@ -87,7 +87,7 @@ export function CustomFieldSection({
             <Group gap="xs" wrap="nowrap">
               <Text c="text-primary">{t`Custom property`}</Text>
               <InferredIcon
-                description={t`Inferred: named with the ${facet.prefix} prefix, so the customer chose this column`}
+                description={t`it's named with the ${facet.prefix} prefix, which marks a column the customer added`}
               />
             </Group>
           }
@@ -186,7 +186,7 @@ function Meaning({
         {/* No semantic type isn't a guess */}
         {semanticTypeName != null && (
           <InferredIcon
-            description={t`Inferred from the rest of the name, ${facet.suffix}.`}
+            description={t`the rest of its name is ${facet.suffix}`}
           />
         )}
       </Group>

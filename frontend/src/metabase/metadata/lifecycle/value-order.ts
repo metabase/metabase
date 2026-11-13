@@ -107,7 +107,7 @@ export function inferEnumKind(field: Field): EnumKindInference {
   }
   return {
     kind: "nominal",
-    signal: t`No order in the name`,
+    signal: t`there's no order in the name`,
     confidence: "high",
   };
 }
@@ -242,7 +242,7 @@ export function inferValueOrder(values: string[]): ValueOrderInference {
   return {
     values: ordered.map(({ value, bucket }) => ({ value, bucket })),
     isGuess: recognizedCount > 0,
-    signal: t`Ordered by lifecycle words: ${recognizedCount} of ${values.length} values recognized`,
+    signal: t`it's ordered by lifecycle words, and ${recognizedCount} of ${values.length} values were recognized`,
   };
 }
 

@@ -201,7 +201,7 @@ export function inferTypicalTransitions(
   return [...steps, ...finishes].map((transition) => ({
     ...transition,
     kind: "typical",
-    signal: t`The next step in the order`,
+    signal: t`it's the next step in the order`,
   }));
 }
 
@@ -223,13 +223,13 @@ export function classifyObservedTransition(
         ...transition,
         kind: "unexpected",
         signal: isReopen
-          ? t`Seen leaving a final state`
-          : t`Seen going back a step`,
+          ? t`it was seen leaving a final state`
+          : t`it was seen going back a step`,
       }
     : {
         ...transition,
         kind: "allowed",
-        signal: t`Seen in the history, skipping ahead`,
+        signal: t`it was seen in the history, skipping ahead`,
       };
 }
 

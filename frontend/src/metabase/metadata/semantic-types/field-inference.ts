@@ -624,7 +624,7 @@ function inferLoaderColumn(field: Field): FieldTypeInference | null {
   if (!LOADER_PREFIX_RE.test(name)) {
     return null;
   }
-  const signal = t`Written by the loader, like every ${name.split("_").filter(Boolean)[0]} column`;
+  const signal = t`it's written by the loader, like every ${name.split("_").filter(Boolean)[0]} column`;
   if (isPK(field)) {
     return inference(null, signal, "high", {
       key: "type/SurrogateKey",
@@ -646,23 +646,28 @@ function inferDeclaredKey(
   const name = nameOf(field);
   if (isPK(field)) {
     if (KEY_HASH_RE.test(name)) {
-      return inference("type/HashKey", t`Primary key named like a hash`);
+      return inference("type/HashKey", t`it's a primary key named like a hash`);
     }
     if (KEY_SURROGATE_RE.test(name)) {
       return inference(
         "type/SurrogateKey",
-        t`Primary key named like a warehouse key`,
+        t`it's a primary key named like a warehouse key`,
       );
     }
     const hasOtherKey = fields.some(
       (sibling) => sibling !== field && (isPK(sibling) || isFK(sibling)),
     );
     if (isDate(field) && hasOtherKey) {
-      return inference(null, t`A date that's part of the primary key`, "high", {
-        time: "type/PeriodKey",
-      });
+      return inference(
+        null,
+        t`it's a date that's part of the primary key`,
+        "high",
+        {
+          time: "type/PeriodKey",
+        },
+      );
     }
-    return inference(null, t`Declared primary key`);
+    return inference(null, t`it's a declared primary key`);
   }
 
   if (!isFK(field)) {
@@ -672,21 +677,21 @@ function inferDeclaredKey(
     (sibling) => idOf(sibling) === field.fk_target_field_id,
   );
   if (isSelfReference) {
-    return inference("type/ParentKey", t`Points at its own table`);
+    return inference("type/ParentKey", t`it points at its own table`);
   }
   const polymorphicSibling = findPolymorphicTypeSibling(field, fields);
   if (polymorphicSibling) {
     return inference(
       "type/PolymorphicKey",
-      t`Paired with ${polymorphicSibling.name}`,
+      t`it's paired with ${polymorphicSibling.name}`,
     );
   }
   const targetSubject = getTargetSubject?.(field) ?? null;
   if (isSubjectA(targetSubject, "entity/OrganizationTable")) {
-    return inference("type/TenantKey", t`Points at an accounts table`);
+    return inference("type/TenantKey", t`it points at an accounts table`);
   }
   if (TENANT_NAME_RE.test(name)) {
-    return inference("type/TenantKey", t`Foreign key named ${name}`);
+    return inference("type/TenantKey", t`it's a foreign key named ${name}`);
   }
   const sameTarget = fields.filter(
     (sibling) =>
@@ -701,7 +706,7 @@ function inferDeclaredKey(
       t`${name} and ${sameTarget[0].name} point at the same table`,
     );
   }
-  return inference(null, t`Declared foreign key`);
+  return inference(null, t`it's a declared foreign key`);
 }
 
 function findPolymorphicTypeSibling(
@@ -730,13 +735,16 @@ function inferFromSiblings(
   if (idSibling) {
     return inference(
       "type/TypeDiscriminator",
-      t`Names the table ${idSibling.name} points at`,
+      t`it names the table ${idSibling.name} points at`,
     );
   }
 
   const typeSibling = findPolymorphicTypeSibling(field, fields);
   if (typeSibling) {
-    return inference("type/PolymorphicKey", t`Paired with ${typeSibling.name}`);
+    return inference(
+      "type/PolymorphicKey",
+      t`it's paired with ${typeSibling.name}`,
+    );
   }
 
   if (/(^|_)currency(_code)?$/.test(name) && hasBaseType(field, TEXT)) {
@@ -749,7 +757,7 @@ function inferFromSiblings(
     if (money) {
       return inference(
         "type/CurrencyCode",
-        t`The currency of ${money.name} next to it`,
+        t`it's the currency of ${money.name} next to it`,
       );
     }
   }
@@ -762,7 +770,7 @@ function inferFromSiblings(
     if (measure) {
       return inference(
         "type/UnitOfMeasure",
-        t`The unit of ${measure.name} next to it`,
+        t`it's the unit of ${measure.name} next to it`,
       );
     }
   }
@@ -772,7 +780,7 @@ function inferFromSiblings(
       (sibling) => isDate(sibling) && END_RE.test(nameOf(sibling)),
     );
     if (end) {
-      return inference("type/StartTimestamp", t`Pairs with ${end.name}`);
+      return inference("type/StartTimestamp", t`it pairs with ${end.name}`);
     }
   }
   if (isDate(field) && END_RE.test(name)) {
@@ -780,7 +788,7 @@ function inferFromSiblings(
       (sibling) => isDate(sibling) && START_RE.test(nameOf(sibling)),
     );
     if (start) {
-      return inference("type/EndTimestamp", t`Pairs with ${start.name}`);
+      return inference("type/EndTimestamp", t`it pairs with ${start.name}`);
     }
   }
 
@@ -791,10 +799,10 @@ function inferFromSiblings(
         fields.some((other) => idOf(other) === sibling.fk_target_field_id)),
   );
   if (parent && /^(level|depth)$/.test(name) && hasBaseType(field, NUMBER)) {
-    return inference("type/HierarchyLevel", t`Next to ${parent.name}`);
+    return inference("type/HierarchyLevel", t`it's next to ${parent.name}`);
   }
   if (parent && /^(path|materialized_path)$/.test(name)) {
-    return inference("type/HierarchyPath", t`Next to ${parent.name}`);
+    return inference("type/HierarchyPath", t`it's next to ${parent.name}`);
   }
 
   if (/(^|_)state$/.test(name) && hasBaseType(field, TEXT)) {
@@ -802,7 +810,7 @@ function inferFromSiblings(
       ADDRESS_SIBLING_RE.test(nameOf(sibling)),
     );
     if (address) {
-      return inference("type/State", t`Next to ${address.name}`);
+      return inference("type/State", t`it's next to ${address.name}`);
     }
   }
 
@@ -816,10 +824,10 @@ function inferCustomProperty(field: Field): FieldTypeInference | null {
   }
   const prefix = match[1];
   const meaning = inferFromName({ ...field, name: match[2] });
-  const signal = t`Starts with ${prefix}_, so it's a custom property`;
+  const signal = t`it starts with ${prefix}_, so it's a custom property`;
   return inference(
     meaning?.semanticType ?? null,
-    meaning ? `${signal}. ${meaning.signal}` : signal,
+    meaning ? `${signal}, and ${meaning.signal}` : signal,
     meaning?.confidence ?? "high",
     { structure: "type/CustomProperty" },
   );
@@ -835,12 +843,12 @@ function inferFromName(field: Field): FieldTypeInference | null {
   if (rule) {
     return inference(
       rule.type,
-      t`Name matches ${rule.hint}`,
+      t`its name matches ${rule.hint}`,
       rule.confidence ?? "high",
     );
   }
   if (hasBaseType(field, ["boolean"])) {
-    return inference("type/Flag", t`A true/false column`);
+    return inference("type/Flag", t`it's a true/false column`);
   }
   return null;
 }
@@ -855,7 +863,7 @@ function applyTableContext(
   }
   const name = nameOf(field);
   const addSignal = (signal: string) =>
-    base ? `${base.signal}. ${signal}` : signal;
+    base ? `${base.signal}, and ${signal}` : signal;
 
   if (isRoleA(role, "role/EventFact") && isDate(field)) {
     const dates = fields.filter((sibling) => isDate(sibling));
@@ -865,7 +873,9 @@ function applyTableContext(
       return {
         semanticType: base?.semanticType ?? null,
         facets: { ...base?.facets, time: "type/EventTimestamp" },
-        signal: addSignal(t`On an event table, it's when the event happened`),
+        signal: addSignal(
+          t`it's on an event table, so it's when the event happened`,
+        ),
         confidence: base?.confidence ?? "high",
       };
     }
@@ -875,13 +885,13 @@ function applyTableContext(
     if (HISTORY_ACTIVE_RE.test(name)) {
       return inference(
         "type/CurrentRowFlag",
-        t`Marks the current version on a history table`,
+        t`it marks the current version on a history table`,
       );
     }
     if (name === "id" && !isPK(field)) {
       return inference(
         "type/DurableKey",
-        t`The ID that stays the same across versions`,
+        t`it's the ID that stays the same across versions`,
       );
     }
   }
@@ -891,14 +901,17 @@ function applyTableContext(
     BRIDGE_WEIGHT_RE.test(name) &&
     hasBaseType(field, NUMBER)
   ) {
-    return inference("type/Weight", t`An allocation weight on a link table`);
+    return inference(
+      "type/Weight",
+      t`it's an allocation weight on a link table`,
+    );
   }
 
   if (isRoleA(role, "role/Fact") && base?.semanticType === "type/NaturalKey") {
     return {
       ...base,
       semanticType: "type/DegenerateDimension",
-      signal: addSignal(t`An identifier kept on a fact table`),
+      signal: addSignal(t`it's an identifier kept on a fact table`),
     };
   }
 
@@ -908,7 +921,7 @@ function applyTableContext(
   ) {
     return {
       ...base,
-      signal: addSignal(t`On a periodic snapshot`),
+      signal: addSignal(t`it's on a periodic snapshot`),
       confidence: "high",
     };
   }

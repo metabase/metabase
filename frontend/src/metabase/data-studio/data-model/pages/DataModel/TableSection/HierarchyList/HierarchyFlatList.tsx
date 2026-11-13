@@ -83,7 +83,7 @@ export function HierarchyFlatList({
             <EntityNameCell icon="network" name={hierarchy.name} />
             {inference != null && (
               <InferredIcon
-                description={t`Inferred: ${inference}`}
+                description={inference}
                 onConfirm={canEdit ? () => save(hierarchy) : undefined}
               />
             )}

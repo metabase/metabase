@@ -1,0 +1,10 @@
+/* A div drawn as an input, holding the guess and its AI icon */
+.input.input {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+
+  &[data-disabled] {
+    cursor: default;
+  }
+}

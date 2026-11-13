@@ -401,7 +401,7 @@ function getRoleInference({
   inference,
   isRoleOverridden,
 }: TableStructureValue): string | null {
-  return isRoleOverridden ? null : t`Inferred: ${inference.signal}`;
+  return isRoleOverridden ? null : inference.signal;
 }
 
 /** Why sync picked the main date; nothing once an admin has set it */
@@ -409,7 +409,7 @@ function getMainDateInference({
   mainDateInference,
   isMainDateOverridden,
 }: TableStructureValue): string | null {
-  return isMainDateOverridden ? null : t`Inferred: ${mainDateInference.signal}`;
+  return isMainDateOverridden ? null : mainDateInference.signal;
 }
 
 function GrainFields({
@@ -618,7 +618,7 @@ function HistoryBindingSection({
     scd.resolution.scdType,
     binding.validToFieldId != null,
   );
-  const shapeInference = getHistoryShapeInference(structure, scd);
+  const shapeInference = getHistoryShapeInference(scd);
   const exampleSource = useHistoryExampleSource(table, scd);
   const [isAdvancedOpen, { toggle: toggleAdvanced }] = useDisclosure(false);
   const hasCurrentFlag = binding.currentFlagFieldId != null;

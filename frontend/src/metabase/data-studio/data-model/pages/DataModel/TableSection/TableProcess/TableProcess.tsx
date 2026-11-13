@@ -116,7 +116,7 @@ export function TableProcess({ table, readOnly }: TableProcessProps) {
                 historyTable={historyTable}
                 inference={
                   overrides.history === undefined && historyInference
-                    ? t`Inferred: ${historyInference.signal}`
+                    ? historyInference.signal
                     : null
                 }
                 disabled={readOnly}
@@ -279,7 +279,7 @@ function StatusColumnValue({
     return (
       <InferredValue
         value={statusField.display_name}
-        inference={signal ? t`Inferred: ${signal}` : null}
+        inference={signal ?? null}
         readOnly={disabled}
         onConfirm={() => onChange(fieldId)}
         onChange={() => {

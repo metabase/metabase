@@ -78,7 +78,7 @@ export function inferScdType({
     return inferred(
       "fivetran-history-mode",
       2,
-      t`${fivetranStart.name} / ${fivetranEnd.name} → Fivetran history mode`,
+      t`it has ${fivetranStart.name} and ${fivetranEnd.name}, the Fivetran history mode columns`,
       "high",
     );
   }
@@ -88,7 +88,7 @@ export function inferScdType({
     return inferred(
       "dbt-snapshot",
       2,
-      t`${dbtFrom.name} / ${dbtTo.name} → dbt snapshot`,
+      t`it has ${dbtFrom.name} and ${dbtTo.name}, the dbt snapshot columns`,
       "high",
     );
   }
@@ -97,7 +97,7 @@ export function inferScdType({
     return inferred(
       "explicit-interval",
       2,
-      t`${interval[0].name} / ${interval[1].name} pair`,
+      t`it has the date range columns ${interval[0].name} and ${interval[1].name}`,
       "high",
     );
   }
@@ -106,17 +106,17 @@ export function inferScdType({
     return inferred(
       "key-shape",
       2,
-      t`Key is ${keyShape[0].name} + ${keyShape[1].name}, so each row is a version and the latest row per ${keyShape[0].name} is current`,
+      t`its key is ${keyShape[0].name} + ${keyShape[1].name}, so each row is a version and the latest row per ${keyShape[0].name} is current`,
       "low",
     );
   }
   if (HISTORY_NAME_RE.test(name.toLowerCase())) {
-    return inferred("name", 2, t`Named like a history table`, "low");
+    return inferred("name", 2, t`it's named like a history table`, "low");
   }
   return {
     scdType: null,
     rule: null,
-    signal: t`No history columns, key shape or name matched`,
+    signal: t`nothing in its columns, key shape, or name points to history`,
     confidence: "low",
   };
 }
@@ -150,17 +150,6 @@ export function getScdTypeLabel(scdType: ScdType) {
     7: t`Type 7 · Type 2 with a current key on facts`,
   };
   return labels[scdType];
-}
-
-export function getHistorySignalLabel(rule: HistoryInferenceRule | null) {
-  const labels: Record<HistoryInferenceRule, string> = {
-    "fivetran-history-mode": t`Fivetran history mode`,
-    "dbt-snapshot": t`dbt snapshot`,
-    "explicit-interval": t`Date range columns`,
-    "key-shape": t`id + updated_at key`,
-    name: t`Name only`,
-  };
-  return rule ? labels[rule] : t`Set by hand`;
 }
 
 export const HISTORY_KINDS = [

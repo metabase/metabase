@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import type { DefaultSegment } from "metabase/metadata/table-segments";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
-import { Icon, Input, Menu, Popover, Select, Stack } from "metabase/ui";
+import { Box, Icon, Input, Menu, Popover, Select, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Segment, Table } from "metabase-types/api";
 
@@ -58,7 +58,7 @@ function getDefaultInference({
   inference,
   isOverridden,
 }: ResolvedDefaultSegment): string | null {
-  return isOverridden ? null : t`Inferred: ${inference.signal}`;
+  return isOverridden ? null : inference.signal;
 }
 
 function isSameSegment(a: DefaultSegment, b: DefaultSegment): boolean {
@@ -93,18 +93,22 @@ function DefaultSegmentValue({
   if (isDefaultSegmentInferred(defaultSegment)) {
     const inferredSegment = defaultSegment.inference.segment;
     return (
-      <InferredValue
-        value={defaultSegment.inferredLabel}
-        inference={getDefaultInference(defaultSegment)}
-        readOnly={disabled}
-        onConfirm={() => setDefaultSegment(inferredSegment)}
-        onChange={() => {
-          setIsMenuOpenOnMount(true);
-          setDefaultSegment(inferredSegment);
-        }}
-        isInset={false}
-        data-testid="table-default-segment-review"
-      />
+      // Sized like the picker it stands in for
+      <Box w="fit-content" miw="12rem">
+        <InferredValue
+          value={defaultSegment.inferredLabel}
+          inference={getDefaultInference(defaultSegment)}
+          readOnly={disabled}
+          variant="input"
+          leftSection={<Icon name="segment" />}
+          onConfirm={() => setDefaultSegment(inferredSegment)}
+          onChange={() => {
+            setIsMenuOpenOnMount(true);
+            setDefaultSegment(inferredSegment);
+          }}
+          data-testid="table-default-segment-review"
+        />
+      </Box>
     );
   }
 

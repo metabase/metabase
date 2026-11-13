@@ -31,9 +31,9 @@ export function TransitionKindValue({
     return (
       <InferredValue
         value={getTransitionKindLabel(row.kind)}
-        inference={t`Inferred: ${row.signal}`}
+        inference={row.signal}
         readOnly={disabled}
-        isInset={false}
+        variant="input"
         onConfirm={() => onChange(row.kind)}
         onChange={() => {
           setIsSelectOpenOnMount(true);

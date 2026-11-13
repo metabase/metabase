@@ -86,7 +86,7 @@ export function CustomPropertiesSection({
                 value={columns.names.join(" · ")}
                 inference={columns.inference}
                 readOnly={disabled}
-                isInset={false}
+                variant="bare"
                 onConfirm={columns.confirm}
                 onChange={columns.confirm}
                 data-testid="eav-columns-review"
@@ -108,7 +108,7 @@ export function CustomPropertiesSection({
                 value={definitions.names.filter(Boolean).join(" · ")}
                 inference={definitions.inference}
                 readOnly={disabled}
-                isInset={false}
+                variant="bare"
                 onConfirm={definitions.confirm}
                 onChange={definitions.confirm}
                 data-testid="eav-definitions-review"
@@ -192,7 +192,7 @@ function getEntityInference({
   entityKeyField,
 }: ResolvedEavBinding) {
   return entityTable && entityKeyField
-    ? t`Inferred: ${entityKeyField.name} → ${entityTable.name}`
+    ? t`${entityKeyField.name} points to ${entityTable.name}`
     : null;
 }
 
@@ -250,7 +250,7 @@ function useColumnsReview(
     eavOverrides.valueFieldId === undefined;
   return {
     names,
-    inference: t`Inferred: ${inference.signal}`,
+    inference: inference.signal,
     isEditing: !isInferred,
     confirm: () =>
       onChange({
@@ -287,7 +287,7 @@ function useDefinitionsReview(
     !isTypeOverridden;
   return {
     names,
-    inference: t`Inferred: ${definitionInference.signal}. Labels from ${names[1] ?? ""}, types from ${names[2] ?? ""}.`,
+    inference: t`${definitionInference.signal}, with labels in ${names[1] ?? ""} and types in ${names[2] ?? ""}`,
     isEditing: !isInferred,
     confirm: () =>
       onChange({

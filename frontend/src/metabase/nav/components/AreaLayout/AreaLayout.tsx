@@ -1,14 +1,8 @@
 import { useHotkeys } from "@mantine/hooks";
 import cx from "classnames";
-import {
-  type HTMLAttributes,
-  type ReactNode,
-  type Ref,
-  type SyntheticEvent,
-  useState,
-} from "react";
-import { ResizableBox, type ResizeCallbackData } from "react-resizable";
+import { type ReactNode, useState } from "react";
 
+import { ResizablePanel } from "metabase/common/components/ResizablePanel";
 import { Box, Center, Flex, Loader, Stack } from "metabase/ui";
 
 import S from "./AreaLayout.module.css";
@@ -96,9 +90,14 @@ export function AreaLayout({
   return (
     <Flex h="100%">
       {isNavbarOpened && isResizable ? (
-        <ResizableNav width={navWidth} onWidthChange={setNavWidth}>
+        <ResizablePanel
+          width={navWidth}
+          minWidth={MIN_NAV_WIDTH}
+          maxWidth={MAX_NAV_WIDTH}
+          onWidthChange={setNavWidth}
+        >
           {nav}
-        </ResizableNav>
+        </ResizablePanel>
       ) : (
         nav
       )}
@@ -113,46 +112,3 @@ const MIN_NAV_WIDTH = 232;
 const MAX_NAV_WIDTH = 336;
 // The fixed width the nav had before it could be resized
 const DEFAULT_NAV_WIDTH = 300;
-
-type ResizableNavProps = {
-  width: number;
-  onWidthChange: (width: number) => void;
-  children: ReactNode;
-};
-
-/** The open nav, resizable from its right edge */
-function ResizableNav({ width, onWidthChange, children }: ResizableNavProps) {
-  return (
-    <ResizableBox
-      className={S.resizable}
-      width={width}
-      minConstraints={[MIN_NAV_WIDTH, 0]}
-      maxConstraints={[MAX_NAV_WIDTH, 0]}
-      axis="x"
-      resizeHandles={["e"]}
-      handle={<NavEdgeHandle />}
-      onResizeStart={() => document.body.classList.add(S.noSelect)}
-      onResize={(_event: SyntheticEvent, data: ResizeCallbackData) =>
-        onWidthChange(data.size.width)
-      }
-      onResizeStop={() => document.body.classList.remove(S.noSelect)}
-    >
-      {children}
-    </ResizableBox>
-  );
-}
-
-type NavEdgeHandleProps = HTMLAttributes<HTMLDivElement> & {
-  ref?: Ref<HTMLDivElement>;
-  /** Injected by react-resizable; kept off the DOM element */
-  handleAxis?: string;
-};
-
-/** Grab area on the nav's right edge that darkens the border on hover */
-function NavEdgeHandle({
-  ref,
-  handleAxis: _handleAxis,
-  ...props
-}: NavEdgeHandleProps) {
-  return <div ref={ref} className={S.resizeHandle} {...props} />;
-}

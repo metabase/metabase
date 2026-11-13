@@ -200,7 +200,7 @@ export function inferTableRole({ name, fields }: TableShape): RoleInference {
     inferFromColumns(fields) ??
     inferFromName(name) ?? {
       role: null,
-      signal: t`No key, column, or name signal matched`,
+      signal: t`nothing in its keys, columns, or name matched a role`,
       confidence: "low",
     }
   );
@@ -213,7 +213,7 @@ function inferFromKeys(fields: Field[]): RoleInference | null {
   if (fks.length >= 2 && fields.every((field) => isPK(field) || isFK(field))) {
     return {
       role: "role/Bridge",
-      signal: t`Every column is a key, linking ${fks.length} tables`,
+      signal: t`every column is a key, linking ${fks.length} tables`,
       confidence: "high",
     };
   }
@@ -222,7 +222,7 @@ function inferFromKeys(fields: Field[]): RoleInference | null {
   if (indexKey && fks.length === 1) {
     return {
       role: "role/ArrayChild",
-      signal: t`Key is ${fks[0].name} plus the position ${indexKey.name}`,
+      signal: t`its key is ${fks[0].name} plus the position ${indexKey.name}`,
       confidence: "high",
     };
   }
@@ -232,7 +232,7 @@ function inferFromKeys(fields: Field[]): RoleInference | null {
     if (dateKey && pks.every((field) => field === dateKey || isFK(field))) {
       return {
         role: "role/PeriodicSnapshotFact",
-        signal: t`Key is the date ${dateKey.name} plus foreign keys`,
+        signal: t`its key is the date ${dateKey.name} plus foreign keys`,
         confidence: "high",
       };
     }
@@ -242,7 +242,7 @@ function inferFromKeys(fields: Field[]): RoleInference | null {
     if (versionKey) {
       return {
         role: "role/HistoryDimension",
-        signal: t`Key is an ID plus ${versionKey.name}`,
+        signal: t`its key is an ID plus ${versionKey.name}`,
         confidence: "high",
       };
     }
@@ -266,7 +266,7 @@ function inferFromColumns(fields: Field[]): RoleInference | null {
   if (validFrom && validTo) {
     return {
       role: "role/HistoryDimension",
-      signal: t`Has ${validFrom.name} and ${validTo.name} columns`,
+      signal: t`it has ${validFrom.name} and ${validTo.name} columns`,
       confidence: "high",
     };
   }
@@ -278,7 +278,7 @@ function inferFromColumns(fields: Field[]): RoleInference | null {
   if (milestones.length >= 2 && status) {
     return {
       role: "role/AccumulatingSnapshotFact",
-      signal: t`Has ${milestones.length} milestone dates and ${status.name}`,
+      signal: t`it has ${milestones.length} milestone dates and ${status.name}`,
       confidence: "low",
     };
   }
@@ -292,7 +292,7 @@ function inferFromColumns(fields: Field[]): RoleInference | null {
   ) {
     return {
       role: "role/LookupDimension",
-      signal: t`Only a key and label columns`,
+      signal: t`it only has a key and label columns`,
       confidence: "low",
     };
   }
@@ -301,7 +301,7 @@ function inferFromColumns(fields: Field[]): RoleInference | null {
   if (dates.length === 1 && !hasUpdatedAt && fks.length >= 1) {
     return {
       role: "role/EventFact",
-      signal: t`One timestamp, no updated_at, and a link to ${fks[0].name}`,
+      signal: t`it has one timestamp, no updated_at, and a link to ${fks[0].name}`,
       confidence: "low",
     };
   }
@@ -311,7 +311,7 @@ function inferFromColumns(fields: Field[]): RoleInference | null {
   if (pks.length === 1 && hasLabel && hasCreatedAt && hasUpdatedAt) {
     return {
       role: "role/EntityDimension",
-      signal: t`A single key, a name, and created and updated dates`,
+      signal: t`it has a single key, a name, and created and updated dates`,
       confidence: "low",
     };
   }
@@ -330,7 +330,7 @@ function inferEavRole(fields: Field[]): RoleInference | null {
   if (valueField && propertyField && entityKey) {
     return {
       role: "role/CustomPropertyTable",
-      signal: t`Has ${entityKey.name}, ${propertyField.name} and ${valueField.name} columns`,
+      signal: t`it has ${entityKey.name}, ${propertyField.name} and ${valueField.name} columns`,
       confidence: "high",
     };
   }
@@ -341,7 +341,7 @@ function inferEavRole(fields: Field[]): RoleInference | null {
   if (labelField && typeField && nameOf(labelField) !== "name") {
     return {
       role: "role/ConfigurationTable",
-      signal: t`Has ${labelField.name} and ${typeField.name} columns, like a table of field definitions`,
+      signal: t`it has ${labelField.name} and ${typeField.name} columns, like a table of field definitions`,
       confidence: "low",
     };
   }
@@ -355,7 +355,7 @@ function inferFromName(name: string): RoleInference | null {
   return rule
     ? {
         role: rule.role,
-        signal: t`Named like a ${getTableRoleLabel(rule.role).toLowerCase()} table`,
+        signal: t`it's named like a ${getTableRoleLabel(rule.role).toLowerCase()} table`,
         confidence: rule.confidence,
       }
     : null;
@@ -500,7 +500,7 @@ export function inferEavDefinition(
       definitionTableId: null,
       labelFieldId: null,
       typeFieldId: null,
-      signal: t`No table of field definitions found`,
+      signal: t`no table of field definitions was found`,
     };
   }
   const { labelFieldId, typeFieldId } = inferDefinitionColumns(
@@ -512,8 +512,8 @@ export function inferEavDefinition(
     typeFieldId,
     signal:
       targetTable && propertyField
-        ? t`${propertyField.name} → ${definitionTable.name}`
-        : t`Named like ${table.name} without its suffix`,
+        ? t`${propertyField.name} links to ${definitionTable.name}`
+        : t`it's named like ${table.name} without its suffix`,
   };
 }
 
@@ -597,7 +597,7 @@ export function inferMainDate(
   if (keyDate && role != null && isPeriodicRole(role)) {
     return {
       fieldId: idOf(keyDate),
-      signal: t`The period in the table's key`,
+      signal: t`it's the period in the table's key`,
       confidence: "high",
     };
   }
@@ -607,7 +607,7 @@ export function inferMainDate(
     if (field) {
       return {
         fieldId: idOf(field),
-        signal: t`Named like when a row happened`,
+        signal: t`it's named like when a row happened`,
         confidence,
       };
     }
@@ -616,7 +616,7 @@ export function inferMainDate(
   if (candidates.length === 1) {
     return {
       fieldId: idOf(candidates[0]),
-      signal: t`The only date that isn't load or edit bookkeeping`,
+      signal: t`it's the only date that isn't load or edit bookkeeping`,
       confidence: "low",
     };
   }
@@ -625,8 +625,8 @@ export function inferMainDate(
     fieldId: null,
     signal:
       candidates.length === 0
-        ? t`No date column besides load or edit bookkeeping`
-        : t`Several dates, none named like when a row happened`,
+        ? t`there's no date column besides load or edit bookkeeping`
+        : t`there are several dates, none named like when a row happened`,
     // With no dates there's nothing to pick; with several, an admin should
     confidence: candidates.length === 0 ? "high" : "low",
   };

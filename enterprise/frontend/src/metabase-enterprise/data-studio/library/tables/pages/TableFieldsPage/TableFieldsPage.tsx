@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { ResizablePanel } from "metabase/common/components/ResizablePanel";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer/PageContainer";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -14,7 +15,6 @@ import {
 import { HierarchyList } from "metabase/data-studio/data-model/pages/DataModel/TableSection/HierarchyList";
 import { TableFieldsTab } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableFieldsTab";
 import {
-  FieldEmptyState,
   MetadataCardVariantProvider,
   PreviewSection,
   type PreviewType,
@@ -45,6 +45,10 @@ type TableFieldsPageParams = {
   fieldId?: string;
 };
 
+const MIN_LIST_WIDTH = 320;
+const MAX_LIST_WIDTH = 800;
+const DEFAULT_LIST_WIDTH = 560;
+
 export function TableFieldsPage() {
   const params = useParams<TableFieldsPageParams>();
   const navigate = useNavigate();
@@ -60,6 +64,8 @@ export function TableFieldsPage() {
   const [placement, setPlacement] = useHierarchyPlacement();
   const [searchParams] = useSearchParams();
   const isHierarchiesView = searchParams.get("view") === "hierarchies";
+  // Kept here so the width survives picking another field
+  const [listWidth, setListWidth] = useState(DEFAULT_LIST_WIDTH);
 
   if (isLoading || error != null || table == null || tableId == null) {
     return (
@@ -134,38 +140,44 @@ export function TableFieldsPage() {
                 : { borderTop: "1px solid var(--mb-color-border-neutral)" }
             }
           >
-            <Stack
-              className={S.column}
-              flex="8 1 0"
-              miw={320}
-              maw={640}
-              mih={0}
-              pt="xl"
-              pb="xl"
-              pl="3.5rem"
-              pr="xl"
+            <ResizablePanel
+              width={listWidth}
+              minWidth={MIN_LIST_WIDTH}
+              maxWidth={MAX_LIST_WIDTH}
+              onWidthChange={setListWidth}
             >
-              <TableFieldsTab
-                /**
-                 * Make sure internal component state is reset when changing tables.
-                 * This is to avoid state mix-up with optimistic updates.
-                 */
-                key={tableId}
-                table={table}
-                activeFieldId={fieldId}
-                getFieldHref={(fieldId) =>
-                  Urls.dataStudioTableFields(tableId, fieldId)
-                }
-                actions={
-                  !table.db?.is_attached_dwh && (
-                    <Button
-                      leftSection={<Icon name="gear_settings_filled" />}
-                      onClick={openSyncModal}
-                    >{t`Sync options`}</Button>
-                  )
-                }
-              />
-            </Stack>
+              <Stack
+                className={S.column}
+                flex={1}
+                miw={0}
+                mih={0}
+                pt="xl"
+                pb="xl"
+                pl="3.5rem"
+                pr="xl"
+              >
+                <TableFieldsTab
+                  /**
+                   * Make sure internal component state is reset when changing tables.
+                   * This is to avoid state mix-up with optimistic updates.
+                   */
+                  key={tableId}
+                  table={table}
+                  activeFieldId={fieldId}
+                  getFieldHref={(fieldId) =>
+                    Urls.dataStudioTableFields(tableId, fieldId)
+                  }
+                  actions={
+                    !table.db?.is_attached_dwh && (
+                      <Button
+                        leftSection={<Icon name="gear_settings_filled" />}
+                        onClick={openSyncModal}
+                      >{t`Sync options`}</Button>
+                    )
+                  }
+                />
+              </Stack>
+            </ResizablePanel>
             {field != null && (
               <Stack
                 className={S.column}
@@ -223,11 +235,6 @@ export function TableFieldsPage() {
                   onClose={closePreview}
                 />
               </Box>
-            )}
-            {field == null && (
-              <Flex align="center" flex="1" justify="center" miw={240}>
-                <FieldEmptyState hasTable />
-              </Flex>
             )}
           </Flex>
         </MetadataCardVariantProvider>

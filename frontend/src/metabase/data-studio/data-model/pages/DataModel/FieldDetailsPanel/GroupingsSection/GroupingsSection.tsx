@@ -91,7 +91,7 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
   const defaultName = resolved.defaultName;
   const defaultInference =
     resolved.isDefaultInferred && resolved.defaultInference
-      ? t`Inferred: ${resolved.defaultInference.signal}`
+      ? resolved.defaultInference.signal
       : null;
   // The default leads; then built-ins, then sync's and an admin's
   const all = [
@@ -273,7 +273,7 @@ function GroupingCard({
               grouping.isInferred &&
               grouping.signal != null && (
                 <InferredIcon
-                  description={t`Inferred: ${grouping.signal}`}
+                  description={grouping.signal}
                   onConfirm={readOnly ? undefined : onConfirm}
                 />
               )

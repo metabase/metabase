@@ -12,11 +12,9 @@ import {
   type HistoryShape,
   type PreviousValuePair,
   type ShapeOption,
-  type TableStructure,
   getChangeShape,
   getChangeShapeOptions,
   getHistoryShapeOptions,
-  getHistorySignalLabel,
   getScdTypeForChangeShape,
   useTableStructures,
 } from "metabase/metadata/table-structure";
@@ -195,17 +193,13 @@ function InferredShapeSelect<T extends string>({
   );
 }
 
-export function getHistoryShapeInference(
-  structure: Pick<TableStructure, "scdTypeInference">,
-  { resolution }: Pick<ScdDetails, "resolution">,
-): string | null {
+export function getHistoryShapeInference({
+  resolution,
+}: Pick<ScdDetails, "resolution">): string | null {
   if (resolution.isOverridden) {
     return null;
   }
-  const { rule, signal } = structure.scdTypeInference;
-  return resolution.signal === signal
-    ? t`Inferred from ${getHistorySignalLabel(rule)}: ${signal}`
-    : t`Inferred: ${resolution.signal}`;
+  return resolution.signal;
 }
 
 export function HistoryShapeValue({
@@ -366,7 +360,7 @@ export function PreviousValuesSection({
               label={t`Changes`}
               options={getChangeShapeOptions()}
               value={shape}
-              inference={t`Inferred: ${resolution.signal}`}
+              inference={resolution.signal}
               isInferred={!resolution.isOverridden}
               disabled={disabled}
               renderExample={(option) => (

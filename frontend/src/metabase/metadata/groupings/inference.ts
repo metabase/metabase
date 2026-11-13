@@ -279,23 +279,23 @@ function getSpanSignal(spanMs: number): string {
   const days = Math.max(1, Math.round(spanMs / DAY_MS));
   if (days < 90) {
     return ngettext(
-      msgid`Values span ${days} day`,
-      `Values span ${days} days`,
+      msgid`its values span ${days} day`,
+      `its values span ${days} days`,
       days,
     );
   }
   const months = Math.round(days / 30.4);
   if (months < 24) {
     return ngettext(
-      msgid`Values span ${months} month`,
-      `Values span ${months} months`,
+      msgid`its values span ${months} month`,
+      `its values span ${months} months`,
       months,
     );
   }
   const years = Math.round(days / 365.25);
   return ngettext(
-    msgid`Values span ${years} year`,
-    `Values span ${years} years`,
+    msgid`its values span ${years} year`,
+    `its values span ${years} years`,
     years,
   );
 }
@@ -303,19 +303,19 @@ function getSpanSignal(spanMs: number): string {
 function getPeriodSignal(granularity: PeriodGranularity): string {
   switch (granularity) {
     case "minute":
-      return t`Rows are one per minute`;
+      return t`the rows are one per minute`;
     case "hour":
-      return t`Rows are one per hour`;
+      return t`the rows are one per hour`;
     case "day":
-      return t`Rows are one per day`;
+      return t`the rows are one per day`;
     case "week":
-      return t`Rows are one per week`;
+      return t`the rows are one per week`;
     case "month":
-      return t`Rows are one per month`;
+      return t`the rows are one per month`;
     case "quarter":
-      return t`Rows are one per quarter`;
+      return t`the rows are one per quarter`;
     case "year":
-      return t`Rows are one per year`;
+      return t`the rows are one per year`;
   }
 }
 
@@ -328,7 +328,7 @@ function inferDefaultTimeUnit(
   const latest = range ? Date.parse(range.latest) : NaN;
   const span = latest - earliest;
   let unit: TimeUnit = "month";
-  let signal = t`No profiled date range; month suits most dates`;
+  let signal = t`there's no profiled date range, and month suits most dates`;
   if (Number.isFinite(span)) {
     signal = getSpanSignal(span);
     if (span < 3 * DAY_MS) {

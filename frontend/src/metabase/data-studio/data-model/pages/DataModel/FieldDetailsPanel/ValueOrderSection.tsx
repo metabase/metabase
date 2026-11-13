@@ -17,6 +17,7 @@ import {
 } from "metabase/metadata/lifecycle";
 import {
   Card,
+  Center,
   Group,
   Icon,
   Loader,
@@ -28,6 +29,10 @@ import {
 import type { Field, Table } from "metabase-types/api";
 
 import { InferredIcon } from "../TableSection/InferenceReview";
+
+// The outcome group column, lined up with its label above the rows
+const BUCKET_SELECT_WIDTH = 130;
+const RANK_SIZE = 20;
 
 interface ValueOrderSectionProps {
   field: Field;
@@ -75,7 +80,7 @@ export function ValueOrderSection({ field, table }: ValueOrderSectionProps) {
         isInferred={
           overrides.enumKind == null && kindInference.kind !== "nominal"
         }
-        inference={t`Inferred: ${kindInference.signal}`}
+        inference={kindInference.signal}
         disabled={readOnly}
         onChange={(kind) => setEnumKind(fieldId, kind)}
       />
@@ -164,7 +169,15 @@ function ValueOrder({
   const hasValues = order.values.length > 0;
   return (
     <Stack gap="sm">
-      <Text fw="bold">{t`Values order`}</Text>
+      <Group justify="space-between" wrap="nowrap" align="flex-end">
+        <Text fw="bold">{t`Values order`}</Text>
+        {hasValues && !order.isLoading && (
+          // Sits over the rows' selects, inside the cards' padding
+          <Text size="sm" c="text-secondary" w={BUCKET_SELECT_WIDTH} mr="sm">
+            {t`Outcome group`}
+          </Text>
+        )}
+      </Group>
       {order.isLoading ? (
         <Loader size="xs" />
       ) : !hasValues ? (
@@ -184,7 +197,7 @@ function ValueOrder({
             {t`Guessed order`}
           </Text>
           <InferredIcon
-            description={t`Inferred: ${order.inference.signal}`}
+            description={order.inference.signal}
             onConfirm={readOnly ? undefined : onConfirm}
           />
         </Group>
@@ -275,20 +288,30 @@ function OrderedValueRow({
       style={{ cursor: isEditable ? "grab" : undefined }}
     >
       <Group gap="sm" wrap="nowrap" justify="space-between">
-        <Group gap="sm" wrap="nowrap" miw={0}>
-          {isEditable && (
-            <Icon name="grabber" c="text-secondary" flex="0 0 auto" />
-          )}
-          <Text c="text-secondary" w="1.5rem" ta="end" flex="0 0 auto">
-            {rank}
-          </Text>
+        <Group gap="md" wrap="nowrap" miw={0}>
+          <Group gap="sm" wrap="nowrap" flex="0 0 auto">
+            {isEditable && (
+              <Icon name="grabber" c="text-secondary" flex="0 0 auto" />
+            )}
+            <Center
+              w={RANK_SIZE}
+              h={RANK_SIZE}
+              bg="background_page-secondary"
+              bdrs="50%"
+              flex="0 0 auto"
+            >
+              <Text size="sm" c="text-secondary" lh={1}>
+                {rank}
+              </Text>
+            </Center>
+          </Group>
           <Text truncate>{value.value}</Text>
         </Group>
         {isEditable ? (
           <Select
-            aria-label={t`Bucket for ${value.value}`}
+            aria-label={t`Outcome group for ${value.value}`}
             size="xs"
-            w={130}
+            w={BUCKET_SELECT_WIDTH}
             data={VALUE_BUCKETS.map((bucket) => ({
               value: bucket,
               label: getValueBucketLabel(bucket),
@@ -303,7 +326,7 @@ function OrderedValueRow({
             }}
           />
         ) : (
-          <Text c="text-secondary" flex="0 0 auto">
+          <Text c="text-secondary" w={BUCKET_SELECT_WIDTH} flex="0 0 auto">
             {getValueBucketLabel(value.bucket)}
           </Text>
         )}
