@@ -4616,6 +4616,7 @@
            models
            permissions
            premium-features
+           queries
            request
            search
            search.embeddings
@@ -4624,7 +4625,10 @@
            tracing
            util
            util.config}
-   :model-imports #{:model/Collection :model/Dashboard :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Table}}
 
   enterprise/security-center
   {:team "Gadget"
