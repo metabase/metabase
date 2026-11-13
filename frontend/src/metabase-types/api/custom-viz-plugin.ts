@@ -55,6 +55,10 @@ export type CustomVizPluginWarning =
   | {
       type: "invalid-identifier";
       identifier: string;
+    }
+  | {
+      type: "invalid-icon";
+      icon: string;
     };
 
 /**
