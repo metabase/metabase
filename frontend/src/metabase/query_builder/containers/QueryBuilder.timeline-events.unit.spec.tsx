@@ -1225,7 +1225,7 @@ describe("QueryBuilder > timeline events on the chart and in the events panel", 
                   {
                     type: "column",
                     name: "TOTAL",
-                    binningCount: 10,
+                    binning: { strategy: "default" },
                   },
                 ],
               },

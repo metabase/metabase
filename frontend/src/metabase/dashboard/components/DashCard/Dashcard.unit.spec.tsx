@@ -44,6 +44,7 @@ import {
   type DownloadPermission,
   type ParameterId,
   type ParameterValueOrArray,
+  type VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
@@ -281,32 +282,40 @@ describe("DashCard", () => {
   });
 
   describe("timeline event availability", () => {
+    const SELECTS_TIMELINE: VisualizationSettings = {
+      "timeline.selected_timeline_ids": [10],
+    };
+    const RECORDS_NO_SELECTION: VisualizationSettings = {};
+    const SELECTS_NO_TIMELINES: VisualizationSettings = {
+      "timeline.selected_timeline_ids": [],
+    };
+
     it.each([
       {
         name: "a supported chart",
         display: "line",
-        selection: { "timeline.selected_timeline_ids": [10] },
+        selection: SELECTS_TIMELINE,
         eventsVisible: true,
         menuVisible: true,
       },
       {
         name: "an unsupported chart",
         display: "table",
-        selection: { "timeline.selected_timeline_ids": [10] },
+        selection: SELECTS_TIMELINE,
         eventsVisible: false,
         menuVisible: false,
       },
       {
         name: "a supported chart whose question never recorded events",
         display: "line",
-        selection: {},
+        selection: RECORDS_NO_SELECTION,
         eventsVisible: false,
         menuVisible: true,
       },
       {
         name: "a supported chart whose question was saved with no timelines",
         display: "line",
-        selection: { "timeline.selected_timeline_ids": [] },
+        selection: SELECTS_NO_TIMELINES,
         eventsVisible: false,
         menuVisible: true,
       },
