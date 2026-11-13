@@ -71,6 +71,7 @@
   host-names
   https-state
   internal-data-app?
+  permission-preview?
   public?
   referer])
 

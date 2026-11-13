@@ -67,6 +67,14 @@
   [{:keys [uri]}]
   (boolean (and uri (str/starts-with? uri (str data-app-embed-prefix "/")))))
 
+(defn permission-preview?
+  "Whether the request targets `/embed/permission-preview/<name>`, the document of the frame an admin previews the app
+  in as another user (EE `permission-debug`), served from the isolated origin like the internal data app. The name
+  can't be `.` or `..`."
+  [{:keys [uri]}]
+  (boolean (when-let [[_ preview-name] (and uri (re-matches #"^/embed/permission-preview/([^/]+)(?:/.*)?$" uri))]
+             (not (#{"." ".."} preview-name)))))
+
 (defn embedded-data-app?
   "Whether the request targets the dedicated SSO embedding route."
   [{:keys [uri]}]
