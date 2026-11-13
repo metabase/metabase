@@ -138,10 +138,21 @@
       (let [new-scheduler (qs/initialize)]
         ;; Readied before it is published, so nothing that finds it, such as [[start-scheduler!]], can run it without
         ;; our job factory.
-        (qs/standby new-scheduler)
-        (job-factory/add-to-scheduler new-scheduler)
+        ;; Until then nothing can reach it, [[stop-scheduler!]] included, so a failure here shuts it down.
+        (try
+          (qs/standby new-scheduler)
+          (job-factory/add-to-scheduler new-scheduler)
+          (catch Throwable e
+            (try
+              (qs/shutdown new-scheduler)
+              (catch Throwable shutdown-error
+                (when-not (identical? e shutdown-error)
+                  (.addSuppressed e shutdown-error))))
+            (throw e)))
         (mc/reset! scheduler-component new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
+        ;; TODO (Chris 2026-11-13) -- If a step below throws, the scheduler stays published and a later call skips
+        ;; them all, so jobs with no class and errored triggers are left as they are until a restart.
         (delete-jobs-with-no-class!)
         (reset-errored-triggers! new-scheduler)
         (init-tasks!)))))
