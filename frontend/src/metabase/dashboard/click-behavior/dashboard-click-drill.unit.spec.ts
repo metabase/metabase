@@ -24,7 +24,6 @@ import {
   getClickBehavior,
   getDashboardDrillLinkUrl,
   getDashboardDrillParameters,
-  getDashboardDrillQuestionUrl,
   getDashboardDrillTab,
   getDashboardDrillType,
   getDashboardDrillUrl,
@@ -300,8 +299,8 @@ describe("getDashboardDrillUrl", () => {
   });
 });
 
-describe("getDashboardDrillQuestionUrl", () => {
-  it("filters the target question by a clicked boolean custom column value", () => {
+describe("DashboardClickAction with a question link", () => {
+  it("opens the target question filtered by a clicked boolean custom column value", () => {
     const metadata = createMockMetadata({
       databases: [createSampleDatabase()],
     });
@@ -341,37 +340,47 @@ describe("getDashboardDrillQuestionUrl", () => {
       effective_type: "type/Boolean",
     });
 
-    const url = getDashboardDrillQuestionUrl(
-      new Question(createMockCard(), metadata),
-      {
+    const sourceCard = createMockCard({ id: 1, display: "table" });
+
+    const actions = DashboardClickAction({
+      question: new Question(sourceCard, metadata),
+      clicked: {
         column: booleanColumn,
         value: false,
         data: [{ col: booleanColumn, value: false }],
         settings: buildSettings({
-          root: {
-            type: "link",
-            linkType: "question",
-            targetId: 5,
-            parameterMapping: {
-              [target.id]: {
-                id: target.id,
-                source: {
-                  type: "column",
-                  id: "Boolean column",
-                  name: "Boolean column",
+          columns: {
+            "Boolean column": {
+              type: "link",
+              linkType: "question",
+              targetId: 5,
+              parameterMapping: {
+                [target.id]: {
+                  id: target.id,
+                  source: {
+                    type: "column",
+                    id: "Boolean column",
+                    name: "Boolean column",
+                  },
+                  target: target.target,
                 },
-                target: target.target,
               },
             },
           },
         }),
         extraData: {
           dashboard: createMockDashboard({ id: 1 }),
+          dashcard: createMockDashboardCard({
+            card_id: sourceCard.id,
+            card: sourceCard,
+          }),
           questions: { 5: targetCard },
         },
       },
-    );
+    });
 
+    expect(actions).toHaveLength(1);
+    const url = actions[0].url?.() ?? "";
     const [pathname, hash] = url.split("#");
     const drilledQuery = new Question(
       deserializeCardFromUrl(hash),
